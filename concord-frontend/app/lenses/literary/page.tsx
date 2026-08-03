@@ -126,11 +126,11 @@ export default function LiteraryLensPage() {
     setStatsLoading(true);
     lensRun<Stats>('literary', 'stats', {}).then((r) => {
       if (r.data?.result) setStats(r.data.result);
-    }).catch(() => {}).finally(() => setStatsLoading(false));
+    }).catch((e) => console.warn('[literary] stats load failed:', e)).finally(() => setStatsLoading(false));
     // The cross-domain resonance lattice — bridges (resonance) + citations.
     lensRun<{ ok: boolean; nodes: GraphNode[]; edges: GraphEdge[] }>('literary', 'resonance_graph', { limit: 120 })
       .then((r) => { const g = r.data?.result; if (g?.nodes?.length) setLattice({ nodes: g.nodes, edges: g.edges || [] }); })
-      .catch(() => {});
+      .catch((e) => console.warn('[literary] resonance_graph load failed:', e));
   }, []);
 
   // literary.crystallize was registered and tested but had zero UI caller —

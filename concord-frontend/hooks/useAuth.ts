@@ -9,8 +9,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+import { api } from '@/lib/api/client';
 
 export interface AuthUser {
   id: string;
@@ -40,17 +39,8 @@ export function useAuth(): UseAuthReturn {
 
   const checkAuth = useCallback(async () => {
     try {
-      const resp = await fetch(`${BASE_URL}/api/auth/me`, {
-        credentials: 'include',
-        headers: { 'Accept': 'application/json' },
-      });
-
-      if (!resp.ok) {
-        if (mountedRef.current) setUser(null);
-        return;
-      }
-
-      const data = await resp.json();
+      const resp = await api.get('/api/auth/me');
+      const data = resp.data;
       if (mountedRef.current) {
         if (data.ok && data.user) {
           setUser({
@@ -79,11 +69,7 @@ export function useAuth(): UseAuthReturn {
 
   const logout = useCallback(async () => {
     try {
-      await fetch(`${BASE_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      await api.post('/api/auth/logout', {});
     } catch {
       // Proceed with local cleanup even if the server request fails
     }

@@ -156,6 +156,11 @@ function HomeClient() {
           // Auth check hung — allow through so the page isn't stuck forever.
           // API calls will still get 401-redirected if session is truly dead.
           console.warn('[HomeClient] Auth check timed out after 10s');
+          useUIStore.getState().addToast({
+            type: 'warning',
+            message: 'Connection is slow — some features may not load correctly.',
+            duration: 6000,
+          });
         }
         setAuthChecked(true);
       });

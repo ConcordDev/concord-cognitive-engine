@@ -119,10 +119,10 @@ export default function ARLensPage() {
   const refreshCounts = useCallback(() => {
     lensRun('ar', 'sceneList', {}).then((r) => {
       if (r.data?.ok) setSceneCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch(() => {});
+    }).catch((e) => console.warn('[ar] scene list load failed:', e));
     lensRun('ar', 'imageTargetList', {}).then((r) => {
       if (r.data?.ok) setTargetCount((r.data.result as { count?: number } | null)?.count ?? 0);
-    }).catch(() => {});
+    }).catch((e) => console.warn('[ar] target list load failed:', e));
   }, []);
   useEffect(() => { refreshCounts(); }, [refreshCounts]);
 
