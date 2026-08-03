@@ -103,6 +103,11 @@ const REFRESH_FAIL_COOLDOWN_MS = 60_000;
 let _refreshInFlight: Promise<unknown> | null = null;
 let _refreshBlockedUntil = 0;
 
+// Debounce for the "session expired" toast on background GET 401s: only fire
+// once every 30s so N concurrent pollers don't spam the user.
+const SESSION_EXPIRED_TOAST_DEBOUNCE_MS = 30_000;
+let _sessionExpiredToastShownUntil = 0;
+
 /** Test seam + login hook: forget that refresh was failing. */
 export function clearAuthRefreshBackoff(): void {
   _refreshBlockedUntil = 0;
@@ -367,6 +372,19 @@ api.interceptors.response.use(
         // Only redirect on user-initiated mutations or explicit nav.
         const isBackgroundFetch = error.config?.method?.toUpperCase() === 'GET';
         if (isBackgroundFetch) {
+          // If the refresh was already attempted and failed, the session is
+          // truly dead. Toast once per ~30s so the user knows without spam.
+          if ((error.config as InternalAxiosRequestConfig & { _authRetried?: boolean })?._authRetried) {
+            const now = Date.now();
+            if (now > _sessionExpiredToastShownUntil) {
+              _sessionExpiredToastShownUntil = now + SESSION_EXPIRED_TOAST_DEBOUNCE_MS;
+              useUIStore.getState().addToast({
+                type: 'warning',
+                message: 'Session expired — please sign in again.',
+                duration: 8000,
+              });
+            }
+          }
           return Promise.reject(error);
         }
         // Don't redirect on public pages that don't require auth.

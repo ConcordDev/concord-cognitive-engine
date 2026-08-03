@@ -22,13 +22,13 @@ function LoginForm() {
 
     try {
       // Fetch CSRF token before login (needed for the POST itself in production)
-      await api.get('/api/auth/csrf-token').catch(() => {});
+      await api.get('/api/auth/csrf-token').catch((e) => console.warn('[Auth] CSRF pre-fetch failed:', e));
       const res = await api.post('/api/auth/login', { username, password });
       if (res.data?.ok) {
         // Mark as entered so HomeClient shows dashboard
         localStorage.setItem('concord_entered', 'true');
         // Eagerly refresh CSRF token now that we have a real session
-        await api.get('/api/auth/csrf-token').catch(() => {});
+        await api.get('/api/auth/csrf-token').catch((e) => console.warn('[Auth] CSRF post-login fetch failed:', e));
         // Connect WebSocket now that we have a session cookie
         connectSocket();
         // Record login timestamp so HomeClient won't redirect back during auth check race

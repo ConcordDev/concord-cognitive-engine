@@ -2898,7 +2898,7 @@ export default function StudioLensPage() {
                       citedDTUs: [...citedDTUs, { id: dtu.id, title: dtu.title }],
                     },
                   },
-                }).catch(() => {});
+                }).catch((e) => console.warn('[studio] DTU metadata save failed:', e));
                 emitSessionDTU(project, `DTU inserted: ${dtu.title}`);
                 showToast('success', `Inserted "${dtu.title}" as reference`);
               }
