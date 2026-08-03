@@ -10,9 +10,10 @@
 // lens.run unwraps a handler's {ok,result}: handler success {ok:true,result:X}
 // surfaces as r.ok===true / r.result.X; a handler refusal {ok:false,error}
 // (no `result` key) surfaces nested as r.result.ok===false / r.result.error.
-import { describe, it, before } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+import { __setPublicFetchTestTransport } from "../../lib/public-fetch.js";
 
 describe("society — pure-compute lookup tables (exact contracts)", () => {
   it("wb-common-indicators: maps aliases to WB codes, count matches map size", async () => {
@@ -255,6 +256,20 @@ describe("society — network macros: validation rejections (deterministic, pre-
 });
 
 describe("society — network macros: graceful unreachable fallback (post-validation, no egress)", () => {
+  // fetchPublicUrl sets init.dispatcher (undici Agent) which bypasses the
+  // no-egress preload's fetch patch. On GitHub Actions the real worldbank.org
+  // is reachable, so the fetch would succeed and the test would see ok:true
+  // instead of ok:false. Use the public-fetch test seam to force a throw for
+  // all URLs in this describe block so both tests hit the catch branch.
+  before(async () => {
+    __setPublicFetchTestTransport(async () => {
+      throw new Error("worldbank unreachable: blocked in test");
+    });
+  });
+  after(async () => {
+    __setPublicFetchTestTransport(null);
+  });
+
   it("wb-indicator with valid params degrades to a worldbank-unreachable refusal", async () => {
     const r = await lensRun("society", "wb-indicator", { params: { country: "USA", indicator: "population" } });
     // Passed validation; the blocked external fetch lands the catch branch.

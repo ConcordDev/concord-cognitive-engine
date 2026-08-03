@@ -385,7 +385,7 @@ test("player:mode round-trips through the shared core over /godot-ws", async () 
     // "sprint" needs no external capability check (see applyPlayerMode) —
     // exercises the always-legitimate ack branch end-to-end.
     sendMsg(ws, "player:mode", { mode: "sprint" });
-    const ack = await nextFrame(ws);
+    const ack = await waitForEvt(ws, "player:mode:ack");
     assert.equal(ack.evt, "player:mode:ack");
     assert.equal(ack.data.ok, true);
     assert.equal(ack.data.mode, "sprint");
@@ -393,7 +393,7 @@ test("player:mode round-trips through the shared core over /godot-ws", async () 
     // An unowned mount claim must be rejected server-side, not granted on
     // the client's say-so — same legitimacy gate as the socket.io path.
     sendMsg(ws, "player:mode", { mode: "mount:nonexistent-species" });
-    const nack = await nextFrame(ws);
+    const nack = await waitForEvt(ws, "player:mode:nack");
     assert.equal(nack.evt, "player:mode:nack");
     assert.equal(nack.data.reason, "not_mounted");
   } finally { ws.close(); }
@@ -413,7 +413,7 @@ test("an event with no inbound dispatch gets an honest unsupported_evt, not a fa
     // whatever the NEXT unwired event turns out to be, not pinning
     // combat:attack forever as "the unsupported one."
     sendMsg(ws, "totally:unhandled-evt-for-this-test", { targetId: "nope" });
-    const frame = await nextFrame(ws);
+    const frame = await waitForEvt(ws, "error");
     assert.equal(frame.evt, "error");
     assert.equal(frame.data.reason, "unsupported_evt");
     assert.equal(frame.data.evt, "totally:unhandled-evt-for-this-test");
@@ -542,7 +542,7 @@ test("design_command game-create/level-create/entity-add round-trip through the 
     await nextFrame(ws); // hello
 
     sendMsg(ws, "design_command", { action: "game-create", params: { title: "Godot IT Test Game", genre: "arcade" } });
-    const gameFrame = await nextFrame(ws);
+    const gameFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(gameFrame.evt, "design_command:result");
     assert.equal(gameFrame.data.action, "game-create");
     assert.equal(gameFrame.data.ok, true, `game-create should succeed: ${JSON.stringify(gameFrame.data)}`);
@@ -558,7 +558,7 @@ test("design_command game-create/level-create/entity-add round-trip through the 
     assert.equal(storedGame.title, "Godot IT Test Game");
 
     sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "Level One", cols: 12, rows: 8 } });
-    const levelFrame = await nextFrame(ws);
+    const levelFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(levelFrame.data.action, "level-create");
     assert.equal(levelFrame.data.ok, true, `level-create should succeed: ${JSON.stringify(levelFrame.data)}`);
     const levelId = levelFrame.data.result?.level?.id;
@@ -572,7 +572,7 @@ test("design_command game-create/level-create/entity-add round-trip through the 
     assert.equal(storedLevel.layers.length, 2);
 
     sendMsg(ws, "design_command", { action: "entity-add", params: { gameId, name: "Slime", kind: "enemy", health: 10 } });
-    const entityFrame = await nextFrame(ws);
+    const entityFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(entityFrame.data.action, "entity-add");
     assert.equal(entityFrame.data.ok, true, `entity-add should succeed: ${JSON.stringify(entityFrame.data)}`);
     const entityId = entityFrame.data.result?.entity?.id;
@@ -648,7 +648,7 @@ test("design_command rejects an unsupported action honestly (no fabricated succe
     // design_command allow-list yet — proves the allow-list actually
     // constrains dispatch instead of forwarding any (domain, action) pair.
     sendMsg(ws, "design_command", { action: "game-delete", params: { id: "does-not-exist" } });
-    const frame = await nextFrame(ws);
+    const frame = await waitForEvt(ws, "design_command:result");
     assert.equal(frame.evt, "design_command:result");
     assert.equal(frame.data.ok, false);
     assert.equal(frame.data.error, "unsupported_action");
@@ -656,7 +656,7 @@ test("design_command rejects an unsupported action honestly (no fabricated succe
 
     // A genuinely nonexistent macro name gets the same honest treatment.
     sendMsg(ws, "design_command", { action: "totally-made-up-macro", params: {} });
-    const frame2 = await nextFrame(ws);
+    const frame2 = await waitForEvt(ws, "design_command:result");
     assert.equal(frame2.data.ok, false);
     assert.equal(frame2.data.error, "unsupported_action");
   } finally { ws.close(); }
@@ -670,7 +670,7 @@ test("design_command surfaces a real handler-level rejection (level-create with 
     await nextFrame(ws); // hello
 
     sendMsg(ws, "design_command", { action: "level-create", params: { gameId: "no-such-game-id" } });
-    const frame = await nextFrame(ws);
+    const frame = await waitForEvt(ws, "design_command:result");
     assert.equal(frame.evt, "design_command:result");
     assert.equal(frame.data.action, "level-create");
     // This is the REAL gamedesign.js `level-create` handler's own honest
@@ -708,14 +708,14 @@ test("D19 — a design_command action carrying a worldId auto-joins the client i
         position: { x: 5, y: 0, z: 5 },
       },
     });
-    const publishFrame = await nextFrame(ws);
+    const publishFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(publishFrame.data.ok, true, `building-publish should succeed: ${JSON.stringify(publishFrame.data)}`);
 
     // A REAL system event — the same combat:impact a live play-mode session
     // in this world would receive — fired via the real emitToWorld. This
     // reaches the client with NO explicit room:join frame ever sent, proving
     // the design_command dispatch itself performed the room join.
-    const framePromise = nextFrame(ws);
+    const framePromise = waitForEvt(ws, "combat:impact");
     const r = __TEST__.emitToWorld(worldId, "combat:impact", {
       attackerId: "npc1", targetId: "npc2", severity: "rocked",
     });
@@ -735,7 +735,7 @@ test("D19 — a design_command action with NO worldId does not join any world ro
     await nextFrame(ws); // hello
 
     sendMsg(ws, "design_command", { action: "game-create", params: { title: "D19 no-worldId game" } });
-    const frame1 = await nextFrame(ws);
+    const frame1 = await waitForEvt(ws, "design_command:result");
     assert.equal(frame1.data.ok, true);
 
     // No frame should arrive for this unrelated world within a short window —
@@ -760,7 +760,7 @@ test("D20 — scene-save/scene-load round-trips a level design (with a placed en
     await nextFrame(ws); // hello
 
     sendMsg(ws, "design_command", { action: "game-create", params: { title: "D20 Test Game", genre: "puzzle" } });
-    const gameFrame = await nextFrame(ws);
+    const gameFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(gameFrame.data.ok, true, JSON.stringify(gameFrame.data));
     const gameId = gameFrame.data.result.game.id;
 
@@ -768,12 +768,12 @@ test("D20 — scene-save/scene-load round-trips a level design (with a placed en
       action: "entity-add",
       params: { gameId, name: "D20 Slime", kind: "enemy", health: 12, damage: 3, speed: 2 },
     });
-    const entityFrame = await nextFrame(ws);
+    const entityFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(entityFrame.data.ok, true, JSON.stringify(entityFrame.data));
     const entityId = entityFrame.data.result.entity.id;
 
     sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "D20 Level", cols: 10, rows: 6 } });
-    const levelFrame = await nextFrame(ws);
+    const levelFrame = await waitForEvt(ws, "design_command:result");
     assert.equal(levelFrame.data.ok, true, JSON.stringify(levelFrame.data));
     const levelId = levelFrame.data.result.level.id;
 
@@ -925,34 +925,34 @@ test("D21 — design:mode playtest toggle round-trips ack/nack over /godot-ws (m
     // Exiting playtest before ever entering it is an honest nack, never a
     // silent no-op "success".
     sendMsg(ws, "design:mode", { mode: "design" });
-    const earlyExitNack = await nextFrame(ws);
+    const earlyExitNack = await waitForEvt(ws, "design:mode:nack");
     assert.equal(earlyExitNack.evt, "design:mode:nack");
     assert.equal(earlyExitNack.data.reason, "not_in_playtest");
 
     // An unrecognized mode string nacks honestly too — never silently
     // coerced to one of the two real modes.
     sendMsg(ws, "design:mode", { mode: "spectator" });
-    const badModeNack = await nextFrame(ws);
+    const badModeNack = await waitForEvt(ws, "design:mode:nack");
     assert.equal(badModeNack.evt, "design:mode:nack");
     assert.equal(badModeNack.data.reason, "unknown_mode");
 
     // Entering playtest for a level that doesn't exist is a real
     // handler-level rejection, not a fabricated ack.
     sendMsg(ws, "design:mode", { mode: "playtest", levelId: "no-such-level" });
-    const badLevelNack = await nextFrame(ws);
+    const badLevelNack = await waitForEvt(ws, "design:mode:nack");
     assert.equal(badLevelNack.evt, "design:mode:nack");
     assert.equal(badLevelNack.data.reason, "level not found");
 
     // Set up a real game + level to actually enter playtest for.
     sendMsg(ws, "design_command", { action: "game-create", params: { title: "D21 Test Game" } });
-    const gameFrame = await nextFrame(ws);
+    const gameFrame = await waitForEvt(ws, "design_command:result");
     const gameId = gameFrame.data.result.game.id;
     sendMsg(ws, "design_command", { action: "level-create", params: { gameId, name: "D21 Level", cols: 8, rows: 8 } });
-    const levelFrame = await nextFrame(ws);
+    const levelFrame = await waitForEvt(ws, "design_command:result");
     const levelId = levelFrame.data.result.level.id;
 
     sendMsg(ws, "design:mode", { mode: "playtest", levelId });
-    const enterAck = await nextFrame(ws);
+    const enterAck = await waitForEvt(ws, "design:mode:ack");
     assert.equal(enterAck.evt, "design:mode:ack");
     assert.equal(enterAck.data.mode, "playtest");
     assert.equal(enterAck.data.levelId, levelId);
@@ -974,7 +974,7 @@ test("D21 — design:mode playtest toggle round-trips ack/nack over /godot-ws (m
     assert.ok(stillEditable, "the level must remain fully present/editable in design mode after entering playtest");
 
     sendMsg(ws, "design:mode", { mode: "design" });
-    const exitAck = await nextFrame(ws);
+    const exitAck = await waitForEvt(ws, "design:mode:ack");
     assert.equal(exitAck.evt, "design:mode:ack");
     assert.equal(exitAck.data.mode, "design");
     assert.equal(exitAck.data.levelId, levelId);
