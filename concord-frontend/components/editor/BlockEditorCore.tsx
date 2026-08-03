@@ -363,7 +363,6 @@ export function BlockEditor({
       {editor && (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 100 }}
           className="flex items-center gap-1 p-1 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl"
         >
           <ToolbarButton
@@ -397,7 +396,6 @@ export function BlockEditor({
       {editor && (
         <FloatingMenu
           editor={editor}
-          tippyOptions={{ duration: 100 }}
           className="flex items-center gap-1 p-1 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl"
         >
           <ToolbarButton
