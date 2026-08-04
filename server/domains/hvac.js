@@ -1,4 +1,13 @@
 // server/domains/hvac.js
+import { ductSizingFull, sectionProperties } from "../lib/compute/engineering-compute.js";
+import { runFEA } from "../lib/simulation/fea-solver.js";
+import { lumpUniformLoadToNodes } from "../lib/simulation/distributed-load.js";
+
+const IN_TO_M = 0.0254;
+const FT_TO_M = 0.3048;
+const LB_PER_FT_TO_N_PER_M = 4.4482216153 / 0.3048;
+const GRAVITY = 9.80665;
+
 export default function registerHVACActions(registerLensAction) {
   // Fail-CLOSED numeric coercion: Number(v) rejects "12abc"/"Infinity"/"NaN"
   // (unlike parseFloat, which would accept the prefix or yield Infinity). A
@@ -172,100 +181,31 @@ export default function registerHVACActions(registerLensAction) {
   // ─────────────────────────────────────────────────────────────────────
   // Ductulator — CFM <-> duct-size calculator, round + rectangular, both
   // sizing scales a physical ductulator wheel offers (velocity-based and
-  // friction-rate-based). Physics: Darcy-Weisbach pressure-loss equation
-  // with the Colebrook equation (solved iteratively, Haaland-seeded) for
-  // the friction factor, over standard air (rho=0.075 lbm/ft^3, kinematic
-  // viscosity=1.6e-4 ft^2/s @ ~70F). Rectangular<->round equivalence via
-  // the Huebscher (1948) equation, De = 1.30*(a*b)^0.625/(a+b)^0.250.
-  // Verified against a published friction-chart reference point (1000 CFM
-  // @ 0.1 in.wg/100ft -> ~13.5in published vs 13.65in computed, 1.1% off).
+  // friction-rate-based). The physics (Darcy-Weisbach + Colebrook for
+  // friction, Huebscher 1948 for rectangular<->round equivalence) lives
+  // in lib/compute/engineering-compute.js#ductSizingFull — the shared,
+  // canonical CAS-layer source of truth also reachable directly via the
+  // run_compute agent tool (key "engineering.ductSizingFull") and used by
+  // engineering.thermalAnalysis's simpler ductSizing. This macro is a
+  // thin wrapper that reshapes that result into the HVAC-lens-friendly
+  // shape and adds cadParams — real geometry, in the SI units
+  // engineering.parametricSolid/partMesh expect — so a caller (ConKay or
+  // the frontend) can pipe a sized duct straight into a 3D CAD model with
+  // no unit conversion of its own.
   // ─────────────────────────────────────────────────────────────────────
-  const DUCT_RHO = 0.075;         // lbm/ft^3, standard air density
-  const DUCT_NU = 1.6e-4;         // ft^2/s, kinematic viscosity of standard air (~70F)
-  const DUCT_GC = 32.174;         // lbm*ft/(lbf*s^2)
-  const LBFFT2_TO_INWG = 0.19223; // 1 lbf/ft^2 = 0.19223 in. w.g.
-  const DUCT_ROUGHNESS_FT = {
-    // galvanized steel — verified against a published friction-rate chart point (see header note)
-    galvanized: 0.0003,
-    // PVC / smooth aluminum
-    smooth: 0.0001,
-    // flexible duct, fully extended — ASHRAE-cited absolute-roughness range is
-    // 0.0035-0.015 ft (varies ~4x by product); this is the range midpoint, not
-    // a precise per-product figure. Pass an explicit roughnessFt to override.
-    flexible: 0.009,
-  };
-  function ductColebrookF(re, relRoughness) {
-    if (!(re > 0)) return 0.02;
-    let f = Math.pow(-1.8 * Math.log10(Math.pow(relRoughness / 3.7, 1.11) + 6.9 / re), -2);
-    for (let i = 0; i < 50; i++) {
-      const rhs = -2 * Math.log10(relRoughness / 3.7 + 2.51 / (re * Math.sqrt(f)));
-      const fNew = Math.pow(1 / rhs, 2);
-      if (Math.abs(fNew - f) < 1e-12) { f = fNew; break; }
-      f = fNew;
+  const DEFAULT_WALL_THICKNESS_IN = 0.028; // ~22ga galvanized — typical for branch/small-trunk round or rectangular duct. A judgment default, not a SMACNA lookup: verify against SMACNA HVAC Duct Construction Standards for your actual pressure class/size.
+
+  function ductCadParams(shape, sizing, lengthFt, wallThicknessIn) {
+    const lengthM = lengthFt * FT_TO_M;
+    const wallM = wallThicknessIn * IN_TO_M;
+    if (shape === "rectangular" && sizing.rectangular) {
+      const widthM = sizing.rectangular.widthIn * IN_TO_M;
+      const heightM = sizing.rectangular.heightIn * IN_TO_M;
+      return { kind: "rect-tube", params: { width: widthM, height: heightM, wallThickness: wallM, length: lengthM } };
     }
-    return f;
-  }
-  function ductFrictionPer100ft(diameterIn, velocityFpm, roughnessFt) {
-    const D = diameterIn / 12; // ft
-    const V = velocityFpm / 60; // ft/s
-    const re = (V * D) / DUCT_NU;
-    const relRoughness = roughnessFt / D;
-    const f = ductColebrookF(re, relRoughness);
-    const dPdL_lbfft2 = f * (1 / D) * (DUCT_RHO * V * V) / (2 * DUCT_GC);
-    return dPdL_lbfft2 * LBFFT2_TO_INWG * 100; // in.wg per 100 ft
-  }
-  function ductVelocityFpm(cfm, diameterIn) {
-    const areaFt2 = (Math.PI / 4) * Math.pow(diameterIn / 12, 2);
-    return cfm / areaFt2;
-  }
-  function ductDiameterForVelocity(cfm, velocityFpm) {
-    const areaFt2 = cfm / velocityFpm;
-    return Math.sqrt(4 * areaFt2 / Math.PI) * 12; // inches
-  }
-  function ductDiameterForFriction(cfm, targetFriction, roughnessFt) {
-    // Friction rate decreases monotonically as diameter grows (same CFM ->
-    // lower velocity), so plain bisection applies. Bounds cover small branch
-    // runouts through large commercial trunks.
-    let lo = 2, hi = 200;
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2;
-      const v = ductVelocityFpm(cfm, mid);
-      const fr = ductFrictionPer100ft(mid, v, roughnessFt);
-      if (fr > targetFriction) lo = mid; else hi = mid;
-    }
-    return (lo + hi) / 2;
-  }
-  function ductHuebscherEquivDiameter(a, b) {
-    // a, b in inches -> round-equivalent diameter in inches (Huebscher 1948)
-    return 1.30 * Math.pow(a * b, 0.625) / Math.pow(a + b, 0.25);
-  }
-  function ductSolveRectSide(equivDiameterIn, knownSideIn) {
-    // Huebscher's De is monotonically increasing in the unknown side, so
-    // bisection applies directly.
-    let lo = 1, hi = 200;
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2;
-      const computed = ductHuebscherEquivDiameter(knownSideIn, mid);
-      if (computed < equivDiameterIn) lo = mid; else hi = mid;
-    }
-    return (lo + hi) / 2;
-  }
-  function ductSolveRectAtAspectRatio(equivDiameterIn, ratio) {
-    // a = ratio * b; solve b via bisection since Huebscher(ratio*b, b) is
-    // monotonically increasing in b.
-    let lo = 1, hi = 200;
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2;
-      const computed = ductHuebscherEquivDiameter(ratio * mid, mid);
-      if (computed < equivDiameterIn) lo = mid; else hi = mid;
-    }
-    const b = (lo + hi) / 2;
-    return { a: ratio * b, b };
-  }
-  const DUCT_STANDARD_ROUND_IN = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 42, 48];
-  function ductNearestStandardRound(diameterIn) {
-    for (const d of DUCT_STANDARD_ROUND_IN) if (d >= diameterIn) return d;
-    return Math.ceil(diameterIn / 2) * 2; // above catalog range — round up to nearest even inch
+    const radiusM = (sizing.nearestStandardRoundIn / 2) * IN_TO_M;
+    const innerRadiusM = Math.max(0, radiusM - wallM);
+    return { kind: "tube", params: { radius: radiusM, innerRadius: innerRadiusM, length: lengthM } };
   }
 
   registerLensAction("hvac", "ductulator", (ctx, artifact, _params) => {
@@ -274,88 +214,162 @@ export default function registerHVACActions(registerLensAction) {
       const cfm = num(data.cfm, 400);
       const shape = String(data.shape || "round").toLowerCase() === "rectangular" ? "rectangular" : "round";
       const method = String(data.method || "velocity").toLowerCase() === "friction" ? "friction" : "velocity";
-      const materialKey = String(data.material || "galvanized").toLowerCase();
-      const knownMaterial = Object.prototype.hasOwnProperty.call(DUCT_ROUGHNESS_FT, materialKey);
-      const roughnessFt = data.roughnessFt != null
-        ? num(data.roughnessFt, DUCT_ROUGHNESS_FT.galvanized)
-        : (knownMaterial ? DUCT_ROUGHNESS_FT[materialKey] : DUCT_ROUGHNESS_FT.galvanized);
-      const velocityFpm = num(data.velocityFpm, 900);
-      const frictionRate = num(data.frictionRate, 0.1); // in.wg per 100ft, common ASHRAE design default
+      const lengthFt = num(data.lengthFt, 10);
+      const wallThicknessIn = num(data.wallThicknessIn, DEFAULT_WALL_THICKNESS_IN);
 
-      // Step 1: solve the round-equivalent diameter on whichever ductulator
-      // scale the caller picked (velocity scale vs. friction-rate scale —
-      // the two scales a physical ductulator wheel offers).
-      let equivDiameterIn, achievedVelocityFpm, achievedFrictionPer100ft;
-      if (method === "friction") {
-        equivDiameterIn = ductDiameterForFriction(cfm, frictionRate, roughnessFt);
-        achievedVelocityFpm = ductVelocityFpm(cfm, equivDiameterIn);
-        achievedFrictionPer100ft = frictionRate;
-      } else {
-        equivDiameterIn = ductDiameterForVelocity(cfm, velocityFpm);
-        achievedVelocityFpm = velocityFpm;
-        achievedFrictionPer100ft = ductFrictionPer100ft(equivDiameterIn, velocityFpm, roughnessFt);
-      }
+      const sizing = ductSizingFull({
+        cfm, shape, method,
+        material: String(data.material || "galvanized").toLowerCase(),
+        roughnessFt: data.roughnessFt,
+        velocityFpm: num(data.velocityFpm, 900),
+        frictionRate: num(data.frictionRate, 0.1),
+        aspectRatio: data.aspectRatio,
+        knownSideIn: data.knownSideIn,
+      });
+      if (sizing.error) return { ok: false, error: sizing.error };
 
-      const nearestStandardRoundIn = ductNearestStandardRound(equivDiameterIn);
-      const velocityAtStandardFpm = ductVelocityFpm(cfm, nearestStandardRoundIn);
-      const frictionAtStandardPer100ft = ductFrictionPer100ft(nearestStandardRoundIn, velocityAtStandardFpm, roughnessFt);
-
-      const velocityBand = achievedVelocityFpm > 1500 ? "noisy — over typical trunk-duct velocity limit (~1500 fpm)"
-        : achievedVelocityFpm > 900 ? "trunk duct range"
-        : achievedVelocityFpm > 600 ? "branch duct range"
-        : "low velocity — duct is oversized for this CFM";
-
+      const round2 = (v) => Math.round(v * 100) / 100;
       const result = {
         cfm,
         shape,
         method,
-        material: knownMaterial ? materialKey : (data.roughnessFt != null ? "custom" : "galvanized"),
-        roughnessFt: Math.round(roughnessFt * 1e6) / 1e6,
-        equivalentRoundDiameterIn: Math.round(equivDiameterIn * 100) / 100,
-        nearestStandardRoundIn,
-        velocityFpm: Math.round(achievedVelocityFpm),
-        velocityAtStandardSizeFpm: Math.round(velocityAtStandardFpm),
-        frictionRatePer100ft: Math.round(achievedFrictionPer100ft * 1000) / 1000,
-        frictionAtStandardSizePer100ft: Math.round(frictionAtStandardPer100ft * 1000) / 1000,
-        velocityBand,
-        ...(method === "velocity" ? { inputVelocityFpm: velocityFpm } : { inputFrictionRatePer100ft: frictionRate }),
+        material: sizing.material,
+        roughnessFt: Math.round(sizing.roughnessFt * 1e6) / 1e6,
+        equivalentRoundDiameterIn: round2(sizing.equivalentRoundDiameterIn),
+        nearestStandardRoundIn: sizing.nearestStandardRoundIn,
+        velocityFpm: Math.round(sizing.velocityFpm),
+        velocityAtStandardSizeFpm: Math.round(sizing.velocityAtStandardSizeFpm),
+        frictionRatePer100ft: Math.round(sizing.frictionRatePer100ft * 1000) / 1000,
+        frictionAtStandardSizePer100ft: Math.round(sizing.frictionAtStandardSizePer100ft * 1000) / 1000,
+        velocityBand: sizing.velocityBand,
+        lengthFt,
+        wallThicknessIn,
+        ...(method === "velocity" ? { inputVelocityFpm: num(data.velocityFpm, 900) } : { inputFrictionRatePer100ft: num(data.frictionRate, 0.1) }),
       };
 
-      if (shape === "rectangular") {
-        const knownSideIn = num(data.knownSideIn, 0);
-        let a, b;
-        if (knownSideIn > 0) {
-          a = knownSideIn;
-          b = ductSolveRectSide(equivDiameterIn, knownSideIn);
-        } else {
-          // No constrained side given — solve a rectangle at the requested
-          // aspect ratio (default 2:1, a low-friction-penalty ratio well
-          // under ASHRAE's 4:1 recommended ceiling).
-          const ratio = num(data.aspectRatio, 2);
-          ({ a, b } = ductSolveRectAtAspectRatio(equivDiameterIn, ratio));
-        }
-        const areaFt2 = (a * b) / 144;
-        const rectVelocityFpm = cfm / areaFt2;
-        const rectEquivDiameterIn = ductHuebscherEquivDiameter(a, b);
+      if (shape === "rectangular" && sizing.rectangular) {
         result.rectangular = {
-          widthIn: Math.round(a * 100) / 100,
-          heightIn: Math.round(b * 100) / 100,
-          aspectRatio: Math.round((a / b) * 100) / 100,
-          nominalSize: `${Math.round(a)}" x ${Math.round(b)}"`,
-          equivalentRoundDiameterIn: Math.round(rectEquivDiameterIn * 100) / 100,
-          actualVelocityFpm: Math.round(rectVelocityFpm),
+          widthIn: round2(sizing.rectangular.widthIn),
+          heightIn: round2(sizing.rectangular.heightIn),
+          aspectRatio: round2(sizing.rectangular.aspectRatio),
+          nominalSize: `${Math.round(sizing.rectangular.widthIn)}" x ${Math.round(sizing.rectangular.heightIn)}"`,
+          equivalentRoundDiameterIn: round2(sizing.rectangular.equivalentRoundDiameterIn),
+          actualVelocityFpm: Math.round(sizing.rectangular.actualVelocityFpm),
         };
-        if (a / b > 4) {
-          result.rectangular.warning = "Aspect ratio exceeds ASHRAE's recommended 4:1 ceiling — friction loss and fabrication cost rise sharply beyond this.";
-        }
       }
+      if (Array.isArray(sizing.warnings) && sizing.warnings.length) result.warnings = sizing.warnings;
 
-      result.basis = "Darcy-Weisbach + Colebrook friction factor (iterative, Haaland-seeded), standard air (0.075 lbm/ft3), Huebscher (1948) rectangular-round equivalence.";
+      result.cadParams = ductCadParams(shape, sizing, lengthFt, wallThicknessIn);
+      result.basis = "Darcy-Weisbach + Colebrook friction factor (iterative, Haaland-seeded), standard air (0.075 lbm/ft3), Huebscher (1948) rectangular-round equivalence — see lib/compute/engineering-compute.js#ductSizingFull.";
       result.recommendation = method === "friction"
-        ? `At ${frictionRate} in.wg/100ft, ${cfm} CFM needs a ${nearestStandardRoundIn}" round duct (or its rectangular equivalent) — ${velocityBand}.`
-        : `At ${velocityFpm} fpm design velocity, ${cfm} CFM needs a ${nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionRatePer100ft} in.wg/100ft — ${velocityBand}.`;
+        ? `At ${num(data.frictionRate, 0.1)} in.wg/100ft, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent) — ${sizing.velocityBand}.`
+        : `At ${num(data.velocityFpm, 900)} fpm design velocity, ${cfm} CFM needs a ${sizing.nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionRatePer100ft} in.wg/100ft — ${sizing.velocityBand}.`;
 
       return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // hangerSpanCheck — real structural check: does a sized duct sag
+  // acceptably between two hangers spaced `spanFt` apart, under its own
+  // sheet-metal self-weight (+ optional insulation weight)? Adapter
+  // pattern (build a real beam-frame model from a domain abstraction,
+  // hand it UNMODIFIED to the direct-stiffness solver) matching
+  // lib/asset-gen/{fea-gate,thermal-gate,durability-gate}.js — never
+  // reinvents the structural math, only assembles the model.
+  // ─────────────────────────────────────────────────────────────────────
+  registerLensAction("hvac", "hangerSpanCheck", (ctx, artifact, _params) => {
+    try {
+      const data = artifact.data || {};
+      const cfm = num(data.cfm, 400);
+      const shape = String(data.shape || "round").toLowerCase() === "rectangular" ? "rectangular" : "round";
+      const method = String(data.method || "velocity").toLowerCase() === "friction" ? "friction" : "velocity";
+      const wallThicknessIn = num(data.wallThicknessIn, DEFAULT_WALL_THICKNESS_IN);
+      const spanFt = num(data.spanFt, 8); // 8ft is a common starting hanger-spacing candidate to check, not a code minimum/maximum
+      const insulationLbPerFt = data.insulationLbPerFt != null ? Math.max(0, Number(data.insulationLbPerFt) || 0) : 0;
+      const deflectionLimitRatio = num(data.deflectionLimitRatio, 360); // L/360 — a general serviceability guideline; verify against SMACNA/local code for your pressure class
+      const elasticModulusPa = num(data.elasticModulusGPa, 200) * 1e9; // steel default
+      const densityKgM3 = num(data.densityKgM3, 7850); // steel default
+      const yieldPa = num(data.yieldMPa, 250) * 1e6; // A36-ish default, only used for the bonus utilization figure
+
+      const sizing = ductSizingFull({
+        cfm, shape, method,
+        material: String(data.material || "galvanized").toLowerCase(),
+        roughnessFt: data.roughnessFt,
+        velocityFpm: num(data.velocityFpm, 900),
+        frictionRate: num(data.frictionRate, 0.1),
+        aspectRatio: data.aspectRatio,
+        knownSideIn: data.knownSideIn,
+      });
+      if (sizing.error) return { ok: false, error: sizing.error };
+
+      const cad = ductCadParams(shape, sizing, spanFt, wallThicknessIn);
+      const section = sectionProperties(cad.kind, cad.params);
+      if (!section) return { ok: false, error: "section_unavailable" };
+
+      // Self-weight (sheet metal only — not the air the duct carries) +
+      // optional insulation weight, both as a UDL along the span (N/m).
+      const selfWeightNpm = section.area * densityKgM3 * GRAVITY;
+      const insulationNpm = insulationLbPerFt * LB_PER_FT_TO_N_PER_M;
+      const totalUdlNpm = selfWeightNpm + insulationNpm;
+
+      // A single span between two hangers, discretised into sub-nodes so a
+      // lumped UDL (tributary-length method — see lib/simulation/
+      // distributed-load.js) actually produces bending, not just reactions
+      // at the two supports.
+      const DIVISIONS = 6;
+      const spanM = spanFt * FT_TO_M;
+      const nodes = Array.from({ length: DIVISIONS + 1 }, (_, i) => ({ id: `n${i}`, x: (spanM * i) / DIVISIONS, y: 0, z: 0 }));
+      const members = [];
+      for (let i = 0; i < DIVISIONS; i++) {
+        members.push({
+          id: `m${i}`, nodeI: nodes[i].id, nodeJ: nodes[i + 1].id,
+          area: section.area, momentI: section.Ix, elasticModulus: elasticModulusPa,
+          allowableStress: yieldPa,
+        });
+      }
+      // Textbook simply-supported beam boundary conditions: pin one end
+      // (all translations), roller the other (vertical + lateral only) —
+      // matches engineering.parametricSolid's own "simply supported beam"
+      // convention elsewhere in this codebase.
+      const supports = [
+        { nodeId: nodes[0].id, fixedDOF: ["x", "y", "z"] },
+        { nodeId: nodes[DIVISIONS].id, fixedDOF: ["y", "z"] },
+      ];
+      const loads = lumpUniformLoadToNodes(nodes, -totalUdlNpm, "y");
+
+      const fea = runFEA({ nodes, members, loads, supports });
+      if (!fea.ok) return { ok: false, error: fea.error || "FEA solve failed" };
+
+      const maxDeflectionM = Math.max(...fea.displacements.map((d) => Math.abs(d.dy)));
+      const maxDeflectionIn = maxDeflectionM / IN_TO_M;
+      const allowableDeflectionIn = (spanFt * 12) / deflectionLimitRatio;
+      const pass = maxDeflectionIn <= allowableDeflectionIn;
+
+      return {
+        ok: true,
+        result: {
+          cfm, shape, method,
+          duct: shape === "rectangular" && sizing.rectangular
+            ? { widthIn: sizing.rectangular.widthIn, heightIn: sizing.rectangular.heightIn }
+            : { diameterIn: sizing.nearestStandardRoundIn },
+          wallThicknessIn,
+          spanFt,
+          selfWeightLbPerFt: selfWeightNpm / LB_PER_FT_TO_N_PER_M,
+          insulationLbPerFt,
+          totalLoadLbPerFt: totalUdlNpm / LB_PER_FT_TO_N_PER_M,
+          maxDeflectionIn: Math.round(maxDeflectionIn * 10000) / 10000,
+          allowableDeflectionIn: Math.round(allowableDeflectionIn * 1000) / 1000,
+          deflectionRatio: `L/${deflectionLimitRatio}`,
+          actualRatio: maxDeflectionM > 0 ? `L/${Math.round(spanM / maxDeflectionM)}` : "no deflection",
+          pass,
+          maxUtilization: fea.summary.maxUtilization,
+          basis: "Beam-frame direct-stiffness FEA (lib/simulation/fea-solver.js, unmodified) over a real hollow duct-wall section (lib/compute/engineering-compute.js#sectionProperties), self-weight lumped via tributary-length (lib/simulation/distributed-load.js). Deflection limit is a general serviceability guideline (L/360 default) — verify against SMACNA HVAC Duct Construction Standards and local code for your actual pressure class before finalizing hanger spacing.",
+          recommendation: pass
+            ? `${spanFt}ft hanger spacing passes at L/${deflectionLimitRatio} (${maxDeflectionIn.toFixed(3)}" actual vs ${allowableDeflectionIn.toFixed(3)}" allowed).`
+            : `${spanFt}ft hanger spacing exceeds L/${deflectionLimitRatio} (${maxDeflectionIn.toFixed(3)}" actual vs ${allowableDeflectionIn.toFixed(3)}" allowed) — reduce hanger spacing or add support.`,
+        },
+      };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
   });
 

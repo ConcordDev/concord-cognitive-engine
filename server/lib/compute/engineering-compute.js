@@ -353,7 +353,12 @@ export function heatLoadCalc({ areaSqft, rValue, deltaTemp, solarGain = 0 }) {
 
 /**
  * Duct sizing from CFM and target velocity. A = CFM / v (ft²),
- * then convert to round diameter.
+ * then convert to round diameter. Round + velocity-method only — kept
+ * for backward compatibility with existing callers (engineering.thermalAnalysis).
+ * For the full ductulator (round+rectangular, velocity+friction-rate
+ * methods, real Darcy-Weisbach/Colebrook friction physics), see
+ * ductSizingFull below — it shares this same diameter-from-velocity
+ * closed form via ductDiameterForVelocity, so the two never drift.
  */
 export function ductSizing({ cfm, velocity = 1200 }) {
   const inputs = { cfm, velocity };
@@ -361,7 +366,7 @@ export function ductSizing({ cfm, velocity = 1200 }) {
   if (!isNum(velocity) || velocity <= 0) return err("velocity must be > 0", inputs);
   const areaFt2 = cfm / velocity;
   const areaIn2 = areaFt2 * 144;
-  const diameterIn = Math.sqrt((4 * areaIn2) / PI);
+  const diameterIn = ductDiameterForVelocity(cfm, velocity);
   const result = ok(diameterIn, "in", "D = √(4·A/π)", inputs, {
     areaSqFt: areaFt2,
     areaSqIn: areaIn2,
@@ -369,6 +374,203 @@ export function ductSizing({ cfm, velocity = 1200 }) {
   });
   if (velocity > 2000) pushWarn(result, "velocity above 2000 fpm — expect noise");
   if (velocity < 600) pushWarn(result, "velocity below 600 fpm — oversized duct");
+  return result;
+}
+
+// --------------------------------------------------------------------
+// Ductulator — full round+rectangular, velocity+friction-rate duct
+// sizing. Physics: Darcy-Weisbach pressure-loss equation with the
+// Colebrook equation (solved iteratively, Haaland-seeded) for the
+// friction factor, over standard air (rho=0.075 lbm/ft^3, kinematic
+// viscosity=1.6e-4 ft^2/s @ ~70F). Rectangular<->round equivalence via
+// the Huebscher (1948) equation, De = 1.30*(a*b)^0.625/(a+b)^0.250.
+// Verified against a published friction-chart reference point (1000
+// CFM @ 0.1 in.wg/100ft -> ~13.5in published vs 13.65in computed here,
+// 1.1% off). This is the shared, canonical source of these formulas —
+// server/domains/hvac.js's ductulator macro is a thin wrapper over
+// ductSizingFull() below, and any other domain that needs duct/pipe
+// friction physics should import from here rather than re-deriving it.
+// --------------------------------------------------------------------
+
+const DUCT_RHO = 0.075;         // lbm/ft^3, standard air density
+const DUCT_NU = 1.6e-4;         // ft^2/s, kinematic viscosity of standard air (~70F)
+const DUCT_GC = 32.174;         // lbm*ft/(lbf*s^2)
+const LBFFT2_TO_INWG = 0.19223; // 1 lbf/ft^2 = 0.19223 in. w.g.
+
+export const DUCT_ROUGHNESS_FT = {
+  // galvanized steel — verified against a published friction-rate chart point (see header note)
+  galvanized: 0.0003,
+  // PVC / smooth aluminum
+  smooth: 0.0001,
+  // flexible duct, fully extended — ASHRAE-cited absolute-roughness range is
+  // 0.0035-0.015 ft (varies ~4x by product); this is the range midpoint, not
+  // a precise per-product figure. Pass an explicit roughnessFt to override.
+  flexible: 0.009,
+};
+
+export function ductColebrookFrictionFactor(re, relRoughness) {
+  if (!(re > 0)) return 0.02;
+  let f = Math.pow(-1.8 * Math.log10(Math.pow(relRoughness / 3.7, 1.11) + 6.9 / re), -2);
+  for (let i = 0; i < 50; i++) {
+    const rhs = -2 * Math.log10(relRoughness / 3.7 + 2.51 / (re * Math.sqrt(f)));
+    const fNew = Math.pow(1 / rhs, 2);
+    if (Math.abs(fNew - f) < 1e-12) { f = fNew; break; }
+    f = fNew;
+  }
+  return f;
+}
+
+export function ductFrictionRatePer100ft({ diameterIn, velocityFpm, roughnessFt = DUCT_ROUGHNESS_FT.galvanized }) {
+  const D = diameterIn / 12; // ft
+  const V = velocityFpm / 60; // ft/s
+  const re = (V * D) / DUCT_NU;
+  const relRoughness = roughnessFt / D;
+  const f = ductColebrookFrictionFactor(re, relRoughness);
+  const dPdL_lbfft2 = f * (1 / D) * (DUCT_RHO * V * V) / (2 * DUCT_GC);
+  return dPdL_lbfft2 * LBFFT2_TO_INWG * 100; // in.wg per 100 ft
+}
+
+export function ductVelocityFpm(cfm, diameterIn) {
+  const areaFt2 = (Math.PI / 4) * Math.pow(diameterIn / 12, 2);
+  return cfm / areaFt2;
+}
+
+export function ductDiameterForVelocity(cfm, velocityFpm) {
+  const areaFt2 = cfm / velocityFpm;
+  return Math.sqrt(4 * areaFt2 / Math.PI) * 12; // inches
+}
+
+export function ductDiameterForFriction({ cfm, targetFrictionPer100ft, roughnessFt = DUCT_ROUGHNESS_FT.galvanized }) {
+  // Friction rate decreases monotonically as diameter grows (same CFM ->
+  // lower velocity), so plain bisection applies. Bounds cover small branch
+  // runouts through large commercial trunks.
+  let lo = 2, hi = 200;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const v = ductVelocityFpm(cfm, mid);
+    const fr = ductFrictionRatePer100ft({ diameterIn: mid, velocityFpm: v, roughnessFt });
+    if (fr > targetFrictionPer100ft) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+export function ductHuebscherEquivDiameter(aIn, bIn) {
+  // a, b in inches -> round-equivalent diameter in inches (Huebscher 1948)
+  return 1.30 * Math.pow(aIn * bIn, 0.625) / Math.pow(aIn + bIn, 0.25);
+}
+
+function ductSolveRectSide(equivDiameterIn, knownSideIn) {
+  // Huebscher's De is monotonically increasing in the unknown side, so
+  // bisection applies directly.
+  let lo = 1, hi = 200;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const computed = ductHuebscherEquivDiameter(knownSideIn, mid);
+    if (computed < equivDiameterIn) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+function ductSolveRectAtAspectRatio(equivDiameterIn, ratio) {
+  // a = ratio * b; solve b via bisection since Huebscher(ratio*b, b) is
+  // monotonically increasing in b.
+  let lo = 1, hi = 200;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    const computed = ductHuebscherEquivDiameter(ratio * mid, mid);
+    if (computed < equivDiameterIn) lo = mid; else hi = mid;
+  }
+  const b = (lo + hi) / 2;
+  return { a: ratio * b, b };
+}
+
+/**
+ * Solve a rectangular duct's two sides for a target round-equivalent
+ * diameter — from a known constrained side, or (absent one) at a
+ * requested aspect ratio (default 2:1, well under ASHRAE's 4:1 ceiling).
+ */
+export function ductRectangularFromEquivDiameter({ equivDiameterIn, knownSideIn, aspectRatio }) {
+  if (isNum(knownSideIn) && knownSideIn > 0) {
+    const b = ductSolveRectSide(equivDiameterIn, knownSideIn);
+    return { widthIn: knownSideIn, heightIn: b };
+  }
+  const ratio = isNum(aspectRatio) && aspectRatio > 0 ? aspectRatio : 2;
+  const { a, b } = ductSolveRectAtAspectRatio(equivDiameterIn, ratio);
+  return { widthIn: a, heightIn: b };
+}
+
+const DUCT_STANDARD_ROUND_IN = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 42, 48];
+export function ductNearestStandardRound(diameterIn) {
+  for (const d of DUCT_STANDARD_ROUND_IN) if (d >= diameterIn) return d;
+  return Math.ceil(diameterIn / 2) * 2; // above catalog range — round up to nearest even inch
+}
+
+/**
+ * The full ductulator: round or rectangular, velocity-method or
+ * friction-rate-method, matching what a physical ductulator wheel does
+ * on both its scales. See the section header above for the physics.
+ */
+export function ductSizingFull({
+  cfm, shape = "round", method = "velocity", material = "galvanized",
+  roughnessFt, velocityFpm = 900, frictionRate = 0.1, aspectRatio, knownSideIn,
+} = {}) {
+  const inputs = { cfm, shape, method, material, roughnessFt, velocityFpm, frictionRate, aspectRatio, knownSideIn };
+  if (!isNum(cfm) || cfm <= 0) return err("cfm must be > 0", inputs);
+  const knownMaterial = Object.prototype.hasOwnProperty.call(DUCT_ROUGHNESS_FT, material);
+  const rFt = isNum(roughnessFt) && roughnessFt > 0
+    ? roughnessFt
+    : (knownMaterial ? DUCT_ROUGHNESS_FT[material] : DUCT_ROUGHNESS_FT.galvanized);
+
+  let equivDiameterIn, achievedVelocityFpm, achievedFrictionPer100ft;
+  if (method === "friction") {
+    equivDiameterIn = ductDiameterForFriction({ cfm, targetFrictionPer100ft: frictionRate, roughnessFt: rFt });
+    achievedVelocityFpm = ductVelocityFpm(cfm, equivDiameterIn);
+    achievedFrictionPer100ft = frictionRate;
+  } else {
+    equivDiameterIn = ductDiameterForVelocity(cfm, velocityFpm);
+    achievedVelocityFpm = velocityFpm;
+    achievedFrictionPer100ft = ductFrictionRatePer100ft({ diameterIn: equivDiameterIn, velocityFpm, roughnessFt: rFt });
+  }
+
+  const nearestStandardRoundIn = ductNearestStandardRound(equivDiameterIn);
+  const velocityAtStandardFpm = ductVelocityFpm(cfm, nearestStandardRoundIn);
+  const frictionAtStandardPer100ft = ductFrictionRatePer100ft({ diameterIn: nearestStandardRoundIn, velocityFpm: velocityAtStandardFpm, roughnessFt: rFt });
+  const velocityBand = achievedVelocityFpm > 1500 ? "noisy — over typical trunk-duct velocity limit (~1500 fpm)"
+    : achievedVelocityFpm > 900 ? "trunk duct range"
+    : achievedVelocityFpm > 600 ? "branch duct range"
+    : "low velocity — duct is oversized for this CFM";
+
+  const extra = {
+    shape, method,
+    material: knownMaterial ? material : (isNum(roughnessFt) ? "custom" : "galvanized"),
+    roughnessFt: rFt,
+    equivalentRoundDiameterIn: equivDiameterIn,
+    nearestStandardRoundIn,
+    velocityFpm: achievedVelocityFpm,
+    velocityAtStandardSizeFpm: velocityAtStandardFpm,
+    frictionRatePer100ft: achievedFrictionPer100ft,
+    frictionAtStandardSizePer100ft: frictionAtStandardPer100ft,
+    velocityBand,
+  };
+
+  if (shape === "rectangular") {
+    const rect = ductRectangularFromEquivDiameter({ equivDiameterIn, knownSideIn, aspectRatio });
+    const areaFt2 = (rect.widthIn * rect.heightIn) / 144;
+    extra.rectangular = {
+      widthIn: rect.widthIn,
+      heightIn: rect.heightIn,
+      aspectRatio: rect.widthIn / rect.heightIn,
+      equivalentRoundDiameterIn: ductHuebscherEquivDiameter(rect.widthIn, rect.heightIn),
+      actualVelocityFpm: cfm / areaFt2,
+    };
+  }
+
+  const result = ok(nearestStandardRoundIn, "in", "Darcy-Weisbach+Colebrook (round) / Huebscher (rectangular)", inputs, extra);
+  if (extra.rectangular && extra.rectangular.widthIn / extra.rectangular.heightIn > 4) {
+    pushWarn(result, "Aspect ratio exceeds ASHRAE's recommended 4:1 ceiling — friction loss and fabrication cost rise sharply beyond this.");
+  }
+  if (achievedVelocityFpm > 1500) pushWarn(result, "velocity above 1500 fpm — expect noise");
+  if (achievedVelocityFpm < 600) pushWarn(result, "velocity below 600 fpm — oversized duct");
   return result;
 }
 
@@ -482,6 +684,69 @@ export function pressureLoss({ pipeDiameter, flowGpm, length, roughness = 0.0001
 }
 
 // --------------------------------------------------------------------
+// STRUCTURAL — cross-section properties for CAD/FEA primitives
+// --------------------------------------------------------------------
+//
+// Shared geometry math behind server/domains/engineering.js's
+// parametricSolid/partMesh macros (area/Ix/Iy — the section properties a
+// beam-frame FEA model needs) — factored out here so any domain can
+// generate a correct beam section (e.g. a duct wall's real hollow
+// section) without re-deriving or duplicating the formulas. Returns raw
+// { area, Ix, Iy } numbers in SI units (m^2, m^4) rather than the
+// {value,unit,formula,...} report shape most of this file's functions
+// use — this is a low-level geometry primitive meant to feed directly
+// into a model builder (parametricSolid, an FEA adapter), not a
+// standalone user-facing report.
+export function sectionProperties(kind, p = {}) {
+  switch (kind) {
+    case 'box': {
+      const w = p.width || 0.1, h = p.height || 0.1;
+      return { area: w * h, Ix: (w * h ** 3) / 12, Iy: (h * w ** 3) / 12 };
+    }
+    case 'cylinder': {
+      const r = p.radius || 0.05;
+      return { area: Math.PI * r * r, Ix: (Math.PI * r ** 4) / 4, Iy: (Math.PI * r ** 4) / 4 };
+    }
+    case 'tube': {
+      const ro = p.radius || 0.05;
+      const ri = Math.min(p.innerRadius || 0.04, ro - 1e-6);
+      return {
+        area: Math.PI * (ro * ro - ri * ri),
+        Ix: (Math.PI / 4) * (ro ** 4 - ri ** 4),
+        Iy: (Math.PI / 4) * (ro ** 4 - ri ** 4),
+      };
+    }
+    case 'rect-tube': {
+      // Hollow thin/thick-wall rectangular tube — a rectangular duct's
+      // actual cross-section. Outer width/height, wall thickness -> inner
+      // width'/height' (clamped >= 0). Standard closed-form (exact, not
+      // approximated): area = w*h - w'*h'; Ix = (w*h^3 - w'*h'^3)/12;
+      // Iy = (h*w^3 - h'*w'^3)/12.
+      const w = p.width || 0.1, h = p.height || 0.1;
+      const t = Math.max(0, Math.min(p.wallThickness ?? 0.001, Math.min(w, h) / 2 - 1e-6));
+      const wi = Math.max(0, w - 2 * t), hi = Math.max(0, h - 2 * t);
+      return {
+        area: w * h - wi * hi,
+        Ix: (w * h ** 3 - wi * hi ** 3) / 12,
+        Iy: (h * w ** 3 - hi * wi ** 3) / 12,
+      };
+    }
+    case 'i-beam': {
+      const bf = p.flangeWidth || 0.1;
+      const dh = p.height || 0.2;
+      const tf = p.flangeThickness || 0.012;
+      const tw = p.webThickness || 0.008;
+      const area = 2 * bf * tf + (dh - 2 * tf) * tw;
+      const Ix = (bf * dh ** 3) / 12 - ((bf - tw) * (dh - 2 * tf) ** 3) / 12;
+      const Iy = (2 * tf * bf ** 3) / 12 + ((dh - 2 * tf) * tw ** 3) / 12;
+      return { area, Ix, Iy };
+    }
+    default:
+      return null;
+  }
+}
+
+// --------------------------------------------------------------------
 // Default export — Oracle registry
 // --------------------------------------------------------------------
 
@@ -496,6 +761,16 @@ export default {
   transformerSizing,
   heatLoadCalc,
   ductSizing,
+  ductSizingFull,
+  ductColebrookFrictionFactor,
+  ductFrictionRatePer100ft,
+  ductVelocityFpm,
+  ductDiameterForVelocity,
+  ductDiameterForFriction,
+  ductHuebscherEquivDiameter,
+  ductRectangularFromEquivDiameter,
+  ductNearestStandardRound,
+  sectionProperties,
   coolingLoad,
   pipeSize,
   pumpHead,
@@ -506,5 +781,6 @@ export default {
     STANDARD_BREAKERS,
     THHN_AREA_SQIN,
     EMT_AREA_SQIN,
+    DUCT_ROUGHNESS_FT,
   },
 };
