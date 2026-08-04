@@ -33898,6 +33898,16 @@ allowMacro("global", "publish", _ACL_MEMBER);
 allowMacro("global", "queue", _ACL_MEMBER);
 allowMacro("global", "contributions", _ACL_MEMBER);
 
+// Auth: identity read and personal API-key creation are safe for any
+// authenticated member. Overrides the domain-level _ACL_OWNER so regular
+// users can call auth.whoami (used by the self lens and SecretsDiscovery)
+// and auth.createApiKey (user settings) without needing the owner role.
+allowMacro("auth", "whoami", _ACL_MEMBER);
+allowMacro("auth", "createApiKey", _ACL_MEMBER);
+
+// Org: any authenticated member may create their own org (they become owner).
+allowMacro("org", "create", _ACL_MEMBER);
+
 // Lens artifact macros: list/get/export = member, create/update/delete/run/bulkCreate = member
 allowDomain("lens", _ACL_MEMBER);
 allowMacro("lens", "list", _ACL_PUB);

@@ -4,7 +4,7 @@
   "description": "Per-codebase severity, repair-cortex previews, and pay-per-call billing for the Concord Cognitive Engine. Bring concord-os.org's detector intelligence into VS Code.",
   "version": "0.1.0",
   "publisher": "concord-os",
-  "engines": { "vscode": "^1.85.0" },
+  "engines": {   "vscode": "^1.91.0" },
   "license": "SEE LICENSE IN LICENSE.txt",
   "categories": ["Linters", "Programming Languages", "AI"],
   "keywords": [
@@ -105,12 +105,12 @@
   },
   "dependencies": {
     "socket.io-client": "^4.7.0",
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^2.24.0",
+    "@types/node": "^26.1.2",
+    "@types/vscode": "^1.91.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^5.4.0"
   }
 }
