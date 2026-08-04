@@ -170,6 +170,196 @@ export default function registerHVACActions(registerLensAction) {
 });
 
   // ─────────────────────────────────────────────────────────────────────
+  // Ductulator — CFM <-> duct-size calculator, round + rectangular, both
+  // sizing scales a physical ductulator wheel offers (velocity-based and
+  // friction-rate-based). Physics: Darcy-Weisbach pressure-loss equation
+  // with the Colebrook equation (solved iteratively, Haaland-seeded) for
+  // the friction factor, over standard air (rho=0.075 lbm/ft^3, kinematic
+  // viscosity=1.6e-4 ft^2/s @ ~70F). Rectangular<->round equivalence via
+  // the Huebscher (1948) equation, De = 1.30*(a*b)^0.625/(a+b)^0.250.
+  // Verified against a published friction-chart reference point (1000 CFM
+  // @ 0.1 in.wg/100ft -> ~13.5in published vs 13.65in computed, 1.1% off).
+  // ─────────────────────────────────────────────────────────────────────
+  const DUCT_RHO = 0.075;         // lbm/ft^3, standard air density
+  const DUCT_NU = 1.6e-4;         // ft^2/s, kinematic viscosity of standard air (~70F)
+  const DUCT_GC = 32.174;         // lbm*ft/(lbf*s^2)
+  const LBFFT2_TO_INWG = 0.19223; // 1 lbf/ft^2 = 0.19223 in. w.g.
+  const DUCT_ROUGHNESS_FT = {
+    // galvanized steel — verified against a published friction-rate chart point (see header note)
+    galvanized: 0.0003,
+    // PVC / smooth aluminum
+    smooth: 0.0001,
+    // flexible duct, fully extended — ASHRAE-cited absolute-roughness range is
+    // 0.0035-0.015 ft (varies ~4x by product); this is the range midpoint, not
+    // a precise per-product figure. Pass an explicit roughnessFt to override.
+    flexible: 0.009,
+  };
+  function ductColebrookF(re, relRoughness) {
+    if (!(re > 0)) return 0.02;
+    let f = Math.pow(-1.8 * Math.log10(Math.pow(relRoughness / 3.7, 1.11) + 6.9 / re), -2);
+    for (let i = 0; i < 50; i++) {
+      const rhs = -2 * Math.log10(relRoughness / 3.7 + 2.51 / (re * Math.sqrt(f)));
+      const fNew = Math.pow(1 / rhs, 2);
+      if (Math.abs(fNew - f) < 1e-12) { f = fNew; break; }
+      f = fNew;
+    }
+    return f;
+  }
+  function ductFrictionPer100ft(diameterIn, velocityFpm, roughnessFt) {
+    const D = diameterIn / 12; // ft
+    const V = velocityFpm / 60; // ft/s
+    const re = (V * D) / DUCT_NU;
+    const relRoughness = roughnessFt / D;
+    const f = ductColebrookF(re, relRoughness);
+    const dPdL_lbfft2 = f * (1 / D) * (DUCT_RHO * V * V) / (2 * DUCT_GC);
+    return dPdL_lbfft2 * LBFFT2_TO_INWG * 100; // in.wg per 100 ft
+  }
+  function ductVelocityFpm(cfm, diameterIn) {
+    const areaFt2 = (Math.PI / 4) * Math.pow(diameterIn / 12, 2);
+    return cfm / areaFt2;
+  }
+  function ductDiameterForVelocity(cfm, velocityFpm) {
+    const areaFt2 = cfm / velocityFpm;
+    return Math.sqrt(4 * areaFt2 / Math.PI) * 12; // inches
+  }
+  function ductDiameterForFriction(cfm, targetFriction, roughnessFt) {
+    // Friction rate decreases monotonically as diameter grows (same CFM ->
+    // lower velocity), so plain bisection applies. Bounds cover small branch
+    // runouts through large commercial trunks.
+    let lo = 2, hi = 200;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const v = ductVelocityFpm(cfm, mid);
+      const fr = ductFrictionPer100ft(mid, v, roughnessFt);
+      if (fr > targetFriction) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+  function ductHuebscherEquivDiameter(a, b) {
+    // a, b in inches -> round-equivalent diameter in inches (Huebscher 1948)
+    return 1.30 * Math.pow(a * b, 0.625) / Math.pow(a + b, 0.25);
+  }
+  function ductSolveRectSide(equivDiameterIn, knownSideIn) {
+    // Huebscher's De is monotonically increasing in the unknown side, so
+    // bisection applies directly.
+    let lo = 1, hi = 200;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const computed = ductHuebscherEquivDiameter(knownSideIn, mid);
+      if (computed < equivDiameterIn) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+  function ductSolveRectAtAspectRatio(equivDiameterIn, ratio) {
+    // a = ratio * b; solve b via bisection since Huebscher(ratio*b, b) is
+    // monotonically increasing in b.
+    let lo = 1, hi = 200;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const computed = ductHuebscherEquivDiameter(ratio * mid, mid);
+      if (computed < equivDiameterIn) lo = mid; else hi = mid;
+    }
+    const b = (lo + hi) / 2;
+    return { a: ratio * b, b };
+  }
+  const DUCT_STANDARD_ROUND_IN = [4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 42, 48];
+  function ductNearestStandardRound(diameterIn) {
+    for (const d of DUCT_STANDARD_ROUND_IN) if (d >= diameterIn) return d;
+    return Math.ceil(diameterIn / 2) * 2; // above catalog range — round up to nearest even inch
+  }
+
+  registerLensAction("hvac", "ductulator", (ctx, artifact, _params) => {
+    try {
+      const data = artifact.data || {};
+      const cfm = num(data.cfm, 400);
+      const shape = String(data.shape || "round").toLowerCase() === "rectangular" ? "rectangular" : "round";
+      const method = String(data.method || "velocity").toLowerCase() === "friction" ? "friction" : "velocity";
+      const materialKey = String(data.material || "galvanized").toLowerCase();
+      const knownMaterial = Object.prototype.hasOwnProperty.call(DUCT_ROUGHNESS_FT, materialKey);
+      const roughnessFt = data.roughnessFt != null
+        ? num(data.roughnessFt, DUCT_ROUGHNESS_FT.galvanized)
+        : (knownMaterial ? DUCT_ROUGHNESS_FT[materialKey] : DUCT_ROUGHNESS_FT.galvanized);
+      const velocityFpm = num(data.velocityFpm, 900);
+      const frictionRate = num(data.frictionRate, 0.1); // in.wg per 100ft, common ASHRAE design default
+
+      // Step 1: solve the round-equivalent diameter on whichever ductulator
+      // scale the caller picked (velocity scale vs. friction-rate scale —
+      // the two scales a physical ductulator wheel offers).
+      let equivDiameterIn, achievedVelocityFpm, achievedFrictionPer100ft;
+      if (method === "friction") {
+        equivDiameterIn = ductDiameterForFriction(cfm, frictionRate, roughnessFt);
+        achievedVelocityFpm = ductVelocityFpm(cfm, equivDiameterIn);
+        achievedFrictionPer100ft = frictionRate;
+      } else {
+        equivDiameterIn = ductDiameterForVelocity(cfm, velocityFpm);
+        achievedVelocityFpm = velocityFpm;
+        achievedFrictionPer100ft = ductFrictionPer100ft(equivDiameterIn, velocityFpm, roughnessFt);
+      }
+
+      const nearestStandardRoundIn = ductNearestStandardRound(equivDiameterIn);
+      const velocityAtStandardFpm = ductVelocityFpm(cfm, nearestStandardRoundIn);
+      const frictionAtStandardPer100ft = ductFrictionPer100ft(nearestStandardRoundIn, velocityAtStandardFpm, roughnessFt);
+
+      const velocityBand = achievedVelocityFpm > 1500 ? "noisy — over typical trunk-duct velocity limit (~1500 fpm)"
+        : achievedVelocityFpm > 900 ? "trunk duct range"
+        : achievedVelocityFpm > 600 ? "branch duct range"
+        : "low velocity — duct is oversized for this CFM";
+
+      const result = {
+        cfm,
+        shape,
+        method,
+        material: knownMaterial ? materialKey : (data.roughnessFt != null ? "custom" : "galvanized"),
+        roughnessFt: Math.round(roughnessFt * 1e6) / 1e6,
+        equivalentRoundDiameterIn: Math.round(equivDiameterIn * 100) / 100,
+        nearestStandardRoundIn,
+        velocityFpm: Math.round(achievedVelocityFpm),
+        velocityAtStandardSizeFpm: Math.round(velocityAtStandardFpm),
+        frictionRatePer100ft: Math.round(achievedFrictionPer100ft * 1000) / 1000,
+        frictionAtStandardSizePer100ft: Math.round(frictionAtStandardPer100ft * 1000) / 1000,
+        velocityBand,
+        ...(method === "velocity" ? { inputVelocityFpm: velocityFpm } : { inputFrictionRatePer100ft: frictionRate }),
+      };
+
+      if (shape === "rectangular") {
+        const knownSideIn = num(data.knownSideIn, 0);
+        let a, b;
+        if (knownSideIn > 0) {
+          a = knownSideIn;
+          b = ductSolveRectSide(equivDiameterIn, knownSideIn);
+        } else {
+          // No constrained side given — solve a rectangle at the requested
+          // aspect ratio (default 2:1, a low-friction-penalty ratio well
+          // under ASHRAE's 4:1 recommended ceiling).
+          const ratio = num(data.aspectRatio, 2);
+          ({ a, b } = ductSolveRectAtAspectRatio(equivDiameterIn, ratio));
+        }
+        const areaFt2 = (a * b) / 144;
+        const rectVelocityFpm = cfm / areaFt2;
+        const rectEquivDiameterIn = ductHuebscherEquivDiameter(a, b);
+        result.rectangular = {
+          widthIn: Math.round(a * 100) / 100,
+          heightIn: Math.round(b * 100) / 100,
+          aspectRatio: Math.round((a / b) * 100) / 100,
+          nominalSize: `${Math.round(a)}" x ${Math.round(b)}"`,
+          equivalentRoundDiameterIn: Math.round(rectEquivDiameterIn * 100) / 100,
+          actualVelocityFpm: Math.round(rectVelocityFpm),
+        };
+        if (a / b > 4) {
+          result.rectangular.warning = "Aspect ratio exceeds ASHRAE's recommended 4:1 ceiling — friction loss and fabrication cost rise sharply beyond this.";
+        }
+      }
+
+      result.basis = "Darcy-Weisbach + Colebrook friction factor (iterative, Haaland-seeded), standard air (0.075 lbm/ft3), Huebscher (1948) rectangular-round equivalence.";
+      result.recommendation = method === "friction"
+        ? `At ${frictionRate} in.wg/100ft, ${cfm} CFM needs a ${nearestStandardRoundIn}" round duct (or its rectangular equivalent) — ${velocityBand}.`
+        : `At ${velocityFpm} fpm design velocity, ${cfm} CFM needs a ${nearestStandardRoundIn}" round duct (or its rectangular equivalent), running ~${result.frictionRatePer100ft} in.wg/100ft — ${velocityBand}.`;
+
+      return { ok: true, result };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
   // ServiceTitan / Housecall Pro parity — field-service management.
   // Per-user persistent state under globalThis._concordSTATE.hvacLens:
   // technicians, appointments, bookings, assets, payments, agreements,
