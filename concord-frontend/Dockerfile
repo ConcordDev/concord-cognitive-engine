@@ -5,8 +5,8 @@
 # build breakage. Debian-slim trades ~40MB of image size for a
 # build/runtime environment that matches the host CI runners.
 # To fully pin with SHA256 digest (recommended for production):
-#   docker pull node:26-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
-# Then replace: FROM node:20-bookworm-slim@sha256:<digest> AS base
+#   docker pull node:26-bookworm-slim && docker inspect --format='{{index .RepoDigests 0}}' node:26-bookworm-slim
+# Then replace: FROM node:26-bookworm-slim@sha256:<digest> AS base
 FROM node:26-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb AS base
 
 # Apply OS security patches. The FROM above is digest-pinned, which freezes the

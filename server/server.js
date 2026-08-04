@@ -33840,10 +33840,13 @@ function _canRunMacro(actor, domain, name) {
 
 // ---- Populate Macro Permission Matrix ----
 // Tier shortcuts for role/scope combinations
-const _ACL_PUB    = { roles: ["viewer","member","admin","owner"], scopes: ["read","write","admin","*"] };
-const _ACL_MEMBER = { roles: ["member","admin","owner"], scopes: ["write","admin","*"] };
-const _ACL_ADMIN  = { roles: ["admin","owner"], scopes: ["admin","*"] };
-const _ACL_OWNER  = { roles: ["owner"], scopes: ["*"] };
+const _ACL_PUB        = { roles: ["viewer","member","admin","owner"], scopes: ["read","write","admin","*"] };
+const _ACL_MEMBER     = { roles: ["member","admin","owner"], scopes: ["write","admin","*"] };
+// _ACL_MEMBER_READ: authenticated member that may hold a read-only API key.
+// Use for macros that are read-only self-introspection (e.g. auth.whoami).
+const _ACL_MEMBER_READ = { roles: ["member","admin","owner"], scopes: ["read","write","admin","*"] };
+const _ACL_ADMIN      = { roles: ["admin","owner"], scopes: ["admin","*"] };
+const _ACL_OWNER      = { roles: ["owner"], scopes: ["*"] };
 
 // Public read macros (viewer+): frontend boot path, status checks, DTU browsing, chat, lens reads
 for (const [d, n] of [
@@ -33935,7 +33938,8 @@ allowMacro("global", "contributions", _ACL_MEMBER);
 // authenticated member. Overrides the domain-level _ACL_OWNER so regular
 // users can call auth.whoami (used by the self lens and SecretsDiscovery)
 // and auth.createApiKey (user settings) without needing the owner role.
-allowMacro("auth", "whoami", _ACL_MEMBER);
+// auth.whoami is read-only introspection — allow read-scoped API keys too.
+allowMacro("auth", "whoami", _ACL_MEMBER_READ);
 allowMacro("auth", "createApiKey", _ACL_MEMBER);
 
 // Org: any authenticated member may create their own org (they become owner).
