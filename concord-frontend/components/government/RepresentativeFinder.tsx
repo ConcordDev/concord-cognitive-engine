@@ -4,7 +4,7 @@
 // public profile), not deployment-specific config.
 
 import { useState } from 'react';
-import { MapPin, Phone, Mail, Globe, Search, Loader2, Users, Twitter } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Search, Loader2, Users, X as Twitter } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 
 export interface Rep {

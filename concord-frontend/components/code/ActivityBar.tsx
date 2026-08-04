@@ -1,6 +1,6 @@
 'use client';
 
-import { Files, Search, GitBranch, Bug, Settings, Boxes, Sparkles, Terminal as TerminalIcon, Github } from 'lucide-react';
+import { Files, Search, GitBranch, Bug, Settings, Boxes, Sparkles, Terminal as TerminalIcon, Code2 as Github } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type Activity = 'files' | 'search' | 'sourceControl' | 'snippets' | 'debug' | 'extensions' | 'settings' | 'terminal' | 'agent' | 'github';

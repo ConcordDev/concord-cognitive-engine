@@ -15,7 +15,7 @@ FROM node:26-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406
 # so Debian security patches published AFTERWARDS never reach the image, and
 # the pinned layer only accumulates CVEs over time. Verified 2026-07-28 that
 # the pin is NOT merely stale: querying Docker Hub for the current
-# `node:20-bookworm-slim` returns this same digest
+# `node:26-bookworm-slim` returns this same digest
 # (sha256:2cf067cf...), so there is no newer base to move to and upgrading
 # packages in-layer is the only way to pick up fixed CVEs.
 #

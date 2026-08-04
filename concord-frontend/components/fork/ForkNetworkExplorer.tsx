@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { GitFork, Loader2, Star, Eye, AlertCircle, Archive, ExternalLink, Github, HeartPulse } from 'lucide-react';
+import { GitFork, Loader2, Star, Eye, AlertCircle, Archive, ExternalLink, Code2 as Github, HeartPulse } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
