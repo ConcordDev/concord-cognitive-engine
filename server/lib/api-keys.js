@@ -14,7 +14,7 @@
 import crypto from "crypto";
 
 // ── In-memory stores ────────────────────────────────────────────────────────
-/** @type {Map<string, object>} keyId -> key metadata */
+/** @type {Map<string, any>} keyId -> key metadata */
 const KEY_STORE = new Map();
 /** @type {Map<string, string>} sha256(rawKey) -> keyId (lookup index) */
 const HASH_INDEX = new Map();
@@ -43,7 +43,7 @@ function hashKey(rawKey) {
  * @param {object} [rateLimit] - Custom rate limit overrides
  * @param {number} [rateLimit.requestsPerMinute=60]
  * @param {number} [rateLimit.requestsPerDay=10000]
- * @returns {{ ok: boolean, key?: object, rawKey?: string, error?: string, limit?: number }}
+ * @returns {{ ok: boolean, key?: any, rawKey?: string, error?: string, limit?: number }}
  */
 export function generateKey(userId, scopes = [], rateLimit = {}) {
   if (!userId) {
@@ -94,7 +94,7 @@ export function generateKey(userId, scopes = [], rateLimit = {}) {
  * Validate a raw API key string.
  *
  * @param {string} rawKey - The full "csk_..." key
- * @returns {{ ok: boolean, key?: object, error?: string }}
+ * @returns {{ ok: boolean, key?: any, error?: string }}
  */
 export function validateKey(rawKey) {
   if (!rawKey || typeof rawKey !== "string" || !rawKey.startsWith("csk_")) {
@@ -156,7 +156,7 @@ export function revokeKey(keyId, userId) {
  * List all API keys for a user (hashes stripped).
  *
  * @param {string} userId
- * @returns {{ ok: boolean, keys?: object[], error?: string }}
+ * @returns {{ ok: boolean, keys?: any[], error?: string }}
  */
 export function listKeys(userId) {
   if (!userId) {
@@ -193,7 +193,7 @@ export function trackUsage(keyId) {
  *
  * @param {string} keyId
  * @param {string} [userId] - Optional ownership check
- * @returns {{ ok: boolean, usage?: object, error?: string }}
+ * @returns {{ ok: boolean, usage?: any, error?: string }}
  */
 export function getKeyUsage(keyId, userId) {
   const record = KEY_STORE.get(keyId);
@@ -225,8 +225,8 @@ export function getKeyUsage(keyId, userId) {
  *
  * @param {string} keyId
  * @param {string} userId - Ownership verification
- * @param {{ scopes?: string[], rateLimit?: object }} updates
- * @returns {{ ok: boolean, key?: object, error?: string }}
+ * @param {{ scopes?: string[], rateLimit?: any }} updates
+ * @returns {{ ok: boolean, key?: any, error?: string }}
  */
 export function updateKey(keyId, userId, updates = {}) {
   const record = KEY_STORE.get(keyId);
@@ -261,7 +261,7 @@ export function updateKey(keyId, userId, updates = {}) {
 /**
  * Check whether a key's scopes allow access to a given domain/action.
  *
- * @param {object} keyRecord - The key metadata object
+ * @param {any} keyRecord - The key metadata object
  * @param {string} domain - The lens domain being accessed
  * @returns {boolean}
  */

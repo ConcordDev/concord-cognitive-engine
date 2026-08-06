@@ -29,7 +29,7 @@ interface HistoryActions {
   getLastAction: () => HistoryAction | null;
 }
 
-export const useHistoryStore = create<HistoryState & HistoryActions>(
+export const useHistoryStore = create<HistoryState & HistoryActions>()(
   immer((set, get) => ({
     past: [],
     future: [],
