@@ -20,6 +20,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
   Book,
   ChevronRight,
+  ChevronDown,
   Search,
   Layers,
   Code2,
@@ -203,6 +204,8 @@ export default function DocsLensPage() {
   const { items: docsItems } = useLensData('docs', 'document', { seed: [] });
   const runAction = useRunArtifact('docs');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [showDocsWorkspace, setShowDocsWorkspace] = useState(false);
+  const [showDocsToolingGallery, setShowDocsToolingGallery] = useState(false);
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const handleDocsAction = useCallback(
@@ -979,12 +982,36 @@ export default function DocsLensPage() {
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="docs" />
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DocsWorkspace />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DocsToolingGallery />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowDocsWorkspace(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showDocsWorkspace ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Docs Workspace (Notion/Confluence-shape)
+        </button>
+        {showDocsWorkspace && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <DocsWorkspace />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowDocsToolingGallery(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showDocsToolingGallery ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world Docs Tooling (external reference)
+        </button>
+        {showDocsToolingGallery && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <DocsToolingGallery />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#docs-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to docs content</a>
