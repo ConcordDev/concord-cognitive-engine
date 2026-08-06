@@ -1678,7 +1678,21 @@ export default function AviationLensPage() {
       <DepthBadge lensId="aviation" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       <ShellPreview lensId="aviation" defaultOpen={true} />
-      <ForeFlightWorkbenchSection />
+      {/* ForeFlight/FlightAware-parity workbench (aircraft, logbook,
+          currency, briefing, route advisor, track logs, fuel stops, live
+          tracking — 8 sub-tabs). Collapsed by default: it used to sit
+          permanently above the header on every visit, stacked on top of
+          this lens's own 8-tab MODE_TABS system. */}
+      <button
+        type="button"
+        onClick={() => toggleSection('foreflightWorkbench')}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={!!expandedSections.foreflightWorkbench}
+      >
+        <span>ForeFlight/FlightAware-parity workbench (aircraft, logbook, briefing, routes, tracking)</span>
+        {expandedSections.foreflightWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {expandedSections.foreflightWorkbench && <ForeFlightWorkbenchSection />}
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2263,9 +2277,26 @@ export default function AviationLensPage() {
         <AirportBrief />
       </section>
 
+      {/* Pilot's pre-flight bench: airport lookup / METAR weather / takeoff
+          & landing performance + actions. Collapsed by default — was
+          previously mounted unconditionally below every session
+          regardless of what the user was doing. */}
       <PipingProvider>
-        <section className="mx-auto mt-6 max-w-6xl">
-          <AviationActionPanel />
+        <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40">
+          <button
+            type="button"
+            onClick={() => toggleSection('aviationActionPanel')}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+            aria-expanded={!!expandedSections.aviationActionPanel}
+          >
+            <span>Pre-flight bench (airport lookup, METAR, takeoff/landing performance)</span>
+            {expandedSections.aviationActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {expandedSections.aviationActionPanel && (
+            <div className="px-4 pb-4">
+              <AviationActionPanel />
+            </div>
+          )}
         </section>
       </PipingProvider>
           <RecentMineCard domain="aviation" limit={10} hideWhenEmpty className="mt-4" />
