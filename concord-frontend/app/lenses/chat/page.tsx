@@ -92,18 +92,12 @@ import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
 import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { useConkayHudStore, feaResultFromRun } from '@/components/conkay/conkayHudStore';
 import { subscribe, connectSocket, onConnectionLost, onReconnected } from '@/lib/realtime/socket';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { formatBytes } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DTUDetailView } from '@/components/dtu/DTUDetailView';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -532,13 +526,6 @@ export default function ChatLensPage() {
   // message saves. Excludes chat:token / chat:status because those fire
   // once per streamed token and would strobe the surface.
   useTilePush({ lensId: 'chat', events: ['chat:complete', 'message:saved'] });
-  const {
-    latestData: realtimeData,
-    alerts: realtimeAlerts,
-    insights: realtimeInsights,
-    isLive,
-    lastUpdated,
-  } = useRealtimeLens('chat');
   const queryClient = useQueryClient();
 
   const {
@@ -547,7 +534,6 @@ export default function ChatLensPage() {
     regularDTUs,
     tierDistribution,
     publishToMarketplace,
-    isLoading: dtusLoading,
     refetch: refetchDTUs,
   } = useLensDTUs({ lens: 'chat' });
 
@@ -3035,28 +3021,6 @@ export default function ChatLensPage() {
       <FirstRunTour lensId="chat" />
       <DepthBadge lensId="chat" size="sm" className="ml-2" />
     <div data-lens-theme="chat" className="relative h-full flex flex-col bg-lattice-bg">
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-1 border-b border-lattice-border/30 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="chat" data={realtimeData || {}} compact />
-        {dtusLoading && (
-          <span className="w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
-        )}
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      <RealtimeDataPanel
-        domain="chat"
-        data={realtimeData}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-        insights={realtimeInsights}
-        compact
-      />
-      <UniversalActions domain="chat" artifactId={null} compact />
       <div className="flex-1 flex overflow-hidden relative">
         {/* Mobile sidebar backdrop */}
         {chatSidebarOpen && (
@@ -4444,7 +4408,7 @@ export default function ChatLensPage() {
           )}
         </div>
 
-        {/* Lens Features */}
+        {/* Related lenses + spatial context — actionable, unlike a static feature list */}
         <div className="border-t border-white/10">
           <button
             onClick={() => setShowFeatures(!showFeatures)}
@@ -4452,7 +4416,7 @@ export default function ChatLensPage() {
           >
             <span className="flex items-center gap-2">
               <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
+              Related
             </span>
             <ChevronDown
               className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
@@ -4460,7 +4424,6 @@ export default function ChatLensPage() {
           </button>
           {showFeatures && (
             <div className="px-4 pb-4 space-y-4">
-              <LensFeaturePanel lensId="chat" />
               {/* Lens Recommender — suggest relevant lenses based on chat context */}
               {lensRecommendations.length > 0 && (
                 <div className="p-3 rounded-lg border border-neon-purple/20 bg-neon-purple/5 space-y-2">
