@@ -24,6 +24,7 @@ import {
   GripVertical,
   X,
   ChevronDown,
+  ChevronRight,
   Calendar,
   Paperclip,
   MessageSquare,
@@ -375,6 +376,7 @@ export default function BoardLensPage() {
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [showBggHotList, setShowBggHotList] = useState(false);
   const [activeProject, setActiveProject] = useState(projects[0]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<ColumnId | null>(null);
@@ -1634,8 +1636,24 @@ export default function BoardLensPage() {
         <BoardWorkspace />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <BggHotList />
+      {/* External reference — BoardGameGeek hot-games list, not this
+          lens's own boards. Collapsed by default rather than promoted
+          open on every visit. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowBggHotList((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showBggHotList}
+        >
+          <span>BoardGameGeek hot list (external reference)</span>
+          {showBggHotList ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showBggHotList && (
+          <div className="px-4 pb-4">
+            <BggHotList />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="board" limit={10} hideWhenEmpty className="mt-4" />
