@@ -32,13 +32,11 @@ import {
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArgumentWorkbench } from '@/components/reasoning/ArgumentWorkbench';
 import { ArgumentMapStudio } from '@/components/reasoning/ArgumentMapStudio';
 
@@ -543,7 +541,6 @@ export default function ReasoningLensPage() {
     { lensId: 'reasoning' }
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // ----- Argument Map state -----
   const [argumentMaps, setArgumentMaps] = useState<ArgumentMap[]>([]);
@@ -2718,7 +2715,6 @@ export default function ReasoningLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="reasoning" artifactId={null} compact />
           <RealtimeDataPanel
             domain="reasoning"
             data={realtimeData}
@@ -2734,24 +2730,6 @@ export default function ReasoningLensPage() {
         )}
       </AnimatePresence>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="reasoning" />
-          </div>
-        )}
-      </div>
       {/* argument workbench: validate / map / fallacy / premise + actions */}
       <section className="mt-6">
         <ArgumentWorkbench />

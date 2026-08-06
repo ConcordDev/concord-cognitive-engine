@@ -23,7 +23,7 @@ export const PANEL_AFFINITY: Record<string, string[]> = {
   // world — its own in-world HUD PanelHost; no cross-mounts here.
 
   // ── Work ──
-  finance: ['crypto.portfolio', 'accounting.budgets', 'accounting.ratios', 'energy.billing'],
+  finance: ['crypto.portfolio', 'accounting.budgets', 'accounting.ratios', 'energy.billing', 'markets.depth-chart'],
   accounting: ['finance.accounts', 'crypto.portfolio'],
   healthcare: [
     'wellness.daily-recommendation', 'wellness.cbt', 'fitness.training',

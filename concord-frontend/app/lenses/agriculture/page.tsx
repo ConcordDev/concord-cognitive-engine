@@ -16,7 +16,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Wheat,
   Tractor,
@@ -40,7 +39,6 @@ import {
   Clock,
   Layers,
   Sprout,
-  ChevronDown,
   Zap,
   Map,
   Sun,
@@ -55,7 +53,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import WeatherHero, { type WeatherPayload } from '@/components/lens/WeatherHero';
@@ -297,7 +294,6 @@ export default function AgricultureLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<AgricultureArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Editor form state
   const [formName, setFormName] = useState('');
@@ -1652,7 +1648,6 @@ export default function AgricultureLensPage() {
       />
 
       {/* AI Actions */}
-      <UniversalActions domain="agriculture" artifactId={items[0]?.id} compact />
 
       {/* Stat Cards Row */}
       {(() => {
@@ -2070,26 +2065,6 @@ export default function AgricultureLensPage() {
         <LensFeedPanel lensId="agriculture" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="agriculture" />
-          </div>
-        )}
-      </div>
 
       {/* Bespoke pest/disease identifier (authored LIBRARY) with Save-as-DTU */}
       <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

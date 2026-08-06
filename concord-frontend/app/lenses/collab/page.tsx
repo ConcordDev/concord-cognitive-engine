@@ -16,7 +16,6 @@ import { apiHelpers, api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users,
@@ -45,15 +44,12 @@ import {
   Timer,
   Archive,
   Search,
-  Layers,
-  ChevronDown,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SharedSessionChat } from '@/components/social/SharedSessionChat';
 import { WorkspaceRoster } from '@/components/collab/WorkspaceRoster';
 import { CollabActionPanel } from '@/components/collab/CollabActionPanel';
@@ -323,7 +319,6 @@ export default function CollabLensPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Merge the wrapping lens-artifact id into `.data` — the backend assigns
   // the real, stable, cross-user-visible id at the artifact level (`i.id`),
@@ -704,27 +699,8 @@ export default function CollabLensPage() {
       )}
 
       <RealtimeDataPanel data={realtimeInsights} />
-      <UniversalActions domain="collab" artifactId={null} compact />
 
-      {/* Lens Features */}
       <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="collab" />
-          </div>
-        )}
         <PipingProvider>
           <section className="mt-6">
             <CollabDocWorkspace />

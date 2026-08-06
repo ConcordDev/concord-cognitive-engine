@@ -16,7 +16,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useAuth } from '@/hooks/useAuth';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useUIStore } from '@/store/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
@@ -579,7 +578,6 @@ export default function ThreadLensPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <UniversalActions domain="thread" artifactId={selectedThreadId} compact />
           <div className="flex items-center gap-1 bg-lattice-surface rounded-lg p-1">
             {(['tree', 'timeline', 'linear'] as ViewMode[]).map((mode) => (
               <button

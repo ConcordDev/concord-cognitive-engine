@@ -26,7 +26,6 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -196,7 +195,6 @@ export default function ManufacturingLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="manufacturing" artifactId={undefined} compact />
 
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">

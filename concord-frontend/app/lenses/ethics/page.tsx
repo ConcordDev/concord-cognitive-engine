@@ -31,7 +31,6 @@ import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { DecisionToolkit, TOOL_TABS, type ToolTab } from '@/components/ethics/DecisionToolkit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { Scale } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -63,7 +62,6 @@ export default function EthicsLensPage() {
         description="Multi-framework decision analysis, stakeholder equity, bias auditing, and a peer-reviewed case library"
         headerIcon={<Scale className="w-6 h-6" />}
       >
-        <UniversalActions domain="ethics" artifactId={undefined} compact />
 
         <DecisionToolkit activeTab={activeTab} onTabChange={setActiveTab} />
 

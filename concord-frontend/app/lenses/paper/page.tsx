@@ -29,14 +29,12 @@ import {
   X, Trash2, Edit3, Save, Download, BarChart3, Clock,
   Link2, ArrowUpDown, Copy, FileDown, Quote, Hash, Target,
   TrendingUp, TrendingDown, ListTree, PanelRightClose,
-  RefreshCw, Sparkles, ShieldCheck, AlertCircle, Layers, type LucideIcon
+  RefreshCw, Sparkles, ShieldCheck, AlertCircle, type LucideIcon
 } from 'lucide-react';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -251,7 +249,6 @@ export default function PaperLensPage() {
   const [sortField, setSortField] = useState<'updatedAt' | 'title'>('updatedAt');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [citationStyle, setCitationStyle] = useState<CitationData['style']>('apa');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // ---- Modal state for creating items ----
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -1150,26 +1147,7 @@ export default function PaperLensPage() {
         limit={10}
       />
       <RealtimeDataPanel data={realtimeInsights} />
-      <UniversalActions domain="paper" artifactId={null} compact />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="paper" />
-          </div>
-        )}
-      </div>
     </div>
 
     {/* ── ⌘K command palette — searches across all 6 artifact types ── */}

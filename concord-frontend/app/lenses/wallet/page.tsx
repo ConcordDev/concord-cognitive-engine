@@ -14,8 +14,6 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -23,7 +21,6 @@ import { WalletMarkets } from '@/components/wallet/WalletMarkets';
 import { WalletActionPanel } from '@/components/wallet/WalletActionPanel';
 import { WalletParityHub } from '@/components/wallet/WalletParityHub';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1035,7 +1032,6 @@ export default function WalletPage() {
   return (
     <LensShell lensId="wallet" asMain={false}>
       <FirstRunTour lensId="wallet" />
-      <ManifestActionBar />
       <DepthBadge lensId="wallet" size="sm" className="ml-2" />
     <Suspense
       fallback={
@@ -1061,9 +1057,7 @@ export default function WalletPage() {
       </section>
     </PipingProvider>
 
-          <RecentMineCard domain="wallet" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="wallet" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="wallet" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="wallet" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

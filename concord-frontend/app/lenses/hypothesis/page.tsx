@@ -12,17 +12,15 @@ import { StatsWorkbench } from '@/components/hypothesis/StatsWorkbench';
 import { HypothesisLab } from '@/components/hypothesis/HypothesisLab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
-import { Layers, ChevronDown, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 export default function HypothesisLensPage() {
   useLensNav('hypothesis');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('hypothesis');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   return (
     <LensShell lensId="hypothesis" asMain={false}>
@@ -89,24 +87,6 @@ export default function HypothesisLensPage() {
         <StatsWorkbench />
       </section>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="hypothesis" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ArxivFeed />
       </section>

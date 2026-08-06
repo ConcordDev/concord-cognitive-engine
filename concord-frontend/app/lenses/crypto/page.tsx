@@ -20,11 +20,10 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Coins, TrendingUp, Lock, RefreshCw, ArrowRightLeft,
   Wallet, Loader2, Plus, Send, ArrowDownLeft, ArrowUpRight,
-  Copy, Check, X, Settings, BarChart3, Layers, ChevronDown,
+  Copy, Check, X, Settings, BarChart3, Layers,
   ShieldCheck, TrendingDown, XCircle
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -38,9 +37,8 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { useUIStore } from '@/store/ui';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import dynamic from 'next/dynamic';
-const CandleChart = dynamic(() => import('@/components/crypto/CandleChart'), { ssr: false });
+const CandleChart = dynamic(() => import('@/components/charts/CandleChart'), { ssr: false });
 import { TokenSearch, loadWatchlist, saveWatchlist } from '@/components/crypto/TokenSearch';
 import { QRCodeReceive } from '@/components/crypto/QRCodeReceive';
 import { SwapPanel, type SwappableToken } from '@/components/crypto/SwapPanel';
@@ -242,7 +240,6 @@ export default function CryptoLensPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showAddWallet, setShowAddWallet] = useState(false);
   const [showAddChain, setShowAddChain] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // ── Backend action state ───────────────────────────────────────────────────
   const runAction = useRunArtifact('crypto');
@@ -636,7 +633,6 @@ export default function CryptoLensPage() {
       <RealtimeDataPanel domain="crypto" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
       {/* AI Actions */}
-      <UniversalActions domain="crypto" artifactId={chainItems[0]?.id} compact />
       {isLoading ? (
         <div className="space-y-6" aria-busy="true">
           {/* Summary tiles skeleton — matches the 3-up KPI grid below */}
@@ -1639,24 +1635,6 @@ export default function CryptoLensPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="crypto" />
-          </div>
-        )}
-      </div>
 
       {/* Bespoke 0x aggregator swap-route preview with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">

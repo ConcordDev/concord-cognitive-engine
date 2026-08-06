@@ -45,7 +45,6 @@ import {
   GitCompare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1206,7 +1205,6 @@ export default function VoiceLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="voice" artifactId={null} compact />
           <RealtimeDataPanel
             domain="voice"
             data={realtimeData}

@@ -13,7 +13,6 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy,
@@ -24,8 +23,6 @@ import {
   Target,
   Clock,
   TrendingUp,
-  Layers,
-  ChevronDown,
   Zap,
   Medal,
   Swords,
@@ -41,7 +38,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ActivityActionPanel } from '@/components/sports/ActivityActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -180,7 +176,6 @@ export default function SportsLensPage() {
   );
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [newGame, setNewGame] = useState({
     title: '',
     sport: '',
@@ -430,7 +425,6 @@ export default function SportsLensPage() {
         </motion.div>
       )}
 
-      <UniversalActions domain="sports" artifactId={items[0]?.id} compact />
 
       <AnimatePresence>
         {showCreate && (
@@ -1086,25 +1080,6 @@ export default function SportsLensPage() {
         <LensFeedPanel lensId="sports" />
       </div>
 
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="sports" />
-          </div>
-        )}
-      </div>
       {/* ESPN Fantasy + Strava-shape activity workbench */}
       <PipingProvider>
         <section className="mt-6">

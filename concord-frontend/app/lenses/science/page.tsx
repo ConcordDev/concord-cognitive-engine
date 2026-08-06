@@ -13,7 +13,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   FlaskConical,
   TestTubes,
@@ -38,8 +37,6 @@ import {
   Eye,
   GraduationCap,
   ClipboardList,
-  Layers,
-  ChevronDown,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -47,7 +44,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ExperimentActionPanel } from '@/components/science/ExperimentActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -362,7 +358,6 @@ export default function ScienceLensPage() {
     lastUpdated,
   } = useRealtimeLens('science');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Dashboard');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1779,7 +1774,6 @@ export default function ScienceLensPage() {
       </header>
 
       {/* AI Actions */}
-      <UniversalActions domain="science" artifactId={experiments[0]?.id} compact />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2014,26 +2008,6 @@ export default function ScienceLensPage() {
         <LensFeedPanel lensId="science" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="science_fieldwork" />
-          </div>
-        )}
-      </div>
     </div>
     
       <a href="#science-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to science content</a>

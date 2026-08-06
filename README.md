@@ -194,8 +194,15 @@ one economy:
 | ![Finance lens](docs/images/05-finance.png) | ![Code lens](docs/images/04-code.png) |
 
 > Captured from a live local instance via [`scripts/capture-screenshots.mjs`](scripts/capture-screenshots.mjs)
-> (Playwright, against the cached chromium). A UI density/hierarchy pass is in progress
-> for the busier lenses; point the script at any running instance to regenerate
+> (Playwright, against the cached chromium). **Stale as of this note** — both images
+> predate a since-landed declutter pass: Finance shipped a full flagship rebuild
+> (real Bloomberg-terminal-style tabbed UI, zero raw capability-list scaffold) and
+> Chat/every other lens had the dead `UniversalActions`/`LensFeaturePanel`
+> button-wall scaffold removed repo-wide. The screenshots above show an older,
+> busier UI than what ships today. Regenerating them needs a real running,
+> authenticated instance with seeded data — out of reach for an unattended sandbox
+> session — so they're flagged here rather than left to silently misrepresent the
+> current UI. Point the script at any running instance to regenerate
 > `docs/images/*.png`:
 >
 > ```bash

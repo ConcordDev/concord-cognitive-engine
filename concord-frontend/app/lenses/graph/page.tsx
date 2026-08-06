@@ -22,10 +22,9 @@ import {
   Share2, GitBranch, ChevronRight, Copy, ExternalLink,
   Plus, Link2, User, AudioWaveform,
   TreePine, Users, Filter,
-  Layers, ChevronDown, Loader2, BarChart3, Network, Cpu,
+  Layers, Loader2, BarChart3, Network, Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -35,7 +34,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ProvenanceBadge } from '@/components/dtu/ProvenanceBadge';
 import { useLatticeStore } from '@/store/lattice';
 import { InteractiveGraph } from '@/components/graphs/InteractiveGraphCore';
@@ -231,7 +229,6 @@ export default function GraphLensPage() {
   const [connectSource, setConnectSource] = useState<string | null>(null);
   const [newEdgeType, setNewEdgeType] = useState<EdgeType>('semantic');
   const [showAddNode, setShowAddNode] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [addNodeType, setAddNodeType] = useState<NodeType>('track');
 
   // ── Graph keyboard shortcuts (Obsidian / Roam graph-view idiom) ────
@@ -1175,7 +1172,6 @@ export default function GraphLensPage() {
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
         <DTUExportButton domain="graph" data={realtimeData || {}} compact />
         <RealtimeDataPanel domain="graph" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
-      <UniversalActions domain="graph" artifactId={null} compact />
         <button onClick={() => refetchDTUs()} disabled={dtusLoading} className="p-1 rounded hover:bg-lattice-surface/50 disabled:opacity-50 transition-colors" title="Refresh DTUs">
           {dtusLoading ? <Circle className="w-4 h-4 animate-spin text-neon-cyan" /> : <RotateCcw className="w-4 h-4 text-gray-400" />}
         </button>
@@ -1858,24 +1854,6 @@ export default function GraphLensPage() {
         <FeedbackWidget targetType="lens" targetId="graph" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="graph" />
-          </div>
-        )}
-      </div>
 
       {/* ---- Graph Domain Actions ---- */}
       <div className="panel p-4 space-y-4">

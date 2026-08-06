@@ -10,7 +10,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +30,6 @@ import {
   Move,
   Target,
   Magnet,
-  Layers,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -39,7 +37,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 import { PhysicsLab } from '@/components/physics/PhysicsLab';
@@ -288,7 +285,6 @@ export default function PhysicsLensPage() {
   const [selectedConstraint, setSelectedConstraint] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Physics-tool shortcuts (Algodoo / Box2D Phaser idiom).
   useLensCommand(
@@ -1599,7 +1595,6 @@ export default function PhysicsLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="physics" artifactId={null} compact />
           <RealtimeDataPanel
             domain="physics"
             data={realtimeData}
@@ -1631,24 +1626,6 @@ export default function PhysicsLensPage() {
           "Orbital Mechanics" tab rather than a replacement for it). */}
       <PhysicsKeplerianLab />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="physics" />
-          </div>
-        )}
-      </div>
     </div>
     {/* 2026 parity workbench — kinematics, projectile, units, constants */}
     <button

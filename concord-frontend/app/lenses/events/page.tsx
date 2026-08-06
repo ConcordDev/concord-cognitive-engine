@@ -24,7 +24,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   CalendarDays,
   MapPin,
@@ -67,14 +66,11 @@ import {
   School,
   UtensilsCrossed,
   Armchair,
-  Layers,
-  ChevronDown,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -443,7 +439,6 @@ export default function EventsLensPage() {
     lastUpdated,
   } = useRealtimeLens('events');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('dashboard');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -2769,7 +2764,6 @@ export default function EventsLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="events" artifactId={events[0]?.id} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
         {MODE_TABS.map((tab) => {
@@ -3050,26 +3044,6 @@ export default function EventsLensPage() {
         </>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="events" />
-          </div>
-        )}
-      </div>
       <section id="event-operations" className="mt-6 rounded-xl border border-lattice-border bg-lattice-elevated/30 p-4 scroll-mt-20">
         <EventOps />
       </section>

@@ -14,7 +14,6 @@ import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { JournalStudio } from '@/components/daily/JournalStudio';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -877,7 +876,6 @@ export default function DailyLensPage() {
           <div className="h-6" />
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="daily" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="daily"

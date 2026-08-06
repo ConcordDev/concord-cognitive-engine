@@ -58,7 +58,6 @@ import { PipingProvider } from '@/components/panel-polish';
 import Image from 'next/image';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import type {
@@ -2387,7 +2386,6 @@ export default function MusicLensPage() {
       {/* Real-time panel */}
       {isLive && realtimeData && (
         <div className="fixed right-4 bottom-24 z-40">
-          <UniversalActions domain="music" artifactId={null} compact />
           <RealtimeDataPanel
             domain="music"
             data={realtimeData}

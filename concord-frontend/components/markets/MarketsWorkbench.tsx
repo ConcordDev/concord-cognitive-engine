@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { SkeletonTableRows } from '@/components/ui';
+import PredictionDepthPanel from '@/components/markets/PredictionDepthPanel';
 
 export interface OptionsRow {
   strike: number;
@@ -344,6 +345,11 @@ function DepthTab() {
       {book && (
         <p className="text-center text-[11px] text-gray-400">Spread: <span className="font-mono text-gray-300">{book.spread}</span></p>
       )}
+
+      <div className="pt-3 border-t border-white/10">
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Prediction-market depth (real resting orders)</p>
+        <PredictionDepthPanel />
+      </div>
     </div>
   );
 }

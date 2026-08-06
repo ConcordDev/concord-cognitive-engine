@@ -16,10 +16,9 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Calculator, Play, CheckCircle, XCircle, Sigma, Pi, Loader2,
-  History, TrendingUp, Hash, Plus, Trash2, BarChart3, Layers, ChevronDown
+  History, TrendingUp, Hash, Plus, Trash2, BarChart3
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -29,7 +28,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import STSVKExplorer from '@/components/visualizations/STSVKExplorer';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { MathFormula } from '@/components/math/MathFormula';
@@ -160,7 +158,6 @@ export default function MathLensPage() {
     ],
     { lensId: 'math' }
   );
-  const [showFeatures, setShowFeatures] = useState(true);
 
   /* ─── Data from backend ─── */
   const {
@@ -395,7 +392,6 @@ export default function MathLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="math" artifactId={expressionItems[0]?.id} compact />
       {isLoading ? (
         <div className="flex items-center justify-center p-12 text-gray-400">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -1110,24 +1106,6 @@ export default function MathLensPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="math" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <MathStackFeed />
       </section>

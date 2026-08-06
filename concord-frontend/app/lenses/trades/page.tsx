@@ -16,7 +16,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Hammer,
   HardHat,
@@ -63,7 +62,6 @@ import {
   Printer,
   Send,
   Star,
-  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -72,7 +70,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 import TradesWorkbench from '@/components/trades/TradesWorkbench';
@@ -281,7 +278,6 @@ export default function TradesLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<TradesArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // ── Keyboard shortcuts (ServiceTitan / Buildertrend idiom) ────────
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -2348,7 +2344,6 @@ export default function TradesLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="trades" artifactId={items[0]?.id} compact />
       {/* Mode tabs (original 6) */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map(tab => (
@@ -2505,24 +2500,6 @@ export default function TradesLensPage() {
       {/* Editor modal */}
       {renderEditor()}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="trades" />
-          </div>
-        )}
-      </div>
     </div>
     
       <a href="#trades-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to trades content</a>

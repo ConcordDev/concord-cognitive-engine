@@ -25,7 +25,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { api } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Heart,
   Users,
@@ -74,7 +73,6 @@ import {
   CheckCircle2,
   PanelRightOpen,
   PanelRightClose,
-  Layers,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { Skeleton } from '@/components/ui';
@@ -84,7 +82,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
@@ -601,7 +598,6 @@ export default function HealthcareLensPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<HealthcareArtifact> | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   /* ---------- generate care plan state ---------- */
   const [generateLoading, setGenerateLoading] = useState(false);
@@ -1634,7 +1630,6 @@ export default function HealthcareLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="healthcare" artifactId={items[0]?.id} compact />
       {/* Live WHO health alerts */}
       <LiveFeed
         articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
@@ -3983,26 +3978,6 @@ export default function HealthcareLensPage() {
         <LensFeedPanel lensId="healthcare" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-blue-900/15">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-blue-400/60 hover:text-blue-300 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="healthcare" />
-          </div>
-        )}
-      </div>
 
       {/* Persistent bottom disclaimer */}
       <div className="sticky bottom-0 bg-blue-950/90 backdrop-blur-sm border-t border-blue-400/10 px-4 py-2 text-center">

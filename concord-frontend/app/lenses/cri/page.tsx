@@ -18,14 +18,13 @@ import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Layers, ChevronDown, Search, FileText, Loader2, XCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Search, FileText, Loader2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 interface DTUWithCRETI {
   id: string;
@@ -62,7 +61,6 @@ export default function CRILensPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedDtu, setSelectedDtu] = useState<DTUWithCRETI | null>(null);
   const [thresholdFilter, setThresholdFilter] = useState(0);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   useLensCommand(
     [
@@ -729,24 +727,6 @@ export default function CRILensPage() {
         })()}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="cri" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <QualityDistribution />
       </section>

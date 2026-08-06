@@ -23,7 +23,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
-  CheckCircle2, Wrench, Layers, ChevronDown,
+  CheckCircle2, Wrench, ChevronDown,
   Home, ToggleLeft, ToggleRight, Loader2, BarChart3, Calculator,
   Camera, Lightbulb, ShoppingCart, Boxes, GanttChartSquare, CalendarClock,
   ListChecks, Receipt, X,
@@ -33,7 +33,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 const DOMAIN = 'home-improvement';
 
@@ -152,7 +151,6 @@ export default function HomeImprovementLensPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<
     'projects' | 'budget' | 'timeline' | 'gallery' | 'ideas' | 'pros' | 'shopping' | 'inventory' | 'maintenance'
   >('projects');
@@ -946,13 +944,6 @@ export default function HomeImprovementLensPage() {
         })()}
       </div>
 
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
-          <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
-        </button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="home-improvement" /></div>}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <HomeImprovementFeed />
       </section>

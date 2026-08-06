@@ -11,7 +11,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
@@ -24,7 +23,7 @@ import {
   Code, Brain, Shield, Cpu,
   CheckCircle, XCircle,
   Workflow, Database,
-  Layers, TrendingUp, ChevronDown, Trash2,
+  Layers, TrendingUp, Trash2,
   Gauge, Route, Radio, Timer, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -32,7 +31,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
 import { AgentRuntime } from '@/components/agents/AgentRuntime';
 import { AgentSelfPanel } from '@/components/agents/AgentSelfPanel';
@@ -148,7 +146,6 @@ export default function AgentsLensPage() {
   const [newModel, setNewModel] = useState('claude-sonnet-4-5-20250929');
   const [newTemp, setNewTemp] = useState(0.3);
   const [newMaxTokens, setNewMaxTokens] = useState(4096);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Backend action wiring
   const runAction = useRunArtifact('agents');
@@ -1386,7 +1383,6 @@ export default function AgentsLensPage() {
                 </button>
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="agents" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="agents"
@@ -1403,24 +1399,6 @@ export default function AgentsLensPage() {
         )}
       </AnimatePresence>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="agents" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AgentRoster />
       </section>

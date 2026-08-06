@@ -17,7 +17,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Thermometer,
   Wrench,
@@ -714,7 +713,6 @@ export default function HVACLensPage() {
         );
       })()}
 
-      <UniversalActions domain="hvac" artifactId={items[0]?.id} compact />
       {showFieldService ? (
         <FieldService />
       ) : (

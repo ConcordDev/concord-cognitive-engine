@@ -8793,7 +8793,18 @@ if (rateLimit) {
     // pool — the 30/min anon cap would throttle a redelivery burst and lose
     // paid mints. Signature-verified + idempotent, so exempt (see
     // _STRIPE_WEBHOOK_RE declaration).
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path),
+    //
+    // `/api/auth/csrf-token` is in authMiddleware's `alwaysPublic` list (line
+    // ~6960), so in the default "hybrid" AUTH_MODE it returns before req.user
+    // is EVER populated — this limiter's `!!req.user?.id` check can never see
+    // a logged-in user on this one route. The frontend's root Providers.tsx
+    // calls it on every page load (every lens navigation re-issues the CSRF
+    // cookie), so a fully authenticated user browsing a handful of lenses in
+    // a minute could exhaust the 30rpm budget on this endpoint alone and get
+    // a real 429 while logged in. It's a cheap, idempotent cookie-issuance
+    // call with no scraping value, so it gets the same exemption as health
+    // probes rather than counting toward the anon-scraping deterrent.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token",
     keyGenerator: (req) => req.ip,
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -18550,9 +18561,21 @@ import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatU
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
+// Single-instance fallback: someone running one plain `ollama serve` (every
+// model pulled into it, e.g. via OLLAMA_HOST/OLLAMA_URL) rather than the
+// five-brain multi-port topology. Before this fix only `conscious` honored
+// OLLAMA_HOST — subconscious/utility/repair always fell straight to an
+// unreachable Docker hostname (`ollama-subconscious:11434` etc.), which is
+// why a single-Ollama bare-metal/browser deploy reported every brain
+// disconnected even with models downloaded and running. A specific
+// BRAIN_<NAME>_URL still wins when set. Mirrors the same fix in
+// lib/brain-config.js's BRAIN_CONFIG (that object isn't the live source for
+// these four brains — this one is — but both are kept in sync).
+const _singleOllamaFallback = process.env.OLLAMA_URL || process.env.OLLAMA_HOST;
+
 const BRAIN = {
   conscious: {
-    url: process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST || "http://ollama-conscious:11434",
+    url: process.env.BRAIN_CONSCIOUS_URL || _singleOllamaFallback || "http://ollama-conscious:11434",
     model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
     role: "chat, deep reasoning, complex queries",
     systemPrompt: BRAIN_IDENTITY.conscious,
@@ -18560,7 +18583,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   subconscious: {
-    url: process.env.BRAIN_SUBCONSCIOUS_URL || "http://ollama-subconscious:11434",
+    url: process.env.BRAIN_SUBCONSCIOUS_URL || _singleOllamaFallback || "http://ollama-subconscious:11434",
     model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
     role: "autogen, dream, evolution, synthesis, birth",
     systemPrompt: BRAIN_IDENTITY.subconscious,
@@ -18568,7 +18591,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   utility: {
-    url: process.env.BRAIN_UTILITY_URL || "http://ollama-utility:11434",
+    url: process.env.BRAIN_UTILITY_URL || _singleOllamaFallback || "http://ollama-utility:11434",
     model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
     role: "lens interactions, entity actions, quick domain tasks",
     systemPrompt: BRAIN_IDENTITY.utility,
@@ -18576,7 +18599,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   repair: {
-    url: process.env.BRAIN_REPAIR_URL || "http://ollama-repair:11434",
+    url: process.env.BRAIN_REPAIR_URL || _singleOllamaFallback || "http://ollama-repair:11434",
     model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:1.5b",
     role: "error detection, auto-fix, runtime repair",
     systemPrompt: BRAIN_IDENTITY.repair,
@@ -33893,6 +33916,13 @@ allowMacro("council", "vote", _ACL_MEMBER);
 allowMacro("council", "reviewGlobal", _ACL_MEMBER);
 allowMacro("council", "credibility", _ACL_MEMBER);
 allowMacro("council", "proposePromotion", _ACL_MEMBER);
+
+// Auth: whoami just echoes the caller's own actor/user/org back to them —
+// no other user's data, nothing sensitive. Overrides the domain-level
+// _ACL_OWNER so any authenticated (or public-read) request can call it;
+// found via a full lens crawl — world-observatory/world-creator/worldmodel
+// call it on mount and were getting a real 403 for every non-owner user.
+allowMacro("auth", "whoami", _ACL_PUB);
 
 // Global corpus: members can propose content and publish to global timeline.
 // Overrides the domain-level _ACL_OWNER for these user-facing operations.
@@ -61504,17 +61534,13 @@ app.post("/api/brain/wants/decay", (_req, res) => {
 // Per-brain health and stats endpoint
 app.get("/api/brain/status", (_req, res) => {
   try {
-    const brainStatus = {};
-    for (const [name, cfg] of Object.entries(BRAIN_CONFIG)) {
-      const b = BRAIN?.[name] || {};
-      brainStatus[name] = {
-        enabled: b.enabled ?? false,
-        model: cfg.model,
-        url: cfg.url,
-        stats: b.stats || { requests: 0, totalMs: 0, errors: 0, lastCallAt: null },
-      };
-    }
-    res.json({ ok: true, llmReady: LLM_READY, brains: brainStatus });
+    // getBrainStatus() (defined above) is the single source of truth for
+    // mode/onlineCount/avgResponseMs/embeddings — it was already used by
+    // the chat-context builder and /api/platform/status but this route
+    // hand-rolled a stripped-down duplicate missing those fields, which is
+    // why the frontend's BrainMonitor badge always showed "Fallback 0/N"
+    // regardless of real brain state.
+    res.json({ ...getBrainStatus(), llmReady: LLM_READY });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

@@ -140,7 +140,7 @@ export default function RegisterPage() {
                 required
                 autoFocus
                 autoComplete="username"
-                pattern="^[a-zA-Z0-9_-]+$"
+                pattern="^[a-zA-Z0-9_\-]+$"
                 minLength={3}
                 maxLength={50}
                 aria-invalid={!!error}

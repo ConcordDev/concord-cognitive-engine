@@ -25,7 +25,6 @@ import {
   Tag,
   Calendar,
   Layers,
-  ChevronDown,
   RefreshCw,
   Beaker,
   Download,
@@ -39,7 +38,6 @@ import {
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
@@ -49,7 +47,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
@@ -172,7 +169,6 @@ export default function ResearchLensPage() {
   // primary work surface — expanding it under the real Zotero/Obsidian
   // panels above just adds noise ahead of anything a user actually
   // wants to click (rubric §0: remove whitespace/generic content first).
-  const [showFeatures, setShowFeatures] = useState(false);
   const queryInputRef = useRef<HTMLInputElement>(null);
 
   useLensCommand(
@@ -811,7 +807,6 @@ export default function ResearchLensPage() {
         {/* Real-time Data Panel */}
         {realtimeData && (
           <>
-            <UniversalActions domain="research" artifactId={null} compact />
             {/* Live arXiv papers — cs.AI / cs.CL / cs.LG categories */}
             <LiveFeed
               articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
@@ -960,26 +955,6 @@ export default function ResearchLensPage() {
         <LensFeedPanel lensId="science" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="research" />
-          </div>
-        )}
-      </div>
     </div>
     {/* 2026 parity workbench — notes, daily journal, search, templates */}
     <button

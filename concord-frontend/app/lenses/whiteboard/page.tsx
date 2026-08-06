@@ -13,7 +13,6 @@ import { WhiteboardActionPanel } from '@/components/whiteboard/WhiteboardActionP
 import { PipingProvider } from '@/components/panel-polish';
 import { ShellPreview } from '@/components/lens/ShellPreview';
 import { CollabBoardSection } from '@/components/whiteboard/CollabBoardSection';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -1573,7 +1572,6 @@ export default function WhiteboardLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="whiteboard" artifactId={null} compact />
           <RealtimeDataPanel
             domain="whiteboard"
             data={realtimeData}
