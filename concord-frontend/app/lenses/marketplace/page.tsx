@@ -2276,6 +2276,13 @@ export default function MarketplaceLensPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Listing workbench: score / price / metrics + actions. Was
+              previously mounted unconditionally below every tab's content
+              regardless of which tab was active. */}
+          <PipingProvider>
+            <MarketplaceActionPanel />
+          </PipingProvider>
         </motion.div>
       )}
 
@@ -2864,6 +2871,12 @@ export default function MarketplaceLensPage() {
               />
             </>
           )}
+
+          {deferredReady && (
+            <div className="lg:col-span-4 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
+              <TrendingListings />
+            </div>
+          )}
         </div>
       )}
 
@@ -3123,16 +3136,6 @@ export default function MarketplaceLensPage() {
     />
     {deferredReady && (
       <>
-        <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
-          <TrendingListings />
-        </section>
-
-        {/* Listing workbench: score / price / metrics + actions */}
-        <PipingProvider>
-          <section className="mt-6 mx-auto max-w-7xl">
-            <MarketplaceActionPanel />
-          </section>
-        </PipingProvider>
         <SessionRail lensId="marketplace" hideWhenEmpty className="mt-4" />
         <RecentMineCard domain="marketplace" limit={10} hideWhenEmpty className="mt-4" />
         <AutoActionStrip domain="marketplace" hideWhenEmpty className="mt-3" title="More actions" />
