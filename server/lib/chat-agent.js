@@ -67,6 +67,9 @@ Available tools:
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
+- create_document: Produce a REAL downloadable file (a spec, blueprint, report) — never just describe one in prose. Formats: pdf, md, json, csv, txt, zip. For zip, pass files. Params: {"title": "...", "format": "pdf", "summary": "...", "claims": ["..."], "files": [{"name": "a.md", "content": "..."}]}
+- export_dtu: Convert an EXISTING DTU into a real file in whatever format is requested. Params: {"dtuId": "dtu_...", "format": "pdf"}
+- read_zip: Open and see the contents of a zip file already stored as a DTU artifact — list entries, or read one entry's text. Params: {"dtuId": "dtu_...", "entryName": "optional/path/in/zip.md"}
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
@@ -274,6 +277,60 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           artifact,
         };
       }
+      case "create_document": {
+        // Real file production — the answer to "make me a spec/blueprint/
+        // report" is a real downloadable PDF/MD/JSON/CSV/TXT/ZIP, not just
+        // prose describing one. Backed by domains/document.js, which reuses
+        // this repo's existing pdfkit-based PDF renderer (the same one 18
+        // domains' auto-rendered documents already go through) and the
+        // adm-zip-based zip renderer — never a fabricated "here's your file"
+        // with no real bytes behind it.
+        const title = String(call.params.title || "").trim();
+        if (!title) return { tool: call.tool, ok: false, error: "create_document requires a title" };
+        const format = String(call.params.format || "pdf").toLowerCase();
+        const r = await runMacro("document", "create", {
+          title, format,
+          summary: call.params.summary, claims: call.params.claims,
+          bullets: call.params.bullets, tags: call.params.tags,
+          files: Array.isArray(call.params.files) ? call.params.files : undefined,
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_document failed", ...(r?.supportedFormats ? { supportedFormats: r.supportedFormats } : {}) };
+        return {
+          tool: call.tool, ok: true,
+          dtuId: r.dtuId, filename: r.filename, mimeType: r.mimeType,
+          sizeBytes: r.sizeBytes, downloadUrl: r.downloadUrl,
+          artifact: { kind: "document", id: r.dtuId, title, filename: r.filename, downloadUrl: r.downloadUrl, mimeType: r.mimeType },
+        };
+      }
+      case "export_dtu": {
+        // "Convert this DTU to whatever file type the user requests."
+        const dtuId = String(call.params.dtuId || "").trim();
+        if (!dtuId) return { tool: call.tool, ok: false, error: "export_dtu requires dtuId" };
+        const format = String(call.params.format || "pdf").toLowerCase();
+        const r = await runMacro("document", "export_dtu", { dtuId, format }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "export_dtu failed", ...(r?.supportedFormats ? { supportedFormats: r.supportedFormats } : {}) };
+        return {
+          tool: call.tool, ok: true,
+          dtuId: r.dtuId, sourceDtuId: r.sourceDtuId, filename: r.filename,
+          mimeType: r.mimeType, sizeBytes: r.sizeBytes, downloadUrl: r.downloadUrl,
+          artifact: { kind: "document", id: r.dtuId, title: r.filename, filename: r.filename, downloadUrl: r.downloadUrl, mimeType: r.mimeType },
+        };
+      }
+      case "read_zip": {
+        // "Open and see" a zip — real listing/extraction via adm-zip, no
+        // fabricated file listing.
+        const dtuId = String(call.params.dtuId || "").trim();
+        if (!dtuId) return { tool: call.tool, ok: false, error: "read_zip requires dtuId" };
+        const r = await runMacro("document", "read_zip", {
+          dtuId, entryName: call.params.entryName ? String(call.params.entryName) : undefined,
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "read_zip failed" };
+        return {
+          tool: call.tool, ok: true,
+          entries: r.entries, entryName: r.entryName,
+          text: r.text ? r.text.slice(0, MAX_TOOL_RESULT_LEN) : undefined,
+        };
+      }
       case "expert_mode": {
         const r = await runMacro("expert_mode", "answer", {
           query: String(call.params.query || ""),
@@ -451,6 +508,9 @@ export function formatToolResults(results) {
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
+    if (r.tool === "create_document") return `[TOOL_RESULT: create_document] Created ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}. Tell the user the file is ready — do not describe its contents as if it were only text.`;
+    if (r.tool === "export_dtu")   return `[TOOL_RESULT: export_dtu] Exported ${r.sourceDtuId} as ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}.`;
+    if (r.tool === "read_zip")     return `[TOOL_RESULT: read_zip] ${r.entryName ? `${r.entryName}:\n${r.text}` : `entries: ${JSON.stringify(r.entries)}`}`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
     if (r.tool === "mcp_connect")  return `[TOOL_RESULT: mcp_connect ${r.serverId}] Connected. ${r.toolCount} tool(s) available: ${(r.tools || []).map(t => t.name).slice(0, 30).join(", ")}`;

@@ -28451,6 +28451,9 @@ globalThis.__concordRunMacro = runMacro;
 // Apps) can drive Concord remotely.
 import registerMcpMacros from "./domains/mcp.js";
 registerMcpMacros(register);
+
+import registerDocumentActions from "./domains/document.js";
+registerDocumentActions(register);
 // Sprint 12 — long-running marathon agent sessions. Persistent task
 // the agent works on across many turns over hours/days, with a
 // heartbeat that auto-advances running sessions even when the tab

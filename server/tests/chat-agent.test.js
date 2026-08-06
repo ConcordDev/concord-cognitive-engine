@@ -324,6 +324,116 @@ test("formatToolResults renders run_python stdout/stderr/return value", () => {
   assert.match(rendered, /return value: 42/);
 });
 
+test("create_document requires a title", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "create_document", params: { format: "pdf" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /requires a title/);
+});
+
+test("create_document delegates to document.create with the real params", async () => {
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input) => {
+    calledWith = { domain, name, input };
+    return { ok: true, dtuId: "dtu_doc_1", filename: "spec.pdf", mimeType: "application/pdf", sizeBytes: 1234, downloadUrl: "/api/artifact/dtu_doc_1/download" };
+  };
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "create_document", params: { title: "My Spec", format: "pdf", summary: "s", claims: ["c1"] },
+  });
+  assert.equal(calledWith.domain, "document");
+  assert.equal(calledWith.name, "create");
+  assert.equal(calledWith.input.title, "My Spec");
+  assert.equal(result.ok, true);
+  assert.equal(result.downloadUrl, "/api/artifact/dtu_doc_1/download");
+  assert.deepEqual(result.artifact, { kind: "document", id: "dtu_doc_1", title: "My Spec", filename: "spec.pdf", downloadUrl: "/api/artifact/dtu_doc_1/download", mimeType: "application/pdf" });
+});
+
+test("create_document surfaces an unsupported-format failure honestly, including the real supported list", async () => {
+  const fakeRunMacro = async () => ({ ok: false, error: "unsupported_format", supportedFormats: ["pdf", "md", "json", "csv", "txt", "zip"] });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "create_document", params: { title: "X", format: "docx" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "unsupported_format");
+  assert.deepEqual(result.supportedFormats, ["pdf", "md", "json", "csv", "txt", "zip"]);
+});
+
+test("export_dtu requires dtuId", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "export_dtu", params: { format: "pdf" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /requires dtuId/);
+});
+
+test("export_dtu delegates to document.export_dtu and surfaces the real download info", async () => {
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input) => {
+    calledWith = { domain, name, input };
+    return { ok: true, dtuId: "dtu_export_1", sourceDtuId: "dtu_source_1", filename: "note.md", mimeType: "text/markdown", sizeBytes: 55, downloadUrl: "/api/artifact/dtu_export_1/download" };
+  };
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "export_dtu", params: { dtuId: "dtu_source_1", format: "md" },
+  });
+  assert.equal(calledWith.domain, "document");
+  assert.equal(calledWith.name, "export_dtu");
+  assert.deepEqual(calledWith.input, { dtuId: "dtu_source_1", format: "md" });
+  assert.equal(result.ok, true);
+  assert.equal(result.sourceDtuId, "dtu_source_1");
+});
+
+test("export_dtu surfaces a real forbidden failure (cross-user private DTU) without pretending success", async () => {
+  const fakeRunMacro = async () => ({ ok: false, error: "forbidden" });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "export_dtu", params: { dtuId: "dtu_x", format: "pdf" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "forbidden");
+});
+
+test("read_zip requires dtuId", async () => {
+  const result = await executeToolCall({}, () => null, new Map(), {
+    tool: "read_zip", params: {},
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.error, /requires dtuId/);
+});
+
+test("read_zip lists entries when no entryName is given", async () => {
+  const fakeRunMacro = async () => ({ ok: true, entries: [{ name: "a.txt", sizeBytes: 5, isDirectory: false }] });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "read_zip", params: { dtuId: "dtu_zip_1" },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.entries, [{ name: "a.txt", sizeBytes: 5, isDirectory: false }]);
+  assert.equal(result.text, undefined);
+});
+
+test("read_zip returns real entry text when entryName is given", async () => {
+  const fakeRunMacro = async () => ({ ok: true, entries: [{ name: "a.txt" }], entryName: "a.txt", text: "hello from the zip" });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "read_zip", params: { dtuId: "dtu_zip_1", entryName: "a.txt" },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.text, "hello from the zip");
+});
+
+test("formatToolResults renders create_document/export_dtu/read_zip results", () => {
+  const r1 = formatToolResults([{ tool: "create_document", ok: true, filename: "spec.pdf", mimeType: "application/pdf", sizeBytes: 999, downloadUrl: "/api/artifact/dtu_1/download" }]);
+  assert.match(r1, /\[TOOL_RESULT: create_document\]/);
+  assert.match(r1, /spec\.pdf/);
+  assert.match(r1, /\/api\/artifact\/dtu_1\/download/);
+
+  const r2 = formatToolResults([{ tool: "export_dtu", ok: true, sourceDtuId: "dtu_src", filename: "note.md", mimeType: "text/markdown", sizeBytes: 10, downloadUrl: "/api/artifact/dtu_2/download" }]);
+  assert.match(r2, /\[TOOL_RESULT: export_dtu\]/);
+  assert.match(r2, /dtu_src/);
+
+  const r3 = formatToolResults([{ tool: "read_zip", ok: true, entries: [{ name: "a.txt" }] }]);
+  assert.match(r3, /\[TOOL_RESULT: read_zip\]/);
+  assert.match(r3, /a\.txt/);
+});
+
 test("mcp_connect requires serverId and url", async () => {
   const result = await executeToolCall({}, () => null, new Map(), {
     tool: "mcp_connect", params: { serverId: "", url: "" },
