@@ -45,6 +45,9 @@ import {
   PlayCircle,
   StopCircle,
   Upload,
+  ChevronDown,
+  ChevronRight,
+  Github,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 
@@ -449,6 +452,9 @@ export default function StudioLensPage() {
   }, [studioView]);
   const [project, setProject] = useState<DAWProject | null>(null);
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showDawWorkbench, setShowDawWorkbench] = useState(false);
+  const [showStudioRepos, setShowStudioRepos] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [transportState, setTransportState] = useState<TransportState>('stopped');
   const transportStateRef = useRef<TransportState>('stopped');
   const drumPatternRef = useRef<DrumPattern | null>(null);
@@ -1816,11 +1822,26 @@ export default function StudioLensPage() {
           list and StudioActionPanel's project-create both live under one
           PipingProvider tree now, so creating a project auto-refreshes the
           workbench list (see usePipeValue('studio.project') below). The
-          manual refresh button stays as the honest fallback. */}
+          manual refresh button stays as the honest fallback.
+          Collapsed by default: this workbench used to sit permanently above
+          the fold, ahead of the actual DAW canvas below, on every visit. */}
       <PipingProvider>
       <div className="px-4 mt-2">
         <ShellPreview lensId="studio" defaultOpen={true} />
-        <DawWorkbenchSection />
+        <button
+          type="button"
+          onClick={() => setShowDawWorkbench((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showDawWorkbench}
+        >
+          <span>Project workbench (clips, MIDI, automation, presets, sends)</span>
+          {showDawWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showDawWorkbench && (
+          <div className="mt-2">
+            <DawWorkbenchSection />
+          </div>
+        )}
       </div>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
@@ -2902,14 +2923,48 @@ export default function StudioLensPage() {
         Studio Workbench
       </button>
       <StudioWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <StudioRepos />
+
+      {/* External reference — open-source DAW/audio-processing repos, not
+          this lens's own data. Collapsed by default rather than promoted
+          open on every visit; still reachable for anyone who wants it. */}
+      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowStudioRepos((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showStudioRepos}
+        >
+          <span className="flex items-center gap-2">
+            <Github className="w-4 h-4 text-gray-400" /> Open-source DAW references
+          </span>
+          {showStudioRepos ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showStudioRepos && (
+          <div className="px-4 pb-4">
+            <StudioRepos />
+          </div>
+        )}
       </section>
 
-      {/* Session workbench: project / track / effect / render + actions */}
-        <section className="mt-6 mx-auto max-w-7xl">
-          <StudioActionPanel />
-        </section>
+      {/* Session workbench: project / track / effect / render + actions.
+          Collapsed by default — was previously mounted unconditionally
+          below every session regardless of what the user was doing. */}
+      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showActionPanel}
+        >
+          <span>Session workbench (project / track / effect / render)</span>
+          {showActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="px-4 pb-4">
+            <StudioActionPanel />
+          </div>
+        )}
+      </section>
       </PipingProvider>
           <SessionRail lensId="studio" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="studio" limit={10} hideWhenEmpty className="mt-4" />
