@@ -44,6 +44,8 @@ import {
   Timer,
   Archive,
   Search,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -316,6 +318,7 @@ export default function CollabLensPage() {
 
   );
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
+  const [showCollabActionPanel, setShowCollabActionPanel] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeSession, setActiveSession] = useState<CollabSession | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -710,8 +713,25 @@ export default function CollabLensPage() {
             <WorkspaceRoster />
           </section>
 
-          <section className="mt-6">
-            <CollabActionPanel />
+          {/* Team facilitator bench: session analytics / contribution score /
+              consensus detection / workload balance + actions. Collapsed by
+              default — was previously mounted unconditionally below every
+              tab regardless of which was active. */}
+          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+            <button
+              type="button"
+              onClick={() => setShowCollabActionPanel((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+              aria-expanded={showCollabActionPanel}
+            >
+              <span>Team facilitator bench (analytics, consensus, workload)</span>
+              {showCollabActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            {showCollabActionPanel && (
+              <div className="px-4 pb-4">
+                <CollabActionPanel />
+              </div>
+            )}
           </section>
         </PipingProvider>
       </div>
