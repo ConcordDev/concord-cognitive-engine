@@ -23,6 +23,7 @@ import {
   Scale, Plus, Search, Users, MessageSquare,
   ThumbsUp, ThumbsDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
   AlertTriangle, CheckCircle, XCircle,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -401,6 +402,8 @@ export default function DebateLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debate');
   // Public read-only share link — ?share=<token> opens a debate without owner scoping.
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [showArgumentMap, setShowArgumentMap] = useState(false);
+  const [showCmvFeed, setShowCmvFeed] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const t = new URLSearchParams(window.location.search).get('share');
@@ -1029,16 +1032,42 @@ export default function DebateLensPage() {
 
       <RealtimeDataPanel domain="debate" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        {shareToken ? (
+      {shareToken ? (
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <SharedDebateView shareToken={shareToken} onExit={exitShare} />
-        ) : (
-          <KialoArgumentMap />
+        </section>
+      ) : (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowArgumentMap(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showArgumentMap ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Argument Map (Kialo-shape)
+          </button>
+          {showArgumentMap && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <KialoArgumentMap />
+            </section>
+          )}
+        </div>
+      )}
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCmvFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCmvFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
+        </button>
+        {showCmvFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CmvFeed />
+          </section>
         )}
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CmvFeed />
-      </section>
+      </div>
     </div>
           <SessionRail lensId="debate" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="debate" limit={10} hideWhenEmpty className="mt-4" />
