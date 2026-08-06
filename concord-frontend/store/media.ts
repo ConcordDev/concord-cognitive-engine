@@ -67,7 +67,7 @@ interface MediaStore {
   _handleTrackEnd: () => void;
 }
 
-export const useMediaStore = create<MediaStore>(
+export const useMediaStore = create<MediaStore>()(
   persist(
     (set, get) => ({
       currentTrack: null,

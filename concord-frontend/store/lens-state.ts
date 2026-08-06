@@ -76,7 +76,7 @@ interface LensStateStore {
   clearAllLensStates: () => void;
 }
 
-export const useLensStateStore = create<LensStateStore>(
+export const useLensStateStore = create<LensStateStore>()(
   persist(
     (set, get) => ({
       lensStates: {},

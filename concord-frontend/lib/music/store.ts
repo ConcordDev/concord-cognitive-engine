@@ -71,7 +71,7 @@ interface MusicStore {
   queueLength: () => number;
 }
 
-export const useMusicStore = create<MusicStore>(
+export const useMusicStore = create<MusicStore>()(
   persist(
     (set, get) => ({
       // ---- Initial State ----

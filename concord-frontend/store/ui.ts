@@ -59,7 +59,7 @@ export type { LayoutSlice, ToastSlice, LensSlice, StatusSlice, AccessibilitySlic
 export type { Toast, RequestError, AuthPosture };
 export type { AccessibilitySettings, ColorblindMode, OneHandedMode };
 
-export const useUIStore = create<UIState>(
+export const useUIStore = create<UIState>()(
   persist(
     (...a) => ({
       ...createLayoutSlice(...a),
