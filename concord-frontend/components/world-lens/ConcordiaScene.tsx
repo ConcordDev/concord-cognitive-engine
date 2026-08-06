@@ -1135,10 +1135,14 @@ export default function ConcordiaScene({
       // ── Renderer ─────────────────────────────────────────────────
       // Attempt WebGPU first if available + opted-in, fall back to WebGL2.
       // Opt-in (Sprint 7): localStorage.setItem('concordia:renderer', 'webgpu')
-      // We default to WebGL2 to avoid surprising current users; WebGPU is
-      // production-ready in three.js r171+ but our installed r0.160 ships
-      // it as an experimental module under examples/jsm/renderers/webgpu.
-      // The opt-in lets early adopters get the 2-10× draw-call gains
+      // We default to WebGL2 to avoid surprising current users. three.js
+      // r0.185 folded WebGPU support into a dedicated `three/webgpu` build
+      // (a named `WebGPURenderer` export) — the old r0.160-era
+      // `three/examples/jsm/renderers/webgpu/WebGPURenderer.js` path no
+      // longer exists and fails at bundle-analysis time (Vite resolves the
+      // import statically even though it's runtime-gated), not just at
+      // runtime, so the surrounding try/catch never got a chance to fall
+      // back. The opt-in lets early adopters get the 2-10× draw-call gains
       // while the safe default keeps everyone else happy.
       let useWebGPU = false;
       const optIn = typeof window !== 'undefined' &&
@@ -1157,22 +1161,17 @@ export default function ConcordiaScene({
       if (useWebGPU) {
         try {
           // Lazy import to avoid bundling WebGPU module into WebGL-only path.
-          const webGpuModule = await import(
-            'three/examples/jsm/renderers/webgpu/WebGPURenderer.js'
-          );
-          const WebGPURendererCtor = (webGpuModule as unknown as {
-            default: new (opts: { canvas?: HTMLCanvasElement; antialias?: boolean; powerPreference?: string }) => unknown;
-          }).default;
+          const { WebGPURenderer } = await import('three/webgpu');
           // The WebGPURenderer surfaces a WebGLRenderer-compatible API for
           // scene rendering. SSGI / TAA / post-processing chain still
           // operates against the (compatible) shape. Some advanced WebGL-
           // specific paths (raw GL state pokes) will silently no-op.
-          const gpuRenderer = new WebGPURendererCtor({
+          const gpuRenderer = new WebGPURenderer({
             canvas: canvas!,
             antialias: settings.antialias,
             powerPreference: 'high-performance',
           });
-          await (gpuRenderer as { init?: () => Promise<void> }).init?.();
+          await gpuRenderer.init();
           renderer = gpuRenderer as unknown as THREE.WebGLRenderer;
           console.info('[ConcordiaScene] WebGPU renderer activated (opt-in)');
         } catch (gpuErr) {
