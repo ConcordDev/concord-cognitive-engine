@@ -199,7 +199,7 @@ export default function CraftingPage() {
           }
           setCounts(next);
         })
-        .catch(() => {}),
+        .catch((e) => console.warn('[crafting] recipe counts load failed:', e)),
       api.get(`/api/crafting/character/${encodeURIComponent(worldId)}`)
         .then((r) => setCharacter(r.data ?? null))
         .catch(() => setCharacter(null)),

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Github, Loader2, Star, GitFork, Eye, ExternalLink } from 'lucide-react';
+import { Code2 as Github, Loader2, Star, GitFork, Eye, ExternalLink } from 'lucide-react';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 
 interface Repo {

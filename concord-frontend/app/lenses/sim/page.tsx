@@ -748,7 +748,7 @@ export default function SimLensPage() {
           errorCount: 1,
         } as Partial<SimRun>,
         meta: { status: 'failed' },
-      }).catch(() => {});
+      }).catch((e) => console.warn('[sim] failed to persist run failure status:', e));
       useUIStore.getState().addToast({
         type: 'error',
         message: `Simulation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,

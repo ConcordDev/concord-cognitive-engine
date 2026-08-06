@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, Plus, Trash2, Radio, Bell, Plug, Inbox, Timer, Command,
-  Github, MessageSquare, CheckCircle2, XCircle, ArrowUpRight, RefreshCw,
+  Code2 as Github, MessageSquare, CheckCircle2, XCircle, ArrowUpRight, RefreshCw,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';

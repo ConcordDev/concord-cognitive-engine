@@ -9,7 +9,6 @@ import {
   Hash,
   Shield,
   Apple,
-  Slack,
   Trash2,
   CheckCircle,
   AlertCircle,
@@ -67,7 +66,7 @@ const PLATFORM_META: Record<
   },
   slack: {
     label: 'Slack',
-    icon: Slack,
+    icon: Hash,
     color: 'text-yellow-400',
     placeholder: 'Slack user ID or channel',
   },
