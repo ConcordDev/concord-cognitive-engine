@@ -29,7 +29,7 @@
 // NEVER silently falls back to a live CDN fetch. That fallback would
 // re-introduce the exact network dependency this module exists to remove.
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -57,9 +57,9 @@ function resolvePyodideLockPath() {
 }
 
 let _lockCache = null;
-export function loadPyodideLock() {
+export async function loadPyodideLock() {
   if (_lockCache) return _lockCache;
-  const raw = fs.readFileSync(resolvePyodideLockPath(), "utf8");
+  const raw = await fs.readFile(resolvePyodideLockPath(), "utf8");
   _lockCache = JSON.parse(raw);
   return _lockCache;
 }
@@ -72,8 +72,8 @@ export function loadPyodideLock() {
  * @param {string[]} names
  * @returns {{ok:true, names:string[]}|{ok:false, error:string, unknown:string[]}}
  */
-export function resolvePackageClosure(names) {
-  const lock = loadPyodideLock();
+export async function resolvePackageClosure(names) {
+  const lock = await loadPyodideLock();
   const pkgs = lock.packages || {};
   const unknown = names.filter((n) => !PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES.includes(n));
   if (unknown.length) return { ok: false, error: "package_not_allowed", unknown };
@@ -96,21 +96,22 @@ export function resolvePackageClosure(names) {
  * Map resolved package names to {name, fileName, sha256, vendoredPath, exists}.
  * @param {string[]} names — already-resolved (via resolvePackageClosure)
  */
-export function packageFileInfo(names) {
-  const lock = loadPyodideLock();
+export async function packageFileInfo(names) {
+  const lock = await loadPyodideLock();
   const pkgs = lock.packages || {};
-  return names.map((name) => {
+  return Promise.all(names.map(async (name) => {
     const meta = pkgs[name];
     const fileName = meta?.file_name;
     const vendoredPath = fileName ? path.join(PYODIDE_VENDOR_DIR, fileName) : null;
+    const exists = vendoredPath ? await fs.access(vendoredPath).then(() => true, () => false) : false;
     return {
       name,
       fileName,
       sha256: meta?.sha256 || null,
       vendoredPath,
-      exists: !!(vendoredPath && fs.existsSync(vendoredPath)),
+      exists,
     };
-  });
+  }));
 }
 
 /** The jsdelivr URL Pyodide's own loadPackage() constructs for a lockfile
