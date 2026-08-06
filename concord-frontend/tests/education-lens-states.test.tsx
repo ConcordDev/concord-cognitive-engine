@@ -17,7 +17,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 // ── main list channel: useLensData (controls loading/error/empty/populated) ──
@@ -193,5 +194,64 @@ describe('education lens — four UX states', () => {
     const { getByText } = render(<EducationLensPage />);
     await waitFor(() => expect(getByText('Ada Lovelace')).toBeInTheDocument());
     expect(getByText(/Mathematics/i)).toBeInTheDocument();
+  });
+});
+
+describe('education lens — mode categories (27 flat tabs grouped into 4 sections)', () => {
+  // Scoped to the sub-tab nav specifically (data-testid="education-subtab-nav")
+  // because plain page text like "Students" also appears elsewhere (the
+  // always-visible dashboard stat card), so an unscoped query would false-pass.
+  const subtabs = (container: HTMLElement) => within(container.querySelector('[data-testid="education-subtab-nav"]')!);
+
+  // The Genome/Path/etc. tabs mount real react-query hooks (GenomePanel etc.)
+  // that need a live QueryClient — a real app dependency, not something to mock.
+  const renderPage = () => render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <EducationLensPage />
+    </QueryClientProvider>
+  );
+
+  it('defaults to the Classroom category — its tabs show, other categories’ tabs do not', () => {
+    const { container, getByText } = renderPage();
+    expect(getByText('Classroom')).toBeInTheDocument(); // category button
+    expect(subtabs(container).getByText('Students')).toBeInTheDocument();
+    expect(subtabs(container).getByText('Courses')).toBeInTheDocument();
+    // Learning Engine category's tabs must NOT be in the visible sub-tab row yet.
+    expect(subtabs(container).queryByText('Genome')).not.toBeInTheDocument();
+    expect(subtabs(container).queryByText('Tutor')).not.toBeInTheDocument();
+  });
+
+  it('clicking a different category swaps the visible sub-tabs and auto-selects its first tab', async () => {
+    const { container, getByText } = renderPage();
+    fireEvent.click(getByText('Learning Engine'));
+
+    await waitFor(() => expect(subtabs(container).getByText('Genome')).toBeInTheDocument());
+    expect(subtabs(container).getByText('Tutor')).toBeInTheDocument();
+    expect(subtabs(container).getByText('Assessment')).toBeInTheDocument();
+    // Classroom's tabs are no longer in the visible sub-tab row.
+    expect(subtabs(container).queryByText('Courses')).not.toBeInTheDocument();
+  });
+
+  it('clicking a sub-tab within the current category switches content without changing category', async () => {
+    const { container } = renderPage();
+    fireEvent.click(subtabs(container).getByText('Courses'));
+    // Still Classroom — Students (a sibling tab) stays visible.
+    await waitFor(() => expect(subtabs(container).getByText('Students')).toBeInTheDocument());
+    expect(subtabs(container).queryByText('Genome')).not.toBeInTheDocument();
+  });
+
+  it('all 4 categories are reachable and each shows a distinct, non-overlapping tab set', async () => {
+    const { container, getByText } = renderPage();
+
+    fireEvent.click(getByText('Study Tools'));
+    await waitFor(() => expect(subtabs(container).getByText('Flashcards')).toBeInTheDocument());
+    expect(subtabs(container).getByText('Socratic')).toBeInTheDocument();
+    expect(subtabs(container).queryByText('Genome')).not.toBeInTheDocument();
+    expect(subtabs(container).queryByText('Students')).not.toBeInTheDocument();
+
+    fireEvent.click(getByText('More'));
+    await waitFor(() => expect(subtabs(container).getByText('Video')).toBeInTheDocument());
+    expect(subtabs(container).getByText('Mastery')).toBeInTheDocument();
+    expect(subtabs(container).queryByText('Flashcards')).not.toBeInTheDocument();
   });
 });
