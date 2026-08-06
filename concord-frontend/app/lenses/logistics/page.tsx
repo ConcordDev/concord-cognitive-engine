@@ -36,7 +36,6 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -260,7 +259,6 @@ export default function LogisticsLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="logistics" artifactId={undefined} compact />
 
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">

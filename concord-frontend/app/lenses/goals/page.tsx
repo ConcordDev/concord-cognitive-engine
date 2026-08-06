@@ -18,7 +18,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Target,
   Plus,
@@ -489,7 +488,6 @@ export default function GoalsLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="goals" artifactId={goalItems[0]?.id} compact />
       {/* ---- Hero Stats Bar ---- */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="lens-card flex flex-col items-center justify-center col-span-1 relative overflow-hidden group">

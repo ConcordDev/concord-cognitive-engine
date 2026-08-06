@@ -24,7 +24,6 @@ import {
   Radio,
   Scan,
   GitBranch,
-  Layers,
   Eye,
   Target,
   Crosshair,
@@ -37,11 +36,11 @@ import {
   Dna,
   Zap,
   X,
+  Layers,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { EntityGrowthDashboard } from '@/components/emergent/EntityGrowthDashboard';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -949,7 +948,6 @@ export default function ResonanceBoundaryPage() {
   const [thresholdOpen, setThresholdOpen] = useState(false);
   const [thresholds, setThresholds] = useState<ThresholdConfig>({ ...DEFAULT_THRESHOLDS });
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // PagerDuty / Splunk on-call idiom: l/p/h/y/g jump views, a toggles auto-scan.
   useLensCommand(
@@ -1526,24 +1524,6 @@ export default function ResonanceBoundaryPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="resonance" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CrossDomainWorkbench />
       </section>

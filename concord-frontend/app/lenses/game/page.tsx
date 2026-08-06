@@ -28,7 +28,6 @@ import {
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
 import { GameDesignLab } from '@/components/game/GameDesignLab';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -1536,7 +1535,6 @@ export default function GameLensPage() {
       {/* Small secondary AI-helper strip — no artifactId, per its own
           optional-prop contract. The page around it is bespoke, not the
           generic surface this could otherwise stand in for. */}
-      <UniversalActions domain="game" artifactId={null} compact />
 
       {realtimeData && (
         <RealtimeDataPanel

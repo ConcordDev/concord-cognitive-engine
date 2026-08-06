@@ -56,7 +56,6 @@ import {
   Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useUIStore } from '@/store/ui';
@@ -1916,7 +1915,6 @@ export default function FeedLensPage() {
         <FeedbackWidget targetType="lens" targetId="feed" />
 
         {/* Real-time Data Panel */}
-        <UniversalActions domain="feed" artifactId={null} compact />
 
         {/* Feed Analytics Actions */}
         <div className="panel p-4 space-y-3">

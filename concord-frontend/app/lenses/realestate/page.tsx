@@ -21,7 +21,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Building2,
   Home,
@@ -1067,7 +1066,6 @@ export default function RealEstateLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="realestate" artifactId={items[0]?.id} compact />
       {/* Housing Wire — HUD + Realtor.com Research live feed */}
       <LiveFeed
         articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}

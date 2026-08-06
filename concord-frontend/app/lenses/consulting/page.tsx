@@ -14,7 +14,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
 import { EngagementTracker } from '@/components/consulting/EngagementTracker';
@@ -585,7 +584,6 @@ export default function ConsultingLensPage() {
         </>
       }
     >
-      <UniversalActions domain="consulting" artifactId={items[0]?.id} compact />
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

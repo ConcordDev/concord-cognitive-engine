@@ -40,20 +40,17 @@ import { DesignSystemAtlas } from '@/components/experience/DesignSystemAtlas';
 import { UXResearchSuite } from '@/components/experience/UXResearchSuite';
 import { AnalysisTools } from '@/components/experience/AnalysisTools';
 import { CareerPortfolio } from '@/components/experience/CareerPortfolio';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useState } from 'react';
-import { Brain, ChevronDown, Layers } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 type SectionId = 'portfolio' | 'tools' | 'research' | 'atlas';
 
 export default function ExperienceLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('experience');
-  const [showFeatures, setShowFeatures] = useState(false);
   const [section, setSection] = useState<SectionId>('portfolio');
 
   useLensCommand([
@@ -141,23 +138,7 @@ export default function ExperienceLensPage() {
         {realtimeData && (
           <RealtimeDataPanel domain="experience" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={realtimeInsights} compact />
         )}
-        <UniversalActions domain="experience" artifactId={null} compact />
 
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> Lens Features &amp; Capabilities</span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="experience" />
-            </div>
-          )}
-        </div>
       </div>
 
       <a href="#experience-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to experience content</a>

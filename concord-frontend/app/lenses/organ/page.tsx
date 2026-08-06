@@ -16,8 +16,7 @@ import { api, lensRun } from '@/lib/api/client';
 import { useState, useMemo } from 'react';
 import {
   Heart, Activity, Zap, TrendingUp, TrendingDown, RefreshCw,
-  AlertTriangle, Clock, Wrench,
-  ChevronDown, Search, BarChart3, Layers, GitBranch, Play, Loader2, X, Upload,
+  AlertTriangle, Clock, Wrench, Search, BarChart3, Layers, GitBranch, Play, Loader2, X, Upload,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -25,7 +24,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // Concord's own self-model: `GET /api/growth/organs` returns the live state
 // of the ~169 named organs in `server/server.js`'s ORGAN_DEFS registry
@@ -127,7 +125,6 @@ export default function OrganLensPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<SortMode>('health');
   const [searchFilter, setSearchFilter] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Backend: GET /api/growth/organs — live state of Concord's own 169-organ
   // self-model registry (server.js ORGAN_DEFS). Real fields only: maturity is
@@ -610,24 +607,6 @@ export default function OrganLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="organ" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <AnatomyExplorer />
       </section>

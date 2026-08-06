@@ -29,13 +29,11 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FeedBanner } from '@/components/lens/FeedBanner';
 
 type PoetryTab = 'collection' | 'compose' | 'discover' | 'studio' | 'forms' | 'workshop';
@@ -350,7 +348,6 @@ export default function PoetryPage() {
 
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [formFilter, setFormFilter] = useState<PoemForm | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(true);
@@ -551,17 +548,14 @@ export default function PoetryPage() {
           </div>
           <div className="flex items-center gap-2">
             <DTUExportButton domain="poetry" data={{}} compact />
-            <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">Features</button>
             <button onClick={startNew} className="px-3 py-1.5 text-xs bg-rose-500/20 border border-rose-500/30 rounded-lg hover:bg-rose-500/30 flex items-center gap-1">
               <Plus className="w-3 h-3" /> New Poem
             </button>
           </div>
         </div>
 
-        {showFeatures && <LensFeaturePanel lensId="poetry" />}
         <FeedBanner domain="poetry" />
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="poetry" artifactId={null} compact />
 
         {/* Poetry Actions Panel — analyzes whatever's currently in the Compose editor */}
         <div className="bg-white/3 border border-white/10 rounded-xl p-4 space-y-3">

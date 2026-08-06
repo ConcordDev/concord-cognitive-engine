@@ -27,7 +27,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Home, Users, UtensilsCrossed, CheckSquare, Wrench, PawPrint,
   Plus, Search, Filter, X, Edit3, Trash2,
@@ -40,14 +39,12 @@ import {
   Sun, Snowflake, Leaf, CloudRain, ClipboardList,
   CheckCircle2, Coffee,
   Salad, Soup, Cake,
-  Layers, ChevronDown,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -222,7 +219,6 @@ export default function HouseholdLensPage() {
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   const [calendarOffset, setCalendarOffset] = useState(0);
   const [mealWeekOffset, setMealWeekOffset] = useState(0);
@@ -1727,7 +1723,6 @@ export default function HouseholdLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="household" artifactId={familyItems[0]?.id} compact />
       <RealtimeDataPanel domain="household" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="household" data={{}} compact />
       {/* Mode tabs */}
@@ -1889,24 +1884,6 @@ export default function HouseholdLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="household" />
-          </div>
-        )}
-      </div>
 
       {/* Bespoke Open Food Facts barcode lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

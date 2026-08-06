@@ -11,7 +11,6 @@ import { SrsRepos } from '@/components/srs/SrsRepos';
 import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -313,7 +312,6 @@ export default function SRSLensPage() {
               compact
             />
           )}
-          <UniversalActions domain="srs" artifactId={null} compact />
         </div>
       </div>
 

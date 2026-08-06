@@ -39,7 +39,6 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   TreePine,
   MapPin,
@@ -3249,7 +3248,6 @@ export default function EnvironmentLensPage() {
       }
     >
       {/* AI Actions */}
-      <UniversalActions domain="environment" artifactId={siteItems[0]?.id} compact />
       {/* Navigation Tabs */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map((tab) => {

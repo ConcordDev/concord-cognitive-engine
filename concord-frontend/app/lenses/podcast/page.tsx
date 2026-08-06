@@ -28,7 +28,6 @@ import {
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import { MediaUpload } from '@/components/media/MediaUpload';
@@ -913,7 +912,6 @@ export default function PodcastLensPage() {
 
               {realtimeInsights.length > 0 && (
                 <>
-                  <UniversalActions domain="podcast" artifactId={null} compact />
                   <RealtimeDataPanel data={null} insights={realtimeInsights} />
                 </>
               )}

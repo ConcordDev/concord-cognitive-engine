@@ -15,16 +15,14 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { Shield, Check, X, AlertTriangle, Lock, Eye, Zap, Loader2, Layers, ChevronDown, Gauge, CheckCircle2, BarChart3, Play } from 'lucide-react';
+import { Shield, Check, X, AlertTriangle, Lock, Eye, Zap, Loader2, Layers, Gauge, CheckCircle2, BarChart3, Play } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 
 interface Invariant {
@@ -44,7 +42,6 @@ export default function InvariantLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('invariant');
   const [testAction, setTestAction] = useState('');
   const [testResult, setTestResult] = useState<{ passed: boolean; message: string } | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'all' | 'enforced' | 'warning' | 'violated'>('all');
   const [search, setSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -302,7 +299,6 @@ export default function InvariantLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="invariant" artifactId={invariantItems[0]?.id} compact />
       {/* Action Tester */}
       <div className="panel p-4">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
@@ -692,24 +688,6 @@ export default function InvariantLensPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="invariant" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <FormalVerificationRepos />
       </section>

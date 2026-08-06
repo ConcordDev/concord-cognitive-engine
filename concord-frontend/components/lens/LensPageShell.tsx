@@ -6,7 +6,6 @@
  * Composes LensShell with:
  *  - Real-time data via useRealtimeLens (LiveIndicator, RealtimeDataPanel)
  *  - DTU export button
- *  - Collapsible LensFeaturePanel
  *  - Standard header with icon + title + description + live status
  *
  * Reduces ~200-400 lines of boilerplate per lens page to a single wrapper.
@@ -29,16 +28,14 @@
  *   </LensPageShell>
  */
 
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { Loading } from '@/components/common/Loading';
 import { ErrorState } from '@/components/common/EmptyState';
-import { ChevronDown, Layers } from 'lucide-react';
 
 export interface RealtimeProps {
   realtimeData: Record<string, unknown> | null;
@@ -71,8 +68,6 @@ interface LensPageShellProps {
   showExport?: boolean;
   /** If true, show realtime data panel */
   showRealtimePanel?: boolean;
-  /** If true, show the collapsible feature panel at the bottom */
-  showFeatures?: boolean;
 
   /** Extra data to include in DTU export */
   exportData?: unknown;
@@ -99,13 +94,11 @@ export function LensPageShell({
   actions,
   showExport = true,
   showRealtimePanel = true,
-  showFeatures = true,
   exportData,
   children,
   className,
 }: LensPageShellProps) {
   useLensNav(domain);
-  const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const {
     latestData: realtimeData,
     isLive,
@@ -176,29 +169,6 @@ export function LensPageShell({
 
       {/* Domain-specific content */}
       {typeof children === 'function' ? children(realtimeProps) : children}
-
-      {/* Collapsible Lens Features */}
-      {showFeatures && (
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeaturesPanel(!showFeaturesPanel)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${showFeaturesPanel ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {showFeaturesPanel && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId={domain} />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

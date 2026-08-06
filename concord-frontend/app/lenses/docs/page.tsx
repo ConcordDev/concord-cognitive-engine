@@ -22,7 +22,6 @@ import {
   ChevronRight,
   Search,
   Layers,
-  ChevronDown,
   Code2,
   GitBranch,
   FileJson,
@@ -39,7 +38,6 @@ import {
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -246,7 +244,6 @@ export default function DocsLensPage() {
 
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Live workspace stats from the docs domain (docs-dashboard macro).
   const [docsStats, setDocsStats] = useState<{
@@ -982,26 +979,6 @@ export default function DocsLensPage() {
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="docs" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="docs" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <DocsWorkspace />
       </section>

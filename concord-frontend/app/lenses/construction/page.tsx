@@ -15,7 +15,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   HardHat,
   ClipboardList,
@@ -760,7 +759,6 @@ export default function ConstructionLensPage() {
         );
       })()}
 
-      <UniversalActions domain="construction" artifactId={items[0]?.id} compact />
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map((tab) => (
           <button

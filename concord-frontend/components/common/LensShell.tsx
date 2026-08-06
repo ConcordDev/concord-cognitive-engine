@@ -33,7 +33,6 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { Loading } from '@/components/common/Loading';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { PersistentChatRail } from '@/components/chat/PersistentChatRail';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { Search, X } from 'lucide-react';
@@ -69,10 +68,6 @@ interface LensShellProps {
   /** Filter controls slot */
   filters?: ReactNode;
 
-  /** Universal AI actions — pass selected artifact ID to enable analyze/generate/suggest */
-  aiActions?: boolean;
-  selectedArtifactId?: string | null;
-
   /** Persistent chat rail — enable the cross-lens conversation panel */
   enableChatRail?: boolean;
 
@@ -103,8 +98,6 @@ export function LensShell({
   onSearchChange,
   searchPlaceholder = 'Search...',
   filters,
-  aiActions,
-  selectedArtifactId,
   enableChatRail = true,
   enableConnectiveTissue = true,
   isLoading,
@@ -183,11 +176,6 @@ export function LensShell({
           )}
           {filters}
         </div>
-      )}
-
-      {/* Universal AI Actions */}
-      {aiActions && (
-        <UniversalActions domain={domain} artifactId={selectedArtifactId} compact />
       )}
 
       {/* Connective Tissue — cross-lens DTU economy bar */}

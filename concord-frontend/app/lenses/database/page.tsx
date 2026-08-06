@@ -13,7 +13,6 @@ import { LiveDbClient } from '@/components/database/LiveDbClient';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -1241,7 +1240,6 @@ export default function DatabaseLensPage() {
       </div>
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="database" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="database"

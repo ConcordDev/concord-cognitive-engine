@@ -16,7 +16,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Wrench,
   Plus,
@@ -781,7 +780,6 @@ export default function DIYLensPage() {
         </>
       }
     >
-      <UniversalActions domain="diy" artifactId={items[0]?.id} compact />
 
       {(() => {
         const all = items.map((i) => i.data as unknown as DIYArtifact);

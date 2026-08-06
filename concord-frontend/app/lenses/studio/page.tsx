@@ -21,7 +21,6 @@ import {
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
@@ -37,7 +36,6 @@ import {
   Headphones,
   Zap,
   Activity,
-  Layers,
   Sparkles,
   Brain,
   BookOpen,
@@ -54,7 +52,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { showToast } from '@/components/common/Toasts';
 import Link from 'next/link';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
@@ -463,7 +460,6 @@ export default function StudioLensPage() {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showNewProject, setShowNewProject] = useState(false);
   const [showAddTrack, setShowAddTrack] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const { items: studioArtifacts } = useLensData('studio', 'project', { noSeed: true });
   const runStudioAction = useRunArtifact('studio');
   const [studioActionResult, setStudioActionResult] = useState<Record<string, unknown> | null>(
@@ -2562,28 +2558,11 @@ export default function StudioLensPage() {
           </Link>
         )}
         <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-
-        {/* Lens Features toggle */}
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="flex items-center gap-1 text-[9px] text-gray-400 hover:text-white"
-        >
-          <Layers className="w-3 h-3" />
-          {showFeatures ? 'Hide' : 'Features'}
-        </button>
       </div>
-
-      {/* Lens Features Panel */}
-      {showFeatures && (
-        <div className="border-t border-white/10 px-4 pb-3 bg-black/40">
-          <LensFeaturePanel lensId="studio" />
-        </div>
-      )}
 
       {/* Realtime Data */}
       {realtimeData && (
         <>
-          <UniversalActions domain="studio" artifactId={null} compact />
           <RealtimeDataPanel
             domain="studio"
             data={realtimeData}

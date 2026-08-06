@@ -22,7 +22,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Zap,
   Wrench,
@@ -744,7 +743,6 @@ export default function ElectricalLensPage() {
         );
       })()}
 
-      <UniversalActions domain="electrical" artifactId={items[0]?.id} compact />
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-2 flex-wrap">
         {MODE_TABS.map((tab) => (
           <button

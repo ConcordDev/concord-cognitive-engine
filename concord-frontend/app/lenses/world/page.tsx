@@ -15,6 +15,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Globe2 as MTabConcordia, Grid3x3 as MTabDistrict, Compass as MTabExplore,
   Radio as MTabStreams,
+  Layers,
 } from 'lucide-react';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useConsolePing } from '@/hooks/useConsolePing';
@@ -23,8 +24,6 @@ import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { useSocket } from '@/hooks/useSocket';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { SummonDrawer } from '@/components/lens/SummonDrawer';
 
 import DistrictViewport from '@/components/world-lens/DistrictViewport';
@@ -1177,8 +1176,6 @@ import type { ConcordiaDistrict } from '@/components/world-lens/ConcordiaHub';
 
 import {
   Globe,
-  ChevronDown,
-  Layers,
   Map as MapIcon,
   Zap,
   X,
@@ -2604,7 +2601,6 @@ export default function WorldLensPage() {
   );
   const [showValidation, setShowValidation] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(false);
 
   // Live NPC state — populated from API, refreshed every 10s
   const [worldNPCs, setWorldNPCs] = useState<
@@ -5013,7 +5009,6 @@ export default function WorldLensPage() {
               Streams
             </button>
           </div>
-          <UniversalActions domain="world" artifactId={undefined} compact />
         </div>
       </header>
 
@@ -7378,30 +7373,6 @@ export default function WorldLensPage() {
                   </div>
                 );
               })()}
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* Lens Features (collapsible) — same reasoning as World Actions above:
-          generic feature-icon scaffold, not 3D-game HUD. Hidden in Explore
-          mode so it stops competing with the 3D canvas for flex height. */}
-      {viewMode !== 'explore' && (
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-2 text-xs text-gray-400 hover:text-white transition-colors"
-        >
-          <span className="flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5" /> Lens Features
-          </span>
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-3">
-            <LensFeaturePanel lensId="world" />
           </div>
         )}
       </div>
