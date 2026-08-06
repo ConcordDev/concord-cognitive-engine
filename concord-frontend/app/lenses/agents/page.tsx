@@ -19,7 +19,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Play, Power, Activity, Clock, Zap, Settings, Search,
-  Terminal, Eye, ChevronRight, BarChart3,
+  Terminal, Eye, ChevronRight, ChevronDown, BarChart3,
   Code, Brain, Shield, Cpu,
   CheckCircle, XCircle,
   Workflow, Database,
@@ -107,6 +107,8 @@ export default function AgentsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showAgentRoster, setShowAgentRoster] = useState(false);
+  const [showForkPreview, setShowForkPreview] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1399,14 +1401,38 @@ export default function AgentsLensPage() {
         )}
       </AnimatePresence>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <AgentRoster />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowAgentRoster(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showAgentRoster ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Agent Roster
+        </button>
+        {showAgentRoster && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <AgentRoster />
+          </section>
+        )}
+      </div>
       {/* P-D — lattice-fork "forked self" preview (preview-only, non-money;
           see docs/GOVERNANCE_DESIGN.md §5.5). */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ForkPreviewPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowForkPreview(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showForkPreview ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Forked-Self Preview
+        </button>
+        {showForkPreview && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ForkPreviewPanel />
+          </section>
+        )}
+      </div>
     </div>
           <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="agents" limit={10} hideWhenEmpty className="mt-4" />
