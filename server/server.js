@@ -18561,9 +18561,21 @@ import { noteRejection as _noteAntiCheatRejection, clearUser as _clearAntiCheatU
 import { runChatComputePreflight } from "./lib/chat-compute-preflight.js";
 import { hydrateSession, persistChatTurn } from "./lib/chat-session-store.js";
 
+// Single-instance fallback: someone running one plain `ollama serve` (every
+// model pulled into it, e.g. via OLLAMA_HOST/OLLAMA_URL) rather than the
+// five-brain multi-port topology. Before this fix only `conscious` honored
+// OLLAMA_HOST — subconscious/utility/repair always fell straight to an
+// unreachable Docker hostname (`ollama-subconscious:11434` etc.), which is
+// why a single-Ollama bare-metal/browser deploy reported every brain
+// disconnected even with models downloaded and running. A specific
+// BRAIN_<NAME>_URL still wins when set. Mirrors the same fix in
+// lib/brain-config.js's BRAIN_CONFIG (that object isn't the live source for
+// these four brains — this one is — but both are kept in sync).
+const _singleOllamaFallback = process.env.OLLAMA_URL || process.env.OLLAMA_HOST;
+
 const BRAIN = {
   conscious: {
-    url: process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST || "http://ollama-conscious:11434",
+    url: process.env.BRAIN_CONSCIOUS_URL || _singleOllamaFallback || "http://ollama-conscious:11434",
     model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
     role: "chat, deep reasoning, complex queries",
     systemPrompt: BRAIN_IDENTITY.conscious,
@@ -18571,7 +18583,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   subconscious: {
-    url: process.env.BRAIN_SUBCONSCIOUS_URL || "http://ollama-subconscious:11434",
+    url: process.env.BRAIN_SUBCONSCIOUS_URL || _singleOllamaFallback || "http://ollama-subconscious:11434",
     model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
     role: "autogen, dream, evolution, synthesis, birth",
     systemPrompt: BRAIN_IDENTITY.subconscious,
@@ -18579,7 +18591,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   utility: {
-    url: process.env.BRAIN_UTILITY_URL || "http://ollama-utility:11434",
+    url: process.env.BRAIN_UTILITY_URL || _singleOllamaFallback || "http://ollama-utility:11434",
     model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
     role: "lens interactions, entity actions, quick domain tasks",
     systemPrompt: BRAIN_IDENTITY.utility,
@@ -18587,7 +18599,7 @@ const BRAIN = {
     stats: { requests: 0, totalMs: 0, dtusGenerated: 0, errors: 0, lastCallAt: null },
   },
   repair: {
-    url: process.env.BRAIN_REPAIR_URL || "http://ollama-repair:11434",
+    url: process.env.BRAIN_REPAIR_URL || _singleOllamaFallback || "http://ollama-repair:11434",
     model: process.env.BRAIN_REPAIR_MODEL || "qwen2.5:1.5b",
     role: "error detection, auto-fix, runtime repair",
     systemPrompt: BRAIN_IDENTITY.repair,
@@ -61522,17 +61534,13 @@ app.post("/api/brain/wants/decay", (_req, res) => {
 // Per-brain health and stats endpoint
 app.get("/api/brain/status", (_req, res) => {
   try {
-    const brainStatus = {};
-    for (const [name, cfg] of Object.entries(BRAIN_CONFIG)) {
-      const b = BRAIN?.[name] || {};
-      brainStatus[name] = {
-        enabled: b.enabled ?? false,
-        model: cfg.model,
-        url: cfg.url,
-        stats: b.stats || { requests: 0, totalMs: 0, errors: 0, lastCallAt: null },
-      };
-    }
-    res.json({ ok: true, llmReady: LLM_READY, brains: brainStatus });
+    // getBrainStatus() (defined above) is the single source of truth for
+    // mode/onlineCount/avgResponseMs/embeddings — it was already used by
+    // the chat-context builder and /api/platform/status but this route
+    // hand-rolled a stripped-down duplicate missing those fields, which is
+    // why the frontend's BrainMonitor badge always showed "Fallback 0/N"
+    // regardless of real brain state.
+    res.json({ ...getBrainStatus(), llmReady: LLM_READY });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
