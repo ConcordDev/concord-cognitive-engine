@@ -247,6 +247,10 @@ export default function PaperLensPage() {
   const [editorTitle, setEditorTitle] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Abstract']));
   const [sortField, setSortField] = useState<'updatedAt' | 'title'>('updatedAt');
+  const [showPaperWorkbench, setShowPaperWorkbench] = useState(false);
+  const [showArxivSearch, setShowArxivSearch] = useState(false);
+  const [showOpenLibrary, setShowOpenLibrary] = useState(false);
+  const [showCrossRef, setShowCrossRef] = useState(false);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [citationStyle, setCitationStyle] = useState<CitationData['style']>('apa');
 
@@ -1241,26 +1245,83 @@ export default function PaperLensPage() {
       <PaperSummarizer />
     </div>
 
-    {/* Bespoke arXiv search with Save-as-DTU */}
-    <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
-      <ArxivSearch />
+    {/* External reference — arXiv search, not this lens's own library.
+        Collapsed by default rather than promoted open on every visit. */}
+    <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 mx-4">
+      <button
+        type="button"
+        onClick={() => setShowArxivSearch((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showArxivSearch}
+      >
+        <span>arXiv search (external reference)</span>
+        {showArxivSearch ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showArxivSearch && (
+        <div className="px-4 pb-4">
+          <ArxivSearch />
+        </div>
+      )}
     </section>
     <section className="mt-4 mx-4">
       <LensFeedButton domain="paper" />
       <PaperLibrary />
     </section>
     {/* Librarian essentials — PDF reader, annotation, DOI capture,
-        Semantic Scholar enrichment, dedupe, group libraries, alerts. */}
-    <section className="mt-4 mx-4">
-      <PaperWorkbench />
+        Semantic Scholar enrichment, dedupe, group libraries, alerts.
+        Collapsed by default — was previously mounted unconditionally
+        below every tab's content regardless of which tab was active. */}
+    <section className="mt-4 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+      <button
+        type="button"
+        onClick={() => setShowPaperWorkbench((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showPaperWorkbench}
+      >
+        <span>Librarian workbench (PDF reader, annotation, DOI capture, dedupe, group libraries, alerts)</span>
+        {showPaperWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showPaperWorkbench && (
+        <div className="px-4 pb-4">
+          <PaperWorkbench />
+        </div>
+      )}
     </section>
-    {/* Phase 4 — REAL Open Library book search. */}
-    <section className="mt-4 mx-4">
-      <OpenLibraryPanel domain="paper" />
+    {/* Phase 4 — REAL Open Library book search. External reference,
+        collapsed by default. */}
+    <section className="mt-4 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+      <button
+        type="button"
+        onClick={() => setShowOpenLibrary((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showOpenLibrary}
+      >
+        <span>Open Library book search (external reference)</span>
+        {showOpenLibrary ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showOpenLibrary && (
+        <div className="px-4 pb-4">
+          <OpenLibraryPanel domain="paper" />
+        </div>
+      )}
     </section>
-    {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
-    <section className="mt-4 mx-4">
-      <CrossRefPanel domain="paper" />
+    {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. External
+        reference, collapsed by default. */}
+    <section className="mt-4 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+      <button
+        type="button"
+        onClick={() => setShowCrossRef((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showCrossRef}
+      >
+        <span>CrossRef DOI metadata search (external reference)</span>
+        {showCrossRef ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showCrossRef && (
+        <div className="px-4 pb-4">
+          <CrossRefPanel domain="paper" />
+        </div>
+      )}
     </section>
     {/* Phase 5 — open research-arc sessions for this lens. */}
     <section className="mt-3 mx-4">
