@@ -7905,7 +7905,7 @@ function validate(schemaName, source = "body") {
         ok: false,
         error: "Validation failed",
         code: "VALIDATION_ERROR",
-        details: result.error.errors.map(e => ({
+        details: result.error.issues.map(e => ({
           path: e.path.join("."),
           message: e.message,
           code: e.code
