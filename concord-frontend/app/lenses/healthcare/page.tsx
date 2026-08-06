@@ -1633,7 +1633,7 @@ export default function HealthcareLensPage() {
       {/* Live WHO health alerts */}
       <LiveFeed
         articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
-        domain="legal"
+        domain="healthcare"
         isLive={isLive}
         lastUpdated={lastUpdated}
         limit={8}
