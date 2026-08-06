@@ -94,10 +94,10 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.5.0",
+    "@types/node": "^26.1.2",
     "eslint": "^10.8.0",
-    "globals": "^15.0.0",
-    "typescript": "^5.9.3"
+    "globals": "^17.9.0",
+    "typescript": "^7.0.2"
   },
   "optionalDependencies": {
     "@huggingface/transformers": "^4.2.0",
