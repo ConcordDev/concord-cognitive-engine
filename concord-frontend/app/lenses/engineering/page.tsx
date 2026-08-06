@@ -28,6 +28,8 @@ import {
   Zap,
   Loader2,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
   XCircle,
   FlaskConical,
   Atom,
@@ -185,6 +187,8 @@ const DEFAULT_FEA_MODEL: FEAModel = {
 
 export default function EngineeringPage() {
   const [tab, setTab] = useState<Tab>('Model');
+  const [showHnFeed, setShowHnFeed] = useState(false);
+  const [showEngineeringActionPanel, setShowEngineeringActionPanel] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -1171,15 +1175,39 @@ export default function EngineeringPage() {
           <SimHistoryPanel refreshKey={historyKey} />
         </div>
       )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <HnEngineeringFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowHnFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showHnFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Engineering Discussion (external reference)
+        </button>
+        {showHnFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <HnEngineeringFeed />
+          </section>
+        )}
+      </div>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <EngineeringActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowEngineeringActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showEngineeringActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          More Actions
+        </button>
+        {showEngineeringActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <EngineeringActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
 
           <RecentMineCard domain="engineering" limit={10} hideWhenEmpty className="mt-4" />
