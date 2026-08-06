@@ -47,6 +47,7 @@ import {
   Coins, TrendingDown, Users, Trophy, RefreshCw,
   ListChecks, Settings, MessageSquare, Activity, GitBranch,
   UserPlus, X, Save, Loader2, Sparkles, Plus,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -147,6 +148,7 @@ type Tab = 'overview' | 'listings' | 'profile' | 'followers' | 'cascade';
 
 export default function CreatorDashboardPage() {
   const [tab, setTab] = useState<Tab>('overview');
+  const [showCreatorStudio, setShowCreatorStudio] = useState(false);
 
   useLensCommand(
     [
@@ -210,7 +212,19 @@ export default function CreatorDashboardPage() {
       <FirstRunTour lensId="creator" />
       <DepthBadge lensId="creator" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
-        <CreatorStudioSection />
+        <button
+          type="button"
+          onClick={() => setShowCreatorStudio(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCreatorStudio ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Creator Studio (pipeline / audience / revenue / calendar / more)
+        </button>
+        {showCreatorStudio && (
+          <div className="mt-3">
+            <CreatorStudioSection />
+          </div>
+        )}
       </div>
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5 flex items-start justify-between gap-3 flex-wrap">
