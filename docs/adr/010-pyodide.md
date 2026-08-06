@@ -113,3 +113,76 @@ that window, same as it is for any other memory spike in the process.
   `server/tests/depth/code-exec-python-behavior.test.js` (1, end-to-end
   macro-registry wiring via `lensRun`), `server/tests/chat-agent.test.js`
   (+5, tool dispatch with a mocked `runMacro`).
+
+## Addendum (2026-08-02): scientific packages (numpy/pandas/matplotlib/scipy/sympy)
+
+The base `pyodide` npm install bundles only the core runtime + stdlib —
+numpy/pandas/matplotlib/scipy are NOT included. Hand-verified: Pyodide's own
+`loadPackage()` fetches them from `cdn.jsdelivr.net` on first use by
+default, which would have silently made `run_python` depend on a live
+third-party CDN, breaking this ADR's "no network needed" property. Instead:
+
+- **Vendored, not CDN-fetched.** `server/lib/pyodide-packages.js` resolves
+  the exact package closure (16 wheel files including transitive
+  dependencies) off the *installed* pyodide's own `pyodide-lock.json` —
+  never a hand-maintained list. `server/scripts/fetch-pyodide-packages.mjs`
+  downloads them once (SHA-256-verified against that same lockfile) into
+  `server/data/pyodide-packages/` (gitignored, regenerated artifact — same
+  convention as the Godot web export). `python-sandbox.js#runPython(code,
+  {packages})` then loads them via `pyodide.loadPackage([absoluteLocalPath,
+  ...])` — genuinely zero network at call time.
+- **Honest-by-construction, no fallback.** A requested package that hasn't
+  been vendored fails with `python_package_not_vendored` and the exact
+  missing-file list, resolved on the main thread BEFORE a worker even
+  spawns. It never silently falls back to a CDN fetch — that fallback would
+  reintroduce the exact dependency this design removes.
+- **Not independently verifiable end-to-end in this sandboxed dev
+  environment.** Its outbound-network proxy allowlists only a short list of
+  hosts (`pypi.org`, `registry.npmjs.org`, this session's own GitHub repo,
+  a few others) — `cdn.jsdelivr.net` is not on it (confirmed: a real fetch
+  attempt gets a 403 from the proxy itself, `CONNECT tunnel failed`), and
+  browsing `pyodide/pyodide`'s GitHub releases was blocked by this
+  environment's own repo-scoping (`add_repo` refused a cross-tier add). A
+  normal CI runner or production box with standard outbound HTTPS should
+  reach `cdn.jsdelivr.net` without issue — a materially different network
+  posture than this dev sandbox's narrow proxy. What IS verified end-to-end
+  here, for real: the local-wheel-loading mechanism itself, proven with a
+  small hand-built fixture wheel (`server/tests/fixtures/pyodide-test-wheel/`)
+  that genuinely installs and imports via the exact call shape production
+  uses (`server/tests/pyodide-packages.test.js`); the exact jsdelivr URL the
+  fetch script constructs, byte-for-byte matched against the real URL the
+  installed pyodide library itself attempted to fetch before this vendoring
+  mechanism existed; and every honest-failure path (unknown package,
+  not-yet-vendored package, kill-switch), all of which reproduce for real
+  in this environment since nothing has been vendored here yet.
+- **matplotlib gets a headless Agg backend** (`matplotlib.use("Agg")`, set
+  right after `loadPackage` succeeds and before any user code runs — Agg
+  must be selected before `pyplot` is imported for real) and a best-effort
+  figure-capture step after user code runs (`savefig` to an in-memory
+  `BytesIO`, base64-encoded, never touching the real filesystem). Wired
+  into the agent loop as real image artifacts (`chat-agent.js`'s
+  `run_python` tool), not inlined as base64 text into what the brain reads
+  back — same discipline `generate_image` already uses. Live figure
+  rendering is one of the two things this addendum could NOT verify
+  end-to-end here (real matplotlib isn't vendored/reachable in this
+  sandbox); the capture code itself was written to the same care and
+  documented residual-risk standard as the rest of this file, not tested
+  live.
+- **`finance.cashflow-projection-python`** (`server/domains/finance.js`) is
+  the first real macro built on this: a deterministic pandas/numpy-powered
+  month-by-month savings trajectory (irregular one-time events + a fixed
+  monthly rate), distinct from the two pre-existing JS calculators in that
+  file (`compoundInterest` — single flat-rate path, no irregular cash
+  flows; `retirement-monte-carlo` — stochastic simulation with random
+  returns). Its core compounding formula is verified correct via an
+  equivalent plain-Python (zero packages, genuinely executes in this
+  sandbox) computation checked against hand-computed values
+  (`server/tests/finance-cashflow-projection-python.test.js`) — the
+  pandas/numpy translation of that verified formula is a mechanical,
+  low-risk step flagged as the one residual untested layer, same as the
+  matplotlib capture code above.
+- 15 more new tests across this addendum: `server/tests/pyodide-packages.test.js`
+  (12 — closure resolution, whitelist enforcement, the real local-wheel
+  mechanism, the URL match), `server/tests/finance-cashflow-projection-python.test.js`
+  (4), plus extensions to `chat-agent.test.js` and `code-domain-parity.test.js`
+  for the `packages`/image-artifact plumbing.

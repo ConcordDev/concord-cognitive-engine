@@ -60,14 +60,54 @@
  * of code, captures stdout/stderr via Pyodide's own `setStdout`/`setStderr`
  * hooks (not by intercepting real OS file descriptors — there are none to
  * intercept), and is torn down. No state persists between calls.
+ *
+ * ── Scientific packages (numpy/pandas/matplotlib/scipy/sympy), added 2026-08-02 ──
+ *
+ * These are NOT bundled in the base `pyodide` npm install (only core +
+ * stdlib are). Pyodide's own `loadPackage()` fetches them from
+ * `cdn.jsdelivr.net` by default, which would silently turn `run_python`
+ * into something that depends on a live third-party CDN — breaking the
+ * "no network needed" property documented above. Instead:
+ * `scripts/fetch-pyodide-packages.mjs` vendors the exact pinned wheels
+ * (checksum-verified against the installed pyodide's own lockfile) into
+ * `server/data/pyodide-packages/`; `lib/pyodide-packages.js` is the single
+ * source of truth for which files that is (package-closure resolution
+ * off the real lockfile's `depends` graph, never hand-maintained).
+ *
+ * `runPython(code, {packages})` resolves the request on the MAIN thread
+ * BEFORE spawning a worker: if any requested package (or a transitive
+ * dependency) hasn't been vendored, it fails honestly
+ * (`python_package_not_vendored`) with no worker spawned and no attempt
+ * to fall back to a network fetch — that fallback would silently
+ * reintroduce the exact CDN dependency this design removes. Hand-verified
+ * end-to-end with a real (small, hand-built) local wheel: `pyodide.
+ * loadPackage([absoluteLocalPath])` genuinely installs and makes a local
+ * package importable with zero network access — see
+ * server/tests/pyodide-packages.test.js.
+ *
+ * matplotlib gets one extra step: immediately after `loadPackage` succeeds
+ * (and before any user code runs), the worker sets the headless Agg
+ * backend (`matplotlib.use("Agg")`) — Pyodide has no display to render
+ * to, and Agg must be selected before `pyplot` is ever imported for real.
+ * After user code runs, if matplotlib was loaded, the worker captures any
+ * open figures as base64 PNGs (`savefig` to an in-memory `BytesIO`, never
+ * touching the (blocked) real filesystem) and returns them alongside
+ * stdout/stderr — best-effort: a capture failure never fails the whole
+ * call, matching this file's existing never-throw discipline.
  */
 
 import { Worker } from "node:worker_threads";
 import { createRequire } from "node:module";
+import {
+  PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES,
+  resolvePackageClosure, packageFileInfo,
+} from "./pyodide-packages.js";
 
 const require = createRequire(import.meta.url);
 
-export const PYTHON_SANDBOX_LOAD_TIMEOUT_MS = 15_000; // cold pyodide load is ~2s; generous margin for a loaded host
+export { PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES };
+
+export const PYTHON_SANDBOX_LOAD_TIMEOUT_MS = 30_000; // cold pyodide load is ~2s with no packages; bumped from 15s to give scipy/matplotlib's larger local-disk wasm parses (dozens of MB, still zero network) real headroom on a loaded host
 export const PYTHON_SANDBOX_RUN_TIMEOUT_MS = 8_000; // the PRIMARY defense — see file header
 export const PYTHON_SANDBOX_MAX_OUTPUT_CHARS = 12_000; // matches chat-agent.js's MAX_TOOL_RESULT_LEN
 
@@ -88,10 +128,38 @@ export const PYTHON_SANDBOX_RESOURCE_LIMITS = Object.freeze({
 // --allow-wasi, since it never enables the permission model at all).
 const WORKER_EXEC_ARGV = Object.freeze(["--no-warnings"]);
 
+// Best-effort matplotlib figure capture, run AFTER user code. Never touches
+// the real filesystem (savefig targets an in-memory BytesIO); wrapped in its
+// own try/except so a capture problem can never fail the whole call. Kept as
+// ONE JS string (not split across array lines) so its embedded '\n's stay
+// real Python newlines inside a single runPythonAsync() call — the exact
+// double-escaping mistake documented in this file's own commit history
+// (a sed pass once turned '\\n' into a literal embedded newline and broke
+// the worker source's own JS syntax) only bites when a string like this is
+// built by find/replace; written directly here, it's just a normal string.
+const MATPLOTLIB_CAPTURE_SNIPPET =
+  "import json as __concord_json, base64 as __concord_b64, io as __concord_io\n" +
+  "def __concord_capture_figures():\n" +
+  "    try:\n" +
+  "        import matplotlib.pyplot as __concord_plt\n" +
+  "    except Exception:\n" +
+  "        return '[]'\n" +
+  "    out = []\n" +
+  "    try:\n" +
+  "        for num in __concord_plt.get_fignums():\n" +
+  "            fig = __concord_plt.figure(num)\n" +
+  "            buf = __concord_io.BytesIO()\n" +
+  "            fig.savefig(buf, format='png', bbox_inches='tight', dpi=110)\n" +
+  "            out.append(__concord_b64.b64encode(buf.getvalue()).decode('ascii'))\n" +
+  "        __concord_plt.close('all')\n" +
+  "    except Exception:\n" +
+  "        pass\n" +
+  "    return __concord_json.dumps(out)\n" +
+  "__concord_capture_figures()";
+
 const WORKER_BOOTSTRAP_SRC = [
   "const { parentPort, workerData } = require('node:worker_threads');",
   "const { loadPyodide } = require('pyodide');",
-  "const path = require('node:path');",
   "",
   "(async () => {",
   "  let pyodide;",
@@ -107,6 +175,31 @@ const WORKER_BOOTSTRAP_SRC = [
   "  pyodide.setStdout({ batched: (s) => stdout.push(s) });",
   "  pyodide.setStderr({ batched: (s) => stderr.push(s) });",
   "",
+  "  const packagePaths = Array.isArray(workerData.packagePaths) ? workerData.packagePaths : [];",
+  "  const packageNames = Array.isArray(workerData.packageNames) ? workerData.packageNames : [];",
+  "  const hasMatplotlib = packageNames.includes('matplotlib');",
+  "  if (packagePaths.length) {",
+  "    try {",
+  "      // NOTE (hand-verified): pyodide.loadPackage() does NOT reject just",
+  "      // because one of the given local paths is missing/unreadable — it",
+  "      // logs the failure into ITS OWN stderr channel and returns normally.",
+  "      // The user-visible failure surfaces later, honestly, as a real",
+  "      // Python ImportError/ModuleNotFoundError the moment their code",
+  "      // tries to `import` the package that silently failed to load. This",
+  "      // try/catch still matters for genuinely thrown exceptions (e.g. a",
+  "      // malformed path list) — it just isn't the only failure surface.",
+  "      await pyodide.loadPackage(packagePaths);",
+  "      if (hasMatplotlib) {",
+  "        // MUST run before any user import of matplotlib.pyplot — Agg is a",
+  "        // headless raster backend; Pyodide has no display to render to.",
+  "        await pyodide.runPythonAsync(\"import matplotlib; matplotlib.use('Agg')\");",
+  "      }",
+  "    } catch (err) {",
+  "      parentPort.postMessage({ type: 'load_error', error: `package_load_failed: ${String(err && err.message || err)}` });",
+  "      return;",
+  "    }",
+  "  }",
+  "",
   "  parentPort.postMessage({ type: 'ready' });",
   "",
   "  parentPort.on('message', async (msg) => {",
@@ -115,15 +208,22 @@ const WORKER_BOOTSTRAP_SRC = [
   "      const result = await pyodide.runPythonAsync(msg.code);",
   "      let resultStr = null;",
   "      try { resultStr = result === undefined ? null : String(result); } catch (_e) { resultStr = '<unrepresentable result>'; }",
+  "      let images = [];",
+  "      if (hasMatplotlib) {",
+  "        try {",
+  "          const raw = await pyodide.runPythonAsync(workerData.matplotlibCaptureSnippet);",
+  "          images = JSON.parse(String(raw)).map((b64) => ({ mime: 'image/png', dataB64: b64 }));",
+  "        } catch (_captureErr) { /* best-effort — never fails the call */ }",
+  "      }",
   "      parentPort.postMessage({",
   "        type: 'result', id: msg.id, ok: true,",
-  "        value: { result: resultStr, stdout: stdout.join('\\n'), stderr: stderr.join('\\n') },",
+  "        value: { result: resultStr, stdout: stdout.join('\\n'), stderr: stderr.join('\\n'), images },",
   "      });",
   "    } catch (err) {",
   "      parentPort.postMessage({",
   "        type: 'result', id: msg.id, ok: false,",
   "        error: String(err && err.message || err),",
-  "        value: { stdout: stdout.join('\\n'), stderr: stderr.join('\\n') },",
+  "        value: { stdout: stdout.join('\\n'), stderr: stderr.join('\\n'), images: [] },",
   "      });",
   "    }",
   "  });",
@@ -150,6 +250,38 @@ function truncate(s) {
 }
 
 /**
+ * Resolves a requested top-level package list into local vendored file
+ * paths, on the MAIN thread, before any worker is spawned. Never touches
+ * the network — a package that hasn't been vendored (scripts/
+ * fetch-pyodide-packages.mjs hasn't been run, or the operator hasn't
+ * opted into scientific packages at all) is reported as a plain, honest
+ * gap, not silently skipped or fetched live.
+ * @param {string[]} packages
+ * @returns {{ok:true, paths:string[], names:string[]}|{ok:false, error:string, missing?:string[], unknown?:string[]}}
+ */
+function resolveRequestedPackages(packages) {
+  if (!packages || !packages.length) return { ok: true, paths: [], names: [] };
+  let closure;
+  try {
+    closure = resolvePackageClosure(packages);
+  } catch (err) {
+    return { ok: false, error: `pyodide_lockfile_unreadable: ${String(err?.message || err)}` };
+  }
+  if (!closure.ok) {
+    if (closure.error === "package_not_allowed") {
+      return { ok: false, error: "python_package_not_allowed", unknown: closure.unknown };
+    }
+    return { ok: false, error: closure.error, unknown: closure.unknown };
+  }
+  const files = packageFileInfo(closure.names);
+  const missing = files.filter((f) => !f.exists).map((f) => f.name);
+  if (missing.length) {
+    return { ok: false, error: "python_package_not_vendored", missing };
+  }
+  return { ok: true, paths: files.map((f) => f.vendoredPath), names: closure.names };
+}
+
+/**
  * Runs one Python snippet in a fresh, isolated Worker and tears it down.
  * Never throws — always resolves to a plain result object, matching
  * `code.exec`'s existing JS-path shape (`{ok, result:{stdout,stderr,
@@ -157,9 +289,45 @@ function truncate(s) {
  * inner piece the macro wraps).
  *
  * @param {string} code
- * @returns {Promise<{ok: boolean, stdout: string, stderr: string, result: string|null, error?: string}>}
+ * @param {object} [opts]
+ * @param {string[]} [opts.packages] — top-level package names from
+ *   PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES (numpy/pandas/matplotlib/scipy/sympy).
+ *   Transitive dependencies are resolved automatically. Any package not
+ *   already vendored (scripts/fetch-pyodide-packages.mjs) fails honestly —
+ *   never falls back to a live fetch.
+ * @returns {Promise<{ok: boolean, stdout: string, stderr: string, result: string|null, images?: Array<{mime:string, dataB64:string}>, error?: string, missing?: string[]}>}
  */
-export function runPython(code) {
+export function runPython(code, opts = {}) {
+  const packages = Array.isArray(opts.packages) ? opts.packages : [];
+  const pkgResolution = resolveRequestedPackages(packages);
+  if (!pkgResolution.ok) {
+    // No worker spawned — a doomed-to-fail request shouldn't pay the ~2s
+    // cold-load cost, and the failure should be immediate and legible.
+    return Promise.resolve({
+      ok: false, stdout: "", stderr: "", result: null,
+      error: pkgResolution.error,
+      ...(pkgResolution.missing ? { missing: pkgResolution.missing } : {}),
+      ...(pkgResolution.unknown ? { unknown: pkgResolution.unknown } : {}),
+    });
+  }
+  return _runInWorker(code, { packagePaths: pkgResolution.paths, packageNames: pkgResolution.names });
+}
+
+/**
+ * TEST-ONLY: drives the exact same worker path as runPython(), but with
+ * caller-supplied local wheel paths instead of the production whitelist +
+ * vendored-directory resolution. Used to prove the local-wheel-loading
+ * mechanism itself (pyodide.loadPackage([absoluteLocalPath]) really
+ * installs a package with zero network access) against a small, hand-built
+ * fixture wheel — see server/tests/pyodide-packages.test.js. Never called
+ * from production code; the public runPython() always goes through
+ * resolveRequestedPackages()'s whitelist + vendored-file check.
+ */
+export function __runPythonWithRawPackagePathsForTests(code, packagePaths, packageNames = []) {
+  return _runInWorker(code, { packagePaths, packageNames });
+}
+
+function _runInWorker(code, { packagePaths, packageNames }) {
   return new Promise((resolve) => {
     let settled = false;
     let worker;
@@ -187,7 +355,12 @@ export function runPython(code) {
       worker = new Worker(WORKER_BOOTSTRAP_SRC, {
         eval: true,
         execArgv: [...WORKER_EXEC_ARGV],
-        workerData: { pyodideIndexURL },
+        workerData: {
+          pyodideIndexURL,
+          packagePaths,
+          packageNames,
+          matplotlibCaptureSnippet: MATPLOTLIB_CAPTURE_SNIPPET,
+        },
         resourceLimits: { ...PYTHON_SANDBOX_RESOURCE_LIMITS },
       });
     } catch (err) {
@@ -234,6 +407,7 @@ export function runPython(code) {
           stdout: truncate(v.stdout || ""),
           stderr: truncate(v.stderr || ""),
           result: v.result ?? null,
+          images: Array.isArray(v.images) ? v.images : [],
           error: msg.ok ? undefined : (msg.error || "python_exec_failed"),
         });
       }

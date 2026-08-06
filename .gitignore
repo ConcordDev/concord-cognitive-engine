@@ -91,6 +91,13 @@ world-lens-godot/*.x86_64
 # script's header for why nothing else needed to change.
 concord-frontend/public/godot-client/
 
+# Vendored Pyodide scientific packages (scripts/fetch-pyodide-packages.mjs /
+# server npm script `fetch-pyodide-packages`). Checksum-verified wheels for
+# numpy/pandas/matplotlib/scipy/sympy + their transitive deps (~16 files,
+# see server/lib/pyodide-packages.js) — a regenerated, checksum-pinned
+# artifact, never committed, same convention as the Godot web export above.
+server/data/pyodide-packages/
+
 # Visual-QA harness output (scripts/visual-qa.mjs). Full-resolution 1152x648
 # captures + the engine log for one run; regenerated on every run and never
 # committed. The DOWNSAMPLED golden baselines it compares against

@@ -626,7 +626,25 @@ export default function registerCodeActions(registerLensAction) {
       if (!pythonExecEnabled()) {
         return { ok: false, error: "python_exec_disabled", result: { supported: false, stdout: "", stderr: "Live Python execution is disabled in this environment. Enable with CONCORD_PYTHON_EXEC_ENABLED=1 — see server/lib/python-sandbox.js's header for the real, verified security envelope before enabling in production.", exitCode: -1 } };
       }
-      const r = await runPython(code);
+      // Scientific packages (numpy/pandas/matplotlib/scipy/sympy) — vendored
+      // offline, never CDN-fetched at runtime (see lib/pyodide-packages.js's
+      // header). A package that hasn't been vendored via
+      // `npm run fetch-pyodide-packages` fails honestly here, with the
+      // exact missing-file list, rather than a generic execution error.
+      const packages = Array.isArray(params.packages) ? params.packages.map(String) : [];
+      const r = await runPython(code, { packages });
+      if (!r.ok && (r.error === "python_package_not_vendored" || r.error === "python_package_not_allowed")) {
+        return {
+          ok: false, error: r.error,
+          result: {
+            supported: true, stdout: "", exitCode: -1,
+            stderr: r.error === "python_package_not_vendored"
+              ? `Package(s) not vendored: ${(r.missing || []).join(", ")}. An operator must run \`npm run fetch-pyodide-packages\` first.`
+              : `Package(s) not allowed: ${(r.unknown || []).join(", ")}. Supported: numpy, pandas, matplotlib, scipy, sympy.`,
+            missing: r.missing, unknown: r.unknown,
+          },
+        };
+      }
       return {
         ok: r.ok,
         error: r.ok ? undefined : "python_exec_failed",
@@ -636,6 +654,7 @@ export default function registerCodeActions(registerLensAction) {
           stderr: r.ok ? r.stderr : (r.error || r.stderr || "python execution failed"),
           exitCode: r.ok ? 0 : 1,
           returnValue: r.result,
+          images: r.images || [],
         },
       };
     }

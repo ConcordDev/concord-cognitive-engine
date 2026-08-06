@@ -63,7 +63,7 @@ const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, i
 Available tools:
 - web_search: Search the web for current information. Params: {"query": "search terms"}
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
-- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Params: {"code": "python source"}
+- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
@@ -153,19 +153,38 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "run_python": {
         const code = String(call.params.code || "");
         if (!code.trim()) return { tool: call.tool, ok: false, error: "run_python requires non-empty code" };
-        const r = await runMacro("code", "exec", { code, language: "python" }, ctx);
+        // Optional scientific packages: numpy/pandas/matplotlib/scipy/sympy.
+        // Whitelist + vendored-file honesty check happens deeper (lib/
+        // pyodide-packages.js via python-sandbox.js) — this call site just
+        // passes the request through; an unknown or not-yet-vendored
+        // package comes back as a real, legible error, never fabricated.
+        const packages = Array.isArray(call.params.packages) ? call.params.packages.map(String) : [];
+        const r = await runMacro("code", "exec", { code, language: "python", packages }, ctx);
         if (!r?.ok) {
           return {
             tool: call.tool, ok: false,
             error: r?.error || "run_python failed",
             stderr: (r?.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+            ...(r?.result?.missing ? { missing: r.result.missing } : {}),
+            ...(r?.result?.unknown ? { unknown: r.result.unknown } : {}),
           };
         }
+        const images = Array.isArray(r.result?.images) ? r.result.images : [];
         return {
           tool: call.tool, ok: true,
           stdout: (r.result?.stdout || "").slice(0, MAX_TOOL_RESULT_LEN),
           stderr: (r.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
           returnValue: r.result?.returnValue ?? null,
+          imageCount: images.length,
+          // Don't inline base64 image bytes into the tool-result text the
+          // brain reads back (could be MB) — same discipline generate_image
+          // already uses. The brain sees a count; the UI renders the
+          // artifacts directly.
+          artifacts: images.map((img, i) => ({
+            kind: "image", source: "run_python",
+            prompt: `Figure ${i + 1} from Python code`,
+            image_b64: img.dataB64,
+          })),
         };
       }
       case "browse_url": {
@@ -426,6 +445,7 @@ export function formatToolResults(results) {
       if (r.stdout) parts.push(`stdout:\n${r.stdout}`);
       if (r.stderr) parts.push(`stderr:\n${r.stderr}`);
       if (r.returnValue != null) parts.push(`return value: ${r.returnValue}`);
+      if (r.imageCount) parts.push(`${r.imageCount} figure(s) generated — attached as artifact(s), do not re-describe them from imagination.`);
       return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
     }
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
@@ -627,6 +647,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       // fake-replay with setTimeout" into genuine incremental disclosure.
       emit("tool_call", result);
       if (result.artifact) allArtifacts.push(result.artifact);
+      // run_python's matplotlib capture can return several figures per call
+      // (plural), unlike every other tool's single result.artifact.
+      if (Array.isArray(result.artifacts)) allArtifacts.push(...result.artifacts);
       // Grounding-audit gap fix (2026-07-24) — tool-preference tally. Every
       // REAL tool-call dispatch (this is the one exact site — one increment
       // per call, regardless of ok/error, since even a failed web_search

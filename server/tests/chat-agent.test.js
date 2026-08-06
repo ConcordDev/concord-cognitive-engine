@@ -251,6 +251,70 @@ test("run_python respects the code_exec/python_exec_disabled kill-switch respons
   assert.equal(result.error, "python_exec_disabled");
 });
 
+test("run_python passes the packages param through to code.exec", async () => {
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input) => {
+    calledWith = { domain, name, input };
+    return { ok: true, result: { stdout: "", stderr: "", exitCode: 0, returnValue: null, images: [] } };
+  };
+  await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "import numpy as np", packages: ["numpy"] },
+  });
+  assert.deepEqual(calledWith.input.packages, ["numpy"]);
+});
+
+test("run_python defaults to an empty packages array when the brain omits it", async () => {
+  let calledWith = null;
+  const fakeRunMacro = async (domain, name, input) => {
+    calledWith = { domain, name, input };
+    return { ok: true, result: { stdout: "hi", stderr: "", exitCode: 0, returnValue: null, images: [] } };
+  };
+  await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "print('hi')" },
+  });
+  assert.deepEqual(calledWith.input.packages, []);
+});
+
+test("run_python surfaces a python_package_not_vendored failure with the missing list intact (no fabricated success)", async () => {
+  const fakeRunMacro = async () => ({
+    ok: false, error: "python_package_not_vendored",
+    result: { supported: true, stdout: "", stderr: "Package(s) not vendored: numpy.", exitCode: -1, missing: ["numpy"] },
+  });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "import numpy", packages: ["numpy"] },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, "python_package_not_vendored");
+  assert.deepEqual(result.missing, ["numpy"]);
+});
+
+test("run_python turns matplotlib figures into real image artifacts, never inlining the base64 bytes into the text the brain reads back", async () => {
+  const fakeRunMacro = async () => ({
+    ok: true,
+    result: {
+      stdout: "", stderr: "", exitCode: 0, returnValue: null,
+      images: [{ mime: "image/png", dataB64: "AAAA" }, { mime: "image/png", dataB64: "BBBB" }],
+    },
+  });
+  const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+    tool: "run_python", params: { code: "plt.plot([1,2,3]); plt.show()", packages: ["matplotlib"] },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.imageCount, 2);
+  assert.equal(result.artifacts.length, 2);
+  assert.equal(result.artifacts[0].kind, "image");
+  assert.equal(result.artifacts[0].image_b64, "AAAA");
+  assert.ok(!JSON.stringify({ stdout: result.stdout, stderr: result.stderr }).includes("AAAA"), "base64 bytes must not leak into the text fields the brain re-reads");
+});
+
+test("formatToolResults tells the brain figures were generated without leaking base64 into the prompt text", () => {
+  const rendered = formatToolResults([
+    { tool: "run_python", ok: true, stdout: "", stderr: "", returnValue: null, imageCount: 2 },
+  ]);
+  assert.match(rendered, /2 figure\(s\) generated/);
+  assert.doesNotMatch(rendered, /AAAA|BBBB/);
+});
+
 test("formatToolResults renders run_python stdout/stderr/return value", () => {
   const rendered = formatToolResults([
     { tool: "run_python", ok: true, stdout: "hello\n", stderr: "", returnValue: "42" },
