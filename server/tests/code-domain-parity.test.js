@@ -233,6 +233,39 @@ describe("code.exec (JS sandbox)", () => {
     // All four are undefined in the sandbox
     assert.equal(r.result.stdout, "undefined,undefined,undefined,undefined");
   });
+
+  // Scientific packages (numpy/pandas/matplotlib/scipy/sympy) — vendored
+  // offline via scripts/fetch-pyodide-packages.mjs, never CDN-fetched (see
+  // lib/pyodide-packages.js). In this test environment nothing has been
+  // vendored (no network access to do so — see that script's header), which
+  // is exactly the real-world state until an operator runs the fetch
+  // script. That makes "requested but not vendored" the actual, honestly
+  // reproducible case to pin here, not a workaround.
+  it("packages param requesting an unknown package fails honestly, naming it", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "1+1", language: "python", packages: ["os"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "python_package_not_allowed");
+    assert.deepEqual(r.result.unknown, ["os"]);
+    assert.match(r.result.stderr, /os/);
+  });
+
+  it("packages param requesting a real-but-unvendored package fails honestly, naming exactly what's missing", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "import numpy", language: "python", packages: ["numpy"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "python_package_not_vendored");
+    assert.deepEqual(r.result.missing, ["numpy"]);
+    assert.match(r.result.stderr, /numpy/);
+    assert.match(r.result.stderr, /fetch-pyodide-packages/);
+  });
+
+  it("packages param with pandas honestly reports pandas's full real dependency closure as missing, not just pandas itself", async () => {
+    const r = await call("exec", ctxFor(userA), { code: "1+1", language: "python", packages: ["pandas"] });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "python_package_not_vendored");
+    for (const dep of ["pandas", "numpy", "python-dateutil", "pytz"]) {
+      assert.ok(r.result.missing.includes(dep), `expected ${dep} in the missing list`);
+    }
+  });
 });
 
 describe("code.multi-file-plan", () => {

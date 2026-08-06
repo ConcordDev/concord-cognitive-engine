@@ -63,10 +63,13 @@ const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, i
 Available tools:
 - web_search: Search the web for current information. Params: {"query": "search terms"}
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
-- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Params: {"code": "python source"}
+- run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
+- create_document: Produce a REAL downloadable file (a spec, blueprint, report) — never just describe one in prose. Formats: pdf, md, json, csv, txt, zip. For zip, pass files. Params: {"title": "...", "format": "pdf", "summary": "...", "claims": ["..."], "files": [{"name": "a.md", "content": "..."}]}
+- export_dtu: Convert an EXISTING DTU into a real file in whatever format is requested. Params: {"dtuId": "dtu_...", "format": "pdf"}
+- read_zip: Open and see the contents of a zip file already stored as a DTU artifact — list entries, or read one entry's text. Params: {"dtuId": "dtu_...", "entryName": "optional/path/in/zip.md"}
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
@@ -153,19 +156,38 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
       case "run_python": {
         const code = String(call.params.code || "");
         if (!code.trim()) return { tool: call.tool, ok: false, error: "run_python requires non-empty code" };
-        const r = await runMacro("code", "exec", { code, language: "python" }, ctx);
+        // Optional scientific packages: numpy/pandas/matplotlib/scipy/sympy.
+        // Whitelist + vendored-file honesty check happens deeper (lib/
+        // pyodide-packages.js via python-sandbox.js) — this call site just
+        // passes the request through; an unknown or not-yet-vendored
+        // package comes back as a real, legible error, never fabricated.
+        const packages = Array.isArray(call.params.packages) ? call.params.packages.map(String) : [];
+        const r = await runMacro("code", "exec", { code, language: "python", packages }, ctx);
         if (!r?.ok) {
           return {
             tool: call.tool, ok: false,
             error: r?.error || "run_python failed",
             stderr: (r?.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
+            ...(r?.result?.missing ? { missing: r.result.missing } : {}),
+            ...(r?.result?.unknown ? { unknown: r.result.unknown } : {}),
           };
         }
+        const images = Array.isArray(r.result?.images) ? r.result.images : [];
         return {
           tool: call.tool, ok: true,
           stdout: (r.result?.stdout || "").slice(0, MAX_TOOL_RESULT_LEN),
           stderr: (r.result?.stderr || "").slice(0, MAX_TOOL_RESULT_LEN),
           returnValue: r.result?.returnValue ?? null,
+          imageCount: images.length,
+          // Don't inline base64 image bytes into the tool-result text the
+          // brain reads back (could be MB) — same discipline generate_image
+          // already uses. The brain sees a count; the UI renders the
+          // artifacts directly.
+          artifacts: images.map((img, i) => ({
+            kind: "image", source: "run_python",
+            prompt: `Figure ${i + 1} from Python code`,
+            image_b64: img.dataB64,
+          })),
         };
       }
       case "browse_url": {
@@ -253,6 +275,60 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           dtuId: r.id || r.dtu?.id,
           title: call.params.title,
           artifact,
+        };
+      }
+      case "create_document": {
+        // Real file production — the answer to "make me a spec/blueprint/
+        // report" is a real downloadable PDF/MD/JSON/CSV/TXT/ZIP, not just
+        // prose describing one. Backed by domains/document.js, which reuses
+        // this repo's existing pdfkit-based PDF renderer (the same one 18
+        // domains' auto-rendered documents already go through) and the
+        // adm-zip-based zip renderer — never a fabricated "here's your file"
+        // with no real bytes behind it.
+        const title = String(call.params.title || "").trim();
+        if (!title) return { tool: call.tool, ok: false, error: "create_document requires a title" };
+        const format = String(call.params.format || "pdf").toLowerCase();
+        const r = await runMacro("document", "create", {
+          title, format,
+          summary: call.params.summary, claims: call.params.claims,
+          bullets: call.params.bullets, tags: call.params.tags,
+          files: Array.isArray(call.params.files) ? call.params.files : undefined,
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "create_document failed", ...(r?.supportedFormats ? { supportedFormats: r.supportedFormats } : {}) };
+        return {
+          tool: call.tool, ok: true,
+          dtuId: r.dtuId, filename: r.filename, mimeType: r.mimeType,
+          sizeBytes: r.sizeBytes, downloadUrl: r.downloadUrl,
+          artifact: { kind: "document", id: r.dtuId, title, filename: r.filename, downloadUrl: r.downloadUrl, mimeType: r.mimeType },
+        };
+      }
+      case "export_dtu": {
+        // "Convert this DTU to whatever file type the user requests."
+        const dtuId = String(call.params.dtuId || "").trim();
+        if (!dtuId) return { tool: call.tool, ok: false, error: "export_dtu requires dtuId" };
+        const format = String(call.params.format || "pdf").toLowerCase();
+        const r = await runMacro("document", "export_dtu", { dtuId, format }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "export_dtu failed", ...(r?.supportedFormats ? { supportedFormats: r.supportedFormats } : {}) };
+        return {
+          tool: call.tool, ok: true,
+          dtuId: r.dtuId, sourceDtuId: r.sourceDtuId, filename: r.filename,
+          mimeType: r.mimeType, sizeBytes: r.sizeBytes, downloadUrl: r.downloadUrl,
+          artifact: { kind: "document", id: r.dtuId, title: r.filename, filename: r.filename, downloadUrl: r.downloadUrl, mimeType: r.mimeType },
+        };
+      }
+      case "read_zip": {
+        // "Open and see" a zip — real listing/extraction via adm-zip, no
+        // fabricated file listing.
+        const dtuId = String(call.params.dtuId || "").trim();
+        if (!dtuId) return { tool: call.tool, ok: false, error: "read_zip requires dtuId" };
+        const r = await runMacro("document", "read_zip", {
+          dtuId, entryName: call.params.entryName ? String(call.params.entryName) : undefined,
+        }, ctx);
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "read_zip failed" };
+        return {
+          tool: call.tool, ok: true,
+          entries: r.entries, entryName: r.entryName,
+          text: r.text ? r.text.slice(0, MAX_TOOL_RESULT_LEN) : undefined,
         };
       }
       case "expert_mode": {
@@ -426,11 +502,15 @@ export function formatToolResults(results) {
       if (r.stdout) parts.push(`stdout:\n${r.stdout}`);
       if (r.stderr) parts.push(`stderr:\n${r.stderr}`);
       if (r.returnValue != null) parts.push(`return value: ${r.returnValue}`);
+      if (r.imageCount) parts.push(`${r.imageCount} figure(s) generated — attached as artifact(s), do not re-describe them from imagination.`);
       return `[TOOL_RESULT: run_python] ${parts.join("\n") || "(no output)"}`;
     }
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
+    if (r.tool === "create_document") return `[TOOL_RESULT: create_document] Created ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}. Tell the user the file is ready — do not describe its contents as if it were only text.`;
+    if (r.tool === "export_dtu")   return `[TOOL_RESULT: export_dtu] Exported ${r.sourceDtuId} as ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}.`;
+    if (r.tool === "read_zip")     return `[TOOL_RESULT: read_zip] ${r.entryName ? `${r.entryName}:\n${r.text}` : `entries: ${JSON.stringify(r.entries)}`}`;
     if (r.tool === "expert_mode")  return `[TOOL_RESULT: expert_mode] ${(r.answer || "").slice(0, 4000)}`;
     if (r.tool === "generate_image") return `[TOOL_RESULT: generate_image source=${r.source}] Image generated for prompt "${r.prompt}". Artifact attached.`;
     if (r.tool === "mcp_connect")  return `[TOOL_RESULT: mcp_connect ${r.serverId}] Connected. ${r.toolCount} tool(s) available: ${(r.tools || []).map(t => t.name).slice(0, 30).join(", ")}`;
@@ -627,6 +707,9 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       // fake-replay with setTimeout" into genuine incremental disclosure.
       emit("tool_call", result);
       if (result.artifact) allArtifacts.push(result.artifact);
+      // run_python's matplotlib capture can return several figures per call
+      // (plural), unlike every other tool's single result.artifact.
+      if (Array.isArray(result.artifacts)) allArtifacts.push(...result.artifacts);
       // Grounding-audit gap fix (2026-07-24) — tool-preference tally. Every
       // REAL tool-call dispatch (this is the one exact site — one increment
       // per call, regardless of ok/error, since even a failed web_search

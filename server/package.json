@@ -26,6 +26,8 @@
     "check-route-auth:update": "node scripts/check-route-auth.js --update",
     "migrate": "node migrate.js",
     "migrate:status": "node migrate.js --status",
+    "fetch-pyodide-packages": "node scripts/fetch-pyodide-packages.mjs",
+    "fetch-pyodide-packages:check": "node scripts/fetch-pyodide-packages.mjs --check",
     "smoke": "bash scripts/smoke.sh",
     "preflight": "bash ../scripts/preflight-production.sh",
     "backup": "bash scripts/backup.sh",

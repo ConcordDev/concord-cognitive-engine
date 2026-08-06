@@ -11,6 +11,9 @@
 //
 // All write-side state lives under STATE.financeLens.
 
+import { runPython } from "../lib/python-sandbox.js";
+import { pythonExecEnabled } from "./code.js";
+
 export default function registerFinanceActions(registerLensAction) {
   // ─── Pre-existing analytical macros ─────────────────────────────────
 
@@ -450,6 +453,94 @@ export default function registerFinanceActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  /**
+   * cashflow-projection-python — a real pandas/numpy-powered month-by-month
+   * savings trajectory, distinct from the two macros above: `compoundInterest`
+   * is a single flat-rate path with no support for irregular cash flows, and
+   * `retirement-monte-carlo` is a stochastic (random-return) simulation. This
+   * one is DETERMINISTIC — a fixed monthly contribution plus arbitrary
+   * one-time events (a bonus, a large expense) at specific months, compounded
+   * at a fixed monthly rate — which is exactly the "map out my exact savings
+   * trajectory" shape from the pandas/numpy capability this macro exists to
+   * exercise (real DataFrame, real cumulative-sum vectorization), not a
+   * duplicate of the existing JS calculators.
+   *
+   * Honest by construction: numpy/pandas are vendored offline (never
+   * CDN-fetched — see lib/pyodide-packages.js's header) via
+   * `npm run fetch-pyodide-packages`. If they haven't been vendored on this
+   * deployment, this macro returns a real, legible failure naming exactly
+   * what's missing — it NEVER falls back to a JS approximation and passes
+   * it off as the pandas-computed result.
+   *
+   * params: { startingBalance, months, monthlyContribution, annualReturnRate,
+   *           oneTimeEvents: [{ month, amount, label? }] }
+   */
+  registerLensAction("finance", "cashflow-projection-python", async (_ctx, _artifact, params = {}) => {
+    if (!pythonExecEnabled()) {
+      return { ok: false, error: "python_exec_disabled", message: "Live Python execution is disabled in this environment. Enable with CONCORD_PYTHON_EXEC_ENABLED=1." };
+    }
+    const startingBalance = Number(params.startingBalance) || 0;
+    const months = Math.max(1, Math.min(600, Math.round(Number(params.months) || 120)));
+    const monthlyContribution = Number(params.monthlyContribution) || 0;
+    const annualReturnRate = Math.max(-0.5, Math.min(0.5, Number(params.annualReturnRate) || 0.07));
+    const oneTimeEvents = Array.isArray(params.oneTimeEvents) ? params.oneTimeEvents : [];
+    // month -> summed amount, JS-side validated/coerced (never raw strings
+    // interpolated into the Python source below).
+    const oneTimeByMonth = {};
+    for (const ev of oneTimeEvents) {
+      const m = Math.round(Number(ev?.month));
+      const amt = Number(ev?.amount);
+      if (!Number.isFinite(m) || m < 1 || m > months || !Number.isFinite(amt)) continue;
+      oneTimeByMonth[m] = (oneTimeByMonth[m] || 0) + amt;
+    }
+
+    // Every interpolated value above is a JS number (or a plain {int: number}
+    // map of them) coerced via Number()/Math.round() — JSON.stringify on
+    // these types is always safe Python-literal syntax (dict/list/number),
+    // never a code-injection path for arbitrary user-supplied strings.
+    const code = [
+      "import pandas as pd, numpy as np, json",
+      `starting_balance = ${JSON.stringify(startingBalance)}`,
+      `months = ${JSON.stringify(months)}`,
+      `monthly_contribution = ${JSON.stringify(monthlyContribution)}`,
+      `monthly_rate = ${JSON.stringify(annualReturnRate)} / 12.0`,
+      `one_time_by_month = ${JSON.stringify(oneTimeByMonth)}`,
+      "df = pd.DataFrame({'month': np.arange(1, months + 1)})",
+      "df['one_time'] = df['month'].astype(str).map(one_time_by_month).fillna(0.0)",
+      "df['net_flow'] = monthly_contribution + df['one_time']",
+      "balances = []",
+      "bal = starting_balance",
+      "for flow in df['net_flow']:",
+      "    bal = bal * (1 + monthly_rate) + float(flow)",
+      "    balances.append(bal)",
+      "df['balance'] = balances",
+      "df['total_contributed'] = starting_balance + df['net_flow'].cumsum()",
+      "df['total_growth'] = df['balance'] - df['total_contributed']",
+      "summary = {",
+      "    'finalBalance': round(float(df['balance'].iloc[-1]), 2),",
+      "    'totalContributed': round(float(df['total_contributed'].iloc[-1]), 2),",
+      "    'totalGrowth': round(float(df['total_growth'].iloc[-1]), 2),",
+      "}",
+      "timeline = [{'month': int(r['month']), 'balance': round(float(r['balance']), 2)} for _, r in df.iterrows()]",
+      "json.dumps({'summary': summary, 'timeline': timeline})",
+    ].join("\n");
+
+    const r = await runPython(code, { packages: ["pandas", "numpy"] });
+    if (!r.ok) {
+      if (r.error === "python_package_not_vendored") {
+        return { ok: false, error: r.error, message: `Package(s) not vendored: ${(r.missing || []).join(", ")}. An operator must run \`npm run fetch-pyodide-packages\` first.`, missing: r.missing };
+      }
+      return { ok: false, error: r.error || "python_exec_failed", message: r.stderr || "cashflow projection failed" };
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(r.result);
+    } catch (e) {
+      return { ok: false, error: "unparseable_result", message: String(e?.message || e), raw: r.result };
+    }
+    return { ok: true, result: { ...parsed.summary, timeline: parsed.timeline, months, monthlyContribution, annualReturnRate } };
+  });
 
   /**
    * subscriptions-detect — Detect recurring charges from the user's real
