@@ -1199,6 +1199,7 @@ export default function MetaLensPage() {
   useLensNav('meta');
   const { isLive, lastUpdated } = useRealtimeLens('meta');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [showSystemHealth, setShowSystemHealth] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1280,9 +1281,21 @@ export default function MetaLensPage() {
           {activeTab === 'lens-infra' && <LensInfrastructureTab />}
         </motion.div>
       </AnimatePresence>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SystemHealth />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSystemHealth(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSystemHealth ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          System Health
+        </button>
+        {showSystemHealth && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <SystemHealth />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#meta-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to meta content</a>
