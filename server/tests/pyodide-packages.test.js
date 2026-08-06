@@ -26,21 +26,21 @@ test("PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES is exactly the five scientific packages
   assert.deepEqual([...PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES].sort(), ["matplotlib", "numpy", "pandas", "scipy", "sympy"]);
 });
 
-test("resolvePackageClosure rejects a package outside the whitelist", () => {
-  const r = resolvePackageClosure(["os"]);
+test("resolvePackageClosure rejects a package outside the whitelist", async () => {
+  const r = await resolvePackageClosure(["os"]);
   assert.equal(r.ok, false);
   assert.equal(r.error, "package_not_allowed");
   assert.deepEqual(r.unknown, ["os"]);
 });
 
-test("resolvePackageClosure resolves numpy alone with no extra dependencies", () => {
-  const r = resolvePackageClosure(["numpy"]);
+test("resolvePackageClosure resolves numpy alone with no extra dependencies", async () => {
+  const r = await resolvePackageClosure(["numpy"]);
   assert.equal(r.ok, true);
   assert.deepEqual(r.names, ["numpy"]);
 });
 
-test("resolvePackageClosure resolves pandas's real transitive dependency chain", () => {
-  const r = resolvePackageClosure(["pandas"]);
+test("resolvePackageClosure resolves pandas's real transitive dependency chain", async () => {
+  const r = await resolvePackageClosure(["pandas"]);
   assert.equal(r.ok, true);
   assert.ok(r.names.includes("pandas"));
   assert.ok(r.names.includes("numpy"), "pandas depends on numpy");
@@ -48,35 +48,35 @@ test("resolvePackageClosure resolves pandas's real transitive dependency chain",
   assert.ok(r.names.includes("pytz"));
 });
 
-test("resolvePackageClosure resolves matplotlib's full closure (heaviest dependency graph)", () => {
-  const r = resolvePackageClosure(["matplotlib"]);
+test("resolvePackageClosure resolves matplotlib's full closure (heaviest dependency graph)", async () => {
+  const r = await resolvePackageClosure(["matplotlib"]);
   assert.equal(r.ok, true);
   for (const dep of ["contourpy", "cycler", "fonttools", "kiwisolver", "numpy", "packaging", "pillow", "pyparsing", "python-dateutil", "pytz"]) {
     assert.ok(r.names.includes(dep), `expected matplotlib closure to include ${dep}`);
   }
 });
 
-test("resolvePackageClosure resolves sympy -> mpmath", () => {
-  const r = resolvePackageClosure(["sympy"]);
+test("resolvePackageClosure resolves sympy -> mpmath", async () => {
+  const r = await resolvePackageClosure(["sympy"]);
   assert.equal(r.ok, true);
   assert.deepEqual(r.names.sort(), ["mpmath", "sympy"]);
 });
 
-test("resolvePackageClosure dedupes a shared dependency across multiple requested packages", () => {
-  const r = resolvePackageClosure(["pandas", "scipy"]); // both depend on numpy
+test("resolvePackageClosure dedupes a shared dependency across multiple requested packages", async () => {
+  const r = await resolvePackageClosure(["pandas", "scipy"]); // both depend on numpy
   assert.equal(r.ok, true);
   assert.equal(r.names.filter((n) => n === "numpy").length, 1);
 });
 
-test("resolvePackageClosure resolves the full closure of all five packages to exactly 16 wheels", () => {
-  const r = resolvePackageClosure([...PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES]);
+test("resolvePackageClosure resolves the full closure of all five packages to exactly 16 wheels", async () => {
+  const r = await resolvePackageClosure([...PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES]);
   assert.equal(r.ok, true);
   assert.equal(r.names.length, 16);
 });
 
-test("packageFileInfo reports exists:false for every package in a clean tree (nothing vendored yet)", () => {
-  const r = resolvePackageClosure(["numpy"]);
-  const files = packageFileInfo(r.names);
+test("packageFileInfo reports exists:false for every package in a clean tree (nothing vendored yet)", async () => {
+  const r = await resolvePackageClosure(["numpy"]);
+  const files = await packageFileInfo(r.names);
   assert.equal(files.length, 1);
   assert.equal(files[0].name, "numpy");
   assert.match(files[0].fileName, /^numpy-.*\.whl$/);
@@ -85,8 +85,8 @@ test("packageFileInfo reports exists:false for every package in a clean tree (no
   assert.equal(files[0].exists, false);
 });
 
-test("jsdelivrUrlFor reproduces the EXACT URL the real installed pyodide library attempts to fetch (hand-verified, not guessed)", () => {
-  const lock = loadPyodideLock();
+test("jsdelivrUrlFor reproduces the EXACT URL the real installed pyodide library attempts to fetch (hand-verified, not guessed)", async () => {
+  const lock = await loadPyodideLock();
   const fileName = lock.packages.numpy.file_name;
   const url = jsdelivrUrlFor(fileName);
   // The literal URL observed when pyodide.loadPackage(['numpy']) was run for

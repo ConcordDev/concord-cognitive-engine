@@ -56,12 +56,12 @@ async function downloadTo(url, destPath) {
 }
 
 async function main() {
-  const closure = resolvePackageClosure(PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES);
+  const closure = await resolvePackageClosure(PYODIDE_ALLOWED_TOP_LEVEL_PACKAGES);
   if (!closure.ok) {
     console.error("[fetch-pyodide-packages] failed to resolve package closure:", closure);
     process.exit(1);
   }
-  const files = packageFileInfo(closure.names);
+  const files = await packageFileInfo(closure.names);
   fs.mkdirSync(PYODIDE_VENDOR_DIR, { recursive: true });
 
   let ok = 0, downloaded = 0, failed = 0;

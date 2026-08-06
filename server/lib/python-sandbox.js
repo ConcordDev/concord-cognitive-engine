@@ -259,11 +259,11 @@ function truncate(s) {
  * @param {string[]} packages
  * @returns {{ok:true, paths:string[], names:string[]}|{ok:false, error:string, missing?:string[], unknown?:string[]}}
  */
-function resolveRequestedPackages(packages) {
+async function resolveRequestedPackages(packages) {
   if (!packages || !packages.length) return { ok: true, paths: [], names: [] };
   let closure;
   try {
-    closure = resolvePackageClosure(packages);
+    closure = await resolvePackageClosure(packages);
   } catch (err) {
     return { ok: false, error: `pyodide_lockfile_unreadable: ${String(err?.message || err)}` };
   }
@@ -273,7 +273,7 @@ function resolveRequestedPackages(packages) {
     }
     return { ok: false, error: closure.error, unknown: closure.unknown };
   }
-  const files = packageFileInfo(closure.names);
+  const files = await packageFileInfo(closure.names);
   const missing = files.filter((f) => !f.exists).map((f) => f.name);
   if (missing.length) {
     return { ok: false, error: "python_package_not_vendored", missing };
@@ -297,9 +297,9 @@ function resolveRequestedPackages(packages) {
  *   never falls back to a live fetch.
  * @returns {Promise<{ok: boolean, stdout: string, stderr: string, result: string|null, images?: Array<{mime:string, dataB64:string}>, error?: string, missing?: string[]}>}
  */
-export function runPython(code, opts = {}) {
+export async function runPython(code, opts = {}) {
   const packages = Array.isArray(opts.packages) ? opts.packages : [];
-  const pkgResolution = resolveRequestedPackages(packages);
+  const pkgResolution = await resolveRequestedPackages(packages);
   if (!pkgResolution.ok) {
     // No worker spawned — a doomed-to-fail request shouldn't pay the ~2s
     // cold-load cost, and the failure should be immediate and legible.
