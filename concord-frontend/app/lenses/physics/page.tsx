@@ -27,6 +27,7 @@ import {
   Download,
   Upload,
   ChevronDown,
+  ChevronRight,
   Move,
   Target,
   Magnet,
@@ -258,6 +259,8 @@ export default function PhysicsLensPage() {
   const { items: savedSims, create: saveSim, remove: removeSim, isError, error, refetch } = useLensData<Record<string, unknown>>('physics', 'simulation', { noSeed: true });
 
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showPhysicsArxiv, setShowPhysicsArxiv] = useState(false);
+  const [showPhysicsActionPanel, setShowPhysicsActionPanel] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -1637,15 +1640,39 @@ export default function PhysicsLensPage() {
       Physics Workbench
     </button>
     <PhysicsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <PhysicsArxiv />
-    </section>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowPhysicsArxiv(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showPhysicsArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        arXiv Search (external reference)
+      </button>
+      {showPhysicsArxiv && (
+        <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <PhysicsArxiv />
+        </section>
+      )}
+    </div>
 
-    <PipingProvider>
-      <section className="mt-6 mx-auto max-w-7xl">
-        <PhysicsActionPanel />
-      </section>
-    </PipingProvider>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowPhysicsActionPanel(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showPhysicsActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        More Actions
+      </button>
+      {showPhysicsActionPanel && (
+        <PipingProvider>
+          <section className="mt-3">
+            <PhysicsActionPanel />
+          </section>
+        </PipingProvider>
+      )}
+    </div>
           <RecentMineCard domain="physics" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="physics" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="physics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
