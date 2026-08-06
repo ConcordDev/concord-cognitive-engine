@@ -1,6 +1,23 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+
+// useAuth goes through the shared axios `api` client (so the 401
+// auto-refresh interceptor fires on session expiry) instead of raw
+// fetch() — mock the client the same way the rest of the hook tests do.
+vi.mock('@/lib/api/client', () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+  },
+}));
+
 import { useAuth } from '@/hooks/useAuth';
+import { api } from '@/lib/api/client';
+
+const mockedApi = api as unknown as {
+  get: ReturnType<typeof vi.fn>;
+  post: ReturnType<typeof vi.fn>;
+};
 
 describe('useAuth', () => {
   const mockUser = {
@@ -13,9 +30,6 @@ describe('useAuth', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock global fetch
-    global.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -23,10 +37,7 @@ describe('useAuth', () => {
   });
 
   it('returns user when authenticated', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, user: mockUser }),
-    });
+    mockedApi.get.mockResolvedValue({ data: { ok: true, user: mockUser } });
 
     const { result } = renderHook(() => useAuth());
 
@@ -42,10 +53,9 @@ describe('useAuth', () => {
   });
 
   it('returns null when not authenticated', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: false,
-      status: 401,
-    });
+    mockedApi.get.mockRejectedValue(Object.assign(new Error('Unauthorized'), {
+      response: { status: 401 },
+    }));
 
     const { result } = renderHook(() => useAuth());
 
@@ -58,10 +68,7 @@ describe('useAuth', () => {
   });
 
   it('returns null when API returns ok:false', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: false }),
-    });
+    mockedApi.get.mockResolvedValue({ data: { ok: false } });
 
     const { result } = renderHook(() => useAuth());
 
@@ -74,7 +81,7 @@ describe('useAuth', () => {
   });
 
   it('isLoading is true during initial check', () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}));
+    mockedApi.get.mockReturnValue(new Promise(() => {}));
 
     const { result } = renderHook(() => useAuth());
 
@@ -84,15 +91,8 @@ describe('useAuth', () => {
   });
 
   it('logout calls API and clears state', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, user: mockUser }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ ok: true }),
-      });
+    mockedApi.get.mockResolvedValueOnce({ data: { ok: true, user: mockUser } });
+    mockedApi.post.mockResolvedValueOnce({ data: { ok: true } });
 
     const { result } = renderHook(() => useAuth());
 
@@ -108,14 +108,11 @@ describe('useAuth', () => {
     expect(result.current.isAuthenticated).toBe(false);
 
     // Verify logout API was called
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/auth/logout'),
-      expect.objectContaining({ method: 'POST', credentials: 'include' })
-    );
+    expect(mockedApi.post).toHaveBeenCalledWith('/api/auth/logout', {});
   });
 
   it('handles network error during auth check', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
+    mockedApi.get.mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useAuth());
 
@@ -128,12 +125,8 @@ describe('useAuth', () => {
   });
 
   it('logout clears state even if server request fails', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, user: mockUser }),
-      })
-      .mockRejectedValueOnce(new Error('Logout failed'));
+    mockedApi.get.mockResolvedValueOnce({ data: { ok: true, user: mockUser } });
+    mockedApi.post.mockRejectedValueOnce(new Error('Logout failed'));
 
     const { result } = renderHook(() => useAuth());
 
@@ -151,18 +144,10 @@ describe('useAuth', () => {
   });
 
   it('refresh re-checks auth status', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>)
+    mockedApi.get
+      .mockResolvedValueOnce({ data: { ok: true, user: mockUser } })
       .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ ok: true, user: mockUser }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            ok: true,
-            user: { ...mockUser, username: 'updateduser' },
-          }),
+        data: { ok: true, user: { ...mockUser, username: 'updateduser' } },
       });
 
     const { result } = renderHook(() => useAuth());
@@ -180,37 +165,29 @@ describe('useAuth', () => {
     expect(result.current.user?.username).toBe('updateduser');
   });
 
-  it('calls /api/auth/me with credentials included', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ok: true, user: mockUser }),
-    });
+  it('calls /api/auth/me', async () => {
+    mockedApi.get.mockResolvedValue({ data: { ok: true, user: mockUser } });
 
     renderHook(() => useAuth());
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/auth/me'),
-        expect.objectContaining({ credentials: 'include' })
-      );
+      expect(mockedApi.get).toHaveBeenCalledWith('/api/auth/me');
     });
   });
 
   it('properly constructs user object from response', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          ok: true,
-          user: {
-            id: 'user-456',
-            username: 'alice',
-            email: 'alice@example.com',
-            role: 'admin',
-            scopes: ['admin', 'read', 'write'],
-            extraField: 'should-be-ignored', // extra fields
-          },
-        }),
+    mockedApi.get.mockResolvedValue({
+      data: {
+        ok: true,
+        user: {
+          id: 'user-456',
+          username: 'alice',
+          email: 'alice@example.com',
+          role: 'admin',
+          scopes: ['admin', 'read', 'write'],
+          extraField: 'should-be-ignored', // extra fields
+        },
+      },
     });
 
     const { result } = renderHook(() => useAuth());
