@@ -452,6 +452,51 @@ Read these limits as part of the claims above, not as footnotes to them.
       proved the loader mechanism standalone (`GlbLoader` used directly),
       not yet through `AssetResolver` → `AvatarRig`'s full integration path,
       which still needs the URL-convention question above resolved first.
+- [x] **`SceneBootstrap` upgrades real buildings from placeholder boxes to
+      real GLBs — 2026-08-07.** For the `market`/`tavern`/`archive`
+      archetypes specifically (the 3 that have a real GLB today at
+      `concord-frontend/public/models/building/*.glb` — `world/
+      building_archetype.gd` ports the Three.js client's `building-
+      silhouette.ts` archetype table), a spawned box is replaced with a
+      rescaled clone of the real mesh once it loads (async, via
+      `AssetResolver.fallback_url` — which, unlike the hero-mesh case
+      above, DOES match the real serving convention: `{frontend_origin}/
+      models/building/{archetype}.glb`). Verified against a REAL running
+      server (`server.js` spawned with a fresh migrated DB, a registered
+      user, real JWT) + a real static file server for
+      `concord-frontend/public/`: `tools/live_probe.gd` against
+      `concordia-hub` reports `spawned_children: 63`, `bootstrap_found:
+      true`; the resulting screenshot shows a mix of gray placeholder boxes
+      (forge/tower-archetype buildings — no real mesh for those yet, honest
+      fallback) and non-box shapes at the market/tavern/archive nodes.
+      Isolated proof of ONE such upgrade, framed close-up via
+      `tools/glb_load_probe.gd` (now accepts `CONCORD_GLB_PROBE_DISTANCE`/
+      `CONCORD_GLB_PROBE_HEIGHT` for building-scale assets, not just
+      character-scale): `market.glb` renders as a real, designed market
+      stall — canopy tent, counter, bunting flags, goods on the counter —
+      `mesh_instance_count: 2`, `total_vertex_count: 8218`. Not fabricated:
+      a `market`/`tavern`/`archive`-archetype building without network
+      access to the frontend origin, or whose fetch 404s, stays a box
+      forever (`_on_building_glb_failed` — logged, never retried into a
+      fabricated success). Pure-logic mapping table pinned by
+      `tests/test_building_archetype.gd` (16 checks); the async upgrade
+      path itself (network-dependent) is verified only by the live-server
+      run above, not by the headless pure-logic suite.
+- [x] **A real, non-generic ground plane exists under the scene —
+      2026-08-07.** Before this, `boot.gd` spawned SceneBootstrap's boxes
+      over the engine's default void with nothing underneath — the earlier
+      camera-framing screenshots in this file show buildings floating on
+      black. A large flat `PlaneMesh` is now added in `boot.gd` alongside
+      the bootstrap. Deliberately NOT textured terrain art (see that code's
+      own comment) — real terrain textures exist
+      (`concord-frontend/public/models/terrain/*.jpg`) but wiring per-
+      district UV-mapped ground geometry is separate, unbuilt work; this is
+      a flat placeholder plane, same honesty tier as the box buildings.
+      Caveat found by actually looking at the live-probe screenshot: at the
+      orbit camera's current pitch/distance, the flat plane visually
+      dominates the frame (buildings read small, clustered near the
+      bottom) — a real, currently-unaddressed composition weakness, not
+      hidden here.
 
 ### Interpolation (Phase 2 dependent)
 - [ ] `SnapshotBuffer` sampling at now−120ms is visually smooth at real latency.

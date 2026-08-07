@@ -1,15 +1,32 @@
 class_name SceneBootstrap
 extends Node3D
 ## SceneBootstrap — consumes a `concord-scene/v1` payload (from scene-export.js)
-## and instantiates placeholder geometry for each building node.
+## and instantiates geometry for each building node.
 ##
 ## The transform mapping (node_to_transform) is a PURE STATIC func so it can be
 ## unit-tested without a scene tree. The engine part builds one MeshInstance3D +
 ## unit BoxMesh per node and applies the mapped transform.
 ##
 ## Honest handling: an {ok:false} scene payload is logged and surfaced via the
-## `scene_failed` signal — no geometry is fabricated. Placeholder boxes are
-## explicitly NOT a visual-quality claim (see VISUAL_QA.md).
+## `scene_failed` signal — no geometry is fabricated. Placeholder boxes remain
+## the fallback for any node this file can't resolve a real mesh for (see
+## VISUAL_QA.md) — they are explicitly NOT a visual-quality claim.
+##
+## Real-mesh upgrade (2026-08-07): every spawned node's `type` (the raw
+## `building_type` string from `scene-export.js`) is resolved to an archetype
+## via `world/building_archetype.gd` (a hand-ported subset of the Three.js
+## client's `building-silhouette.ts` table). For the 3 archetypes with a real
+## GLB today (market/tavern/archive — `concord-frontend/public/models/
+## building/*.glb`), the box is REPLACED with a rescaled clone of that real
+## mesh once it finishes loading — same "real-asset-first, box if nothing
+## resolves" posture `BuildingRenderer3D.tsx` already uses in the Three.js
+## client, and the same footprint-rescale math (measure the loaded mesh's
+## AABB, then per-axis-scale to the node's authored [w,h,d]). Loading is
+## async (HTTPRequest via AssetResolver + GlbLoader) and node spawning stays
+## synchronous — a box always appears immediately, and is swapped for the
+## real mesh only once (and if) the network fetch actually succeeds. A
+## fetch failure (offline, no frontend host reachable, 404) leaves the box in
+## place forever — no fabricated geometry, no fabricated success.
 ##
 ## Additive (C14 — land↔air transition): `scene:data`'s `landingPads` field
 ## (server/lib/scene-export.js, real touch-down markers from
@@ -60,13 +77,151 @@ signal scene_failed(reason: String)
 signal landing_pads_ready(pads: Array)
 signal districts_ready(districts: Array)
 signal rooftop_buildings_ready(buildings: Array)
+signal building_mesh_upgraded(archetype: String, node_count: int)
 
 const SCENE_FORMAT := "concord-scene/v1"
+
+const BuildingArchetype := preload("res://world/building_archetype.gd")
+const AssetResolver := preload("res://assets/asset_resolver.gd")
+const GlbLoader := preload("res://assets/glb_loader.gd")
+
+## Origin that serves the real building GLBs — the FRONTEND's static `public/`
+## dir (`concord-frontend/public/models/building/*.glb`), not the backend API
+## (:5050). `AssetResolver.fallback_url("<this>", "building", "market")`
+## produces `<this>/models/building/market.glb`, which matches that real
+## serving path exactly — a rare case where the static-fallback URL
+## convention lines up with where the asset actually lives (unlike hero
+## meshes — see VISUAL_QA.md's open AssetResolver item).
+@export var frontend_asset_base_url: String = "http://127.0.0.1:3000"
+
+## Off switch: real building meshes require network access to
+## frontend_asset_base_url. Headless/offline test runs should leave this
+## false so nothing attempts an HTTPRequest.
+@export var enable_real_building_meshes: bool = false
 
 var _spawned: Array[Node3D] = []
 var _landing_pads: Array = []
 var _districts: Array = []
 var _rooftop_buildings: Array = []
+
+# archetype (String) -> Node3D real-mesh template once loaded, or "loading"
+# (String sentinel) while a fetch is in flight. Absent key = not attempted.
+var _building_templates: Dictionary = {}
+# archetype (String) -> Array[MeshInstance3D] of currently-boxed nodes of that
+# archetype, so a template arriving after they spawned can still upgrade them.
+var _pending_upgrade: Dictionary = {}
+var _asset_resolver: AssetResolver
+
+
+func _ready() -> void:
+	if enable_real_building_meshes:
+		_asset_resolver = AssetResolver.new()
+		_asset_resolver.base_url = frontend_asset_base_url
+		_asset_resolver.use_resolve_endpoint = false  # static convention only; see header comment
+		add_child(_asset_resolver)
+		for archetype in BuildingArchetype.REAL_MESH_ARCHETYPES:
+			_start_loading_archetype(archetype)
+
+
+func _start_loading_archetype(archetype: String) -> void:
+	if _building_templates.has(archetype):
+		return
+	_building_templates[archetype] = "loading"
+	var url := AssetResolver.fallback_url(frontend_asset_base_url, "building", archetype)
+	var loader := GlbLoader.new()
+	add_child(loader)
+	loader.loaded.connect(_on_building_glb_loaded.bind(archetype, loader))
+	loader.load_failed.connect(_on_building_glb_failed.bind(archetype, loader))
+	loader.load_glb(url)
+
+
+func _on_building_glb_loaded(_url: String, root: Node3D, archetype: String, loader: GlbLoader) -> void:
+	loader.queue_free()
+	_building_templates[archetype] = root
+	root.name = "_template_%s" % archetype
+	# Kept off-tree (never add_child'd to the scene) — it exists only as a
+	# clone source. Godot frees a Node's children fine even when the Node
+	# itself was never parented, so this is safe to hold indefinitely.
+	_upgrade_pending_nodes(archetype)
+
+
+func _on_building_glb_failed(_url: String, _reason: String, archetype: String, loader: GlbLoader) -> void:
+	loader.queue_free()
+	# Honest failure: the archetype stays permanently box-only for this run.
+	# Remove the "loading" sentinel so a future retry (if ever added) isn't
+	# blocked, but do NOT fabricate a template.
+	_building_templates.erase(archetype)
+	push_warning("[scene] real building mesh failed to load for archetype '%s' — staying on placeholder box" % archetype)
+
+
+func _upgrade_pending_nodes(archetype: String) -> void:
+	var template: Node3D = _building_templates.get(archetype)
+	if template == null or typeof(template) == TYPE_STRING:
+		return
+	var pending: Array = _pending_upgrade.get(archetype, [])
+	var upgraded := 0
+	for mi in pending:
+		if is_instance_valid(mi) and _upgrade_one_node(mi, template):
+			upgraded += 1
+	_pending_upgrade[archetype] = []
+	if upgraded > 0:
+		building_mesh_upgraded.emit(archetype, upgraded)
+
+
+## Replaces `mi`'s BoxMesh visuals with a rescaled clone of `template`, in
+## place — same node, same name, same position in `_spawned` and in the
+## scene tree, only its rendered content changes. Rescale is per-axis to the
+## node's own authored footprint (mi's `transform.basis` already carries that
+## footprint — see `node_basis`), measured against the template's own AABB,
+## mirroring `BuildingRenderer3D.tsx`'s `cloned.scale.set(dtu.dimensions.width
+## / size.x, ...)` real-asset rescale exactly.
+func _upgrade_one_node(mi: MeshInstance3D, template: Node3D) -> bool:
+	var footprint := mi.transform.basis.get_scale()
+	if footprint.x <= 0.0 or footprint.y <= 0.0 or footprint.z <= 0.0:
+		return false
+	var clone := template.duplicate(DUPLICATE_USE_INSTANTIATION) as Node3D
+	if clone == null:
+		return false
+	var aabb := _measure_aabb(clone)
+	if aabb.size.x <= 0.0 or aabb.size.y <= 0.0 or aabb.size.z <= 0.0:
+		clone.queue_free()
+		return false
+	# Reset the box mesh; the real asset now carries all visible geometry.
+	mi.mesh = null
+	# Un-scaled orientation-only basis (footprint now comes from the clone's
+	# own scale below, not from mi's basis, since mi.mesh is gone). Uses the
+	# rot_y stashed at spawn time rather than reverse-engineering yaw out of
+	# a basis that also carries the footprint scale (get_euler() on a
+	# non-orthonormal R*S basis is not reliably exact).
+	var rot_y: float = mi.get_meta("rot_y", 0.0)
+	mi.transform = Transform3D(Basis().rotated(Vector3.UP, rot_y), mi.transform.origin)
+	clone.scale = Vector3(footprint.x / aabb.size.x, footprint.y / aabb.size.y, footprint.z / aabb.size.z)
+	# Sit the clone's own local-space min-Y on the node's origin (buildings
+	# are authored with origin at ground level, not centroid).
+	clone.position = Vector3(-aabb.position.x * clone.scale.x, -aabb.position.y * clone.scale.y, -aabb.position.z * clone.scale.z)
+	mi.add_child(clone)
+	mi.set_meta("real_mesh", true)
+	return true
+
+
+func _measure_aabb(root: Node3D) -> AABB:
+	var result := AABB()
+	var first := true
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is MeshInstance3D and n.mesh != null:
+			var mesh_aabb: AABB = n.mesh.get_aabb()
+			if n != root:
+				mesh_aabb = n.transform * mesh_aabb
+			if first:
+				result = mesh_aabb
+				first = false
+			else:
+				result = result.merge(mesh_aabb)
+		for c in n.get_children():
+			stack.append(c)
+	return result
 
 
 ## Apply a scene:data payload. Clears any prior spawn.
@@ -172,9 +327,24 @@ func _spawn_node(node: Dictionary) -> void:
 	var rot_y: float = mapped["rotationY"]
 	var scale: Vector3 = mapped["scale"]
 	mi.transform = Transform3D(SceneBootstrap.node_basis(rot_y, scale), origin)
+	mi.set_meta("rot_y", rot_y)  # so a later real-mesh upgrade doesn't have to
+	# reverse-engineer yaw out of a basis that also carries the footprint scale
 
 	add_child(mi)
 	_spawned.append(mi)
+
+	if enable_real_building_meshes:
+		var archetype := BuildingArchetype.archetype_for_type(String(node.get("type", "")))
+		if BuildingArchetype.has_real_mesh(archetype):
+			var template = _building_templates.get(archetype)
+			if template != null and typeof(template) != TYPE_STRING:
+				_upgrade_one_node(mi, template)
+			else:
+				if not _pending_upgrade.has(archetype):
+					_pending_upgrade[archetype] = []
+				_pending_upgrade[archetype].append(mi)
+				if not _building_templates.has(archetype):
+					_start_loading_archetype(archetype)
 
 
 func _clear() -> void:
@@ -182,6 +352,7 @@ func _clear() -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	_spawned.clear()
+	_pending_upgrade.clear()
 
 
 # ── Pure static transform mapping ────────────────────────────────────────────

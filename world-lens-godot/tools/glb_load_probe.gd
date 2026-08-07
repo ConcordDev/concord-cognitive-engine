@@ -41,9 +41,15 @@ func _initialize() -> void:
 	sun.rotation_degrees = Vector3(-42.0, -35.0, 0.0)
 	get_root().add_child(sun)
 
+	# Default framing (eye/target height ~1.1) suits a human-scale character;
+	# a building-scale asset needs a further/higher vantage. Override via
+	# CONCORD_GLB_PROBE_DISTANCE / CONCORD_GLB_PROBE_HEIGHT for larger assets
+	# rather than hardcoding a second probe tool for a different asset scale.
+	var dist := float(OS.get_environment("CONCORD_GLB_PROBE_DISTANCE")) if OS.get_environment("CONCORD_GLB_PROBE_DISTANCE") != "" else 5.0
+	var height := float(OS.get_environment("CONCORD_GLB_PROBE_HEIGHT")) if OS.get_environment("CONCORD_GLB_PROBE_HEIGHT") != "" else 1.1
 	var cam := Camera3D.new()
-	var eye := Vector3(0, 1.1, 5.0)
-	var target := Vector3(0, 1.1, 0.0)
+	var eye := Vector3(0, height, dist)
+	var target := Vector3(0, height, 0.0)
 	cam.transform = cam.transform.looking_at(target - eye, Vector3.UP)
 	cam.position = eye
 	get_root().add_child(cam)

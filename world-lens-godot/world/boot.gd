@@ -91,6 +91,11 @@ const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 ## client in ordinary WORLD mode, matching the string/bool convention
 ## resolve_runtime_config already established for the other three vars.
 @export var spectator_mode: bool = false
+## Origin serving the frontend's static `public/` dir — where the real
+## building GLBs actually live (`concord-frontend/public/models/building/
+## *.glb`), distinct from the backend gateway/API origin above. Override via
+## CONCORD_FRONTEND_URL for a non-default deploy (e.g. behind a tunnel).
+@export var frontend_asset_base_url: String = "http://127.0.0.1:3000"
 
 var _gateway: GatewayClient
 var _bootstrap: SceneBootstrap
@@ -153,6 +158,9 @@ func _ready() -> void:
 	auth_token = _cfg["auth_token"]
 	world_id = _cfg["world_id"]
 	spectator_mode = _cfg["spectator_mode"]
+	var _frontend_env := String(OS.get_environment("CONCORD_FRONTEND_URL"))
+	if _frontend_env != "":
+		frontend_asset_base_url = _frontend_env
 
 	# The per-world sky/sun/ambient/toon palette (ArtStyle) is already built,
 	# tested, and pixel-verified (VISUAL_QA.md's "art_world" shots) -- but
@@ -173,7 +181,26 @@ func _ready() -> void:
 		_sun.rotation_degrees = Vector3(-42.0, -35.0, 0.0)
 		add_child(_sun)
 
+	# Flat placeholder ground — deliberately NOT textured terrain art. Real
+	# terrain textures exist (concord-frontend/public/models/terrain/*.jpg —
+	# grass/dirt/cobblestone/asphalt/etc.) but wiring per-district textured
+	# ground geometry (UV mapping, tiling, district-boundary material
+	# selection) is separate, unbuilt work; this is only a large flat plane
+	# so spawned buildings sit on SOMETHING instead of floating over the
+	# engine's default void, honestly a placeholder like the box buildings
+	# it's paired with, not a visual-quality claim.
+	var _ground := MeshInstance3D.new()
+	var _ground_mesh := PlaneMesh.new()
+	_ground_mesh.size = Vector2(4000, 4000)
+	_ground.mesh = _ground_mesh
+	var _ground_mat := StandardMaterial3D.new()
+	_ground_mat.albedo_color = Color(0.36, 0.40, 0.32)
+	_ground.material_override = _ground_mat
+	add_child(_ground)
+
 	_bootstrap = SceneBootstrap.new()
+	_bootstrap.enable_real_building_meshes = true
+	_bootstrap.frontend_asset_base_url = frontend_asset_base_url
 	add_child(_bootstrap)
 
 	# C16 — ambient aerial traffic. Same "mount + let boot.gd's _on_event
