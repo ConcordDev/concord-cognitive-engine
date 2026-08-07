@@ -33,6 +33,10 @@ static func run() -> TestUtils:
 	_test_make_outline_material_is_honest_for_unknown_world(t)
 	_test_make_toon_material_carries_a_real_outline_next_pass(t)
 	_test_make_toon_material_from_stays_outline_free_for_palette_isolation(t)
+	_test_apply_outline_to_tree_reaches_every_mesh_surface(t)
+	_test_apply_outline_to_tree_preserves_the_original_material(t)
+	_test_apply_outline_to_tree_never_mutates_the_shared_source_material(t)
+	_test_apply_outline_to_tree_is_honest_on_an_empty_tree(t)
 	return t
 
 
@@ -181,3 +185,68 @@ static func _test_make_toon_material_from_stays_outline_free_for_palette_isolati
 	# wiring lives one level up, in make_toon_material, instead).
 	var mat := ArtStyle.make_toon_material_from(Color.BLACK, Color.GRAY, Color.WHITE, 1.0)
 	t.check_eq(mat.next_pass, null, "make_toon_material_from never attaches an outline pass")
+
+
+## Builds a small synthetic tree shaped like a resolved GLB: a root Node3D
+## with two child MeshInstance3D nodes, each carrying one surface with a
+## real baked material (a StandardMaterial3D with a distinct albedo, same
+## as how an imported .glb's own mesh resource carries its material —
+## simulated here since this repo has no committed .glb fixture, matching
+## `tests/test_dtu_prop_renderer.gd`'s own synthetic-fixture convention).
+static func _build_fake_glb_tree() -> Dictionary:
+	var root := Node3D.new()
+	var mesh_instances: Array[MeshInstance3D] = []
+	var original_materials: Array[StandardMaterial3D] = []
+	for i in range(2):
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.2 + i * 0.1, 0.4, 0.6)
+		box.material = mat
+		mi.mesh = box
+		root.add_child(mi)
+		mesh_instances.append(mi)
+		original_materials.append(mat)
+	return {"root": root, "mesh_instances": mesh_instances, "original_materials": original_materials}
+
+
+static func _test_apply_outline_to_tree_reaches_every_mesh_surface(t: TestUtils) -> void:
+	var built := _build_fake_glb_tree()
+	var touched := ArtStyle.apply_outline_to_tree(built["root"], "cyber")
+	t.check_eq(touched, 2, "one surface per mesh instance x 2 instances")
+	for mi in built["mesh_instances"]:
+		var active := (mi as MeshInstance3D).get_active_material(0)
+		t.check(active != null, "each surface has an active material after the pass")
+		if active != null:
+			t.check(active.next_pass != null, "the active material now carries an outline next_pass")
+			if active.next_pass is ShaderMaterial:
+				t.check_eq(active.next_pass.shader, ArtStyle.outline_shader(), "next_pass uses the real cached outline shader")
+
+
+static func _test_apply_outline_to_tree_preserves_the_original_material(t: TestUtils) -> void:
+	var built := _build_fake_glb_tree()
+	ArtStyle.apply_outline_to_tree(built["root"], "cyber")
+	var mesh_instances: Array = built["mesh_instances"]
+	var originals: Array = built["original_materials"]
+	for i in range(mesh_instances.size()):
+		var active := (mesh_instances[i] as MeshInstance3D).get_active_material(0)
+		t.check(active is StandardMaterial3D, "the override is still a StandardMaterial3D, not replaced by a flat toon material")
+		if active is StandardMaterial3D:
+			t.check_almost(active.albedo_color.r, originals[i].albedo_color.r, "albedo is preserved, not discarded")
+			t.check_almost(active.albedo_color.g, originals[i].albedo_color.g, "albedo is preserved, not discarded")
+			t.check_almost(active.albedo_color.b, originals[i].albedo_color.b, "albedo is preserved, not discarded")
+
+
+static func _test_apply_outline_to_tree_never_mutates_the_shared_source_material(t: TestUtils) -> void:
+	var built := _build_fake_glb_tree()
+	var originals: Array = built["original_materials"]
+	ArtStyle.apply_outline_to_tree(built["root"], "cyber")
+	for original in originals:
+		t.check_eq((original as StandardMaterial3D).next_pass, null,
+			"the ORIGINAL mesh-resource material is never mutated -- only a per-instance duplicate carries next_pass (so a shared/cached GLB resource can't leak an outline onto unrelated instances)")
+
+
+static func _test_apply_outline_to_tree_is_honest_on_an_empty_tree(t: TestUtils) -> void:
+	var empty_root := Node3D.new()
+	var touched := ArtStyle.apply_outline_to_tree(empty_root, "cyber")
+	t.check_eq(touched, 0, "an empty tree touches zero surfaces, never fabricates work done")

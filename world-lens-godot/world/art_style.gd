@@ -352,6 +352,46 @@ static func _v3(c: Color) -> Vector3:
 	return Vector3(c.r, c.g, c.b)
 
 
+## ── Phase S3 — coherence for REAL meshes, not just placeholders ────────────
+## `make_toon_material()`'s `next_pass` outline reaches placeholder boxes/
+## capsules automatically (they use `material_override` directly), but a
+## resolved real GLB (buildings via `scene_bootstrap.gd#_upgrade_one_node`,
+## avatars/weapons via `avatar_rig.gd`) carries its OWN baked materials,
+## completely bypassing that — confirmed by reading `_upgrade_one_node`
+## directly, not assumed. This walks a loaded GLB's tree and gives every
+## mesh surface the SAME outline pass, WITHOUT touching albedo/texture
+## detail: each surface's existing active material (whatever it already is —
+## imported PBR, vertex colours, anything) is duplicated (never mutating the
+## GLB's own shared/cached resource — a `Material.duplicate()` is a fresh
+## top-level object; textures/sub-resources stay shared, cheap) and gets
+## `next_pass` pointed at the world's outline material. Deliberately does
+## NOT replace the surface's own material with the flat toon ramp — that
+## would discard real texture detail (see VISUAL_QA.md's Phase S3 entry for
+## why that's a separate, bigger, not-yet-attempted piece of work.
+## Returns the surface count touched (0 = honest no-op — missing spec, or
+## nothing in the tree — never a fabricated outline).
+static func apply_outline_to_tree(root: Node, world_id: String) -> int:
+	var outline := make_outline_material(world_id)
+	if outline == null or root == null:
+		return 0
+	var touched := 0
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is MeshInstance3D:
+			var mesh_node := n as MeshInstance3D
+			if mesh_node.mesh != null:
+				for i in range(mesh_node.mesh.get_surface_count()):
+					var base := mesh_node.get_active_material(i)
+					var override: Material = base.duplicate() if base != null else StandardMaterial3D.new()
+					override.next_pass = outline
+					mesh_node.set_surface_override_material(i, override)
+					touched += 1
+		for c in n.get_children():
+			stack.append(c)
+	return touched
+
+
 ## The world's environment: sky gradient (skyTop -> skyHorizon) + ambient, both
 ## saturation-dialled. Returns null honestly when the spec is unavailable.
 static func make_environment(world_id: String) -> Environment:

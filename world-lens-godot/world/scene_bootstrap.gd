@@ -233,6 +233,13 @@ func _upgrade_one_node(mi: MeshInstance3D, template: Node3D) -> bool:
 	clone.position = Vector3(-aabb.position.x * clone.scale.x, -aabb.position.y * clone.scale.y, -aabb.position.z * clone.scale.z)
 	mi.add_child(clone)
 	mi.set_meta("real_mesh", true)
+	# Phase S3 — real GLB meshes bypassed the toon material's outline
+	# next_pass entirely (this function replaces the placeholder mesh
+	# `material_override` was on with the clone's own baked materials).
+	# Extend the SAME outline pass to the real mesh's own surfaces, without
+	# touching their albedo/texture detail — see ArtStyle.apply_outline_
+	# to_tree's own doc for why this is outline-only, not the flat toon ramp.
+	ArtStyle.apply_outline_to_tree(clone, world_id)
 	return true
 
 

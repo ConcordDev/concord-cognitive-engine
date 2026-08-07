@@ -299,6 +299,13 @@ func _on_glb_loaded(_url: String, root: Node3D) -> void:
 		_skeleton = found
 	if _primitive_root != null:
 		_primitive_root.visible = false
+	# Phase S3 — the resolved body GLB carries its own baked materials
+	# (Mixamo/Rocketbox textures), completely bypassing the primitive's toon
+	# material_override above. Extend the SAME outline pass onto the real
+	# mesh's own surfaces without touching its texture detail — see
+	# ArtStyle.apply_outline_to_tree's own doc for why this is outline-only.
+	var ArtStyleOutline := load("res://world/art_style.gd")
+	ArtStyleOutline.apply_outline_to_tree(_glb_root, world_id)
 	# Weapon resolution races body-GLB resolution (both fire from `_ready()`
 	# as independent HTTP requests) — if a weapon already attached to the
 	# now-hidden primitive's forearm socket, re-home it onto the real
@@ -350,6 +357,11 @@ func _on_weapon_glb_loaded(_url: String, root: Node3D) -> void:
 		return
 	_weapon_root = root
 	attach.add_child(_weapon_root)
+	# Phase S3 — same outline treatment as the body GLB above, so a weapon's
+	# real baked texture (see weapon-archetypes.ts's CC0 GLB sourcing) reads
+	# with the same silhouette language as everything else, not styleless.
+	var ArtStyleOutline := load("res://world/art_style.gd")
+	ArtStyleOutline.apply_outline_to_tree(_weapon_root, world_id)
 	weapon_ready.emit()
 
 

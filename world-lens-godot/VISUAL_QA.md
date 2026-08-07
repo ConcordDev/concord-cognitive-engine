@@ -1,5 +1,78 @@
 # Visual QA — Godot World Lens
 
+## Real GLB meshes now get the outline pass too — reaches the mesh, subtler than the synthetic-box proof (2026-08-07, Phase S3)
+
+Before touching anything, read `world/scene_bootstrap.gd#_upgrade_one_node`
+directly rather than assuming Phase S1/S2's toon+outline work reached real
+assets. It didn't: a real building GLB is parented as a child of the
+placeholder `MeshInstance3D` whose `material_override` carried the toon/
+outline material — once the placeholder's own `mesh` is set to `null`,
+that material has nothing left to apply to, and the real GLB clone's own
+baked materials (imported straight from the `.glb`) render completely
+untouched, bypassing the shared art style entirely. The same was true for
+avatar bodies and Phase M1's weapon GLBs.
+
+**Fix** — `ArtStyle.apply_outline_to_tree(root, world_id)`: walks a loaded
+GLB's tree and gives every mesh surface the outline `next_pass`, without
+touching albedo/texture — each surface's own active material is
+`.duplicate()`d (never mutating the GLB's own shared/cached resource) and
+the duplicate gets `next_pass` pointed at the world's outline material.
+Wired at the three points a real GLB actually resolves: `scene_bootstrap.gd
+#_upgrade_one_node` (buildings), `avatar_rig.gd#_on_glb_loaded` (bodies),
+`avatar_rig.gd#_on_weapon_glb_loaded` (weapons). Deliberately does NOT
+force the flat toon-ramp material onto real meshes — see this file's Phase
+S3 planning note for why that's separate, bigger, and not attempted here.
+
+**A real GDScript bug was caught by actually running this, not by
+review**: the first version used `n.get_active_material(i)` inside a loop
+typed `var n: Node`, guarded by `if n is MeshInstance3D`. GDScript's static
+analyzer does not narrow a variable's type from an `is` check for
+subsequent method calls — this is a real language quirk, not a typo — so
+the real engine's compiler correctly rejected it (`Parser Error: Cannot
+infer the type of "base" variable`), which cascaded into ALL of `art_style
+.gd` failing to compile, which cascaded into `test_art_style.gd` reporting
+a silent, misleading **`[PASS] ArtStyle (0 checks)`** (a compile failure
+elsewhere left its `run()` never actually executing, and an empty
+failure-list still reads as "pass" to the harness). Fixed with an explicit
+`as MeshInstance3D` cast; the suite is back to 33/33 green, `ArtStyle` now
+76 checks. Flagging the 0-checks failure mode itself: a suite reporting
+"PASS" with zero checks is a `run()` that never ran, not a suite with
+nothing to test — worth grep-ing for `(0 checks)` specifically, not just
+`FAIL`, when trusting this harness's output going forward.
+
+**Real engine, real GLB, real pixels — an honest, more nuanced result than
+Phase S2's box.** `tools/glb_outline_probe.gd` loaded the real
+`tavern.glb` (confirmed: `surfaces_touched: 4`, matching its real surface
+count) with and without the outline pass and screenshotted both, close-up.
+Unlike Phase S2's synthetic box (where the outline was immediately obvious
+at a glance), the effect on this real architectural asset is genuinely
+subtle — a faint darkening along some roofline edges, visible on close
+side-by-side comparison but easy to miss, not the crisp border the box
+showed. This is a real, honestly-observed difference from the earlier
+result, not a weaker rehash of it: `OUTLINE_WIDTH_M = 0.018` (1.8cm) was
+proven to work correctly as an absolute metre value on a ~1.2m box (≈1.5%
+of the object's size); on a multi-metre building it's a much smaller
+fraction of the silhouette, so a thinner, subtler line is the
+mathematically-consistent result of the SAME constant applied to a larger
+object — and `docs/ART_STYLE_GUIDE.md` explicitly locks this as "one
+outline weight for everything... never per-asset," so a flat absolute
+width reading as more subtle at architectural scale may be the intended
+consequence of that rule, not a defect. Recorded here as an open question
+rather than resolved either way: **whether large-scale assets need a
+distinct, still-shared outline treatment (e.g. a screen-space-constant
+outline instead of a world-space one) is a real design call for a human to
+make, not something this pass decided unilaterally.**
+
+Reproduce:
+```
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_GLB_URL=http://127.0.0.1:8998/models/building/tavern.glb \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/glb_outline_probe.gd
+# then compare /tmp/glb_outline_probe_with.png vs _without.png
+```
+
 ## Outline + rim light — the last two named ART_STYLE_GUIDE.md pieces, outline VISUALLY confirmed (2026-08-07, Phase S2)
 
 Closes the exact gap this file's own checklist named ("No outline/rim-light
