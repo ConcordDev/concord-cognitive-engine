@@ -21,7 +21,7 @@ import { useYjsAwareness } from '@/hooks/useYjsAwareness';
 import { useAuth } from '@/hooks/useAuth';
 import * as Y from 'yjs';
 import {
-  Sparkles, Bug, Github, MessageSquare, Puzzle, Columns, Users,
+  Sparkles, Bug, Code2 as Github, MessageSquare, Puzzle, Columns, Users,
   Loader2, Play, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
   Terminal as TerminalIcon, MapPin,
 } from 'lucide-react';

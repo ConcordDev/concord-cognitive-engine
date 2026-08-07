@@ -38,7 +38,7 @@ import LensAgentFab from '@/components/lens/LensAgentFab';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import KnowledgeEntrepreneurBadge from '@/components/creator/KnowledgeEntrepreneurBadge';
 import { ListingVerificationBadge, type FeaSummary } from '@/components/marketplace/ListingVerificationBadge';
-import { lensRun } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   useArtifacts,
   useCreateArtifact,
@@ -191,14 +191,13 @@ export default function CreatorDashboardPage() {
   const refreshListings = useCallback(() => {
     lensRun<{ listings?: MyListing[] }>('marketplace', 'myListings', {})
       .then((r) => setMyListings(r.data?.result?.listings ?? []))
-      .catch(() => {});
+      .catch((e) => console.warn('[creator] listings load failed:', e));
   }, []);
 
   const refreshWithdrawal = useCallback(() => {
-    fetch('/api/creator/withdrawal-status', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((d) => setWithdrawal(d as WithdrawalStatus))
-      .catch(() => {});
+    api.get('/api/creator/withdrawal-status')
+      .then((r) => setWithdrawal(r.data as WithdrawalStatus))
+      .catch((e) => console.warn('[creator] withdrawal status load failed:', e));
   }, []);
 
   useEffect(() => {

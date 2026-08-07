@@ -54,19 +54,22 @@ function makeMockMarker() {
   return marker;
 }
 
+// maplibre-gl v6 ships no default export — the real module only has named
+// exports (verified: `import * as m from 'maplibre-gl'` has no `.default`,
+// `typeof m.Map === 'function'`). DesertOfflineMapView.tsx does
+// `import * as maplibregl` and reads maplibregl.Map/.addProtocol directly,
+// so the mock must match that shape.
 vi.mock('maplibre-gl', () => {
   return {
-    default: {
-      Map: vi.fn().mockImplementation(() => makeMockMap()),
-      Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-      Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
-      NavigationControl: vi.fn().mockImplementation(() => ({})),
-      // Deferred closure (not a direct reference) so this doesn't dereference
-      // addProtocolMock until the mock is actually invoked — vi.mock factories
-      // run before top-level const initializers in this file, so a direct
-      // `addProtocol: addProtocolMock` reference hits a TDZ ReferenceError.
-      addProtocol: (...args: unknown[]) => addProtocolMock(...args),
-    },
+    Map: vi.fn().mockImplementation(() => makeMockMap()),
+    Marker: vi.fn().mockImplementation(() => makeMockMarker()),
+    Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
+    NavigationControl: vi.fn().mockImplementation(() => ({})),
+    // Deferred closure (not a direct reference) so this doesn't dereference
+    // addProtocolMock until the mock is actually invoked — vi.mock factories
+    // run before top-level const initializers in this file, so a direct
+    // `addProtocol: addProtocolMock` reference hits a TDZ ReferenceError.
+    addProtocol: (...args: unknown[]) => addProtocolMock(...args),
   };
 });
 

@@ -303,12 +303,12 @@ export async function runPython(code, opts = {}) {
   if (!pkgResolution.ok) {
     // No worker spawned — a doomed-to-fail request shouldn't pay the ~2s
     // cold-load cost, and the failure should be immediate and legible.
-    return Promise.resolve({
+    return {
       ok: false, stdout: "", stderr: "", result: null,
       error: pkgResolution.error,
       ...(pkgResolution.missing ? { missing: pkgResolution.missing } : {}),
       ...(pkgResolution.unknown ? { unknown: pkgResolution.unknown } : {}),
-    });
+    };
   }
   return _runInWorker(code, { packagePaths: pkgResolution.paths, packageNames: pkgResolution.names });
 }

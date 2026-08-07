@@ -1,10 +1,10 @@
 # Backend Dockerfile (glibc-based for onnxruntime compatibility)
-# Pin to Node 20.x LTS for reproducibility.
+# Pin to Node 26.x LTS for reproducibility.
 # To fully pin with SHA256 digest (recommended for production):
-#   docker pull node:20-bookworm-slim
-#   docker inspect --format='{{index .RepoDigests 0}}' node:20-bookworm-slim
-# Then replace the FROM line with: FROM node:20-bookworm-slim@sha256:<digest> AS base
-FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 AS base
+#   docker pull node:26-bookworm-slim
+#   docker inspect --format='{{index .RepoDigests 0}}' node:26-bookworm-slim
+# Then replace the FROM line with: FROM node:26-bookworm-slim@sha256:<digest> AS base
+FROM node:26-bookworm-slim@sha256:2d49d876e96237d76de412761cf05dbfe5aee325cc4406a4d41d5824c5bb8beb AS base
 
 # Install build tools for native modules (better-sqlite3) and runtime deps.
 # z3 is the SMT checker for reason.verify's formal-proof gate (lib/proof-gate.js);
@@ -15,7 +15,7 @@ FROM node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d
 # so Debian security patches published AFTERWARDS never reach the image, and
 # the pinned layer only accumulates CVEs over time. Verified 2026-07-28 that
 # the pin is NOT merely stale: querying Docker Hub for the current
-# `node:20-bookworm-slim` returns this same digest
+# `node:26-bookworm-slim` returns this same digest
 # (sha256:2cf067cf...), so there is no newer base to move to and upgrading
 # packages in-layer is the only way to pick up fixed CVEs.
 #

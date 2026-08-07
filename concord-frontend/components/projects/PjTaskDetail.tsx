@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, X, Trash2, Link2, Paperclip, MessageSquare, History, GitBranch, Upload, FileDown,
-  Github, MessageCircle, CheckCircle2,
+  Code2 as Github, MessageCircle, CheckCircle2,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';

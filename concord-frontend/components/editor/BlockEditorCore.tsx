@@ -1,6 +1,7 @@
 'use client';
 
-import { useEditor, EditorContent, BubbleMenu, FloatingMenu } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
@@ -9,7 +10,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Highlight from '@tiptap/extension-highlight';
 import Typography from '@tiptap/extension-typography';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
@@ -363,7 +364,6 @@ export function BlockEditor({
       {editor && (
         <BubbleMenu
           editor={editor}
-          tippyOptions={{ duration: 100 }}
           className="flex items-center gap-1 p-1 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl"
         >
           <ToolbarButton
@@ -397,7 +397,6 @@ export function BlockEditor({
       {editor && (
         <FloatingMenu
           editor={editor}
-          tippyOptions={{ duration: 100 }}
           className="flex items-center gap-1 p-1 bg-lattice-surface border border-lattice-border rounded-lg shadow-xl"
         >
           <ToolbarButton

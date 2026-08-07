@@ -41,14 +41,16 @@ function makeMockMarker() {
   return marker;
 }
 
+// maplibre-gl v6 ships no default export — the real module only has named
+// exports (verified: `import * as m from 'maplibre-gl'` has no `.default`,
+// `typeof m.Map === 'function'`). MapView.tsx does `import * as maplibregl`
+// and reads maplibregl.Map directly, so the mock must match that shape.
 vi.mock('maplibre-gl', () => {
   return {
-    default: {
-      Map: vi.fn().mockImplementation(() => makeMockMap()),
-      Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-      Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
-      NavigationControl: vi.fn().mockImplementation(() => ({})),
-    },
+    Map: vi.fn().mockImplementation(() => makeMockMap()),
+    Marker: vi.fn().mockImplementation(() => makeMockMarker()),
+    Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
+    NavigationControl: vi.fn().mockImplementation(() => ({})),
   };
 });
 

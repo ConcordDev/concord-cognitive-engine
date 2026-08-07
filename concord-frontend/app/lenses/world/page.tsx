@@ -2457,11 +2457,10 @@ export default function WorldLensPage() {
   useEffect(() => {
     let cancelled = false;
     function refresh() {
-      fetch('/api/combat-flow/loadout', { credentials: 'same-origin' })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => {
+      api.get('/api/combat-flow/loadout')
+        .then((r) => {
           if (cancelled) return;
-          const lo = j?.loadout;
+          const lo = r.data?.loadout;
           if (!lo) { setCombatLoadout(null); return; }
           setCombatLoadout({
             rightHand: lo.rightHand ? {
@@ -2474,7 +2473,7 @@ export default function WorldLensPage() {
             } : null,
           });
         })
-        .catch(() => {});
+        .catch((e) => console.warn('[world] loadout refresh failed:', e));
     }
     refresh();
     const onEquip = () => refresh();
@@ -2700,12 +2699,11 @@ export default function WorldLensPage() {
 
   // Fetch lens portal buildings for this world
   useEffect(() => {
-    fetch('/api/lens-portals?worldId=concordia-hub')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.portals) setPortals(d.portals);
+    api.get('/api/lens-portals?worldId=concordia-hub')
+      .then((r) => {
+        if (r.data?.portals) setPortals(r.data.portals);
       })
-      .catch(() => {});
+      .catch((e) => console.warn('[world] lens portals load failed:', e));
   }, []);
 
   // ── Loot bags ─────────────────────────────────────────────────────────────
@@ -2832,12 +2830,11 @@ export default function WorldLensPage() {
     // Player position is in the scene frame; the server stores nodes in the
     // world frame — convert back on the way out so the proximity query matches.
     const { x, z } = playerPos.current;
-    fetch(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.nodes) setNearbyNodes(d.nodes);
+    api.get(`/api/worlds/${currentWorldId}/nodes?x=${sceneToWorldAxis(x)}&z=${sceneToWorldAxis(z)}&radius=15`)
+      .then((r) => {
+        if (r.data?.nodes) setNearbyNodes(r.data.nodes);
       })
-      .catch(() => {});
+      .catch((e) => console.warn('[world] nearby nodes poll failed:', e));
   }, [currentWorldId]);
   useEffect(() => { pollNearbyNodes(); }, [pollNearbyNodes]);
   useSmartPolling(pollNearbyNodes, 5_000, { immediate: false });
