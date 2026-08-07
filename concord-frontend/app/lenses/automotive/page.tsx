@@ -39,7 +39,7 @@ import { AutomotiveActionPanel } from '@/components/automotive/AutomotiveActionP
 import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
-import { Car, Gauge, DollarSign, AlertTriangle, Shield } from 'lucide-react';
+import { Car, Gauge, DollarSign, AlertTriangle, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface DashboardSummary {
   vehicleCount: number;
@@ -73,6 +73,7 @@ const RENEWAL_STATUS_COLOUR: Record<UpcomingRenewal['status'], string> = {
 export default function AutomotiveLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [upcomingRenewals, setUpcomingRenewals] = useState<UpcomingRenewal[] | null>(null);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,11 +193,23 @@ export default function AutomotiveLensPage() {
           <VinDecoder />
         </section>
 
-        <PipingProvider>
-          <section>
-            <AutomotiveActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>More actions</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <AutomotiveActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <FuelRepairPanel />
