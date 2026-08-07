@@ -84,6 +84,15 @@ const SCENE_FORMAT := "concord-scene/v1"
 const BuildingArchetype := preload("res://world/building_archetype.gd")
 const AssetResolver := preload("res://assets/asset_resolver.gd")
 const GlbLoader := preload("res://assets/glb_loader.gd")
+const ArtStyle := preload("res://world/art_style.gd")
+
+## Which world's palette to toon-shade placeholder boxes with (Phase S1,
+## 2026-08-07). Threaded from `world/boot.gd` the same way as every sibling
+## controller's `world_id` (`_aerial_traffic.world_id`, `_avatar_manager.
+## world_id`, ...) — see that file's own wiring. Boxes spawned before this
+## field is set (e.g. an existing headless test with no engine-config step)
+## fall to the honest "concordia-hub" default rather than an unthemed grey.
+@export var world_id: String = "concordia-hub"
 
 ## Origin that serves the real building GLBs — the FRONTEND's static `public/`
 ## dir (`concord-frontend/public/models/building/*.glb`), not the backend API
@@ -446,6 +455,16 @@ func _spawn_node(node: Dictionary) -> void:
 	mesh.size = Vector3.ONE  # unit box; scale lives in the basis
 	mi.mesh = mesh
 	mi.name = String(node.get("id", "node"))
+	# Phase S1 (2026-08-07) — the placeholder box previously carried NO
+	# material at all (Godot's engine default), so every building not yet
+	# upgraded to a real GLB (or every building in a world with real meshes
+	# disabled) rendered completely unstyled. `make_toon_material` degrades
+	# to null honestly if the generated spec is unavailable — never a
+	# fabricated grey material — in which case the box keeps Godot's default
+	# rather than crashing.
+	var toon_mat := ArtStyle.make_toon_material(world_id)
+	if toon_mat != null:
+		mi.material_override = toon_mat
 
 	var origin: Vector3 = mapped["origin"]
 	var rot_y: float = mapped["rotationY"]

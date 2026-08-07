@@ -1,5 +1,59 @@
 # Visual QA — Godot World Lens
 
+## Toon material coverage — the real cel shader now actually reaches spawned geometry (2026-08-07, Phase S1)
+
+**A real, significant gap found while starting the graphics push**: `ArtStyle.
+make_toon_material()` (the real, tested, engine-verified toon shader) was
+called in exactly ZERO live spawn paths before this pass — only from test/
+QA-tool scripts. Every actually-spawned mesh in the running client used
+Godot's plain engine-default material or its own baked GLB material:
+`world/scene_bootstrap.gd`'s placeholder building box had no material
+assignment at all, and `avatar/avatar_rig.gd`'s primitive capsule limbs
+(the very first thing any avatar shows before/unless a GLB resolves) were
+the same. This is a big part of why today's earlier browser screenshots
+show flat, unstyled grey/olive shapes rather than the cel-shaded look the
+shader itself has been correct and tested for all along — the shader was
+real, but nothing was pointing a live mesh at it.
+
+Fixed both spawn paths, threading `world_id` the same way every sibling
+controller already does (`SceneBootstrap` gained the field; `boot.gd` now
+sets `_bootstrap.world_id = world_id` alongside its existing `_aerial_
+traffic.world_id`/`_avatar_manager.world_id` wiring). Both degrade
+honestly: `make_toon_material` returning null (spec unavailable) leaves the
+mesh on Godot's default rather than fabricating a color.
+
+**Real-engine evidence, not asserted:** `tools/toon_material_coverage_probe.gd`
+spawns a real `SceneBootstrap` node (via `apply_scene`) and a real
+`AvatarRig` (primitive path), then reads the actual `MeshInstance3D.
+material_override` back off each. Both are confirmed to be the real
+`ShaderMaterial` with the exact same `Shader` resource `ArtStyle.
+toon_shader()` returns (object identity, not a look-alike), and the box's
+`band_shadow` shader parameter matches `cyber`'s real palette exactly —
+proving the SPAWN PATH reaches the correct per-world material, not just
+that the accessor function works in isolation (already pinned separately
+by `tests/test_art_style.gd`).
+
+**Explicitly NOT done this pass, and why:** the ground plane
+(`world/boot.gd`) was deliberately left off this fix — it already carries a
+real terrain photo texture (`assets/terrain_texture_loader.gd`, a separate
+2026-08-07 addition) via `StandardMaterial3D.albedo_texture`, a property
+`ShaderMaterial` doesn't have. Swapping it to the toon material would
+silently break that texture rather than compose with it; giving the toon
+shader a texture-sampling uniform is real, separate shader work, not a
+one-line material swap — flagged, not silently skipped. Real GLB meshes
+(building archetypes, hero meshes) also keep their own baked materials
+untouched this pass — overriding a multi-surface imported mesh's materials
+wholesale is a bigger, higher-risk change than the two placeholder paths
+fixed here and deserves its own visual verification pass.
+
+Reproduce:
+```
+.godot-runtime/bin/godot --headless --path world-lens-godot --script tools/toon_material_coverage_probe.gd
+```
+(`--headless` alone is sufficient here, no `xvfb-run`/rendering driver
+needed — this probe reads material/shader *identity*, not pixels, unlike
+the rendered-pixel probes elsewhere in this file.)
+
 ## Real-time GI + post-processing dials — wired and property-verified; visible-difference claim stays in the human-eyes queue (2026-08-07, Phase S4)
 
 Context: the user asked for the graphics level of a photoreal reference

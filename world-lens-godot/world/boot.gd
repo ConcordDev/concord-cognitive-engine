@@ -328,6 +328,7 @@ func _ready() -> void:
 	_bootstrap.enable_real_building_meshes = true
 	_bootstrap.enable_collision = true
 	_bootstrap.frontend_asset_base_url = frontend_asset_base_url
+	_bootstrap.world_id = world_id
 	add_child(_bootstrap)
 
 	# C16 — ambient aerial traffic. Same "mount + let boot.gd's _on_event

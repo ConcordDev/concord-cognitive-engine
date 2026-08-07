@@ -234,6 +234,14 @@ func _build_primitive() -> void:
 	add_child(root)
 	_primitive_root = root
 
+	# Phase S1 (2026-08-07) — one shared toon material for every limb capsule,
+	# built once per rig rather than per-bone (14 bones would otherwise mean
+	# 14 separate ShaderMaterial instances of the IDENTICAL world palette).
+	# Degrades to null honestly if the generated spec is unavailable — the
+	# capsules keep Godot's default material, never a fabricated colour.
+	var ArtStyle := load("res://world/art_style.gd")
+	var toon_mat = ArtStyle.make_toon_material(world_id)
+
 	var specs := AvatarRig.bone_specs()
 	for spec in specs:
 		var socket := Node3D.new()
@@ -246,6 +254,8 @@ func _build_primitive() -> void:
 		capsule.radius = float(spec["radius"])
 		capsule.height = float(spec["height"])
 		mesh_instance.mesh = capsule
+		if toon_mat != null:
+			mesh_instance.material_override = toon_mat
 		socket.add_child(mesh_instance)
 
 
