@@ -491,6 +491,9 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	rig.rig_id = "local-player"
 	rig.base_url = frontend_asset_base_url
 	rig.world_id = world_id
+	# Phase M1 — the local player carries a real weapon mesh too, same
+	# archetype-driven resolve chain as the body above.
+	rig.attach_weapon = true
 	_character.add_child(rig)
 
 	add_child(_character)

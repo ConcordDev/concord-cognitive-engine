@@ -53,6 +53,8 @@ extends Node3D
 
 signal rig_ready(source: String)  # "glb" or "primitive"
 signal glb_load_failed(reason: String)
+signal weapon_ready()
+signal weapon_load_failed(reason: String)
 
 ## Passed to AssetResolver as the `kind` query param.
 @export var rig_id: String = ""
@@ -63,6 +65,16 @@ signal glb_load_failed(reason: String)
 ## preference (assets/asset_resolver.gd#fallback_url) — see that function's
 ## own comment. Blank is legal (falls to the universal archetype file).
 @export var world_id: String = ""
+## Threaded to AssetResolver as the body-mesh + weapon archetype (Phase M1).
+## Defaults to "warrior" — the honest default (no per-avatar archetype
+## signal exists on the wire yet, see asset_resolver.gd#fallback_url).
+@export var archetype: String = "warrior"
+## Weapon meshes are optional dressing on top of an already-real body mesh —
+## off by default so a caller that only wants the body (e.g. a future
+## non-combat spectator-only render path) doesn't pay for a second HTTP
+## fetch it never asked for. `world/avatar_manager.gd`/local-player spawn
+## turn this on explicitly.
+@export var attach_weapon: bool = false
 
 var _skeleton: Skeleton3D = null
 var _primitive_root: Node3D = null
@@ -71,6 +83,23 @@ var _current_state: String = "idle"
 var _current_blend: Dictionary = {}
 var _resolver: Node = null
 var _loader: Node = null
+var _weapon_loader: Node = null
+var _weapon_root: Node3D = null
+
+## The real, engine-verified right-hand bone name inside the hero-mesh GLBs
+## (`tools/avatar_bone_probe.gd`, run against a real `.glb` under a real
+## Godot 4.4 + Xvfb — see VISUAL_QA.md). These are Microsoft Rocketbox/3ds-Max
+## Biped rigs, NOT Mixamo naming despite the "Mixamo humanoid" shorthand
+## elsewhere in this file's own docs — "Bip01 R Hand" is the real name found
+## on disk, not a guessed convention.
+const HAND_BONE_GLB := "Bip01 R Hand"
+## Primitive-placeholder fallback attach point — `bone_specs()` has no
+## explicit hand joint (stops at the forearm, see that function's own
+## comment), so the weapon rides the forearm socket with a small offset
+## rather than inventing a new bone the placeholder was never designed to
+## carry (same "don't fabricate rig detail beyond what's verified" posture
+## the class doc states for why the primitive isn't a real Skeleton3D bind).
+const HAND_SOCKET_PRIMITIVE := "rightForearm"
 
 ## Cumulative horizontal distance (metres) fed into gait_solver.gd's
 ## distance-driven phase advance. Reset is never needed — gait_phase() wraps
@@ -92,6 +121,9 @@ func _ready() -> void:
 
 	if prefer_glb:
 		_try_resolve_glb()
+
+	if attach_weapon:
+		_try_resolve_weapon()
 
 
 ## Set world position + Y-axis rotation (radians). Engine-gated (Node3D
@@ -223,6 +255,7 @@ func _try_resolve_glb() -> void:
 	_resolver = AssetResolver.new()
 	_resolver.base_url = base_url
 	_resolver.world_id = world_id
+	_resolver.archetype = archetype
 	add_child(_resolver)
 	_resolver.resolved.connect(_on_resolved)
 	_resolver.resolve_failed.connect(_on_resolve_failed)
@@ -256,12 +289,81 @@ func _on_glb_loaded(_url: String, root: Node3D) -> void:
 		_skeleton = found
 	if _primitive_root != null:
 		_primitive_root.visible = false
+	# Weapon resolution races body-GLB resolution (both fire from `_ready()`
+	# as independent HTTP requests) — if a weapon already attached to the
+	# now-hidden primitive's forearm socket, re-home it onto the real
+	# skeleton's hand bone so it doesn't silently vanish with the primitive.
+	if _weapon_root != null:
+		var new_attach := _hand_attach_point()
+		if new_attach != null and _weapon_root.get_parent() != new_attach:
+			_weapon_root.get_parent().remove_child(_weapon_root)
+			new_attach.add_child(_weapon_root)
 	rig_ready.emit("glb")
 
 
 func _on_glb_failed(_url: String, reason: String) -> void:
 	# Honest: the primitive placeholder stays visible; nothing is fabricated.
 	glb_load_failed.emit(reason)
+
+
+## ── Phase M1 — weapon-in-hand ────────────────────────────────────────────────
+## A weapon is separate dressing from the body mesh above, resolved and
+## attached independently: an archetype that carries no weapon
+## (asset_resolver.gd#ARCHETYPE_WEAPON — scholar/trader today) is not a
+## failure case, it's a real "no weapon" answer, and this never blocks or
+## depends on whether the body itself resolved to a real GLB or stayed on
+## the primitive — both attach points exist as soon as `_build_primitive()`
+## has run (which `_ready()` guarantees before this is ever called).
+func _try_resolve_weapon() -> void:
+	var AssetResolver := load("res://assets/asset_resolver.gd")
+	var weapon_url: String = AssetResolver.weapon_url_for_archetype(base_url, archetype)
+	if weapon_url == "":
+		return  # honest: this archetype carries no weapon, not an error
+
+	var GlbLoader := load("res://assets/glb_loader.gd")
+	_weapon_loader = GlbLoader.new()
+	add_child(_weapon_loader)
+	_weapon_loader.loaded.connect(_on_weapon_glb_loaded)
+	_weapon_loader.load_failed.connect(_on_weapon_glb_failed)
+	_weapon_loader.load_glb(weapon_url)
+
+
+func _on_weapon_glb_loaded(_url: String, root: Node3D) -> void:
+	if root == null:
+		return
+	var attach := _hand_attach_point()
+	if attach == null:
+		# Honest: no real attach point exists yet (shouldn't happen post-
+		# _build_primitive, but never fabricate a placement if it does) —
+		# drop the loaded weapon rather than parent it somewhere wrong.
+		root.queue_free()
+		return
+	_weapon_root = root
+	attach.add_child(_weapon_root)
+	weapon_ready.emit()
+
+
+func _on_weapon_glb_failed(_url: String, reason: String) -> void:
+	# Honest: no weapon is shown; nothing is fabricated in its place.
+	weapon_load_failed.emit(reason)
+
+
+## Real Skeleton3D hand bone (once a body GLB has resolved) if present,
+## else the primitive placeholder's forearm socket — mirrors
+## `_apply_bone_angle`'s own dual-path lookup so weapon attachment follows
+## exactly the same "prefer real skeleton, fall back to primitive socket"
+## rule the leg-IK code already established. Never fabricates a third
+## fallback: if neither exists (shouldn't happen after `_ready()`), returns
+## null and the caller drops the weapon rather than guessing a placement.
+func _hand_attach_point() -> Node3D:
+	if _skeleton != null:
+		var idx := _skeleton.find_bone(HAND_BONE_GLB)
+		if idx >= 0:
+			var attachment := BoneAttachment3D.new()
+			attachment.bone_name = HAND_BONE_GLB
+			_skeleton.add_child(attachment)
+			return attachment
+	return get_bone_node(HAND_SOCKET_PRIMITIVE)
 
 
 func _find_skeleton(node: Node) -> Skeleton3D:

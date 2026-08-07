@@ -18,6 +18,12 @@ static func run() -> TestUtils:
 	_test_player_kind_with_world_id_uses_the_per_world_variant(t)
 	_test_npc_kind_follows_the_same_convention_as_player(t)
 	_test_id_is_ignored_for_player_and_npc_kinds(t)
+	_test_explicit_archetype_selects_its_own_mesh_file(t)
+	_test_unknown_archetype_falls_back_to_warrior(t)
+	_test_weapon_url_for_warrior(t)
+	_test_weapon_url_for_legend_is_greatsword(t)
+	_test_weapon_url_for_scholar_is_empty_not_fabricated(t)
+	_test_weapon_url_for_unknown_archetype_is_empty(t)
 	return t
 
 
@@ -53,3 +59,45 @@ static func _test_id_is_ignored_for_player_and_npc_kinds(t: TestUtils) -> void:
 	var a := AssetResolver.fallback_url("http://host:3000", "player", "aaa")
 	var b := AssetResolver.fallback_url("http://host:3000", "player", "bbb")
 	t.check_eq(a, b, "id has no bearing on the resolved URL for player/npc (no per-user rig exists)")
+
+
+static func _test_explicit_archetype_selects_its_own_mesh_file(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "player", "user-123", "", "mystic"),
+		"http://host:3000/meshes/heroes/_archetype_mystic.glb",
+		"a real archetype other than warrior resolves to its own mesh file")
+
+
+static func _test_unknown_archetype_falls_back_to_warrior(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "player", "user-123", "", "not-a-real-archetype"),
+		"http://host:3000/meshes/heroes/_archetype_warrior.glb",
+		"an unrecognised archetype string falls to the honest warrior default, never a guaranteed-404 URL")
+
+
+static func _test_weapon_url_for_warrior(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.weapon_url_for_archetype("http://host:3000", "warrior"),
+		"http://host:3000/models/weapon/longsword.glb",
+		"warrior resolves to the real longsword GLB")
+
+
+static func _test_weapon_url_for_legend_is_greatsword(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.weapon_url_for_archetype("http://host:3000", "legend"),
+		"http://host:3000/models/weapon/greatsword.glb",
+		"legend resolves to greatsword, matching enhanced-avatar-builder.ts's one explicit archetype-conditioned weapon rule")
+
+
+static func _test_weapon_url_for_scholar_is_empty_not_fabricated(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.weapon_url_for_archetype("http://host:3000", "scholar"),
+		"",
+		"scholar carries no real weapon GLB — empty is the honest answer, not a fabricated blade")
+
+
+static func _test_weapon_url_for_unknown_archetype_is_empty(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.weapon_url_for_archetype("http://host:3000", "not-a-real-archetype"),
+		"",
+		"an archetype with no table entry resolves to no weapon, not a guess")

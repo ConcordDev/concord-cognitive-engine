@@ -137,6 +137,10 @@ func _spawn_rig(id: String) -> void:
 	rig.kind = "player" if _kinds.get(id, "npc") == "player" else "npc"
 	rig.base_url = base_url
 	rig.world_id = world_id
+	# Phase M1 — every remote/spectated avatar carries its (today: always
+	# "warrior", see AssetResolver's own honest-default comment) archetype's
+	# real weapon, same as the local player below.
+	rig.attach_weapon = true
 	add_child(rig)
 	_rigs[id] = rig
 

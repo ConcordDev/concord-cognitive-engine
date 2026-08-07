@@ -23,12 +23,19 @@ signal resolve_failed(kind: String, id: String, reason: String)
 ## see that function's own comment for why. Blank is a legal, honest value
 ## (no per-world variant preference; falls to the universal archetype file).
 @export var world_id: String = ""
+## Threaded through to `fallback_url` for kind "player"/"npc" — which of the
+## 7 real archetype meshes to resolve. Defaults to "warrior", matching the
+## honest default every caller used before this field existed (no per-avatar
+## archetype signal exists on the wire yet — see that function's own
+## comment). Set explicitly once a real signal exists; an unset/empty value
+## here still resolves correctly (falls to "warrior" inside `fallback_url`).
+@export var archetype: String = "warrior"
 
 
 ## Async resolve: try the endpoint, fall back to the static path.
 func resolve(kind: String, id: String) -> void:
 	if not use_resolve_endpoint:
-		resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id))
+		resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id, archetype))
 		return
 
 	var req := HTTPRequest.new()
@@ -40,7 +47,7 @@ func resolve(kind: String, id: String) -> void:
 	if err != OK:
 		req.queue_free()
 		# Endpoint unreachable → static fallback (honest: may still 404 at load).
-		resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id))
+		resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id, archetype))
 
 
 func _on_completed(
@@ -53,7 +60,7 @@ func _on_completed(
 			resolved.emit(kind, id, String(parsed["url"]))
 			return
 	# Any failure → static fallback path (never fabricate a resolved asset).
-	resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id))
+	resolved.emit(kind, id, AssetResolver.fallback_url(base_url, kind, id, world_id, archetype))
 
 
 ## Pure static convention path. Deterministic; existence not guaranteed.
@@ -65,18 +72,66 @@ func _on_completed(
 ## NOT the building convention's `{base}/models/{kind}/{id}.glb`, which has
 ## no `player`/`npc` files on disk and would always 404. There is no
 ## per-user bespoke rig today (id is a session/user id, not an authored
-## hero id), so this always resolves to the shared "warrior" archetype —
-## the same universal default every remote/spectated player renders as in
-## the web client absent a more specific occupation signal, which the
-## `city:positions` wire payload this resolves from doesn't carry. A
-## non-empty `world_id` prefers that world's palette variant
-## (`_archetype_warrior__{world_id}.glb`, one of 6 authored today); GlbLoader
-## honestly 404s and the caller's primitive placeholder stays up if a given
-## world has no variant — never fabricated, never guessed beyond this
-## documented convention.
-static func fallback_url(base: String, kind: String, id: String, world_id: String = "") -> String:
+## hero id), so this resolves to `archetype` (defaulting to the shared
+## "warrior" archetype — the same universal default every remote/spectated
+## player renders as in the web client absent a more specific occupation
+## signal, which the `city:positions` wire payload this resolves from
+## doesn't carry). An empty/unrecognised `archetype` value also falls to
+## "warrior" rather than building a 404-guaranteed URL. A non-empty
+## `world_id` prefers that world's palette variant
+## (`_archetype_<archetype>__{world_id}.glb`, one of 6 authored today per
+## archetype); GlbLoader honestly 404s and the caller's primitive
+## placeholder stays up if a given world/archetype pair has no variant —
+## never fabricated, never guessed beyond this documented convention.
+static func fallback_url(
+		base: String, kind: String, id: String, world_id: String = "", archetype: String = "warrior"
+) -> String:
 	if kind == "player" or kind == "npc":
+		var arch := archetype if ARCHETYPE_WEAPON.has(archetype) else "warrior"
 		if not world_id.is_empty():
-			return "%s/meshes/heroes/_archetype_warrior__%s.glb" % [base, world_id]
-		return "%s/meshes/heroes/_archetype_warrior.glb" % base
+			return "%s/meshes/heroes/_archetype_%s__%s.glb" % [base, arch, world_id]
+		return "%s/meshes/heroes/_archetype_%s.glb" % [base, arch]
 	return "%s/models/%s/%s.glb" % [base, kind, id]
+
+
+## ── Weapon resolution (Phase M1 — mesh library wiring) ───────────────────────
+##
+## Maps each of the 7 real hero archetypes to a real weapon GLB id from
+## `concord-frontend/public/models/weapon/*.glb` (the same 15-file library
+## `concord-frontend/lib/concordia/weapon-archetypes.ts` uses). This table is
+## authored fresh, not ported — the Three.js client's own weapon selection
+## (`enhanced-avatar-builder.ts`) keys off `accessories.carry` lists driven by
+## body-shape/faction-style presets (`character-schema.ts`'s `BodyArchetype` —
+## slim/average/stocky/tall/broad/petite/legend), a DIFFERENT axis from the 7
+## occupation-flavoured hero archetypes (warrior/guard/scholar/mystic/hunter/
+## trader/legend) this file resolves bodies against; there is no existing
+## direct mapping between the two to port. `enhanced-avatar-builder.ts` has
+## exactly one place where the two axes touch (`bodyArchetype === 'legend' ?
+## 'greatsword' : 'longsword'`), reused verbatim below for the one archetype
+## name shared by both systems. The rest is a small, deliberately
+## conservative table using only real on-disk weapon ids: not every
+## archetype carries a weapon (scholar/trader carry no combat weapon in the
+## Three.js carryDefault presets either — tome/satchel/pouch, none of which
+## have a real GLB on disk today, so they correctly resolve to "no weapon"
+## here rather than a fabricated blade). An archetype with no entry, or an
+## empty string value, means "no weapon" — not a failure.
+const ARCHETYPE_WEAPON := {
+	"warrior": "longsword",
+	"guard": "spear",
+	"hunter": "bow",
+	"mystic": "staff",
+	"legend": "greatsword",
+	"scholar": "",
+	"trader": "",
+}
+
+
+## Resolve the weapon GLB URL for an archetype, or "" when that archetype
+## carries no weapon (honest — not a failure, callers should skip loading).
+## Pure and deterministic like `fallback_url`; existence on disk is still
+## not guaranteed (GlbLoader surfaces a 404 honestly downstream).
+static func weapon_url_for_archetype(base: String, archetype: String) -> String:
+	var weapon_id: String = ARCHETYPE_WEAPON.get(archetype, "")
+	if weapon_id == "":
+		return ""
+	return "%s/models/weapon/%s.glb" % [base, weapon_id]

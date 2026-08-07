@@ -1,5 +1,105 @@
 # Visual QA — Godot World Lens
 
+## Weapon-in-hand — real GLB weapons now attach to real avatars (2026-08-07, Phase M1)
+
+`assets/asset_resolver.gd` gained `ARCHETYPE_WEAPON` (a small, freshly-authored
+table — NOT a port; the Three.js client's weapon selection keys off a
+different axis, `character-schema.ts`'s body/faction-style `carryDefault`,
+which has no existing mapping onto the 7 occupation-flavoured hero
+archetypes this file resolves bodies against) mapping warrior→longsword,
+guard→spear, hunter→bow, mystic→staff, legend→greatsword (the one place the
+two axes do overlap — `enhanced-avatar-builder.ts`'s `bodyArchetype ===
+'legend' ? 'greatsword' : 'longsword'`), scholar/trader→none (honest: no
+real weapon GLB exists for tome/satchel carry items, so "no weapon" is the
+correct answer, not a fabricated blade). `avatar/avatar_rig.gd` resolves
+this independently of the body GLB (a weaponless archetype is a real
+answer, not a failure) and attaches the result to a `BoneAttachment3D` on
+the real skeleton's hand bone when found, falling back to the primitive
+placeholder's `rightForearm` socket otherwise — re-homing an already-
+attached weapon if the body GLB resolves after the weapon does (the two
+fetches race independently from `_ready()`).
+
+**The hand-bone name was found by running the real engine, not guessed.**
+A new `tools/avatar_bone_probe.gd` loaded `_archetype_warrior.glb` under a
+real Godot 4.4 + Xvfb/llvmpipe session and dumped its actual skeleton: 80
+real bones, Microsoft Rocketbox/3ds-Max **Biped** naming (`"Bip01 R Hand"`,
+`"Bip01 R Forearm"`, ...) — **not** Mixamo naming, despite this file's own
+prior "Mixamo humanoid" shorthand for these assets. Using a guessed
+Mixamo-style name (`"mixamorig:RightHand"`) here would have silently missed
+every real skeleton and fallen through to the primitive socket on every
+avatar — an honest failure, but a needless one the probe caught for free.
+
+**Real-engine evidence for the attach itself, not just the bone name:** a
+new `tools/weapon_attach_probe.gd` instantiates a real `AvatarRig` (real
+HTTP fetch of a real GLB via the real `AssetResolver`/`GlbLoader` pair, no
+mocks) and reports what actually happened after both async fetches settle.
+Four archetypes checked live, against a real static file server over
+`concord-frontend/public/`:
+
+| archetype | body resolved | weapon attached | weapon parent | mesh instances |
+|---|---|---|---|---|
+| warrior | glb | yes | `BoneAttachment3D` | 1 |
+| scholar | glb | **no** (honest — no table entry) | — | 0 |
+| legend | glb | yes | `Node3D` (primitive socket) | 1 |
+| mystic | glb | yes | `BoneAttachment3D` | 1 |
+
+The `legend` row is a real, honestly-observed finding, not a bug: that
+archetype's GLB resolved to a body mesh whose skeleton does NOT contain
+`"Bip01 R Hand"` (a different/bespoke rig from the other archetypes — the
+CREDITS.md-documented "first-hero" meshes are sourced separately from the
+shared archetype set), so the dual-fallback correctly degraded to the
+primitive's forearm socket instead of silently failing to attach at all.
+This is exactly the value of verifying against the real per-archetype
+assets instead of assuming they share one rig.
+
+**What this does NOT settle:** whether the attached weapon's *position/
+orientation* on the hand looks right at a glance (no offset/rotation tuning
+has been done — it rides the bone's raw transform), and the full live path
+(`city:positions` → `AvatarManager._spawn_rig` → this exact code, inside a
+real browser Web export with a second connected user) — same queued item as
+the "Avatars" section above, now also covering weapons.
+
+Reproduce:
+```
+node scripts/fetch-godot.mjs   # or confirm .godot-runtime/bin/godot already present
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_ASSET_BASE_URL=http://127.0.0.1:8998 CONCORD_WEAPON_PROBE_ARCHETYPE=warrior \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/weapon_attach_probe.gd
+```
+
+## Vegetation/creature meshes — genuinely no placement data exists yet (2026-08-07, scope note)
+
+Before starting the "meshes" pass, checked directly (not assumed) whether a
+real placement-data feed exists for the vegetation (6 GLBs) and creature (4
+GLBs) libraries already sitting in `concord-frontend/public/models/` unused
+by Godot. Neither does, confirmed by reading the actual code, not a doc:
+- `server/lib/scene-export.js#exportScene`'s full return shape is
+  `{nodes (buildings only), bounds, districts, plaza, landingPads}` — no
+  vegetation/prop array. `content/world/concordia-hub/city-layout.json`'s
+  top-level keys are `{worldId, format, conceptsByDistrict, buildings,
+  landingPads}` — no vegetation field either.
+- `server/lib/city-presence.js`'s `city:npcs` broadcast — which would have
+  been the natural live-position feed for creatures — was **deliberately
+  retired server-side** (`DET-C batch 8 investigation, 2026-07-23`, that
+  file's own comment); `world/boot.gd`'s own header explicitly documents
+  why it isn't subscribed to. No replacement fauna/creature broadcast
+  exists (`realtimeEmit("fauna...`/`realtimeEmit("creature...` — zero
+  matches anywhere in `server/`).
+
+Building an asset-aware `PropInstancer` with nothing real to feed it would
+produce infrastructure with no live path to verify end-to-end, and inventing
+placement coordinates client-side would be exactly the fabrication this
+project's honesty invariant exists to prevent. Left for a follow-up pass:
+vegetation is a small, legitimate CURATION addition (author a real
+`vegetation` array in `city-layout.json`, mirroring the existing
+`landingPads` pattern, then wire it into `exportScene` the same additive
+way `plaza`/`landingPads` already are); creatures need a genuine new
+backend surface (a live position broadcast for the existing server-side
+fauna simulation) — bigger, deliberately not started without being called
+out explicitly first.
+
 **Updated 2026-07-25 — this project HAS now been run in a real Godot engine.**
 The previous header ("has never been opened in a real Godot editor or renderer",
 "the agent proxy blocks the Godot headless binary download") is **superseded**: a
