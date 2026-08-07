@@ -147,10 +147,19 @@ func _on_building_glb_loaded(_url: String, root: Node3D, archetype: String, load
 
 func _on_building_glb_failed(_url: String, _reason: String, archetype: String, loader: GlbLoader) -> void:
 	loader.queue_free()
-	# Honest failure: the archetype stays permanently box-only for this run.
-	# Remove the "loading" sentinel so a future retry (if ever added) isn't
-	# blocked, but do NOT fabricate a template.
-	_building_templates.erase(archetype)
+	# Honest failure: the archetype stays permanently box-only for THIS RUN.
+	# "failed" is a distinct, permanent sentinel from "loading" -- erasing
+	# the key entirely (an earlier version of this did that) let every
+	# subsequently-spawned node of the same archetype re-trigger a brand new
+	# fetch attempt via _spawn_node's `if not _building_templates.has(...)`
+	# fallback, and a synchronous failure (e.g. Godot's HTTPRequest
+	# rejecting a malformed URL, verified with a real browser load) retries
+	# on literally the next node spawned -- a real, measured retry storm:
+	# hundreds of attempts across one concordia-hub load, one per building
+	# of that archetype. "failed" makes has(archetype) stay true forever
+	# once a fetch has been tried and lost, so _spawn_node's fallback never
+	# fires again for it this session.
+	_building_templates[archetype] = "failed"
 	push_warning("[scene] real building mesh failed to load for archetype '%s' — staying on placeholder box" % archetype)
 
 

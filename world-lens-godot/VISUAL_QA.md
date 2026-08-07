@@ -46,6 +46,92 @@ machine**. **No document in this repo — including `docs/GODOT_INTEGRATION.md` 
 makes any visual-quality claim. All such claims live only here, unverified, until
 checked off below.**
 
+## Browser (Web export) — real client, real server, zero errors (2026-08-07)
+
+**The Godot Web export now loads and runs end-to-end in a real headless
+Chromium browser, against a real Concord server, with zero console errors.**
+Not the headless-native rasterizer used elsewhere in this file — a real
+`chromium.launch()` (Playwright, the same browser this repo's own e2e suite
+uses), loading `/godot-client/index.html` from a real `next dev` server, with
+`CONCORD_GATEWAY_URL`/`CONCORD_GODOT_AUTH_TOKEN`/`CONCORD_WORLD_ID` passed as
+query params on a real registered user against a real spawned `server.js`
+(fresh migrated DB). Console log for the final run: engine boot, WebGL init,
+`[boot] gateway socket open`, `[boot] authenticated as <uid>`, `[boot] joined
+room world:concordia-hub` — **and nothing else**. No CSP violation, no fetch
+error, no GLTF parse error. This is a real milestone, not a synthetic one:
+getting here required finding and fixing four separate, real defects, each
+found only by actually loading the page in a browser rather than reasoning
+about it:
+
+1. **The app's own auth middleware 307'd the Godot export to `/login`.**
+   `concord-frontend/middleware.ts`'s `STATIC_ASSET_RE` (the extension-based
+   static-file allowlist) doesn't cover `.html`/`.js`/`.wasm` — too broad a
+   carve-out for the app generally — so every file in the export, including
+   `index.html` itself, was gated behind a session cookie. Fixed by adding
+   `/godot-client/` to `PUBLIC_PREFIXES` (same pattern as the pre-existing
+   `/meshes/`, `/textures/` entries). Pinned by `concord-frontend/tests/
+   middleware.test.ts`.
+2. **The app's `strict-dynamic` CSP refused Godot's own un-nonced `<script>`
+   tags outright**, and separately refused `JavaScriptBridge.eval` (the
+   first-attempt way to read `window.location.search` for runtime config)
+   because the CSP has `wasm-unsafe-eval` but not the much broader
+   `unsafe-eval`. Fixed on two fronts: `index.html` is no longer a static
+   `public/` file at all — `scripts/export-godot-web.mjs` now exports into a
+   gitignored staging dir and `app/godot-client/index.html/route.ts` serves
+   it, injecting the current request's real CSP nonce into both `<script>`
+   tags at request time. Runtime config (gateway URL, auth token, world id,
+   frontend asset origin) is passed a completely different way — server-side,
+   spliced into the exported `GODOT_CONFIG.args` array as `-- KEY=VALUE`
+   entries, read on the Godot side via `OS.get_cmdline_user_args()`
+   (`world/boot.gd#parse_key_value_args`) — needing no CSP relaxation at all,
+   since Godot's own bootstrap already passes that array to the WASM
+   module's argv unconditionally. Pinned by `concord-frontend/tests/
+   godot-client-route.test.ts` and `world-lens-godot/tests/
+   test_boot_runtime_config.gd`.
+3. **The app's CSP `connect-src` (`'self' https: wss: ws:`) refused a
+   cross-origin plain-http fetch**, and separately Godot's own
+   `HTTPRequest._parse_url` rejects a schemeless/relative URL outright even
+   on Web (`"Error parsing URL: '/models/building/tavern.glb'"`) — so
+   neither "point at a different host" nor "use a relative URL" worked in
+   isolation. Fixed by having the SAME route handler default
+   `CONCORD_FRONTEND_URL` to the request's own real origin whenever the
+   caller didn't specify one — `resolveRequestOrigin()` reads
+   `X-Forwarded-Host`/`Host` (and `X-Forwarded-Proto`), NOT
+   `request.nextUrl.origin`, because that resolved to `"localhost"` under
+   `next dev`/Turbopack even when the browser was actually on `127.0.0.1` —
+   a real, measured mismatch (verified with an explicit `Host` header on the
+   request, which nextUrl.origin still ignored) that is a different CSP
+   origin and so was refused by `'self'` anyway. This also fixed a genuine,
+   separate correctness bug in `scene_bootstrap.gd`: the original failure
+   handler erased the "attempted" sentinel on every failure, so every
+   subsequently-spawned building of the same archetype re-triggered a brand
+   new fetch — a measured retry storm (hundreds of attempts loading
+   concordia-hub). `_on_building_glb_failed` now sets a permanent `"failed"`
+   sentinel instead, so a failed archetype is attempted exactly once per
+   session.
+4. **Godot's gzip response decoder failed mid-stream on Next.js's
+   dev-server-compressed responses** (`"Condition 'err != 0 && err != 1' is
+   true"` in `core/io/stream_peer_gzip.cpp`), so even a correctly-addressed,
+   CSP-clean fetch still failed. Fixed by setting `HTTPRequest.accept_gzip =
+   false` in `assets/glb_loader.gd` — trades a larger uncompressed transfer
+   for one that actually completes; for a multi-MB GLB fetched once and
+   cached, that trade is a clear win over silently never loading.
+
+**What this does NOT settle:** whether the resulting frame, once decoded,
+*looks* right at a glance — the screenshot from this exact run still shows
+the same small-and-distant framing issue recorded below (the ground plane
+dominates the wide shot). This section is about the pipeline actually
+working end-to-end in a real browser against a real server, not a claim
+about visual polish.
+
+Reproduce (see `scripts/export-godot-web.mjs` for the export step):
+```
+node scripts/export-godot-web.mjs   # exports into concord-frontend/public/godot-client/ + .godot-web-staging/
+cd concord-frontend && npm run dev  # or npm run build && npm start
+# then load, in a real browser:
+#   http://<host>/godot-client/index.html?CONCORD_GATEWAY_URL=ws://<host>:5050/godot-ws&CONCORD_GODOT_AUTH_TOKEN=<jwt>&CONCORD_WORLD_ID=concordia-hub
+```
+
 ## How to run the QA pass
 
 1. Get the engine: `node scripts/fetch-godot.mjs` (checksum-verified; writes to the

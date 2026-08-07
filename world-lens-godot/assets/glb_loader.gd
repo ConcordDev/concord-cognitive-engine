@@ -22,6 +22,18 @@ func load_glb(url: String) -> void:
 
 	var req := HTTPRequest.new()
 	add_child(req)
+	# `accept_gzip` defaults to true (Godot sends `Accept-Encoding: gzip` and
+	# auto-decompresses). Found broken with a real server: Next.js's dev
+	# server compresses `/models/building/*.glb` responses, and Godot's
+	# stream_peer_gzip decoder failed mid-stream on them
+	# ("Condition 'err != 0 && err != 1' is true" in core/io/
+	# stream_peer_gzip.cpp) — every real building-mesh fetch failed with
+	# `http_result_*` below as a direct result, honestly reported (never a
+	# corrupted/partial mesh) but never actually loading. Disabling gzip
+	# trades a larger uncompressed transfer for a working transfer; for a
+	# multi-MB GLB fetched once and cached (see `_cache` above) that trade is
+	# clearly worth it over silently never loading real building art.
+	req.accept_gzip = false
 	req.request_completed.connect(_on_completed.bind(url, req))
 	var err := req.request(url)
 	if err != OK:

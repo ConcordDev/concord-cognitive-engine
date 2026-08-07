@@ -97,6 +97,11 @@ world-lens-godot/*.x86_64
 # concord-frontend/public/ so it's servable with zero new infra — see that
 # script's header for why nothing else needed to change.
 concord-frontend/public/godot-client/
+# Raw Godot export staging dir (scripts/export-godot-web.mjs) — holds the
+# exported index.html the app/godot-client/index.html/route.ts handler reads
+# and nonce-injects at request time. Never served directly; see either
+# file's header for why index.html is kept out of public/.
+concord-frontend/.godot-web-staging/
 
 # Vendored Pyodide scientific packages (scripts/fetch-pyodide-packages.mjs /
 # server npm script `fetch-pyodide-packages`). Checksum-verified wheels for

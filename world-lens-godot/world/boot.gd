@@ -95,6 +95,15 @@ const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 ## building GLBs actually live (`concord-frontend/public/models/building/
 ## *.glb`), distinct from the backend gateway/API origin above. Override via
 ## CONCORD_FRONTEND_URL for a non-default deploy (e.g. behind a tunnel).
+## This @export default (a concrete local dev host) is what NATIVE builds
+## use; `_ready()` overrides it to "" (relative/same-origin) for Web builds
+## specifically — see that override's comment for why: the app's CSP
+## `connect-src` only allows `'self' https: wss: ws:`, so a Web build
+## fetching from a DIFFERENT plain-http origin than the page itself is
+## refused outright (verified with a real browser load — see VISUAL_QA.md).
+## A real deployment serves the Godot page and `public/models/` from the
+## SAME origin (both come out of the one Next.js app), so the relative form
+## is not just CSP-compatible, it is the actually-correct default.
 @export var frontend_asset_base_url: String = "http://127.0.0.1:3000"
 
 var _gateway: GatewayClient
@@ -139,14 +148,86 @@ static func resolve_runtime_config(env: Dictionary, defaults: Dictionary) -> Dic
 	return resolved
 
 
+## Pure — parses a flat array of "KEY=VALUE" strings (as delivered by
+## `OS.get_cmdline_user_args()` — everything after a `--` separator, both
+## natively and on Web, see `is_web_build()`'s comment below for why this
+## replaced an earlier `window.location.search` + JavaScriptBridge.eval
+## approach) into a Dictionary of decoded key/value strings.
+## `["CONCORD_WORLD_ID=tunya", "CONCORD_GODOT_SPECTATOR=1"]` ->
+## {"CONCORD_WORLD_ID":"tunya","CONCORD_GODOT_SPECTATOR":"1"}. An entry with
+## no `=` yields an empty-string value, same as a blank env var —
+## downstream `resolve_runtime_config` already treats a blank value as "not
+## set" and leaves the default in place, so this never needs special-casing
+## here. Malformed/empty entries are skipped, never thrown on.
+static func parse_key_value_args(args: PackedStringArray) -> Dictionary:
+	var out := {}
+	for entry in args:
+		if entry.is_empty():
+			continue
+		var eq := entry.find("=")
+		var key: String
+		var value: String
+		if eq == -1:
+			key = entry
+			value = ""
+		else:
+			key = entry.substr(0, eq)
+			value = entry.substr(eq + 1)
+		if key.is_empty():
+			continue
+		out[key] = value
+	return out
+
+
+## True only for a real HTML5/Web export at runtime (never true for the
+## native editor/headless/desktop builds this project also ships) — gates
+## the query-string config path below. `OS.get_name()` returns "Web" for
+## the Web export target; this is the documented, stable way to detect it
+## (there is no `OS.has_feature("web")` shortcut for this in Godot 4).
+static func is_web_build() -> bool:
+	return OS.get_name() == "Web"
+
+
 func _ready() -> void:
-	var _env := {
-		"CONCORD_GATEWAY_URL": OS.get_environment("CONCORD_GATEWAY_URL"),
-		"CONCORD_GODOT_API_KEY": OS.get_environment("CONCORD_GODOT_API_KEY"),
-		"CONCORD_GODOT_AUTH_TOKEN": OS.get_environment("CONCORD_GODOT_AUTH_TOKEN"),
-		"CONCORD_WORLD_ID": OS.get_environment("CONCORD_WORLD_ID"),
-		"CONCORD_GODOT_SPECTATOR": OS.get_environment("CONCORD_GODOT_SPECTATOR"),
-	}
+	# Native env vars do not exist inside a browser tab — `OS.get_environment`
+	# always returns "" on the Web export target (confirmed by Godot's own
+	# HTML5 platform docs; there is no host process to inherit a shell
+	# environment from). A page embedding this client therefore configures it
+	# via engine cmdline args instead: `app/godot-client/index.html/route.ts`
+	# (the same route that injects the CSP nonce) also reads the page's own
+	# query string SERVER-SIDE and splices "KEY=VALUE" entries into the
+	# exported GODOT_CONFIG.args array, after a literal "--" separator, so
+	# `OS.get_cmdline_user_args()` returns exactly those entries here.
+	#
+	# An earlier version of this used `window.location.search` read via
+	# `JavaScriptBridge.eval` — that was tried and REJECTED after an actual
+	# browser load: the app's CSP has `wasm-unsafe-eval` (needed for the WASM
+	# runtime itself) but deliberately not the much broader `unsafe-eval`
+	# (arbitrary JS eval/Function-string execution anywhere in the app), so
+	# `JavaScriptBridge.eval` was refused outright
+	# ("EvalError: Refused to evaluate a string as JavaScript..."), silently
+	# leaving every query param unread. The cmdline-args path needs no CSP
+	# relaxation at all — GODOT_CONFIG.args is a plain JSON array Godot's own
+	# generated bootstrap script already passes to the WASM module's argv,
+	# same code path as native cmdline args, not JS eval.
+	#
+	# Same key names as the native env-var path
+	# (CONCORD_GATEWAY_URL=...=CONCORD_GODOT_AUTH_TOKEN=...) so
+	# `resolve_runtime_config` (already pinned by tests/test_boot_runtime_
+	# config.gd) is reused byte-for-byte rather than forked into a second,
+	# web-only config surface.
+	var _env: Dictionary
+	if is_web_build():
+		_env = parse_key_value_args(OS.get_cmdline_user_args())
+	else:
+		_env = {
+			"CONCORD_GATEWAY_URL": OS.get_environment("CONCORD_GATEWAY_URL"),
+			"CONCORD_GODOT_API_KEY": OS.get_environment("CONCORD_GODOT_API_KEY"),
+			"CONCORD_GODOT_AUTH_TOKEN": OS.get_environment("CONCORD_GODOT_AUTH_TOKEN"),
+			"CONCORD_WORLD_ID": OS.get_environment("CONCORD_WORLD_ID"),
+			"CONCORD_GODOT_SPECTATOR": OS.get_environment("CONCORD_GODOT_SPECTATOR"),
+			"CONCORD_FRONTEND_URL": OS.get_environment("CONCORD_FRONTEND_URL"),
+		}
 	var _defaults := {
 		"gateway_url": gateway_url, "api_key": api_key,
 		"auth_token": auth_token, "world_id": world_id,
@@ -158,9 +239,24 @@ func _ready() -> void:
 	auth_token = _cfg["auth_token"]
 	world_id = _cfg["world_id"]
 	spectator_mode = _cfg["spectator_mode"]
-	var _frontend_env := String(OS.get_environment("CONCORD_FRONTEND_URL"))
+	var _frontend_env := String(_env.get("CONCORD_FRONTEND_URL", ""))
 	if _frontend_env != "":
 		frontend_asset_base_url = _frontend_env
+	# No web-specific fallback here — an earlier version tried defaulting to
+	# "" on Web (relative URLs, resolved by the browser against the page's
+	# own origin) to dodge the app's strict connect-src CSP. That was WRONG,
+	# found by an actual browser load: Godot's own `HTTPRequest._parse_url`
+	# rejects a schemeless/hostless URL outright ("Error parsing URL:
+	# '/models/building/tavern.glb'") before the request ever reaches the
+	# browser's fetch() bridge — unlike a raw JS fetch(), Godot's HTTPRequest
+	# requires an absolute URL on every platform, Web included. The real fix
+	# lives server-side instead: `app/godot-client/index.html/route.ts`
+	# defaults CONCORD_FRONTEND_URL to the page's OWN absolute origin
+	# (`request.nextUrl.origin`) whenever the embedding page didn't specify
+	# one, so this env value is normally already a same-origin absolute URL
+	# by the time it gets here — both CSP-safe AND Godot-HTTPRequest-safe.
+	# The native @export default above is what's actually used if that
+	# server-side default is somehow bypassed (e.g. a hand-built HTML host).
 
 	# The per-world sky/sun/ambient/toon palette (ArtStyle) is already built,
 	# tested, and pixel-verified (VISUAL_QA.md's "art_world" shots) -- but
