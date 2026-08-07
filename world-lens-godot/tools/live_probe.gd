@@ -58,12 +58,26 @@ func _process(_delta: float) -> bool:
 	if img != null and not img.is_empty():
 		saved = img.save_png(_out_path) == OK
 
+	var cam := get_root().get_camera_3d()
+	var cam_info := {}
+	if cam != null:
+		cam_info = {"pos": str(cam.global_position), "fov": cam.fov, "near": cam.near, "far": cam.far}
+
+	var bounds_center := Vector3.ZERO
+	var bounds_radius := -1.0
+	if bootstrap != null:
+		bounds_center = bootstrap.get_bounds_center()
+		bounds_radius = bootstrap.get_bounds_radius()
+
 	var result := {
 		"ok": true,
 		"bootstrap_found": bootstrap != null,
 		"spawned_children": spawned,
 		"screenshot_saved": saved,
 		"screenshot_path": _out_path,
+		"camera": cam_info,
+		"bounds_center": str(bounds_center),
+		"bounds_radius": bounds_radius,
 	}
 	print("[live_probe] RESULT ", JSON.stringify(result))
 	return true

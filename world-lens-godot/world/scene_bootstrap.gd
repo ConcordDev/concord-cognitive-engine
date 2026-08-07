@@ -121,6 +121,45 @@ func get_rooftop_buildings() -> Array:
 	return _rooftop_buildings.duplicate(true)
 
 
+## Real focus point for an overview/orbit camera (session/camera_rig.gd) —
+## the centroid of the CURRENTLY SPAWNED building nodes, never an assumed
+## origin. Mirrors `engineering/fea_scene_builder.gd#get_bounds_center`'s
+## exact honest-empty-fallback posture (Vector3.ZERO with nothing spawned,
+## same default CameraRig already falls back to).
+func get_bounds_center() -> Vector3:
+	var positions: Array[Vector3] = []
+	for n in _spawned:
+		if is_instance_valid(n):
+			positions.append(n.position)
+	return SceneBootstrap.centroid(positions)
+
+
+## Real radius (max distance from the centroid) of the currently spawned
+## building nodes — used to size an overview camera's distance to the
+## world's ACTUAL authored footprint instead of a guessed constant. A
+## real city (concordia-hub: ~1000m x 1200m) and a small test world are
+## different orders of magnitude; a fixed distance can't frame both.
+## Empty/single-node scenes honestly yield 0.0.
+func get_bounds_radius() -> float:
+	var center := get_bounds_center()
+	var max_dist := 0.0
+	for n in _spawned:
+		if is_instance_valid(n):
+			max_dist = maxf(max_dist, n.position.distance_to(center))
+	return max_dist
+
+
+## Pure — average of a position array; Vector3.ZERO for an empty array
+## (never a fabricated center for a scene with nothing spawned yet).
+static func centroid(positions: Array[Vector3]) -> Vector3:
+	if positions.is_empty():
+		return Vector3.ZERO
+	var sum := Vector3.ZERO
+	for p in positions:
+		sum += p
+	return sum / positions.size()
+
+
 func _spawn_node(node: Dictionary) -> void:
 	var mapped := SceneBootstrap.node_to_transform(node)
 	var mi := MeshInstance3D.new()

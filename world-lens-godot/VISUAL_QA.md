@@ -360,16 +360,36 @@ Read these limits as part of the claims above, not as footnotes to them.
       before/after: `spawned_children` unchanged at 62 (the fix doesn't touch
       what spawns), but the frame goes from a flat grey/black two-blob image
       to a real lit sunset sky over toon-shaded buildings.
-      **Scope of what's still open:** the default camera sits at the scene
-      origin with no framing logic (`CameraRig#_ready` just does
-      `Camera3D.new()`, no position/look-at) — with `concordia-hub`'s real
-      buildings spanning roughly a 1000m × 1200m footprint, only the 1-2
-      buildings nearest the origin land in frame. This is a real, separate,
-      undecided design question (a proper default needs either a real
-      character spawn point — explicitly deferred elsewhere in this file —
-      or a deliberate "overview camera" default derived from the world's
-      real bounds), not silently worked around with an unreasoned magic
-      position. Flagged here rather than hidden.
+      **Camera framing — closed, same pass.** The gap this section
+      previously described (default camera stuck at the scene origin, no
+      framing logic) is fixed: `SceneBootstrap.get_bounds_center()`/
+      `get_bounds_radius()` (new — mirrors
+      `FeaSceneBuilder.get_bounds_center()`'s exact honest-empty-fallback
+      posture) give the real spatial extent of whatever actually spawned;
+      `CameraRig` gained `set_orbit_distance`/`set_orbit_pitch`/
+      `set_orbit_yaw` (new public setters — the rig previously only exposed
+      `set_orbit_focus`) and its `FOLLOW`-with-no-target branch (there is no
+      player character to follow yet — see the C14/M1 sections below) now
+      falls back to the SAME `orbit_transform` math `ORBIT` mode uses,
+      framing whatever focus/distance/pitch/yaw `boot.gd` set from the real
+      spawned bounds, instead of freezing at a meaningless origin transform.
+      Verified against the live server (`tools/live_probe.gd`, extended to
+      also report camera position + measured bounds): concordia-hub's real
+      62 buildings — arranged in a real authored ring-city layout, plus a
+      real outlying district ~1000m away — are now clearly visible as
+      individually-distinguishable, correctly toon-shaded boxes in an aerial
+      three-quarter view, not 1-2 shapes near the origin. Two of the four
+      dials (focus, pitch-vs-shape reasoning) are derived/reasoned; the
+      distance multiplier (0.3) and the three-quarter yaw convention are
+      empirically tested defaults, not closed-form fits — a naive
+      `radius / tan(halfFov)` projection predicted a ~4x larger multiplier
+      than what actually filled the frame when run and screenshotted, which
+      is exactly why this was verified against real rendered pixels rather
+      than trusted from the formula. Still open, honestly: this default view
+      has no ground/terrain plane (buildings appear to float — terrain
+      generation doesn't exist yet, see the Phase 2 section below) and no
+      real player character exists to hand the camera off to once one spawns
+      (that's the FOLLOW target this fallback is standing in for).
 - [ ] Placeholder boxes render at the **correct position / rotation / scale**
       versus the Three.js client for the same world (side-by-side). *(The Godot
       side's transform mapping is now verified against the spec in absolute

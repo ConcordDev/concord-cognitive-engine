@@ -298,6 +298,52 @@ func _on_event(evt: String, data: Dictionary) -> void:
 	match evt:
 		"scene:data":
 			_bootstrap.apply_scene(data)
+			# Frame the real spawned world instead of leaving the camera at
+			# whatever the FOLLOW-mode-with-no-target fallback shows before
+			# this (session/camera_rig.gd's own honest Vector3.ZERO/tiny-
+			# distance default). get_bounds_radius() is a real measurement
+			# (scales correctly for any authored world, small test city or
+			# concordia-hub's real ~1000m x 1200m footprint) but the 0.3
+			# MULTIPLIER on it is an empirically-tuned constant, not a
+			# closed-form fit: a straightforward "radius / tan(halfFov)"
+			# projection predicted ~1.15-1.3 would fill the frame, but that
+			# consistently rendered as a small cluster under 15% of frame
+			# height when actually run and screenshotted against the live
+			# server (tools/live_probe.gd); 0.3 is the value that was
+			# ACTUALLY tested and produces individually-distinguishable
+			# buildings. Floored at 10.0 so a one-or-two-building world
+			# doesn't zoom in absurdly close. First-draft, run-and-looked-at
+			# dial, same honesty class as this repo's other Phase-D
+			# constants (CLAUDE.md's "Phase D first-draft constants" table)
+			# — may need revisiting for a very differently-shaped world.
+			if _bootstrap.get_child_count() > 0:
+				_camera_rig.set_orbit_focus(_bootstrap.get_bounds_center())
+				_camera_rig.set_orbit_distance(maxf(_bootstrap.get_bounds_radius() * 0.3, 10.0))
+				# A wide, mostly-flat authored world (buildings a few metres
+				# tall spread over hundreds of metres) viewed at the rig's
+				# shallow default pitch (~17 deg, tuned for close-up FEA
+				# beam-model inspection) puts almost everything near the
+				# horizon line — measured, not guessed: at the shallow
+				# default this rendered as a small horizon-hugging cluster.
+				# A steeper aerial look-down (~40 deg) is the standard
+				# "overview map" angle real city/strategy games use for
+				# exactly this shape of scene.
+				_camera_rig.set_orbit_pitch(0.7)
+				# yaw=0 (the rig's own default) looks straight down world -Z
+				# — for concordia-hub specifically that axis happens to be
+				# the city's LONGER extent (measured: z spans ~1200m vs x's
+				# ~980m), so most of the real spread got foreshortened
+				# toward the vanishing point instead of spreading across the
+				# frame (measured, not guessed — this was tried first and
+				# produced a small horizon-hugging cluster despite a
+				# correctly-computed distance). PI/4 is the standard
+				# three-quarter/isometric-style establishing angle real
+				# strategy/city-builder cameras use specifically because it
+				# has no "dominant axis" blind spot: it puts BOTH world
+				# axes partially side-on to the camera regardless of which
+				# one a given authored world happens to be longer along, so
+				# it doesn't need to be re-tuned per world.
+				_camera_rig.set_orbit_yaw(PI / 4.0)
 		"world:aerial-traffic":
 			_aerial_traffic.apply_snapshot(data, Time.get_ticks_msec())
 		"city:positions":

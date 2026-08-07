@@ -38,6 +38,8 @@ static func run() -> TestUtils:
 	_test_parses_rooftop_buildings_from_nodes(t)
 	_test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t)
 	_test_node_basis_rotates_the_footprint(t)
+	_test_centroid_averages_positions_honestly_empty(t)
+	_test_bounds_center_and_radius_from_spawned_nodes(t)
 	return t
 
 
@@ -198,3 +200,78 @@ static func _test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t: TestU
 	t.check_eq(
 		parsed[0]["id"], "well-shaped-rooftop",
 		"the surviving entry is the genuinely well-shaped one")
+
+
+## Added alongside wiring get_bounds_center()/get_bounds_radius() into
+## world/boot.gd's default camera framing (2026-08-07 — see VISUAL_QA.md's
+## "Camera framing — closed" entry). Mirrors
+## engineering/fea_scene_builder.gd's `centroid` pure-average contract
+## exactly, including the same honest Vector3.ZERO-for-empty behavior.
+static func _test_centroid_averages_positions_honestly_empty(t: TestUtils) -> void:
+	var empty: Array[Vector3] = []
+	t.check(
+		SceneBootstrap.centroid(empty).is_equal_approx(Vector3.ZERO),
+		"an empty position array yields Vector3.ZERO, never a fabricated center")
+
+	var single: Array[Vector3] = [Vector3(10.0, 2.0, -4.0)]
+	t.check(
+		SceneBootstrap.centroid(single).is_equal_approx(Vector3(10.0, 2.0, -4.0)),
+		"a single position IS the centroid")
+
+	var three: Array[Vector3] = [Vector3(0.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0), Vector3(3.0, 0.0, 9.0)]
+	t.check(
+		SceneBootstrap.centroid(three).is_equal_approx(Vector3(3.0, 0.0, 3.0)),
+		"centroid is the plain average, not a weighted or clamped one")
+
+
+## get_bounds_center/get_bounds_radius read the REAL spawned MeshInstance3D
+## children after a real apply_scene() call — not the raw input payload —
+## so this exercises the actual engine-instantiated node positions, the
+## same nodes `world/boot.gd`'s default camera framing reads from.
+static func _test_bounds_center_and_radius_from_spawned_nodes(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+
+	# Empty (nothing spawned yet) — same honest zero-fallback as
+	# FeaSceneBuilder.get_bounds_center(), never an assumed origin claim.
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3.ZERO),
+		"no scene applied yet -> honest Vector3.ZERO center")
+	t.check_eq(
+		bootstrap.get_bounds_radius(), 0.0,
+		"no scene applied yet -> honest zero radius, not a fabricated spread")
+
+	var payload := {
+		"ok": true,
+		"format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "b", "transform": {"translation": [20.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "c", "transform": {"translation": [-20.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	}
+	bootstrap.apply_scene(payload)
+
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3.ZERO),
+		"three nodes symmetric about the origin -> centroid IS the origin")
+	t.check_almost(
+		bootstrap.get_bounds_radius(), 20.0,
+		"radius is the REAL max distance to a spawned node (20m), not the node count or a guess")
+
+	# Re-applying clears the prior spawn (SceneBootstrap._clear()) — bounds
+	# must reflect the CURRENT scene, never a stale one from a prior world.
+	bootstrap.apply_scene({
+		"ok": true,
+		"format": "concord-scene/v1",
+		"nodes": [
+			{"id": "solo", "transform": {"translation": [5.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3(5.0, 0.0, 0.0)),
+		"re-applying a scene recomputes bounds from the NEW spawn, not the old one")
+	t.check_almost(
+		bootstrap.get_bounds_radius(), 0.0,
+		"a single spawned node has zero radius (it IS the centroid)")
+
+	bootstrap.free()
