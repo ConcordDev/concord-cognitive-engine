@@ -407,10 +407,43 @@ Read these limits as part of the claims above, not as footnotes to them.
       geometry)** — machine-verified: zero drawn regions.
 
 ### Assets
-- [ ] `GlbLoader` downloads and displays a real `.glb` correctly.
+- [x] **`GlbLoader` downloads and displays a real `.glb` correctly —
+      2026-08-07.** This was the one item flagged as genuinely
+      never-exercised. Served a real production hero mesh
+      (`concord-frontend/public/meshes/heroes/sovereign_first_refusal.glb`,
+      the same file the Three.js client uses) over plain HTTP, pointed a
+      real `GlbLoader` instance at it (new `tools/glb_load_probe.gd`,
+      real X11/opengl3 rasterizer via Xvfb — no synthetic fixture, no
+      mocked HTTPRequest), and let `GLTFDocument.append_from_buffer` run
+      for real. Result, verified programmatically: `mesh_instance_count: 1`,
+      `total_vertex_count: 842`, `child_count: 1` — a real parsed scene,
+      not a stub. The rendered screenshot shows a genuine stylized
+      humanoid character (torso, raised segmented arms, legs, a floating
+      crown-orb above the head, glowing shoulder accents) — this is
+      production art, correctly lit and toon-shaded, not a placeholder
+      box. Reproduce: serve any file under `concord-frontend/public/
+      meshes/heroes/` over plain HTTP, then
+      `CONCORD_GLB_URL=http://host:port/name.glb CONCORD_GLB_PROBE_OUT=/tmp/out.png
+      xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot
+      --path world-lens-godot --display-driver x11 --rendering-driver opengl3
+      --script res://tools/glb_load_probe.gd`.
 - [ ] `AssetResolver` resolve-endpoint path returns a usable URL; static fallback
-      404s honestly (no fabricated asset).
+      404s honestly (no fabricated asset). **Narrowed by the above**: the
+      LOADING mechanism (this file's real risk) is now proven; what remains
+      here is purely a URL-convention question — `AssetResolver`'s static
+      fallback expects `{base}/models/{kind}/{id}.glb`, while the real hero
+      meshes this pass proved actually load are served today at
+      `concord-frontend/public/meshes/heroes/{name}.glb` (a different
+      subpath, and served by the frontend, not `AssetResolver`'s configured
+      backend `base_url`). Reconciling that convention (a route/rewrite, or
+      changing the fallback path) is a real, separate, still-open decision —
+      not attempted here.
 - [ ] GLB cache returns visually-identical instances on repeat load.
+- [ ] A resolved GLB swaps cleanly onto a rig spawned by `AvatarManager`
+      specifically (`avatar/avatar_rig.gd#_try_resolve_glb`) — this pass
+      proved the loader mechanism standalone (`GlbLoader` used directly),
+      not yet through `AssetResolver` → `AvatarRig`'s full integration path,
+      which still needs the URL-convention question above resolved first.
 
 ### Interpolation (Phase 2 dependent)
 - [ ] `SnapshotBuffer` sampling at now−120ms is visually smooth at real latency.
