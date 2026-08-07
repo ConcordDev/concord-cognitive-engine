@@ -1,5 +1,36 @@
 # Visual QA — Godot World Lens
 
+## GlbLoader cache made process-shared, not per-instance (2026-08-07, Phase M4)
+
+Not a rendering claim — a consistency/efficiency fix, recorded here anyway
+since every phase this session has updated this file. Read
+`assets/glb_loader.gd` directly against its two real call patterns:
+`scene_bootstrap.gd` avoids per-instance redundancy itself (one `GlbLoader`
+per building ARCHETYPE, fanned out to every pending building of that
+archetype via `_pending_upgrade`), but `avatar_rig.gd` creates a fresh
+`GlbLoader.new()` — and therefore a fresh, empty `_cache` — per AVATAR, for
+both the body and weapon fetch. Since every avatar resolves to the same
+"warrior" archetype today (no per-avatar signal exists yet), N
+simultaneously-visible avatars would each independently download and parse
+the identical multi-MB GLB.
+
+Fix: `_cache` is now `static` (`assets/glb_loader.gd`), shared across every
+instance's process lifetime — safe, since these URLs serve static assets
+that never change at runtime. Verified with a real engine-executed test
+(`tests/test_glb_loader.gd`, new): a URL cached via one `GlbLoader`
+instance is a genuine hit on a completely separate instance, and an
+never-loaded URL is still honestly absent (never a fabricated hit).
+
+**What this does NOT fix, on purpose:** the "thundering herd" case — many
+avatars requesting the SAME not-yet-cached URL in the same tick (e.g.
+joining a world where many players are already present) still fire N
+simultaneous redundant fetches, since the cache only populates once the
+first fetch completes, not at request time. A real fix needs in-flight-
+request tracking + subscriber fan-out (generalizing scene_bootstrap.gd's
+`_pending_upgrade` pattern into `GlbLoader` itself) — a real behavior
+change several call sites depend on, flagged as a named follow-up rather
+than attempted here.
+
 ## Real GLB meshes now get the outline pass too — reaches the mesh, subtler than the synthetic-box proof (2026-08-07, Phase S3)
 
 Before touching anything, read `world/scene_bootstrap.gd#_upgrade_one_node`

@@ -6,11 +6,34 @@ extends Node
 ## Honest failure: on any HTTP error or non-200, `load_failed` fires and no node
 ## is returned — nothing is fabricated. A GLB that fails to parse is likewise an
 ## honest failure, not a silent empty scene.
+##
+## Phase M4 (2026-08-07) — the cache is `static`, shared across EVERY
+## GlbLoader instance's whole process lifetime, not per-instance. Found by
+## reading real call sites: `scene_bootstrap.gd` avoids the N-instance
+## problem itself (one GlbLoader per building ARCHETYPE, fanned out to every
+## pending building of that type via `_pending_upgrade`), but
+## `avatar_rig.gd` creates a fresh `GlbLoader.new()` per AVATAR for both the
+## body and weapon fetch — with a per-instance cache, N simultaneously-
+## visible avatars resolving the same URL (today: always true, every avatar
+## defaults to the "warrior" archetype) would each independently download +
+## parse the identical multi-MB file. A static cache turns the steady-state
+## case (avatars appearing one at a time — the common case) into "first one
+## fetches for real, everyone after gets an instant hit." Safe because these
+## URLs serve static assets that don't change at runtime.
+##
+## NOT fixed by this: the "thundering herd" case — many avatars requesting
+## the SAME not-yet-cached URL in the same tick (e.g. joining a world with
+## many players already present) still fire N simultaneous redundant
+## fetches, since the cache only populates on completion, not on request. A
+## real fix needs in-flight-request tracking + subscriber fan-out
+## (generalizing scene_bootstrap.gd's `_pending_upgrade` pattern into this
+## class) — a real behavior change other call sites depend on, not attempted
+## here; flagged as a named follow-up.
 
 signal loaded(url: String, root: Node3D)
 signal load_failed(url: String, reason: String)
 
-var _cache: Dictionary = {}  # url -> PackedScene (or a cached Node3D template)
+static var _cache: Dictionary = {}  # url -> PackedScene (or a cached Node3D template), SHARED across every instance
 
 
 func load_glb(url: String) -> void:

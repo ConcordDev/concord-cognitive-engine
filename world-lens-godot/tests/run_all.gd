@@ -40,6 +40,7 @@ const TestLandAirTransitionController := preload(
 const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
 const TestBuildingArchetype := preload("res://tests/test_building_archetype.gd")
 const TestAssetResolver := preload("res://tests/test_asset_resolver.gd")
+const TestGlbLoader := preload("res://tests/test_glb_loader.gd")
 const TestAerialTrafficController := preload("res://tests/test_aerial_traffic_controller.gd")
 const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
 const TestFeaSceneBuilder := preload("res://tests/test_fea_scene_builder.gd")
@@ -77,6 +78,7 @@ func _init() -> void:
 		"SceneBootstrap": TestSceneBootstrap.run(),
 		"BuildingArchetype": TestBuildingArchetype.run(),
 		"AssetResolver": TestAssetResolver.run(),
+		"GlbLoader": TestGlbLoader.run(),
 		"AerialTrafficController": TestAerialTrafficController.run(),
 		"AirLegibility": TestAirLegibility.run(),
 		"FeaSceneBuilder": TestFeaSceneBuilder.run(),
