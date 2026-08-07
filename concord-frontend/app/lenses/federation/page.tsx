@@ -36,7 +36,7 @@ import dynamic from 'next/dynamic';
 import {
   Network, Search, Users, RefreshCw, Loader2, ShieldCheck,
   Globe, Trash2, AlertCircle, Zap, Activity, Plus, X,
-  ShieldX, Inbox, Radio, BarChart3, KeyRound, Share2,
+  ShieldX, Inbox, Radio, BarChart3, KeyRound, Share2, ChevronDown, ChevronRight,
 } from 'lucide-react';
 
 const TrustGraphView = dynamic(
@@ -85,6 +85,7 @@ type Tab =
 
 export default function FederationPage() {
   const [tab, setTab] = useState<Tab>('network');
+  const [showFediverseFeed, setShowFediverseFeed] = useState(false);
 
   useLensCommand(
     [
@@ -250,7 +251,19 @@ export default function FederationPage() {
           </div>
         )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <FediverseFeed />
+          <button
+            type="button"
+            onClick={() => setShowFediverseFeed(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Fediverse discussion (external reference)</span>
+            {showFediverseFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showFediverseFeed && (
+            <div className="mt-3">
+              <FediverseFeed />
+            </div>
+          )}
         </section>
         </>)}
       </div>
