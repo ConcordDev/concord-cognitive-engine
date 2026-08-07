@@ -259,10 +259,45 @@ Read these limits as part of the claims above, not as footnotes to them.
       settled, while "the EXPORTED binary draws, on a GPU, in a real window" is
       still three untested things. Leave unchecked until someone runs the
       exported build on hardware.
-- [ ] The **Web** export actually loads in a browser. The bundle builds, but it has
-      never been served or opened — and it is exported with `thread_support=true`,
-      which requires cross-origin-isolation headers (`COOP`/`COEP`) from whatever
-      serves it, or it will fail to start at runtime. Untested.
+- [x] **The Web export loads and renders in a real browser — 2026-08-07.**
+      `node scripts/export-godot-web.mjs` → served the output over plain HTTP
+      → loaded in real Chromium (Playwright) → the engine boots
+      (`Godot Engine v4.4.stable.official.4c311cbee` in the browser console),
+      gets a real `WebGL2 (OpenGL ES 3.0)` context, and the canvas renders
+      real, non-crashed frames (verified by reading pixel data back off the
+      canvas, not just "no JS exception"). It then does exactly what
+      `boot.gd` is supposed to do with no server running: attempts
+      `ws://127.0.0.1:5050/godot-ws`, gets `ERR_CONNECTION_REFUSED`, and logs
+      an honest `[boot] disconnected` — no crash, no fabricated connected
+      state. **Scope of this claim:** `boot.tscn` itself has no camera or
+      geometry (by design — see its own header, "exercises the net stack
+      without asserting anything about visuals"), so the rendered frame is a
+      flat clear-color canvas, not gameplay content; this settles "does the
+      exported bundle actually boot a real engine in a real browser," not
+      "does it look like a game" (see the general `art_world`/`scene_bootstrap`
+      shots above for actual rendered geometry, which is proven inside the
+      engine but has not yet been checked through this exact export+browser
+      path). A real Concord server + a scene with a camera would be needed to
+      extend this to a populated frame.
+      - **This run also found and fixed a real regression on the way in.**
+        Export was silently failing — `Cannot export project with preset
+        "Web" due to configuration errors:` with **no further detail**, which
+        also blocked producing the very bundle needed to test this item.
+        Isolated by testing the Web preset's options one at a time: the
+        2026-07-27 audit's `vram_texture_compression/for_mobile` flip
+        (`false`→`true`) broke the export outright in this engine build's
+        headless CLI path, and was never re-verified with an actual export
+        afterward. Reverted to `false` (see `export_presets.cfg`'s own
+        updated comment for the full account) — confirmed by re-running the
+        export to a clean success (real `index.html`/`.js`/`.pck`/`.wasm`)
+        before and after the single-flag change.
+      - Reproduce: `node scripts/export-godot-web.mjs`, serve
+        `concord-frontend/public/godot-client/` over any static HTTP server,
+        open `index.html` in a browser (or drive it headlessly with
+        Playwright as this pass did) — no COOP/COEP headers are required
+        today because `variant/thread_support=false` (already the case
+        before this pass; single-threaded WASM, not the multi-threaded
+        variant).
 
 ### Networking
 - [ ] `GatewayClient` connects to a live `/godot-ws` and receives `hello` after `auth`.
