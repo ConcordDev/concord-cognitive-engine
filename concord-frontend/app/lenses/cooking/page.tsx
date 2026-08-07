@@ -22,6 +22,7 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import {
   ChefHat, Timer, BookOpen, CalendarCheck, ShoppingBasket, Package, FolderHeart,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -150,6 +151,7 @@ export default function CookingLensPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
     [
@@ -232,11 +234,23 @@ export default function CookingLensPage() {
 
         {/* Home-cook bench: scale/nutrition-estimate/substitution against a
             structured ingredient editor, USDA lookups, pipe publish/DM/mint/agent. */}
-        <PipingProvider>
-          <section className="mt-6">
-            <CookingActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Home-cook bench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <CookingActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
 
         <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       </div>
