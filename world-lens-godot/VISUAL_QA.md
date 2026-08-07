@@ -591,23 +591,40 @@ Read these limits as part of the claims above, not as footnotes to them.
       CONCORD_GLB_PROBE_OUT=/tmp/out.png xvfb-run -a -s "-screen 0 1280x720x24"
       .godot-runtime/bin/godot --path world-lens-godot --display-driver x11
       --rendering-driver opengl3 --script res://tools/glb_load_probe.gd`.
-- [ ] `AssetResolver` resolve-endpoint path returns a usable URL; static fallback
-      404s honestly (no fabricated asset). **Narrowed by the above**: the
-      LOADING mechanism (this file's real risk) is now proven; what remains
-      here is purely a URL-convention question — `AssetResolver`'s static
-      fallback expects `{base}/models/{kind}/{id}.glb`, while the real hero
-      meshes this pass proved actually load are served today at
-      `concord-frontend/public/meshes/heroes/{name}.glb` (a different
-      subpath, and served by the frontend, not `AssetResolver`'s configured
-      backend `base_url`). Reconciling that convention (a route/rewrite, or
-      changing the fallback path) is a real, separate, still-open decision —
-      not attempted here.
+- [x] **`AssetResolver` static fallback returns a usable URL for
+      `player`/`npc` kinds — 2026-08-07, closed same day as the item
+      above.** The URL-convention gap this item used to describe (fallback
+      expected `{base}/models/{kind}/{id}.glb`, hero meshes actually live
+      at `{frontend}/meshes/heroes/{name}.glb`) is fixed:
+      `fallback_url(base, kind, id, world_id)` now special-cases
+      `player`/`npc` onto the real hero-mesh convention (ported from
+      `concord-frontend/lib/concordia/hero-mesh-registry.ts`'s
+      `ARCHETYPE_FALLBACK_PATH` + its per-world variant), and
+      `world/boot.gd` was also fixed to point `AvatarManager.base_url` at
+      the frontend origin instead of the backend gateway origin it had
+      been pointed at (a second, independent bug — every resolve would
+      have 404'd against the wrong server even with a correct URL). The
+      `/api/evo-asset/resolve` dynamic endpoint this item's title also
+      names does not exist server-side (confirmed by grep), so resolution
+      always exercises the static fallback path in practice — which is
+      the path verified below. Pure-logic pin: `tests/
+      test_asset_resolver.gd` (5 checks). Live-engine pin: `tools/
+      glb_load_probe.gd` pointed at the EXACT URL this function now
+      returns for a player rig loaded a real, correctly-textured Mixamo
+      humanoid (see the "Avatars" section above) — not a synthetic
+      fixture, not a mocked HTTPRequest.
 - [ ] GLB cache returns visually-identical instances on repeat load.
 - [ ] A resolved GLB swaps cleanly onto a rig spawned by `AvatarManager`
-      specifically (`avatar/avatar_rig.gd#_try_resolve_glb`) — this pass
-      proved the loader mechanism standalone (`GlbLoader` used directly),
-      not yet through `AssetResolver` → `AvatarRig`'s full integration path,
-      which still needs the URL-convention question above resolved first.
+      **inside a real running scene, through the full
+      `city:positions` -> `_spawn_rig` -> `AvatarRig._try_resolve_glb`
+      chain** (`avatar/avatar_rig.gd#_try_resolve_glb`) — narrowed by the
+      above: the URL this chain resolves to is now correct and proven to
+      load a real mesh (`glb_load_probe.gd` used the identical URL), and
+      `_on_glb_loaded`'s skeleton-swap logic is exercised nowhere but
+      code-read. What's still unverified is the chain end-to-end with a
+      real second connected session actually broadcasting
+      `city:positions` for this client's `AvatarManager` to ingest — needs
+      two simultaneous real sessions, not attempted here.
 - [x] **`SceneBootstrap` upgrades real buildings from placeholder boxes to
       real GLBs — 2026-08-07.** For the `market`/`tavern`/`archive`
       archetypes specifically (the 3 that have a real GLB today at
