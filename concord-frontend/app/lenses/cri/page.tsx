@@ -18,7 +18,7 @@ import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Search, FileText, Loader2, XCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Search, FileText, Loader2, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -61,6 +61,9 @@ export default function CRILensPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedDtu, setSelectedDtu] = useState<DTUWithCRETI | null>(null);
   const [thresholdFilter, setThresholdFilter] = useState(0);
+  const [showQualityDist, setShowQualityDist] = useState(false);
+  const [showQualityLoop, setShowQualityLoop] = useState(false);
+  const [showCrisisPanel, setShowCrisisPanel] = useState(false);
 
   useLensCommand(
     [
@@ -728,18 +731,50 @@ export default function CRILensPage() {
       </div>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <QualityDistribution />
+        <button
+          type="button"
+          onClick={() => setShowQualityDist(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Quality distribution</span>
+          {showQualityDist ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showQualityDist && (
+          <div className="mt-3">
+            <QualityDistribution />
+          </div>
+        )}
       </section>
 
       {/* Quality-loop workbench: trend / score-rules / remediation / alerts / root-cause / compare */}
-      <section className="mt-6">
-        <QualityLoopPanel />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowQualityLoop(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Quality loop workbench</span>
+          {showQualityLoop ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showQualityLoop && (
+          <div className="mt-3">
+            <QualityLoopPanel />
+          </div>
+        )}
       </section>
 
       {/* Crisis-response workbench: severity / timeline / impact + actions */}
       <PipingProvider>
-        <section className="mt-6">
-          <CrisisActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowCrisisPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Crisis response workbench</span>
+            {showCrisisPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showCrisisPanel && <div className="mt-3"><CrisisActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>
