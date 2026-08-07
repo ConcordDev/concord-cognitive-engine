@@ -59,6 +59,10 @@ signal glb_load_failed(reason: String)
 @export var kind: String = "npc"  # "player" | "npc"
 @export var base_url: String = "http://127.0.0.1:5050"
 @export var prefer_glb: bool = true
+## Threaded to AssetResolver.resolve()'s per-world hero-mesh variant
+## preference (assets/asset_resolver.gd#fallback_url) — see that function's
+## own comment. Blank is legal (falls to the universal archetype file).
+@export var world_id: String = ""
 
 var _skeleton: Skeleton3D = null
 var _primitive_root: Node3D = null
@@ -218,6 +222,7 @@ func _try_resolve_glb() -> void:
 	var GlbLoader := load("res://assets/glb_loader.gd")
 	_resolver = AssetResolver.new()
 	_resolver.base_url = base_url
+	_resolver.world_id = world_id
 	add_child(_resolver)
 	_resolver.resolved.connect(_on_resolved)
 	_resolver.resolve_failed.connect(_on_resolve_failed)

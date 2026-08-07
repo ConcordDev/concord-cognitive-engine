@@ -46,6 +46,9 @@ const STALE_TIMEOUT_MS: int = 3000
 const AIRBORNE_VY_EPS: float = 0.3
 
 @export var base_url: String = "http://127.0.0.1:5050"
+## Threaded to every spawned AvatarRig -> AssetResolver's per-world
+## hero-mesh variant preference. See avatar_rig.gd/asset_resolver.gd.
+@export var world_id: String = ""
 
 var _buffer := SnapshotBuffer.new()
 var _rigs: Dictionary = {}          # id -> AvatarRig
@@ -133,6 +136,7 @@ func _spawn_rig(id: String) -> void:
 	rig.rig_id = id
 	rig.kind = "player" if _kinds.get(id, "npc") == "player" else "npc"
 	rig.base_url = base_url
+	rig.world_id = world_id
 	add_child(rig)
 	_rigs[id] = rig
 

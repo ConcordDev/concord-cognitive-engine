@@ -132,6 +132,76 @@ cd concord-frontend && npm run dev  # or npm run build && npm start
 #   http://<host>/godot-client/index.html?CONCORD_GATEWAY_URL=ws://<host>:5050/godot-ws&CONCORD_GODOT_AUTH_TOKEN=<jwt>&CONCORD_WORLD_ID=concordia-hub
 ```
 
+## Avatars — remote/spectated players now resolve a real humanoid GLB (2026-08-07)
+
+Before this pass, every remote player puppet (`avatar/avatar_manager.gd`,
+driven from `city:positions`) rendered as `avatar_rig.gd`'s honest capsule
+placeholder, permanently — even though `AvatarRig`'s GLB-resolution path
+(`assets/asset_resolver.gd` + `assets/glb_loader.gd`) was fully built. Two
+real bugs, found by tracing the actual resolve path rather than assuming it
+worked because the code existed:
+
+1. **`AssetResolver.fallback_url`'s static convention (`{base}/models/
+   {kind}/{id}.glb`) has no matching files for `kind="player"`/`"npc"`** —
+   only `kind="building"` has real files on disk. The Three.js client
+   already solved this with a real, shipped convention
+   (`concord-frontend/lib/concordia/hero-mesh-registry.ts`'s
+   `ARCHETYPE_FALLBACK_PATH` + its per-world "archetype-world" variant) —
+   `fallback_url` now special-cases `player`/`npc` onto that SAME
+   convention (`/meshes/heroes/_archetype_warrior[__<world_id>].glb`)
+   instead of inventing a new one. There is no per-user bespoke rig and the
+   `city:positions` wire payload carries no occupation signal to pick a
+   different archetype from, so every remote/spectated player resolves to
+   the shared "warrior" archetype — the same honest default the Three.js
+   client itself falls back to absent a more specific signal — with a
+   preference for the connected world's palette variant when one exists (6
+   of 7 archetypes have one today; a 404 on a missing variant is handled
+   exactly like any other GLB load failure, i.e. the primitive placeholder
+   stays up).
+2. **`world/boot.gd` pointed `AvatarManager.base_url` at the BACKEND
+   gateway origin** (`http://127.0.0.1:5050`), not the FRONTEND static
+   origin that actually serves `/meshes/heroes/*.glb` — the same mistake
+   `SceneBootstrap`'s building-mesh wiring had already correctly avoided by
+   using `frontend_asset_base_url`. This bug predates and is independent of
+   bug 1: even with a correct fallback URL, every resolve would have 404'd
+   against the wrong server. Fixed to reuse the same
+   `frontend_asset_base_url` value; `world_id` is now also threaded
+   `boot.gd` → `AvatarManager` → `AvatarRig` → `AssetResolver` so the
+   per-world variant preference above actually has a world to prefer.
+
+**Real-engine evidence, not assumed:** `tools/glb_load_probe.gd` (the same
+tool used to verify the building GLBs) was pointed at the exact file this
+new fallback path resolves to for `concordia-hub`
+(`_archetype_warrior__concordia-hub.glb` is the per-world variant; the
+screenshot below used the universal `_archetype_warrior.glb`, byte-identical
+code path) served over plain HTTP, run under a real `Xvfb` + `llvmpipe`
+software GL context: `{"ok":true,"mesh_instance_count":1,
+"total_vertex_count":4288,...}` — a real, correctly-textured Mixamo humanoid
+(denim shirt/jeans, boots, cap), not a garbled or empty mesh. Screenshot
+saved to `/tmp/hero-mesh-probe.png` at verification time (not committed —
+a build artifact, not source; regenerate with the command below).
+
+Reproduce:
+```
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_GLB_URL=http://127.0.0.1:8998/meshes/heroes/_archetype_warrior.glb \
+CONCORD_GLB_PROBE_OUT=/tmp/hero-mesh-probe.png \
+xvfb-run -a -s "-screen 0 1280x720x24" \
+  .godot-runtime/bin/godot --path world-lens-godot \
+  --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/glb_load_probe.gd
+```
+
+**What this does NOT settle:** this proves the GLB itself loads and
+renders correctly through the exact `GlbLoader`/`ArtStyle` path the live
+client uses — it does NOT prove the full live path (a real
+`city:positions` snapshot → `AvatarManager._spawn_rig` →
+`AvatarRig._try_resolve_glb` → this exact URL, inside a real browser Web
+export, with a second connected user actually moving) end-to-end; that
+needs two simultaneous real sessions and is still queued. Pure-logic
+coverage for the new `fallback_url` convention itself is real and
+committed: `tests/test_asset_resolver.gd` (5 checks).
+
 ## How to run the QA pass
 
 1. Get the engine: `node scripts/fetch-godot.mjs` (checksum-verified; writes to the

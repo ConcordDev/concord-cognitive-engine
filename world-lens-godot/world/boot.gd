@@ -308,11 +308,20 @@ func _ready() -> void:
 
 	# R6 — remote player avatars (avatar/avatar_manager.gd's own class doc
 	# explains why this had never been mounted anywhere before this unit).
-	# `base_url` isn't consulted for `city:positions`-driven puppets today
-	# (only used by AvatarRig's optional GLB-asset resolution), set for
-	# parity with the other REST-touching nodes mounted below regardless.
+	# `base_url` here MUST be the frontend static-asset origin, not the
+	# backend gateway origin: hero-mesh GLBs
+	# (concord-frontend/public/meshes/heroes/*.glb) are served by the
+	# Next.js app's public/ dir, same as SceneBootstrap's building meshes
+	# just above — AvatarRig -> AssetResolver's static fallback convention
+	# (assets/asset_resolver.gd#fallback_url) resolves against this URL.
+	# An earlier version of this line pointed at the backend gateway origin
+	# instead (a latent bug that went unnoticed because nothing had wired
+	# real avatar-mesh resolution yet — every remote puppet silently stayed
+	# on AvatarRig's honest capsule-placeholder fallback regardless of
+	# which origin it 404'd against).
 	_avatar_manager = AvatarManager.new()
-	_avatar_manager.base_url = "http://127.0.0.1:5050"
+	_avatar_manager.base_url = frontend_asset_base_url
+	_avatar_manager.world_id = world_id
 	add_child(_avatar_manager)
 
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
