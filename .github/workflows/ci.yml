@@ -17,6 +17,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # Default fetch-depth:1 leaves HEAD's own commit ancestry empty,
+          # so the diff-coverage gate below (`git merge-base origin/$base HEAD`)
+          # can never succeed no matter how deep origin/$base is fetched —
+          # it falls through to "no merge base" and mis-flags unrelated files.
+          # Full history keeps the merge-base lookup correct for any branch depth.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
