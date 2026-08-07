@@ -28,6 +28,11 @@ static func run() -> TestUtils:
 	_test_production_value_dials_read_from_spec(t)
 	_test_make_environment_wires_gi_and_post_processing(t)
 	_test_make_environment_respects_per_world_saturation_in_adjustment(t)
+	_test_rim_dials_read_from_spec(t)
+	_test_make_outline_material_uses_the_locked_outline_constants(t)
+	_test_make_outline_material_is_honest_for_unknown_world(t)
+	_test_make_toon_material_carries_a_real_outline_next_pass(t)
+	_test_make_toon_material_from_stays_outline_free_for_palette_isolation(t)
 	return t
 
 
@@ -127,3 +132,52 @@ static func _test_make_environment_respects_per_world_saturation_in_adjustment(t
 		return
 	t.check_almost(crime_env.adjustment_saturation, 0.62, "crime's adjustment_saturation matches its WORLD_SATURATION entry")
 	t.check_almost(cyber_env.adjustment_saturation, 1.35, "cyber's adjustment_saturation matches its WORLD_SATURATION entry")
+
+
+static func _test_rim_dials_read_from_spec(t: TestUtils) -> void:
+	t.check_almost(ArtStyle.rim_strength(), 0.35, "RIM_STRENGTH")
+	t.check_almost(ArtStyle.rim_power(), 2.5, "RIM_POWER")
+
+
+static func _test_make_outline_material_uses_the_locked_outline_constants(t: TestUtils) -> void:
+	var mat := ArtStyle.make_outline_material("crime")
+	t.check(mat != null, "make_outline_material returns a real material for a known world")
+	if mat == null:
+		return
+	t.check_eq(mat.shader, ArtStyle.outline_shader(), "outline material uses the real cached outline shader")
+	t.check_almost(float(mat.get_shader_parameter("outline_width")), ArtStyle.outline_width_m(), "outline_width reaches the shader param")
+	var expected := ArtStyle.outline_color("crime")
+	var actual: Vector3 = mat.get_shader_parameter("outline_color")
+	t.check_almost(actual.x, expected.r, "outline_color.r matches ArtStyle.outline_color")
+	t.check_almost(actual.y, expected.g, "outline_color.g matches ArtStyle.outline_color")
+	t.check_almost(actual.z, expected.b, "outline_color.b matches ArtStyle.outline_color")
+
+
+static func _test_make_outline_material_is_honest_for_unknown_world(t: TestUtils) -> void:
+	ArtStyle.reset_cache()
+	var mat := ArtStyle.make_outline_material("not-a-real-world-and-no-spec-loaded-yet")
+	# Falls to the default theme (same as every other make_* constructor) once
+	# the spec loads -- never null for a spec that's actually present, since
+	# theme_id_for_world() always resolves to SOME real theme.
+	t.check(mat != null, "an unknown world still resolves via the default theme, not a hard failure")
+
+
+static func _test_make_toon_material_carries_a_real_outline_next_pass(t: TestUtils) -> void:
+	var mat := ArtStyle.make_toon_material("fantasy")
+	t.check(mat != null, "make_toon_material returns a real material for a known world")
+	if mat == null:
+		return
+	t.check(mat.next_pass != null, "the outline pass is attached via Material.next_pass")
+	t.check(mat.next_pass is ShaderMaterial, "next_pass is a real ShaderMaterial")
+	if mat.next_pass is ShaderMaterial:
+		t.check_eq(mat.next_pass.shader, ArtStyle.outline_shader(), "next_pass uses the real outline shader, not a copy")
+
+
+static func _test_make_toon_material_from_stays_outline_free_for_palette_isolation(t: TestUtils) -> void:
+	# scripts/visual-qa.mjs's saturation-ordering assertion holds the palette
+	# FIXED and varies only saturation via this exact entry point -- an
+	# outline pass has nothing to do with that isolation and must not sneak
+	# in here (see make_toon_material's own class doc for why the outline
+	# wiring lives one level up, in make_toon_material, instead).
+	var mat := ArtStyle.make_toon_material_from(Color.BLACK, Color.GRAY, Color.WHITE, 1.0)
+	t.check_eq(mat.next_pass, null, "make_toon_material_from never attaches an outline pass")

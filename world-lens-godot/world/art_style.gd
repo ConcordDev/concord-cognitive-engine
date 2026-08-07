@@ -20,9 +20,11 @@ extends RefCounted
 ## `world/air_legibility.gd`'s header calls "Step 3 — real engine-VISUAL work",
 ## which was previously not written because there was no engine to verify it
 ## against. There is now: `scripts/visual-qa.mjs` renders the output of this
-## file under a real rasterizer and asserts on the pixels. It is NOT yet wired
-## into `scene_bootstrap.gd`'s live spawn path — see VISUAL_QA.md for exactly
-## what is and is not claimed.
+## file under a real rasterizer and asserts on the pixels. As of Phase S1
+## (2026-08-07) `make_toon_material()`'s output IS wired into
+## `scene_bootstrap.gd`'s and `avatar/avatar_rig.gd`'s live spawn paths — see
+## VISUAL_QA.md for exactly what is and is not claimed, and for which spawn
+## paths (ground plane, real GLB meshes) still aren't covered.
 
 const SPEC_PATH := "res://art_style.json"
 
@@ -35,6 +37,9 @@ uniform vec3 band_mid;
 uniform vec3 band_light;
 uniform int bands = 3;
 uniform float grounded_dial = 0.45;
+uniform vec3 rim_color;
+uniform float rim_strength = 0.35;
+uniform float rim_power = 2.5;
 
 void light() {
 	float ndotl = clamp(dot(normalize(NORMAL), normalize(LIGHT)), 0.0, 1.0);
@@ -48,11 +53,48 @@ void light() {
 	vec3 grounded = mix(band_shadow, band_light, ndotl);
 	DIFFUSE_LIGHT += mix(ramp, grounded, grounded_dial) * ATTENUATION;
 }
+
+void fragment() {
+	// Fresnel rim light — "rim light fakes subsurface" (ART_STYLE_GUIDE.md
+	// rule 3). Grazing-angle term only, additive on top of the banded ramp
+	// light() already wrote — never replaces it, so RAMP_BANDS stays the
+	// single source of truth for shading, this only adds an edge highlight.
+	float fresnel = pow(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), rim_power);
+	EMISSION = rim_color * fresnel * rim_strength;
+}
+"""
+
+## Inverted-hull outline (Phase S2) — the standard toon-outline technique:
+## expand the mesh outward along its own vertex normals by `outline_width`
+## (metres — `OUTLINE_WIDTH_M`), then render ONLY the back-facing side of
+## that expanded shell (`cull_front` — Godot's normal front-face culling
+## inverted, so the shell's far side is what's left visible). From the
+## camera, the expanded shell's back faces poke out past the real mesh's
+## silhouette on every edge, reading as a solid outline ring; `unshaded` so
+## it's a flat colour, never lit/shadowed like the surface it outlines.
+## Applied via `Material.next_pass`, Godot's own built-in mechanism for a
+## second full render pass over the same mesh — not a second MeshInstance3D,
+## so it can never drift out of transform-sync with the surface it outlines.
+const OUTLINE_SHADER := """
+shader_type spatial;
+render_mode cull_front, unshaded;
+
+uniform vec3 outline_color;
+uniform float outline_width;
+
+void vertex() {
+	VERTEX += NORMAL * outline_width;
+}
+
+void fragment() {
+	ALBEDO = outline_color;
+}
 """
 
 static var _spec_cache: Dictionary = {}
 static var _spec_loaded := false
 static var _toon_shader: Shader = null
+static var _outline_shader: Shader = null
 
 
 ## Loads (and caches) the generated art spec. Returns {} honestly if absent.
@@ -131,6 +173,14 @@ static func ssao_intensity() -> float:
 
 static func color_adjustment_enabled() -> bool:
 	return constant("COLOR_ADJUSTMENT_ENABLED", 1.0) > 0.5
+
+
+static func rim_strength() -> float:
+	return constant("RIM_STRENGTH", 0.35)
+
+
+static func rim_power() -> float:
+	return constant("RIM_POWER", 2.5)
 
 
 ## Mirrors `themeForWorldId()` in the TS: direct id match, the 'concordia'
@@ -232,14 +282,48 @@ static func toon_shader() -> Shader:
 	return _toon_shader
 
 
+static func outline_shader() -> Shader:
+	if _outline_shader == null:
+		_outline_shader = Shader.new()
+		_outline_shader.code = OUTLINE_SHADER
+	return _outline_shader
+
+
+## The inverted-hull outline pass for a world — `outline_color(world_id)` x
+## `outline_width_m()`, the same two ART_STYLE_GUIDE-locked constants every
+## silhouette in the game already shares. Returns null (never a fabricated
+## colour) when the spec/palette is unavailable, matching every other
+## `make_*` constructor in this file.
+static func make_outline_material(world_id: String) -> ShaderMaterial:
+	var grad := toon_gradient(world_id)
+	if grad.is_empty():
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = outline_shader()
+	mat.set_shader_parameter("outline_color", _v3(outline_color(world_id)))
+	mat.set_shader_parameter("outline_width", outline_width_m())
+	return mat
+
+
 ## A cel material for a world: the world's own toonGradient, each stop passed
 ## through that world's saturation dial, sampled at ART_STYLE.RAMP_BANDS steps.
 ## Returns null (never a fabricated grey material) when the spec is missing.
+##
+## Carries the world's outline pass (Phase S2) via `Material.next_pass` —
+## Godot's own built-in second-render-pass mechanism, so every existing
+## caller (scene_bootstrap.gd's placeholder boxes, avatar_rig.gd's primitive
+## capsules — see VISUAL_QA.md's Phase S1 entry) gets the inverted-hull
+## outline automatically, no call-site changes needed. `make_toon_material_
+## from` below stays outline-free on purpose — it's the palette-isolated
+## primitive `scripts/visual-qa.mjs`'s saturation-ordering assertion uses,
+## and an outline pass has nothing to do with that isolation.
 static func make_toon_material(world_id: String) -> ShaderMaterial:
 	var grad := toon_gradient(world_id)
 	if grad.size() < 3:
 		return null
-	return make_toon_material_from(grad[0], grad[1], grad[2], saturation_for_world(world_id))
+	var mat := make_toon_material_from(grad[0], grad[1], grad[2], saturation_for_world(world_id))
+	mat.next_pass = make_outline_material(world_id)
+	return mat
 
 
 ## Same, from an explicit gradient — lets a caller hold the palette FIXED and
@@ -255,6 +339,12 @@ static func make_toon_material_from(
 	mat.set_shader_parameter("band_light", _v3(apply_saturation(light, saturation)))
 	mat.set_shader_parameter("bands", ramp_bands())
 	mat.set_shader_parameter("grounded_dial", grounded_dial())
+	# Rim light (Phase S2) — keyed off the palette's own light band, so a
+	# warm/cold world's rim reads warm/cold too, never a separately-tunable
+	# colour that could drift from the palette.
+	mat.set_shader_parameter("rim_color", _v3(apply_saturation(light, saturation)))
+	mat.set_shader_parameter("rim_strength", rim_strength())
+	mat.set_shader_parameter("rim_power", rim_power())
 	return mat
 
 

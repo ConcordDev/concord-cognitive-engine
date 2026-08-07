@@ -12,7 +12,9 @@
     "GLOW_STRENGTH": 0.6,
     "SSAO_ENABLED": 1,
     "SSAO_INTENSITY": 1,
-    "COLOR_ADJUSTMENT_ENABLED": 1
+    "COLOR_ADJUSTMENT_ENABLED": 1,
+    "RIM_STRENGTH": 0.35,
+    "RIM_POWER": 2.5
   },
   "worldSaturation": {
     "concordia-hub": 1,

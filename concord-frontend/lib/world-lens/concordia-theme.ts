@@ -417,6 +417,14 @@ export const ART_STYLE = Object.freeze({
    * per-world `saturationForWorld()` dial at apply-time, never a second,
    * competing saturation constant here. This only toggles the pass on. */
   COLOR_ADJUSTMENT_ENABLED: 1,
+  // ── Outline + rim light (2026-08-07) — the two remaining pieces of the
+  // BotW reference this guide already cites ("lighting is soft, warm-keyed,
+  // rim-lit"). OUTLINE_WIDTH_M/OUTLINE_DARKEN above were always locked but
+  // had no shader consuming them until now; these two are new.
+  /** Fresnel rim-light strength added atop the toon ramp. 0 = no rim. */
+  RIM_STRENGTH: 0.35,
+  /** Fresnel falloff exponent — higher = a thinner, crisper rim. */
+  RIM_POWER: 2.5,
 });
 
 // Per-world saturation philosophy (multiplier applied to base albedo/lighting).

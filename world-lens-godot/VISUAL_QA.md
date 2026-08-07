@@ -1,5 +1,66 @@
 # Visual QA — Godot World Lens
 
+## Outline + rim light — the last two named ART_STYLE_GUIDE.md pieces, outline VISUALLY confirmed (2026-08-07, Phase S2)
+
+Closes the exact gap this file's own checklist named ("No outline/rim-light
+shader exists for silhouette_color specifically") and the last two pieces
+of the BotW reference `docs/ART_STYLE_GUIDE.md` cites ("rim-lit — rim light
+fakes subsurface").
+
+**Outline**: `ArtStyle.OUTLINE_SHADER` is the standard inverted-hull
+technique — a vertex pass pushes `VERTEX += NORMAL * outline_width`, then
+`cull_front` + `unshaded` render mode leaves only the expanded shell's
+back-faces visible, which poke out past the real mesh's silhouette on every
+edge. Wired via `Material.next_pass` (Godot's own built-in second-pass
+mechanism) directly onto `make_toon_material()`'s output, so `world_id ->
+outline` needs no new call-site changes anywhere — Phase S1's two spawn
+paths (building placeholder boxes, avatar primitive capsules) get real
+outlines automatically, already-shipped code included. Uses the SAME
+`outline_width_m()`/`outline_color()` constants that existed (correct,
+tested) since before this shader did — this pass gave them a shader to
+finally drive.
+
+**Rim light**: a fresnel term (`pow(1 - dot(N,V), RIM_POWER) * RIM_STRENGTH`)
+added to the toon shader's `fragment()` as `EMISSION`, additive on top of
+the existing banded `light()` ramp — never replacing it. Keyed off each
+world's own light-band colour (not a separately-tunable colour that could
+drift from the palette), per two new spec-driven constants
+(`RIM_STRENGTH`/`RIM_POWER`) through the same generated-JSON pipeline as
+everything else in this file.
+
+**Real engine, real pixels — not just property values this time.**
+`tools/outline_shader_probe.gd` rendered the SAME toon-shaded box twice
+(once with the real `next_pass` outline, once with it stripped) under a
+real `Xvfb` + `llvmpipe`/Compatibility-renderer session and saved both
+frames. Looked at both directly: the "with outline" frame shows a crisp,
+unmistakable dark border tracing the box's silhouette; the "without" frame
+has a plain edge with none. Unlike Phase S4's SDFGI (a Forward+/Vulkan-only
+feature that measurably did NOT activate under this sandbox's Compatibility
+render path), an inverted-hull outline is basic geometry+cull-mode
+manipulation with no renderer-tier dependency — and this run proves it:
+**this is the first claim in this whole Godot effort settled by actually
+looking at the rendered pixels, not by property-level engine assertions
+alone.** (My own crude same-probe pixel-count heuristic — counting near-
+black pixels — showed almost no difference between the two frames and
+would have wrongly read as inconclusive; the palette's shadow band was
+already dark enough for a naive luma threshold to miss the outline against
+it. Looking at the actual images caught what the cheap metric didn't.)
+
+Rim light was verified only at the property level this pass (shader
+parameters reach the material correctly, pinned by `tests/test_art_style.gd`)
+— its visual contribution is subtle by design (a thin fresnel highlight,
+not a dominant effect) and reads best on curved geometry under real
+lighting; a dedicated visual check is a smaller, lower-priority follow-up,
+not done here.
+
+Reproduce the pixel-level outline check:
+```
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/outline_shader_probe.gd
+# then open /tmp/outline_probe_with.png vs /tmp/outline_probe_without.png
+```
+
 ## Toon material coverage — the real cel shader now actually reaches spawned geometry (2026-08-07, Phase S1)
 
 **A real, significant gap found while starting the graphics push**: `ArtStyle.
