@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
-import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound } from 'lucide-react';
+import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound, ChevronDown, ChevronRight } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -132,6 +132,7 @@ export default function IngestLensPage() {
   const [title, setTitle] = useState('');
   const [domain, setDomain] = useState('');
   const [showConfig, setShowConfig] = useState(false);
+  const [showIngestionRepos, setShowIngestionRepos] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -890,7 +891,19 @@ export default function IngestLensPage() {
       <ConnectiveTissueBar lensId="ingest" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <IngestionRepos />
+        <button
+          type="button"
+          onClick={() => setShowIngestionRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Real-world ingestion tooling (external reference)</span>
+          {showIngestionRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showIngestionRepos && (
+          <div className="mt-3">
+            <IngestionRepos />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="ingest" limit={10} hideWhenEmpty className="mt-4" />
