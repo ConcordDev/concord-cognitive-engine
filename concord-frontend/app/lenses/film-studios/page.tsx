@@ -21,7 +21,7 @@ import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Film, Plus, Search, Play, Users, Clock, Eye, TrendingUp, Clapperboard, Camera, Mic,
-  Music, Layers, BarChart3, Share2, X, ChevronRight,
+  Music, Layers, BarChart3, Share2, X, ChevronRight, ChevronDown,
   Monitor, Globe, Sparkles, Loader2, DollarSign, Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,6 +54,7 @@ export default function FilmStudiosPage() {
   const { contextDTUs, isLoading: dtusLoading } = useLensDTUs({ lens: 'film-studios' });
 
   const [tab, setTab] = useState<FilmTab>('discover');
+  const [showFilmStack, setShowFilmStack] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -869,7 +870,19 @@ export default function FilmStudiosPage() {
         </AnimatePresence>
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <FilmStackFeed />
+        <button
+          type="button"
+          onClick={() => setShowFilmStack(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Filmmaking Q&A (external reference)</span>
+          {showFilmStack ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFilmStack && (
+          <div className="mt-3">
+            <FilmStackFeed />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="film-studios" limit={10} hideWhenEmpty className="mt-4" />
