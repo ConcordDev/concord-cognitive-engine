@@ -71,6 +71,13 @@ server/audit/detectors/runtime-history.jsonl
 # committing those; that call is left to a human.)
 world-lens-godot/.godot/
 
+# Per-resource `.import` sidecar files (e.g. tests/goldens/*.png.import).
+# Godot regenerates these on every `--import` pass from the resource + editor
+# defaults; zero were ever committed in this repo (verified: `git ls-files
+# world-lens-godot | grep -c '\.import$'` = 0), so this codifies the existing
+# convention rather than changing it.
+world-lens-godot/**/*.import
+
 # Godot export templates + export output. The templates archive is a 1.12 GiB
 # download and the extracted set is ~2 GB; `node scripts/fetch-godot.mjs
 # --export-templates` puts them in the EDITOR DATA DIR (outside the repo) and

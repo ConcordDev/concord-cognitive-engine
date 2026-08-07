@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import {
   Megaphone, Mail, Share2, Globe, Workflow, LayoutTemplate,
   SlidersHorizontal, Contact, CalendarDays, Sparkles,
-  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -68,8 +67,6 @@ export default function MarketingLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('marketing');
 
   const [studioTab, setStudioTab] = useState<StudioTab>('email');
-  const [showActionPanel, setShowActionPanel] = useState(false);
-  const [showFeed, setShowFeed] = useState(false);
 
   useLensCommand(
     STUDIO_TABS.map((t) => ({
@@ -155,35 +152,16 @@ export default function MarketingLensPage() {
         </section>
 
         <section className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between gap-2 px-1 text-left text-sm font-semibold text-white"
-          >
-            <span className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-pink-400" /> Quick Analysis</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <PipingProvider>
-              <MarketingActionPanel />
-            </PipingProvider>
-          )}
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-white px-1">
+            <Sparkles className="w-4 h-4 text-pink-400" /> Quick Analysis
+          </h2>
+          <PipingProvider>
+            <MarketingActionPanel />
+          </PipingProvider>
         </section>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowFeed(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Community reference (Reddit)</span>
-            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showFeed && (
-            <div className="mt-3">
-              <MarketingFeed />
-            </div>
-          )}
+          <MarketingFeed />
         </section>
       </div>
 
