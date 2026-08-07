@@ -324,6 +324,107 @@ static func centroid(positions: Array[Vector3]) -> Vector3:
 	return sum / positions.size()
 
 
+## Real focus + radius for an overview camera, ROBUST to a small number of
+## far-outlying nodes dragging get_bounds_center()/get_bounds_radius() so
+## far that the dense majority of a world gets crammed into a tiny corner
+## of the frame while the rest of the frame is empty ground. This is a
+## MEASURED defect, not a guess: against concordia-hub's real 63 spawned
+## buildings (tools/live_probe.gd against a real running server), the
+## sorted per-node distance-from-centroid list is a clean two-cluster
+## split — 50 buildings within 138-357m, then a hard jump straight to
+## 981-1114m for the remaining 13 (the authored "outlying district" —
+## see CLAUDE.md's content-seeder notes). get_bounds_radius() reports
+## 1114m (the single farthest node), and the plain mean centroid gets
+## pulled toward the outliers too, so `boot.gd`'s `0.3 * radius` camera
+## distance (334m) put the camera INSIDE the outlier-inflated bounding
+## sphere — closer to the world origin than to either cluster's own
+## span — framing almost nothing.
+##
+## get_bounds_center()/get_bounds_radius() themselves are left UNCHANGED
+## (their own doc comments describe a deliberate "plain mean + true max"
+## contract mirroring FeaSceneBuilder's, pinned by tests/
+## test_scene_bootstrap.gd) — this is an ADDITIONAL, camera-framing-
+## specific pair, used only by `world/boot.gd`'s default overview camera.
+##
+## Method — largest relative gap, not a fixed percentile: sort every
+## node's distance from the plain centroid, walk consecutive pairs from
+## the halfway point onward, and remember whichever adjacent pair has the
+## single largest gap. Only treat that gap as a genuine cluster/outlier
+## split if it's larger than the "core" span leading up to it (a
+## continuously-and-evenly-spread world has no such gap, so it is
+## correctly left untrimmed — a fixed percentile cutoff can't tell those
+## two shapes apart, which is why this isn't a percentile). When a real
+## split is found, both the radius AND the center are recomputed from
+## ONLY the near side of the split, so a distant outlier can't drag the
+## focus point either. Requires at least `MIN_NODES_FOR_TRIM` nodes before
+## even attempting a split (below that there's no meaningful "majority" to
+## detect one against) — for anything smaller this returns byte-identical
+## results to centroid()+max-distance, so small/test scenes are unaffected.
+const MIN_NODES_FOR_TRIM := 6
+
+
+## Pure — the {center, radius} pair a camera should actually frame.
+## `positions` need not be pre-sorted. See the const above this function
+## for the full method + rationale.
+static func robust_cluster_bounds(positions: Array[Vector3]) -> Dictionary:
+	var plain_center := SceneBootstrap.centroid(positions)
+	var max_dist := 0.0
+	for p in positions:
+		max_dist = maxf(max_dist, p.distance_to(plain_center))
+
+	if positions.size() < MIN_NODES_FOR_TRIM:
+		return {"center": plain_center, "radius": max_dist}
+
+	var dists: Array[float] = []
+	for p in positions:
+		dists.append(p.distance_to(plain_center))
+	dists.sort()
+
+	var split_idx := dists.size() - 1  # default: no split found
+	var best_gap := 0.0
+	var half := int(dists.size() / 2)
+	for i in range(half, dists.size() - 1):
+		var gap: float = dists[i + 1] - dists[i]
+		if gap > best_gap:
+			best_gap = gap
+			split_idx = i
+
+	# A genuine cluster/outlier boundary has a gap LARGER than the entire
+	# span the "core" side already covers -- an ordinary, continuously
+	# spread-out world's biggest gap is still small relative to its own
+	# span, so this correctly declines to trim it.
+	var core_span: float = dists[split_idx] - dists[0]
+	if split_idx >= dists.size() - 1 or best_gap <= core_span:
+		return {"center": plain_center, "radius": max_dist}
+
+	var cluster_radius: float = dists[split_idx]
+	var inliers: Array[Vector3] = []
+	for p in positions:
+		if p.distance_to(plain_center) <= cluster_radius:
+			inliers.append(p)
+	if inliers.is_empty():
+		return {"center": plain_center, "radius": max_dist}  # degenerate guard
+
+	var refined_center := SceneBootstrap.centroid(inliers)
+	var refined_radius := 0.0
+	for p in inliers:
+		refined_radius = maxf(refined_radius, p.distance_to(refined_center))
+
+	return {"center": refined_center, "radius": refined_radius}
+
+
+## Instance wrapper — reads the REAL spawned MeshInstance3D positions (same
+## nodes get_bounds_center()/get_bounds_radius() read) through
+## robust_cluster_bounds(). This is what `world/boot.gd`'s default overview
+## camera should call, not get_bounds_center()/get_bounds_radius() directly.
+func get_camera_bounds() -> Dictionary:
+	var positions: Array[Vector3] = []
+	for n in _spawned:
+		if is_instance_valid(n):
+			positions.append(n.position)
+	return SceneBootstrap.robust_cluster_bounds(positions)
+
+
 func _spawn_node(node: Dictionary) -> void:
 	var mapped := SceneBootstrap.node_to_transform(node)
 	var mi := MeshInstance3D.new()

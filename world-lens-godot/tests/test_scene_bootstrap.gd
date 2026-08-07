@@ -40,6 +40,10 @@ static func run() -> TestUtils:
 	_test_node_basis_rotates_the_footprint(t)
 	_test_centroid_averages_positions_honestly_empty(t)
 	_test_bounds_center_and_radius_from_spawned_nodes(t)
+	_test_robust_cluster_bounds_small_n_matches_plain_bounds(t)
+	_test_robust_cluster_bounds_no_trim_without_a_real_gap(t)
+	_test_robust_cluster_bounds_trims_a_clear_outlier_cluster(t)
+	_test_robust_cluster_bounds_concordia_hub_shaped_data(t)
 	return t
 
 
@@ -275,3 +279,105 @@ static func _test_bounds_center_and_radius_from_spawned_nodes(t: TestUtils) -> v
 		"a single spawned node has zero radius (it IS the centroid)")
 
 	bootstrap.free()
+
+
+## robust_cluster_bounds(): added alongside get_camera_bounds() to fix a
+## real, measured camera-framing defect (see world/scene_bootstrap.gd's own
+## doc comment on MIN_NODES_FOR_TRIM for the full story and the real
+## concordia-hub distance data that motivated it).
+
+## Below MIN_NODES_FOR_TRIM there's no meaningful "majority" to detect an
+## outlier against, so this must be byte-identical to plain centroid + max
+## distance -- even with a lone far-away point present.
+static func _test_robust_cluster_bounds_small_n_matches_plain_bounds(t: TestUtils) -> void:
+	var positions: Array[Vector3] = [
+		Vector3(0.0, 0.0, 0.0), Vector3(10.0, 0.0, 0.0), Vector3(-10.0, 0.0, 0.0),
+		Vector3(500.0, 0.0, 0.0),  # a lone "outlier" -- still only 4 nodes total
+	]
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var plain_center := SceneBootstrap.centroid(positions)
+	t.check(
+		(result["center"] as Vector3).is_equal_approx(plain_center),
+		"below MIN_NODES_FOR_TRIM, center is the untouched plain centroid")
+	t.check_almost(
+		float(result["radius"]), plain_center.distance_to(Vector3(500.0, 0.0, 0.0)),
+		"below MIN_NODES_FOR_TRIM, radius is the untouched true max distance")
+
+
+## A continuously, evenly spread-out world (no real cluster/outlier
+## separation) must NOT get clipped -- this is exactly the shape a fixed
+## percentile cutoff would get wrong (it would always trim SOMETHING),
+## which is why this is gap-detection, not a percentile.
+static func _test_robust_cluster_bounds_no_trim_without_a_real_gap(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	for i in range(10):
+		positions.append(Vector3(float(i) * 20.0, 0.0, 0.0))  # evenly spaced, 0..180
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var plain_center := SceneBootstrap.centroid(positions)
+	var plain_max := 0.0
+	for p in positions:
+		plain_max = maxf(plain_max, p.distance_to(plain_center))
+	t.check(
+		(result["center"] as Vector3).is_equal_approx(plain_center),
+		"evenly-spread positions: no gap large enough to trim, center unchanged")
+	t.check_almost(
+		float(result["radius"]), plain_max,
+		"evenly-spread positions: radius unchanged, nothing excluded")
+
+
+## The core case this was built for: a tight cluster plus a handful of
+## nodes clearly separated from it. Mirrors the REAL shape measured live
+## against concordia-hub (50 buildings within ~140-360m, then a hard jump
+## to ~980-1100m for 12 more) at a smaller scale for a fast, exact test.
+static func _test_robust_cluster_bounds_trims_a_clear_outlier_cluster(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	# Tight cluster: 8 nodes within 10-80 of the origin.
+	for i in range(8):
+		positions.append(Vector3(10.0 + float(i) * 10.0, 0.0, 0.0))
+	# Clear outlier cluster: 3 nodes far past a huge gap.
+	positions.append(Vector3(500.0, 0.0, 0.0))
+	positions.append(Vector3(520.0, 0.0, 0.0))
+	positions.append(Vector3(540.0, 0.0, 0.0))
+
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var refined_center := result["center"] as Vector3
+	var refined_radius := float(result["radius"])
+
+	t.check(
+		refined_center.x < 100.0,
+		"trimmed center stays near the dense cluster, not dragged toward the outliers")
+	t.check(
+		refined_radius < 100.0,
+		"trimmed radius reflects only the dense cluster's own tight spread")
+
+	var plain_center := SceneBootstrap.centroid(positions)
+	var plain_max := 0.0
+	for p in positions:
+		plain_max = maxf(plain_max, p.distance_to(plain_center))
+	t.check(
+		refined_radius < plain_max,
+		"trimmed radius is strictly smaller than the untrimmed max (the real bug being fixed)")
+
+
+## Reproduces the real SHAPE of concordia-hub's measured distance-from-
+## centroid distribution (tools/live_probe.gd against a real running
+## server, see VISUAL_QA.md/CLAUDE.md: ~50 buildings within a ~140-360m
+## band, then a hard jump straight to a ~980-1100m band for ~12 more) at
+## the real node counts, to pin the exact bug this was written to fix:
+## get_bounds_radius() there reported 1114m (a single farthest-outlier
+## max); the trimmed radius must land near the dense core's own tight
+## span, nowhere close to 1114m.
+static func _test_robust_cluster_bounds_concordia_hub_shaped_data(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	# 50 nodes forming a tight core cluster, spread across ~220 units.
+	for i in range(50):
+		positions.append(Vector3(140.0 + float(i) * 4.4, 0.0, 0.0))
+	# 12 nodes forming a clearly separated distant cluster, past a huge gap.
+	for i in range(12):
+		positions.append(Vector3(980.0 + float(i) * 12.0, 0.0, 0.0))
+
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var refined_radius := float(result["radius"])
+	t.check(
+		refined_radius < 400.0,
+		"concordia-hub-shaped data: trimmed radius stays near the dense core's own span (~220 units), nowhere close to the outlier-inflated ~1100")

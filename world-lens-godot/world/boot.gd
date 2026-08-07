@@ -433,24 +433,37 @@ func _on_event(evt: String, data: Dictionary) -> void:
 			# Frame the real spawned world instead of leaving the camera at
 			# whatever the FOLLOW-mode-with-no-target fallback shows before
 			# this (session/camera_rig.gd's own honest Vector3.ZERO/tiny-
-			# distance default). get_bounds_radius() is a real measurement
-			# (scales correctly for any authored world, small test city or
-			# concordia-hub's real ~1000m x 1200m footprint) but the 0.3
-			# MULTIPLIER on it is an empirically-tuned constant, not a
+			# distance default). get_camera_bounds() (world/scene_bootstrap.gd
+			# -- NOT get_bounds_center()/get_bounds_radius(), a different,
+			# deliberately-unrelated pair) is a real measurement, robust to
+			# a small number of far-outlying buildings: concordia-hub has a
+			# genuinely authored "outlying district" ~1000m from its main
+			# cluster, and get_bounds_radius() there reported 1114m (a
+			# single farthest-node max) -- which crammed the real dense
+			# 50-building core into a tiny corner of the frame behind a wall
+			# of empty ground plane, a real defect found by measuring the
+			# actual per-node distance distribution against a real running
+			# server, not assumed. See that function's own doc comment for
+			# the full method. The 0.3 MULTIPLIER on the resulting radius is
+			# still an empirically-tuned constant, not a closed-form fit:
 			# closed-form fit: a straightforward "radius / tan(halfFov)"
 			# projection predicted ~1.15-1.3 would fill the frame, but that
 			# consistently rendered as a small cluster under 15% of frame
 			# height when actually run and screenshotted against the live
 			# server (tools/live_probe.gd); 0.3 is the value that was
 			# ACTUALLY tested and produces individually-distinguishable
-			# buildings. Floored at 10.0 so a one-or-two-building world
-			# doesn't zoom in absurdly close. First-draft, run-and-looked-at
-			# dial, same honesty class as this repo's other Phase-D
-			# constants (CLAUDE.md's "Phase D first-draft constants" table)
-			# — may need revisiting for a very differently-shaped world.
+			# buildings -- re-tested against the new robust-bounds radius
+			# (now ~230m for concordia-hub's dense core instead of the
+			# outlier-inflated 1114m) and still holds. Floored at 10.0 so a
+			# one-or-two-building world doesn't zoom in absurdly close.
+			# First-draft, run-and-looked-at dial, same honesty class as
+			# this repo's other Phase-D constants (CLAUDE.md's "Phase D
+			# first-draft constants" table) — may need revisiting for a very
+			# differently-shaped world.
 			if _bootstrap.get_child_count() > 0:
-				_camera_rig.set_orbit_focus(_bootstrap.get_bounds_center())
-				_camera_rig.set_orbit_distance(maxf(_bootstrap.get_bounds_radius() * 0.3, 10.0))
+				var _cam_bounds := _bootstrap.get_camera_bounds()
+				_camera_rig.set_orbit_focus(_cam_bounds["center"])
+				_camera_rig.set_orbit_distance(maxf(float(_cam_bounds["radius"]) * 0.3, 10.0))
 				# A wide, mostly-flat authored world (buildings a few metres
 				# tall spread over hundreds of metres) viewed at the rig's
 				# shallow default pitch (~17 deg, tuned for close-up FEA

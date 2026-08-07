@@ -118,11 +118,12 @@ about it:
    cached, that trade is a clear win over silently never loading.
 
 **What this does NOT settle:** whether the resulting frame, once decoded,
-*looks* right at a glance — the screenshot from this exact run still shows
-the same small-and-distant framing issue recorded below (the ground plane
-dominates the wide shot). This section is about the pipeline actually
-working end-to-end in a real browser against a real server, not a claim
-about visual polish.
+*looks* right at a glance. The screenshot from this exact browser run
+predates the camera-framing fix below (the ground plane dominated the wide
+shot at the time); that specific defect is now fixed and verified — see
+the "Camera framing" entry in the checklist below — but this section
+itself is about the pipeline actually working end-to-end in a real browser
+against a real server, not a claim about visual polish generally.
 
 Reproduce (see `scripts/export-godot-web.mjs` for the export step):
 ```
@@ -668,8 +669,63 @@ Read these limits as part of the claims above, not as footnotes to them.
       Caveat found by actually looking at the live-probe screenshot: at the
       orbit camera's current pitch/distance, the flat plane visually
       dominates the frame (buildings read small, clustered near the
-      bottom) — a real, currently-unaddressed composition weakness, not
-      hidden here.
+      bottom) — a real composition weakness at the time this was written.
+      **FIXED, 2026-08-07, same day — see the entry directly below.**
+- [x] **Camera framing dominated by an outlier-inflated bounds calculation
+      — 2026-08-07, found and fixed the same day the ground plane above
+      exposed it.** Root cause, found by actually measuring the live data
+      rather than re-tuning constants blind: `get_bounds_center()`/
+      `get_bounds_radius()` (world/scene_bootstrap.gd) are a plain mean +
+      single-farthest-node max — and concordia-hub genuinely has an
+      authored "outlying district" ~1000m from its main cluster (see
+      CLAUDE.md's content-seeder notes). Re-running `tools/live_probe.gd`
+      against the real server and dumping each spawned building's distance
+      from the plain centroid showed a clean two-cluster split: 50
+      buildings within 138-357m, then a hard jump straight to 981-1114m
+      for the remaining 12-13. `get_bounds_radius()` reported the
+      outlier-inflated 1114m, so `boot.gd`'s `0.3 * radius` camera distance
+      (334m) put the camera INSIDE that inflated sphere — closer to the
+      world origin than to either real cluster's own span — framing almost
+      nothing but ground plane, exactly matching the screenshot evidence
+      above.
+
+      Fix: a new `SceneBootstrap.robust_cluster_bounds()` (pure static) +
+      `get_camera_bounds()` (instance wrapper), used ONLY by `boot.gd`'s
+      overview camera — `get_bounds_center()`/`get_bounds_radius()`
+      themselves are untouched, since their own doc comments describe a
+      deliberate contract mirrored from `FeaSceneBuilder`'s equivalent
+      (a different, unrelated overlay with no outlier problem) and are
+      pinned by existing tests. The method is largest-relative-gap
+      detection, not a fixed percentile: sort every node's distance from
+      the plain centroid, find the single largest gap between consecutive
+      distances past the halfway point, and only treat it as a genuine
+      cluster/outlier boundary if the gap is larger than the entire "core"
+      span leading up to it — a continuously, evenly spread-out world (no
+      real separation) has no such gap and is correctly left untrimmed,
+      which a fixed percentile cutoff cannot tell apart from a real split.
+      When a split is found, BOTH the radius and the center are recomputed
+      from only the near side, so the outlier can't drag the focus point
+      either. Below `MIN_NODES_FOR_TRIM` (6) nodes this is byte-identical
+      to plain centroid + max distance (no meaningful "majority" exists to
+      detect an outlier against at that scale) — small/test scenes are
+      unaffected.
+
+      Verified against the exact same real running server + registered
+      user + real JWT this file's other live-probe entries use — before:
+      camera at height 242m, buildings crammed into a single tiny corner
+      behind a wall of green; after: camera at height ~55m, 10+
+      individually-distinguishable buildings (a real market-stall GLB
+      with its canopy/awning texture, several honest gray placeholder
+      boxes for forge/tower archetypes) spread legibly across the frame.
+      Pure-logic tests: `tests/test_scene_bootstrap.gd` (+8 checks —
+      small-N parity with the untouched plain bounds, no-trim on an evenly
+      spread set, a synthetic clear-outlier case, and a case built at
+      concordia-hub's real measured node counts and distance bands).
+      **Residual, honestly**: this fixes FRAMING (the right buildings are
+      now visible at a sensible scale); it does not touch texture/material
+      quality (the market canopy's orange swirl pattern is unchanged from
+      the isolated close-up already verified above) or add real terrain
+      art under the ground plane — those remain separately queued.
 
 ### Interpolation (Phase 2 dependent)
 - [ ] `SnapshotBuffer` sampling at now−120ms is visually smooth at real latency.
