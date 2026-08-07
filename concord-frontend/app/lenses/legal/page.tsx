@@ -38,8 +38,6 @@ import {
   MessageSquare,
   Brain,
   AlertTriangle,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -87,7 +85,6 @@ export default function LegalLensPage() {
   useLensNav('legal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('legal');
   const [workbench, setWorkbench] = useState<Workbench>('practice');
-  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
     [
@@ -186,23 +183,9 @@ export default function LegalLensPage() {
         />
 
         {/* Legal workbench: deadlines / renewals / conflicts / audit + mint/DM/publish/agent */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Deadlines / renewals / conflicts / audit</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
-              <PipingProvider>
-                <LegalActionPanel />
-              </PipingProvider>
-            </div>
-          )}
-        </section>
+        <PipingProvider>
+          <LegalActionPanel />
+        </PipingProvider>
 
         {/* State intestacy + court-procedure reference (Track D, CURATION) */}
         <CourtProcedureReference />

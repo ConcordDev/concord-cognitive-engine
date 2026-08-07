@@ -37,7 +37,7 @@ import InventoryTransfers from '@/components/retail/InventoryTransfers';
 import SalesAnalytics from '@/components/retail/SalesAnalytics';
 import CommerceSuite from '@/components/retail/CommerceSuite';
 import { ShellPreview } from '@/components/lens/ShellPreview';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
@@ -52,7 +52,6 @@ export default function RetailLensPage() {
   useLensNav('retail');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('retail');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
     [
@@ -116,24 +115,10 @@ export default function RetailLensPage() {
         <CommerceSuite />
 
         {/* Store ops bench — reorderCheck / pipelineValue / customerLTV / slaStatus */}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Store ops bench</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
-              <PipingProvider>
-                <RetailActionPanel />
-              </PipingProvider>
-            </div>
-          )}
-        </section>
         <PipingProvider>
+          <section className="mt-6">
+            <RetailActionPanel />
+          </section>
           <section className="mt-6"><TaxRatesPanel /></section>
         </PipingProvider>
 

@@ -33,8 +33,6 @@ import {
   Antenna,
   Wifi,
   Signal,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 
 /** Live counts pulled straight from the real macros (towerList / spectrumList /
@@ -50,8 +48,6 @@ export default function TelecommunicationsLensPage() {
   const [overview, setOverview] = useState<OverviewCounts | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [rfTab, setRfTab] = useState<(typeof RF_PLANNER_TABS)[number]['key']>('sites');
-  const [showActionPanel, setShowActionPanel] = useState(false);
-  const [showTelcoRepos, setShowTelcoRepos] = useState(false);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -149,38 +145,14 @@ export default function TelecommunicationsLensPage() {
           <RFPlanner tab={rfTab} onTabChange={setRfTab} />
         </section>
 
-        <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Legacy single-shot calculators</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
-              <PipingProvider>
-                <TelecommunicationsActionPanel />
-              </PipingProvider>
-            </div>
-          )}
-        </section>
+        <PipingProvider>
+          <section className="mt-6 max-w-7xl mx-auto px-4">
+            <TelecommunicationsActionPanel />
+          </section>
+        </PipingProvider>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowTelcoRepos(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Telecom / networking repos (GitHub)</span>
-            {showTelcoRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showTelcoRepos && (
-            <div className="mt-3">
-              <TelcoRepos />
-            </div>
-          )}
+          <TelcoRepos />
         </section>
       </LensPageShell>
 
