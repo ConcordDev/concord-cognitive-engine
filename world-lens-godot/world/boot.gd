@@ -66,6 +66,7 @@ extends Node3D
 
 const GatewayClient := preload("res://net/gateway_client.gd")
 const SceneBootstrap := preload("res://world/scene_bootstrap.gd")
+const ArtStyle := preload("res://world/art_style.gd")
 const AerialTrafficController := preload("res://world/aerial_traffic_controller.gd")
 const AvatarManager := preload("res://avatar/avatar_manager.gd")
 const ConKayPresence := preload("res://conkay/conkay_presence.gd")
@@ -152,6 +153,25 @@ func _ready() -> void:
 	auth_token = _cfg["auth_token"]
 	world_id = _cfg["world_id"]
 	spectator_mode = _cfg["spectator_mode"]
+
+	# The per-world sky/sun/ambient/toon palette (ArtStyle) is already built,
+	# tested, and pixel-verified (VISUAL_QA.md's "art_world" shots) -- but
+	# was ONLY ever applied by the synthetic tools/visual_probe.gd harness,
+	# never by the real client boot path. Without it the live scene has no
+	# light at all, so real spawned geometry renders as flat black
+	# silhouettes against the engine's default clear color. Wiring it here
+	# is reusing ArtStyle's existing static functions verbatim (same call
+	# shape visual_probe.gd already proved draws real, correctly-ordered
+	# pixels for all 9 canon worlds) -- not new rendering logic.
+	var _world_env := ArtStyle.make_environment(world_id)
+	if _world_env != null:
+		var _we := WorldEnvironment.new()
+		_we.environment = _world_env
+		add_child(_we)
+	var _sun := ArtStyle.make_sun(world_id)
+	if _sun != null:
+		_sun.rotation_degrees = Vector3(-42.0, -35.0, 0.0)
+		add_child(_sun)
 
 	_bootstrap = SceneBootstrap.new()
 	add_child(_bootstrap)

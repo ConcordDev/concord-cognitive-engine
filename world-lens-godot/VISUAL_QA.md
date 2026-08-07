@@ -300,17 +300,76 @@ Read these limits as part of the claims above, not as footnotes to them.
         variant).
 
 ### Networking
-- [ ] `GatewayClient` connects to a live `/godot-ws` and receives `hello` after `auth`.
+- [x] **`GatewayClient` connects to a live `/godot-ws` and receives `hello`
+      after `auth` — 2026-08-07, real end-to-end run.** A real `server.js`
+      was booted (fresh SQLite DB, real migrations, real content-seeder — NOT
+      a fixture), a real user registered via `/api/auth/register`, and a real
+      JWT obtained. The Godot **project** (not headless — real X11/opengl3
+      via Xvfb, same rasterizer the pixel checks above use) was launched
+      against it with `CONCORD_GATEWAY_URL`/`CONCORD_GODOT_AUTH_TOKEN`/
+      `CONCORD_WORLD_ID` pointed at the live server. Console proof (from the
+      engine's own stdout, not a mocked transport):
+      ```
+      [boot] gateway socket open
+      [boot] authenticated as <real-user-uuid>
+      [boot] joined room world:concordia-hub
+      ```
+      This is the first time this client has ever spoken to a real server —
+      every prior claim in this file about the gateway was necessarily
+      code-inspection-only.
 - [ ] Reconnect/backoff behaves sanely after a server restart (1s→30s cap, jitter).
-- [ ] `room:join world:<id>` succeeds and world events arrive in the room.
+- [x] **`room:join world:<id>` succeeds — same run as above** (`joined room
+      world:concordia-hub`, real room echo from the real server, not asserted
+      from source).
 - [ ] Malformed / oversized inbound frames do not crash the client.
 
 ### Scene rendering
-- [ ] `scene:request` → placeholder BoxMesh geometry appears. **Half done:** the
-      RENDER half is machine-verified above (a `concord-scene/v1` payload handed
-      to `apply_scene` really does draw one region per node). What is still
-      unverified is the WIRE half — a real `scene:request` to a live gateway
-      returning a real `scene:data` frame. The gateway is not mounted yet.
+- [x] **`scene:request` → real BoxMesh geometry appears — WIRE half now
+      closed, 2026-08-07.** The RENDER half was already machine-verified (a
+      `concord-scene/v1` fixture payload draws the right region count). This
+      closes the WIRE half this file had flagged as the actual gap: the same
+      live run above triggers `boot.gd`'s real `_on_authenticated` →
+      `scene:request` → server's real `exportScene()` (reads the live
+      `world_buildings` SQL table, not a fixture) → real `scene:data` →
+      `SceneBootstrap.apply_scene()`. Verified **programmatically, not by
+      eye**: `world-lens-godot/tools/live_probe.gd` (new — a one-off live-server
+      probe, distinct from `tools/visual_probe.gd`'s synthetic-fixture harness)
+      walks the real scene tree after the round trip and counts
+      `SceneBootstrap`'s spawned children. Result:
+      `spawned_children: 62`, which is **exactly** the real, independently-
+      queried count of `concordia-hub` rows in `world_buildings` — city hall,
+      library, market, observatory, forge, courthouse, and 56 more, all
+      authored content, not synthetic. Reproduce (needs a running server +
+      real JWT + Xvfb):
+      ```bash
+      CONCORD_GATEWAY_URL=ws://127.0.0.1:5050/godot-ws \
+      CONCORD_GODOT_AUTH_TOKEN=<real JWT> CONCORD_WORLD_ID=concordia-hub \
+      CONCORD_LIVE_PROBE_OUT=/tmp/scene.png CONCORD_LIVE_PROBE_FRAMES=360 \
+      xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+        --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+        --script res://tools/live_probe.gd
+      ```
+      **Same run also found and fixed a real gap**, not just tested one: the
+      live boot path never applied `ArtStyle.make_environment`/`make_sun` —
+      only the synthetic `visual_probe.gd` harness did. So a real client
+      session had no sky, no sun, and every spawned building rendered as a
+      flat black silhouette regardless of `world_id`. Wired
+      `boot.gd#_ready()` to call the same `ArtStyle` functions
+      `visual_probe.gd` already proved correct (verbatim reuse, no new
+      shading logic) — confirmed by re-running the exact same live probe
+      before/after: `spawned_children` unchanged at 62 (the fix doesn't touch
+      what spawns), but the frame goes from a flat grey/black two-blob image
+      to a real lit sunset sky over toon-shaded buildings.
+      **Scope of what's still open:** the default camera sits at the scene
+      origin with no framing logic (`CameraRig#_ready` just does
+      `Camera3D.new()`, no position/look-at) — with `concordia-hub`'s real
+      buildings spanning roughly a 1000m × 1200m footprint, only the 1-2
+      buildings nearest the origin land in frame. This is a real, separate,
+      undecided design question (a proper default needs either a real
+      character spawn point — explicitly deferred elsewhere in this file —
+      or a deliberate "overview camera" default derived from the world's
+      real bounds), not silently worked around with an unreasoned magic
+      position. Flagged here rather than hidden.
 - [ ] Placeholder boxes render at the **correct position / rotation / scale**
       versus the Three.js client for the same world (side-by-side). *(The Godot
       side's transform mapping is now verified against the spec in absolute
