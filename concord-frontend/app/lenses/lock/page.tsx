@@ -26,6 +26,8 @@ import {
   Ban,
   Activity,
   Play,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
@@ -65,6 +67,7 @@ export default function LockLensPage() {
   } = useRealtimeLens('lock');
   const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats } = use70Lock();
   const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
+  const [showSecurityRepos, setShowSecurityRepos] = useState(false);
   const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
     message: string;
     localCount: number;
@@ -841,7 +844,19 @@ export default function LockLensPage() {
       <ConnectiveTissueBar lensId="lock" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SecurityRepos />
+        <button
+          type="button"
+          onClick={() => setShowSecurityRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Security tooling (external reference)</span>
+          {showSecurityRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showSecurityRepos && (
+          <div className="mt-3">
+            <SecurityRepos />
+          </div>
+        )}
       </section>
     </div>
 
