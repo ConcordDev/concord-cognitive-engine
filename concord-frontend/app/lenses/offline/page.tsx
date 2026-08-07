@@ -18,6 +18,7 @@ import { ConflictMergePanel, type Conflict } from '@/components/offline/Conflict
 import { BackoffPanel } from '@/components/offline/BackoffPanel';
 import { SyncAnalysisPanel } from '@/components/offline/SyncAnalysisPanel';
 import { OfflineRepos } from '@/components/offline/OfflineRepos';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 /**
  * Offline lens — a real PWA offline-sync workbench (PouchDB/Dexie + Workbox
@@ -33,6 +34,7 @@ export default function OfflineLensPage() {
   useLensNav('offline');
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
   const [replicationKey, setReplicationKey] = useState(0);
+  const [showOfflineRepos, setShowOfflineRepos] = useState(false);
 
   // Conflicts surfaced by a push are held until the user resolves them.
   const handleConflicts = useCallback((c: Conflict[]) => {
@@ -145,9 +147,21 @@ export default function OfflineLensPage() {
           <SyncAnalysisPanel />
         </section>
 
-        {/* Real-world offline-first tooling */}
+        {/* Real-world offline-first tooling (GitHub reference) */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <OfflineRepos />
+          <button
+            type="button"
+            onClick={() => setShowOfflineRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Real-world offline-first tooling (GitHub)</span>
+            {showOfflineRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showOfflineRepos && (
+            <div className="mt-3">
+              <OfflineRepos />
+            </div>
+          )}
         </section>
 
         <RecentMineCard domain="offline" limit={10} hideWhenEmpty className="mt-4" />
