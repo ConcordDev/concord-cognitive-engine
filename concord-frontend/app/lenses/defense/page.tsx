@@ -26,6 +26,7 @@ import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import {
   Shield, BarChart3, Target, Crosshair, Users, Eye, MapPin, Radio,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -61,6 +62,7 @@ export default function DefenseLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('defense');
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
     [
@@ -145,11 +147,23 @@ export default function DefenseLensPage() {
         <ContractSearch />
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <DefenseActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Security ops bench</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <DefenseActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </div>
           <RecentMineCard domain="defense" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="defense" hideWhenEmpty className="mt-3" title="More actions" />
