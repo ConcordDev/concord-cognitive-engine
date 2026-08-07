@@ -23,7 +23,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
-  CheckCircle2, Wrench, ChevronDown,
+  CheckCircle2, Wrench, ChevronDown, ChevronRight,
   Home, ToggleLeft, ToggleRight, Loader2, BarChart3, Calculator,
   Camera, Lightbulb, ShoppingCart, Boxes, GanttChartSquare, CalendarClock,
   ListChecks, Receipt, X,
@@ -154,6 +154,7 @@ export default function HomeImprovementLensPage() {
   const [activeTab, setActiveTab] = useState<
     'projects' | 'budget' | 'timeline' | 'gallery' | 'ideas' | 'pros' | 'shopping' | 'inventory' | 'maintenance'
   >('projects');
+  const [showHomeImprovementFeed, setShowHomeImprovementFeed] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -944,9 +945,21 @@ export default function HomeImprovementLensPage() {
         })()}
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <HomeImprovementFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowHomeImprovementFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showHomeImprovementFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
+        </button>
+        {showHomeImprovementFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <HomeImprovementFeed />
+          </section>
+        )}
+      </div>
     </div>
           <section className="mt-4"><ProductRecalls /></section>
           <RecentMineCard domain="home-improvement" limit={10} hideWhenEmpty className="mt-4" />

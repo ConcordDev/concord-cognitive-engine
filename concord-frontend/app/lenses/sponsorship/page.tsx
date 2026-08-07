@@ -9,6 +9,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -38,6 +39,7 @@ export default function SponsorshipPage() {
   // Bumped on any membership mutation so dependent tabs reload.
   const [refreshKey, setRefreshKey] = useState(0);
   const bump = () => setRefreshKey((k) => k + 1);
+  const [showRepos, setShowRepos] = useState(false);
 
   useLensCommand([
     { id: 'sponsorship-discover', keys: 'g d', description: 'Discover creators', category: 'navigation', action: () => setTab('discover') },
@@ -81,7 +83,19 @@ export default function SponsorshipPage() {
         {tab === 'creator' && <CreatorHub />}
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <SponsorRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Open-source sponsorship (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <SponsorRepos />
+            </div>
+          )}
         </section>
       </div>
 

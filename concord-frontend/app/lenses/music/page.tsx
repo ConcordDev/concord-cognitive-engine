@@ -50,6 +50,8 @@ import {
   Layers,
   Filter,
   Music2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { SessionView } from '@/components/music/SessionView';
 import { MusicArtistExplorer } from '@/components/music/MusicArtistExplorer';
@@ -257,6 +259,8 @@ export default function MusicLensPage() {
 
   // ---- View State ----
   const [view, setView] = useState<MusicLensView>('home');
+  const [showArtistExplorer, setShowArtistExplorer] = useState(false);
+  const [showMusicActionPanel, setShowMusicActionPanel] = useState(false);
 
   // ---- Session (Ableton-shape clip launcher) — real, persisted arrangement ----
   const {
@@ -2257,15 +2261,46 @@ export default function MusicLensPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Bespoke MusicBrainz artist + discography explorer with Save-as-DTU */}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <MusicArtistExplorer />
+        {/* External reference — MusicBrainz artist + discography lookup,
+            not this lens's own library. Collapsed by default rather than
+            promoted open on every visit regardless of active view. */}
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+          <button
+            type="button"
+            onClick={() => setShowArtistExplorer((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+            aria-expanded={showArtistExplorer}
+          >
+            <span>MusicBrainz artist explorer (external reference)</span>
+            {showArtistExplorer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {showArtistExplorer && (
+            <div className="px-4 pb-4">
+              <MusicArtistExplorer />
+            </div>
+          )}
         </section>
 
-        {/* Spotify + Ableton-shape music workbench: BPM / key / chords / setlist + actions */}
+        {/* Spotify + Ableton-shape music workbench: BPM / key / chords /
+            setlist + actions. Collapsed by default — was previously
+            mounted unconditionally below every one of this lens's 11
+            views regardless of which was active. */}
         <PipingProvider>
-          <section className="mt-6">
-            <MusicActionPanel />
+          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+            <button
+              type="button"
+              onClick={() => setShowMusicActionPanel((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+              aria-expanded={showMusicActionPanel}
+            >
+              <span>Music workbench (BPM / key / chords / setlist)</span>
+              {showMusicActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            {showMusicActionPanel && (
+              <div className="px-4 pb-4">
+                <MusicActionPanel />
+              </div>
+            )}
           </section>
         </PipingProvider>
       </main>

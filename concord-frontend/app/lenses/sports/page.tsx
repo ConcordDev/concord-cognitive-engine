@@ -30,6 +30,8 @@ import {
   X,
   BarChart3,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -153,6 +155,9 @@ export default function SportsLensPage() {
   const [sportsActiveAction, setSportsActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>('games');
+  const [showActivityActionPanel, setShowActivityActionPanel] = useState(false);
+  const [showLiveScoreboard, setShowLiveScoreboard] = useState(false);
+  const [showSpectatorHub, setShowSpectatorHub] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1081,21 +1086,57 @@ export default function SportsLensPage() {
       </div>
 
       {/* ESPN Fantasy + Strava-shape activity workbench */}
-      <PipingProvider>
-        <section className="mt-6">
-          <ActivityActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowActivityActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showActivityActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Activity Workbench (ESPN Fantasy/Strava-shape)
+        </button>
+        {showActivityActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ActivityActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <LiveScoreboard />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowLiveScoreboard(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showLiveScoreboard ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Live Scoreboard
+        </button>
+        {showLiveScoreboard && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <LiveScoreboard />
+          </section>
+        )}
+      </div>
 
       {/* ESPN spectator core — play-by-play, schedules, standings, news,
           rosters, player pages, reminders, brackets, win-probability */}
-      <section className="mt-6">
-        <SportsSpectatorHub />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSpectatorHub(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSpectatorHub ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Spectator Hub (ESPN-shape: play-by-play / standings / news / rosters)
+        </button>
+        {showSpectatorHub && (
+          <section className="mt-3">
+            <SportsSpectatorHub />
+          </section>
+        )}
+      </div>
     </div>
           <section className="mt-4"><LensFeedButton domain="sports" label="Live fixtures feed" /></section>
           <RecentMineCard domain="sports" limit={10} hideWhenEmpty className="mt-4" />

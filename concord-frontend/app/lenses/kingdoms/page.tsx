@@ -26,7 +26,7 @@ import { DynastyRealmManager } from '@/components/kingdoms/DynastyRealmManager';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
-import { Crown, Flag, Hammer, Users, Plus, ChevronRight, AlertTriangle, List, Eye, Loader2 } from 'lucide-react';
+import { Crown, Flag, Hammer, Users, Plus, ChevronRight, ChevronDown, AlertTriangle, List, Eye, Loader2 } from 'lucide-react';
 
 interface Kingdom {
   id: string;
@@ -62,6 +62,8 @@ interface DecreeKindMeta {
 
 export default function KingdomsPage() {
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+  const [showHistoryExplorer, setShowHistoryExplorer] = useState(false);
+  const [showRealmActionPanel, setShowRealmActionPanel] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -164,13 +166,33 @@ export default function KingdomsPage() {
         {/* Phase 5 — open war-campaign / decree sessions belonging to this lens. */}
         <SessionRail lensId="kingdoms" className="mt-6" hideWhenEmpty />
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <HistoryExplorer />
+          <button
+            type="button"
+            onClick={() => setShowHistoryExplorer(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Historical kingdoms (external reference)</span>
+            {showHistoryExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showHistoryExplorer && (
+            <div className="mt-3">
+              <HistoryExplorer />
+            </div>
+          )}
         </section>
 
         {/* Crusader Kings III-shape realm command: list / decree / loyalty / takeover + actions */}
         <PipingProvider>
-          <section className="mt-6">
-            <RealmActionPanel />
+          <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <button
+              type="button"
+              onClick={() => setShowRealmActionPanel(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Realm command panel</span>
+              {showRealmActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showRealmActionPanel && <div className="mt-3"><RealmActionPanel /></div>}
           </section>
         </PipingProvider>
 

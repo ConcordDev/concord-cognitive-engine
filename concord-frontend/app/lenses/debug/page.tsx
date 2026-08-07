@@ -77,6 +77,7 @@ export default function DebugLensPage() {
     | 'compute'
     | 'templates'
   >('status');
+  const [showNvdCveFeed, setShowNvdCveFeed] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1267,9 +1268,21 @@ export default function DebugLensPage() {
           </div>
         </div>
       )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <NvdCveFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowNvdCveFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showNvdCveFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          NVD CVE Feed (external reference)
+        </button>
+        {showNvdCveFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <NvdCveFeed />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="debug" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="debug" hideWhenEmpty className="mt-3" />

@@ -17,6 +17,7 @@ import {
   Download, BarChart3, Receipt, DollarSign,
   CreditCard, History, Wallet, Layers,
   Loader2, XCircle, AlertTriangle,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -60,6 +61,7 @@ export default function BillingPage() {
   const queryClient = useQueryClient();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'subscriptions' | 'billing'>('overview');
+  const [showEconomyDashboard, setShowEconomyDashboard] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | 'purchase' | 'usage' | 'credit'>('all');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
@@ -997,9 +999,21 @@ export default function BillingPage() {
         )}
       </motion.div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <EconomyDashboard />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowEconomyDashboard(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showEconomyDashboard ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Platform Economy Status
+        </button>
+        {showEconomyDashboard && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <EconomyDashboard />
+          </section>
+        )}
+      </div>
     </div>
           <CrossLensRecentsPanel lensId="billing" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>

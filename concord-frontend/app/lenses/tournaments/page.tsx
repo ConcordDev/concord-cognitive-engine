@@ -31,7 +31,7 @@ import { SpectatorBar } from '@/components/tournaments/SpectatorBar';
 import { FORMAT_LABELS, STATUS_LABELS } from '@/components/tournaments/types';
 import type { Tournament, TFormat, TStatus } from '@/components/tournaments/types';
 import { lensRun } from '@/lib/api/client';
-import { Trophy, Users, Coins, Plus, Play, ChevronRight, X, ScrollText } from 'lucide-react';
+import { Trophy, Users, Coins, Plus, Play, ChevronRight, ChevronDown, X, ScrollText } from 'lucide-react';
 
 const FORMATS: TFormat[] = ['single_elimination', 'double_elimination', 'round_robin', 'swiss'];
 const STATUS_FILTERS: (TStatus | 'all')[] = ['all', 'upcoming', 'checkin', 'in_progress', 'completed', 'cancelled'];
@@ -40,6 +40,7 @@ type CountMap = Partial<Record<TStatus, number>>;
 
 export default function TournamentsPage() {
   const [view, setView] = useState<'list' | 'detail' | 'create'>('list');
+  const [showEsportsFeed, setShowEsportsFeed] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [counts, setCounts] = useState<CountMap>({});
   const [statusFilter, setStatusFilter] = useState<TStatus | 'all'>('all');
@@ -213,7 +214,19 @@ export default function TournamentsPage() {
           )}
 
           <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <EsportsFeed />
+            <button
+              type="button"
+              onClick={() => setShowEsportsFeed(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Esports discussion (external reference)</span>
+              {showEsportsFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showEsportsFeed && (
+              <div className="mt-3">
+                <EsportsFeed />
+              </div>
+            )}
           </section>
         </div>
       </div>

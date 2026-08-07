@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -17,7 +18,7 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
-import { Brain } from 'lucide-react';
+import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -26,6 +27,8 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function NeuroLensPage() {
   useLensNav('neuro');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('neuro');
+  const [showResearch, setShowResearch] = useState(false);
+  const [showFeed, setShowFeed] = useState(false);
 
   return (
     <LensShell lensId="neuro" asMain={false}>
@@ -33,12 +36,26 @@ export default function NeuroLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="neuro" size="sm" className="ml-2" />
       <div data-lens-theme="neuro" className="space-y-6 p-6">
-        {/* REAL arXiv q-bio.NC (neural computation) feed. */}
-        <ArxivPanel domain="neuro" title="arXiv · Neuroscience (q-bio.NC)" />
-        {/* REAL PubMed (neuroscience-filtered). */}
-        <PubMedPanel domain="neuro" macro="live_pubmed_neuro" title="PubMed · neuroscience" initialQuery="brain plasticity" />
-        {/* REAL Wikipedia neuroscience reference. */}
-        <WikipediaSearchPanel domain="neuro" title="Wikipedia · neuroscience" />
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowResearch(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Research references (arXiv · PubMed · Wikipedia)</span>
+            {showResearch ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showResearch && (
+            <div className="mt-3 space-y-4">
+              {/* REAL arXiv q-bio.NC (neural computation) feed. */}
+              <ArxivPanel domain="neuro" title="arXiv · Neuroscience (q-bio.NC)" />
+              {/* REAL PubMed (neuroscience-filtered). */}
+              <PubMedPanel domain="neuro" macro="live_pubmed_neuro" title="PubMed · neuroscience" initialQuery="brain plasticity" />
+              {/* REAL Wikipedia neuroscience reference. */}
+              <WikipediaSearchPanel domain="neuro" title="Wikipedia · neuroscience" />
+            </div>
+          )}
+        </section>
 
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -82,7 +99,19 @@ export default function NeuroLensPage() {
         <NeuroTrainPanel />
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <NeuroFeed />
+          <button
+            type="button"
+            onClick={() => setShowFeed(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>arXiv topic feed</span>
+            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showFeed && (
+            <div className="mt-3">
+              <NeuroFeed />
+            </div>
+          )}
         </section>
       </div>
 

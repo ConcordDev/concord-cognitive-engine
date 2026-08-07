@@ -40,6 +40,8 @@ import {
   Receipt,
   ShieldCheck,
   Bolt,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -155,6 +157,8 @@ export default function ElectricalLensPage() {
   );
 
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
+  const [showHardwarePulse, setShowHardwarePulse] = useState(false);
+  const [showNecCodeCalc, setShowNecCodeCalc] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -800,11 +804,35 @@ export default function ElectricalLensPage() {
       )}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <OpenHardwarePulse />
+        <button
+          type="button"
+          onClick={() => setShowHardwarePulse(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Open hardware tooling (external reference)</span>
+          {showHardwarePulse ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showHardwarePulse && (
+          <div className="mt-3">
+            <OpenHardwarePulse />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6">
-        <NecCodeCalc />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowNecCodeCalc(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>NEC code calculator suite</span>
+          {showNecCodeCalc ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showNecCodeCalc && (
+          <div className="mt-3">
+            <NecCodeCalc />
+          </div>
+        )}
       </section>
     </LensPageShell>
     

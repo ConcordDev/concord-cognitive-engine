@@ -16,6 +16,7 @@
  */
 
 import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import Link from 'next/link';
 import { LensShell } from '@/components/lens/LensShell';
@@ -30,6 +31,7 @@ import { DraftEditor } from '@/components/world-creator/DraftEditor';
 
 export default function WorldCreatorPage() {
   const [editingDraft, setEditingDraft] = useState<string | null>(null);
+  const [showInspo, setShowInspo] = useState(false);
 
   useLensCommand([
     { id: 'world-creator-back', keys: 'Escape', description: 'Back to drafts', category: 'navigation',
@@ -67,7 +69,19 @@ export default function WorldCreatorPage() {
 
         {!editingDraft && (
           <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <WorldBuilderInspo />
+            <button
+              type="button"
+              onClick={() => setShowInspo(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Worldbuilding inspiration (Reddit)</span>
+              {showInspo ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showInspo && (
+              <div className="mt-3">
+                <WorldBuilderInspo />
+              </div>
+            )}
           </section>
         )}
       </div>

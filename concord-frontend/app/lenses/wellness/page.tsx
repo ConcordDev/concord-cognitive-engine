@@ -26,6 +26,7 @@ import { SessionsPanel } from '@/components/wellness/SessionsPanel';
 import { WearableImportPanel } from '@/components/wellness/WearableImportPanel';
 import { DailyRecommendationPanel } from '@/components/wellness/DailyRecommendationPanel';
 import { PipingProvider } from '@/components/panel-polish';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface DashboardSummary {
   habitCount: number;
@@ -132,6 +133,8 @@ function WellnessOverview() {
 }
 
 export default function WellnessPage() {
+  const [showFeed, setShowFeed] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   useLensCommand([
     { id: 'wellness-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'wellness' });
@@ -184,15 +187,39 @@ export default function WellnessPage() {
         </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <WellnessFeed />
+          <button
+            type="button"
+            onClick={() => setShowFeed(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Wellness community</span>
+            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showFeed && (
+            <div className="mt-3">
+              <WellnessFeed />
+            </div>
+          )}
         </section>
 
         {/* Whoop-shape wellness workbench: sleep / strain / recovery / HRV + actions */}
-        <PipingProvider>
-          <section className="mt-6">
-            <WellnessActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Sleep / strain / recovery / HRV workbench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <WellnessActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
       </div>
 
           <RecentMineCard domain="wellness" limit={10} hideWhenEmpty className="mt-4" />

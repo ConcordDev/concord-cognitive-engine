@@ -34,6 +34,8 @@ import {
   Percent,
   Hammer,
   Zap,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
@@ -196,6 +198,10 @@ export default function ConstructionLensPage() {
   );
 
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
+  const [showFieldMgmt, setShowFieldMgmt] = useState(false);
+  const [showOsha, setShowOsha] = useState(false);
+  const [showProcore, setShowProcore] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -809,21 +815,65 @@ export default function ConstructionLensPage() {
       )}
       {renderEditor()}
 
-      <section className="mt-6">
-        <FieldManagementPanel />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowFieldMgmt(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Field management</span>
+          {showFieldMgmt ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFieldMgmt && (
+          <div className="mt-3">
+            <FieldManagementPanel />
+          </div>
+        )}
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <OshaIncidentSearch />
+        <button
+          type="button"
+          onClick={() => setShowOsha(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>OSHA incident search (external reference)</span>
+          {showOsha ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showOsha && (
+          <div className="mt-3">
+            <OshaIncidentSearch />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6">
-        <ProcorePanel />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowProcore(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Procore-style project controls</span>
+          {showProcore ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showProcore && (
+          <div className="mt-3">
+            <ProcorePanel />
+          </div>
+        )}
       </section>
 
       <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4">
-          <ConstructionActionPanel />
+        <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Construction workbench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><ConstructionActionPanel /></div>}
         </section>
       </PipingProvider>
     </LensPageShell>

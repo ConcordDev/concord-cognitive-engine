@@ -35,6 +35,8 @@ import {
   FileText,
   Microscope,
   CheckCircle,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -162,6 +164,9 @@ export default function ResearchLensPage() {
   const [query, setQuery] = useState('');
   const [domainFilter, setDomainFilter] = useState('');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showLibrarySection, setShowLibrarySection] = useState(false);
+  const [showCrossRefPanel, setShowCrossRefPanel] = useState(false);
+  const [showResearchArxiv, setShowResearchArxiv] = useState(false);
   const [tierFilter, setTierFilter] = useState('');
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'tier'>('date');
   const [selectedDtu, setSelectedDtu] = useState<DTUResult | null>(null);
@@ -401,13 +406,39 @@ export default function ResearchLensPage() {
           gives `generate` a proper designed home. */}
       <DepthBadge lensId="research" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
-        <ResearchLibrarySection />
+        <button
+          type="button"
+          onClick={() => setShowLibrarySection(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showLibrarySection ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Reference Library (Zotero-shape)
+        </button>
+        {showLibrarySection && (
+          <div className="mt-3">
+            <ResearchLibrarySection />
+          </div>
+        )}
       </div>
     <div data-lens-theme="research" className="p-6 space-y-6">
       {/* Phase 5 — open research-arc sessions for this lens. */}
       <SessionRail lensId="research" hideWhenEmpty />
       {/* Phase 4 (third wave) — REAL CrossRef DOI metadata search. */}
-      <CrossRefPanel domain="research" />
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowCrossRefPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCrossRefPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          CrossRef DOI Search (external reference)
+        </button>
+        {showCrossRefPanel && (
+          <div className="mt-3">
+            <CrossRefPanel domain="research" />
+          </div>
+        )}
+      </div>
       <header className="flex items-center gap-3">
         <BookOpen className="w-6 h-6 text-neon-cyan" />
         <div>
@@ -966,9 +997,21 @@ export default function ResearchLensPage() {
       Research Workbench
     </button>
     <ResearchWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <ResearchArxiv />
-    </section>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowResearchArxiv(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showResearchArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        arXiv Search (external reference)
+      </button>
+      {showResearchArxiv && (
+        <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <ResearchArxiv />
+        </section>
+      )}
+    </div>
           <RecentMineCard domain="research" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="research" hideWhenEmpty className="mt-3" />
           <CrossLensRecentsPanel lensId="research" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

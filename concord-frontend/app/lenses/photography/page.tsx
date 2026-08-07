@@ -27,7 +27,7 @@ import {
   Camera, Search, Upload, Grid, Image as ImageIcon,
   Heart, Eye, X, Download,
   Aperture, Sliders, BarChart3,
-  Layers, ChevronLeft, ChevronRight, Focus,
+  Layers, ChevronLeft, ChevronRight, Focus, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -73,6 +73,8 @@ export default function PhotographyPage() {
   const photos = useMemo(() => photoItems.map(i => ({ ...(i.data as unknown as PhotoItem), id: i.id, title: i.title })), [photoItems]);
 
   const [tab, setTab] = useState<PhotoTab>('gallery');
+  const [showPexels, setShowPexels] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Lens-scoped keyboard commands. Lightroom / Capture One idiom.
@@ -881,14 +883,38 @@ export default function PhotographyPage() {
 
       {/* Bespoke Pexels stock-photo browser with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PexelsBrowser />
+        <button
+          type="button"
+          onClick={() => setShowPexels(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Stock photo browser (external reference)</span>
+          {showPexels ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPexels && (
+          <div className="mt-3">
+            <PexelsBrowser />
+          </div>
+        )}
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <PhotographyActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Photography workbench</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <PipingProvider>
+            <div className="mt-3">
+              <PhotographyActionPanel />
+            </div>
+          </PipingProvider>
+        )}
+      </section>
     </div>
           <section className="mt-4"><LensFeedButton domain="photography" label="Live photo-archive feed" /></section>
           <RecentMineCard domain="photography" limit={10} hideWhenEmpty className="mt-4" />

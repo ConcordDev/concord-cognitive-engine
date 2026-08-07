@@ -102,13 +102,15 @@ import { ShellPreview } from '@/components/lens/ShellPreview';
 
 type ModeTab =
   | 'Dashboard'
+  | 'Browse'
   | 'Listings'
   | 'Transactions'
   | 'CMA'
   | 'Rentals'
   | 'Investing'
   | 'Showings'
-  | 'Map';
+  | 'Map'
+  | 'World';
 type ArtifactType = 'Listing' | 'Transaction' | 'CMA' | 'RentalUnit' | 'Deal' | 'Showing';
 
 type ListingStatus =
@@ -274,6 +276,7 @@ interface RealEstateArtifact {
 
 const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; size?: number | string }>; defaultType?: ArtifactType }[] = [
   { id: 'Dashboard', icon: BarChart3 },
+  { id: 'Browse', icon: Search },
   { id: 'Listings', icon: Home, defaultType: 'Listing' },
   { id: 'Transactions', icon: ArrowLeftRight, defaultType: 'Transaction' },
   { id: 'CMA', icon: Calculator, defaultType: 'CMA' },
@@ -281,6 +284,7 @@ const MODE_TABS: { id: ModeTab; icon: React.ComponentType<{ className?: string; 
   { id: 'Investing', icon: TrendingUp, defaultType: 'Deal' },
   { id: 'Showings', icon: Eye, defaultType: 'Showing' },
   { id: 'Map', icon: Map },
+  { id: 'World', icon: Building2 },
 ];
 
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
@@ -995,7 +999,6 @@ export default function RealEstateLensPage() {
       <DepthBadge lensId="realestate" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       <ShellPreview lensId="realestate" defaultOpen={true} />
-      <RealtorWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -1629,8 +1632,19 @@ export default function RealEstateLensPage() {
               )}
             </div>
           </div>
+
+          {/* Bespoke Census ACS neighborhood-stats with Save-as-DTU */}
+          <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <NeighborhoodStats />
+          </section>
         </>
       )}
+
+      {/* ==================== BROWSE TAB — Zillow/Redfin-parity search,
+          saved searches, tours, AVM, CMA, and per-listing detail panels.
+          Was previously mounted unconditionally above the page header on
+          every visit, stacked on top of this lens's own tab system. ==== */}
+      {activeTab === 'Browse' && <RealtorWorkbenchSection />}
 
       {/* ==================== LISTINGS TAB ==================== */}
       {activeTab === 'Listings' && (
@@ -2559,6 +2573,12 @@ export default function RealEstateLensPage() {
               </div>
             )}
           </div>
+
+          {/* Zillow + Redfin + Stessa-shape investor calculators: cap rate /
+              mortgage / affordability / rent-vs-buy, plus mint/DM/publish. */}
+          <PipingProvider>
+            <RealEstateActionPanel />
+          </PipingProvider>
         </section>
       )}
 
@@ -3400,15 +3420,18 @@ export default function RealEstateLensPage() {
         </div>
       )}
 
-      {/* World property market — real in-world building ownership / listing /
-          lease engine (the `real_estate` domain, server/domains/real-estate.js).
-          Previously reachable only through a generic <LensFeaturePanel> button
-          wall; now a bespoke buy/sell/lease workbench. */}
-      <div className="border-t border-white/10 pt-4">
-        <WorldPropertiesPanel />
-      </div>
+      {/* ==================== WORLD TAB — real in-world building ownership /
+          listing / lease engine (the `real_estate` domain,
+          server/domains/real-estate.js), distinct from the real-world MLS
+          listings above it. Was previously mounted unconditionally below
+          every tab's content regardless of which tab was active. ==== */}
+      {activeTab === 'World' && (
+        <div className={ds.panel}>
+          <WorldPropertiesPanel />
+        </div>
+      )}
     </div>
-    
+
       <a href="#realestate-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to realestate content</a>
 
       {/* 2026 parity workbench — mortgage / affordability / rent vs buy / saved searches */}
@@ -3422,17 +3445,6 @@ export default function RealEstateLensPage() {
       </button>
       <RealEstateWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
-      {/* Bespoke Census ACS neighborhood-stats with Save-as-DTU */}
-      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <NeighborhoodStats />
-      </section>
-
-      {/* Zillow + Redfin + Stessa-shape property workbench: cap / mortgage / afford / rent-vs-buy + actions */}
-      <PipingProvider>
-        <section className="mt-6 mx-4">
-          <RealEstateActionPanel />
-        </section>
-      </PipingProvider>
           <section className="mt-4"><LensFeedButton domain="realestate" label="Live home-value feed" /></section>
           <RecentMineCard domain="realestate" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="realestate" hideWhenEmpty className="mt-3" title="More actions" />

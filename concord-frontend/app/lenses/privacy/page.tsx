@@ -33,6 +33,8 @@ import {
   Lock,
   CheckCircle2,
   Info,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -403,6 +405,9 @@ export default function PrivacySharingPage() {
   // Local state mirrors API state for optimistic editing
   const [localConsent, setLocalConsent] = useState<ConsentState>(DEFAULT_CONSENT);
   const [dirty, setDirty] = useState(false);
+  const [showDpoStudio, setShowDpoStudio] = useState(false);
+  const [showDataControls, setShowDataControls] = useState(false);
+  const [showPrivacyFeed, setShowPrivacyFeed] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     key: ConsentKey;
     value: boolean;
@@ -723,7 +728,21 @@ export default function PrivacySharingPage() {
           four privacy analysis macros (dataInventory / consentAudit /
           impactAssessment / breachResponse) via lensRun. Replaces the prior
           generic artifact-run button strip that never had authoring input. */}
-      <DpoStudioPanel />
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowDpoStudio(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>DPO compliance studio</span>
+          {showDpoStudio ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showDpoStudio && (
+          <div className="mt-3">
+            <DpoStudioPanel />
+          </div>
+        )}
+      </section>
 
       {/* Footer info */}
       <div className="flex items-start gap-2 pt-2 pb-4">
@@ -756,11 +775,35 @@ export default function PrivacySharingPage() {
       {/* Data Controls — DSAR, per-lens sharing, activity log, export,
           cookie banner, retention, data-flow map (OneTrust parity) */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DataControlsPanel />
+        <button
+          type="button"
+          onClick={() => setShowDataControls(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Data controls (DSAR, export, retention)</span>
+          {showDataControls ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showDataControls && (
+          <div className="mt-3">
+            <DataControlsPanel />
+          </div>
+        )}
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PrivacyFeed />
+        <button
+          type="button"
+          onClick={() => setShowPrivacyFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Privacy discussion (external reference)</span>
+          {showPrivacyFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPrivacyFeed && (
+          <div className="mt-3">
+            <PrivacyFeed />
+          </div>
+        )}
       </section>
     </div>
 

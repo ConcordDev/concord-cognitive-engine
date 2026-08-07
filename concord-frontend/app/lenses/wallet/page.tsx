@@ -28,6 +28,8 @@ import {
   Wallet,
   Coins,
   CreditCard,
+  ChevronDown,
+  ChevronRight,
   ArrowDownToLine,
   ArrowUpFromLine,
   TrendingUp,
@@ -1029,6 +1031,8 @@ function WalletPageInner() {
 // ── Wallet Page (wrapped with Suspense for useSearchParams) ──────────────────
 
 export default function WalletPage() {
+  const [showWalletMarkets, setShowWalletMarkets] = useState(false);
+  const [showWalletActionPanel, setShowWalletActionPanel] = useState(false);
   return (
     <LensShell lensId="wallet" asMain={false}>
       <FirstRunTour lensId="wallet" />
@@ -1046,16 +1050,40 @@ export default function WalletPage() {
     >
       <WalletPageInner />
     </Suspense>
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <WalletMarkets />
-    </section>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowWalletMarkets(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showWalletMarkets ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Market Prices (external reference)
+      </button>
+      {showWalletMarkets && (
+        <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <WalletMarkets />
+        </section>
+      )}
+    </div>
 
     {/* wallet workbench: balance / categorize / budget / trend + actions */}
-    <PipingProvider>
-      <section className="mt-6 mx-auto max-w-7xl">
-        <WalletActionPanel />
-      </section>
-    </PipingProvider>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowWalletActionPanel(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showWalletActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Workbench (balance / categorize / budget / trend)
+      </button>
+      {showWalletActionPanel && (
+        <PipingProvider>
+          <section className="mt-3">
+            <WalletActionPanel />
+          </section>
+        </PipingProvider>
+      )}
+    </div>
 
           <CrossLensRecentsPanel lensId="wallet" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>

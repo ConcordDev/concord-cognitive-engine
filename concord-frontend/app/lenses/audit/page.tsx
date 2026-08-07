@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { FileSearch, AlertTriangle, Check, X, Eye, Link2, ClipboardList, ArrowRight, Hash } from 'lucide-react';
+import { FileSearch, AlertTriangle, Check, X, Eye, Link2, ClipboardList, ArrowRight, Hash, ChevronDown, ChevronRight } from 'lucide-react';
 import { CveSearch } from '@/components/audit/CveSearch';
 import { AuditActionPanel } from '@/components/audit/AuditActionPanel';
 import { ComplianceSuite } from '@/components/audit/ComplianceSuite';
@@ -55,6 +55,7 @@ export default function AuditLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('audit');
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   // Backend: GET /api/events
   const { data: events, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
@@ -354,11 +355,23 @@ export default function AuditLensPage() {
         <CveSearch />
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <AuditActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Auditor bench (compliance, trail analysis, risk score)</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <AuditActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </div>
 
       <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>

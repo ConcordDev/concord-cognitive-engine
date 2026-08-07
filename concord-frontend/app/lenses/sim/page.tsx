@@ -20,7 +20,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Play, Sliders, Clock, Plus, Trash2, Copy, Download,
-  Upload, BarChart3, GitCompare, Library, ChevronRight,
+  Upload, BarChart3, GitCompare, Library, ChevronRight, ChevronDown, Github,
   GripVertical, Settings, FlaskConical, TrendingUp, Activity,
   AlertTriangle, CheckCircle2,
   Layers, FileJson, FileSpreadsheet, Save, FolderOpen, X,
@@ -569,6 +569,7 @@ export default function SimLensPage() {
   const [parameterPresets, setParameterPresets] = useState<ParameterPreset[]>([]);
   const [presetName, setPresetName] = useState('');
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
+  const [showSimRepos, setShowSimRepos] = useState(false);
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
 
@@ -1575,8 +1576,27 @@ export default function SimLensPage() {
           </div>
         </div>
       )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SimRepos />
+      {/* External reference — open-source simulation/modeling repos, not
+          this lens's own scenario data. Collapsed by default rather than
+          promoted open on every visit; still reachable for anyone who
+          wants it. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowSimRepos((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showSimRepos}
+        >
+          <span className="flex items-center gap-2">
+            <Github className="w-4 h-4 text-gray-400" /> Open-source simulation references
+          </span>
+          {showSimRepos ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showSimRepos && (
+          <div className="px-4 pb-4">
+            <SimRepos />
+          </div>
+        )}
       </section>
     </div>
 

@@ -43,7 +43,7 @@ import { ACTIVE_WORLD_CHANGED_EVENT } from '@/hooks/useActiveWorldId';
 import {
   Hammer, ShoppingBag, Plus, Loader2, Flame, Sparkles, Search,
   X, Coins, ShieldCheck, Package, Beaker, Sword, Wand2, BookOpen,
-  ChevronRight, AlertCircle, ArrowUpCircle, Award, RefreshCw, Star, Wrench,
+  ChevronRight, ChevronDown, AlertCircle, ArrowUpCircle, Award, RefreshCw, Star, Wrench,
 } from 'lucide-react';
 
 const RecipeAuthorPanel = dynamic(
@@ -158,6 +158,7 @@ function activeAvatarId(): string | null {
 
 export default function CraftingPage() {
   const [tab, setTab] = useState<Tab>('mine');
+  const [showRecipeLedger, setShowRecipeLedger] = useState(false);
 
   useLensCommand(
     [
@@ -291,9 +292,21 @@ export default function CraftingPage() {
             <RecipeAuthorPanel onPublished={() => { setTab('mine'); refreshHeader(); }} />
           </section>
         )}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <RecipeLedger />
-        </section>
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowRecipeLedger(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showRecipeLedger ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Recipe & Skill Ledger
+          </button>
+          {showRecipeLedger && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <RecipeLedger />
+            </section>
+          )}
+        </div>
       </main>
 
           <RecentMineCard domain="crafting" limit={10} hideWhenEmpty className="mt-4" />

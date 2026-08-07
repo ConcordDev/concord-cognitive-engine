@@ -28,6 +28,8 @@ import {
   BarChart3,
   Timer,
   Eye,
+  ChevronDown,
+  ChevronRight,
   Gauge,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -338,6 +340,8 @@ export default function TickLensPage() {
   const [isLive, setIsLive] = useState(true);
   const [tickHistory, setTickHistory] = useState<TickEvent[]>([]);
   const [activeTab, setActiveTab] = useState<TickViewTab>('stream');
+  const [showMonitorPanel, setShowMonitorPanel] = useState(false);
+  const [showTickRate, setShowTickRate] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -605,9 +609,21 @@ export default function TickLensPage() {
           skipReport / alerts / latencyHistogram / heartbeatControl /
           uptimeSLA — all fed by recordSample over genuine governor
           tick history. */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MonitorPanel />
-      </section>
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowMonitorPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showMonitorPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Heartbeat Monitor (Datadog/Better Uptime-shape)
+        </button>
+        {showMonitorPanel && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MonitorPanel />
+          </section>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2">
@@ -1140,9 +1156,21 @@ export default function TickLensPage() {
         )}
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <TickRate />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowTickRate(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showTickRate ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Tick Rate
+        </button>
+        {showTickRate && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <TickRate />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#tick-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to tick content</a>

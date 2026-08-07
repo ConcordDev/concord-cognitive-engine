@@ -39,7 +39,7 @@ import type { DTU } from '@/lib/api/generated-types';
 import {
   Globe2, Loader2, Plus, Play, Camera, Network, Boxes, GitFork,
   Trash2, Save, Upload, GitCompareArrows, Pencil, RefreshCcw, Library,
-  FileSearch,
+  FileSearch, ChevronDown, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -74,6 +74,7 @@ export default function WorldmodelLensPage() {
   useLensNav('worldmodel');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('graph');
+  const [showWorldModelArxiv, setShowWorldModelArxiv] = useState(false);
 
   useLensCommand(
     [
@@ -258,9 +259,21 @@ export default function WorldmodelLensPage() {
           </AnimatePresence>
         </main>
 
-        <section className="mx-4 mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 md:mx-8">
-          <WorldModelArxiv />
-        </section>
+        <div className="mx-4 mt-6 md:mx-8">
+          <button
+            type="button"
+            onClick={() => setShowWorldModelArxiv(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showWorldModelArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            arXiv Search (external reference)
+          </button>
+          {showWorldModelArxiv && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <WorldModelArxiv />
+            </section>
+          )}
+        </div>
       </div>
     </LensShell>
   );

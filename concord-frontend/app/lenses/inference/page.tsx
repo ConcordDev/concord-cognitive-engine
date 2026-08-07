@@ -19,7 +19,7 @@ import { motion } from 'framer-motion';
 import {
   GitMerge, Plus, ArrowRight, Database, Search, Zap,
   Clock, Gauge, Activity, ListOrdered, ChevronDown, ChevronUp,
-  RefreshCw, AlertCircle, CheckCircle2, Timer, Link,
+  RefreshCw, AlertCircle, CheckCircle2, Timer, Link, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -103,6 +103,8 @@ export default function InferenceLensPage() {
   const [minorPremise, setMinorPremise] = useState('');
   const [results, setResults] = useState<unknown>(null);
   const [tab, setTab] = useState<'facts' | 'query' | 'syllogism' | 'forward' | 'unify'>('facts');
+  const [showRuleEngine, setShowRuleEngine] = useState(false);
+  const [showFrameworks, setShowFrameworks] = useState(false);
   const [unifyTerm1, setUnifyTerm1] = useState('');
   const [unifyTerm2, setUnifyTerm2] = useState('');
 
@@ -696,11 +698,35 @@ export default function InferenceLensPage() {
       </div>
 
       <section className="mt-6 rounded-xl border border-cyan-500/15 bg-zinc-950/40 p-4">
-        <RuleEngineWorkbench />
+        <button
+          type="button"
+          onClick={() => setShowRuleEngine(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Rule engine workbench</span>
+          {showRuleEngine ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showRuleEngine && (
+          <div className="mt-3">
+            <RuleEngineWorkbench />
+          </div>
+        )}
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <InferenceFrameworks />
+        <button
+          type="button"
+          onClick={() => setShowFrameworks(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Inference frameworks (external reference)</span>
+          {showFrameworks ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFrameworks && (
+          <div className="mt-3">
+            <InferenceFrameworks />
+          </div>
+        )}
       </section>
     </div>
 

@@ -27,6 +27,8 @@ import {
   HeartHandshake,
   X,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -64,6 +66,8 @@ export default function InsuranceLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('insurance');
 
   const [mode, setMode] = useState<ModeTab>('Overview');
+  const [showPolicyTalk, setShowPolicyTalk] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [visionNote, setVisionNote] = useState<{ analysis: string; tags?: string[] } | null>(null);
 
   useLensCommand(
@@ -165,14 +169,38 @@ export default function InsuranceLensPage() {
         {mode === 'Pacts' && <MutualAidPactsPanel />}
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <InsurancePolicyTalk />
+          <button
+            type="button"
+            onClick={() => setShowPolicyTalk(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Community discussion (Reddit)</span>
+            {showPolicyTalk ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showPolicyTalk && (
+            <div className="mt-3">
+              <InsurancePolicyTalk />
+            </div>
+          )}
         </section>
 
-        <PipingProvider>
-          <section className="mt-6">
-            <InsuranceActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>More actions</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <InsuranceActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
       </div>
 
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>

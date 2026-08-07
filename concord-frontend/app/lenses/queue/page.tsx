@@ -18,6 +18,7 @@ import {
   Inbox, Play, Clock, Zap, Activity, RefreshCw,
   BarChart3, ListOrdered, Timer, AlertTriangle, Pause, PlayCircle,
   Trash2, RotateCcw, Server, CalendarClock, ShieldAlert,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
@@ -56,6 +57,7 @@ export default function QueueLensPage() {
   useLensNav('queue');
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>('jobs');
+  const [showQueueRepos, setShowQueueRepos] = useState(false);
   const [queueFilter, setQueueFilter] = useState<string>('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{ job: QueueJob; history: QueueEvent[] } | null>(null);
@@ -604,7 +606,19 @@ export default function QueueLensPage() {
         <ConnectiveTissueBar lensId="queue" />
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <QueueRepos />
+          <button
+            type="button"
+            onClick={() => setShowQueueRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Queue tooling (external reference)</span>
+            {showQueueRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showQueueRepos && (
+            <div className="mt-3">
+              <QueueRepos />
+            </div>
+          )}
         </section>
 
         <a

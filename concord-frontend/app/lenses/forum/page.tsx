@@ -42,6 +42,7 @@ import {
   Lock,
   Trash2,
   ChevronDown,
+  ChevronRight,
   ExternalLink,
   Copy,
   Shield,
@@ -247,6 +248,8 @@ export default function ForumLensPage() {
 
   // Comment reply
   const [modToolsOpenId, setModToolsOpenId] = useState<string | null>(null);
+  const [showForumChatter, setShowForumChatter] = useState(false);
+  const [showForumActionPanel, setShowForumActionPanel] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [postReplyContent, setPostReplyContent] = useState('');
@@ -1236,15 +1239,39 @@ export default function ForumLensPage() {
         />
       )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ForumChatter />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowForumChatter(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showForumChatter ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
+        </button>
+        {showForumChatter && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ForumChatter />
+          </section>
+        )}
+      </div>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <ForumActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowForumActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showForumActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          More Actions
+        </button>
+        {showForumActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ForumActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <SessionRail lensId="forum" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="forum" limit={10} hideWhenEmpty className="mt-4" />

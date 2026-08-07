@@ -79,7 +79,7 @@ import { GovernanceVotingPanel } from '@/components/emergent/GovernanceVotingPan
 import CouncilTheaterPanel from '@/components/council/CouncilTheaterPanel';
 import { EntityCard } from '@/components/entity/EntityCard';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
-import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople, CalendarClock as MobileTabMeetings, Archive as MobileTabArchive } from 'lucide-react';
+import { FileText as MobileTabFileText, Vote as MobileTabVote, MessageSquare as MobileTabMessage, DollarSign as MobileTabDollar, ScrollText as MobileTabScroll, UsersRound as MobileTabPeople, CalendarClock as MobileTabMeetings, Archive as MobileTabArchive, Gavel as MobileTabGavel } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,7 +93,8 @@ type CouncilTab =
   | 'budget'
   | 'archive'
   | 'audit'
-  | 'stakeholders';
+  | 'stakeholders'
+  | 'workbench';
 
 type ProposalType = 'policy' | 'budget' | 'amendment' | 'resolution' | 'motion';
 type ProposalStatus = 'draft' | 'discussion' | 'voting' | 'decided' | 'implemented' | 'rejected';
@@ -226,6 +227,7 @@ const TABS: { id: CouncilTab; label: string; icon: typeof FileText }[] = [
   { id: 'archive', label: 'Archive', icon: Archive },
   { id: 'audit', label: 'Audit', icon: Shield },
   { id: 'stakeholders', label: 'Stakeholders', icon: Users },
+  { id: 'workbench', label: 'Workbench', icon: Gavel },
 ];
 
 const PROPOSAL_TYPES: { value: ProposalType; label: string }[] = [
@@ -2877,6 +2879,20 @@ export default function CouncilLensPage() {
         {activeTab === 'archive' && <DecisionArchive />}
         {activeTab === 'audit' && renderAuditTab()}
         {activeTab === 'stakeholders' && renderStakeholdersTab()}
+        {activeTab === 'workbench' && (
+          <div className="space-y-6">
+            {/* AI multi-voice proposal evaluation */}
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <CouncilVoices />
+            </section>
+            {/* DAO + IBIS-shape governance workbench: deliberate / vote / minutes / resolve + actions.
+                Was previously mounted unconditionally below every tab's content
+                regardless of which tab was active. */}
+            <PipingProvider>
+              <CouncilActionPanel />
+            </PipingProvider>
+          </div>
+        )}
       </div>
 
       {/* ========== MODALS ========== */}
@@ -3239,16 +3255,6 @@ export default function CouncilLensPage() {
           compact
         />
       )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CouncilVoices />
-      </section>
-
-      {/* DAO + IBIS-shape governance workbench: deliberate / vote / minutes / resolve + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <CouncilActionPanel />
-        </section>
-      </PipingProvider>
     </div>
 
       <a href="#council-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to council content</a>
@@ -3267,6 +3273,7 @@ export default function CouncilLensPage() {
               { id: 'archive',      label: 'Archive',  icon: MobileTabArchive },
               { id: 'audit',        label: 'Audit',    icon: MobileTabScroll },
               { id: 'stakeholders', label: 'People',   icon: MobileTabPeople },
+              { id: 'workbench',    label: 'Tools',    icon: MobileTabGavel },
             ]}
             active={activeTab}
             onSelect={(id) => setActiveTab(id as CouncilTab)}

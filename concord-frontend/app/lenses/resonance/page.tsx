@@ -33,6 +33,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Dna,
   Zap,
   X,
@@ -965,6 +966,8 @@ export default function ResonanceBoundaryPage() {
   const { items: resonanceArtifacts } = useLensData('resonance', 'signal', { seed: [] });
   const runResonanceAction = useRunArtifact('resonance');
   const [resonanceActionResult, setResonanceActionResult] = useState<Record<string, unknown> | null>(null);
+  const [showCrossDomainWorkbench, setShowCrossDomainWorkbench] = useState(false);
+  const [showResonanceArxiv, setShowResonanceArxiv] = useState(false);
   const [resonanceActiveAction, setResonanceActiveAction] = useState<string | null>(null);
 
   const handleResonanceAction = async (action: string) => {
@@ -1524,12 +1527,36 @@ export default function ResonanceBoundaryPage() {
         )}
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CrossDomainWorkbench />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ResonanceArxiv />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCrossDomainWorkbench(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCrossDomainWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Cross-Domain Workbench
+        </button>
+        {showCrossDomainWorkbench && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CrossDomainWorkbench />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowResonanceArxiv(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showResonanceArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          arXiv Search (external reference)
+        </button>
+        {showResonanceArxiv && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ResonanceArxiv />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="resonance" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="resonance" hideWhenEmpty className="mt-3" />
