@@ -48,7 +48,7 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { Palette } from 'lucide-react';
+import { Palette, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -60,6 +60,8 @@ import { cn } from '@/lib/utils';
 export default function CreativeLensPage() {
   useLensNav('creative');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative');
+  const [showRedditCreative, setShowRedditCreative] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   // DTU context (v3.0 artifact support) — real substrate, unrelated to the
   // removed CRUD system.
@@ -111,13 +113,39 @@ export default function CreativeLensPage() {
 
         {/* Live reference feed */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <RedditCreative />
+          <button
+            type="button"
+            onClick={() => setShowRedditCreative(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Community reference (Reddit)</span>
+            {showRedditCreative ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRedditCreative && (
+            <div className="mt-3">
+              <RedditCreative />
+            </div>
+          )}
         </section>
 
         {/* Producer bench — shotListGenerate / assetOrganize / budgetTrack / distributionChecklist */}
-        <PipingProvider>
-          <CreativeActionPanel />
-        </PipingProvider>
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Producer bench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <CreativeActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
 
         {/* AI Actions */}
 
