@@ -74,6 +74,9 @@ const SessionManager := preload("res://session/session_manager.gd")
 const CameraRig := preload("res://session/camera_rig.gd")
 const DesignPlaytestClient := preload("res://design/design_playtest_client.gd")
 const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
+const CharacterController := preload("res://player/character_controller.gd")
+const AvatarRig := preload("res://avatar/avatar_rig.gd")
+const TerrainTextureLoader := preload("res://assets/terrain_texture_loader.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -115,6 +118,13 @@ var _session: SessionManager
 var _camera_rig: CameraRig
 var _design_playtest: DesignPlaytestClient
 var _fea_scene: FeaSceneBuilder
+## The LOCAL player's real physics body (player/character_controller.gd).
+## Null until the first `scene:data` gives it a real spawn point to fall
+## onto -- spawning before that would mean guessing a position instead of
+## deriving one from the world's own real geometry. Spawned exactly once
+## per client session (see `_on_event`'s `scene:data` branch) -- this
+## client has no world-switch flow that would need a re-spawn.
+var _character: CharacterController = null
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -277,14 +287,14 @@ func _ready() -> void:
 		_sun.rotation_degrees = Vector3(-42.0, -35.0, 0.0)
 		add_child(_sun)
 
-	# Flat placeholder ground — deliberately NOT textured terrain art. Real
-	# terrain textures exist (concord-frontend/public/models/terrain/*.jpg —
-	# grass/dirt/cobblestone/asphalt/etc.) but wiring per-district textured
-	# ground geometry (UV mapping, tiling, district-boundary material
-	# selection) is separate, unbuilt work; this is only a large flat plane
-	# so spawned buildings sit on SOMETHING instead of floating over the
-	# engine's default void, honestly a placeholder like the box buildings
-	# it's paired with, not a visual-quality claim.
+	# Flat ground plane. Real terrain textures exist (concord-frontend/
+	# public/models/terrain/*.jpg — grass/dirt/cobblestone/asphalt/etc.);
+	# per-district textured ground geometry (UV-mapped biome/district-
+	# boundary selection) is still separate, unbuilt work, but a real
+	# tiled grass texture now replaces the flat placeholder color below
+	# (2026-08-07) — see `_apply_ground_texture`. Still a single flat
+	# PlaneMesh, not sculpted terrain — an honest texture upgrade, not a
+	# claim of real terrain geometry.
 	var _ground := MeshInstance3D.new()
 	var _ground_mesh := PlaneMesh.new()
 	_ground_mesh.size = Vector2(4000, 4000)
@@ -293,9 +303,30 @@ func _ready() -> void:
 	_ground_mat.albedo_color = Color(0.36, 0.40, 0.32)
 	_ground.material_override = _ground_mat
 	add_child(_ground)
+	_apply_ground_texture(_ground_mat)
+
+	# Real ground collision (2026-08-07) — a StaticBody3D/CollisionShape3D
+	# sized to match the visual PlaneMesh exactly (BoxShape3D is a real,
+	# simple, and correct choice for a perfectly flat ground -- a thin slab
+	# whose top face sits at y=0, same as the visual plane). Before this,
+	# nothing in the scene could physically collide with anything: a real
+	# CharacterController spawned here would have fallen through the world
+	# forever (this file's own prior class-doc comment named exactly this
+	# as the reason no local player was ever spawned). `enable_collision`
+	# on `_bootstrap` below adds the matching per-building collision.
+	const GROUND_COLLISION_THICKNESS := 2.0
+	var _ground_body := StaticBody3D.new()
+	var _ground_cs := CollisionShape3D.new()
+	var _ground_shape := BoxShape3D.new()
+	_ground_shape.size = Vector3(4000.0, GROUND_COLLISION_THICKNESS, 4000.0)
+	_ground_cs.shape = _ground_shape
+	_ground_body.add_child(_ground_cs)
+	_ground_body.position = Vector3(0.0, -GROUND_COLLISION_THICKNESS / 2.0, 0.0)
+	add_child(_ground_body)
 
 	_bootstrap = SceneBootstrap.new()
 	_bootstrap.enable_real_building_meshes = true
+	_bootstrap.enable_collision = true
 	_bootstrap.frontend_asset_base_url = frontend_asset_base_url
 	add_child(_bootstrap)
 
@@ -387,6 +418,85 @@ func _ready() -> void:
 	_gateway.connect_to_gateway()
 
 
+## Fetches a real grass texture from the frontend static-asset origin and
+## tiles it across the ground plane. Honest degradation, same shape every
+## other real-asset-first path in this file already uses (real building
+## meshes, real hero-mesh avatars): the solid `albedo_color` the caller
+## already set stays visible and correct-looking on its own until/unless
+## this succeeds, and stays as the permanent fallback on any failure —
+## `TerrainTextureLoader` never fabricates a broken or partial texture.
+## `GROUND_TEXTURE_TILE_REPEAT` is a design dial, not a measurement: the
+## grass photo tiles visibly at any repeat count on a perfectly flat
+## 4000x4000 plane with no normal-mapping to break up the repetition —
+## chosen large enough that individual tiles read at ordinary player-eye
+## viewing distance instead of one enormous stretched image.
+const GROUND_TEXTURE_TILE_REPEAT := 400.0
+var _terrain_loader: TerrainTextureLoader = null
+
+
+func _apply_ground_texture(ground_material: StandardMaterial3D) -> void:
+	_terrain_loader = TerrainTextureLoader.new()
+	add_child(_terrain_loader)
+	_terrain_loader.loaded.connect(func(_url: String, tex: ImageTexture) -> void:
+		ground_material.albedo_texture = tex
+		ground_material.uv1_scale = Vector3(GROUND_TEXTURE_TILE_REPEAT, GROUND_TEXTURE_TILE_REPEAT, 1.0)
+	)
+	_terrain_loader.load_failed.connect(func(_url: String, reason: String) -> void:
+		push_warning("[boot] ground texture failed to load (%s) — staying on the solid placeholder color" % reason)
+	)
+	_terrain_loader.load_texture("%s/models/terrain/grass.jpg" % frontend_asset_base_url)
+
+
+## Spawns the local player's real physics body exactly once, at a real
+## measured position (the same robust camera-framing center computed
+## above — the dense heart of whatever world actually spawned, never a
+## fabricated/guessed coordinate), then hands the shared camera off to it.
+## `SPAWN_DROP_HEIGHT_M` is a deliberate, honestly-documented design
+## choice, not a measurement: dropped in from well above anything spawned
+## (concordia-hub's tallest placeholder box is a few tens of metres) and
+## let `move_and_slide()`'s real gravity integration settle it onto
+## whatever real collision — ground or a building roof — is actually
+## there, rather than trying to compute an exact "empty ground" spot near
+## a cluster of ~50 buildings (a real, if less common, honest outcome is
+## landing on a roof at the city center, not a bug).
+const SPAWN_DROP_HEIGHT_M := 80.0
+
+
+func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
+	if _character != null:
+		return
+
+	_character = CharacterController.new()
+	_character.world_id = world_id
+	_character.gateway = _gateway
+	_character.session_manager = _session
+	_character.position = cluster_center + Vector3(0.0, SPAWN_DROP_HEIGHT_M, 0.0)
+
+	var shape := CollisionShape3D.new()
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.35
+	capsule.height = 1.8
+	shape.shape = capsule
+	_character.add_child(shape)
+
+	# Real humanoid visual for the LOCAL player too, via the exact same
+	# resolve chain remote players already use (avatar/avatar_rig.gd's own
+	# class doc names this as its intended mount point: "the LOCAL player's
+	# CharacterBody3D ... can mount one of these as a child for its
+	# visuals"). `rig_id` has no bearing on the resolved URL for kind
+	# "player" (see assets/asset_resolver.gd#fallback_url) — "local-player"
+	# is just a readable label, not a lookup key.
+	var rig := AvatarRig.new()
+	rig.kind = "player"
+	rig.rig_id = "local-player"
+	rig.base_url = frontend_asset_base_url
+	rig.world_id = world_id
+	_character.add_child(rig)
+
+	add_child(_character)
+	_camera_rig.set_follow_target(_character)
+
+
 func _on_connected() -> void:
 	print("[boot] gateway socket open")
 
@@ -445,8 +555,8 @@ func _on_event(evt: String, data: Dictionary) -> void:
 			# actual per-node distance distribution against a real running
 			# server, not assumed. See that function's own doc comment for
 			# the full method. The 0.3 MULTIPLIER on the resulting radius is
-			# still an empirically-tuned constant, not a closed-form fit:
-			# closed-form fit: a straightforward "radius / tan(halfFov)"
+			# still an empirically-tuned constant, not a closed-form fit —
+			# a straightforward "radius / tan(halfFov)"
 			# projection predicted ~1.15-1.3 would fill the frame, but that
 			# consistently rendered as a small cluster under 15% of frame
 			# height when actually run and screenshotted against the live
@@ -489,6 +599,7 @@ func _on_event(evt: String, data: Dictionary) -> void:
 				# one a given authored world happens to be longer along, so
 				# it doesn't need to be re-tuned per world.
 				_camera_rig.set_orbit_yaw(PI / 4.0)
+				_spawn_local_player_if_needed(_cam_bounds["center"])
 		"world:aerial-traffic":
 			_aerial_traffic.apply_snapshot(data, Time.get_ticks_msec())
 		"city:positions":

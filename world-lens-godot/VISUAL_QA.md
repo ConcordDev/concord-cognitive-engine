@@ -203,6 +203,107 @@ needs two simultaneous real sessions and is still queued. Pure-logic
 coverage for the new `fallback_url` convention itself is real and
 committed: `tests/test_asset_resolver.gd` (5 checks).
 
+## Player physics, collision, and terrain (2026-08-07)
+
+Three previously-honest gaps closed in one pass, each verified against a
+real running server, not asserted: real ground collision + per-building
+collision (a real `CharacterController` would previously have fallen
+through the world forever — `world/boot.gd`'s own prior class doc named
+this as the exact reason no local player had ever been spawned), a real
+tiled grass texture on the ground plane (previously a flat placeholder
+color), and the local player itself — a real physics body, spawned at a
+real measured position, with a real humanoid visual, camera-followed.
+
+**Collision.** `world/scene_bootstrap.gd` gained `enable_collision` (off
+by default — every existing headless/offline test that spawns synthetic
+nodes is unaffected) — when on, each spawned building gets a sibling
+`StaticBody3D`/`CollisionShape3D` at the IDENTICAL transform as its visual
+`MeshInstance3D`, built the same "unit box + scaled transform" way the
+visual box already is. Deliberately a SIBLING, not a reparenting of the
+visual node: `_upgrade_one_node`'s real-mesh-upgrade math reads
+`mi.transform.basis.get_scale()` directly, so moving that scaled basis
+onto a collision-body ancestor would have silently broken it — this was
+checked before writing the code, not discovered by breaking it. `world/
+boot.gd`'s ground plane gained a matching `StaticBody3D` + `BoxShape3D`
+sized to its visual `PlaneMesh` exactly. Pure-logic + engine-executed
+tests: `tests/test_scene_bootstrap.gd` (+11 checks — disabled by default,
+one body per node at the matching transform with a real `BoxShape3D`, the
+visual node's own transform provably untouched, and bodies cleared on
+scene re-apply).
+
+**Terrain texture.** New `assets/terrain_texture_loader.gd` (mirrors
+`assets/glb_loader.gd`'s exact HTTPRequest shape, including the same real
+`accept_gzip = false` fix that file's own header documents) fetches a real
+grass photo (`concord-frontend/public/models/terrain/grass.jpg`) and tiles
+it across the ground plane's material; the solid placeholder color stays
+as the honest fallback on any failure, never a fabricated or broken
+texture. No test file (network-dependent, same as `glb_loader.gd` itself —
+verified live only, see below).
+
+**Local player.** `world/boot.gd#_spawn_local_player_if_needed` spawns a
+real `player/character_controller.gd` (already-existing, already-tested
+kinematic movement code — this unit is the first thing that ever actually
+mounted it in the live client) exactly once, at a real measured position
+(the same robust camera-framing cluster center this session's earlier fix
+computes — never a guessed coordinate), dropped from `SPAWN_DROP_HEIGHT_M`
+= 80m above it so real gravity integration + `move_and_slide()` settle it
+onto whatever real collision is actually there. Mounts a real `AvatarRig`
+child for its visual (`avatar/avatar_rig.gd`'s own class doc names this as
+its intended local-player mount point) — the SAME real Mixamo humanoid
+resolve chain this file's "Avatars" section above already verified, not a
+new asset path. `session/camera_rig.gd#set_follow_target` hands the shared
+camera to it, so `session/session_manager.gd`'s existing WORLD-mode
+FOLLOW behavior (previously dead code — no `CharacterController` had ever
+existed to follow) now genuinely activates.
+
+**Real-engine evidence.** New `tools/local_player_probe.gd` loads the
+REAL `boot.tscn` against a real running server + real registered user
+(same pattern as `tools/live_probe.gd`), finds the spawned
+`CharacterController`, and samples its `global_position.y` over many real
+physics frames. First run exposed a real timing bug IN THE PROBE, not the
+physics: a 120-frame sample window starting immediately at spawn measured
+a still-actively-falling body (`first_sampled_y: 112.99`,
+`last_sampled_y: 88.62`, `settled: false`) and correctly reported it as
+unsettled — physically correct free-fall kinematics (roughly matching
+g=9.81 from a ~113m spawn height), just sampled before it had time to
+land. Fixed by waiting `FALL_SETTLE_DELAY_FRAMES` (400, ~6.7s) after spawn
+before sampling; the corrected run shows the body decelerating into a
+dead stop — `tail_max_drift_m: 0.0` across the final 12 samples, i.e.
+genuinely, perfectly stationary, not floating or still falling — resting
+at `y≈37.4`, well above true ground (the flat plane's top surface is
+y=0). This is an honest, undetermined-but-not-fabricated outcome: either
+the character landed on a building's collision box near the spawn point
+(explicitly anticipated and documented in `_spawn_local_player_if_needed`'s
+own comment before this run — "a real, if less common, honest outcome is
+landing on a roof at the city center, not a bug") or concordia-hub's
+authored building Y-coordinates aren't uniformly ground-level to begin
+with; this probe doesn't yet distinguish the two and neither is asserted
+as the answer. What IS rigorously established, independent of which: the
+body hit something solid and stayed there — it does not fall through the
+world forever, which is the actual, previously-open claim this exists to
+verify. Screenshot corroborates: the real Mixamo humanoid stands on the
+real tiled grass texture with real building placeholders/GLBs visible at
+a normal ground-level vantage, and the camera is visibly in third-person
+FOLLOW framing (close behind-and-above the character), not the aerial
+establishing shot the "Camera framing" checklist entry above describes.
+
+Reproduce:
+```
+CONCORD_GATEWAY_URL=ws://<host>:5050/godot-ws \
+CONCORD_GODOT_AUTH_TOKEN=<real JWT> CONCORD_WORLD_ID=concordia-hub \
+CONCORD_FRONTEND_URL=http://<frontend-static-host> \
+CONCORD_LOCAL_PLAYER_PROBE_OUT=/tmp/out.png CONCORD_LOCAL_PLAYER_PROBE_FRAMES=1000 \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/local_player_probe.gd
+```
+
+**What this does NOT settle:** the exact resting-surface question above;
+movement FEEL (WASD/jump/sprint) — the probe never sends input, only
+observes the drop-and-settle; and building collision boxes' correctness
+for NON-axis-aligned or unusually-shaped footprints beyond what the pure
+tests already pin geometrically.
+
 ## How to run the QA pass
 
 1. Get the engine: `node scripts/fetch-godot.mjs` (checksum-verified; writes to the
@@ -542,11 +643,16 @@ Read these limits as part of the claims above, not as footnotes to them.
       `radius / tan(halfFov)` projection predicted a ~4x larger multiplier
       than what actually filled the frame when run and screenshotted, which
       is exactly why this was verified against real rendered pixels rather
-      than trusted from the formula. Still open, honestly: this default view
-      has no ground/terrain plane (buildings appear to float — terrain
-      generation doesn't exist yet, see the Phase 2 section below) and no
-      real player character exists to hand the camera off to once one spawns
-      (that's the FOLLOW target this fallback is standing in for).
+      than trusted from the formula. **Superseded, 2026-08-07 — see "Player
+      physics, collision, and terrain" below**: a real ground plane (now
+      textured, not floating-void), real per-building collision, and a
+      real local-player `CharacterController` that the camera now hands
+      off to via `set_follow_target` all now exist and are verified
+      against a live server. This fallback (the orbit-establishing-shot
+      math) is still real code and still the correct behavior for the
+      brief window before the local player has spawned, or for
+      SPECTATE-mode viewing — it just isn't the ONLY camera behavior
+      anymore.
 - [ ] Placeholder boxes render at the **correct position / rotation / scale**
       versus the Three.js client for the same world (side-by-side). *(The Godot
       side's transform mapping is now verified against the spec in absolute

@@ -44,6 +44,9 @@ static func run() -> TestUtils:
 	_test_robust_cluster_bounds_no_trim_without_a_real_gap(t)
 	_test_robust_cluster_bounds_trims_a_clear_outlier_cluster(t)
 	_test_robust_cluster_bounds_concordia_hub_shaped_data(t)
+	_test_collision_disabled_by_default(t)
+	_test_collision_spawns_one_body_per_node_at_the_matching_transform(t)
+	_test_collision_cleared_on_reapply(t)
 	return t
 
 
@@ -381,3 +384,89 @@ static func _test_robust_cluster_bounds_concordia_hub_shaped_data(t: TestUtils) 
 	t.check(
 		refined_radius < 400.0,
 		"concordia-hub-shaped data: trimmed radius stays near the dense core's own span (~220 units), nowhere close to the outlier-inflated ~1100")
+
+
+## enable_collision (2026-08-07) — added so a real CharacterController's
+## move_and_slide() has something solid to stand on/collide with. Default
+## false: every existing test that spawns synthetic nodes without expecting
+## physics bodies must see zero behavior change.
+static func _test_collision_disabled_by_default(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 0,
+		"enable_collision defaults false -- no StaticBody3D spawned unless opted in")
+	bootstrap.free()
+
+
+static func _test_collision_spawns_one_body_per_node_at_the_matching_transform(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.enable_collision = true
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [10.0, 0.0, -5.0], "rotationY": PI / 2.0, "scale": [8.0, 3.0, 2.0]}},
+			{"id": "b", "transform": {"translation": [-40.0, 0.0, 12.0], "scale": [4.0, 4.0, 4.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 2,
+		"one collision body per spawned node")
+
+	var body_a := bootstrap.get_node_or_null(NodePath("a_collision")) as StaticBody3D
+	t.check(body_a != null, "collision body for node 'a' exists, named per its source id")
+	if body_a != null:
+		t.check(
+			body_a.transform.origin.is_equal_approx(Vector3(10.0, 0.0, -5.0)),
+			"collision body origin matches the visual node's origin")
+		var cs := body_a.get_child(0) as CollisionShape3D
+		t.check(cs != null, "collision body has a CollisionShape3D child")
+		if cs != null:
+			var box := cs.shape as BoxShape3D
+			t.check(box != null, "collision shape is a BoxShape3D")
+			if box != null:
+				t.check(
+					box.size.is_equal_approx(Vector3.ONE),
+					"BoxShape3D is a unit box -- footprint scale lives in the body's own transform basis, same convention the visual MeshInstance3D already uses")
+
+	# The VISUAL node's own transform must be untouched by adding collision
+	# (see enable_collision's own doc comment -- this is the exact regression
+	# it warns against: _upgrade_one_node's footprint-rescale math reads
+	# `mi.transform.basis.get_scale()` directly).
+	var mi_a := bootstrap.get_node_or_null(NodePath("a")) as MeshInstance3D
+	t.check(mi_a != null, "the visual MeshInstance3D for node 'a' still exists, unreparented")
+	if mi_a != null:
+		t.check(
+			mi_a.transform.basis.get_scale().is_equal_approx(Vector3(8.0, 3.0, 2.0)),
+			"visual node's own transform still carries its real footprint scale, unaffected by the sibling collision body")
+
+	bootstrap.free()
+
+
+static func _test_collision_cleared_on_reapply(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.enable_collision = true
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "b", "transform": {"translation": [5.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(bootstrap.get_collision_body_count(), 2, "two collision bodies from the first scene")
+
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "solo", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 1,
+		"re-applying a scene clears the PRIOR world's collision bodies too, not just its visuals")
+	bootstrap.free()

@@ -99,6 +99,19 @@ const GlbLoader := preload("res://assets/glb_loader.gd")
 ## false so nothing attempts an HTTPRequest.
 @export var enable_real_building_meshes: bool = false
 
+## Off switch for per-building collision (2026-08-07). Before this, a
+## spawned building was MeshInstance3D-only — visible but not physically
+## real, so a `player/character_controller.gd`'s `move_and_slide()` would
+## walk straight through it. Each spawned node now optionally gets a
+## sibling `StaticBody3D` + `CollisionShape3D` at the IDENTICAL transform
+## (never touching the visual `MeshInstance3D`'s own transform, which
+## `_upgrade_one_node`'s footprint-rescale math reads directly via
+## `mi.transform.basis.get_scale()` — reparenting the scaled basis onto a
+## collision-body ancestor would have silently broken that). Defaults
+## false so every existing headless/offline test that spawns synthetic
+## nodes without expecting physics bodies is unaffected.
+@export var enable_collision: bool = false
+
 var _spawned: Array[Node3D] = []
 var _landing_pads: Array = []
 var _districts: Array = []
@@ -111,6 +124,7 @@ var _building_templates: Dictionary = {}
 # archetype, so a template arriving after they spawned can still upgrade them.
 var _pending_upgrade: Dictionary = {}
 var _asset_resolver: AssetResolver
+var _collision_bodies: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -436,12 +450,31 @@ func _spawn_node(node: Dictionary) -> void:
 	var origin: Vector3 = mapped["origin"]
 	var rot_y: float = mapped["rotationY"]
 	var scale: Vector3 = mapped["scale"]
-	mi.transform = Transform3D(SceneBootstrap.node_basis(rot_y, scale), origin)
+	var node_xform := Transform3D(SceneBootstrap.node_basis(rot_y, scale), origin)
+	mi.transform = node_xform
 	mi.set_meta("rot_y", rot_y)  # so a later real-mesh upgrade doesn't have to
 	# reverse-engineer yaw out of a basis that also carries the footprint scale
 
 	add_child(mi)
 	_spawned.append(mi)
+
+	if enable_collision:
+		# A separate sibling, not a reparenting of `mi` -- see enable_collision's
+		# own doc comment for why `mi`'s transform must stay untouched. Same
+		# unit-box-mesh-plus-scaled-transform shape `mi` already uses (BoxShape3D
+		# size ONE, all footprint scale/rotation carried by node_xform), so a
+		# rotated/non-square building's collision volume matches its visual
+		# footprint exactly, not just its unrotated bounding box.
+		var body := StaticBody3D.new()
+		body.name = "%s_collision" % String(node.get("id", "node"))
+		body.transform = node_xform
+		var cs := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = Vector3.ONE
+		cs.shape = box
+		body.add_child(cs)
+		add_child(body)
+		_collision_bodies.append(body)
 
 	if enable_real_building_meshes:
 		var archetype := BuildingArchetype.archetype_for_type(String(node.get("type", "")))
@@ -462,7 +495,18 @@ func _clear() -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	_spawned.clear()
+	for b in _collision_bodies:
+		if is_instance_valid(b):
+			b.queue_free()
+	_collision_bodies.clear()
 	_pending_upgrade.clear()
+
+
+## Real collision-body count for the currently spawned scene. Exposed for
+## tests/verification tooling — `_collision_bodies` itself stays private so
+## nothing outside this file can mutate it.
+func get_collision_body_count() -> int:
+	return _collision_bodies.size()
 
 
 # ── Pure static transform mapping ────────────────────────────────────────────
