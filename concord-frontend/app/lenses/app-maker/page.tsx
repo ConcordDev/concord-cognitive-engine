@@ -11,7 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Boxes, Plus, CheckCircle, ArrowUp, Layers, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { Boxes, Plus, CheckCircle, ArrowUp, Layers, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -38,6 +38,7 @@ export default function AppMakerLens() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
 
   const newNameInputRef = useRef<HTMLInputElement>(null);
+  const [showNpmSearch, setShowNpmSearch] = useState(false);
 
   // ── Keyboard shortcuts (Bubble / Glide / Retool idiom) ──────────
   useLensCommand(
@@ -683,7 +684,19 @@ export default function AppMakerLens() {
       <ConnectiveTissueBar lensId="app_maker" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <NpmPackageSearch />
+        <button
+          type="button"
+          onClick={() => setShowNpmSearch(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>NPM package search (external reference)</span>
+          {showNpmSearch ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showNpmSearch && (
+          <div className="mt-3">
+            <NpmPackageSearch />
+          </div>
+        )}
       </section>
     </div>
 
