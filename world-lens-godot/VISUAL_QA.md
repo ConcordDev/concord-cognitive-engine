@@ -615,17 +615,38 @@ Read these limits as part of the claims above, not as footnotes to them.
       humanoid (see the "Avatars" section above) — not a synthetic
       fixture, not a mocked HTTPRequest.
 - [ ] GLB cache returns visually-identical instances on repeat load.
-- [ ] A resolved GLB swaps cleanly onto a rig spawned by `AvatarManager`
-      **inside a real running scene, through the full
-      `city:positions` -> `_spawn_rig` -> `AvatarRig._try_resolve_glb`
-      chain** (`avatar/avatar_rig.gd#_try_resolve_glb`) — narrowed by the
-      above: the URL this chain resolves to is now correct and proven to
-      load a real mesh (`glb_load_probe.gd` used the identical URL), and
-      `_on_glb_loaded`'s skeleton-swap logic is exercised nowhere but
-      code-read. What's still unverified is the chain end-to-end with a
-      real second connected session actually broadcasting
-      `city:positions` for this client's `AvatarManager` to ingest — needs
-      two simultaneous real sessions, not attempted here.
+- [x] **A resolved GLB swaps cleanly onto a rig spawned by
+      `AvatarManager`, through the full `ingest_snapshot` -> `_spawn_rig`
+      -> `AvatarRig._try_resolve_glb` -> `_on_glb_loaded` chain —
+      2026-08-07.** New `tools/avatar_manager_probe.gd`: feeds
+      `AvatarManager.ingest_snapshot()` one synthetic `city:positions`-
+      shaped entity (the exact Dictionary shape `world/boot.gd#_on_event`
+      passes through from a real socket delivery — this tool starts from
+      `ingest_snapshot()` onward, so it does NOT re-prove the
+      gateway/socket delivery leg itself, which is exercised elsewhere in
+      this file), connects to the spawned rig's real `rig_ready` signal
+      (not a child-count heuristic — an earlier version of this probe used
+      one and got a false positive at frame 2, because `AssetResolver`/
+      `GlbLoader` are added as children synchronously at spawn time,
+      before any network I/O even starts; fixed to wait for the actual
+      later `rig_ready("glb")` signal, which only fires from inside
+      `_on_glb_loaded` once a real fetch+parse completes), and waits real
+      wall-clock frames for it. Against a real frontend static-asset
+      server: `frames_waited: 64` (i.e., this took real, observable
+      network+parse time, not an instant false completion),
+      `glb_swapped: true`. Screenshot shows the SAME real, correctly-
+      textured Mixamo humanoid this file's other GLB entries already
+      verified in isolation — now rendered specifically as the result of
+      `AvatarManager`'s own spawn path, replacing `AvatarRig`'s primitive
+      capsule placeholder, not a synthetic stand-in.
+
+      **Honest scope, narrowed, not eliminated**: this proves the CLIENT-
+      SIDE wiring from `ingest_snapshot()` through to a rendered mesh. It
+      does NOT prove a real second browser session's `player:move` traffic
+      reaches the server, gets relayed as a real `city:positions`
+      broadcast, and arrives at this client's `GatewayClient` — that
+      specific leg (server ↔ two real sessions) still needs two
+      simultaneous real sessions and remains unattempted.
 - [x] **`SceneBootstrap` upgrades real buildings from placeholder boxes to
       real GLBs — 2026-08-07.** For the `market`/`tavern`/`archive`
       archetypes specifically (the 3 that have a real GLB today at
