@@ -10,7 +10,8 @@ import { DatamusePanel } from '@/components/linguistics/DatamusePanel';
 import { GutendexSearch } from '@/components/creative-writing/GutendexSearch';
 import { CreativeWritingSection } from '@/components/creative-writing/CreativeWritingSection';
 import { useLensNav } from '@/hooks/useLensNav';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -28,6 +29,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function CreativeWritingPage() {
   useLensNav('creative-writing');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('creative-writing');
+  const [showGutendex, setShowGutendex] = useState(false);
 
   return (
     <LensShell lensId="creative-writing" asMain={false}>
@@ -53,7 +55,19 @@ export default function CreativeWritingPage() {
         <DatamusePanel domain="creative-writing" />
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <GutendexSearch />
+          <button
+            type="button"
+            onClick={() => setShowGutendex(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Public-domain literature search (Project Gutenberg)</span>
+            {showGutendex ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showGutendex && (
+            <div className="mt-3">
+              <GutendexSearch />
+            </div>
+          )}
         </section>
 
         <RecentMineCard domain="creative-writing" limit={10} hideWhenEmpty />
