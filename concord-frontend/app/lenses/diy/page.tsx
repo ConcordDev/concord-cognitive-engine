@@ -32,6 +32,8 @@ import {
   Camera,
   BookOpen,
   Lightbulb,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -143,6 +145,8 @@ export default function DIYLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<DIYArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showWorkshop, setShowWorkshop] = useState(false);
+  const [showShowcase, setShowShowcase] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -835,10 +839,34 @@ export default function DIYLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ProjectWorkshop />
+        <button
+          type="button"
+          onClick={() => setShowWorkshop(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Project workshop</span>
+          {showWorkshop ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showWorkshop && (
+          <div className="mt-3">
+            <ProjectWorkshop />
+          </div>
+        )}
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DiyShowcase />
+        <button
+          type="button"
+          onClick={() => setShowShowcase(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>DIY project showcase (external reference)</span>
+          {showShowcase ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showShowcase && (
+          <div className="mt-3">
+            <DiyShowcase />
+          </div>
+        )}
       </section>
     </LensPageShell>
     

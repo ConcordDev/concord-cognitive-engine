@@ -37,6 +37,8 @@ import {
   Eye,
   GraduationCap,
   ClipboardList,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -360,6 +362,8 @@ export default function ScienceLensPage() {
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showExperimentPanel, setShowExperimentPanel] = useState(false);
+  const [showScienceArxiv, setShowScienceArxiv] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -2023,15 +2027,39 @@ export default function ScienceLensPage() {
       </button>
       <ScienceWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       {/* Quartzy + Benchling-shape experiment workbench: calibration / protocol / quality / custody + actions */}
-      <PipingProvider>
-        <section className="mt-6 mx-auto max-w-7xl">
-          <ExperimentActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6 mx-auto max-w-7xl">
+        <button
+          type="button"
+          onClick={() => setShowExperimentPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showExperimentPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Experiment Workbench (calibration / protocol / quality / custody)
+        </button>
+        {showExperimentPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ExperimentActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
 
-      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ScienceArxiv />
-      </section>
+      <div className="mt-6 mx-auto max-w-7xl">
+        <button
+          type="button"
+          onClick={() => setShowScienceArxiv(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showScienceArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          arXiv Search (external reference)
+        </button>
+        {showScienceArxiv && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ScienceArxiv />
+          </section>
+        )}
+      </div>
           <RecentMineCard domain="science" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="science" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="science" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

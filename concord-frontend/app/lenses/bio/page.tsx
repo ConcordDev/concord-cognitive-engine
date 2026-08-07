@@ -22,7 +22,7 @@ import { BioResearchPanel } from '@/components/bio/BioResearchPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug } from 'lucide-react';
+import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug, ChevronDown, ChevronRight } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -46,6 +46,8 @@ export default function BioLensPage() {
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showSequenceAnalyzer, setShowSequenceAnalyzer] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
@@ -340,14 +342,38 @@ export default function BioLensPage() {
 
     {/* Bespoke sequence analyzer + primer + pairwise alignment with Save-as-DTU */}
     <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <SequenceAnalyzer />
+      <button
+        type="button"
+        onClick={() => setShowSequenceAnalyzer(v => !v)}
+        className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+      >
+        <span>Sequence analyzer (primer + pairwise alignment)</span>
+        {showSequenceAnalyzer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
+      {showSequenceAnalyzer && (
+        <div className="mt-3">
+          <SequenceAnalyzer />
+        </div>
+      )}
     </section>
 
-    <PipingProvider>
-      <section className="mx-auto mt-6 max-w-6xl">
-        <BioActionPanel />
-      </section>
-    </PipingProvider>
+    <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <button
+        type="button"
+        onClick={() => setShowActionPanel(v => !v)}
+        className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+      >
+        <span>Bio actions</span>
+        {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </button>
+      {showActionPanel && (
+        <div className="mt-3">
+          <PipingProvider>
+            <BioActionPanel />
+          </PipingProvider>
+        </div>
+      )}
+    </section>
           <RecentMineCard domain="bio" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="bio" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="bio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

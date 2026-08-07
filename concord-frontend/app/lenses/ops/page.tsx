@@ -31,7 +31,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Cpu, Database, Wrench, Eye, Compass, Hammer, Activity,
-  Loader2, RefreshCw,
+  Loader2, RefreshCw, ChevronDown, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -58,6 +58,8 @@ async function runGatedDomain<T>(domain: string, action: string, input: Record<s
 export default function OpsLensPage() {
   useLensNav('ops');
   const [activeTab, setActiveTab] = useState<TabKey>('attention');
+  const [showOpsRepos, setShowOpsRepos] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
     [
@@ -276,15 +278,39 @@ export default function OpsLensPage() {
         </AnimatePresence>
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <OpsRepos />
+        <button
+          type="button"
+          onClick={() => setShowOpsRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Ops / SRE tooling repos (GitHub)</span>
+          {showOpsRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showOpsRepos && (
+          <div className="mt-3">
+            <OpsRepos />
+          </div>
+        )}
       </section>
 
       {/* PagerDuty-shape ops workbench: on-call / runbook / escalation / post-mortem + actions */}
-      <PipingProvider>
-        <section className="mt-6 mx-4">
-          <OpsActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>On-call / runbook / escalation workbench</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <OpsActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </div>
 
           <RecentMineCard domain="ops" limit={10} hideWhenEmpty className="mt-4" />

@@ -24,7 +24,7 @@ import {
   Coins, TrendingUp, Lock, RefreshCw, ArrowRightLeft,
   Wallet, Loader2, Plus, Send, ArrowDownLeft, ArrowUpRight,
   Copy, Check, X, Settings, BarChart3, Layers,
-  ShieldCheck, TrendingDown, XCircle
+  ShieldCheck, TrendingDown, XCircle, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -134,6 +134,10 @@ export default function CryptoLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('crypto');
 
   const [activeTab, setActiveTab] = useState<CryptoTab>('portfolio');
+  const [showSwapRoutePanel, setShowSwapRoutePanel] = useState(false);
+  const [showCoinGeckoTicker, setShowCoinGeckoTicker] = useState(false);
+  const [showAddressBook, setShowAddressBook] = useState(false);
+  const [showCryptoActionPanel, setShowCryptoActionPanel] = useState(false);
   const [selectedChain, setSelectedChain] = useState<string | null>(null);
   const [transacting, setTransacting] = useState(false);
   const [showBalances, setShowBalances] = useState(true);
@@ -1637,21 +1641,67 @@ export default function CryptoLensPage() {
 
 
       {/* Bespoke 0x aggregator swap-route preview with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
-        <SwapRoutePanel />
-      </section>
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
-        <CoinGeckoTicker />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSwapRoutePanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSwapRoutePanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Swap Route Preview
+        </button>
+        {showSwapRoutePanel && (
+          <section className="mt-3 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
+            <SwapRoutePanel />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCoinGeckoTicker(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCoinGeckoTicker ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Market Ticker (external reference)
+        </button>
+        {showCoinGeckoTicker && (
+          <section className="mt-3 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
+            <CoinGeckoTicker />
+          </section>
+        )}
+      </div>
 
       {/* CoinGecko + Uniswap + Etherscan-shape workbench: portfolio / tokens / swap / gas + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-      <AddressBookPanel className="mt-6 mx-4" />
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowAddressBook(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showAddressBook ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Address Book
+        </button>
+        {showAddressBook && <AddressBookPanel className="mt-3 mx-4" />}
+      </div>
       <section className="mt-6"><LensFeedButton domain="crypto" /></section>
-          <CryptoActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCryptoActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCryptoActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Workbench (portfolio / tokens / swap / gas)
+        </button>
+        {showCryptoActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <CryptoActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="crypto" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="crypto" hideWhenEmpty className="mt-3" title="More actions" />

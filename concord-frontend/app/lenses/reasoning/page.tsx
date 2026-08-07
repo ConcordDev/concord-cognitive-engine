@@ -13,6 +13,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   MessageSquare as MTabArg, ListChecks as MTabPrem, FileSearch as MTabEvid,
   AlertTriangle as MTabFall, BookOpen as MTabTpl, BarChart3 as MTabAnal,
+  Wrench as MTabWork,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -28,7 +29,7 @@ import {
   Target, Scale, Layers, Zap, RefreshCw,
   Download, X, Trash2, Flag,
   CircleDot, ArrowUpRight, MessageSquare, Hash,
-  Loader2, Play, HelpCircle
+  Loader2, Play, HelpCircle, Wrench, Globe2
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { ds } from '@/lib/design-system';
@@ -44,7 +45,7 @@ import { ArgumentMapStudio } from '@/components/reasoning/ArgumentMapStudio';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'arguments' | 'premises' | 'evidence' | 'fallacies' | 'templates' | 'analysis';
+type ModeTab = 'arguments' | 'premises' | 'evidence' | 'fallacies' | 'templates' | 'analysis' | 'workbench';
 
 type ArgumentNodeType = 'claim' | 'premise' | 'objection' | 'rebuttal' | 'qualifier' | 'warrant' | 'backing';
 type ArgumentStance = 'pro' | 'con' | 'neutral';
@@ -162,6 +163,7 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof Brain }[] = [
   { id: 'fallacies', label: 'Fallacies', icon: AlertTriangle },
   { id: 'templates', label: 'Templates', icon: BookOpen },
   { id: 'analysis', label: 'Analysis', icon: BarChart3 },
+  { id: 'workbench', label: 'Workbench', icon: Wrench },
 ];
 
 const NODE_TYPE_COLORS: Record<ArgumentNodeType, string> = {
@@ -525,6 +527,7 @@ export default function ReasoningLensPage() {
 
   // ----- Mode / Tab state -----
   const [mode, setMode] = useState<ModeTab>('arguments');
+  const [showArxiv, setShowArxiv] = useState(false);
 
   // Lens-scoped keyboard commands. Single-letter tab jumps + / for search.
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -2283,6 +2286,17 @@ export default function ReasoningLensPage() {
       )}
 
       {/* ================================================================ */}
+      {/*  TAB: WORKBENCH — validate / map / fallacy / premise + actions.
+          Was previously mounted unconditionally below every tab's content
+          regardless of which tab was active.                             */}
+      {/* ================================================================ */}
+      {mode === 'workbench' && (
+        <section className="space-y-4">
+          <ArgumentWorkbench />
+        </section>
+      )}
+
+      {/* ================================================================ */}
       {/*  MODALS                                                          */}
       {/* ================================================================ */}
 
@@ -2730,13 +2744,26 @@ export default function ReasoningLensPage() {
         )}
       </AnimatePresence>
 
-      {/* argument workbench: validate / map / fallacy / premise + actions */}
-      <section className="mt-6">
-        <ArgumentWorkbench />
-      </section>
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ReasoningArxiv />
+      {/* External reference — arXiv paper search, not this lens's own
+          argument data. Collapsed by default rather than promoted open on
+          every visit; still reachable for anyone who wants it. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowArxiv((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showArxiv}
+        >
+          <span className="flex items-center gap-2">
+            <Globe2 className="w-4 h-4 text-purple-400" /> arXiv paper search (external reference)
+          </span>
+          {showArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showArxiv && (
+          <div className="px-4 pb-4">
+            <ReasoningArxiv />
+          </div>
+        )}
       </section>
     </div>
 
@@ -2753,6 +2780,7 @@ export default function ReasoningLensPage() {
               { id: 'fallacies',  label: 'Fall',     icon: MTabFall },
               { id: 'templates',  label: 'Templates',icon: MTabTpl },
               { id: 'analysis',   label: 'Anal',     icon: MTabAnal },
+              { id: 'workbench',  label: 'Tools',    icon: MTabWork },
             ]}
             active={mode}
             onSelect={(id) => setMode(id as ModeTab)}

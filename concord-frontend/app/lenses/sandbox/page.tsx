@@ -47,7 +47,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause } from 'lucide-react';
+import { Swords, RotateCcw, Plus, Minus, Gauge, StepForward, Play, Pause, ChevronDown, ChevronRight } from 'lucide-react';
 import { connectSocket, getSocket, subscribe } from '@/lib/realtime/socket';
 
 const BodyLanguageOverlay = dynamic(
@@ -417,6 +417,7 @@ function CombatSandboxInner() {
 }
 
 export default function CombatSandboxPage() {
+  const [showSandboxRepos, setShowSandboxRepos] = useState(false);
   return (
     <LensShell lensId="sandbox" asMain={false}>
       <FirstRunTour lensId="sandbox" />
@@ -427,7 +428,19 @@ export default function CombatSandboxPage() {
         <CombatSandboxInner />
       </Suspense>
       <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SandboxRepos />
+        <button
+          type="button"
+          onClick={() => setShowSandboxRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Sandbox / playground repos (GitHub)</span>
+          {showSandboxRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showSandboxRepos && (
+          <div className="mt-3">
+            <SandboxRepos />
+          </div>
+        )}
       </section>
 
       <RecentMineCard domain="sandbox" limit={10} hideWhenEmpty className="mt-4" />

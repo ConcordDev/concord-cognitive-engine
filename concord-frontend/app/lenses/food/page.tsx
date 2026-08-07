@@ -2798,7 +2798,7 @@ export default function FoodLensPage() {
       {/* Live WHO + food safety alerts */}
       <LiveFeed
         articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
-        domain="legal"
+        domain="food"
         isLive={isLive}
         lastUpdated={lastUpdated}
         limit={8}

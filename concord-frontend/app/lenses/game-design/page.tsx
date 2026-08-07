@@ -11,7 +11,8 @@ import { GameDevRepos } from '@/components/game-design/GameDevRepos';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { Gamepad2 } from 'lucide-react';
+import { useState } from 'react';
+import { Gamepad2, ChevronDown, ChevronRight } from 'lucide-react';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
@@ -40,6 +41,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function GameDesignPage() {
   useLensNav('game-design');
   const { latestData: realtimeData, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('game-design');
+  const [showRepos, setShowRepos] = useState(false);
 
   useLensCommand(
     [{ id: 'new-game', keys: 'n', description: 'New game project', category: 'actions', action: () => {
@@ -73,7 +75,19 @@ export default function GameDesignPage() {
           <GameDesignSection />
 
           <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <GameDevRepos />
+            <button
+              type="button"
+              onClick={() => setShowRepos(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Game dev tooling (GitHub)</span>
+              {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showRepos && (
+              <div className="mt-3">
+                <GameDevRepos />
+              </div>
+            )}
           </section>
 
           <RecentMineCard domain="game-design" limit={10} hideWhenEmpty />

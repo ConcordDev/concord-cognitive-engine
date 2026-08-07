@@ -40,6 +40,7 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   DollarSign,
   Scale,
@@ -654,6 +655,7 @@ export default function DisputesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ViewTab>('my');
+  const [showCaseWorkbench, setShowCaseWorkbench] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -1012,9 +1014,21 @@ export default function DisputesPage() {
       </div>
 
       {/* ── ODR Case Workbench — full case-lifecycle resolution ──── */}
-      <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CaseWorkbench />
-      </section>
+      <div className="mt-2">
+        <button
+          type="button"
+          onClick={() => setShowCaseWorkbench(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCaseWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          ODR Case Workbench (full case-lifecycle resolution)
+        </button>
+        {showCaseWorkbench && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CaseWorkbench />
+          </section>
+        )}
+      </div>
 
       {/* Create dispute modal */}
       <AnimatePresence>

@@ -11,7 +11,7 @@ import { ImportToolingGallery } from '@/components/import/ImportToolingGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
+import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
@@ -181,6 +181,9 @@ export default function ImportLens() {
   } as ImportJob));
 
   const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  const [showRestoreDtuExport, setShowRestoreDtuExport] = useState(false);
+  const [showImportParityWorkbench, setShowImportParityWorkbench] = useState(false);
+  const [showImportToolingGallery, setShowImportToolingGallery] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
 
   // Real rows parsed from the uploaded CSV/JSON — the analysis macros
@@ -1134,17 +1137,53 @@ export default function ImportLens() {
         })()}
       </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <RestoreDtuExport />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowRestoreDtuExport(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showRestoreDtuExport ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Restore from DTU Export
+        </button>
+        {showRestoreDtuExport && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <RestoreDtuExport />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ImportParityWorkbench />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowImportParityWorkbench(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showImportParityWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Import Workbench (Flatfile/Airbyte-shape)
+        </button>
+        {showImportParityWorkbench && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ImportParityWorkbench />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ImportToolingGallery />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowImportToolingGallery(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showImportToolingGallery ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world ETL Tooling (external reference)
+        </button>
+        {showImportToolingGallery && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ImportToolingGallery />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="import" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="import" hideWhenEmpty className="mt-3" />

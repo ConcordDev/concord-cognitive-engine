@@ -24,6 +24,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import {
   Brain, TestTube, Beaker, Database, Trophy, Wand2, Rocket, Sparkles,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useUIStore } from '@/store/ui';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -52,6 +53,9 @@ export default function MLLensPage() {
 
   const [tab, setTab] = useState<Tab>('hub');
   const [playgroundModel, setPlaygroundModel] = useState('');
+  const [showArxiv, setShowArxiv] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
+  const [showRepos, setShowRepos] = useState(false);
 
   useLensCommand(
     TABS.map((t) => ({
@@ -74,7 +78,21 @@ export default function MLLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="ml" size="sm" className="ml-2" />
       <div data-lens-theme="ml" className="p-6 space-y-6">
-        <ArxivPanel domain="ml" title="arXiv · Machine Learning (cs.LG)" />
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowArxiv(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>arXiv · Machine Learning (cs.LG)</span>
+            {showArxiv ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showArxiv && (
+            <div className="mt-3">
+              <ArxivPanel domain="ml" title="arXiv · Machine Learning (cs.LG)" />
+            </div>
+          )}
+        </section>
 
         <header className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -118,14 +136,38 @@ export default function MLLensPage() {
         <RealtimeDataPanel data={realtimeInsights} />
 
         {/* ML analysis bench — modelEvaluate / featureImportance / datasetProfile / hyperparameterSuggest */}
-        <PipingProvider>
-          <section className="mt-2">
-            <MlActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Analysis bench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <MlActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
 
         <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <MlRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>ML repos (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <MlRepos />
+            </div>
+          )}
         </section>
       </div>
 

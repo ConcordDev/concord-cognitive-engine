@@ -23,7 +23,7 @@ import {
   Trophy, Star, Zap, Target, Users, Swords, Crown,
   Flame, TrendingUp, Plus, X, Check, Clock,
   BarChart3, Sparkles, Gamepad2, FlaskConical,
-  ArrowUp,
+  ArrowUp, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
@@ -164,6 +164,8 @@ export default function GameLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('game');
 
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
+  const [showTriviaPanel, setShowTriviaPanel] = useState(false);
+  const [showGameFeed, setShowGameFeed] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -851,7 +853,21 @@ export default function GameLensPage() {
       <DepthBadge lensId="game" size="sm" className="ml-2" />
     <div className="p-6 space-y-6 min-h-screen">
       {/* Phase 4 (fifth wave) — REAL Open Trivia DB question batch. */}
-      <TriviaPanel />
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowTriviaPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showTriviaPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Trivia (external reference)
+        </button>
+        {showTriviaPanel && (
+          <div className="mt-3">
+            <TriviaPanel />
+          </div>
+        )}
+      </div>
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
@@ -1547,9 +1563,21 @@ export default function GameLensPage() {
         />
       )}
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <GameFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowGameFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showGameFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Gaming Discussion (external reference)
+        </button>
+        {showGameFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <GameFeed />
+          </section>
+        )}
+      </div>
       <RecentMineCard domain="game" limit={10} hideWhenEmpty className="mt-4" />
       <AutoActionStrip domain="game" hideWhenEmpty className="mt-3" />
       <CrossLensRecentsPanel lensId="game" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

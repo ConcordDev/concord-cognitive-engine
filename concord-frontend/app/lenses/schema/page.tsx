@@ -11,7 +11,8 @@ import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { SchemaRepos } from '@/components/schema/SchemaRepos';
 import { SchemaWorkbench } from '@/components/schema/SchemaWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { FileCode, Database } from 'lucide-react';
+import { FileCode, Database, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -20,6 +21,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function SchemaLensPage() {
   useLensNav('schema');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('schema');
+  const [showRepos, setShowRepos] = useState(false);
 
   return (
     <LensShell lensId="schema" asMain={false}>
@@ -66,7 +68,19 @@ export default function SchemaLensPage() {
         <SchemaWorkbench />
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SchemaRepos />
+        <button
+          type="button"
+          onClick={() => setShowRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Schema tooling (GitHub)</span>
+          {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showRepos && (
+          <div className="mt-3">
+            <SchemaRepos />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="schema" limit={10} hideWhenEmpty className="mt-4" />

@@ -43,6 +43,8 @@ import {
   Map,
   Sun,
   CloudRain,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -257,6 +259,9 @@ export default function AgricultureLensPage() {
 
   const [activeTab, setActiveTab] = useState<ModeTab>('fields');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showDeereWorkbench, setShowDeereWorkbench] = useState(false);
+  const [showPrecisionAg, setShowPrecisionAg] = useState(false);
+  const [showAgActionPanel, setShowAgActionPanel] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -1486,8 +1491,31 @@ export default function AgricultureLensPage() {
       <DepthBadge lensId="agriculture" size="sm" className="ml-2" />
     <div data-lens-theme="agriculture" className={ds.pageContainer}>
       <ShellPreview lensId="agriculture" defaultOpen={true} />
-      <DeereWorkbenchSection />
-      <PrecisionAgPanel />
+      {/* Deere Ops Center / FieldView-parity workbench (farm map, equipment,
+          zones, prescriptions, passes, nitrogen, imagery, tank mixes, work
+          orders, grain bins — 10 sub-tabs). Collapsed by default: it used
+          to sit permanently above the header on every visit, stacked on
+          top of this lens's own MODE_TABS system. */}
+      <button
+        type="button"
+        onClick={() => setShowDeereWorkbench((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showDeereWorkbench}
+      >
+        <span>Deere Ops Center / FieldView workbench (map, equipment, zones, prescriptions, imagery)</span>
+        {showDeereWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showDeereWorkbench && <DeereWorkbenchSection />}
+      <button
+        type="button"
+        onClick={() => setShowPrecisionAg((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 mt-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showPrecisionAg}
+      >
+        <span>Precision ag panel</span>
+        {showPrecisionAg ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showPrecisionAg && <PrecisionAgPanel />}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
           <Wheat className="w-8 h-8 text-green-400" />
@@ -2085,9 +2113,26 @@ export default function AgricultureLensPage() {
       </button>
       <FarmWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
+      {/* Farm operator bench: weather-for-field / rotation plan / water
+          schedule / yield prediction + actions. Collapsed by default —
+          was previously mounted unconditionally below every session
+          regardless of what the user was doing. */}
       <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4">
-          <AgricultureActionPanel />
+        <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+          <button
+            type="button"
+            onClick={() => setShowAgActionPanel((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+            aria-expanded={showAgActionPanel}
+          >
+            <span>Farm operator bench (weather, rotation plan, water schedule, yield)</span>
+            {showAgActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {showAgActionPanel && (
+            <div className="px-4 pb-4">
+              <AgricultureActionPanel />
+            </div>
+          )}
         </section>
       </PipingProvider>
       {/* Phase 4 — REAL GBIF biodiversity occurrence search. */}

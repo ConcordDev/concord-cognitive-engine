@@ -62,6 +62,8 @@ import {
   Printer,
   Send,
   Star,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -271,6 +273,7 @@ export default function TradesLensPage() {
   // ----- Top-level navigation -----
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showServiceTitanWorkbench, setShowServiceTitanWorkbench] = useState(false);
   const [subView, setSubView] = useState<SubView>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -2267,7 +2270,21 @@ export default function TradesLensPage() {
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
       <ShellPreview lensId="trades" defaultOpen={true} />
-      <ServiceTitanWorkbenchSection />
+      {/* ServiceTitan/Jobber-parity workbench (dispatch/calendar/techs/field-GPS/
+          route/quotes/bookings/timesheets/invoices/payments/portal/recurring/
+          pricebook/reminders/reviews/reports — 16 sub-tabs). Collapsed by
+          default: it used to sit permanently above the header on every visit,
+          stacked on top of this lens's own 6-tab MODE_TABS system. */}
+      <button
+        type="button"
+        onClick={() => setShowServiceTitanWorkbench((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showServiceTitanWorkbench}
+      >
+        <span>ServiceTitan/Jobber-parity workbench (dispatch, scheduling, billing, ops)</span>
+        {showServiceTitanWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showServiceTitanWorkbench && <ServiceTitanWorkbenchSection />}
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">

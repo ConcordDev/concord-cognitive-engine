@@ -12,7 +12,8 @@ import { FractalRenderer } from '@/components/fractal/FractalRenderer';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
-import { Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -21,6 +22,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function FractalLensPage() {
   useLensNav('fractal');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fractal');
+  const [showRepos, setShowRepos] = useState(false);
 
   return (
     <LensShell lensId="fractal" asMain={false}>
@@ -59,7 +61,19 @@ export default function FractalLensPage() {
         <FractalRenderer />
 
         <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <FractalRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Fractal tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <FractalRepos />
+            </div>
+          )}
         </section>
       </div>
 

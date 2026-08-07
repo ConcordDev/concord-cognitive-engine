@@ -47,6 +47,7 @@ import {
   LayoutGrid,
   Clock,
   ChevronDown,
+  ChevronRight,
   GripVertical,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -165,6 +166,8 @@ export default function WhiteboardLensPage() {
   /* board list state */
   const [showCreate, setShowCreate] = useState(false);
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showWhiteboardRepos, setShowWhiteboardRepos] = useState(false);
+  const [showWhiteboardActionPanel, setShowWhiteboardActionPanel] = useState(false);
   const [selectedWbId, setSelectedWbId] = useState<string | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('canvas');
   const [showModeMenu, setShowModeMenu] = useState(false);
@@ -1705,16 +1708,40 @@ export default function WhiteboardLensPage() {
       Whiteboard Workbench
     </button>
     <WhiteboardWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
-      <WhiteboardRepos />
-    </section>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowWhiteboardRepos(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showWhiteboardRepos ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Whiteboard Tooling (external reference)
+      </button>
+      {showWhiteboardRepos && (
+        <section className="mt-3 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
+          <WhiteboardRepos />
+        </section>
+      )}
+    </div>
 
     {/* session workbench: template / save / vote / share + actions */}
-    <PipingProvider>
-      <section className="mt-6 mx-auto max-w-7xl">
-        <WhiteboardActionPanel />
-      </section>
-    </PipingProvider>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowWhiteboardActionPanel(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showWhiteboardActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        Session Workbench (template / save / vote / share)
+      </button>
+      {showWhiteboardActionPanel && (
+        <PipingProvider>
+          <section className="mt-3">
+            <WhiteboardActionPanel />
+          </section>
+        </PipingProvider>
+      )}
+    </div>
           <RecentMineCard domain="whiteboard" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="whiteboard" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="whiteboard" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

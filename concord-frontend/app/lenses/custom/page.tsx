@@ -13,7 +13,7 @@ import { DataUtilities } from '@/components/custom/DataUtilities';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Wand2, Rocket, Link2, LayoutGrid } from 'lucide-react';
+import { Wand2, Rocket, Link2, LayoutGrid, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -23,6 +23,7 @@ export default function CustomLensPage() {
   useLensNav('custom');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('custom');
   const [stats, setStats] = useState<CanvasBuilderStats>({ canvasCount: 0, publishedCount: 0, bindingCount: 0, paletteCount: 0 });
+  const [showGists, setShowGists] = useState(false);
 
   return (
     <LensShell lensId="custom" asMain={false}>
@@ -99,7 +100,19 @@ export default function CustomLensPage() {
       )}
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PublicGistGallery />
+        <button
+          type="button"
+          onClick={() => setShowGists(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Public gist gallery (GitHub)</span>
+          {showGists ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showGists && (
+          <div className="mt-3">
+            <PublicGistGallery />
+          </div>
+        )}
       </section>
     </div>
 

@@ -29,6 +29,7 @@ import {
   Languages, Plus, Search, X, Trash2, Eye,
   BookOpen, Hash, Type, Globe,
   FileText, Sparkles, BookA, GraduationCap, Zap, Loader2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -108,6 +109,10 @@ export default function LinguisticsLensPage() {
   const bumpVocab = useCallback(() => setVocabRefresh((n) => n + 1), []);
 
   const [activeTab, setActiveTab] = useState<ModeTab>('Analyses');
+  const [showLookupTools, setShowLookupTools] = useState(false);
+  const [showWordLookup, setShowWordLookup] = useState(false);
+  const [showWordLearning, setShowWordLearning] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [subfieldFilter, setSubfieldFilter] = useState<LingSubfield | ''>('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -287,10 +292,22 @@ export default function LinguisticsLensPage() {
       <DepthBadge lensId="linguistics" size="sm" className="ml-2" />
     <div data-lens-theme="linguistics" className="p-6 space-y-6">
       {/* Phase 4 (third wave) — REAL Datamuse + Dictionary panels. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DatamusePanel domain="linguistics" />
-        <DictionaryPanel domain="linguistics" />
-      </div>
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowLookupTools(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Rhyme + dictionary lookup tools</span>
+          {showLookupTools ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showLookupTools && (
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <DatamusePanel domain="linguistics" />
+            <DictionaryPanel domain="linguistics" />
+          </div>
+        )}
+      </section>
       <header className="flex items-center gap-3">
         <Languages className="w-6 h-6 text-pink-400" />
         <div>
@@ -796,30 +813,61 @@ export default function LinguisticsLensPage() {
 
       {/* Bespoke dictionary + Datamuse word lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <WordLookup />
+        <button
+          type="button"
+          onClick={() => setShowWordLookup(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Word lookup</span>
+          {showWordLookup ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showWordLookup && (
+          <div className="mt-3">
+            <WordLookup />
+          </div>
+        )}
       </section>
 
       {/* Word-learning suite — vocabulary, adaptive quiz, progress,
           themed decks, and per-word pronunciation/usage/etymology. */}
-      <section className="mt-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-base font-bold text-white">Word Learning</h2>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <VocabularyBuilder refreshKey={vocabRefresh} onChange={bumpVocab} />
-          <ProgressDashboard refreshKey={vocabRefresh} />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <QuizEngine onComplete={bumpVocab} />
-          <WordDecks onImported={bumpVocab} />
-        </div>
-        <WordTools />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowWordLearning(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-indigo-400" />
+            Word Learning
+          </span>
+          {showWordLearning ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showWordLearning && (
+          <div className="mt-3 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <VocabularyBuilder refreshKey={vocabRefresh} onChange={bumpVocab} />
+              <ProgressDashboard refreshKey={vocabRefresh} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <QuizEngine onComplete={bumpVocab} />
+              <WordDecks onImported={bumpVocab} />
+            </div>
+            <WordTools />
+          </div>
+        )}
       </section>
 
       <PipingProvider>
-        <section className="mt-6">
-          <LinguisticsActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Linguistics workbench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><LinguisticsActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>

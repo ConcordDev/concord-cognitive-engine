@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Atom, Zap, Play, Loader2, Layers, X, StepForward,
   StepBack, Save, FolderOpen, Trash2, Download, Upload, Sparkles,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -95,6 +96,7 @@ export default function QuantumLensPage() {
   useLensNav('quantum');
 
   const [qubits, setQubits] = useState(2);
+  const [showQuantumArxiv, setShowQuantumArxiv] = useState(false);
   const [placed, setPlaced] = useState<PlacedGate[]>([]);
   const [gateLib, setGateLib] = useState<GateDef[]>([]);
   const [noisePresets, setNoisePresets] = useState<NoisePreset[]>([]);
@@ -634,7 +636,19 @@ export default function QuantumLensPage() {
         </div>
 
         <section className="mt-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <QuantumArxiv />
+          <button
+            type="button"
+            onClick={() => setShowQuantumArxiv(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Quantum computing research (external reference)</span>
+            {showQuantumArxiv ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showQuantumArxiv && (
+            <div className="mt-3">
+              <QuantumArxiv />
+            </div>
+          )}
         </section>
       </div>
 

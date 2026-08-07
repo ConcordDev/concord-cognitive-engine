@@ -42,6 +42,8 @@ import {
   TrendingUp,
   Star,
   Bell,
+  ChevronDown,
+  ChevronRight,
   Heart,
   ShoppingBag,
   CreditCard,
@@ -220,6 +222,8 @@ export default function ServicesLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('services');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [showServicesFeed, setShowServicesFeed] = useState(false);
+  const [showRevenueRetention, setShowRevenueRetention] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -1240,13 +1244,37 @@ export default function ServicesLensPage() {
         <BookingSuite />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ServicesFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowServicesFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showServicesFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Small Business Discussion (external reference)
+        </button>
+        {showServicesFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ServicesFeed />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <RevenueRetentionPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowRevenueRetention(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showRevenueRetention ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Revenue & Retention
+        </button>
+        {showRevenueRetention && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <RevenueRetentionPanel />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to services content</a>

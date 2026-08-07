@@ -12,7 +12,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Landmark, Calculator } from 'lucide-react';
+import { Landmark, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -68,6 +68,7 @@ export default function AccountingLensPage() {
   });
 
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [booksNav, setBooksNav] = useState<BooksNav>('dashboard');
 
   // Lens-scoped keyboard commands — each one drives a real state change
@@ -154,10 +155,24 @@ export default function AccountingLensPage() {
           sheet / AR-aging power-user flows over the same real backend. */}
       <AccountingWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
+      <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>More actions</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <AccountingActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
       <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4">
-          <AccountingActionPanel />
-        </section>
         <section className="mt-6 max-w-7xl mx-auto px-4">
           <CategoryRulesPanel />
         </section>

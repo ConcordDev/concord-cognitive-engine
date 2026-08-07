@@ -85,6 +85,7 @@ import {
   CalendarClock,
   CircleDot,
   Target,
+  Wrench,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
@@ -98,7 +99,7 @@ import LiveFeed from '@/components/lens/LiveFeed';
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court' | 'MyReps' | 'Bills' | 'CivicAlerts' | 'FOIA' | 'Budget';
+type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court' | 'MyReps' | 'Bills' | 'CivicAlerts' | 'FOIA' | 'Budget' | 'CivicWorkbench';
 type ViewMode = 'library' | 'dashboard' | 'detail';
 type ArtifactType = 'Permit' | 'Project' | 'Violation' | 'EmergencyPlan' | 'Record' | 'CourtCase';
 
@@ -220,7 +221,16 @@ const MODE_TABS: {
   { id: 'CivicAlerts', icon: Bell, artifactType: 'CourtCase', label: 'Alerts' },
   { id: 'FOIA', icon: FileText, artifactType: 'CourtCase', label: 'FOIA' },
   { id: 'Budget', icon: PieChart, artifactType: 'CourtCase', label: 'Budget' },
+  { id: 'CivicWorkbench', icon: Wrench, artifactType: 'CourtCase', label: 'Civic Workbench' },
 ];
+
+// Tabs that render their own self-contained component instead of going
+// through the shared dashboard/library/detail view system. Named once so
+// the dashboard-view and library-view exclusion checks can't drift apart —
+// they did before this: the library-view branch had no exclusion at all,
+// so switching to "Library" then clicking e.g. "Bills" rendered BOTH
+// BillTracker AND the generic library search/filter/item-list at once.
+const PARITY_SPRINT_TABS: ModeTab[] = ['MyReps', 'Bills', 'CivicAlerts', 'FOIA', 'Budget', 'CivicWorkbench'];
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: 'neon-blue',
@@ -3200,7 +3210,6 @@ export default function GovernmentLensPage() {
       <DepthBadge lensId="government" size="sm" className="ml-2" />
     <div data-lens-theme="government" className={ds.pageContainer}>
       <ShellPreview lensId="government" defaultOpen={true} />
-      <CivicWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -3349,13 +3358,18 @@ export default function GovernmentLensPage() {
       {mode === 'CivicAlerts' && <div className="p-4"><CivicAlerts /></div>}
       {mode === 'FOIA' && <div className="p-4"><FOIATracker /></div>}
       {mode === 'Budget' && <div className="p-4"><BudgetVisualizer /></div>}
+      {/* SeeClickFix/Accela-parity civic workbench — was previously mounted
+          unconditionally above the page header (visible on every visit
+          regardless of tab); now a normal tab like its parity-sprint
+          siblings above. */}
+      {mode === 'CivicWorkbench' && <CivicWorkbenchSection />}
 
       {/* Content */}
-      {view === 'dashboard' && !['MyReps','Bills','CivicAlerts','FOIA','Budget'].includes(mode) && renderDashboard()}
+      {view === 'dashboard' && !PARITY_SPRINT_TABS.includes(mode) && renderDashboard()}
 
-      {view === 'detail' && renderDetailView()}
+      {view === 'detail' && !PARITY_SPRINT_TABS.includes(mode) && renderDetailView()}
 
-      {view === 'library' && (
+      {view === 'library' && !PARITY_SPRINT_TABS.includes(mode) && (
         <>
           {/* Search, filter, actions bar */}
           <div className="flex items-center gap-3 flex-wrap">

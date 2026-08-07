@@ -27,6 +27,7 @@ import {
   ArrowRight, BarChart3, Zap, BookOpen,
   Brain, Target, Lightbulb, Puzzle, Sparkles, Waypoints,
   Play, Loader2, ThumbsUp, ThumbsDown, History, Wand2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -62,6 +63,7 @@ export default function MetalearningLensPage() {
   const [results, setResults] = useState<unknown>(null);
   const [strategySearch, setStrategySearch] = useState('');
   const [strategyTypeFilter, setStrategyTypeFilter] = useState<string>('all');
+  const [showMetalearningFeed, setShowMetalearningFeed] = useState(false);
   const [outcomeBusyId, setOutcomeBusyId] = useState<string | null>(null);
   const newNameInputRef = useRef<HTMLInputElement>(null);
   const curriculumInputRef = useRef<HTMLInputElement>(null);
@@ -797,7 +799,19 @@ export default function MetalearningLensPage() {
       <ConnectiveTissueBar lensId="metalearning" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MetalearningFeed />
+        <button
+          type="button"
+          onClick={() => setShowMetalearningFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Meta-learning research (external reference)</span>
+          {showMetalearningFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showMetalearningFeed && (
+          <div className="mt-3">
+            <MetalearningFeed />
+          </div>
+        )}
       </section>
     </div>
 

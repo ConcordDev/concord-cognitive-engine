@@ -19,6 +19,7 @@ import {
   MapPin, Users, Radio,
   Orbit, Satellite, Globe, Flame, Timer,
   Eye, AlertTriangle, Zap, Signal, Database,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -157,6 +158,8 @@ export default function SpaceLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('space');
 
   const [activeMode, setActiveMode] = useState<ModeTab>('Dashboard');
+  const [showNewsLaunches, setShowNewsLaunches] = useState(false);
+  const [showWikiSearch, setShowWikiSearch] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -273,12 +276,38 @@ export default function SpaceLensPage() {
     <div data-lens-theme="space" className={cn(ds.pageContainer, 'space-y-4')}>
 
       {/* Phase 4 (fifth wave) — REAL Spaceflight News + upcoming launches side by side. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SpaceflightNewsPanel domain="space" />
-        <UpcomingLaunchesPanel domain="space" />
-      </div>
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowNewsLaunches(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Spaceflight news & upcoming launches</span>
+          {showNewsLaunches ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showNewsLaunches && (
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SpaceflightNewsPanel domain="space" />
+            <UpcomingLaunchesPanel domain="space" />
+          </div>
+        )}
+      </section>
       {/* Phase 4 (fourth wave) — REAL Wikipedia search for missions, satellites, agencies. */}
-      <WikipediaSearchPanel domain="space" title="Wikipedia · space topics" />
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowWikiSearch(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Wikipedia · space topics (external reference)</span>
+          {showWikiSearch ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showWikiSearch && (
+          <div className="mt-3">
+            <WikipediaSearchPanel domain="space" title="Wikipedia · space topics" />
+          </div>
+        )}
+      </section>
 
       {/* Live Observatory — ISS tracking, visible passes, 3D orbit, countdowns,
           vehicle detail, sky map, filtered launches, NASA imagery. */}

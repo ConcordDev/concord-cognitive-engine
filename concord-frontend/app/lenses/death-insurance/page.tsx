@@ -19,6 +19,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -53,6 +54,7 @@ interface PayoutHistoryResult {
 }
 
 export default function DeathInsurancePage() {
+  const [showChatter, setShowChatter] = useState(false);
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
   const [notifications, setNotifications] = useState<PactNotification[]>([]);
@@ -198,7 +200,19 @@ export default function DeathInsurancePage() {
         </div>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <InsuranceChatter />
+          <button
+            type="button"
+            onClick={() => setShowChatter(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Community discussion (Reddit)</span>
+            {showChatter ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showChatter && (
+            <div className="mt-3">
+              <InsuranceChatter />
+            </div>
+          )}
         </section>
       </div>
 

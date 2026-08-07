@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ZoomIn, ZoomOut, RotateCcw, Search, Eye, EyeOff,
   Circle, X, Play, Pause, Settings, Download,
-  Share2, GitBranch, ChevronRight, Copy, ExternalLink,
+  Share2, GitBranch, ChevronRight, ChevronDown, Copy, ExternalLink,
   Plus, Link2, User, AudioWaveform,
   TreePine, Users, Filter,
   Layers, Loader2, BarChart3, Network, Cpu,
@@ -197,6 +197,9 @@ export default function GraphLensPage() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [showGraphParityPanel, setShowGraphParityPanel] = useState(false);
+  const [showMindMapBuilder, setShowMindMapBuilder] = useState(false);
+  const [showGraphRepos, setShowGraphRepos] = useState(false);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [draggedNode, setDraggedNode] = useState<GraphNode | null>(null);
@@ -1985,15 +1988,51 @@ export default function GraphLensPage() {
           return null;
         })()}
       </div>
-      <section className="mt-6">
-        <GraphParityPanel />
-      </section>
-      <section className="mt-6">
-        <MindMapBuilder />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <GraphRepos />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowGraphParityPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showGraphParityPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Graph Workbench (layout, filters, timeline, export)
+        </button>
+        {showGraphParityPanel && (
+          <section className="mt-3">
+            <GraphParityPanel />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowMindMapBuilder(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showMindMapBuilder ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Mind Map Builder
+        </button>
+        {showMindMapBuilder && (
+          <section className="mt-3">
+            <MindMapBuilder />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowGraphRepos(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showGraphRepos ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world Graph Tooling (external reference)
+        </button>
+        {showGraphRepos && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <GraphRepos />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="graph" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="graph" hideWhenEmpty className="mt-3" />

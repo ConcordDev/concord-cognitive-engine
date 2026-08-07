@@ -21,9 +21,11 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { ForecastWorkbench } from '@/components/temporal/ForecastWorkbench';
 import { TemporalRepos } from '@/components/temporal/TemporalRepos';
 import { ds } from '@/lib/design-system';
-import { Clock } from 'lucide-react';
+import { Clock, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 export default function TemporalLensPage() {
+  const [showRepos, setShowRepos] = useState(false);
   return (
     <LensShell lensId="temporal" asMain={false}>
       <FirstRunTour lensId="temporal" />
@@ -47,7 +49,19 @@ export default function TemporalLensPage() {
         <ForecastWorkbench />
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <TemporalRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Time-series tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <TemporalRepos />
+            </div>
+          )}
         </section>
       </div>
 

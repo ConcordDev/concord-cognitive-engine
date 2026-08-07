@@ -11,7 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { GitFork, GitBranch, GitMerge, Layers, Loader2, ArrowLeftRight, RefreshCw } from 'lucide-react';
+import { GitFork, GitBranch, GitMerge, Layers, Loader2, ArrowLeftRight, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -48,6 +48,9 @@ export default function ForkLensPage() {
   const [forkSearch, setForkSearch] = useState('');
   const [forkStatusFilter, setForkStatusFilter] = useState<'all' | 'active' | 'merged' | 'abandoned'>('all');
   const forkSearchInputRef = useRef<HTMLInputElement>(null);
+  const [showForkInsights, setShowForkInsights] = useState(false);
+  const [showForkNetworkExplorer, setShowForkNetworkExplorer] = useState(false);
+  const [showRepoWatchlist, setShowRepoWatchlist] = useState(false);
 
   // Git-style: t tree, l list, esc clear selection.
   useLensCommand(
@@ -460,18 +463,56 @@ export default function ForkLensPage() {
 
       {/* Fork Insights — six GitHub-parity surfaces (commit compare, PR
           overlay, network graph, stale-fork scan, releases, file diff). */}
-      <ForkInsights />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowForkInsights(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>GitHub fork insights</span>
+          {showForkInsights ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showForkInsights && (
+          <div className="mt-3">
+            <ForkInsights />
+          </div>
+        )}
+      </section>
 
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="fork" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ForkNetworkExplorer />
+        <button
+          type="button"
+          onClick={() => setShowForkNetworkExplorer(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Fork network explorer</span>
+          {showForkNetworkExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showForkNetworkExplorer && (
+          <div className="mt-3">
+            <ForkNetworkExplorer />
+          </div>
+        )}
       </section>
 
       {/* Repo-watchlist workbench: watch repos + refresh stats + GitHub events feed */}
-      <section className="mt-4">
-        <RepoWatchlist />
+      <section className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowRepoWatchlist(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Repo watchlist</span>
+          {showRepoWatchlist ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showRepoWatchlist && (
+          <div className="mt-3">
+            <RepoWatchlist />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="fork" limit={10} hideWhenEmpty className="mt-4" />

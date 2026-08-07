@@ -12,7 +12,7 @@ import { DensityToggle } from '@/components/ui/DensityToggle';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
-import { Shirt } from 'lucide-react';
+import { Shirt, ChevronDown, ChevronRight } from 'lucide-react';
 
 /**
  * Fashion lens — Stylebook/Whering-parity digital closet.
@@ -30,6 +30,7 @@ export default function FashionLensPage() {
   useLensNav('fashion');
   const [tab, setTab] = useState<FashionTabId>('closet');
   const [exportSnapshot, setExportSnapshot] = useState<Record<string, unknown>>({});
+  const [showFeed, setShowFeed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +79,19 @@ export default function FashionLensPage() {
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <LensFeedButton domain="fashion" label="Met Museum costume archive" />
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <FashionFeed />
+            <button
+              type="button"
+              onClick={() => setShowFeed(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Fashion community chatter (Reddit)</span>
+              {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showFeed && (
+              <div className="mt-3">
+                <FashionFeed />
+              </div>
+            )}
           </div>
         </section>
       </div>

@@ -18,6 +18,7 @@ import { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Shuffle, Search, ArrowRight, History, Layers, GitCompare, Network, SendHorizontal, CheckCircle2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -31,6 +32,8 @@ export default function TransferLensPage() {
   useLensNav('transfer');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('transfer');
 
+  const [showEtlWorkbench, setShowEtlWorkbench] = useState(false);
+  const [showTransferRepos, setShowTransferRepos] = useState(false);
   const [sourceText, setSourceText] = useState('');
   const [targetDomain, setTargetDomain] = useState('');
   const [classifyText, setClassifyText] = useState('');
@@ -239,16 +242,27 @@ export default function TransferLensPage() {
 
       {/* ETL Workbench — real connectors, pipelines, transforms, sync, run log */}
       <div className="panel p-4">
-        <h2 className="font-semibold mb-1 flex items-center gap-2">
-          <Network className="w-4 h-4 text-neon-cyan" />
-          ETL Workbench — Connectors, Pipelines &amp; Sync
-        </h2>
-        <p className="text-sm text-gray-400 mb-4">
-          Register real CSV/JSON connectors, build transformation pipelines with a drag-connect
-          mapping editor, dry-run a preview, then run full or incremental change-data-capture syncs.
-          Every metric below is computed live from your own data.
-        </p>
-        <EtlWorkbench />
+        <button
+          type="button"
+          onClick={() => setShowEtlWorkbench(v => !v)}
+          className="flex w-full items-center justify-between text-left"
+        >
+          <h2 className="font-semibold flex items-center gap-2">
+            <Network className="w-4 h-4 text-neon-cyan" />
+            ETL Workbench — Connectors, Pipelines &amp; Sync
+          </h2>
+          {showEtlWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showEtlWorkbench && (
+          <>
+            <p className="text-sm text-gray-400 mb-4 mt-1">
+              Register real CSV/JSON connectors, build transformation pipelines with a drag-connect
+              mapping editor, dry-run a preview, then run full or incremental change-data-capture syncs.
+              Every metric below is computed live from your own data.
+            </p>
+            <EtlWorkbench />
+          </>
+        )}
       </div>
 
       <ConnectiveTissueBar lensId="transfer" />
@@ -257,7 +271,19 @@ export default function TransferLensPage() {
       <TransferAnalysisPanel />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <TransferRepos />
+        <button
+          type="button"
+          onClick={() => setShowTransferRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>ETL / data-migration repos (GitHub)</span>
+          {showTransferRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showTransferRepos && (
+          <div className="mt-3">
+            <TransferRepos />
+          </div>
+        )}
       </section>
     </div>
 

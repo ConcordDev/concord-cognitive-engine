@@ -19,7 +19,7 @@ import { GenesisMetrics } from '@/components/genesis/GenesisMetrics';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cpu, Zap, MessageSquare, Eye, Star, X, Filter } from 'lucide-react';
+import { Cpu, Zap, MessageSquare, Eye, Star, X, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useSocket } from '@/hooks/useSocket';
@@ -193,6 +193,7 @@ export default function GenesisLens() {
   const [rosterFilters, setRosterFilters] = useState<RosterFilters>({ query: '', role: '', focus: '', state: 'all' });
   const [appliedFilters, setAppliedFilters] = useState<RosterFilters | null>(null);
   const [appliedKey, setAppliedKey] = useState(0);
+  const [showOriginExplorer, setShowOriginExplorer] = useState(false);
   const runSavedSearch = (f: RosterFilters) => {
     setAppliedFilters(f);
     setAppliedKey((k) => k + 1);
@@ -464,7 +465,19 @@ export default function GenesisLens() {
 
         {/* Origin & cosmogony reference */}
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <OriginExplorer />
+          <button
+            type="button"
+            onClick={() => setShowOriginExplorer(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Origin & cosmogony reference</span>
+            {showOriginExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showOriginExplorer && (
+            <div className="mt-3">
+              <OriginExplorer />
+            </div>
+          )}
         </section>
       </div>
 

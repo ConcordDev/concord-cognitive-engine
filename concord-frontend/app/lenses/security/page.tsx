@@ -45,6 +45,7 @@ import {
   Skull,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Lock,
   AlertTriangle,
 } from 'lucide-react';
@@ -253,6 +254,9 @@ export default function SecurityLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('security');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [showSecurityAdvisories, setShowSecurityAdvisories] = useState(false);
+  const [showThreatVulnPanel, setShowThreatVulnPanel] = useState(false);
+  const [showVulnManager, setShowVulnManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -1395,17 +1399,53 @@ export default function SecurityLensPage() {
         <SOCConsole />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SecurityAdvisories />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSecurityAdvisories(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSecurityAdvisories ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Security Advisories (external reference)
+        </button>
+        {showSecurityAdvisories && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <SecurityAdvisories />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ThreatVulnPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowThreatVulnPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showThreatVulnPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Threat & Vulnerability Scanner
+        </button>
+        {showThreatVulnPanel && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ThreatVulnPanel />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6">
-        <VulnManager />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVulnManager(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVulnManager ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Vulnerability Manager (OpenCVE/NVD-shape)
+        </button>
+        {showVulnManager && (
+          <section className="mt-3">
+            <VulnManager />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#security-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to security content</a>

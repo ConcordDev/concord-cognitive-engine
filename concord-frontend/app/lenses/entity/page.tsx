@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
-import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2, ShieldAlert, CheckCircle2, XCircle, MinusCircle, Lock } from 'lucide-react';
+import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2, ShieldAlert, CheckCircle2, XCircle, MinusCircle, Lock, ChevronDown, ChevronRight } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -78,6 +78,7 @@ export default function EntityLensPage() {
   const isCouncilEligible = isAuthenticated && !!currentUser?.role && COUNCIL_ROLES.has(currentUser.role);
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [showWikidataSearch, setShowWikidataSearch] = useState(false);
   const [newEntityName, setNewEntityName] = useState('');
   const [newEntityType, setNewEntityType] = useState<Entity['type']>('worker');
   const [terminalEntity, setTerminalEntity] = useState<string | null>(null);
@@ -765,9 +766,21 @@ export default function EntityLensPage() {
           "Analyze" tab, which now runs them directly against that real data via
           the same virtual-artifact /api/lens/run path CarbonCalculator uses for
           the eco lens (no pre-existing artifact required). */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <WikidataSearch />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowWikidataSearch(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showWikidataSearch ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Wikidata Search (external reference)
+        </button>
+        {showWikidataSearch && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <WikidataSearch />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="entity" limit={10} hideWhenEmpty className="mt-4" />
           <CrossLensRecentsPanel lensId="entity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

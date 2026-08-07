@@ -26,6 +26,7 @@ import {
   Feather, Plus, Search, Edit2, Trash2, BookOpen, X, Save, Sparkles,
   AlignLeft, Globe, Download,
   Hash, Music, Layers, Moon, Zap, Compass, Wand2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
@@ -320,6 +321,8 @@ export default function PoetryPage() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<PoetryTab>('collection');
+  const [showPoetryDb, setShowPoetryDb] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -799,7 +802,19 @@ export default function PoetryPage() {
 
       {/* Bespoke PoetryDB search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PoetryDbSearch />
+        <button
+          type="button"
+          onClick={() => setShowPoetryDb(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>PoetryDB search (external reference)</span>
+          {showPoetryDb ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPoetryDb && (
+          <div className="mt-3">
+            <PoetryDbSearch />
+          </div>
+        )}
       </section>
 
       <section className="mt-6">
@@ -808,8 +823,16 @@ export default function PoetryPage() {
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
       <PipingProvider>
-        <section className="mt-6">
-          <PoetryActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Poetry workbench (meter, rhyme, form)</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><PoetryActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>

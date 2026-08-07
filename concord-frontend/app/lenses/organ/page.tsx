@@ -17,6 +17,7 @@ import { useState, useMemo } from 'react';
 import {
   Heart, Activity, Zap, TrendingUp, TrendingDown, RefreshCw,
   AlertTriangle, Clock, Wrench, Search, BarChart3, Layers, GitBranch, Play, Loader2, X, Upload,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -122,6 +123,8 @@ export default function OrganLensPage() {
   useLensNav('organ');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('organ');
   const [selectedOrgan, setSelectedOrgan] = useState<string | null>(null);
+  const [showOrgDesigner, setShowOrgDesigner] = useState(false);
+  const [showAnatomy, setShowAnatomy] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<SortMode>('health');
   const [searchFilter, setSearchFilter] = useState('');
@@ -254,7 +257,19 @@ export default function OrganLensPage() {
       {/* ChartHop-parity org-design platform: visual chart, drag-reassign,
           HRIS import, headcount scenarios, comp rollups, tenure, snapshots */}
       <section className="panel p-4">
-        <OrgDesigner />
+        <button
+          type="button"
+          onClick={() => setShowOrgDesigner(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Org designer (headcount, HRIS, comp)</span>
+          {showOrgDesigner ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showOrgDesigner && (
+          <div className="mt-3">
+            <OrgDesigner />
+          </div>
+        )}
       </section>
 
       {/* Org Analysis — real graph-theory macros run against the live roster */}
@@ -608,7 +623,19 @@ export default function OrganLensPage() {
       <RealtimeDataPanel data={realtimeInsights} />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <AnatomyExplorer />
+        <button
+          type="button"
+          onClick={() => setShowAnatomy(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Anatomy reference (external, Wikipedia)</span>
+          {showAnatomy ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showAnatomy && (
+          <div className="mt-3">
+            <AnatomyExplorer />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="organ" limit={10} hideWhenEmpty className="mt-4" />

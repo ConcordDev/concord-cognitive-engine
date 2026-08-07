@@ -38,9 +38,11 @@ import { WelderProcedures } from '@/components/welding/WelderProcedures';
 import { WeldingOperations } from '@/components/welding/WeldingOperations';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { LensPageShell } from '@/components/lens/LensPageShell';
-import { Flame } from 'lucide-react';
+import { Flame, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 export default function WeldingLensPage() {
+  const [showFeed, setShowFeed] = useState(false);
   return (
     <LensShell lensId="welding" asMain={false}>
       <FirstRunTour lensId="welding" />
@@ -61,7 +63,19 @@ export default function WeldingLensPage() {
         </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <WeldingFeed />
+          <button
+            type="button"
+            onClick={() => setShowFeed(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Welding community chatter (Reddit)</span>
+            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showFeed && (
+            <div className="mt-3">
+              <WeldingFeed />
+            </div>
+          )}
         </section>
       </LensPageShell>
 

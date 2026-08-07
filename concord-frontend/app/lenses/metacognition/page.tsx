@@ -42,6 +42,7 @@ import {
   Gauge,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   RefreshCw,
   Play,
   Loader2,
@@ -110,6 +111,7 @@ export default function MetacognitionLensPage() {
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [showCogsciFeed, setShowCogsciFeed] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -1535,9 +1537,21 @@ export default function MetacognitionLensPage() {
           deferred" section for the prior gap). */}
       <ReasoningToolkit />
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CogsciFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCogsciFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCogsciFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Cognitive Science Papers (external reference)
+        </button>
+        {showCogsciFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CogsciFeed />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="metacognition" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="metacognition" hideWhenEmpty className="mt-3" />

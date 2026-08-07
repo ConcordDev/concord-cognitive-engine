@@ -66,6 +66,10 @@ import {
   School,
   UtensilsCrossed,
   Armchair,
+  ChevronDown,
+  ChevronRight,
+  Globe2,
+  CalendarHeart,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -461,6 +465,8 @@ export default function EventsLensPage() {
   const [showEditor, setShowEditor] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [showNasaEvents, setShowNasaEvents] = useState(false);
 
   // Form state
   const [formTitle, setFormTitle] = useState('');
@@ -3047,11 +3053,52 @@ export default function EventsLensPage() {
       <section id="event-operations" className="mt-6 rounded-xl border border-lattice-border bg-lattice-elevated/30 p-4 scroll-mt-20">
         <EventOps />
       </section>
-      <section className="mt-6">
-        <EventPlanner />
+
+      {/* Lightweight planning workbench (budget/tasks/vendor roster) — a
+          smaller surface than the real EventOps console above, which
+          already covers budget/vendors/agenda more completely. Collapsed
+          by default so it doesn't compete with the primary console for
+          space; kept reachable rather than removed since it's still a
+          real, wired workbench. */}
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40">
+        <button
+          type="button"
+          onClick={() => setShowPlanner((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showPlanner}
+        >
+          <span className="flex items-center gap-2">
+            <CalendarHeart className="w-4 h-4 text-neon-cyan" /> Planning workbench
+          </span>
+          {showPlanner ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showPlanner && (
+          <div className="px-4 pb-4">
+            <EventPlanner />
+          </div>
+        )}
       </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <NasaEarthEvents />
+
+      {/* NASA EONET natural-events feed — an external reference, not core
+          event-planning data. Collapsed by default rather than promoted
+          open on every visit; still reachable for anyone who wants it. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowNasaEvents((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showNasaEvents}
+        >
+          <span className="flex items-center gap-2">
+            <Globe2 className="w-4 h-4 text-emerald-400" /> NASA Earth events (external reference)
+          </span>
+          {showNasaEvents ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showNasaEvents && (
+          <div className="px-4 pb-4">
+            <NasaEarthEvents />
+          </div>
+        )}
       </section>
     </div>
 

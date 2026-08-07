@@ -19,7 +19,7 @@ import { useUIStore } from '@/store/ui';
 import { useLensData, type LensItem } from '@/lib/hooks/use-lens-data';
 import { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Microscope, Activity, Loader2 } from 'lucide-react';
+import { FlaskConical, Play, Square, History, Zap, Search, Plus, Trash2, CheckCircle, AlertTriangle, Lightbulb, Microscope, Activity, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -33,6 +33,7 @@ export default function LabLensPage() {
 
   const [code, setCode] = useState('');
   const [selectedOrgan, setSelectedOrgan] = useState('abstraction_governor');
+  const [showArxivFeed, setShowArxivFeed] = useState(false);
   const codeAreaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load a previously-run experiment back into the editor.  Letting
@@ -309,7 +310,19 @@ export default function LabLensPage() {
         </div>
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ArxivLabFeed />
+        <button
+          type="button"
+          onClick={() => setShowArxivFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Lab research (external reference)</span>
+          {showArxivFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showArxivFeed && (
+          <div className="mt-3">
+            <ArxivLabFeed />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="lab" limit={10} hideWhenEmpty className="mt-4" />

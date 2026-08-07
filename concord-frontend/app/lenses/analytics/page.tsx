@@ -41,6 +41,8 @@ import {
   Zap,
   PieChart as PieChartIcon,
   Clock,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { cn, formatNumber } from '@/lib/utils';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -82,6 +84,10 @@ export default function AnalyticsPage() {
   const [activeSection, setActiveSection] = useState<'overview' | 'revenue' | 'dtus' | 'actions'>(
     'overview'
   );
+  const [showPlatformGrowth, setShowPlatformGrowth] = useState(false);
+  const [showEventAnalytics, setShowEventAnalytics] = useState(false);
+  const [showAdvancedAnalytics, setShowAdvancedAnalytics] = useState(false);
+  const [showFunnels, setShowFunnels] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -518,17 +524,63 @@ export default function AnalyticsPage() {
         )}
       </main>
       <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PlatformGrowth />
+        <button
+          type="button"
+          onClick={() => setShowPlatformGrowth(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Platform growth</span>
+          {showPlatformGrowth ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPlatformGrowth && (
+          <div className="mt-3">
+            <PlatformGrowth />
+          </div>
+        )}
       </section>
-      <section className="mt-6 mx-4">
-        <EventAnalytics />
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowEventAnalytics(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Event analytics</span>
+          {showEventAnalytics ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showEventAnalytics && (
+          <div className="mt-3">
+            <EventAnalytics />
+          </div>
+        )}
       </section>
-      <section className="mt-6 mx-4">
-        <AdvancedAnalytics />
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowAdvancedAnalytics(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Advanced analytics</span>
+          {showAdvancedAnalytics ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showAdvancedAnalytics && (
+          <div className="mt-3">
+            <AdvancedAnalytics />
+          </div>
+        )}
       </section>
     </div>
 
-      <FunnelsPanel className="mt-6 max-w-7xl mx-auto" />
+      <section className="mt-6 max-w-7xl mx-auto rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowFunnels(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Funnels</span>
+          {showFunnels ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFunnels && <div className="mt-3"><FunnelsPanel /></div>}
+      </section>
 
       <a href="#analytics-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to analytics content</a>
           <RecentMineCard domain="analytics" limit={10} hideWhenEmpty className="mt-4" />

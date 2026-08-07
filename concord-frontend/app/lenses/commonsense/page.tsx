@@ -23,6 +23,7 @@ import {
   Lightbulb, Plus, Search, Database, ArrowRight, Brain,
   X, RefreshCw,
   Tag, Copy, BarChart3, Network, Eye, CheckCircle2, Shield,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -76,6 +77,9 @@ export default function CommonsenseLensPage() {
   const [relation, setRelation] = useState('is_a');
   const [object, setObject] = useState('');
   const [queryText, setQueryText] = useState('');
+  const [showKbWorkbench, setShowKbWorkbench] = useState(false);
+  const [showConceptExplorer, setShowConceptExplorer] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [results, setResults] = useState<unknown>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
@@ -776,17 +780,49 @@ export default function CommonsenseLensPage() {
       {/* Knowledge Base Workbench — graph, inference, contradiction,
           taxonomy, confidence query, text import, provenance */}
       <section className="mt-6 rounded-xl border border-amber-500/20 bg-zinc-950/40 p-4">
-        <KnowledgeBaseWorkbench />
+        <button
+          type="button"
+          onClick={() => setShowKbWorkbench(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Knowledge base workbench</span>
+          {showKbWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showKbWorkbench && (
+          <div className="mt-3">
+            <KnowledgeBaseWorkbench />
+          </div>
+        )}
       </section>
 
       {/* Bespoke ConceptNet concept graph explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ConceptExplorer />
+        <button
+          type="button"
+          onClick={() => setShowConceptExplorer(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>ConceptNet explorer (external reference)</span>
+          {showConceptExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showConceptExplorer && (
+          <div className="mt-3">
+            <ConceptExplorer />
+          </div>
+        )}
       </section>
 
       <PipingProvider>
-        <section className="mt-6">
-          <CommonsenseActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Commonsense workbench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><CommonsenseActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>
