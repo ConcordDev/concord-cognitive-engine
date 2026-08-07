@@ -1,5 +1,92 @@
 # Visual QA — Godot World Lens
 
+## Combat, first slice — real target selection, real attack dispatch, real hit-feel mutation (2026-08-07, Phase C)
+
+Not a rendering claim — pure object-state mutation, real-engine-verified.
+Scope, per the approved plan: **E = attack only**. F/R/Q/Shift
+(parry/kick/dodge/modifier), combo chains, weapon-specific attack
+animations beyond the existing gait/pose system, and lock-on camera
+behavior are explicitly deferred, real follow-up work, not attempted this
+slice.
+
+**What was built.** `player/character_controller.gd` gained: (1) a
+per-physics-frame `_update_target()` query against an optional injected
+`avatar_manager` (`avatar/avatar_manager.gd`'s new `nearest_target()`,
+delegating to a pure static `nearest_target_id()` selection rule — nearest
+in-range candidate, honest `""` when nothing qualifies, never a fabricated
+id); (2) fresh-press E-key detection dispatching a deliberately minimal
+`combat:attack` payload (`{targetId, weapon, style}` — no client-asserted
+`baseDamage`/`range`, matching the server's own authoritative-clamp
+contract at `_dispatchGodotCombatAttack`, server.js:68748, which needed
+**zero changes** — it already handled Godot-originated attacks since
+2026-07-25); (3) `combat:hit`/`combat:impact` handling in the existing
+`_on_gateway_event` dispatcher, which these events already reach for free
+(`realtimeEmit` mirrors into Godot gateway rooms — confirmed at
+server.js:9256/9337/9360, no new backend wiring needed at all this slice);
+(4) a pure static `knockback_impulse()` translating a `combat:impact`
+payload's `feel.knockback` (server/lib/combat/impact-feel.js) + a real-or-
+missing `attackerPosition` into a velocity impulse, applied ONLY when
+`local_user_id` (threaded from `world/boot.gd`'s `_on_authenticated`)
+matches the event's `targetId` — i.e. only the LOCAL player's own hits
+apply feel this slice; a bare-Label target-health HUD in `boot.gd`.
+
+**Verified, real-engine, not asserted from code review alone.** Two proof
+layers, same discipline as every other phase this session:
+1. Pure-logic: `tests/test_avatar_manager.gd` (new, 5 checks) pins
+   `nearest_target_id`'s selection rule in isolation (nearest wins, out-of-
+   range excluded, empty-candidates is honest not fabricated, inclusive
+   range boundary, blank-id candidates skipped); `tests/
+   test_character_controller.gd` gained 6 checks pinning `knockback_impulse`
+   (real direction from a real attacker position, honest fixed-direction
+   fallback on a missing/malformed attacker position, zero/negative
+   knockback never fabricates an impulse, same-position edge case doesn't
+   NaN). Full `tests/run_all.gd`: **35/35 suites PASS, 0 fail** — CharacterController
+   38 checks (was 32), AvatarManager 5 checks (new suite) — the per-suite
+   CHECK COUNT was verified non-zero for both, not just the PASS/FAIL word
+   (see Phase M4/S3's own entries above for why that check specifically
+   matters — a real GDScript compile bug earlier this session produced a
+   misleadingly-green `[PASS] (0 checks)`).
+2. Real-engine, headless (`tools/combat_target_probe.gd`, new, run against
+   the real `.godot-runtime` binary): spawns a REAL `AvatarManager`, feeds
+   it a REAL `city:positions`-shaped snapshot for one remote entity 2m
+   away, spawns a REAL `CharacterController` wired to it, and lets several
+   real physics ticks run — no mocked selection logic. Result, verbatim:
+   `target_selected: "target-npc"` (the real AvatarManager-spawned
+   AvatarRig was genuinely found and selected); calling the real
+   `_try_attack()` produced `attack_dispatched: true` with payload
+   `{targetId: "target-npc", weapon: "longsword", style: "attack-light"}`
+   (the "warrior" default archetype's real weapon, from Phase M1's
+   `ARCHETYPE_WEAPON` table — confirming the two features compose
+   correctly); simulating a `combat:hit` event caused the real
+   `target_health_updated` signal to fire with the exact payload values
+   (`health: 88, max_health: 100`); simulating a `combat:impact` event
+   with `attackerPosition: {x:5,y:0,z:0}` and `feel.knockback: 6.0` changed
+   the character's REAL `velocity` from `(0, -1.47, 0)` (falling under
+   gravity — expected, no ground under the probe) to `(-6.0, -1.47, 0)` —
+   exactly the analytically-correct knockback vector (away from the
+   attacker on the X axis, magnitude 6.0, Z/gravity components
+   untouched). This is genuine object mutation from a real event dispatch,
+   not a return-value assertion.
+
+**What this does NOT settle** — honestly out of reach in this sandbox,
+same as every other phase: whether E-key attack input, weapon swing
+timing, and the resulting hitstop/knockback actually FEEL right on a real
+GPU/display (this sandbox has no live rendering target for that judgment
+at all, headless or otherwise); a live two-client round trip against a
+real running server (`combat:attack` actually reaching
+`_dispatchGodotCombatAttack` over a real WebSocket, and the resulting
+`combat:hit`/`combat:impact` broadcast actually arriving back at a second
+connected Godot client) — this slice's real-engine proof stops at
+"a simulated event dispatch correctly mutates local state," not a live
+network round trip, which needs a running `server.js` + two live gateway
+connections this sandbox wasn't set up to exercise this pass; remote-target
+hit-feel (an attacker seeing their OWN hit land on someone else's rig) is
+explicitly deferred — see the `_on_combat_impact` doc comment in
+`character_controller.gd` for why (AvatarRig positions are snapshot-
+interpolated, and a local knockback nudge there would just be overwritten
+by the next incoming sample without real reconciliation logic, which is
+real, separate follow-up work).
+
 ## GlbLoader cache made process-shared, not per-instance (2026-08-07, Phase M4)
 
 Not a rendering claim — a consistency/efficiency fix, recorded here anyway

@@ -165,7 +165,46 @@ func _despawn_stale(now_ms: int) -> void:
 		_was_airborne.erase(id)
 
 
+## Combat Phase C1 — nearest in-range remote avatar to `from_pos`, for the
+## local player's target-selection input (see player/character_controller.gd).
+## Reads the SAME `_rigs` dictionary avatar_manager.gd already maintains from
+## live `city:positions` snapshots — no new tracking system, just a query
+## over data already kept current every frame. Delegates to the pure static
+## `nearest_target_id` below so the selection RULE itself is testable without
+## a scene tree; this wrapper only does the engine-gated bit (reading
+## `rig.global_position` from real spawned nodes).
+func nearest_target(from_pos: Vector3, max_range: float) -> String:
+	var candidates := []
+	for id in _rigs.keys():
+		var rig = _rigs[id]
+		if not is_instance_valid(rig):
+			continue
+		candidates.append({"id": id, "position": rig.global_position})
+	return AvatarManager.nearest_target_id(candidates, from_pos, max_range)
+
+
 # ── Pure static kinematics inference ─────────────────────────────────────────
+
+## Nearest entry in `candidates` (Array of {"id": String, "position": Vector3})
+## to `from_pos`, within `max_range` (inclusive). Returns "" honestly when
+## nothing qualifies — an empty candidate list, or every candidate beyond
+## range, is a real "no target" answer, never a fabricated id. Ties (equal
+## distance) break by array iteration order — deterministic given a
+## deterministic candidate order, not a claim of a meaningful tiebreak rule.
+static func nearest_target_id(candidates: Array, from_pos: Vector3, max_range: float) -> String:
+	var best_id := ""
+	var best_dist := INF
+	for c in candidates:
+		var id := String(c.get("id", ""))
+		if id.is_empty():
+			continue
+		var pos: Vector3 = c.get("position", Vector3.ZERO)
+		var dist := from_pos.distance_to(pos)
+		if dist <= max_range and dist < best_dist:
+			best_dist = dist
+			best_id = id
+	return best_id
+
 
 ## Derive {speed, vertical_velocity, is_airborne} from two consecutive
 ## INTERPOLATED position samples. `prev` is `{}` on an entity's first

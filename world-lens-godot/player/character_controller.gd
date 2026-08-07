@@ -33,10 +33,44 @@ extends CharacterBody3D
 ## exactly as it did before this unit — always active — so every existing
 ## pure-function test and any standalone use of this controller is
 ## unaffected.
+##
+## ── Combat Phase C — first slice (E = attack only) ───────────────────────────
+## Deliberately narrow scope, ported from the Three.js reference
+## (`CombatInputController.tsx`'s E/F/R/Q/Shift scheme) rather than
+## redesigned: this unit ports ONLY the E-key light-attack path.
+## F/R/Q/Shift (parry/kick/dodge/modifier), combo chains, and lock-on camera
+## behavior are explicitly deferred, real follow-up work — not silently
+## implied as done.
+##
+## Target selection is a query over `avatar_manager`'s already-live `_rigs`
+## (optional injected `avatar/avatar_manager.gd`, same DI convention as
+## `gateway`/`session_manager` above) — re-run every physics frame so the HUD
+## can honestly show "no target"/"target in range" even before an attack is
+## thrown. `_try_attack()` sends a deliberately minimal `combat:attack`
+## payload (targetId + weapon + style only) — no client-asserted
+## baseDamage/range: the server (`_dispatchGodotCombatAttack`,
+## server.js:68748) is authoritative and clamps its own defaults, matching
+## every other anti-cheat gate in this codebase. No target in range is an
+## honest no-op, never a wasted/fabricated request.
+##
+## `combat:hit`/`combat:impact` already arrive for free over the open gateway
+## connection (`realtimeEmit` mirrors into Godot gateway rooms — confirmed at
+## server.js:9256/9337/9360 — no new backend wiring needed for this slice).
+## Hit-feel (knockback) is applied ONLY when `local_user_id` (set by
+## world/boot.gd from the real `authenticated` user id) matches the event's
+## `targetId` — i.e. only when the LOCAL player was hit. Remote-target visual
+## feedback (an attacker seeing their OWN hit land on someone else's rig) is
+## a real, separate follow-up: AvatarRig's positions are snapshot-interpolated
+## from server broadcasts, and a local knockback nudge there would just be
+## overwritten by the next incoming sample — deferred, not attempted here.
 
 signal move_rejected(snapped_to: Vector3)
+signal target_acquired(target_id: String)
+signal target_lost()
+signal target_health_updated(target_id: String, health: float, max_health: float)
 
 const SessionManager := preload("res://session/session_manager.gd")
+const AssetResolver := preload("res://assets/asset_resolver.gd")
 
 # ── Constants — mirrored 1:1 from physics-world.ts / jump-forgiveness.ts ────
 const GRAVITY: float = 9.81
@@ -93,6 +127,25 @@ const MOVE_SEND_MIN_INTERVAL_MS: int = 33
 ## class doc "Session-manager input gate". Null means "always active", the
 ## pre-R5/E24 behavior.
 @export var session_manager: Node = null
+## Optional injected AvatarManager (avatar/avatar_manager.gd) — see class doc
+## "Combat Phase C". Null means target selection never runs (no combat
+## input), matching every other optional-DI field here: this controller
+## stays fully functional (movement-only) with nothing wired.
+@export var avatar_manager: Node = null
+## The LOCAL player's real user id, set by world/boot.gd once
+## GatewayClient.authenticated fires (see boot.gd's `_on_authenticated`).
+## Blank until then — `_on_combat_impact` treats blank as "can't possibly be
+## me" and never applies hit-feel from an unresolved identity.
+@export var local_user_id: String = ""
+## Which of the 7 hero archetypes this controller's own weapon-in-hand
+## resolves to (assets/asset_resolver.gd#ARCHETYPE_WEAPON) — mirrors the
+## honest "warrior" default every other archetype-driven resolve in this
+## client uses absent a real per-avatar archetype signal on the wire.
+@export var archetype: String = "warrior"
+## Max distance (m) `_update_target()` will select a target within. A
+## client-side intent value only — the server's own `clampAttackRange`
+## (server/lib/combat-limits.js) is the real, authoritative cap.
+const ATTACK_RANGE_M: float = 3.0
 
 var vertical_vel: float = 0.0
 var is_airborne: bool = false
@@ -105,6 +158,8 @@ var jump_vy_pending: float = 0.0
 var _last_move_sent_ms: int = 0
 var _snap_target: Vector3 = Vector3.ZERO
 var _pending_snap: bool = false
+var _current_target_id: String = ""
+var _attack_key_was_down: bool = false
 
 
 func _ready() -> void:
@@ -153,6 +208,12 @@ func _physics_process(delta: float) -> void:
 	if CharacterController.should_send_move(now_ms, _last_move_sent_ms):
 		_last_move_sent_ms = now_ms
 		_send_move_intent()
+
+	_update_target()
+	var attack_down := Input.is_key_pressed(KEY_E)
+	if attack_down and not _attack_key_was_down:
+		_try_attack()
+	_attack_key_was_down = attack_down
 
 
 ## Raw WASD polling — deliberately NOT routed through Godot's InputMap
@@ -253,12 +314,84 @@ func _send_move_intent() -> void:
 	})
 
 
-func _on_gateway_event(evt: String, data: Dictionary) -> void:
-	if evt != "player:move:nack":
+## Re-run every physics frame so a HUD can honestly reflect "no target"/
+## "target in range" even before an attack is ever thrown, not just at the
+## moment of attack. No-op (never selects/clears a target) when no
+## AvatarManager is wired — see the `avatar_manager` export's own doc.
+func _update_target() -> void:
+	if avatar_manager == null or not avatar_manager.has_method("nearest_target"):
 		return
-	_snap_target = CharacterController.snapback_position(data, global_position)
-	_pending_snap = true
-	move_rejected.emit(_snap_target)
+	var found: String = avatar_manager.nearest_target(global_position, ATTACK_RANGE_M)
+	if found == _current_target_id:
+		return
+	_current_target_id = found
+	if found.is_empty():
+		target_lost.emit()
+	else:
+		target_acquired.emit(found)
+
+
+func get_current_target_id() -> String:
+	return _current_target_id
+
+
+## E-key light attack. Honest no-op with no target in range or no gateway
+## wired — never fabricates a wasted request. Sends a deliberately minimal
+## payload (no client-asserted baseDamage/range) — see class doc "Combat
+## Phase C".
+func _try_attack() -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	var weapon_id: String = AssetResolver.ARCHETYPE_WEAPON.get(archetype, "")
+	gateway.send_event("combat:attack", {
+		"targetId": _current_target_id,
+		"weapon": weapon_id if weapon_id != "" else "fist",
+		"style": "attack-light",
+	})
+
+
+func _on_gateway_event(evt: String, data: Dictionary) -> void:
+	match evt:
+		"player:move:nack":
+			_snap_target = CharacterController.snapback_position(data, global_position)
+			_pending_snap = true
+			move_rejected.emit(_snap_target)
+		"combat:hit":
+			_on_combat_hit(data)
+		"combat:impact":
+			_on_combat_impact(data)
+
+
+## `combat:hit` (server.js:68839) carries the resolved damage/health numbers.
+## Only relevant to THIS controller's HUD when it's about the target we're
+## actively tracking — a hit on some other pair in the same world is real
+## data, just not ours to display.
+func _on_combat_hit(data: Dictionary) -> void:
+	var target_id := String(data.get("targetId", ""))
+	if target_id.is_empty() or target_id != _current_target_id:
+		return
+	target_health_updated.emit(
+		target_id, float(data.get("targetHealth", 0.0)), float(data.get("targetMaxHealth", 0.0)))
+
+
+## `combat:impact` (server/lib/combat/impact-feel.js#buildImpactPayload)
+## carries the server-authoritative hit-feel. Applied ONLY when the LOCAL
+## player is the one who got hit (`local_user_id` matches `targetId`) — see
+## class doc for why remote-target feedback is deferred. `local_user_id ==
+## ""` (not yet authenticated) can never match a real targetId, so this is
+## already a safe no-op before boot.gd wires it.
+func _on_combat_impact(data: Dictionary) -> void:
+	if local_user_id.is_empty():
+		return
+	if String(data.get("targetId", "")) != local_user_id:
+		return
+	var feel: Dictionary = data.get("feel", {})
+	var impulse := CharacterController.knockback_impulse(
+		global_position, data.get("attackerPosition", null), float(feel.get("knockback", 0.0)))
+	if impulse != Vector3.ZERO:
+		velocity += impulse
 
 
 # ── Pure static movement math ────────────────────────────────────────────────
@@ -354,6 +487,26 @@ static func classify_action(horizontal_speed: float) -> String:
 	if horizontal_speed < LOCOMOTION_RUN_MIN_SPEED:
 		return "walk"
 	return "run"
+
+
+## Combat Phase C — derive a knockback velocity impulse from a `combat:impact`
+## payload's `feel.knockback` magnitude (server/lib/combat/impact-feel.js) and
+## a real or missing `attackerPosition`. Direction is away from the attacker
+## in the XZ plane (target_pos.y is preserved — this never launches a target
+## vertically); a missing/malformed `attacker_pos` (untyped `Variant`, since
+## it comes straight off a decoded JSON payload — may legitimately be `null`)
+## falls back to a fixed +Z push rather than fabricating a direction from
+## nothing. `knockback <= 0` (severity "none"/"flinch" per SEVERITY_FEEL)
+## returns Vector3.ZERO honestly — no impulse, not a tiny fabricated one.
+static func knockback_impulse(target_pos: Vector3, attacker_pos, knockback: float) -> Vector3:
+	if knockback <= 0.0:
+		return Vector3.ZERO
+	var dir := Vector3(0.0, 0.0, 1.0)
+	if typeof(attacker_pos) == TYPE_DICTIONARY and attacker_pos.has("x") and attacker_pos.has("z"):
+		var away := target_pos - Vector3(float(attacker_pos["x"]), target_pos.y, float(attacker_pos["z"]))
+		if away.length() > 0.01:
+			dir = away.normalized()
+	return dir * knockback
 
 
 ## Select the snap-back position from a `player:move:nack` payload's `prev`

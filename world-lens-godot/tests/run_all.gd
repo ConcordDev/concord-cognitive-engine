@@ -56,6 +56,7 @@ const TestGatewayClientAuth := preload("res://tests/test_gateway_client_auth.gd"
 const TestBootRuntimeConfig := preload("res://tests/test_boot_runtime_config.gd")
 const TestGatewayClientSeq := preload("res://tests/test_gateway_client_seq.gd")
 const TestBootResync := preload("res://tests/test_boot_resync.gd")
+const TestAvatarManager := preload("res://tests/test_avatar_manager.gd")
 
 
 func _init() -> void:
@@ -94,6 +95,7 @@ func _init() -> void:
 		"BootRuntimeConfig": TestBootRuntimeConfig.run(),
 		"GatewayClientSeq": TestGatewayClientSeq.run(),
 		"BootResync": TestBootResync.run(),
+		"AvatarManager": TestAvatarManager.run(),
 	}
 
 	var all_ok := true

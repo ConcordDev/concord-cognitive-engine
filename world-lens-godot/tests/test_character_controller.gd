@@ -37,6 +37,7 @@ static func run() -> TestUtils:
 	_test_send_throttle(t)
 	_test_nack_snapback(t)
 	_test_classify_action(t)
+	_test_knockback_impulse(t)
 	return t
 
 
@@ -186,3 +187,42 @@ static func _test_classify_action(t: TestUtils) -> void:
 	t.check(
 		CharacterController.RUN_SPEED > CharacterController.MOVE_SPEED,
 		"RUN_SPEED must exceed MOVE_SPEED for a run mechanic to exist at all")
+
+
+## Combat Phase C — combat:impact -> local hit-feel translation. Mirrors
+## server/lib/combat/impact-feel.js's SEVERITY_FEEL table shape (a "feel"
+## dict carrying `knockback`) fed straight through, plus a real-or-missing
+## `attackerPosition` payload field (untyped off the wire — legitimately
+## `null` when the server couldn't resolve a position, per
+## _dispatchGodotCombatAttack's own best-effort try/catch).
+static func _test_knockback_impulse(t: TestUtils) -> void:
+	var target_pos := Vector3(10.0, 2.0, 0.0)
+
+	var away := CharacterController.knockback_impulse(
+		target_pos, {"x": 10.0, "y": 2.0, "z": -5.0}, 5.0)
+	t.check(away.is_equal_approx(Vector3(0.0, 0.0, 5.0)),
+		"knockback pushes the target directly away from a real attacker position")
+
+	var missing_attacker := CharacterController.knockback_impulse(target_pos, null, 5.0)
+	t.check(missing_attacker.is_equal_approx(Vector3(0.0, 0.0, 5.0)),
+		"a missing attacker position falls back to a fixed +Z push, never a fabricated direction")
+
+	var malformed_attacker := CharacterController.knockback_impulse(
+		target_pos, {"x": 10.0}, 5.0)
+	t.check(malformed_attacker.is_equal_approx(Vector3(0.0, 0.0, 5.0)),
+		"an attacker position missing a required axis falls back honestly, same as a missing one")
+
+	var zero_knockback := CharacterController.knockback_impulse(
+		target_pos, {"x": 0.0, "y": 0.0, "z": 0.0}, 0.0)
+	t.check(zero_knockback.is_equal_approx(Vector3.ZERO),
+		"zero knockback (severity none/flinch) yields no impulse, not a tiny fabricated one")
+
+	var negative_knockback := CharacterController.knockback_impulse(
+		target_pos, {"x": 0.0, "y": 0.0, "z": 0.0}, -1.0)
+	t.check(negative_knockback.is_equal_approx(Vector3.ZERO),
+		"a malformed negative knockback is treated the same as zero, never inverted into a pull")
+
+	var same_position := CharacterController.knockback_impulse(
+		target_pos, {"x": target_pos.x, "y": target_pos.y, "z": target_pos.z}, 5.0)
+	t.check(same_position.is_equal_approx(Vector3(0.0, 0.0, 5.0)),
+		"an attacker at the exact same position (zero-length away vector) falls back to +Z rather than NaN/zero")

@@ -130,6 +130,18 @@ var _character: CharacterController = null
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
 var _joined_rooms: Array[String] = []
 
+## Combat Phase C — the LOCAL player's real user id, known from
+## `GatewayClient.authenticated` (see `_on_authenticated`). Cached here (not
+## just written straight into `_character`) because `_character` may not
+## exist yet at first auth — it's spawned later, once `scene:data` gives it a
+## real spawn point (see `_spawn_local_player_if_needed`) — and a reconnect's
+## `authenticated` should still update an already-spawned `_character` too.
+var _local_user_id: String = ""
+## Minimal target-health HUD (Combat Phase C4) — a bare Label, not a port of
+## the Three.js CombatHUD. Null until `_setup_target_hud()` runs (right after
+## the local player spawns, since it wires signals off `_character`).
+var _target_hud: Label = null
+
 
 ## Pure static so it's unit-testable without a scene tree (same rationale as
 ## GatewayClient.build_auth_payload). `env` is the already-read environment
@@ -471,6 +483,14 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	_character.world_id = world_id
 	_character.gateway = _gateway
 	_character.session_manager = _session
+	# Combat Phase C — target selection + hit-feel identity. `avatar_manager`
+	# is already mounted above (R6); `_local_user_id` may already be known
+	# (auth typically completes before the first scene:data round trip) or
+	# still blank (a slow/first-ever auth) — either way this is the correct
+	# value AT SPAWN TIME, and `_on_authenticated` backfills it on a later
+	# reconnect (see that method).
+	_character.avatar_manager = _avatar_manager
+	_character.local_user_id = _local_user_id
 	_character.position = cluster_center + Vector3(0.0, SPAWN_DROP_HEIGHT_M, 0.0)
 
 	var shape := CollisionShape3D.new()
@@ -499,6 +519,43 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 
 	add_child(_character)
 	_camera_rig.set_follow_target(_character)
+	_setup_target_hud()
+
+
+## Combat Phase C4 — a bare Label showing the currently-tracked target's id
+## and (once a `combat:hit` arrives for it) health. Honest empty state: no
+## target in range means no HUD text at all, never a stale/fabricated
+## "Target: —" placeholder.
+func _setup_target_hud() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	_target_hud = Label.new()
+	_target_hud.position = Vector2(16.0, 16.0)
+	_target_hud.visible = false
+	layer.add_child(_target_hud)
+	_character.target_acquired.connect(_on_target_acquired)
+	_character.target_lost.connect(_on_target_lost)
+	_character.target_health_updated.connect(_on_target_health_updated)
+
+
+func _on_target_acquired(target_id: String) -> void:
+	_target_hud.visible = true
+	_target_hud.text = "Target: %s" % target_id
+
+
+func _on_target_lost() -> void:
+	_target_hud.visible = false
+	_target_hud.text = ""
+
+
+func _on_target_health_updated(target_id: String, health: float, max_health: float) -> void:
+	# A `combat:hit` for a target we've since lost track of (e.g. it moved out
+	# of range between the attack landing and this event arriving) is real
+	# data, just stale for THIS HUD — ignored silently rather than flashing a
+	# health number for a target no longer shown as selected.
+	if _character == null or target_id != _character.get_current_target_id():
+		return
+	_target_hud.text = "Target: %s  HP %d/%d" % [target_id, int(health), int(max_health)]
 
 
 func _on_connected() -> void:
@@ -507,6 +564,9 @@ func _on_connected() -> void:
 
 func _on_authenticated(user_id: String) -> void:
 	print("[boot] authenticated as ", user_id)
+	_local_user_id = user_id
+	if _character != null:
+		_character.local_user_id = user_id
 	# R6 — every successful auth (including a reconnect, since `authenticated`
 	# fires again on each one) is treated as a full resync point: re-join
 	# every room this client had joined (not just the world room this method
