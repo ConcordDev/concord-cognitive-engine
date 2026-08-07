@@ -408,25 +408,33 @@ Read these limits as part of the claims above, not as footnotes to them.
 
 ### Assets
 - [x] **`GlbLoader` downloads and displays a real `.glb` correctly —
-      2026-08-07.** This was the one item flagged as genuinely
-      never-exercised. Served a real production hero mesh
-      (`concord-frontend/public/meshes/heroes/sovereign_first_refusal.glb`,
-      the same file the Three.js client uses) over plain HTTP, pointed a
-      real `GlbLoader` instance at it (new `tools/glb_load_probe.gd`,
-      real X11/opengl3 rasterizer via Xvfb — no synthetic fixture, no
-      mocked HTTPRequest), and let `GLTFDocument.append_from_buffer` run
-      for real. Result, verified programmatically: `mesh_instance_count: 1`,
-      `total_vertex_count: 842`, `child_count: 1` — a real parsed scene,
-      not a stub. The rendered screenshot shows a genuine stylized
-      humanoid character (torso, raised segmented arms, legs, a floating
-      crown-orb above the head, glowing shoulder accents) — this is
-      production art, correctly lit and toon-shaded, not a placeholder
-      box. Reproduce: serve any file under `concord-frontend/public/
-      meshes/heroes/` over plain HTTP, then
-      `CONCORD_GLB_URL=http://host:port/name.glb CONCORD_GLB_PROBE_OUT=/tmp/out.png
-      xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot
-      --path world-lens-godot --display-driver x11 --rendering-driver opengl3
-      --script res://tools/glb_load_probe.gd`.
+      2026-08-07, corrected same day.** This was the one item flagged as
+      genuinely never-exercised. First pass tested
+      `sovereign_first_refusal.glb` (61KB) purely because it was the
+      smallest/fastest file to fetch, without checking what it actually
+      depicted — it turned out to be a small narrative/lore-artifact prop
+      (842 verts, a disconnected-reading stylized humanoid), not
+      representative of Concord's real playable-character art, and was
+      called out as such. Re-run against the correct asset class per
+      `concord-frontend/public/meshes/heroes/README.md`:
+      `_archetype_warrior.glb` (6.9MB, one of 7 real Mixamo-sourced
+      archetype meshes covering warrior/guard/scholar/mystic/hunter/trader/
+      legend — see `CREDITS.md`). Served over plain HTTP, loaded through
+      the same real `GlbLoader` + `tools/glb_load_probe.gd` (real X11/
+      opengl3 rasterizer via Xvfb, no synthetic fixture, no mocked
+      HTTPRequest). Result, verified programmatically:
+      `mesh_instance_count: 1`, `total_vertex_count: 4288`, `child_count: 1`.
+      The rendered screenshot shows a properly assembled, textured, rigged
+      humanoid — hard hat, work shirt, jeans, boots, correct proportions,
+      standing in the T-pose GLTF rest pose (no animation clip is playing
+      in this probe, so T-pose is expected and correct, not a defect).
+      This is the representative result for the loader mechanism.
+      Reproduce: serve `_archetype_warrior.glb` (or any archetype file)
+      from `concord-frontend/public/meshes/heroes/` over plain HTTP, then
+      `CONCORD_GLB_URL=http://host:port/_archetype_warrior.glb
+      CONCORD_GLB_PROBE_OUT=/tmp/out.png xvfb-run -a -s "-screen 0 1280x720x24"
+      .godot-runtime/bin/godot --path world-lens-godot --display-driver x11
+      --rendering-driver opengl3 --script res://tools/glb_load_probe.gd`.
 - [ ] `AssetResolver` resolve-endpoint path returns a usable URL; static fallback
       404s honestly (no fabricated asset). **Narrowed by the above**: the
       LOADING mechanism (this file's real risk) is now proven; what remains
