@@ -104,6 +104,35 @@ static func grounded_dial() -> float:
 	return constant("GROUNDED_DIAL", 0.45)
 
 
+## ── Production-value pass (2026-08-07) ───────────────────────────────────────
+## Real-time GI / post-processing dials — same spec-driven, never-hardcoded
+## contract as the four constants above. See ART_STYLE_GUIDE.md + this
+## session's VISUAL_QA.md entry for why these composite on TOP of the toon
+## material rather than forking away from it.
+static func sdfgi_enabled() -> bool:
+	return constant("SDFGI_ENABLED", 1.0) > 0.5
+
+
+static func glow_enabled() -> bool:
+	return constant("GLOW_ENABLED", 1.0) > 0.5
+
+
+static func glow_strength() -> float:
+	return constant("GLOW_STRENGTH", 0.6)
+
+
+static func ssao_enabled() -> bool:
+	return constant("SSAO_ENABLED", 1.0) > 0.5
+
+
+static func ssao_intensity() -> float:
+	return constant("SSAO_INTENSITY", 1.0)
+
+
+static func color_adjustment_enabled() -> bool:
+	return constant("COLOR_ADJUSTMENT_ENABLED", 1.0) > 0.5
+
+
 ## Mirrors `themeForWorldId()` in the TS: direct id match, the 'concordia'
 ## legacy alias, else the spec's own default theme.
 static func theme_id_for_world(world_id: String) -> String:
@@ -257,6 +286,27 @@ static func make_environment(world_id: String) -> Environment:
 		env.ambient_light_color = apply_saturation(_hex(amb.get("color", 0)), sat)
 		env.ambient_light_energy = float(amb.get("intensity", 1.0))
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+
+	# ── Production-value pass — real-time GI + restrained post-processing,
+	# composited on top of the toon material (see the spec-driven dials
+	# above; nothing here is a hardcoded fork of ART_STYLE_GUIDE.md's rules).
+	# SDFGI is a real Godot 4 Forward+ feature — it degrades to "no bounce
+	# light" harmlessly under a renderer that doesn't support it (e.g. the
+	# gl_compatibility/opengl3 software path this repo's own headless QA
+	# tooling uses — see VISUAL_QA.md), it does not error or fabricate light.
+	env.sdfgi_enabled = ArtStyle.sdfgi_enabled()
+	env.glow_enabled = ArtStyle.glow_enabled()
+	if env.glow_enabled:
+		env.glow_strength = ArtStyle.glow_strength()
+		env.glow_bloom = 0.0  # bloom stays additive-only; no blown highlights on a flat toon ramp
+	env.ssao_enabled = ArtStyle.ssao_enabled()
+	if env.ssao_enabled:
+		env.ssao_intensity = ArtStyle.ssao_intensity()
+	env.adjustment_enabled = ArtStyle.color_adjustment_enabled()
+	if env.adjustment_enabled:
+		# Reuses the SAME per-world saturation dial every other pass in this
+		# file reads — never a second, competing saturation number.
+		env.adjustment_saturation = sat
 	return env
 
 

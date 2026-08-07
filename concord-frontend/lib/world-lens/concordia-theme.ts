@@ -398,6 +398,25 @@ export const ART_STYLE = Object.freeze({
   GROUNDED_DIAL: 0.45,
   /** Outline darkness (multiplier on the shadow band) — shared so silhouettes read alike. */
   OUTLINE_DARKEN: 0.35,
+  // ── Production-value pass (2026-08-07) — same "one set of constants" rule,
+  // extended to real-time GI / post-processing. Composites ON TOP of the toon
+  // material (the BotW pipeline this guide already cites does the same — cel
+  // shading + real-time GI + restrained bloom are not in tension), never a
+  // fork away from the locked ramp/outline rules above. 0/1 values are
+  // booleans (kept numeric so gen-art-style-spec.mjs's existing
+  // number-only ART_STYLE parser needs no format-specific branch).
+  /** Godot 4 Forward+ SDFGI (voxel real-time GI) — bounced light/shadow from real geometry. */
+  SDFGI_ENABLED: 1,
+  /** Bloom/glow — restrained; a toon rim-light should glow, not wash out the ramp bands. */
+  GLOW_ENABLED: 1,
+  GLOW_STRENGTH: 0.6,
+  /** Screen-space AO — cheap contact-shadow grounding, high value for flat toon shading. */
+  SSAO_ENABLED: 1,
+  SSAO_INTENSITY: 1.0,
+  /** Environment color-adjustment pass — saturation is driven by the EXISTING
+   * per-world `saturationForWorld()` dial at apply-time, never a second,
+   * competing saturation constant here. This only toggles the pass on. */
+  COLOR_ADJUSTMENT_ENABLED: 1,
 });
 
 // Per-world saturation philosophy (multiplier applied to base albedo/lighting).

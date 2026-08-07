@@ -6,7 +6,13 @@
     "OUTLINE_WIDTH_M": 0.018,
     "RAMP_BANDS": 3,
     "GROUNDED_DIAL": 0.45,
-    "OUTLINE_DARKEN": 0.35
+    "OUTLINE_DARKEN": 0.35,
+    "SDFGI_ENABLED": 1,
+    "GLOW_ENABLED": 1,
+    "GLOW_STRENGTH": 0.6,
+    "SSAO_ENABLED": 1,
+    "SSAO_INTENSITY": 1,
+    "COLOR_ADJUSTMENT_ENABLED": 1
   },
   "worldSaturation": {
     "concordia-hub": 1,

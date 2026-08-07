@@ -1,5 +1,70 @@
 # Visual QA — Godot World Lens
 
+## Real-time GI + post-processing dials — wired and property-verified; visible-difference claim stays in the human-eyes queue (2026-08-07, Phase S4)
+
+Context: the user asked for the graphics level of a photoreal reference
+screenshot (Escape-from-Tarkov-tier). Checked `docs/ART_STYLE_GUIDE.md`
+directly — Concordia's art direction is a **locked, deliberate** choice
+(BotW lighting + Palworld forms, toon ramp) picked specifically to avoid
+that exact photoreal comparison. Put to the user explicitly; they chose to
+push the stylized direction further rather than pivot to PBR realism. This
+entry is that push: real-time GI + post-processing composited ON TOP of the
+existing toon material, not a fork away from it.
+
+`concord-frontend/lib/world-lens/concordia-theme.ts`'s `ART_STYLE` block
+gained 6 new numeric constants (`SDFGI_ENABLED`, `GLOW_ENABLED`,
+`GLOW_STRENGTH`, `SSAO_ENABLED`, `SSAO_INTENSITY`,
+`COLOR_ADJUSTMENT_ENABLED`) through the SAME generated-spec pipeline
+(`scripts/gen-art-style-spec.mjs` → `art_style.json`) the four locked
+constants already use — never hand-typed into the GDScript side.
+`world/art_style.gd#make_environment()` now sets the corresponding real
+Godot `Environment` properties (`sdfgi_enabled`, `glow_enabled`/
+`glow_strength`, `ssao_enabled`/`ssao_intensity`,
+`adjustment_enabled`/`adjustment_saturation`). The color-adjustment pass
+deliberately reuses `saturationForWorld()` — the SAME per-world dial every
+other pass already reads — rather than introducing a second, independently
+tunable saturation number.
+
+**Machine-verified, real engine, not asserted:** `tests/test_art_style.gd`
+now constructs a REAL `Environment` via `make_environment()` under the real
+Godot 4.4 test runner and reads its actual properties back — `sdfgi_enabled
+== true`, `glow_strength == 0.6`, `adjustment_saturation` matching each
+world's real `WORLD_SATURATION` entry (0.62 for crime, 1.35 for cyber),
+etc. This is stronger than a unit test of the accessor functions alone: it
+proves the values actually reach a real engine resource, not just that the
+JSON round-trips.
+
+**What remains genuinely unsettled, and why:** whether SDFGI/glow/SSAO
+produce a VISIBLE pixel difference could not be determined in this
+environment. A dedicated probe (`tools/env_gi_probe.gd`) rendered the same
+toon-shaded test scene twice — once with the new dials on, once forced
+off — and measured real framebuffer luma: **0.8897 (on) vs. 0.8907 (off), a
+~0.1% difference**, i.e. no measurable effect. This is an honest negative
+result, not a bug being hidden: `project.godot` configures
+`renderer/rendering_method="forward_plus"` for desktop, but Godot 4's
+Forward+/Mobile renderers require Vulkan — `--rendering-driver opengl3`
+(the flag every headless verification tool in this repo uses, including
+this one) forces the **Compatibility** renderer regardless of that project
+setting, and SDFGI specifically is a Forward+-only feature. The near-zero
+delta is consistent with GI genuinely not activating under Compatibility,
+not with the wiring being broken (which the Environment-property tests
+above already rule out independently). This is the same class of gap
+VISUAL_QA.md's own "why software rendering still cannot settle most of this
+file" section already documents for other GPU-only claims — it needs a real
+Vulkan-capable GPU session, not more code.
+
+Reproduce the property verification (real engine, works today):
+```
+.godot-runtime/bin/godot --headless --path world-lens-godot --script tests/run_all.gd
+```
+Reproduce the inconclusive visible-difference probe (documents the limit,
+not a pass/fail gate):
+```
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/env_gi_probe.gd
+```
+
 ## Weapon-in-hand — real GLB weapons now attach to real avatars (2026-08-07, Phase M1)
 
 `assets/asset_resolver.gd` gained `ARCHETYPE_WEAPON` (a small, freshly-authored

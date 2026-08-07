@@ -25,6 +25,9 @@ static func run() -> TestUtils:
 	_test_apply_saturation_touches_only_saturation(t)
 	_test_band_index_quantises(t)
 	_test_outline_derives_from_the_shadow_band(t)
+	_test_production_value_dials_read_from_spec(t)
+	_test_make_environment_wires_gi_and_post_processing(t)
+	_test_make_environment_respects_per_world_saturation_in_adjustment(t)
 	return t
 
 
@@ -87,3 +90,40 @@ static func _test_outline_derives_from_the_shadow_band(t: TestUtils) -> void:
 	t.check_almost(outline.r, grad[0].r * 0.35, "outline R = shadow x OUTLINE_DARKEN")
 	t.check_almost(outline.g, grad[0].g * 0.35, "outline G = shadow x OUTLINE_DARKEN")
 	t.check_almost(outline.b, grad[0].b * 0.35, "outline B = shadow x OUTLINE_DARKEN")
+
+
+static func _test_production_value_dials_read_from_spec(t: TestUtils) -> void:
+	# Pins the generated spec's current values — if concordia-theme.ts changes
+	# these, gen-art-style-spec.mjs's --check gate fails first (same discipline
+	# as the four locked ART_STYLE constants above).
+	t.check(ArtStyle.sdfgi_enabled(), "SDFGI on by default")
+	t.check(ArtStyle.glow_enabled(), "glow on by default")
+	t.check_almost(ArtStyle.glow_strength(), 0.6, "GLOW_STRENGTH")
+	t.check(ArtStyle.ssao_enabled(), "SSAO on by default")
+	t.check_almost(ArtStyle.ssao_intensity(), 1.0, "SSAO_INTENSITY")
+	t.check(ArtStyle.color_adjustment_enabled(), "color adjustment on by default")
+
+
+static func _test_make_environment_wires_gi_and_post_processing(t: TestUtils) -> void:
+	var env := ArtStyle.make_environment("concordia-hub")
+	t.check(env != null, "make_environment returns a real Environment for a known world")
+	if env == null:
+		return
+	t.check_eq(env.sdfgi_enabled, true, "SDFGI is actually enabled on the Environment resource")
+	t.check_eq(env.glow_enabled, true, "glow is actually enabled on the Environment resource")
+	t.check_almost(env.glow_strength, 0.6, "glow_strength reaches the real Environment property")
+	t.check_eq(env.ssao_enabled, true, "SSAO is actually enabled on the Environment resource")
+	t.check_almost(env.ssao_intensity, 1.0, "ssao_intensity reaches the real Environment property")
+	t.check_eq(env.adjustment_enabled, true, "color adjustment is actually enabled")
+
+
+static func _test_make_environment_respects_per_world_saturation_in_adjustment(t: TestUtils) -> void:
+	# The adjustment pass's saturation must be the SAME per-world dial every
+	# other pass reads — never a second, independently-drifting number.
+	var crime_env := ArtStyle.make_environment("crime")
+	var cyber_env := ArtStyle.make_environment("cyber")
+	t.check(crime_env != null and cyber_env != null, "both worlds resolve a real Environment")
+	if crime_env == null or cyber_env == null:
+		return
+	t.check_almost(crime_env.adjustment_saturation, 0.62, "crime's adjustment_saturation matches its WORLD_SATURATION entry")
+	t.check_almost(cyber_env.adjustment_saturation, 1.35, "cyber's adjustment_saturation matches its WORLD_SATURATION entry")
