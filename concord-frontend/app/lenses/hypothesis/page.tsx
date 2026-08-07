@@ -12,7 +12,7 @@ import { StatsWorkbench } from '@/components/hypothesis/StatsWorkbench';
 import { HypothesisLab } from '@/components/hypothesis/HypothesisLab';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -21,6 +21,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function HypothesisLensPage() {
   useLensNav('hypothesis');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('hypothesis');
+  const [showArxiv, setShowArxiv] = useState(false);
 
   return (
     <LensShell lensId="hypothesis" asMain={false}>
@@ -88,7 +89,19 @@ export default function HypothesisLensPage() {
       </section>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ArxivFeed />
+        <button
+          type="button"
+          onClick={() => setShowArxiv(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>arXiv reference feed</span>
+          {showArxiv ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showArxiv && (
+          <div className="mt-3">
+            <ArxivFeed />
+          </div>
+        )}
       </section>
     </div>
 
