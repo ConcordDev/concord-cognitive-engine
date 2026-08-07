@@ -20,6 +20,7 @@ import {
   Download, FileJson, FileText, Database, Check, Package,
   FileCode, FileSpreadsheet, Hash, ArrowDownToLine,
   Loader2, Clock, Archive, X, ShieldCheck, Zap, GitCompare,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -45,6 +46,8 @@ export default function ExportLensPage() {
   const [exporting, setExporting] = useState(false);
   const [exportingDtuId, setExportingDtuId] = useState<string | null>(null);
   const [singleExportFormat, setSingleExportFormat] = useState<ExportFormat>('json');
+  const [showExportToolkit, setShowExportToolkit] = useState(false);
+  const [showFormatGallery, setShowFormatGallery] = useState(false);
 
   // Format pickers via single-letter shortcut.
   useLensCommand(
@@ -585,13 +588,37 @@ export default function ExportLensPage() {
       {/* Advanced export toolkit — scheduled runs, cloud delivery, PDF,
           delta exports, history, encryption, field selection. */}
       <section className="panel p-4">
-        <ExportToolkit />
+        <button
+          type="button"
+          onClick={() => setShowExportToolkit(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Advanced export toolkit</span>
+          {showExportToolkit ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showExportToolkit && (
+          <div className="mt-3">
+            <ExportToolkit />
+          </div>
+        )}
       </section>
 
       <ConnectiveTissueBar lensId="export_import" />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ExportFormatGallery />
+        <button
+          type="button"
+          onClick={() => setShowFormatGallery(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Export tooling gallery (external reference)</span>
+          {showFormatGallery ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFormatGallery && (
+          <div className="mt-3">
+            <ExportFormatGallery />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="export" limit={10} hideWhenEmpty className="mt-4" />
