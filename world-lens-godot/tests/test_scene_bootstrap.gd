@@ -47,6 +47,9 @@ static func run() -> TestUtils:
 	_test_collision_disabled_by_default(t)
 	_test_collision_spawns_one_body_per_node_at_the_matching_transform(t)
 	_test_collision_cleared_on_reapply(t)
+	_test_parses_well_shaped_vegetation_verbatim(t)
+	_test_drops_malformed_vegetation_without_crashing(t)
+	_test_empty_vegetation_yields_empty_array(t)
 	return t
 
 
@@ -146,6 +149,48 @@ static func _test_drops_malformed_districts_without_crashing(t: TestUtils) -> vo
 		parsed.size(), 1,
 		"only the one well-shaped entry survives — malformed entries are dropped, never fabricated")
 	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")
+
+
+## Phase M2 — same verbatim-passthrough-or-drop coverage as the pad/district
+## tests above, for the additive `vegetation` field
+## (server/lib/vegetation-scatter.js), consumed downstream by
+## world/vegetation_renderer.gd.
+static func _test_parses_well_shaped_vegetation_verbatim(t: TestUtils) -> void:
+	var raw := [
+		{
+			"id": "concordia-hub:plaza:veg:0", "species": "tree_02",
+			"x": 12.5, "y": 0.0, "z": -30.25, "rotationY": 1.2, "scale": 1.05,
+			"districtId": "concordia-hub:plaza",
+		},
+	]
+	var parsed := SceneBootstrap.parse_vegetation(raw)
+	t.check_eq(parsed.size(), 1, "one well-shaped vegetation entry parses to one output entry")
+	t.check_eq(parsed[0]["id"], "concordia-hub:plaza:veg:0", "id is passed through verbatim")
+	t.check_eq(parsed[0]["species"], "tree_02", "species is passed through verbatim")
+	t.check_eq(parsed[0]["x"], 12.5, "x is passed through verbatim, real server-authored coordinate")
+
+
+static func _test_drops_malformed_vegetation_without_crashing(t: TestUtils) -> void:
+	var raw := [
+		{"id": "no-species", "x": 0, "y": 0, "z": 0},
+		{"species": "tree_01", "x": 0, "y": 0, "z": 0},  # no id
+		{"id": "no-x", "species": "tree_01", "y": 0, "z": 0},
+		{"id": "no-y", "species": "tree_01", "x": 0, "z": 0},
+		{"id": "no-z", "species": "tree_01", "x": 0, "y": 0},
+		"not-even-a-dict",
+		{"id": "well-shaped", "species": "bush_01", "x": 1, "y": 0, "z": 2},
+	]
+	var parsed := SceneBootstrap.parse_vegetation(raw)
+	t.check_eq(
+		parsed.size(), 1,
+		"only the one well-shaped entry survives — malformed entries are dropped, never fabricated")
+	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")
+
+
+static func _test_empty_vegetation_yields_empty_array(t: TestUtils) -> void:
+	t.check(
+		SceneBootstrap.parse_vegetation([]).is_empty(),
+		"an empty raw array yields an empty result — honest 'no vegetation' for worlds with none scattered")
 
 
 ## F26 — real node shape from server/lib/scene-export.js (`extras.levels`

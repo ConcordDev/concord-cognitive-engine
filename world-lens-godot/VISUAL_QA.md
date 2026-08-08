@@ -1,5 +1,121 @@
 # Visual QA — Godot World Lens
 
+## Vegetation scatter — real district-bounded backend data, real GLB swap over HTTP (2026-08-08, Phase M2)
+
+Closes the vegetation half of the "genuinely no placement data exists yet"
+scope note below (the creature half was closed by Phase M3, above). Unlike
+Phase M3, this genuinely needed new backend code — no live vegetation feed
+existed anywhere before this unit.
+
+**New deterministic scatter, grounded in real district geometry, not
+invented.** `server/lib/vegetation-scatter.js#scatterVegetationForWorld`
+places entries inside each of a world's REAL district boundary polygons
+(`server/lib/districts.js#listDistricts`/`pointInPolygon` — the same
+geometric test `districtAt` uses elsewhere), via rejection sampling seeded
+by `server/lib/world-terrain.js#hashSeed` (the same FNV-1a technique
+`TreeLayer.tsx`'s own client-side hash already uses, so the *method* is
+reused even though the resulting positions are new — this project's Three.js
+vegetation layer has zero server authority today, so there was no existing
+"real" placement design to port, only a proven hashing primitive). `y` comes
+from each district's real authored `elevationHint`, never guessed; species
+is drawn uniformly across the 6 real on-disk ids (concordia-hub has no biome
+data to weight by — an honest, documented simplification, not silently
+applied); a world with no recorded districts (every world but
+concordia-hub today) gets an honest `[]`, not fabricated placements. Wired
+into `server/lib/scene-export.js#exportScene`'s return as an additive
+`vegetation` field, same guarded try/catch-degrades-to-`[]` posture as the
+existing `districts`/`plaza`/`landingPads` fields — `godot-gateway.js`'s
+`scene:request` handler is a verbatim pass-through, so zero gateway changes
+were needed to deliver it.
+
+**Godot side mirrors the existing parse/spawn split exactly.**
+`world/scene_bootstrap.gd#parse_vegetation` follows the same
+verbatim-passthrough-or-drop contract as `parse_landing_pads`/
+`parse_districts` (a new `vegetation_ready` signal, emitted from
+`apply_scene()`); the actual spawning lives in a dedicated new consumer,
+`world/vegetation_renderer.gd`, which mirrors `world/dtu_prop_renderer.gd`'s
+asset strategy (real GLB when one resolves via `AssetResolver`/`GlbLoader`,
+else a tinted placeholder cylinder that stays up forever on a failed
+resolve — never fabricates). One `Node3D` holder per instance, deliberately
+NOT `PropInstancer`/MultiMesh — concordia-hub's real district geometry
+produces tens of entries, not hundreds, so MultiMesh's batching machinery
+isn't warranted, and `PropInstancer` doesn't support this class's
+per-instance async-GLB-upgrade lifecycle; flagged as a deferred optimization
+if density ever grows into the hundreds. `world/boot.gd` mounts
+`VegetationRenderer` right after `_bootstrap` and connects
+`_bootstrap.vegetation_ready` directly to `_vegetation_renderer.spawn` — no
+adapter needed, the signal shape already matches.
+
+**A real bug found by the test suite, not just written around.**
+`parse_vegetation`'s first draft required `species`/`x`/`y`/`z` but NOT
+`id` — yet `VegetationRenderer._spawn_one` dedupes/keys every spawned holder
+by `id` (`if id.is_empty() or _spawned.has(id): return`), so an id-less
+entry would either silently fail to render or collide with another id-less
+entry. Caught immediately by `tests/test_scene_bootstrap.gd`'s new
+`_test_drops_malformed_vegetation_without_crashing` case (expected 1
+surviving entry, got 2 — a real `[FAIL]`, not a misleading pass this time).
+Fixed by requiring `id` too, matching `parse_districts`' existing contract.
+
+**Verified three ways.**
+1. Pure-logic: `tests/test_scene_bootstrap.gd` gained 3 new cases
+   (well-shaped vegetation parses verbatim, malformed entries — including
+   the id-less case above — are dropped without crashing, an empty array
+   yields an honest empty result); `tests/test_vegetation_renderer.gd` (new,
+   7 checks) pins `entry_to_transform` (position/rotation/scale math,
+   honest identity defaults on missing fields) and
+   `placeholder_color_for_species` (every real species gets a visually
+   distinct tint, an unrecognized species gets an honest neutral default,
+   never a crash). Backend: `server/tests/vegetation-scatter.test.js` (7
+   tests — determinism, every point genuinely `pointInPolygon`-inside its
+   own district, species membership, real `elevationHint` for `y`, honest
+   empty on a districtless world, `maxPerDistrict` cap respected, density
+   monotonicity) plus a new `scene-export.test.js` case asserting the
+   `vegetation` field is present and honestly empty when no districts are
+   seeded — 35/35 backend tests green. Full `tests/run_all.gd`: **38/38
+   suites PASS, 0 fail**, real non-zero per-suite counts confirmed
+   (`SceneBootstrap` 66, `VegetationRenderer` 7) — the self-qualified
+   `SceneBootstrap.parse_vegetation(...)` call in `apply_scene()` (a
+   deliberate choice to match this file's own existing convention for
+   `parse_landing_pads`/`parse_districts`, rather than defensively
+   bare-naming it) compiled cleanly on the first real run, unlike the
+   `class_name`-qualified bug that bit `npc_poller.gd` and `creature_rig.gd`
+   earlier this session.
+2. **Real-engine, no server needed.** `tools/vegetation_renderer_probe.gd`
+   feeds a real `VegetationRenderer` a synthetic 4-entry scatter-shaped
+   array (matching the exact backend output shape) with no server or
+   frontend origin required, and reads the renderer's own `_spawned`
+   dictionary directly (not `child.name` — Godot silently sanitizes `:` out
+   of Node names, so a real id like `"concordia-hub:plaza:veg:0"` does NOT
+   round-trip through `child.name` unchanged; a probe-methodology fact,
+   caught and fixed mid-pass, not a renderer bug). Result:
+   `{"all_ids_present":true,"entries_sent":4,"holders_spawned":4,"ok":true}`
+   — every entry became a real spawned holder at the correct transform,
+   honest placeholder-only (no server = no GLB source to resolve against).
+3. **Real-engine, real HTTP GLB fetch.** Re-ran the same probe with
+   `CONCORD_FRONTEND_URL` pointed at a real `python3 -m http.server`
+   serving `concord-frontend/public/models/vegetation/*.glb` over plain
+   HTTP (this needed no `server.js` — vegetation GLBs are static files, not
+   macro-gated data). All 4 entries reported `"glb_swapped":true`
+   (distinguished by checking the surviving child's own class rather than
+   `child_count`, since `queue_free()` on the placeholder is deferred, not
+   immediate) and the captured screenshot (`/tmp/
+   vegetation_renderer_probe.png`) shows two genuinely distinct real tree/
+   bush meshes at the two visible spawn positions — not the tinted cylinder
+   placeholder. The test HTTP server was torn down afterward; confirmed no
+   process left running.
+
+**What this does NOT settle — stated plainly.** No building-footprint
+collision avoidance (a scattered tree can land inside a real building's
+footprint — not checked this pass); no per-biome species variation
+(concordia-hub has no biome data to weight against, so species selection is
+uniform, an honest documented simplification); wind/sway animation (nothing
+to port — the Three.js client has none either); on-display visual
+correctness beyond the one real screenshot above (does the scatter density
+*read* right at real gameplay camera distances — untested); any world
+besides concordia-hub (every other world has no authored districts today,
+so the scatter honestly returns `[]` for them — a content gap, not a code
+gap).
+
 ## Creature spawner — real macro round trip, separate non-humanoid rig pipeline, zero backend changes (2026-08-08, Phase M3)
 
 Not a rendering claim — real object-state mutation from a genuinely live
@@ -624,6 +740,14 @@ xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
 ```
 
 ## Vegetation/creature meshes — genuinely no placement data exists yet (2026-08-07, scope note)
+
+**Superseded 2026-08-08 — both gaps this note identifies are now closed.**
+Creatures: see "Creature spawner" (Phase M3) above — a real live macro
+round trip, zero backend changes needed. Vegetation: see "Vegetation
+scatter" (Phase M2) above — a real new backend surface
+(`server/lib/vegetation-scatter.js`), district-bounded and deterministic.
+Kept below for the historical record of what was actually checked (not
+assumed) before either phase started.
 
 Before starting the "meshes" pass, checked directly (not assumed) whether a
 real placement-data feed exists for the vegetation (6 GLBs) and creature (4

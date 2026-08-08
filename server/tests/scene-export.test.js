@@ -64,6 +64,12 @@ describe("Engine Bridge / Scene Export (#29)", () => {
     assert.equal(s.bounds, null);
   });
 
+  it("carries a vegetation field, honestly empty for a world with no recorded districts (Phase M2)", () => {
+    const s = exportScene(db, "w1");
+    assert.ok(Array.isArray(s.vegetation), "vegetation is always an array, never missing");
+    assert.deepEqual(s.vegetation, [], "w1 has no seeded districts, so scatter has nothing real to place inside");
+  });
+
   it("scenebridge macros round-trip", async () => {
     const exp = await macros.get("scenebridge.export")({ db }, { worldId: "w1" });
     assert.equal(exp.count, 2);

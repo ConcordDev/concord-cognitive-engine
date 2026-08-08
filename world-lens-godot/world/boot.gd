@@ -95,6 +95,7 @@ const TerrainTextureLoader := preload("res://assets/terrain_texture_loader.gd")
 const NpcPoller := preload("res://world/npc_poller.gd")
 const CreatureManager := preload("res://world/creature_manager.gd")
 const CreaturePoller := preload("res://world/creature_poller.gd")
+const VegetationRenderer := preload("res://world/vegetation_renderer.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -153,6 +154,12 @@ var _npc_poller: NpcPoller
 ## would silently mis-render it through the player/NPC pipeline).
 var _creature_manager: CreatureManager
 var _creature_poller: CreaturePoller
+## Phase M2 — deterministic, district-bounded vegetation (server/lib/
+## vegetation-scatter.js), delivered on the same one-shot scene:data payload
+## buildings/districts/landing pads already arrive on — see
+## world/scene_bootstrap.gd#parse_vegetation/vegetation_ready. No poller: it
+## rides the existing scene fetch.
+var _vegetation_renderer: VegetationRenderer
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -370,6 +377,17 @@ func _ready() -> void:
 	_bootstrap.frontend_asset_base_url = frontend_asset_base_url
 	_bootstrap.world_id = world_id
 	add_child(_bootstrap)
+
+	# Phase M2 — real, district-bounded deterministic vegetation. Rides the
+	# same one-shot scene:data payload _bootstrap already parses; no new
+	# poller. `frontend_asset_base_url` matches _bootstrap's own asset origin
+	# above (vegetation GLBs live alongside building GLBs under
+	# concord-frontend/public/models/).
+	_vegetation_renderer = VegetationRenderer.new()
+	_vegetation_renderer.frontend_asset_base_url = frontend_asset_base_url
+	_vegetation_renderer.world_id = world_id
+	add_child(_vegetation_renderer)
+	_bootstrap.vegetation_ready.connect(_vegetation_renderer.spawn)
 
 	# C16 — ambient aerial traffic. Same "mount + let boot.gd's _on_event
 	# dispatch to it" pattern as SceneBootstrap; see that file's own class

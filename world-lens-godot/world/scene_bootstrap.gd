@@ -73,6 +73,7 @@ extends Node3D
 ## parsing lives here, gating logic lives in the controller).
 
 signal scene_ready(count: int)
+signal vegetation_ready(entries: Array)
 signal scene_failed(reason: String)
 signal landing_pads_ready(pads: Array)
 signal districts_ready(districts: Array)
@@ -125,6 +126,7 @@ var _spawned: Array[Node3D] = []
 var _landing_pads: Array = []
 var _districts: Array = []
 var _rooftop_buildings: Array = []
+var _vegetation: Array = []
 
 # archetype (String) -> Node3D real-mesh template once loaded, or "loading"
 # (String sentinel) while a fetch is in flight. Absent key = not attempted.
@@ -289,6 +291,13 @@ func apply_scene(payload: Dictionary) -> void:
 	_rooftop_buildings = SceneBootstrap.parse_rooftop_buildings(nodes)
 	rooftop_buildings_ready.emit(_rooftop_buildings)
 
+	# Phase M2 — real, district-bounded deterministic vegetation placements
+	# (server/lib/vegetation-scatter.js), or [] for a world with no recorded
+	# districts. Parse-only, same posture as landing pads/districts above —
+	# spawning lives in the dedicated consumer, world/vegetation_renderer.gd.
+	_vegetation = SceneBootstrap.parse_vegetation(payload.get("vegetation", []))
+	vegetation_ready.emit(_vegetation)
+
 	scene_ready.emit(_spawned.size())
 
 
@@ -313,6 +322,13 @@ func get_districts() -> Array:
 ## internal state.
 func get_rooftop_buildings() -> Array:
 	return _rooftop_buildings.duplicate(true)
+
+
+## Real vegetation placements (Phase M2) from the most recent `apply_scene`
+## call — see `world/vegetation_renderer.gd` for the consumer. Returns a
+## duplicate so callers can't mutate this node's internal state.
+func get_vegetation() -> Array:
+	return _vegetation.duplicate(true)
 
 
 ## Real focus point for an overview/orbit camera (session/camera_rig.gd) —
@@ -607,6 +623,29 @@ static func parse_districts(raw: Array) -> Array:
 			continue
 		var palette = entry.get("palette", null)
 		if typeof(palette) != TYPE_DICTIONARY or not palette.has("primary"):
+			continue
+		out.append(entry.duplicate(true))
+	return out
+
+
+## Passes through well-shaped vegetation entries verbatim (id, species, x,
+## y, z, rotationY, scale, districtId — server/lib/vegetation-scatter.js's
+## real output shape); silently drops any entry missing `id`, `species`, or
+## any of `x`/`y`/`z` — the fields world/vegetation_renderer.gd#spawn
+## actually depends on (it dedupes/keys spawned holders by `id`, so an
+## entry with no id would either silently fail to render or collide with
+## another id-less entry) — rather than fabricating a placeholder
+## placement. Never throws on malformed input — an empty/missing `raw`
+## array (every world other than concordia-hub today, since only it has
+## recorded districts) yields an honest empty result.
+static func parse_vegetation(raw: Array) -> Array:
+	var out: Array = []
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if not entry.has("id") or not entry.has("species"):
+			continue
+		if not entry.has("x") or not entry.has("y") or not entry.has("z"):
 			continue
 		out.append(entry.duplicate(true))
 	return out
