@@ -1,5 +1,120 @@
 # Visual QA — Godot World Lens
 
+## Character archetype signal + customization (2026-08-08)
+
+Closes the standing gap named in avatar_rig.gd's own doc comment ever since
+Phase M1: every avatar (local player AND every remote NPC/player) always
+resolved to the hardcoded "warrior" default, because no per-avatar archetype
+signal reached the client. This unit gives the LOCAL player a real one.
+Remote avatars are explicitly, deliberately still out of scope — see below.
+
+**Investigation found the real signal is richer than the obvious one.** The
+web client's own `archetypeForPlayerAppearance` heuristic
+(`AvatarSystem3D.tsx:328-347`) looked like the thing to port, but reading
+its actual live call site (`app/lenses/world/page.tsx`'s `playerAvatar`
+useState) found it's fed a **degenerate, effectively-constant input in
+production**: that file's own appearance-load effect only merges
+`skinColor`/`hairColor`/clothing COLOR fields from the loaded
+`RichAppearanceConfig`, never `bodyArchetype`/`clothing.top.kind`/
+`hairStyle` — and the local state's own TypeScript type pins those three
+fields to single-value literals (`bodyType:'average'`, `clothing.top.type:
+'shirt'`, `hairStyle:'short'`). So the web client's own heuristic always
+evaluates the same branch today (shirt + non-stocky → 'hunter'), regardless
+of what a player actually customized. Porting THAT behavior verbatim would
+have been fabricated precision dressed as personalization — a real finding,
+not assumed, confirmed by reading the actual merge code.
+
+The real, live, per-player-varying signal instead is
+`server/domains/appearance.js#save`/`load_for_user` — confirmed genuinely
+used by reading `app/onboarding/character/page.tsx`'s actual save/load
+calls, which persist the FULL `RichAppearanceConfig`
+(`character-schema.ts:271-309`: `bodyArchetype` 7 values, `clothing.top.kind`
+14 values — note `kind`, not `type` — `hairStyle` 13 values). **This
+client now reads that macro DIRECTLY**, bypassing the web client's lossy
+local merge entirely — so this client's local-player archetype is honestly
+MORE accurate than what currently ships in the browser reference, not a
+divergence for its own sake (documented in full in both
+`avatar/appearance_archetype.gd`'s and `world/player_appearance_loader.gd`'s
+class docs).
+
+**`avatar/appearance_archetype.gd`** (new, pure `RefCounted`) —
+`archetype_for_appearance(body_archetype, top_kind, hair_style)` matches
+`archetypeForPlayerAppearance`'s 5 TS-covered branches (shirt/vest/coat/
+robe/apron + the 'legend' bodyType shortcut) EXACTLY, extended to the real
+`ClothingTopKind`'s other 9 values (tunic/jacket/trench/breastplate/
+synth-jacket/cassock/kanga/duster/cape) — grouped onto the nearest matching
+TS bucket by real-world garment family, explicitly labeled in the file's own
+class doc as THIS FILE'S OWN extension, not a claim about what the TS
+reference "would" do. `resolve_from_dict(appearance)` extracts the 3 fields
+from a parsed `RichAppearanceConfig`-shaped Dictionary, returning an honest
+`""` (never a fabricated archetype) when `appearance` itself is null/
+missing/malformed — the real "brand-new player, never saved a character"
+case — while still resolving a real archetype from a PARTIALLY-saved
+profile using the same defaults `character-schema.ts`'s own generator uses.
+
+**`world/player_appearance_loader.gd`** (new) — one real, bounded, one-shot
+`POST /api/lens/run {domain:"appearance", name:"load_for_user"}` (the SAME
+macro the onboarding character page calls). `settled(archetype)` fires
+EXACTLY ONCE, from whichever comes first: a real HTTP response or a
+`TIMEOUT_S=4.0` timer — so a slow/hung backend can never delay world entry;
+the appearance signal is a nicety, never a blocker. Unwraps the real
+double-`ok` `/api/lens/run` envelope (`{ok:true, result:{ok:true,
+appearance:{...}|null}}` — `appearance.load_for_user` returns `{ok,
+appearance}` directly, so no extra nesting beyond the standard envelope;
+verified by reading the macro handler, same discipline as
+creature_poller.gd's own documented envelope-unwrap finding).
+
+**`world/boot.gd` wiring** — `_player_appearance_loader` is mounted and
+`.fetch()`'d as early as possible (right after `auth_token` resolves, same
+posture as `_sfx_player`/`_pause_menu` — no scene-data dependency).
+`_spawn_local_player_if_needed` is now GATED behind a new
+`_try_spawn_local_player()` that waits for BOTH real prerequisites — camera
+bounds (`world:data`, a much heavier round trip in practice) AND the
+appearance loader's `settled` signal — before constructing the local
+player's `AvatarRig` at all. This was a deliberate design choice over
+re-resolving an already-mounted rig's GLB after a late-arriving signal:
+gating spawn keeps `avatar_rig.gd`'s already-verified resolve flow
+completely untouched, at the cost of the local player's own visual spawn
+waiting on one extra bounded (≤4s) network round trip in the worst case.
+`rig.archetype` is overridden with the resolved value only when non-empty
+— an empty result (no saved appearance / auth failure / timeout) falls
+through to `AvatarRig`'s own "warrior" default exactly as before this unit.
+
+**Real-engine proof — pure-logic suite + a real-server probe.**
+`tests/test_appearance_archetype.gd` (24 checks: all 5 TS-matching
+branches + the legend shortcut + all 9 extended-kind groupings + 4
+`resolve_from_dict` cases including the honest-empty and malformed-input
+paths) and `tests/test_player_appearance_loader.gd` (3 checks, the request-
+body builder). Full suite: **47/47 test files green** (was 45).
+`tools/player_appearance_probe.gd` (new) mirrors `npc_poller_probe.gd`'s
+"real backend, real HTTP round trip, real settle" pattern — requires
+`CONCORD_BACKEND_URL` (+ optional `CONCORD_APPEARANCE_PROBE_AUTH_TOKEN`)
+against an already-running server; verified this session to compile and
+report its own honest `no_backend_url` failure with no server pointed at
+it, but **NOT run against a live server this session** (none was running)
+— the same class of residual this file already carries for several other
+probes, named plainly rather than silently implied as exercised.
+
+**A real, pre-existing bug found in the Three.js reference, NOT fixed
+here** (out of this client's scope, lives in
+`concord-frontend/app/lenses/world/page.tsx`'s own appearance-load effect):
+the web client's local player permanently shows the wrong-by-omission
+`bodyArchetype`/`clothing.top.kind`/`hairStyle` for anyone who customized
+their character past the color pickers — flagged in both new files' class
+docs for whoever picks up Three.js-side work next, not silently patched in
+this Godot-focused pass.
+
+**What this does NOT settle.** No human has watched the resolved archetype
+actually change which hero-mesh GLB loads in a real browser session tied to
+a real saved character — same standing headless-mode caveat as every other
+entry in this file. Remote avatars (every other player, every NPC) still
+resolve to the "warrior" default — `city:positions` (the only live remote-
+avatar broadcast) carries no appearance/archetype field at all, and adding
+one is a real, separate backend-surface decision this unit deliberately did
+not make unprompted (same posture Phase N's own class doc took for
+creatures before that unit was scoped). The probe's real-server round trip
+was not exercised this session (no backend was running).
+
 ## Combat C7 — hold-variants, combo chains, lock-on (2026-08-08)
 
 Closes the three items the class doc named as deferred since Combat C6:

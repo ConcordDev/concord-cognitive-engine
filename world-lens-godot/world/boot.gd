@@ -105,6 +105,7 @@ const WayfindingController := preload("res://world/wayfinding_controller.gd")
 const RooftopAccessController := preload("res://world/rooftop_access_controller.gd")
 const SfxPlayer := preload("res://audio/sfx_player.gd")
 const PauseMenu := preload("res://ui/pause_menu.gd")
+const PlayerAppearanceLoader := preload("res://world/player_appearance_loader.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -186,6 +187,22 @@ var _sfx_player: SfxPlayer
 ## `_on_pause_overlay_opened`/`_closed` below, mirroring the existing FEA-
 ## overlay pattern (`_on_fea_overlay_opened`/`_closed`).
 var _pause_menu: PauseMenu
+
+## Character archetype signal (2026-08-08) — see player_appearance_loader.gd's
+## own class doc for the full rationale. Mounted + fetched unconditionally in
+## `_ready()` (needs only `auth_token`, already resolved by then — no
+## scene-data dependency, same posture as `_sfx_player`/`_pause_menu` above).
+var _player_appearance_loader: PlayerAppearanceLoader
+## The resolved archetype ("" = not yet settled, or genuinely no signal —
+## AvatarRig's own "warrior" default applies either way). Read exactly once,
+## at `_spawn_local_player_if_needed` time — see `_try_spawn_local_player()`.
+var _resolved_player_archetype: String = ""
+var _appearance_settled: bool = false
+## The local player's spawn point, known once `world:data` resolves camera
+## bounds. Held here (rather than spawning immediately) so spawn can wait on
+## BOTH real prerequisites — see `_try_spawn_local_player()`.
+var _has_pending_spawn_center: bool = false
+var _pending_spawn_center: Vector3 = Vector3.ZERO
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -429,6 +446,21 @@ func _ready() -> void:
 	_pause_menu.sfx_player = _sfx_player
 	add_child(_pause_menu)
 	_pause_menu.resume_requested.connect(func(): _session.close_pause_overlay())
+
+	# Character archetype signal (2026-08-08) — kicked off as early as
+	# possible (needs only `auth_token`, already resolved a few lines above)
+	# so the real customization signal is very likely to have settled well
+	# before the local player's own spawn happens later (gated on
+	# `world:data`'s camera bounds — a much heavier round trip). See
+	# `_try_spawn_local_player()` for the actual gate; `player_appearance_
+	# loader.gd`'s own class doc for why this is bounded and never blocks
+	# world entry.
+	_player_appearance_loader = PlayerAppearanceLoader.new()
+	_player_appearance_loader.base_url = "http://127.0.0.1:5050"
+	_player_appearance_loader.auth_token = auth_token
+	add_child(_player_appearance_loader)
+	_player_appearance_loader.settled.connect(_on_player_appearance_settled)
+	_player_appearance_loader.fetch()
 
 	_bootstrap = SceneBootstrap.new()
 	_bootstrap.enable_real_building_meshes = true
@@ -680,6 +712,27 @@ func _apply_ground_texture(ground_material: StandardMaterial3D) -> void:
 const SPAWN_DROP_HEIGHT_M := 80.0
 
 
+## Character archetype signal (2026-08-08) — `_spawn_local_player_if_needed`
+## must not construct the local player's AvatarRig (which immediately kicks
+## off its GLB resolve with whatever `archetype` is set at that moment) until
+## BOTH real prerequisites are known: where to spawn (`world:data`'s camera
+## bounds) AND the real per-player archetype signal (`_player_appearance_
+## loader`, bounded so a slow/failed fetch can never block world entry — see
+## that file's own class doc). Gating spawn here, rather than re-resolving an
+## already-mounted AvatarRig's GLB after the fact, keeps avatar_rig.gd's
+## already-verified resolve flow completely untouched.
+func _try_spawn_local_player() -> void:
+	if _character != null or not _has_pending_spawn_center or not _appearance_settled:
+		return
+	_spawn_local_player_if_needed(_pending_spawn_center)
+
+
+func _on_player_appearance_settled(archetype: String) -> void:
+	_resolved_player_archetype = archetype
+	_appearance_settled = true
+	_try_spawn_local_player()
+
+
 func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	if _character != null:
 		return
@@ -718,6 +771,15 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	rig.rig_id = "local-player"
 	rig.base_url = frontend_asset_base_url
 	rig.world_id = world_id
+	# Character archetype signal (2026-08-08) — a real per-player signal now
+	# exists for the LOCAL player (see `_player_appearance_loader`/
+	# `_try_spawn_local_player` above); an empty string means the loader
+	# genuinely settled with no signal (no saved appearance / auth failure /
+	# timeout), and `rig.archetype`'s own "warrior" default (avatar/
+	# avatar_rig.gd) applies honestly, same as it always has. Remote avatars
+	# still carry no such signal — see this rig's `kind`/`archetype` doc.
+	if _resolved_player_archetype != "":
+		rig.archetype = _resolved_player_archetype
 	# Phase M1 — the local player carries a real weapon mesh too, same
 	# archetype-driven resolve chain as the body above.
 	rig.attach_weapon = true
@@ -1044,7 +1106,9 @@ func _on_event(evt: String, data: Dictionary) -> void:
 				# one a given authored world happens to be longer along, so
 				# it doesn't need to be re-tuned per world.
 				_camera_rig.set_orbit_yaw(PI / 4.0)
-				_spawn_local_player_if_needed(_cam_bounds["center"])
+				_has_pending_spawn_center = true
+				_pending_spawn_center = _cam_bounds["center"]
+				_try_spawn_local_player()
 		"world:aerial-traffic":
 			_aerial_traffic.apply_snapshot(data, Time.get_ticks_msec())
 		"city:positions":

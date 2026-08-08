@@ -67,6 +67,8 @@ const TestQuestAvailablePoller := preload("res://tests/test_quest_available_poll
 const TestQuestActions := preload("res://tests/test_quest_actions.gd")
 const TestSfxSynth := preload("res://tests/test_sfx_synth.gd")
 const TestLockOnState := preload("res://tests/test_lock_on_state.gd")
+const TestAppearanceArchetype := preload("res://tests/test_appearance_archetype.gd")
+const TestPlayerAppearanceLoader := preload("res://tests/test_player_appearance_loader.gd")
 
 
 func _init() -> void:
@@ -116,6 +118,8 @@ func _init() -> void:
 		"QuestActions": TestQuestActions.run(),
 		"SfxSynth": TestSfxSynth.run(),
 		"LockOnState": TestLockOnState.run(),
+		"AppearanceArchetype": TestAppearanceArchetype.run(),
+		"PlayerAppearanceLoader": TestPlayerAppearanceLoader.run(),
 	}
 
 	var all_ok := true

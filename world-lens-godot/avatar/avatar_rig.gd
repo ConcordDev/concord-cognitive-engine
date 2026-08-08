@@ -66,8 +66,17 @@ signal weapon_load_failed(reason: String)
 ## own comment. Blank is legal (falls to the universal archetype file).
 @export var world_id: String = ""
 ## Threaded to AssetResolver as the body-mesh + weapon archetype (Phase M1).
-## Defaults to "warrior" — the honest default (no per-avatar archetype
-## signal exists on the wire yet, see asset_resolver.gd#fallback_url).
+## Defaults to "warrior" — the honest default. As of the character-
+## archetype-signal unit (2026-08-08), `world/boot.gd` overrides this for
+## the LOCAL player's own rig with a real signal resolved from their saved
+## RichAppearanceConfig (see world/player_appearance_loader.gd +
+## avatar/appearance_archetype.gd) — no saved appearance / auth failure /
+## timeout honestly falls through to this default. REMOTE avatars (NPCs and
+## other players, via avatar_manager.gd) still carry no such signal — the
+## wire (`city:positions`) has no archetype field for anyone but the local
+## player, who resolves their own via a direct authenticated fetch instead
+## of the broadcast; see asset_resolver.gd#fallback_url for the resolve
+## chain this feeds.
 @export var archetype: String = "warrior"
 ## Weapon meshes are optional dressing on top of an already-real body mesh —
 ## off by default so a caller that only wants the body (e.g. a future
