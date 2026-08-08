@@ -1,5 +1,99 @@
 # Visual QA — Godot World Lens
 
+## Verify other sub-worlds render in Godot (2026-08-08)
+
+Every prior probe in this whole session that touches `SceneBootstrap`
+(directly or via a default) targeted `concordia-hub` only. This unit checks
+the real, load-bearing question directly: does the client's real scene-data
+pipeline actually have real content to render for the other 9 authored
+sub-worlds (`content/world/{tunya,cyber,crime,fantasy,superhero,
+sovereign-ruins,lattice-crucible,concord-link-frontier,sere}/`), and does
+`SceneBootstrap` genuinely parse a REAL non-hub payload correctly?
+
+**Method — real server, real DB, real function call, not assumed.**
+Started a real, migrated, content-seeded `server.js` instance (a fresh
+`DB_PATH`, `CONCORD_NO_LISTEN=false`, no Ollama brains available — the
+same honest degrade documented throughout this codebase) and called
+`server/lib/scene-export.js#exportScene(db, worldId)` directly — the EXACT
+function `godot-gateway.js`'s `scene:request` handler calls for a live
+Godot session — for every canon world id, reading real rows out of
+`world_buildings`/`world_npcs`.
+
+**Real measured results, all 9 canon sub-worlds plus concordia-hub:**
+
+| worldId | buildings | districts | npcs |
+|---|---:|---:|---:|
+| concordia-hub | 62 | 6 | 56 |
+| tunya | 12 | 0 | 36 |
+| cyber | 12 | 0 | 33 |
+| crime | 11 | 0 | 30 |
+| fantasy | 11 | 0 | 30 |
+| superhero | 10 | 0 | 30 |
+| sovereign-ruins | 11 | 0 | 31 |
+| lattice-crucible | 11 | 0 | 30 |
+| concord-link-frontier | 11 | 0 | 30 |
+| sere | 10 | 0 | 34 |
+
+Every one of the 9 sub-worlds has real, non-trivial building + NPC data —
+Godot's already-verified rendering pipeline (`SceneBootstrap` + `ArtStyle` +
+`AvatarManager`/`NpcPoller` + `VegetationRenderer`) is data-driven, not
+concordia-hub-specific in its LOGIC (confirmed by reading `parse_vegetation`/
+`parse_landing_pads`/`parse_districts`'s own "verbatim passthrough or drop"
+posture, and `apply_scene`'s field reads), so a real client session against
+any of these 9 worlds has real content to spawn.
+
+**A real, separate finding, not previously documented anywhere in this
+client**: `districtCount: 0` / `hasPlaza: false` / `landingPadCount: 0` for
+EVERY world except `concordia-hub`. This confirms (with real numbers,
+where Phase M2's own doc previously only asserted it by design reasoning)
+that Phase M2's vegetation scatter — which is deliberately district-bounded
+— genuinely returns `[]` for all 9 non-hub worlds today: a real content
+gap (no authored `districts` data exists for them yet), not a code gap,
+exactly as Phase M2's own class doc already named as a known, deferred
+limitation. This unit is the first real DB-backed confirmation of that
+claim across every world, not just an assumption.
+
+**A second real finding, newly surfaced by this unit**: the literal string
+`"concordia"` (the legacy alias `ArtStyle.saturation_for_world`/`_theme_
+for_world_id` treat as equivalent to `"concordia-hub"` for PALETTE
+purposes) resolves to an almost-EMPTY scene in `world_buildings`/
+`world_npcs` — 1 building, 0 districts, 2 NPCs — because `exportScene`
+queries those tables by the LITERAL `world_id` string, and the real
+authored content lives under `"concordia-hub"`, not `"concordia"`. The
+palette alias and the scene-data alias are NOT the same mechanism, and
+only one of them actually covers `"concordia"`. A Godot session
+misconfigured with `world_id="concordia"` instead of `"concordia-hub"`
+would render the CORRECT art style but an almost-empty world. Flagged
+honestly as a real, named residual — not fixed here (a content/config
+question, not this unit's scope, and not previously known before this
+verification pass).
+
+**Real-engine proof that the CLIENT genuinely parses non-hub data — new
+`tools/multi_world_scene_probe.gd`.** Dumped the real, live `tunya` scene
+payload (the exact JSON shape a Godot client would receive over
+`scene:data` for a tunya session) from the running server above, fed it
+into a REAL `SceneBootstrap.apply_scene()` (not a synthetic/hand-authored
+fixture), and confirmed real object-state: 12 real child nodes spawned
+(matching the real payload's 12 buildings exactly), `worldId` field read
+back correctly as `"tunya"`, and a real, non-degenerate computed camera-
+bounds center/radius (`center: (12.76, 0.0, -11.73)`, `radius: 92.57`) —
+proving `get_camera_bounds()`'s AABB math genuinely operates on tunya's own
+real building layout, not a hardcoded/hub-shaped assumption. Measured
+result: `{"ok": true, "world_id_in_payload": "tunya", "real_node_count_
+spawned": 12, "raw_nodes_in_payload": 12, "camera_bounds": {...}}`.
+
+**What this does NOT settle.** No human has watched any of the 9 non-hub
+worlds actually render in a browser session — this proves the DATA exists
+and the PARSING pipeline genuinely consumes it, using the same standing
+headless-mode caveat every other entry in this file carries. NPC/creature
+polling (`Phase N`/`Phase M3`), quest fetching (`Phase Q`), and combat
+(`Phase C`) were not re-verified per-world here — those pipelines are
+similarly world-agnostic by construction (all take `world_id` as a plain
+parameter, none hardcode `"concordia-hub"`), but that's an architectural
+inference from reading the code, not a fresh per-world re-test in this
+pass. The verification server + its throwaway DB were stopped and deleted
+at the end of this session — not a claim about a persistent deployment.
+
 ## Gamepad + touch input support (2026-08-08)
 
 Every input in this client was keyboard-only until this unit. Both new
