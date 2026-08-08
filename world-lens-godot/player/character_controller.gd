@@ -120,6 +120,7 @@ signal target_health_updated(target_id: String, health: float, max_health: float
 
 const SessionManager := preload("res://session/session_manager.gd")
 const AssetResolver := preload("res://assets/asset_resolver.gd")
+const LockOnState := preload("res://player/lock_on_state.gd")
 
 # ── Constants — mirrored 1:1 from physics-world.ts / jump-forgiveness.ts ────
 const GRAVITY: float = 9.81
@@ -218,10 +219,47 @@ var _last_move_sent_ms: int = 0
 var _snap_target: Vector3 = Vector3.ZERO
 var _pending_snap: bool = false
 var _current_target_id: String = ""
-var _attack_key_was_down: bool = false
-var _parry_key_was_down: bool = false
 var _dodge_key_was_down: bool = false
 var _kick_key_was_down: bool = false
+
+## Combat C7 (2026-08-08) — hold-vs-tap tracking for E (attack) and F
+## (parry/grab). `_down_at_ms < 0` means the key isn't currently held;
+## `_hold_fired` records whether the HOLD variant already fired during this
+## press so keyup doesn't ALSO fire the tap (mirrors CombatInputController
+## .tsx's own `holdFiredRef` — the hold fires the instant the threshold is
+## crossed, not on release, and release only fires the tap if the hold
+## never did). R and Q have no hold variant in ground context (see class
+## doc's Combat C6 section) so they keep the original simple rising-edge
+## rising-edge pattern above.
+const HOLD_THRESHOLD_MS: int = 220
+var _attack_down_at_ms: int = -1
+var _attack_hold_fired: bool = false
+var _parry_down_at_ms: int = -1
+var _parry_hold_fired: bool = false
+
+## Combat, lock-on (2026-08-08) — Tab cycles, T hard-locks; see
+## player/lock_on_state.gd's own class doc for the full rule set. Radius
+## mirrors LockOnController.tsx's DEFAULT_LOCK_RADIUS.
+const LOCK_ON_RADIUS_M: float = 25.0
+var _lock := LockOnState.new()
+var _tab_key_was_down: bool = false
+var _lock_toggle_key_was_down: bool = false
+
+## Combat, combo chains (2026-08-08) — lightweight chainId/stepIndex
+## metadata for the flow-recorder/evolution substrate (server/lib/combat/
+## flow-recorder.js + flow-engine.js) — the SAME substrate the Three.js
+## client's much larger "evolved combo" hotbar system also feeds (that
+## system needs server-fetched combo definitions + a trigger UI; genuinely
+## out of scope here — this only makes ordinary consecutive swings from
+## THIS client contribute honest chain data too). A chain continues while
+## consecutive OFFENSIVE actions (attack/heavy/grab/kick) land within
+## COMBO_CONTINUE_WINDOW_MS of each other; otherwise a new chain starts.
+## First-draft, un-playtested window (same honesty class as CLAUDE.md's
+## "Phase D first-draft constants").
+const COMBO_CONTINUE_WINDOW_MS: int = 1500
+var _combo_chain_id: String = ""
+var _combo_step_index: int = 0
+var _combo_last_offense_at_ms: int = -1
 
 
 func _ready() -> void:
@@ -273,15 +311,37 @@ func _physics_process(delta: float) -> void:
 		_send_move_intent()
 
 	_update_target()
-	var attack_down := Input.is_key_pressed(KEY_E)
-	if attack_down and not _attack_key_was_down:
-		_try_attack()
-	_attack_key_was_down = attack_down
 
+	# E — tap: attack-light, hold (>=HOLD_THRESHOLD_MS): attack-heavy. The
+	# hold fires the INSTANT the threshold is crossed (not on release —
+	# matches CombatInputController.tsx's "lands at the moment you commit"
+	# feel); a hold that already fired suppresses the tap on keyup.
+	var attack_down := Input.is_key_pressed(KEY_E)
+	if attack_down and _attack_down_at_ms < 0:
+		_attack_down_at_ms = now_ms
+		_attack_hold_fired = false
+	if attack_down and not _attack_hold_fired and _attack_down_at_ms >= 0 \
+			and now_ms - _attack_down_at_ms >= HOLD_THRESHOLD_MS:
+		_attack_hold_fired = true
+		_try_attack_heavy(now_ms)
+	if not attack_down and _attack_down_at_ms >= 0:
+		if not _attack_hold_fired:
+			_try_attack(now_ms)
+		_attack_down_at_ms = -1
+
+	# F — tap: parry, hold: grab. Same tap/hold shape as E above.
 	var parry_down := Input.is_key_pressed(KEY_F)
-	if parry_down and not _parry_key_was_down:
-		_try_parry()
-	_parry_key_was_down = parry_down
+	if parry_down and _parry_down_at_ms < 0:
+		_parry_down_at_ms = now_ms
+		_parry_hold_fired = false
+	if parry_down and not _parry_hold_fired and _parry_down_at_ms >= 0 \
+			and now_ms - _parry_down_at_ms >= HOLD_THRESHOLD_MS:
+		_parry_hold_fired = true
+		_try_grab(now_ms)
+	if not parry_down and _parry_down_at_ms >= 0:
+		if not _parry_hold_fired:
+			_try_parry()
+		_parry_down_at_ms = -1
 
 	var dodge_down := Input.is_key_pressed(KEY_Q)
 	if dodge_down and not _dodge_key_was_down:
@@ -290,8 +350,23 @@ func _physics_process(delta: float) -> void:
 
 	var kick_down := Input.is_key_pressed(KEY_R)
 	if kick_down and not _kick_key_was_down:
-		_try_kick()
+		_try_kick(now_ms)
 	_kick_key_was_down = kick_down
+
+	# Lock-on — Tab cycles, T hard-locks. Both read the SAME live,
+	# radius-filtered candidate list; see player/lock_on_state.gd's class
+	# doc for the full rule set.
+	var tab_down := Input.is_key_pressed(KEY_TAB)
+	if tab_down and not _tab_key_was_down and avatar_manager != null \
+			and avatar_manager.has_method("candidates_in_range"):
+		_lock.cycle(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
+	_tab_key_was_down = tab_down
+
+	var lock_toggle_down := Input.is_key_pressed(KEY_T)
+	if lock_toggle_down and not _lock_toggle_key_was_down and avatar_manager != null \
+			and avatar_manager.has_method("candidates_in_range"):
+		_lock.toggle_hard(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
+	_lock_toggle_key_was_down = lock_toggle_down
 
 
 ## Raw WASD polling — deliberately NOT routed through Godot's InputMap
@@ -424,8 +499,37 @@ func _send_move_intent() -> void:
 ## "target in range" even before an attack is ever thrown, not just at the
 ## moment of attack. No-op (never selects/clears a target) when no
 ## AvatarManager is wired — see the `avatar_manager` export's own doc.
+##
+## Combat, lock-on (2026-08-08) — an active lock (Tab/T) OVERRIDES the
+## auto-nearest pick below: `_current_target_id` becomes whatever's locked,
+## and the lock's own release rule (`LockOnState.update_release`) is
+## evaluated first using this frame's real radius-filtered candidates +
+## real distance, so a lock that's genuinely gone (out of range, despawned)
+## clears itself honestly before falling back to auto-nearest.
 func _update_target() -> void:
-	if avatar_manager == null or not avatar_manager.has_method("nearest_target"):
+	if avatar_manager == null:
+		return
+
+	if avatar_manager.has_method("candidates_in_range") and avatar_manager.has_method("distance_to"):
+		var lock_candidates: Array = avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M)
+		var still_in_range := false
+		for c in lock_candidates:
+			if String(c.get("id", "")) == _lock.locked_id:
+				still_in_range = true
+				break
+		var lock_dist := -1.0
+		if not _lock.locked_id.is_empty():
+			lock_dist = avatar_manager.distance_to(_lock.locked_id, global_position)
+		_lock.update_release(still_in_range, lock_dist, LOCK_ON_RADIUS_M)
+
+	if not _lock.locked_id.is_empty():
+		if _lock.locked_id == _current_target_id:
+			return
+		_current_target_id = _lock.locked_id
+		target_acquired.emit(_current_target_id)
+		return
+
+	if not avatar_manager.has_method("nearest_target"):
 		return
 	var found: String = avatar_manager.nearest_target(global_position, ATTACK_RANGE_M)
 	if found == _current_target_id:
@@ -441,21 +545,63 @@ func get_current_target_id() -> String:
 	return _current_target_id
 
 
-## E-key light attack. Honest no-op with no target in range or no gateway
-## wired — never fabricates a wasted request. Sends a deliberately minimal
-## payload (no client-asserted baseDamage/range) — see class doc "Combat
-## Phase C".
-func _try_attack() -> void:
+## Combat, lock-on (2026-08-08) — read by `world/boot.gd`'s Escape handler
+## so an active lock clears BEFORE the pause menu opens (a deliberate
+## precedence choice: Escape "backs out" of the more immediate combat state
+## first, mirroring common third-person action-game convention — this
+## client's own choice, since LockOnController.tsx's Escape handling and
+## this client's pause menu are independent systems with no existing
+## precedent to port).
+func has_active_lock() -> bool:
+	return not _lock.locked_id.is_empty()
+
+
+func clear_lock() -> void:
+	_lock.clear()
+
+
+func get_lock_mode() -> String:
+	return _lock.lock_mode
+
+
+## Combat, combo chains (2026-08-08) — advances the chain/step for THIS
+## offensive action and returns the `{chainId, stepIndex}` to stamp on its
+## payload. See the `_combo_*` members' own class-doc comment for the full
+## contract. `now_ms` is caller-supplied (from `_physics_process`'s own
+## `Time.get_ticks_msec()` read) so the RULE itself doesn't need a live
+## clock to be testable in isolation — though as an instance method (not
+## static) it's exercised via the real-engine probe, not a pure-logic test,
+## matching this file's existing split for engine-adjacent state.
+func _advance_combo(now_ms: int) -> Dictionary:
+	if _combo_chain_id.is_empty() or now_ms - _combo_last_offense_at_ms > COMBO_CONTINUE_WINDOW_MS:
+		_combo_chain_id = "chain:%d" % now_ms
+		_combo_step_index = 0
+	else:
+		_combo_step_index += 1
+	_combo_last_offense_at_ms = now_ms
+	return {"chainId": _combo_chain_id, "stepIndex": _combo_step_index}
+
+
+## E-key light attack (tap). Honest no-op with no target in range or no
+## gateway wired — never fabricates a wasted request. Sends a deliberately
+## minimal payload (no client-asserted baseDamage/range) — see class doc
+## "Combat Phase C". `now_ms` defaults to a fresh clock read so existing
+## zero-arg callers (real-engine probes included) are unaffected.
+func _try_attack(now_ms: int = -1) -> void:
 	if _current_target_id.is_empty():
 		return
 	if gateway == null or not gateway.has_method("send_event"):
 		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
 	var weapon_id: String = AssetResolver.ARCHETYPE_WEAPON.get(archetype, "")
-	gateway.send_event("combat:attack", {
+	var payload := {
 		"targetId": _current_target_id,
 		"weapon": weapon_id if weapon_id != "" else "fist",
 		"style": "attack-light",
-	})
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
 	# T2.2-mirrored swing whoosh — plays on the SWING itself (before any hit
 	# resolves), same as CombatInputController.tsx's own "audible even on a
 	# miss" design. No-op with no sfx_player wired.
@@ -463,9 +609,43 @@ func _try_attack() -> void:
 		sfx_player.play_sfx("combat-swing")
 
 
+## E-key heavy attack (hold, Combat C7). TARGETED, same honest-no-op-with-
+## no-target discipline as `_try_attack`. Unlike the tap variant, this
+## sends a REAL `baseDamage` (18, mirroring CombatInputController.tsx's own
+## heavy value) — `_try_attack`'s omitted baseDamage clamps to a nominal 1
+## server-side (`combat-limits.js#clampBaseDamage`'s honest floor for a
+## missing/invalid input), which would make "hold for heavy" observably
+## IDENTICAL to a tap if this variant copied that same omission. Sending a
+## real, distinguishing value here is the honest choice — an inert "heavy"
+## button would itself be a fabricated feature.
+func _try_attack_heavy(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var weapon_id: String = AssetResolver.ARCHETYPE_WEAPON.get(archetype, "")
+	var payload := {
+		"targetId": _current_target_id,
+		"weapon": weapon_id if weapon_id != "" else "fist",
+		"style": "attack-heavy",
+		"heavy": true,
+		"baseDamage": 18,
+		"armorPierce": 1,
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing-heavy")
+
+
 ## F-key parry (Combat C6). Untargeted — mirrors CombatInputController.tsx's
 ## `parry` case exactly (no `targetId`). Honest no-op only when no gateway is
 ## wired; unlike attack/kick this never depends on `_current_target_id`.
+## DEFENSIVE, so unlike the offensive actions above it does NOT advance the
+## combo chain — mirrors the TS reference's own `isOffense` check, which
+## covers attack/kick/grab but not parry/dodge.
 func _try_parry() -> void:
 	if gateway == null or not gateway.has_method("send_event"):
 		return
@@ -482,8 +662,40 @@ func _try_parry() -> void:
 		sfx_player.play_sfx("block-clang")
 
 
+## F-key grab (hold, Combat C7). TARGETED — mirrors CombatInputController
+## .tsx's `grab` case: emitted as `combat:attack` (no dedicated server
+## event, same "No dedicated server event yet" reasoning the TS reference's
+## own comment gives) with `actionOverride: 'grapple'` so the flow recorder
+## tags it correctly. Honest no-op with no target in range, same discipline
+## as every other targeted action here. OFFENSIVE — advances the combo
+## chain. Reuses 'combat-swing' for SFX (no dedicated grab/grapple voice
+## exists in the ported SFX_MAP — an honest reuse of an existing real voice
+## for a similar melee-contact action, not a fabricated new sound).
+func _try_grab(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var payload := {
+		"targetId": _current_target_id,
+		"baseDamage": 12,
+		"range": 2,
+		"armorPierce": 0,
+		"heavy": false,
+		"style": "grab",
+		"actionOverride": "grapple",
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing")
+
+
 ## Q-key dodge (Combat C6). Untargeted, same shape as parry with
 ## `wasParry: false` — mirrors CombatInputController.tsx's `dodge` case.
+## DEFENSIVE — does not advance the combo chain (see `_try_parry`'s note).
 func _try_dodge() -> void:
 	if gateway == null or not gateway.has_method("send_event"):
 		return
@@ -501,13 +713,16 @@ func _try_dodge() -> void:
 ## case exactly, including reusing `combat:attack` as the transport (the TS
 ## reference's own comment: "No dedicated server event yet"). No `weapon`
 ## field — the TS payload omits it for kick (barehanded regardless of
-## loadout), unlike `_try_attack`'s weapon-in-hand lookup.
-func _try_kick() -> void:
+## loadout), unlike `_try_attack`'s weapon-in-hand lookup. OFFENSIVE —
+## advances the combo chain.
+func _try_kick(now_ms: int = -1) -> void:
 	if _current_target_id.is_empty():
 		return
 	if gateway == null or not gateway.has_method("send_event"):
 		return
-	gateway.send_event("combat:attack", {
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var payload := {
 		"targetId": _current_target_id,
 		"baseDamage": 14,
 		"range": 3,
@@ -515,7 +730,9 @@ func _try_kick() -> void:
 		"heavy": false,
 		"style": "kick",
 		"actionOverride": "attack-heavy",
-	})
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
 	if sfx_player != null and sfx_player.has_method("play_sfx"):
 		sfx_player.play_sfx("combat-swing-heavy")
 

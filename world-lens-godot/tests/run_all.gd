@@ -66,6 +66,7 @@ const TestQuestPoller := preload("res://tests/test_quest_poller.gd")
 const TestQuestAvailablePoller := preload("res://tests/test_quest_available_poller.gd")
 const TestQuestActions := preload("res://tests/test_quest_actions.gd")
 const TestSfxSynth := preload("res://tests/test_sfx_synth.gd")
+const TestLockOnState := preload("res://tests/test_lock_on_state.gd")
 
 
 func _init() -> void:
@@ -114,6 +115,7 @@ func _init() -> void:
 		"QuestAvailablePoller": TestQuestAvailablePoller.run(),
 		"QuestActions": TestQuestActions.run(),
 		"SfxSynth": TestSfxSynth.run(),
+		"LockOnState": TestLockOnState.run(),
 	}
 
 	var all_ok := true

@@ -744,9 +744,24 @@ func _setup_target_hud() -> void:
 	_character.target_health_updated.connect(_on_target_health_updated)
 
 
+## Combat, lock-on (2026-08-08) — a minimal, real HUD extension: appends the
+## real lock mode (soft/hard) when one is active. Deliberately NOT a full
+## screen-projected reticle (LockOnController.tsx's own rendered overlay) —
+## that needs a real world-to-screen projector this HUD's plain `Label`
+## doesn't have; a real, honest text suffix is the small, verified slice
+## for this pass, with the full reticle flagged as a named follow-up.
+func _lock_suffix() -> String:
+	if _character == null:
+		return ""
+	match _character.get_lock_mode():
+		"hard": return "  [HARD LOCK]"
+		"soft": return "  [LOCK]"
+		_: return ""
+
+
 func _on_target_acquired(target_id: String) -> void:
 	_target_hud.visible = true
-	_target_hud.text = "Target: %s" % target_id
+	_target_hud.text = "Target: %s%s" % [target_id, _lock_suffix()]
 
 
 func _on_target_lost() -> void:
@@ -761,7 +776,7 @@ func _on_target_health_updated(target_id: String, health: float, max_health: flo
 	# health number for a target no longer shown as selected.
 	if _character == null or target_id != _character.get_current_target_id():
 		return
-	_target_hud.text = "Target: %s  HP %d/%d" % [target_id, int(health), int(max_health)]
+	_target_hud.text = "Target: %s  HP %d/%d%s" % [target_id, int(health), int(max_health), _lock_suffix()]
 
 
 ## Phase Q — top-center breadcrumb Label, mirroring QuestTracker.tsx's
@@ -883,8 +898,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	# calls its open/close methods, never touches `_pause_menu` directly —
 	# `_on_pause_overlay_opened`/`_closed` above are what actually show/hide
 	# it, reacting to the real state change.
+	#
+	# Combat, lock-on (2026-08-08) — a real, active lock takes Escape
+	# PRIORITY over opening the pause menu: pressing Escape first clears the
+	# lock (mirrors common third-person action-game convention — "back out
+	# of the more immediate state first"), and only opens/closes pause when
+	# no lock is active. This client's own precedence call — see
+	# character_controller.gd#has_active_lock's own doc comment for why no
+	# existing reference resolves this conflict (LockOnController.tsx and
+	# this client's pause menu are independent systems).
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		if _session != null:
+		if _character != null and _character.has_active_lock():
+			_character.clear_lock()
+		elif _session != null:
 			if _session.pause_overlay_active:
 				_session.close_pause_overlay()
 			else:

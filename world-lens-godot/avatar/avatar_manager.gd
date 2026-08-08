@@ -202,6 +202,34 @@ func nearest_target(from_pos: Vector3, max_range: float) -> String:
 	return AvatarManager.nearest_target_id(candidates, from_pos, max_range)
 
 
+## Combat, lock-on (2026-08-08) — ALL currently-tracked remote rigs within
+## `radius` of `from_pos`, sorted nearest-first (not just the top pick —
+## for Tab-cycling through multiple candidates). Same engine-gated-wrapper-
+## over-a-pure-static-rule shape as `nearest_target` above; reads the SAME
+## live `_rigs` dictionary.
+func candidates_in_range(from_pos: Vector3, radius: float) -> Array:
+	var candidates := []
+	for id in _rigs.keys():
+		var rig = _rigs[id]
+		if not is_instance_valid(rig):
+			continue
+		candidates.append({"id": id, "position": rig.global_position})
+	return AvatarManager.candidates_in_radius(candidates, from_pos, radius)
+
+
+## Real current distance from `from_pos` to `target_id`'s live rig, or a
+## real `-1.0` if that id isn't a currently-tracked, valid rig (despawned,
+## stale, or never existed) — an honest "unresolvable" signal for
+## `LockOnState`'s hard-lock release rule, never a fabricated distance.
+func distance_to(target_id: String, from_pos: Vector3) -> float:
+	if not _rigs.has(target_id):
+		return -1.0
+	var rig = _rigs[target_id]
+	if not is_instance_valid(rig):
+		return -1.0
+	return from_pos.distance_to(rig.global_position)
+
+
 ## Combat, remote-target hit feedback (2026-08-08) — plays `target_id`'s
 ## real `AvatarRig.flash_hit()` if that id is a currently-tracked rig.
 ## Honest no-op (`false`) when it isn't — e.g. the target despawned/went
@@ -272,6 +300,32 @@ static func nearest_target_id(candidates: Array, from_pos: Vector3, max_range: f
 			best_dist = dist
 			best_id = id
 	return best_id
+
+
+## Combat, lock-on (2026-08-08) — ALL entries in `candidates` within
+## `radius` (inclusive, same convention as `nearest_target_id` above),
+## sorted nearest-first. Deliberately radius-only, no facing-cone filter:
+## `LockOnController.tsx`'s real cone-half-angle math was NOT ported here —
+## this client's local player `rotation.y` is only ever WRITTEN as
+## telemetry for the `player:move` payload (see player/
+## character_controller.gd — nothing drives it from movement direction or
+## camera look), so a cone check would silently filter against a yaw value
+## that doesn't track where the player is actually looking. An honest,
+## documented simplification (same class as `_update_footsteps`' always-
+## 'footstep-grass' surface choice), not a fabricated facing signal.
+static func candidates_in_radius(candidates: Array, from_pos: Vector3, radius: float) -> Array:
+	var out := []
+	for c in candidates:
+		var id := String(c.get("id", ""))
+		if id.is_empty():
+			continue
+		var pos: Vector3 = c.get("position", Vector3.ZERO)
+		var dist := from_pos.distance_to(pos)
+		if dist > radius:
+			continue
+		out.append({"id": id, "position": pos, "dist": dist})
+	out.sort_custom(func(a, b): return a["dist"] < b["dist"])
+	return out
 
 
 ## Derive {speed, vertical_velocity, is_airborne} from two consecutive

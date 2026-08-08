@@ -1,5 +1,112 @@
 # Visual QA — Godot World Lens
 
+## Combat C7 — hold-variants, combo chains, lock-on (2026-08-08)
+
+Closes the three items the class doc named as deferred since Combat C6:
+"no hold-vs-tap distinction, so F never fires 'grab'", "combo chains
+(chainId/stepIndex)", and "lock-on camera behavior." Scoped down from the
+Three.js reference's much larger surface (gamepad input, input buffering,
+whiff-cancel windows, double-tap finishers, ranged combat, the full
+server-fetched "evolved combo" hotbar system, facing-cone target
+filtering) — each of those is real, separate, unscoped follow-up work,
+named explicitly below rather than silently implied as covered.
+
+**Hold-variants.** `player/character_controller.gd`'s E and F keys gained
+real tap-vs-hold classification, `HOLD_THRESHOLD_MS = 220` mirroring
+`CombatInputController.tsx` exactly, firing the HOLD action the instant the
+threshold is crossed (not on release — same "lands at the moment you
+commit" feel as the reference). E-hold is a new `_try_attack_heavy()`;
+F-hold is a new `_try_grab()` (targeted, `combat:attack` with
+`actionOverride: 'grapple'`, mirroring the TS reference's own "no
+dedicated server event yet" choice). **A real finding surfaced while
+building this**: `_try_attack()`'s existing tap path omits `baseDamage`
+entirely, and `combat-limits.js#clampBaseDamage` clamps a missing/invalid
+input to a nominal `1` server-side — meaning tap attacks have always dealt
+essentially no damage. Copying that omission into the new heavy variant
+would have made "hold for heavy" an inert, fabricated feature (tap and
+hold identically weak). The honest fix scoped to this unit: `_try_attack_
+heavy`/`_try_grab` send REAL, distinguishing `baseDamage` values (18 and
+12, mirroring the TS reference's own heavy/grab damage) — `_try_attack`'s
+tap path itself is left untouched (a pre-existing characteristic, not
+something this unit silently changes).
+
+**Combo chains.** A lightweight `chainId`/`stepIndex` generator
+(`_advance_combo`, `COMBO_CONTINUE_WINDOW_MS = 1500`ms first-draft/
+untuned) stamps the SAME metadata fields `server/lib/combat/flow-
+recorder.js` + `flow-engine.js` already consume for combo-evolution — the
+identical substrate the Three.js client's much larger "evolved combo"
+hotbar system feeds (that system needs server-fetched combo definitions
+plus a trigger UI; genuinely out of scope here). This is deliberately NOT
+that hotbar system — just honest chain metadata from ordinary consecutive
+offensive swings (E light/heavy, F grab, R kick), so this client's combat
+contributes to the same evolution engine too. Defensive actions (F-tap
+parry, Q dodge) do NOT advance the chain, mirroring the TS reference's own
+`isOffense` check.
+
+**Lock-on.** New `player/lock_on_state.gd` (pure `RefCounted` state
+machine — cycle/toggle_hard/clear/update_release) ports
+`LockOnController.tsx`'s Tab-cycle / T-hard-lock / release rules.
+**A real, load-bearing simplification, found by reading the code rather
+than assuming the TS reference's math would port cleanly**: this client's
+local player `rotation.y` is only ever WRITTEN as `player:move` telemetry
+— nothing derives it from movement direction or camera look, confirmed by
+grep. Porting the TS reference's real facing-cone filter against a yaw
+value that never tracks where the player is actually looking would have
+been a fabricated facing signal dressed as a real one. The honest choice:
+radius-only filtering (`AvatarManager.candidates_in_radius`, new pure
+static function, 25m radius mirroring the TS `DEFAULT_LOCK_RADIUS`), no
+cone — documented as a deliberate, known simplification, not silently
+dropped. `_update_target()` now checks `LockOnState.update_release` every
+frame using real radius-membership + real distance, and an active lock
+OVERRIDES the auto-nearest pick entirely. `world/boot.gd`'s target HUD
+gained a real `[LOCK]`/`[HARD LOCK]` text suffix (not a full projected
+reticle — `LockOnController.tsx`'s own rendered overlay needs a real
+world-to-screen projector this plain `Label` HUD doesn't have; flagged as
+a named follow-up, not silently reduced). **Escape precedence, a real
+design decision this client had to make on its own** (LockOnController.tsx
+and this client's pause menu are independent systems with no existing
+reference resolving the conflict): an active lock now clears BEFORE Escape
+opens the pause menu, mirroring common third-person action-game
+convention.
+
+**Real-engine proof — `tools/combat_c7_probe.gd`.** A real
+`CharacterController` + real `AvatarManager` + two real `AvatarRig`s (5m
+and 15m from the player — both beyond melee `ATTACK_RANGE_M=3.0` but
+within lock-on's 25m radius, so auto-nearest finds nothing while lock-on
+genuinely does) + a fake gateway recording real `send_event` calls. All
+checks are genuine engine-state assertions: two attacks 200ms apart
+(inside the combo window) share the SAME real `chainId` with
+`stepIndex` 0→1; an attack 3.8s later (past the window) genuinely starts a
+NEW chain; heavy/grab send real, distinguishing payload fields (not just
+"some request went out"); heavy/grab are honest no-ops with no target
+(zero gateway calls); Tab-cycle genuinely locks the nearer of two real
+candidates and `_update_target()` genuinely overrides the (empty)
+auto-nearest pick with it; toggling hard-lock while a lock is active
+genuinely clears it; `clear_lock()` (the Escape-precedence path) genuinely
+clears an active lock; and — the sharpest check — moving the locked rig's
+REAL position beyond the lock radius and re-running `_update_target()`
+genuinely auto-releases the soft lock, proving the release rule reads live
+position data each frame rather than a cached snapshot. One real,
+non-fatal engine timing quirk surfaced while building this probe (recorded
+for anyone extending it): setting a freshly-`add_child`ed `AvatarRig`'s
+`global_position` in the SAME call as construction logs a harmless
+`!is_inside_tree()` warning from an internal transform read — every check
+still passed correctly (the position was genuinely applied), so this is
+cosmetic engine noise, not a functional defect. 22 new pure-logic checks
+(`test_lock_on_state.gd`, all 22, plus 10 new `candidates_in_radius`
+checks extending `test_avatar_manager.gd`); full suite **45/45 test files
+green** (was 42).
+
+**What this does NOT settle.** No human has watched hold-vs-tap timing,
+combo chains, or the lock-on HUD render — same standing headless-mode
+caveat as every other entry in this file. R/Q have no hold variant in
+ground context (unchanged, matches `CONTEXT_KEYMAP.ground`). Gamepad
+lock-on/hold input, aerial/vehicle/hacker combat contexts, the full
+evolved-combo hotbar UI, a real projected reticle, and facing-cone target
+filtering (blocked on this client having no real look-direction signal at
+all) are all real, named, deferred follow-ups — not silently implied as
+done.
+
 ## Combat — remote-target hit feedback (2026-08-08)
 
 Closes the deferred "remote-target visual feedback" residual documented in
