@@ -30,6 +30,11 @@
     { "file": "models/building/tavern.glb", "kind": "mesh", "category": "building", "tags": ["building", "tavern", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
     { "file": "models/building/market.glb", "kind": "mesh", "category": "building", "tags": ["building", "market", "cc0", "polygonal-mind", "medieval-fair"], "qualityLevel": 5 },
     { "file": "models/building/archive.glb", "kind": "mesh", "category": "building", "tags": ["building", "archive", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
+    { "file": "models/building/forge.glb", "kind": "mesh", "category": "building", "tags": ["building", "forge", "cc0", "kaykit-medieval-hexagon-pack"], "qualityLevel": 5 },
+    { "file": "models/building/tower.glb", "kind": "mesh", "category": "building", "tags": ["building", "tower", "cc0", "kaykit-medieval-hexagon-pack"], "qualityLevel": 5 },
+    { "file": "models/building/market__crime.glb", "kind": "mesh", "category": "building", "tags": ["building", "market", "per-world-variant", "crime", "cc0", "kaykit-city-builder-bits"], "qualityLevel": 5 },
+    { "file": "models/building/archive__sovereign-ruins.glb", "kind": "mesh", "category": "building", "tags": ["building", "archive", "per-world-variant", "sovereign-ruins", "cc0", "kaykit-halloween-bits"], "qualityLevel": 5 },
+    { "file": "models/building/tavern__concord-link-frontier.glb", "kind": "mesh", "category": "building", "tags": ["building", "tavern", "per-world-variant", "concord-link-frontier", "cc0", "kaykit-space-base-bits"], "qualityLevel": 5 },
 
     { "file": "models/vegetation/tree_01.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
     { "file": "models/vegetation/tree_02.glb", "kind": "mesh", "category": "vegetation", "tags": ["vegetation", "tree", "cc0", "polygonal-mind", "momuspark"], "qualityLevel": 5 },
@@ -49,6 +54,10 @@
     { "file": "meshes/heroes/_archetype_scholar.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "scholar", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
     { "file": "meshes/heroes/_archetype_mystic.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "mystic", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
     { "file": "meshes/heroes/_archetype_trader.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "trader", "mit", "microsoft-rocketbox"], "qualityLevel": 6 },
-    { "file": "meshes/heroes/_archetype_legend.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "legend", "mixamo"], "qualityLevel": 5 }
+    { "file": "meshes/heroes/_archetype_legend.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "legend", "mixamo"], "qualityLevel": 5 },
+    { "file": "meshes/heroes/_archetype_undead.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
+    { "file": "meshes/heroes/_archetype_zombie.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "zombie", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
+    { "file": "meshes/heroes/_archetype_wraith.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "wraith", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
+    { "file": "meshes/heroes/_archetype_lich.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "lich", "undead", "hostile", "boss", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 }
   ]
 }

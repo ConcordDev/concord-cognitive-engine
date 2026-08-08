@@ -1,5 +1,36 @@
 # KayKit-Game-Assets — full inventory (2026-08-08)
 
+## Status update — later same day: 2 more worlds wired, evo-asset registered
+
+Per follow-up instruction to wire the two queued candidates and check the
+existing content for more world/asset fits: both are now real and
+verified, using the exact per-world building mechanism this doc's earlier
+version proposed:
+- **`sovereign-ruins`'s `archive` archetype** → `crypt.glb` from
+  `KayKit-Halloween-Bits-1.0` (a real stone mausoleum/crypt facade,
+  screenshot-verified — columns, dark doorway, funerary stonework), a
+  direct fit for the "Sovereign Archive"/"collapse memorial" lore.
+- **`concord-link-frontier`'s `tavern` archetype** → `basemodule_A.glb`
+  from `KayKit-Space-Base-Bits-1.0` (a small dome-shaped waypoint module
+  with a landing ramp, screenshot-verified), fitting "courier
+  safehouses"/"link posts" better than the pack's larger industrial
+  cargo-depot pieces, which were also screenshotted and considered.
+
+**All 9 real assets sourced this session are now registered in the
+evo-asset procedural pipeline** (`content/evo-seed/world-lens-manifest.json`
+→ `server/lib/evo-asset/source-loaders.js#bootstrapWorldLensAssets`) —
+forge/tower/market__crime/archive__sovereign-ruins/
+tavern__concord-link-frontier + the 4 undead hero archetypes. This is the
+real, already-existing "procedural asset engine" — `server/lib/evo-asset/
+refinement-passes.js` runs real geometry subdivision, procedural wear
+(age/interaction-density-driven), material upgrades, and LOD generation
+against whatever's registered here, scheduled by `scheduler.js#
+runEvolutionTick`. Registering these assets gives that scheduler real
+material to run those passes against, instead of only the 3 CC0
+primitive-placeholder seed meshes. Pinned by 2 new tests + updated counts
+in `server/tests/integration/evo-asset-world-lens-seed.test.js` (14/14
+green, up from 12 pre-existing).
+
 All 10 repositories under the `KayKit-Game-Assets` GitHub org were cloned
 this session (`git clone`, not `curl` — reaches public GitHub repos even
 though this environment's general HTTPS egress policy blocks

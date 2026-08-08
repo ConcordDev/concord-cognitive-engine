@@ -388,6 +388,49 @@ to do that with no tool":
   gets, targeted at the NPC's own entity id. An NPC gathering resources
   is now a real, watchable action.
 
+## All of this session's assets are now registered in the evo-asset pipeline (2026-08-08)
+
+Every real asset sourced this session — `building/forge.glb`,
+`building/tower.glb`, `building/market__crime.glb`,
+`building/archive__sovereign-ruins.glb`,
+`building/tavern__concord-link-frontier.glb`, and the 4 undead hero
+archetypes documented in `public/meshes/heroes/CREDITS.md` — is now
+registered in `content/evo-seed/world-lens-manifest.json`, which
+`server/lib/evo-asset/source-loaders.js#bootstrapWorldLensAssets` feeds
+into the evo-asset registry at server boot. This is the real procedural
+asset-refinement engine already in the codebase
+(`server/lib/evo-asset/refinement-passes.js`'s geometry subdivision,
+age/interaction-driven procedural wear, material upgrades, and LOD
+generation, scheduled by `scheduler.js#runEvolutionTick`) — registering
+these assets gives it genuine reference material to run those passes
+against instead of only the 3 CC0 primitive-placeholder seed meshes.
+Pinned by `server/tests/integration/evo-asset-world-lens-seed.test.js`.
+
+## `building/archive__sovereign-ruins.glb` and `building/tavern__concord-link-frontier.glb` (2026-08-08)
+
+The 2 remaining lore-matched candidates this doc's earlier entries
+flagged as queued, now wired using the same per-world mechanism as
+`market__crime.glb`:
+- `archive__sovereign-ruins.glb` — `crypt.gltf` from
+  `KayKit-Halloween-Bits-1.0` (Kay Lousberg, CC0). A real stone
+  mausoleum/crypt facade, screenshot-verified in a real Godot render
+  before use — matches `sovereign-ruins`' actual authored lore (`content/
+  world/sovereign-ruins/factions.json`'s Three Archivists faction:
+  "Sovereign Archive", "collapse memorial", "silent library") far better
+  than the universal fantasy-toned archive building.
+- `tavern__concord-link-frontier.glb` — `basemodule_A.gltf` from
+  `KayKit-Space-Base-Bits-1.0` (Kay Lousberg, CC0). A small dome-shaped
+  waypoint module with a landing ramp; screenshot-checked against the
+  pack's larger cargo-depot pieces too before picking this one, since
+  `concord-link-frontier`'s real lore (`content/world/concord-link-
+  frontier/factions.json`'s Couriers' Guild: "link_post_alpha",
+  "courier_safehouses", "human-scale walker network") reads as a modest
+  waypoint/rest-stop, not bulk shipping infrastructure.
+
+Both re-packed via `gltf-transform copy`, validated clean, and confirmed
+to load in a real Godot engine render before being committed — same
+discipline as every other asset in this file.
+
 ## `building/market__crime.glb` — first per-world building variant (2026-08-08)
 
 Per explicit instruction to look at each sub-world's actual authored lore
