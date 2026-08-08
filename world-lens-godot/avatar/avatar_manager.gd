@@ -202,6 +202,25 @@ func nearest_target(from_pos: Vector3, max_range: float) -> String:
 	return AvatarManager.nearest_target_id(candidates, from_pos, max_range)
 
 
+## Phase Q — real, live positions of every currently-tracked "npc"-kind rig,
+## keyed by id, for `world/wayfinding_markers.gd#quest_pois` to resolve a
+## `talk_to` quest objective's target against. Same "read the already-live
+## `_rigs`/`_kinds` dictionaries, no new tracking system" posture as
+## `nearest_target` above — an NPC not currently spawned (not yet polled in,
+## or aged out by `_despawn_stale`) is honestly absent from the result, never
+## a stale/guessed position.
+func npc_positions_snapshot() -> Dictionary:
+	var out := {}
+	for id in _rigs.keys():
+		if _kinds.get(id, "player") != "npc":
+			continue
+		var rig = _rigs[id]
+		if not is_instance_valid(rig):
+			continue
+		out[id] = rig.global_position
+	return out
+
+
 ## Kind-aware stale-despawn timeout (Phase N). Players stream at ~100ms/10Hz
 ## (city-presence.js#broadcastPositions) so STALE_TIMEOUT_MS_PLAYER is a real
 ## ~30x safety margin over one missed frame. NPCs are fed by npc_poller.gd's

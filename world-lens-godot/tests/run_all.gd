@@ -61,6 +61,8 @@ const TestNpcPoller := preload("res://tests/test_npc_poller.gd")
 const TestCreaturePoller := preload("res://tests/test_creature_poller.gd")
 const TestCreatureRig := preload("res://tests/test_creature_rig.gd")
 const TestVegetationRenderer := preload("res://tests/test_vegetation_renderer.gd")
+const TestQuestBreadcrumb := preload("res://tests/test_quest_breadcrumb.gd")
+const TestQuestPoller := preload("res://tests/test_quest_poller.gd")
 
 
 func _init() -> void:
@@ -104,6 +106,8 @@ func _init() -> void:
 		"CreaturePoller": TestCreaturePoller.run(),
 		"CreatureRig": TestCreatureRig.run(),
 		"VegetationRenderer": TestVegetationRenderer.run(),
+		"QuestBreadcrumb": TestQuestBreadcrumb.run(),
+		"QuestPoller": TestQuestPoller.run(),
 	}
 
 	var all_ok := true

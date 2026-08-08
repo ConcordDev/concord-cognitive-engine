@@ -71,6 +71,7 @@ static func run() -> TestUtils:
 	_test_detail_level_reuses_air_legibility_thresholds(t)
 	_test_marker_for_poi_direction_and_distance(t)
 	_test_nearby_markers_sorts_filters_and_caps(t)
+	_test_quest_objective_pois(t)
 	return t
 
 
@@ -214,3 +215,56 @@ static func _test_nearby_markers_sorts_filters_and_caps(t: TestUtils) -> void:
 	t.check(
 		WayfindingMarkers.nearby_markers(Vector3.ZERO, []).is_empty(),
 		"an empty POI list yields an empty marker list, never a crash")
+
+
+## Phase Q — quest objectives as a 4th POI source. Real fixture shapes: the
+## `/quests/active` `progress` array (quest_objectives row + current_count/
+## obj_completed_at), and an id->Vector3 npc_positions dict matching
+## AvatarManager.npc_positions_snapshot()'s real return shape.
+static func _test_quest_objective_pois(t: TestUtils) -> void:
+	var talk_obj := {
+		"id": "obj1", "type": "talk_to", "target": "gatekeeper_orin",
+		"required_count": 1, "description": "Speak with the gatekeeper",
+		"current_count": 0, "obj_completed_at": null,
+	}
+	var npc_positions := {"gatekeeper_orin": Vector3(12.0, 0.0, -5.0)}
+
+	t.check_eq(
+		WayfindingMarkers.next_incomplete_objective({"progress": [talk_obj]}),
+		talk_obj, "the one incomplete objective is returned verbatim")
+
+	var done_obj := talk_obj.duplicate(true)
+	done_obj["obj_completed_at"] = 1234
+	t.check(
+		WayfindingMarkers.next_incomplete_objective({"progress": [done_obj]}).is_empty(),
+		"every objective complete yields an honest empty result")
+	t.check(
+		WayfindingMarkers.next_incomplete_objective({}).is_empty(),
+		"a quest with no progress array yields an honest empty result")
+
+	var poi := WayfindingMarkers.poi_from_quest_objective("q1", "Meet the Gatekeeper", talk_obj, npc_positions)
+	t.check_eq(poi["kind"], WayfindingMarkers.KIND_QUEST_OBJECTIVE, "quest-objective POI carries the real kind tag")
+	t.check_almost(poi["x"], 12.0, "POI x resolves from the real live NPC position")
+	t.check_almost(poi["z"], -5.0, "POI z resolves from the real live NPC position")
+	t.check_eq(poi["name"], "Speak with the gatekeeper", "POI name prefers the real authored description")
+
+	# Honest omissions — every reason a quest objective must NOT get a pin.
+	var gather_obj := {"id": "obj2", "type": "gather", "target": "wildroot", "current_count": 0, "obj_completed_at": null}
+	t.check(
+		WayfindingMarkers.poi_from_quest_objective("q1", "T", gather_obj, npc_positions).is_empty(),
+		"a non-talk_to objective type honestly gets no map pin (no location resolver exists for it)")
+	var unresolved_obj := {"id": "obj3", "type": "talk_to", "target": "wanderer_kael", "current_count": 0, "obj_completed_at": null}
+	t.check(
+		WayfindingMarkers.poi_from_quest_objective("q1", "T", unresolved_obj, npc_positions).is_empty(),
+		"a talk_to target that isn't currently a live NPC honestly gets no map pin, never a guessed position")
+
+	# quest_pois — the end-to-end real-shaped array.
+	var quests := [
+		{"id": "q1", "title": "Meet the Gatekeeper", "progress": [talk_obj]},
+		{"id": "q2", "title": "No NPC yet", "progress": [unresolved_obj]},
+		{"id": "q3", "title": "All done", "progress": [done_obj]},
+		"not-a-dict",
+	]
+	var pois := WayfindingMarkers.quest_pois(quests, npc_positions)
+	t.check_eq(pois.size(), 1, "only the one quest with a resolvable talk_to objective yields a POI")
+	t.check_eq(pois[0]["id"], "quest:q1:obj1", "quest-objective POI id is namespaced by quest and objective id")

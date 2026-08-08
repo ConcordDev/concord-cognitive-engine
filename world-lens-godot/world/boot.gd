@@ -96,6 +96,9 @@ const NpcPoller := preload("res://world/npc_poller.gd")
 const CreatureManager := preload("res://world/creature_manager.gd")
 const CreaturePoller := preload("res://world/creature_poller.gd")
 const VegetationRenderer := preload("res://world/vegetation_renderer.gd")
+const QuestPoller := preload("res://world/quest_poller.gd")
+const QuestBreadcrumb := preload("res://world/quest_breadcrumb.gd")
+const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -176,6 +179,16 @@ var _local_user_id: String = ""
 ## the Three.js CombatHUD. Null until `_setup_target_hud()` runs (right after
 ## the local player spawns, since it wires signals off `_character`).
 var _target_hud: Label = null
+## Phase Q — quest fetch + breadcrumb HUD. Unlike `_target_hud`, does not
+## depend on `_character` existing (quests are account/world state, not
+## avatar state), so it's set up unconditionally in `_ready()`.
+var _quest_poller: QuestPoller = null
+var _quest_hud: Label = null
+## Mirrors QuestTracker.tsx's `TrackerMode` ('breadcrumb' | 'list'), toggled
+## by the J key — see `_unhandled_input`. No localStorage-equivalent
+## persistence yet (deliberate first-slice scope; matches this session's
+## other "port the design, not every persistence detail" calls).
+var _quest_tracker_mode: String = "breadcrumb"
 
 
 ## Pure static so it's unit-testable without a scene tree (same rationale as
@@ -454,6 +467,19 @@ func _ready() -> void:
 	_creature_poller.creature_manager = _creature_manager
 	add_child(_creature_poller)
 
+	# Phase Q — quest fetch. Same backend-origin convention as every other
+	# poller above. `poll_succeeded` re-renders the breadcrumb/list HUD from
+	# the fresh snapshot; a failed cycle leaves the HUD showing its last-known
+	# real state rather than clearing to blank (QuestPoller's own class doc:
+	# never fabricates, never clears real state on a transient error).
+	_quest_poller = QuestPoller.new()
+	_quest_poller.base_url = "http://127.0.0.1:5050"
+	_quest_poller.world_id = world_id
+	_quest_poller.auth_token = auth_token
+	add_child(_quest_poller)
+	_quest_poller.poll_succeeded.connect(_on_quest_poll_succeeded)
+	_setup_quest_hud()
+
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
 	# presence here; see conkay/conkay_presence.gd's class doc. `user:<id>`
 	# is auto-joined by the gateway on successful auth (no room:join needed
@@ -642,6 +668,75 @@ func _on_target_health_updated(target_id: String, health: float, max_health: flo
 	if _character == null or target_id != _character.get_current_target_id():
 		return
 	_target_hud.text = "Target: %s  HP %d/%d" % [target_id, int(health), int(max_health)]
+
+
+## Phase Q — top-center breadcrumb Label, mirroring QuestTracker.tsx's
+## default "one line, J toggles the full list" UX (see that file's own
+## Theme-4 comment: "hide UI in the world"). A bare Label, same minimal
+## posture as `_target_hud` above — not a port of the TS component's pill/
+## icon/claim-button chrome, which is real, separate follow-up UI work.
+func _setup_quest_hud() -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+	_quest_hud = Label.new()
+	_quest_hud.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_quest_hud.position = Vector2(-200.0, 12.0)
+	_quest_hud.size = Vector2(400.0, 80.0)
+	_quest_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_quest_hud.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_quest_hud.visible = false
+	layer.add_child(_quest_hud)
+
+
+func _on_quest_poll_succeeded(_count: int) -> void:
+	_render_quest_hud()
+
+
+## Renders `_quest_poller`'s current snapshot into `_quest_hud` per
+## `_quest_tracker_mode`. Honest empty state: zero active quests means no
+## HUD text at all (mirrors QuestTracker.tsx's `if (quests.length === 0)
+## return null`), never a stale/fabricated line.
+func _render_quest_hud() -> void:
+	if _quest_hud == null or _quest_poller == null:
+		return
+	var quests := _quest_poller.get_quests()
+	if quests.is_empty():
+		_quest_hud.visible = false
+		_quest_hud.text = ""
+		return
+
+	if _quest_tracker_mode == "list":
+		var lines := PackedStringArray()
+		for q in quests:
+			var obj := WayfindingMarkers.next_incomplete_objective(q)
+			var line: String
+			if obj.is_empty():
+				line = "%s — Reward ready" % String(q.get("title", ""))
+			else:
+				line = "%s: %s" % [String(q.get("title", "")), QuestBreadcrumb.breadcrumb_text(q, obj)]
+			lines.append(line)
+		_quest_hud.text = "\n".join(lines)
+		_quest_hud.visible = true
+		return
+
+	# Breadcrumb (default) mode.
+	var breadcrumb := QuestBreadcrumb.pick_breadcrumb(quests)
+	if breadcrumb.is_empty():
+		_quest_hud.visible = false
+		_quest_hud.text = ""
+		return
+	_quest_hud.text = QuestBreadcrumb.breadcrumb_text(breadcrumb["quest"], breadcrumb["obj"])
+	_quest_hud.visible = true
+
+
+## J toggles breadcrumb <-> list mode, matching QuestTracker.tsx's own J
+## binding exactly (`e.key !== 'j' && e.key !== 'J'`). No input-field guard
+## is needed here (unlike the TS version, which checks for a focused
+## INPUT/TEXTAREA) — this client has no text-input UI mounted anywhere yet.
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
+		_quest_tracker_mode = "list" if _quest_tracker_mode == "breadcrumb" else "breadcrumb"
+		_render_quest_hud()
 
 
 func _on_connected() -> void:

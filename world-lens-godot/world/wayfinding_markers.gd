@@ -157,6 +157,101 @@ static func collect_pois(landing_pads: Array, rooftop_buildings: Array, district
 	return out
 
 
+# ── Phase Q — quest objectives as a 4th POI source ──────────────────────────
+#
+# Real quest data (GET /api/worlds/:worldId/quests/active — the SAME route
+# concord-frontend/components/world/QuestTracker.tsx already polls) has no
+# coordinate of its own: an objective's `target` is a semantic id, not a
+# position — `talk_to` targets a real authored NPC id (verified against
+# content/quests/*.json — e.g. "concordia_first_breath", "gatekeeper_orin"),
+# but `kill`/`gather`/`deliver`/`cook` target archetype/item ids with no
+# spatial meaning, and `reach_location` targets a semantic location string
+# ("first_cycle_glade") that NO location-id-to-position table exists for
+# anywhere in this codebase (checked directly, not assumed — server/lib and
+# content/world were searched for a resolver and found none). So only
+# `talk_to` objectives can be honestly turned into a POI today, by resolving
+# the target NPC id against `npc_positions` — the SAME live id->Vector3-like
+# dict Phase N's NPC feed already produces (AvatarManager._rigs, keyed by
+# the real NPC id). An objective whose target isn't currently a visible NPC
+# (not yet spawned, or a non-talk_to type) is honestly OMITTED, never
+# guessed. Kill/gather/deliver/reach_location remain in the breadcrumb TEXT
+# (players still read "Gather 2 Wildroot") — they just don't get a map pin.
+
+const KIND_QUEST_OBJECTIVE := "quest_objective"
+
+
+## The first NOT-YET-COMPLETE entry in a quest's `progress` array (the same
+## `progress` shape /quests/active returns — each entry a `quest_objectives`
+## row joined with `current_count`/`obj_completed_at`), in `order_index`
+## order (the route already orders by it). `{}` when every objective is
+## complete (nothing left to point at) or `progress` is missing/malformed.
+## Mirrors QuestTracker.tsx's `pickBreadcrumb` inner loop exactly — same
+## "first incomplete, in given order" rule — so the map pin and the HUD text
+## always agree on which objective is "next."
+static func next_incomplete_objective(quest: Dictionary) -> Dictionary:
+	var progress = quest.get("progress", null)
+	if typeof(progress) != TYPE_ARRAY:
+		return {}
+	for o in progress:
+		if typeof(o) != TYPE_DICTIONARY:
+			continue
+		if not o.get("obj_completed_at", null):
+			return o
+	return {}
+
+
+## Maps one quest's next-incomplete `talk_to` objective to a POI, resolved
+## against `npc_positions` (id -> Vector3, or any object with .x/.y/.z —
+## AvatarRig's own `global_position` works directly). `{}` for every other
+## honest reason: objective isn't `talk_to`, quest/objective is malformed,
+## or the target NPC isn't currently a live, positioned entity.
+static func poi_from_quest_objective(
+		quest_id: String, quest_title: String, objective: Dictionary, npc_positions: Dictionary) -> Dictionary:
+	if objective.is_empty() or quest_id.is_empty():
+		return {}
+	if String(objective.get("type", "")) != "talk_to":
+		return {}
+	var target_id := String(objective.get("target", ""))
+	if target_id.is_empty() or not npc_positions.has(target_id):
+		return {}
+	var pos = npc_positions[target_id]
+	var x: float; var y: float; var z: float
+	if pos is Vector3:
+		x = pos.x; y = pos.y; z = pos.z
+	elif typeof(pos) == TYPE_DICTIONARY and pos.has("x") and pos.has("y") and pos.has("z"):
+		x = float(pos["x"]); y = float(pos["y"]); z = float(pos["z"])
+	else:
+		return {}
+	var desc := String(objective.get("description", ""))
+	return {
+		"id": "quest:%s:%s" % [quest_id, String(objective.get("id", target_id))],
+		"kind": KIND_QUEST_OBJECTIVE,
+		"name": desc if not desc.is_empty() else ("%s — Speak with %s" % [quest_title, target_id]),
+		"x": x, "y": y, "z": z,
+	}
+
+
+## The real, ready-to-append quest-objective POI list: one per active quest
+## that has a resolvable `talk_to` next-step, honestly empty otherwise.
+## `quests` is the raw `/quests/active` array (each `{id, title, progress}`,
+## verbatim server shape — malformed entries dropped, nothing fabricated).
+static func quest_pois(quests: Array, npc_positions: Dictionary) -> Array:
+	var out: Array = []
+	for q in quests:
+		if typeof(q) != TYPE_DICTIONARY:
+			continue
+		var qid := String(q.get("id", ""))
+		if qid.is_empty():
+			continue
+		var obj := WayfindingMarkers.next_incomplete_objective(q)
+		if obj.is_empty():
+			continue
+		var poi := WayfindingMarkers.poi_from_quest_objective(qid, String(q.get("title", "")), obj, npc_positions)
+		if not poi.is_empty():
+			out.append(poi)
+	return out
+
+
 ## Altitude-appropriate marker fidelity — reuses `AirLegibility`'s own two
 ## design dials directly (not re-declared) so "how much detail is legible
 ## from here" stays defined in exactly one place across the whole client.

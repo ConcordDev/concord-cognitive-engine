@@ -11,6 +11,14 @@ extends Node
 const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 
 var _pois: Array = []
+## Phase Q — quest-objective POIs, held SEPARATELY from `_pois`. Landing
+## pads/rooftops/districts only change on a fresh `scene:data` (rare —
+## `wire_sources` is the right place to recompute those); quest state and
+## NPC positions change independently and far more often (quest_poller.gd's
+## 30s poll, avatar_manager.gd's live rig positions), so recomputing this
+## subset on its own cadence via `set_quest_pois` avoids re-running the
+## pad/rooftop/district work on every quest tick for no reason.
+var _quest_pois: Array = []
 
 
 ## One-line DI hookup — pulls landing pads + districts (both already parsed
@@ -33,14 +41,24 @@ func wire_sources(scene_bootstrap: Node, rooftop_controller: Node) -> void:
 	_pois = WayfindingMarkers.collect_pois(landing_pads, rooftop_buildings, districts)
 
 
+## Phase Q — recomputes just the quest-objective POI subset from a real
+## quest snapshot (`world/quest_poller.gd#get_quests()`) and real live NPC
+## positions (`avatar/avatar_manager.gd#npc_positions_snapshot()`). Callers
+## re-invoke this on their own cadence (a quest poll landing, an NPC
+## despawning) — see the class-level comment on `_quest_pois` for why this
+## is split from `wire_sources`.
+func set_quest_pois(quests: Array, npc_positions: Dictionary) -> void:
+	_quest_pois = WayfindingMarkers.quest_pois(quests, npc_positions)
+
+
 ## The real, ready-to-render marker set for `player_pos` — see
 ## `WayfindingMarkers.nearby_markers` for the full contract. A future HUD
 ## calls this once per frame (or on a slower timer) with the player's real
 ## world position; nothing here spawns UI (see class doc on
 ## `world/wayfinding_markers.gd`).
 func markers_for(player_pos: Vector3, max_count: int = 5, max_distance_m: float = INF) -> Array:
-	return WayfindingMarkers.nearby_markers(player_pos, _pois, max_count, max_distance_m)
+	return WayfindingMarkers.nearby_markers(player_pos, _pois + _quest_pois, max_count, max_distance_m)
 
 
 func poi_count() -> int:
-	return _pois.size()
+	return _pois.size() + _quest_pois.size()

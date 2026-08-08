@@ -1,5 +1,150 @@
 # Visual QA — Godot World Lens
 
+## Quests — real fetch, real breadcrumb HUD, quest objectives as a 4th wayfinding POI source (2026-08-08, Phase Q slice 1)
+
+Zero backend changes needed or made — `world/quest_poller.gd` polls the SAME
+`GET /api/worlds/:worldId/quests/active` route
+`concord-frontend/components/world/QuestTracker.tsx` already polls, on that
+component's own `useRealtimeRefresh` backstop cadence (30s — ported, not
+re-guessed; this client has no socket-event-driven quest refresh yet, so a
+plain backstop poll is the honest first slice, matching Phase N/M3's own
+"self-timered, not gateway-event-driven" first-slice posture).
+
+**A real, checked finding, not an assumption: quest objectives carry no
+coordinate of their own.** An objective's `target` is a semantic id
+(`talk_to` targets a real authored NPC id — verified directly against
+`content/quests/*.json`, e.g. `"gatekeeper_orin"`; `kill`/`gather`/
+`deliver`/`cook` target archetype/item ids with no spatial meaning;
+`reach_location` targets a semantic location string like
+`"first_cycle_glade"`) — and a direct search of `server/lib` and
+`content/world` found NO location-id-to-position resolver anywhere in this
+codebase for `reach_location`. So only `talk_to` objectives can be honestly
+turned into a map pin today, resolved against
+`AvatarManager.npc_positions_snapshot()` (new — Phase N's already-live
+`_rigs`/`_kinds` dictionaries, read the same way `nearest_target` already
+does). Every other objective type — and any `talk_to` whose target NPC
+isn't currently a live, positioned entity — is honestly OMITTED from the
+POI list, never guessed; it still appears in the breadcrumb TEXT (players
+still read "Gather 2 Wildroot"), just without a pin.
+
+**Domain split, mirroring `pickBreadcrumb`/`VERB_FOR` verbatim.**
+`world/quest_breadcrumb.gd` (new) is a pure port of
+`QuestTracker.tsx`'s breadcrumb-selection and text-formatting logic — same
+"prefer an all-done quest, else the first quest's first incomplete
+objective" rule, same `VERB_FOR` verb table with the same `'Do'` fallback.
+`world/wayfinding_markers.gd` gained `next_incomplete_objective`,
+`poi_from_quest_objective`, and `quest_pois` — the spatial half — and
+`world/wayfinding_controller.gd` gained `set_quest_pois(quests,
+npc_positions)`, held SEPARATELY from the existing pad/rooftop/district
+`_pois` (quest state and NPC positions change on their own, far more
+frequent cadence than a fresh `scene:data`, so recomputing only this subset
+avoids re-running the pad/rooftop/district work on every quest tick).
+
+**A real, honest finding about the wayfinding layer itself.**
+`WayfindingController`/`RooftopAccessController` — despite having their own
+real, tested pure-logic modules since F26/F27 — are **not mounted anywhere
+in `world/boot.gd`**, confirmed by direct grep, not assumed. This is a
+PRE-EXISTING gap this phase did not introduce and does not close: the new
+quest-POI data layer (`set_quest_pois`, `quest_pois`, `poi_from_quest_
+objective`) is real and fully tested, but has no live on-screen compass/
+marker consumer yet, because that consumer was never wired up in the first
+place. Wiring `WayfindingController` (+ `RooftopAccessController`, its own
+dependency) into `boot.gd` for real is separate, named follow-up scope —
+attempting it inside this pass would have been scope creep beyond "quest
+fetch + tracker HUD," this slice's actual deliverable.
+
+**The breadcrumb HUD IS live and mounted, unlike the map-pin layer above.**
+`world/boot.gd#_setup_quest_hud` mounts a bare top-center `Label` (same
+minimal posture as Combat Phase C4's `_target_hud` — not a port of the TS
+component's pill/icon/claim-button chrome, real separate follow-up UI
+work), updated from `QuestPoller.poll_succeeded`. `_unhandled_input` binds
+J to toggle breadcrumb ⇄ list mode, matching `QuestTracker.tsx`'s own J
+binding exactly. No localStorage-equivalent mode persistence yet (a
+deliberate first-slice scope cut, matching how other phases this session
+ported the design without every persistence/chrome detail). Honest empty
+state: zero active quests shows no HUD text at all, mirroring the TS
+component's own `if (quests.length === 0) return null`.
+
+**A real bug found by the test suite, not written around.**
+`quests_response_to_quests`'s first draft passed a Variant-typed loop var straight into
+`.duplicate(true)` without a type annotation, which the engine's static
+analyzer flagged as `Cannot infer the type of "entry" variable` — a real
+compile error, caught by `tests/run_all.gd`, fixed by declaring `var entry:
+Dictionary = q.duplicate(true)`. Separately, `quest_breadcrumb.gd`'s first
+draft called `quest_all_done`/`VERB_FOR` via its own `QuestBreadcrumb.`
+class-name prefix from inside its own file — the exact same same-class
+`class_name`-qualified static-call bug this session has now hit and fixed
+three times (`npc_poller.gd`, `creature_rig.gd`, and now this file) — fixed
+to bare-name calls. `wayfinding_markers.gd`'s own pre-existing
+self-qualified calls (`WayfindingMarkers.poi_from_landing_pad` etc.),
+by contrast, compiled cleanly both before and after this phase's edits —
+this bug does not reproduce in every file, only some; always verify with a
+real run rather than assuming either way.
+
+**Verified three ways.**
+1. Pure-logic: `tests/test_quest_breadcrumb.gd` (new, 17 checks) pins
+   `pick_breadcrumb`'s exact TS-mirrored precedence, `quest_all_done`, and
+   `breadcrumb_text`'s description/verb/suffix formatting including the
+   `'Do'` fallback for an unrecognized objective type. `tests/test_quest_
+   poller.gd` (new, 11 checks) pins `quests_response_to_quests`'s
+   verbatim-passthrough-or-drop contract. `tests/test_wayfinding_markers.gd`
+   gained 11 new checks (46 total, was 35) covering `next_incomplete_
+   objective`, `poi_from_quest_objective`'s real NPC-position resolution
+   AND its three honest-omission paths (non-talk_to type, unresolved
+   target, malformed quest/objective), and `quest_pois`'s end-to-end
+   filtering across a mixed real-shaped quest array. Full `tests/run_all.gd`:
+   **40/40 suites PASS, 0 fail**, real non-zero per-suite counts confirmed.
+2. **Real-engine, against a genuinely live spawned server with a genuinely
+   accepted quest** — not a synthetic fixture. A real `server.js` was
+   booted (fresh migrated DB), a real user was registered
+   (`POST /api/auth/register`), and that user genuinely accepted the real
+   seeded onboarding quest `first_cycle_cook`
+   (`POST /:worldId/quests/:questId/accept`) — confirmed via a direct
+   `curl` to `/quests/active` showing real objective rows before the Godot
+   probe ever ran. `tools/quest_poller_probe.gd` (new) was then run against
+   this live server and reported, verbatim:
+   `{"breadcrumb_text":"Walk into the glade where Concordia first speaks",
+   "npc_poll_result":{"count":56,"outcome":"succeeded"},
+   "npc_positions_known":56,"ok":true,"quest_pois_resolved":0,
+   "quest_poll_result":{"count":1,"outcome":"succeeded"},
+   "quests_fetched":1}` — a real quest genuinely fetched, a real breadcrumb
+   line genuinely derived from that quest's real first objective
+   description, and 56 real live NPC positions genuinely resolved via
+   `AvatarManager.npc_positions_snapshot()`. `quest_pois_resolved: 0` is
+   the CORRECT, honest answer for this specific accepted quest — its
+   current objective (`reach_location`, order_index 0) is not a `talk_to`
+   type, so per this phase's own documented design it gets no map pin. The
+   server, its temp data directory, and the registered test user were torn
+   down afterward; confirmed no stray process or directory left behind.
+3. A first run of this probe surfaced a real timing bug in the probe
+   itself (not the source): reading `AvatarManager.npc_positions_snapshot()`
+   in the SAME frame the NPC poll's signal fired reported `0` known
+   positions despite `poll_succeeded` reporting count 56, because rig
+   spawning happens in `AvatarManager._process()` on a LATER frame than the
+   HTTP signal handler that staged the snapshot — the exact same
+   settle-frame gap `npc_poller_probe.gd`/`avatar_manager_probe.gd` already
+   guard against. Fixed by adding the same one-frame settle; re-run
+   confirmed `npc_positions_known: 56`.
+
+**What this does NOT settle — stated plainly.** No real `talk_to`-first-
+objective quest was accepted in this pass (every one found in
+`content/quests/*.json` has prerequisite quests that would need completing
+first), so `quest_pois_resolved > 0` was proven only via the pure-logic
+test's synthetic fixture, not this live probe — a real, named residual, not
+silently implied as fully covered end to end. The map-pin layer has no live
+on-screen consumer at all yet (see the `WayfindingController` finding
+above). On-display visual correctness of the breadcrumb HUD (does the text
+actually render legibly at top-center, does the J-toggle read well) is
+unverified, same as every other HUD this session has shipped — headless
+installs `RasterizerDummy` and draws nothing for THIS particular claim (no
+pixel probe was built for the quest HUD specifically). Accept/complete/
+claim-reward interaction (item 4 of the original Phase Q scope) was
+deliberately deferred — this slice is read-only quest state, matching the
+"small, real, verified slice" discipline every other phase this session
+has followed; a follow-up pass wires the existing `/:worldId/quests/
+:questId/{accept,complete,claim-reward}` routes through a real interaction
+UI once one exists to hang it off of.
+
 ## Vegetation scatter — real district-bounded backend data, real GLB swap over HTTP (2026-08-08, Phase M2)
 
 Closes the vegetation half of the "genuinely no placement data exists yet"
