@@ -13,42 +13,42 @@ extends RefCounted
 ## as canonical; this exists only so Godot can pick the right REAL GLB
 ## (see `concord-frontend/public/models/building/*.glb`) instead of a box.
 ##
-## Real building meshes exist today for exactly 3 of the archetype's 5 values:
-## market, tavern, archive (`has_real_mesh`). A building_type that resolves to
-## "forge" or "tower" — or any building_type not covered by this port —
-## resolves to a real archetype string same as the TS table (unmapped ->
-## "market", the TS DEFAULT), so most unmapped types DO get a real mesh; only
-## the genuinely forge/tower-mapped subset has no real Godot mesh yet and
-## stays on the placeholder box (`scene_bootstrap.gd`'s existing, honest
-## fallback — never fabricated).
+## Real building meshes exist today for all 5 archetype values: market,
+## tavern, archive, forge, tower (`has_real_mesh`) — every building_type this
+## table can resolve to now gets a real GLB instead of the placeholder box.
 ##
-## Genuinely searched and closed as a real gap, not an oversight
-## (2026-08-08): every one of the SAME trusted CC0 source's 17
-## sub-collections (Polygonal Mind, via the ToxSam open-source-3D-assets
-## registry — the same source market/tavern/archive came from) was searched
-## for forge/furnace/smith/anvil/kiln/workshop/foundry-named assets; none
-## exist. A `towers`-named sub-collection DOES exist, but turned out to be
-## a themed collection of surreal floating sci-fi monuments (BlockChain/
-## Colony/MemeFactory/LoveDeath/Spooky-prefixed) — its `Tower_Base_*`
-## entries are real, valid, but INCOMPLETE modular base/platform pieces
-## (verified by loading them in a real headless Godot instance and
-## screenshotting: a classical open-columned rotunda with a floating disc
-## roof, not an enclosed tower body), and its full `*_Tower_Art` entries
-## are enormous, thematically mismatched sci-fi assemblies (a UFO-and-
-## rock-island "Colony_Tower_Art" scene, 28k+ vertices) — neither is an
-## honest fit for a grounded, medieval-toned "tower" archetype alongside
-## market/tavern/archive. A companion already-integrated CC0 source
-## (KayKit-Dungeon-Remastered-1.0, used for weapons) was also checked and
-## is a modular dungeon-prop kit with no standalone building mesh of
-## either kind. Shipping either a mislabeled incomplete piece or a
-## thematically-clashing asset would violate this project's own zero-
-## fabrication/honest-labeling discipline more than leaving the box
-## placeholder in place — so neither was added. Full search trail in
-## VISUAL_QA.md.
+## forge/tower history (kept for context — both eventually closed):
+## 2026-08-08, first attempt: exhaustively searched the trusted Polygonal
+## Mind CC0 source (17 sub-collections, via the ToxSam open-source-3D-assets
+## registry — the source market/tavern/archive came from) for forge/
+## furnace/smith/anvil/kiln/workshop/foundry-named assets; none exist. Its
+## `towers` sub-collection turned out to be surreal sci-fi monuments
+## (BlockChain/Colony/MemeFactory-prefixed) with either incomplete modular
+## base pieces or thematically-mismatched complete assemblies (a UFO-over-
+## a-floating-island "Colony_Tower_Art") — neither an honest fit. Also
+## checked KayKit-Dungeon-Remastered-1.0 (used for weapons): a modular
+## dungeon-prop kit with no standalone building of any kind. Closed as a
+## genuine gap that session, not shipped.
+##
+## 2026-08-08, later same day: a DIFFERENT KayKit source closed both.
+## `KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0` (CC0, Kay
+## Lousberg) ships `building_blacksmith_<color>.gltf` and
+## `building_tower_A_<color>.gltf` — real, complete, grounded medieval
+## buildings (a stone furnace with a lit hearth and an anvil-adjacent
+## lean-to for the blacksmith; a round windowed stone tower with a conical
+## roof for the tower), verified by loading both in a real Godot instance
+## and inspecting the actual screenshot, not by filename. The `blue` color
+## variant was used (the pack ships 4 team-color palettes; no neutral
+## variant exists for these two building types specifically, only for
+## terrain/wall/bridge pieces) — re-packed into self-contained `.glb` via
+## `gltf-transform copy`, same technique this project's other re-packed
+## CC0 assets use. See `concord-frontend/public/models/CREDITS.md` for full
+## attribution and VISUAL_QA.md for the verification record (both search
+## passes).
 
 const DEFAULT_ARCHETYPE := "market"
 
-const REAL_MESH_ARCHETYPES := ["market", "tavern", "archive"]
+const REAL_MESH_ARCHETYPES := ["market", "tavern", "archive", "forge", "tower"]
 
 const TABLE := {
 	# Core seed city

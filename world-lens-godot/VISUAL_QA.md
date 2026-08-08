@@ -1,5 +1,76 @@
 # Visual QA — Godot World Lens
 
+## Forge/tower building GLBs — closed for real, a different CC0 source than the one already exhausted (2026-08-08, later same day)
+
+The earlier "Forge/tower building GLBs — searched exhaustively, closed as a
+genuine gap, not shipped" entry below documented a real, thorough dead end
+against ONE trusted source (Polygonal Mind, 17 sub-collections) plus
+`KayKit-Dungeon-Remastered-1.0`. This entry supersedes that outcome — not
+the search record, which stays accurate for the source it covered — by
+finding and verifying a DIFFERENT source the earlier pass never checked.
+
+Per the owner's explicit instruction this session ("download them straight
+into the repo from wherever you can... GitHub assets that are open source
+and downloadable... give them their credits"), `git clone` (not `curl`) was
+used against `https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0`
+— confirmed reachable even though this environment's general HTTPS egress
+policy blocks kenney.nl/itch.io/opengameart.org/etc: GitHub's git-protocol
+traffic (`git clone`/`git ls-remote`) rides a separate allowlisted path from
+raw HTTPS fetches, verified empirically (`curl` to arbitrary HTTPS hosts
+403s per the proxy's policy; `git clone` to a public GitHub repo succeeds).
+
+`LICENSE.txt` read directly (not assumed from a search summary): CC0,
+"free to use in personal, educational and commercial projects." The pack
+ships `building_blacksmith_<color>.gltf` and `building_tower_A_<color>.gltf`
+(plus `_B` and `_base` tower variants) in 4 team-color palettes — genuinely
+different content from anything the earlier search touched. `blue` was
+picked (no neutral variant exists for buildings specifically, only for
+terrain/wall/bridge pieces in this pack).
+
+**Verified by loading both in a real engine, not by filename — same
+discipline the earlier (correctly cautious) tower rejection used.** Both
+source `.gltf` files passed `gltf-transform validate` clean; re-packed into
+self-contained `.glb` via `gltf-transform copy` (same technique as every
+other re-packed CC0 asset in `concord-frontend/public/models/CREDITS.md`)
+and re-validated clean post-repack. Loaded via `tools/glb_load_probe.gd`
+under `xvfb-run -a -s "-screen 0 1280x720x24" godot --path world-lens-godot
+--display-driver x11 --rendering-driver opengl3` against a real local
+`python3 -m http.server`, real screenshots captured and inspected:
+- **`forge.glb`** (`building_blacksmith_blue.gltf`, 3,393 real vertices):
+  a stone furnace with a lit orange hearth opening, a chimney, and a small
+  wood-framed lean-to stall with a blue-striped awning — unambiguously a
+  blacksmith, grounded and medieval-toned, consistent with market/tavern/
+  archive.
+- **`tower.glb`** (`building_tower_A_blue.gltf`, 3,126 real vertices): a
+  complete, enclosed round stone tower — windows, a door, a conical blue
+  roof. This is the "complete standalone structure" the earlier pass's
+  `Tower_Base_*` candidates from the OTHER source were not (those were an
+  open-columned rotunda foundation piece, correctly rejected at the time).
+
+Wired into `world-lens-godot/world/building_archetype.gd`
+(`REAL_MESH_ARCHETYPES` now `["market", "tavern", "archive", "forge",
+"tower"]`, all 5 of the archetype's values) and
+`concord-frontend/public/models/building/{forge,tower}.glb` — the shared
+convention-based path both `BuildingRenderer3D.tsx` (Three.js) and Godot's
+`scene_bootstrap.gd` already resolve against with **zero code changes on
+either client**: both already derive GLB scale from the loaded mesh's own
+measured AABB against the building's declared footprint, the same as every
+other real building archetype. `tests/test_building_archetype.gd`'s
+`has_real_mesh` pinning test flipped from asserting forge/tower are absent
+to asserting they're present. Full attribution:
+`concord-frontend/public/models/CREDITS.md`.
+
+**What this does and doesn't settle.** Settles: both files are real,
+valid, CC0-licensed, thematically-correct meshes that load and render
+correctly under the real engine, and both clients will pick them up via
+the existing convention with no further wiring. Does NOT settle: whether
+the `blue` palette reads well in-context next to the Polygonal Mind trio's
+different art style once placed in an actual populated scene (a real
+side-by-side in a live world render was not captured this pass — the
+probe screenshots above are each asset in isolation against the standard
+probe sky, not a composed scene); recoloring/re-texturing to visually
+unify the two source packs is a legitimate follow-up, not attempted here.
+
 ## Why the avatar looked like a Minecraft placeholder in a busy scene — a real thundering-herd bug, found and fixed (2026-08-08)
 
 Follow-on from the browser-perf check below: the owner looked at that check's

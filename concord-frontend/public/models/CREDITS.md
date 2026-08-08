@@ -388,10 +388,65 @@ to do that with no tool":
   gets, targeted at the NPC's own entity id. An NPC gathering resources
   is now a real, watchable action.
 
+## `building/forge.glb` and `building/tower.glb` (2026-08-08)
+
+**RESOLVED — both building archetypes now have a real CC0 mesh; the
+"Known limitations" bullet below describing them as unavailable is
+stale for these two and kept only for the still-genuinely-missing
+creature/vegetation gaps.** Sourced from
+[KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0)
+(Kay Lousberg / kaylousberg.com, **CC0** — "free to use in personal,
+educational and commercial projects", attribution not mandatory but
+credited here anyway), downloaded via `git clone` (plain HTTPS to
+GitHub — reachable in this environment even when the general
+domain-allowlist blocks kenney.nl/itch.io/opengameart.org/etc, since
+GitHub's git-protocol traffic rides a separate path from raw HTTPS
+fetches; confirmed empirically this session).
+
+This is a genuinely different source pack from the
+`market`/`tavern`/`archive` trio above (Polygonal Mind) — a prior
+session-long search of that same trusted source's 17 sub-collections,
+plus `KayKit-Dungeon-Remastered-1.0`, came up empty for forge/tower (see
+the "Known limitations" bullet's superseded text below and
+`world-lens-godot/VISUAL_QA.md` for the full search record). The
+Medieval Hexagon Pack is a *different* Kay Lousberg release built
+specifically around named building types (blacksmith, tower, tavern,
+market, church, mine, castle, barracks, ...) in 4 team-color palettes
+(yellow/green/red/blue; no neutral variant exists for buildings, only
+for terrain/wall/bridge pieces) — the `blue` variant was used for both,
+picked as a reasonably neutral-reading slate/stone tone rather than the
+brighter yellow/red.
+
+Verified before shipping, not judged by filename: both source `.gltf`
+files passed `gltf-transform validate` (zero errors/warnings) and were
+loaded in a **real Godot 4.4 instance** via `tools/glb_load_probe.gd`
+under `xvfb-run --rendering-driver opengl3` against a real local HTTP
+server, with the actual rendered screenshot inspected — `forge.glb`
+shows a stone furnace with a lit hearth, chimney, and a wood-and-canvas
+lean-to stall (visibly a blacksmith, not an ambiguous shape);
+`tower.glb` shows a complete, enclosed round stone tower with windows, a
+door, and a conical roof (not the incomplete "modular base" trap the
+prior tower search hit). Re-packed into self-contained `.glb` via
+`gltf-transform copy` (same technique as every other re-packed asset in
+this file — embeds the external `.bin`/texture references into one
+binary container) and re-validated post-repack (clean).
+
+| File | Source name | Used for |
+|---|---|---|
+| `building/forge.glb` | `building_blacksmith_blue.gltf` (KayKit Medieval Hexagon Pack) | `BuildingRenderer3D.tsx` / Godot `building_archetype.gd` `forge` archetype |
+| `building/tower.glb` | `building_tower_A_blue.gltf` (KayKit Medieval Hexagon Pack) | `BuildingRenderer3D.tsx` / Godot `building_archetype.gd` `tower` archetype |
+
+Both clients pick these up with **zero code changes** — `BuildingRenderer3D.tsx`
+already derives its scale from the loaded GLB's own measured AABB against
+the DTU's declared footprint (`cloned.scale.set(dtu.dimensions.width /
+size.x, ...)`), and Godot's `scene_bootstrap.gd` does the identical
+AABB-based rescale — both were already written to auto-pick-up a real
+asset dropped into this convention-based path, the same as every other
+building archetype.
+
 ## Known limitations (honest, not hidden)
 
-- **`forge` and `tower` building archetypes** have no real asset yet — they
-  keep the existing procedural silhouette. Same for every `serpentine` /
+- **`serpentine` /
   `eel` / `fish` / `shark` / `cephalopod` / `polyped` / `amorphous` /
   `humanoid` creature topology and `winged_quadruped`.
 - **No baked gait animation** on real creature assets in this pass — they

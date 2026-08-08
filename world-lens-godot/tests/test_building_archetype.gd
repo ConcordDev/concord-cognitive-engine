@@ -15,7 +15,7 @@ static func run() -> TestUtils:
 	_test_known_mappings_match_the_ts_table(t)
 	_test_unmapped_type_falls_back_to_default(t)
 	_test_empty_type_falls_back_to_default(t)
-	_test_has_real_mesh_true_for_market_tavern_archive_only(t)
+	_test_has_real_mesh_true_for_all_five_archetypes(t)
 	return t
 
 
@@ -42,9 +42,10 @@ static func _test_empty_type_falls_back_to_default(t: TestUtils) -> void:
 	t.check_eq(BuildingArchetype.archetype_for_type(""), "market", "empty type falls back to market")
 
 
-static func _test_has_real_mesh_true_for_market_tavern_archive_only(t: TestUtils) -> void:
+static func _test_has_real_mesh_true_for_all_five_archetypes(t: TestUtils) -> void:
 	t.check(BuildingArchetype.has_real_mesh("market"), "market has a real mesh")
 	t.check(BuildingArchetype.has_real_mesh("tavern"), "tavern has a real mesh")
 	t.check(BuildingArchetype.has_real_mesh("archive"), "archive has a real mesh")
-	t.check(not BuildingArchetype.has_real_mesh("forge"), "forge has NO real mesh (verified absent across the whole trusted CC0 source; honest fallback stays a box)")
-	t.check(not BuildingArchetype.has_real_mesh("tower"), "tower has NO real mesh (2026-08-08: real candidates exist but are either incomplete modular pieces or thematically-mismatched sci-fi assemblies; shipping either would violate honest-labeling discipline — see VISUAL_QA.md)")
+	t.check(BuildingArchetype.has_real_mesh("forge"), "forge has a real mesh (2026-08-08: KayKit Medieval Hexagon Pack blacksmith, CC0 — see VISUAL_QA.md)")
+	t.check(BuildingArchetype.has_real_mesh("tower"), "tower has a real mesh (2026-08-08: KayKit Medieval Hexagon Pack tower_A, CC0 — see VISUAL_QA.md)")
+	t.check(not BuildingArchetype.has_real_mesh("some_unknown_archetype"), "an archetype with no real mesh stays honestly false")
