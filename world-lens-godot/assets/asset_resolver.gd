@@ -26,7 +26,27 @@ signal resolved(kind: String, id: String, url: String)
 signal resolve_failed(kind: String, id: String, reason: String)
 
 @export var base_url: String = "http://127.0.0.1:5050"
-@export var use_resolve_endpoint: bool = true
+## Default flipped false (2026-08-08, was true) — found by an actual browser
+## load of a real scene with ~50 NPCs + buildings + vegetation + the local
+## player all resolving at once: the dynamic-lookup round trip is a GUARANTEED
+## miss today (confirmed by direct grep of server/lib/evo-asset/*.js and
+## domains/evo-asset.js — nothing anywhere registers an evo_assets row under
+## source "npc"/"vegetation"/"building"/"player", only "polyhaven"/"kenney"/
+## "ambientcg"/"os3a"/"github"/"authored"/"concordia"/"evolved" — a real,
+## separate CC0-asset-ingestion pipeline that has never been wired to feed
+## these specific kinds), so every entity was paying a real HTTP round trip
+## for a `not_registered` answer it always gets. Measured impact: a real
+## Chromium load showed 50/50 of these lookups landing on the shared per-
+## origin connection pool at once, queuing behind each other and starving
+## the LOCAL PLAYER's own (much more important) body-mesh fetch — the avatar
+## stayed on its primitive placeholder for 35+ real seconds while NPC lookups
+## it was queued behind slowly failed one by one. Skipping the round trip by
+## default restores instant static-fallback resolution (matching what
+## effectively already happened before the auth-gate fix above, when every
+## call 401'd near-instantly) without losing any real functionality — the
+## toggle stays real and available for a caller that specifically wants to
+## try the dynamic path once a registration pipeline for these kinds exists.
+@export var use_resolve_endpoint: bool = false
 ## Threaded through to `fallback_url` for kind "player"/"npc" so a
 ## per-world hero-mesh variant can be preferred over the universal one —
 ## see that function's own comment for why. Blank is a legal, honest value

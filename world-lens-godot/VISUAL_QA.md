@@ -1,5 +1,102 @@
 # Visual QA — Godot World Lens
 
+## Why the avatar looked like a Minecraft placeholder in a busy scene — a real thundering-herd bug, found and fixed (2026-08-08)
+
+Follow-on from the browser-perf check below: the owner looked at that check's
+own screenshot and correctly called it out — flat green grid terrain, a bare
+white capsule avatar, primitive box/hex placeholders for buildings and
+vegetation, none of it matching `docs/ART_STYLE_GUIDE.md`'s BotW/Palworld
+description. Investigated end-to-end with real browser network capture
+rather than guessing. Two real, independent bugs, found in this order:
+
+1. **A regression from the same-day evo-asset auth-gate fix (see below).**
+   With that gate now open, every entity's `AssetResolver.resolve()` started
+   making a REAL round trip to `/api/evo-asset/resolve` before falling back
+   to the static convention — and every one of those calls is a guaranteed
+   `not_registered` miss today (confirmed by grep: nothing anywhere writes
+   an `evo_assets` row under `source` "npc"/"vegetation"/"building"/"player").
+   With ~50 NPCs doing this at once, the calls piled up and 50/50 hit a real
+   429 in one captured run. Fixed by flipping `AssetResolver.
+   use_resolve_endpoint`'s default to `false` — `world/scene_bootstrap.gd`
+   already disabled this for buildings for the identical reason, which is
+   exactly why buildings kept rendering while avatars didn't; the fix just
+   makes NPCs/players consistent with that existing precedent.
+2. **The REAL bug, and the actual explanation for the screenshot: `assets/
+   glb_loader.gd`'s own Phase M4 header comment named this exact failure
+   mode as a known, deliberately-deferred gap — "many avatars requesting the
+   SAME not-yet-cached URL in the same tick... still fire N simultaneous
+   redundant fetches" — and it turned out to matter far more than that
+   comment assumed.** Every avatar in Concordia defaults to the identical
+   `"warrior"` hero-mesh URL (no per-NPC archetype signal exists on the wire
+   yet), so a scene with ~56 NPCs isn't a rare edge case for this bug — it's
+   the guaranteed, every-single-load common case. A real browser capture
+   (`page.on("request")`) counted **20+ literally-identical concurrent
+   requests** for `_archetype_warrior__concordia-hub.glb` alone, all
+   competing for Chromium's small per-origin connection limit — starving
+   even the LOCAL PLAYER's own body-mesh fetch, which visibly never got a
+   connection slot in a 35-second window.
+
+**Fixed**: `GlbLoader` now tracks in-flight fetches by URL
+(`static var _inflight: Dictionary`). The first caller for a not-yet-cached,
+not-yet-in-flight URL becomes the sole fetcher; every later caller for the
+identical URL piggybacks as a subscriber instead of firing a redundant
+request. On completion, every subscriber gets its own `loaded`/`load_failed`
+emission — the owner gets the live parsed node directly, every other
+subscriber gets its own `packed.instantiate()` copy (Godot nodes can't be
+shared as a child of more than one parent); if packing failed, only the
+owner can honestly receive a real node, so every other subscriber gets an
+honest `load_failed` rather than a fabricated share of a node it can never
+actually receive. `clear_cache()` now also clears `_inflight`, matching its
+own "clean process-lifetime-shared state" contract.
+
+**Measured before/after, same real browser + same real scene**: hero-mesh
+requests dropped from 20+ duplicates to exactly 1. The single real fetch
+then genuinely succeeded (HTTP 200, confirmed via `page.on("response")`) —
+just slowly in THIS sandbox's specific dev-server (Next.js's own "Slow
+filesystem detected" warning on this box, plus the many OTHER distinct real
+assets — creatures, vegetation, buildings — still competing for the same
+small connection pool): a 15s window wasn't enough to see it complete, a
+55s window was. Once it did, the growing scene showed genuine textured
+CC0 assets rendering — real pink-flowered vegetation, a real furred
+creature — proving the pipeline itself works end-to-end; only the AVATAR's
+own GLTF-parse-after-fetch hadn't finished by that exact screenshot moment.
+This residual is sandbox-specific dev-server latency, not a code bug — a
+real deployed server has none of this box's disk/CPU constraints, and the
+FIX (eliminating 20+ duplicate requests down to 1) is real and verified
+regardless of how fast any given box happens to serve static files.
+
+Tests: `world-lens-godot/tests/test_glb_loader.gd` extended from 2 to 11
+pinned checks (piggyback registration, multi-subscriber fail-fanout,
+freed-subscriber safety, `clear_cache()` symmetry) — all pure-logic, no
+real network call needed to pin the dedup contract itself. Full suite
+48/48 green.
+
+**What's still honestly missing for this to look like the described art
+style** (separate from the bug above, and NOT attempted in this pass — see
+the "what's next" note at the end of this section):
+- Only 3 of 5 building archetypes have real GLBs (market/tavern/archive;
+  forge/tower still fall to the placeholder box — a known, already-flagged
+  content gap, not a wiring gap).
+- Every NPC and the local player resolve to the SAME "warrior" hero-mesh
+  archetype — there's no per-NPC occupation/archetype signal on the wire,
+  so Concordia's world reads visually uniform even once every fetch
+  succeeds. This is a real content/wiring gap, distinct from today's bug.
+- The texture-preserving toon shader (Phase S1-S3, already built and
+  verified on buildings + hero meshes) needs the SAME reach extended onto
+  creatures/vegetation once their GLBs load reliably.
+- Godot ships with **zero** built-in game assets — it's an engine, not an
+  asset library (unlike, say, Unity's Asset Store bundles). The CC0 assets
+  already on disk (`concord-frontend/public/models/CREDITS.md`) were
+  individually sourced from Kenney.nl / Poly Haven / OpenGameArt-class
+  sources by hand. Separately, a REAL, already-built ingestion pipeline for
+  exactly those sources exists at `server/lib/evo-asset/source-loaders.js`
+  (`bootstrapPolyHaven`/`bootstrapAmbientCG`/Kenney/OS3A loaders, network-
+  dependent, graceful-on-failure) — but it registers assets under `source`
+  values like `"polyhaven"`/`"kenney"`/`"ambientcg"`/`"os3a"`/`"github"`/
+  `"authored"`/`"evolved"`, never under `"npc"`/`"vegetation"`/`"building"`/
+  `"player"`, so it has never actually fed Concordia's world geometry. Real,
+  substantial follow-on work — flagged here, not attempted in this pass.
+
 ## Real-GPU browser performance check — honest about sandbox limitations, and a real backend-config bug found + fixed along the way (2026-08-08)
 
 **The honest headline first, since it's the whole point of this task's name:
