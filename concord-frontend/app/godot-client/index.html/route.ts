@@ -40,6 +40,7 @@ const CONFIG_PARAM_KEYS = [
   'CONCORD_WORLD_ID',
   'CONCORD_GODOT_SPECTATOR',
   'CONCORD_FRONTEND_URL',
+  'CONCORD_BACKEND_URL',
 ] as const;
 
 // Matches an opening <script ...> tag that does not already carry a nonce
@@ -53,23 +54,36 @@ export function injectNonce(html: string, nonce: string): string {
 
 // Replaces GODOT_CONFIG's `args` array with a "--" separator followed by
 // "KEY=VALUE" entries for every whitelisted query param present on this
-// request (falling back to `defaultFrontendUrl` for CONCORD_FRONTEND_URL
-// specifically when the request didn't set one — see the GET handler for
-// why: Godot's own `HTTPRequest` rejects a relative URL outright, even on
-// Web, so world/boot.gd needs an ABSOLUTE same-origin URL by default, not
-// an empty string). Parses the object as real JSON (not a fragile
-// literal-`[]` string replace) so it stays correct regardless of exporter
-// formatting changes, and re-serializes via JSON.stringify — which safely
-// escapes any character a token/URL value could contain, so no manual
-// escaping is ever needed here. Leaves the file byte-for-byte unchanged if
-// the marker isn't found (honest no-op, never throws) or if no param
-// ultimately applies.
-export function injectConfigArgs(html: string, searchParams: URLSearchParams, defaultFrontendUrl?: string): string {
+// request (falling back to `defaultOrigin` for CONCORD_FRONTEND_URL AND
+// CONCORD_BACKEND_URL specifically when the request didn't set one — see
+// the GET handler for why: Godot's own `HTTPRequest` rejects a relative URL
+// outright, even on Web, so world/boot.gd needs an ABSOLUTE URL by default,
+// not an empty string). The same origin is the correct default for BOTH:
+// a real deployment serves the page and proxies `/api/*` through the one
+// public origin (nginx/Cloudflare both fall through unmatched paths to the
+// same backend, per this repo's own deploy docs) — a bare browser load with
+// no explicit CONCORD_BACKEND_URL query param should therefore talk to
+// "wherever this page came from", exactly like CONCORD_FRONTEND_URL already
+// does for static assets. Found by an actual browser load (not assumed):
+// every REST-based Godot subsystem (NPCs, quests, creatures, appearance,
+// FEA scene data) was previously hardcoded client-side to
+// "http://127.0.0.1:5050" with no override path at all, so it silently
+// failed (CSP-refused cross-origin fetch, or a plain connection failure)
+// the instant the backend wasn't literally reachable at that exact
+// loopback address from the browser — true of essentially every real
+// deployment, since the browser runs on the visitor's machine, not the
+// server. Parses the object as real JSON (not a fragile literal-`[]`
+// string replace) so it stays correct regardless of exporter formatting
+// changes, and re-serializes via JSON.stringify — which safely escapes any
+// character a token/URL value could contain, so no manual escaping is ever
+// needed here. Leaves the file byte-for-byte unchanged if the marker isn't
+// found (honest no-op, never throws) or if no param ultimately applies.
+export function injectConfigArgs(html: string, searchParams: URLSearchParams, defaultOrigin?: string): string {
   const args: string[] = [];
   for (const key of CONFIG_PARAM_KEYS) {
     let value = searchParams.get(key);
-    if (!value && key === 'CONCORD_FRONTEND_URL' && defaultFrontendUrl) {
-      value = defaultFrontendUrl;
+    if (!value && (key === 'CONCORD_FRONTEND_URL' || key === 'CONCORD_BACKEND_URL') && defaultOrigin) {
+      value = defaultOrigin;
     }
     if (value) args.push(`${key}=${value}`);
   }

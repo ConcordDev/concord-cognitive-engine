@@ -138,6 +138,25 @@ const TouchControls := preload("res://ui/touch_controls.gd")
 ## SAME origin (both come out of the one Next.js app), so the relative form
 ## is not just CSP-compatible, it is the actually-correct default.
 @export var frontend_asset_base_url: String = "http://127.0.0.1:3000"
+## The backend REST/macro API origin — where `POST /api/lens/run`,
+## `GET /api/worlds/:id/npcs`, `/quests/*`, `/api/fea/*` etc. actually live.
+## Distinct from `gateway_url` (the WebSocket gateway) even though a real
+## deployment usually serves both from the same host, because Godot's own
+## `HTTPRequest` needs a plain http(s) origin, not a `ws://.../godot-ws`
+## URL. Override via CONCORD_BACKEND_URL. Found missing entirely by an
+## actual browser load (2026-08-08): every REST poller/loader below
+## (`_npc_poller`, `_creature_poller`, `_quest_poller`,
+## `_quest_available_poller`, `_quest_actions`, `_fea_scene`,
+## `_player_appearance_loader`) was hardcoded to this exact literal with no
+## override path at all — silently unreachable the instant the backend
+## wasn't literally at `127.0.0.1:5050` from the browser's point of view,
+## which is true of essentially every real deployment (the browser runs on
+## the visitor's machine, not the server). `app/godot-client/index.html/
+## route.ts` now defaults this the same way it already defaults
+## `CONCORD_FRONTEND_URL` — to the request's own resolved origin — since a
+## real deployment proxies `/api/*` through the same public origin as the
+## page.
+@export var backend_api_base_url: String = "http://127.0.0.1:5050"
 
 var _gateway: GatewayClient
 var _bootstrap: SceneBootstrap
@@ -357,6 +376,7 @@ func _ready() -> void:
 			"CONCORD_WORLD_ID": OS.get_environment("CONCORD_WORLD_ID"),
 			"CONCORD_GODOT_SPECTATOR": OS.get_environment("CONCORD_GODOT_SPECTATOR"),
 			"CONCORD_FRONTEND_URL": OS.get_environment("CONCORD_FRONTEND_URL"),
+			"CONCORD_BACKEND_URL": OS.get_environment("CONCORD_BACKEND_URL"),
 		}
 	var _defaults := {
 		"gateway_url": gateway_url, "api_key": api_key,
@@ -372,6 +392,9 @@ func _ready() -> void:
 	var _frontend_env := String(_env.get("CONCORD_FRONTEND_URL", ""))
 	if _frontend_env != "":
 		frontend_asset_base_url = _frontend_env
+	var _backend_env := String(_env.get("CONCORD_BACKEND_URL", ""))
+	if _backend_env != "":
+		backend_api_base_url = _backend_env
 	# No web-specific fallback here — an earlier version tried defaulting to
 	# "" on Web (relative URLs, resolved by the browser against the page's
 	# own origin) to dodge the app's strict connect-src CSP. That was WRONG,
@@ -469,7 +492,7 @@ func _ready() -> void:
 	# loader.gd`'s own class doc for why this is bounded and never blocks
 	# world entry.
 	_player_appearance_loader = PlayerAppearanceLoader.new()
-	_player_appearance_loader.base_url = "http://127.0.0.1:5050"
+	_player_appearance_loader.base_url = backend_api_base_url
 	_player_appearance_loader.auth_token = auth_token
 	add_child(_player_appearance_loader)
 	_player_appearance_loader.settled.connect(_on_player_appearance_settled)
@@ -533,7 +556,7 @@ func _ready() -> void:
 	# own comment just above for why that distinction matters). Mounted
 	# right after `_avatar_manager` so the DI reference is ready immediately.
 	_npc_poller = NpcPoller.new()
-	_npc_poller.base_url = "http://127.0.0.1:5050"
+	_npc_poller.base_url = backend_api_base_url
 	_npc_poller.world_id = world_id
 	_npc_poller.auth_token = auth_token
 	_npc_poller.avatar_manager = _avatar_manager
@@ -552,7 +575,7 @@ func _ready() -> void:
 	add_child(_creature_manager)
 
 	_creature_poller = CreaturePoller.new()
-	_creature_poller.base_url = "http://127.0.0.1:5050"
+	_creature_poller.base_url = backend_api_base_url
 	_creature_poller.world_id = world_id
 	_creature_poller.auth_token = auth_token
 	_creature_poller.creature_manager = _creature_manager
@@ -564,7 +587,7 @@ func _ready() -> void:
 	# real state rather than clearing to blank (QuestPoller's own class doc:
 	# never fabricates, never clears real state on a transient error).
 	_quest_poller = QuestPoller.new()
-	_quest_poller.base_url = "http://127.0.0.1:5050"
+	_quest_poller.base_url = backend_api_base_url
 	_quest_poller.world_id = world_id
 	_quest_poller.auth_token = auth_token
 	add_child(_quest_poller)
@@ -576,14 +599,14 @@ func _ready() -> void:
 	# accept/claim interaction. See quest_actions.gd's own class doc for why
 	# this is deliberately ONE action at a time, not a quest-log UI.
 	_quest_available_poller = QuestAvailablePoller.new()
-	_quest_available_poller.base_url = "http://127.0.0.1:5050"
+	_quest_available_poller.base_url = backend_api_base_url
 	_quest_available_poller.world_id = world_id
 	_quest_available_poller.auth_token = auth_token
 	add_child(_quest_available_poller)
 	_quest_available_poller.poll_succeeded.connect(func(_c): _render_quest_hud())
 
 	_quest_actions = QuestActions.new()
-	_quest_actions.base_url = "http://127.0.0.1:5050"
+	_quest_actions.base_url = backend_api_base_url
 	_quest_actions.world_id = world_id
 	_quest_actions.auth_token = auth_token
 	_quest_actions.quest_poller = _quest_poller
@@ -637,7 +660,7 @@ func _ready() -> void:
 	# via SessionManager.open_fea_overlay() (see _on_fea_overlay_opened);
 	# never fetches or shows a structure on its own.
 	_fea_scene = FeaSceneBuilder.new()
-	_fea_scene.base_url = "http://127.0.0.1:5050"
+	_fea_scene.base_url = backend_api_base_url
 	_fea_scene.auth_token = auth_token
 	_fea_scene.visible = false
 	add_child(_fea_scene)

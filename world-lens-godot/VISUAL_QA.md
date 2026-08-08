@@ -1,5 +1,155 @@
 # Visual QA — Godot World Lens
 
+## Real-GPU browser performance check — honest about sandbox limitations, and a real backend-config bug found + fixed along the way (2026-08-08)
+
+**The honest headline first, since it's the whole point of this task's name:
+no genuine GPU-backed number can be produced in this sandbox, ever.** This is
+a headless container with no GPU passthrough. Confirmed by this session's own
+prior probes (`--headless` alone uses Godot's `RasterizerDummy`, which draws
+nothing) and reconfirmed here: the one real-pixel-rendering path available
+(`xvfb-run … --rendering-driver opengl3`) reports `"OpenGL API 4.5 (Core
+Profile) Mesa 25.2.8 … Using Device: Mesa - llvmpipe"` — a CPU software
+rasterizer, not a GPU. A real Chromium browser load in this same sandbox
+(below) similarly falls back to SwiftShader, Chromium's own CPU WebGL
+implementation, when launched with `--use-gl=swiftshader`. Neither number
+below says anything about real-GPU frame time on the actual A40 deployment
+target — that number can only come from a session with real hardware access,
+loading the same export the same way.
+
+**What IS real and was actually measured**, via a genuine end-to-end run: a
+real `server.js` (fresh migrated + content-seeded SQLite DB, real registered
+user, real JWT), a real `next dev` (Turbopack) frontend proxying to it, and a
+real Playwright `chromium.launch()` (the same browser this repo's own e2e
+suite uses) loading `/godot-client/index.html` with real query-param runtime
+config — **not the stale Aug-7 export**: `node scripts/export-godot-web.mjs`
+was re-run first so the served bundle includes every GDScript change from
+this session's own continuation (Phases M1–S4, N, C, Q, audio, UI, gamepad/
+touch, archetype signal, texture-preserving toon shading, and the multi-world
+verification pass).
+
+- **Boot is real and clean**: engine boot → WebGL init → `gateway socket
+  open` → `authenticated as <uid>` → `joined room world:concordia-hub`, all
+  observed for real in the console log, matching the exact sequence the
+  2026-08-07 "Browser (Web export)" section above first proved.
+- **Real transfer sizes, measured off `performance.getEntriesByType("resource")`,
+  not assumed from disk**: `index.wasm` 43,682,606 bytes decoded / 9,509,188
+  bytes over the wire (gzip, ~1.3–2.4s transfer in this run), `index.pck`
+  574,752–575,052 bytes (~25–240ms), `index.js` 317,142 bytes decoded /
+  81,059 bytes over the wire (~30–130ms). These are genuine HTTP timings
+  through a real dev server on this box — not GPU-bound, but a real measure
+  of what a visitor's browser actually has to fetch and parse before the
+  engine can even start.
+- **A real, non-synthetic screenshot** was captured mid-session
+  (`/tmp/godot-browser-perf.png`, not committed — a build artifact) showing,
+  together in one real frame: the local player's real humanoid rig standing
+  on the real toon-shaded/textured terrain, real vegetation/building
+  placeholder geometry in the distance, the real Phase Q quest breadcrumb
+  ("[K] Accept: The First Cycle — Cook"), and the real Phase 376 on-screen
+  touch-control buttons (E/F/R/Q) — genuine end-to-end integration across
+  six separate phases of this session's own work, rendered by SwiftShader,
+  not a mock.
+
+### A real, previously-undiscovered bug, found only by running this in a non-default topology
+
+Every prior Godot browser verification in this repo (the 2026-08-07 "Browser
+(Web export)" section above) ran with the frontend and backend effectively
+reachable at the SAME implied origin. This task's honest performance check
+required standing up frontend and backend on two genuinely different ports
+(`:3098` / `:5098`, simulating any real deployment where the browser is not
+running on the same machine as the server) — and that surfaced a real defect:
+**only the WebSocket gateway URL (`CONCORD_GATEWAY_URL`) was ever
+runtime-configurable.** Every REST-based subsystem this session built or
+extended — `_npc_poller`, `_creature_poller`, `_quest_poller`,
+`_quest_available_poller`, `_quest_actions`, `_fea_scene`, and
+`_player_appearance_loader` — had its `base_url` hardcoded to the literal
+`"http://127.0.0.1:5050"` in `world/boot.gd`, with **no override path of any
+kind**. First symptom, captured verbatim from a real browser console: `Refused
+to connect to 'http://127.0.0.1:5050/api/lens/run' because it violates the
+… Content-Security-Policy directive: "connect-src 'self' https: wss: ws:
+http://127.0.0.1:5098"` — the CSP correctly allowed the real backend origin
+the page was told about, and just as correctly refused the hardcoded wrong
+one. This is not a sandbox artifact: it would silently break NPCs, quests,
+appearance, and FEA scene data in essentially **every** real deployment,
+since the browser runs on the visitor's machine, never at the literal
+loopback address the server itself listens on.
+
+**Fixed**, mirroring the existing `CONCORD_FRONTEND_URL`/`frontend_asset_base_url`
+pattern exactly:
+- `world-lens-godot/world/boot.gd`: new `@export var backend_api_base_url:
+  String = "http://127.0.0.1:5050"`, resolved from a new `CONCORD_BACKEND_URL`
+  env var (native) / cmdline arg (Web) in `_ready()`, same precedence rule as
+  every other override here (non-empty override wins, blank leaves the
+  default). All 7 hardcoded `"http://127.0.0.1:5050"` assignments now read
+  `backend_api_base_url` instead.
+- `concord-frontend/app/godot-client/index.html/route.ts`: `CONCORD_BACKEND_URL`
+  added to `CONFIG_PARAM_KEYS`; `injectConfigArgs` now defaults it (like
+  `CONCORD_FRONTEND_URL` already did) to the request's own resolved public
+  origin when the embedding page didn't specify one — correct by construction
+  for the real deployment shape this repo already documents, where `/api/*`
+  is proxied through the SAME public origin as the page (nginx/Cloudflare
+  both fall through unmatched paths to the same backend).
+- Tests extended in both places: `world-lens-godot/tests/test_boot_runtime_
+  config.gd` was already pinning `resolve_runtime_config`'s override contract
+  (unchanged — `CONCORD_BACKEND_URL` follows the same `_frontend_env`-style
+  direct-read path as `CONCORD_FRONTEND_URL`, not through that function);
+  `concord-frontend/tests/godot-client-route.test.ts` gained coverage for
+  the new key defaulting alongside `CONCORD_FRONTEND_URL` and for an explicit
+  override winning — 15/15 passing.
+
+**Re-verified after the fix**: the exact same CSP-refusal class of error is
+gone. Re-running the full GDScript suite (`tests/run_all.gd`) shows all 48
+suites `[PASS]` with real non-zero per-suite check counts, zero `[FAIL]`.
+Re-running the real Playwright load with `CONCORD_BACKEND_URL` now passed
+explicitly (mirroring an operator setting it for a cross-origin deployment)
+shows real `200` responses from the real backend for `/api/lens/run`,
+`/api/worlds/concordia-hub/npcs`, `/api/worlds/concordia-hub/quests/active`,
+and `/api/worlds/concordia-hub/quests?status=available` — confirmed directly
+in the server's own structured request log, not just inferred from the
+absence of console errors.
+
+### A second, smaller, pre-existing gap found in the same pass — documented, not fixed this pass
+
+With the backend URL now reachable, a residual class of `401` responses
+surfaced for `GET /api/evo-asset/resolve?kind=…&id=…` (the optional
+EvoAsset-promotion lookup `assets/asset_resolver.gd` tries before falling
+back to the static `{base}/models/{kind}/{id}.glb` convention). Traced to two
+stacked, independent, pre-existing issues, neither introduced by this
+session:
+1. **Param-name mismatch**: `asset_resolver.gd` sends `?kind=&id=`; the real
+   route (`server/routes/evo-asset.js#GET /resolve`) reads `?source=&sourceId=`
+   — so even with a valid token this call would always fail its own
+   `source and sourceId required` check. This dynamic-promotion lookup has
+   therefore never actually worked; the honest static-fallback path is why
+   nothing visibly broke.
+2. **Gate 1 doesn't allowlist it**: the route's own header comment says
+   "public read, no auth required," and its handler genuinely has no
+   `requireAuth` call — but `/api/evo-asset` never appears in `server.js`'s
+   `publicReadPaths` allowlist, so the global auth middleware rejects the
+   request before it ever reaches that handler.
+Both are real and independently fixable, but fixing #2 means editing the
+security-sensitive `publicReadPaths` surface this repo's own CLAUDE.md
+documents as having been carefully, narrowly audited in a prior pass — not a
+change to make casually inside an unrelated performance-check task. Left as
+a named, scoped residual rather than silently fixed or silently ignored:
+**degrades gracefully today** (the static-convention fallback still resolves
+real GLBs, as Phase M1/M2/M3/N's own verified screenshots show), so nothing
+user-visible is broken — it only means EvoAsset-evolved/promoted asset
+variants never actually override the default mesh in the Godot client, a
+gap that already existed before this task started.
+
+### What a future session with real GPU-backed hardware needs to do
+
+Load the same export (`concord-frontend/public/godot-client/index.html`,
+built via `node scripts/export-godot-web.mjs`) in a real browser on a machine
+with actual GPU acceleration — Forward+ is this project's real target
+renderer (`project.godot`'s `rendering/renderer/rendering_method`), not the
+`gl_compatibility` fallback every visual-QA shot in this file has been
+captured under so far. Capture real frame times via Chromium's own
+`performance` API or a simple `requestAnimationFrame` counter over a fixed
+window, with and without Phase S4's SDFGI/bloom/SSAO real-time GI enabled,
+to get the first genuine "does this run smoothly on real hardware" answer —
+nothing in this sandbox can produce that number, and nothing here claims to.
+
 ## Verify other sub-worlds render in Godot (2026-08-08)
 
 Every prior probe in this whole session that touches `SceneBootstrap`

@@ -70,14 +70,39 @@ describe('injectConfigArgs', () => {
     const params = new URLSearchParams();
     const out = injectConfigArgs(SAMPLE_HTML, params, 'https://concord-os.org');
     const config = JSON.parse(out.match(/const GODOT_CONFIG = (\{.*\});/)![1]);
-    expect(config.args).toEqual(['--', 'CONCORD_FRONTEND_URL=https://concord-os.org']);
+    // CONCORD_BACKEND_URL co-defaults to the same origin (see the dedicated
+    // test below) — both land here since neither was explicitly set.
+    expect(config.args).toEqual([
+      '--',
+      'CONCORD_FRONTEND_URL=https://concord-os.org',
+      'CONCORD_BACKEND_URL=https://concord-os.org',
+    ]);
   });
 
   it('an explicit CONCORD_FRONTEND_URL query param wins over the default origin', () => {
     const params = new URLSearchParams({ CONCORD_FRONTEND_URL: 'https://cdn.example.com' });
     const out = injectConfigArgs(SAMPLE_HTML, params, 'https://concord-os.org');
     const config = JSON.parse(out.match(/const GODOT_CONFIG = (\{.*\});/)![1]);
-    expect(config.args).toEqual(['--', 'CONCORD_FRONTEND_URL=https://cdn.example.com']);
+    // CONCORD_BACKEND_URL still defaults independently; only the frontend
+    // one was overridden.
+    expect(config.args).toEqual([
+      '--',
+      'CONCORD_FRONTEND_URL=https://cdn.example.com',
+      'CONCORD_BACKEND_URL=https://concord-os.org',
+    ]);
+  });
+
+  it('an explicit CONCORD_BACKEND_URL query param wins over the default origin', () => {
+    const params = new URLSearchParams({ CONCORD_BACKEND_URL: 'https://api.example.com' });
+    const out = injectConfigArgs(SAMPLE_HTML, params, 'https://concord-os.org');
+    const config = JSON.parse(out.match(/const GODOT_CONFIG = (\{.*\});/)![1]);
+    // CONCORD_FRONTEND_URL still defaults independently; only the backend
+    // one was overridden.
+    expect(config.args).toEqual([
+      '--',
+      'CONCORD_FRONTEND_URL=https://concord-os.org',
+      'CONCORD_BACKEND_URL=https://api.example.com',
+    ]);
   });
 
   it('splices whitelisted params into GODOT_CONFIG.args as "--" + KEY=VALUE entries', () => {
