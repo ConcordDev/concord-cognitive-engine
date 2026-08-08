@@ -123,15 +123,54 @@ not a GLB-mutating pass.
 
 ## `legend` and per-world archetype variants (prior pass, unchanged)
 
-`legend` and every `_archetype_*__<world>.glb` per-world variant still use
-the three.js-sourced Mixamo characters from the previous pass (Soldier.glb
-→ warrior/guard/hunter's OLD per-world variants, Michelle.glb →
-scholar/mystic/trader's OLD per-world variants, Xbot.glb → legend) —
-sourced from `github.com/mrdoob/three.js`'s `examples/models/gltf/`
-(MIT-licensed repo; their own example page credits "model from
-mixamo.com"). Recoloring/re-authoring the per-world variants with more
-Rocketbox avatars (there are 115 to choose from) is a natural follow-up,
-not done in this pass for scope reasons.
+`legend` and every OTHER world's `_archetype_*__<world>.glb` per-world
+variant still use the three.js-sourced Mixamo characters from the previous
+pass (Soldier.glb → warrior/guard/hunter's OLD per-world variants,
+Michelle.glb → scholar/mystic/trader's OLD per-world variants, Xbot.glb →
+legend) — sourced from `github.com/mrdoob/three.js`'s
+`examples/models/gltf/` (MIT-licensed repo; their own example page credits
+"model from mixamo.com").
+
+### `concordia-hub`'s 6 per-world variants — now real Rocketbox avatars (2026-08-08)
+
+The "natural follow-up" flagged above (re-authoring per-world variants with
+more of Rocketbox's 115 avatars) is done for one world — `concordia-hub`,
+the flagship default world — as a concrete, verified slice rather than a
+blind 36-file batch across all 6 worlds. Each is a genuinely distinct
+avatar from its universal-slot counterpart (see the table above), so a
+`concordia-hub` player reads as visually different from the site-wide
+default, not a recolor:
+
+| Archetype | `concordia-hub` variant | Rocketbox path |
+|---|---|---|
+| `warrior` | Male_Adult_03 | `Assets/Avatars/Adults/Male_Adult_03` |
+| `guard` | Male_Adult_05 | `Assets/Avatars/Adults/Male_Adult_05` |
+| `hunter` | Male_Adult_07 | `Assets/Avatars/Adults/Male_Adult_07` |
+| `scholar` | Business_Male_02 | `Assets/Avatars/Professions/Business_Male_02` |
+| `mystic` | Female_Adult_04 | `Assets/Avatars/Adults/Female_Adult_04` |
+| `trader` | Business_Female_03 | `Assets/Avatars/Professions/Business_Female_03` |
+
+Converted via the exact pipeline documented above (FBX2glTF → TGA→PNG via
+`tga`+`sharp` → 5-texture patch via `@gltf-transform/core` in the
+documented `[bodyNormal, bodyColor, headNormal, headColor, opacityColor]`
+order), run as a standalone Node script against `raw.githubusercontent.com`
+(the repo's real default branch is `master`, not `main` — verified before
+fetching, not assumed). Each output validated clean
+(`gltf-transform validate`, 0 errors) and inspected to confirm all 5
+textures landed as real 1024×1024 PNGs in the correct material slots
+(`baseColorTexture`/`normalTexture` on both `_body` and `_head` materials),
+not left as FBX2glTF's placeholder images. Avatars were pre-screened via
+`git ls-tree` against a blob-less partial clone to pick "plain" avatars
+(body+head only, no extra equipment texture sets — Military/Fire/Police
+professions carry helmet/gear textures that would need a 6th+ image slot
+the documented patch order doesn't handle) before downloading anything.
+
+`legend` and the other 5 worlds' per-world variants remain on the prior
+pass's Mixamo characters — extending this to the rest is a mechanical
+repeat of the same script with a new avatar-selection table per world, not
+attempted further this pass for scope reasons (each world needs its own
+"which 6 avatars fit this world's tone" judgment call, not just a
+technical rerun).
 
 ## The Three Above All (unchanged)
 
