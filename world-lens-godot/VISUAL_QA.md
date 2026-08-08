@@ -1,5 +1,104 @@
 # Visual QA — Godot World Lens
 
+## Combat C6 — F/R/Q ground-context tap actions (parry, kick, dodge) (2026-08-08)
+
+Extends Combat Phase C's E-only first slice with the rest of the GROUND
+CONTEXT_KEYMAP tap row from `CombatInputController.tsx`: F=parry, R=kick,
+Q=dodge. Deliberately still narrow — see `player/character_controller.gd`'s
+own updated class doc for the exact cut list (no aerial/vehicle/hacker/
+underwater contexts, tap-only, no double-tap finisher, no client-prediction
+anim, Shift stays bound to sprint rather than becoming a combat modifier).
+
+**A real, checked finding, not an assumption: `combat:dodge` had NO
+Godot-gateway dispatch at all before this unit.** `_onGodotClientMessage`'s
+switch (server.js) had exactly one case, `combat:attack` — a Godot client
+sending `combat:dodge` got the honest `unsupported_evt` fallback. This
+matters because parry/dodge (F/Q) route through `combat:dodge` on the
+Three.js reference, while kick (R) turns out to reuse `combat:attack`
+already (`CombatInputController.tsx`'s own comment: "No dedicated server
+event yet — emit as combat:attack with style", `actionOverride:
+'attack-heavy'`) — so kick needed ZERO server changes (`_dispatchGodotCombatAttack`
+already accepts `style`/`actionOverride`), but parry/dodge needed a new
+`_dispatchGodotCombatDodge` + a new switch case, added this unit. It reuses
+the SAME real primitives the socket.io `combat:dodge` handler (server.js
+~10790) already resolves through — `_attemptDodge` (perfect-dodge scoring),
+`_grantIFrames` (i-frame grant), `recordCombatFlow` (the same `combat_flow`
+substrate) — not a second implementation. Rate-limiting reuses
+`_combatSocketLimiter` (the same per-userId bucket `_dispatchGodotCombatAttack`
+already gates on) rather than a new per-connection cooldown var, since
+`_onGodotClientMessage` is a plain module-level function with no per-socket
+closure state to hold one.
+
+**A second real, pre-existing bug found while reading this exact code, fixed
+in the same unit: `cityPresence.getPlayerPosition` does not exist.** It's
+not a typo in one call site — 5 separate call sites (2 socket.io combat
+handlers, `combat:dodge` and `combat:block`, plus 3 elsewhere in the
+combat/loot code) called `cityPresence.getPlayerPosition?.(userId)`, and
+`cityPresence.js` only ever exported `getUserPosition`. Every one of these
+was a silent, permanent no-op — the optional-chain always resolved to
+`undefined`, so every caller always fell back to its own `{x:0,y:0,z:0}`
+default. Concretely: every `combat:dodge`/`combat:block` flow-recorder entry
+made through the socket.io path has been stamping position `{0,0,0}` instead
+of the real fighter position since these call sites were written, for BOTH
+the position used to derive combat context AND (indirectly) anything
+downstream that trusted that context. Fixed all 5 call sites to the real
+`getUserPosition` method name — mechanical, one-line-per-site, same fix
+repeated, verified by `grep -n getPlayerPosition server/server.js` returning
+zero matches afterward. The new `_dispatchGodotCombatDodge` was written using
+the correct name from the start (matching `_dispatchGodotCombatAttack`'s
+own already-correct usage), so this fix brings the two pre-existing socket.io
+handlers up to what the new Godot code already got right, not the reverse.
+
+**Untargeted vs. targeted, exactly mirroring the TS payload shapes.** Parry
+(`_try_parry`) and dodge (`_try_dodge`) fire regardless of
+`_current_target_id` — the TS `parry`/`dodge` cases carry no `targetId`
+field at all. Kick (`_try_kick`) IS targeted, honest no-op with no target in
+range — same discipline `_try_attack` already established — and omits the
+`weapon` field entirely (the TS kick payload has none; kick is barehanded
+regardless of loadout, unlike the E-attack's weapon-in-hand lookup).
+
+**Verified two ways.**
+1. `tests/run_all.gd`: full suite green, **40/40 suites, real non-zero
+   per-suite counts, 0 fail** (`CharacterController` stays at 38 checks — no
+   NEW pure-static surface was added by this unit, since parry/dodge/kick
+   are thin dispatch wrappers around real DI'd objects, the same shape as
+   the already-probe-verified `_try_attack`, not pure functions — verified
+   via the probe below instead, matching that same precedent).
+2. Real-engine: `tools/combat_target_probe.gd` (extended) constructed a real
+   `CharacterController` + `AvatarManager` + `FakeGatewayStub`, gave it a
+   real 2m-away target, and called `_try_parry`/`_try_dodge`/`_try_kick`
+   directly. Verbatim real dispatch results: parry →
+   `combat:dodge {"direction":"back","style":"parry","wasParry":true}`;
+   dodge → `combat:dodge {"direction":"back","style":"dodge","wasParry":false}`;
+   kick → `combat:attack {"actionOverride":"attack-heavy","armorPierce":0,
+   "baseDamage":14,"heavy":false,"range":3,"style":"kick","targetId":
+   "target-npc"}` — all three genuinely dispatched through the real gateway
+   DI slot, not asserted against a mock's return value.
+
+**A live client-server round trip WAS run for the new server-side half.**
+`server/tests/godot-gateway-integration.test.js` gained 3 real tests
+(spawning a real server, real `/godot-ws` WebSocket, real auth) proving
+`combat:dodge` now genuinely resolves through `_dispatchGodotCombatDodge`
+instead of the honest `unsupported_evt` fallback: a plain Q-dodge, an
+F-parry with `wasParry:true` correctly round-tripping, and an empty-payload
+call defaulting honestly (`direction:"back"`, `wasParry:false`) rather than
+crashing. Writing these caught a real shape-registry mismatch: the first
+draft reused one `result` object (with extra `ok`/`wasParry` fields) for
+BOTH the public `realtimeEmit` broadcast and the private Godot ack, which
+tripped `event-shapes.js`'s dev-mode validator (`ws_event_shape_violation`,
+unknown fields on the ALREADY-registered `combat:dodge:ack` shape) — fixed
+by splitting into a broadcast payload (byte-identical to what the socket.io
+handler already sends, so a spectator sees the same shape regardless of
+which transport a player used) and a separate, richer private ack. What
+this does NOT settle: only the GODOT gateway path was live-tested this
+unit — the pre-existing socket.io `combat:dodge`/`combat:block` handlers
+were touched only for the `getPlayerPosition`→`getUserPosition` fix below
+and were not re-verified end-to-end beyond the existing
+`combat-defensive-enforcement.test.js` (source-grep only, still green).
+Hold-variant actions (F-hold=grab, E-hold=attack-heavy), double-tap
+finishers, Shift-as-combat-modifier, and every non-ground context remain
+fully deferred, matching the class doc's own stated cut list.
+
 ## Wayfinding wire-the-unwired — `WayfindingController`/`RooftopAccessController` actually mounted in `boot.gd` (2026-08-08, closes the Phase Q gap)
 
 Closes the exact gap the Quests entry below flagged as a PRE-EXISTING,

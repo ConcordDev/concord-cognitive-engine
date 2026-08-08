@@ -78,6 +78,31 @@ func _process(_delta: float) -> bool:
 			_results["attack_evt"] = last["evt"]
 			_results["attack_payload"] = last["data"]
 
+		# Combat C6 — parry/dodge are untargeted (fire regardless of
+		# _current_target_id) and kick is targeted (same discipline as attack,
+		# reusing combat:attack as its transport). Real dispatch through the
+		# same FakeGatewayStub, not a mocked method call.
+		_gateway.sent.clear()
+		_character._try_parry()
+		_results["parry_dispatched"] = _gateway.sent.size() > 0
+		if _gateway.sent.size() > 0:
+			_results["parry_evt"] = _gateway.sent[0]["evt"]
+			_results["parry_payload"] = _gateway.sent[0]["data"]
+
+		_gateway.sent.clear()
+		_character._try_dodge()
+		_results["dodge_dispatched"] = _gateway.sent.size() > 0
+		if _gateway.sent.size() > 0:
+			_results["dodge_evt"] = _gateway.sent[0]["evt"]
+			_results["dodge_payload"] = _gateway.sent[0]["data"]
+
+		_gateway.sent.clear()
+		_character._try_kick()
+		_results["kick_dispatched"] = _gateway.sent.size() > 0
+		if _gateway.sent.size() > 0:
+			_results["kick_evt"] = _gateway.sent[0]["evt"]
+			_results["kick_payload"] = _gateway.sent[0]["data"]
+
 		var captured_health := {}
 		_character.target_health_updated.connect(func(target_id: String, health: float, max_health: float) -> void:
 			captured_health["target_id"] = target_id

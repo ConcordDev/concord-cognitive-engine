@@ -42,6 +42,35 @@ extends CharacterBody3D
 ## behavior are explicitly deferred, real follow-up work — not silently
 ## implied as done.
 ##
+## ── Combat C6 (2026-08-08) — F/R/Q tap actions added ──────────────────────────
+## Extends Combat Phase C with the rest of the GROUND-context tap row from
+## `CombatInputController.tsx`'s `CONTEXT_KEYMAP.ground` — F=parry, R=kick,
+## Q=dodge. Deliberately still narrow: only the GROUND context exists here
+## (no aerial/vehicle/hacker/underwater combat contexts in this client), only
+## TAP variants (no hold-vs-tap distinction, so F never fires 'grab' — that's
+## `CONTEXT_KEYMAP.ground.F.hold`, a real, separate follow-up), no double-tap
+## finisher, no client-prediction swing animation, no whiff-cancel windows.
+## Shift stays bound to sprint (see MOVE_SPEED/RUN_SPEED above) — the TS
+## reference's `modifier-boost` (Shift as a combat modifier flag) is NOT
+## ported; overloading an already-bound movement key for combat would be a
+## real, separate design decision, not a mechanical port.
+##
+## Parry (F) and dodge (Q) are UNTARGETED — mirrors `CombatInputController
+## .tsx`'s `parry`/`dodge` cases exactly (no `targetId` field in their
+## `combat:dodge` payload at all): they fire regardless of `_current_target_id`.
+## Kick (R) IS targeted, same as the existing E-attack (`combat:attack` with
+## `targetId`, `actionOverride: 'attack-heavy'`, `style: 'kick'` — mirrors
+## the TS `kick`/`dismount-kick` case's exact payload shape) — honest no-op
+## with no target in range, same discipline as `_try_attack`.
+##
+## Server-side: `combat:attack` (kick's transport) already had Godot-gateway
+## dispatch since Combat Phase C. `combat:dodge` (parry/dodge's transport)
+## did NOT — `_onGodotClientMessage`'s switch had no case for it before this
+## unit; added server-side alongside this client change
+## (`_dispatchGodotCombatDodge`, server.js), reusing the SAME `_attemptDodge`/
+## `_grantIFrames`/`recordCombatFlow` primitives the socket.io `combat:dodge`
+## handler already resolves through — not a second implementation.
+##
 ## Target selection is a query over `avatar_manager`'s already-live `_rigs`
 ## (optional injected `avatar/avatar_manager.gd`, same DI convention as
 ## `gateway`/`session_manager` above) — re-run every physics frame so the HUD
@@ -160,6 +189,9 @@ var _snap_target: Vector3 = Vector3.ZERO
 var _pending_snap: bool = false
 var _current_target_id: String = ""
 var _attack_key_was_down: bool = false
+var _parry_key_was_down: bool = false
+var _dodge_key_was_down: bool = false
+var _kick_key_was_down: bool = false
 
 
 func _ready() -> void:
@@ -214,6 +246,21 @@ func _physics_process(delta: float) -> void:
 	if attack_down and not _attack_key_was_down:
 		_try_attack()
 	_attack_key_was_down = attack_down
+
+	var parry_down := Input.is_key_pressed(KEY_F)
+	if parry_down and not _parry_key_was_down:
+		_try_parry()
+	_parry_key_was_down = parry_down
+
+	var dodge_down := Input.is_key_pressed(KEY_Q)
+	if dodge_down and not _dodge_key_was_down:
+		_try_dodge()
+	_dodge_key_was_down = dodge_down
+
+	var kick_down := Input.is_key_pressed(KEY_R)
+	if kick_down and not _kick_key_was_down:
+		_try_kick()
+	_kick_key_was_down = kick_down
 
 
 ## Raw WASD polling — deliberately NOT routed through Godot's InputMap
@@ -349,6 +396,53 @@ func _try_attack() -> void:
 		"targetId": _current_target_id,
 		"weapon": weapon_id if weapon_id != "" else "fist",
 		"style": "attack-light",
+	})
+
+
+## F-key parry (Combat C6). Untargeted — mirrors CombatInputController.tsx's
+## `parry` case exactly (no `targetId`). Honest no-op only when no gateway is
+## wired; unlike attack/kick this never depends on `_current_target_id`.
+func _try_parry() -> void:
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	gateway.send_event("combat:dodge", {
+		"direction": "back",
+		"wasParry": true,
+		"style": "parry",
+	})
+
+
+## Q-key dodge (Combat C6). Untargeted, same shape as parry with
+## `wasParry: false` — mirrors CombatInputController.tsx's `dodge` case.
+func _try_dodge() -> void:
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	gateway.send_event("combat:dodge", {
+		"direction": "back",
+		"wasParry": false,
+		"style": "dodge",
+	})
+
+
+## R-key kick (Combat C6). TARGETED, same honest-no-op-with-no-target
+## discipline as `_try_attack` — mirrors CombatInputController.tsx's `kick`
+## case exactly, including reusing `combat:attack` as the transport (the TS
+## reference's own comment: "No dedicated server event yet"). No `weapon`
+## field — the TS payload omits it for kick (barehanded regardless of
+## loadout), unlike `_try_attack`'s weapon-in-hand lookup.
+func _try_kick() -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	gateway.send_event("combat:attack", {
+		"targetId": _current_target_id,
+		"baseDamage": 14,
+		"range": 3,
+		"armorPierce": 0,
+		"heavy": false,
+		"style": "kick",
+		"actionOverride": "attack-heavy",
 	})
 
 
