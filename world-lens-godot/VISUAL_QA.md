@@ -1,5 +1,113 @@
 # Visual QA — Godot World Lens
 
+## Toon-shading reach onto real GLB meshes (2026-08-08)
+
+Closes the deferred gap Phase S3's own class doc named explicitly: real GLB
+meshes (buildings, avatars, weapons) only ever got the OUTLINE pass —
+`apply_outline_to_tree` deliberately never touched their surfaces' own
+baked albedo textures, because the existing flat toon material
+(`make_toon_material`, band_shadow/mid/light) has no texture input at all —
+applying it to a real mesh would have discarded the real texture detail
+entirely (Mixamo/Rocketbox skin+clothing textures, weapon GLB materials,
+building facade textures). That tradeoff was deliberate and documented, not
+an oversight — but it meant real, textured meshes never actually read as
+"toon-shaded," only outlined; the coherent cel look Phase S1 wired onto
+placeholders never reached what most players actually see.
+
+**New `ArtStyle.TOON_TEXTURED_SHADER`** — a second shader, distinct from
+`TOON_SHADER`: `fragment()` samples the surface's own existing albedo
+texture and writes it to `ALBEDO` unchanged (the real texture, full detail,
+never discarded); `light()` quantises N·L into the same `RAMP_BANDS` steps
+`TOON_SHADER` uses, but instead of writing a hue-shifted band_shadow/mid/
+light gradient (which has no texture to protect), it computes a
+**brightness factor** (`shadow_darken`..1.0, banded, GROUNDED_DIAL-blended
+exactly like TOON_SHADER) and multiplies it onto the real sampled `ALBEDO`.
+Same fresnel rim light as TOON_SHADER, keyed off the same palette. This is
+the texture-preserving analogue the Phase S3 note flagged as real, separate,
+not-yet-attempted work — attempted and verified this unit.
+
+**`ArtStyle.make_toon_material_textured(world_id, source_material)`** —
+honestly returns `null` (never a fabricated texture or a silent flat-colour
+swap) when `source_material` isn't a `BaseMaterial3D` (Godot's glTF
+importer's normal StandardMaterial3D output — anything already a
+ShaderMaterial is left alone) or carries no real `albedo_texture` at all.
+Carries the SAME outline `next_pass` as the flat toon material, so a
+textured real mesh gets the identical silhouette treatment as everything
+else. `shadow_darken` derives from the world's own shadow-band luminance
+(clamped 0.25..0.85) rather than a hand-picked constant, so a textured
+surface's shadow side darkens roughly as much as a flat-shaded
+placeholder's does, without adopting its hue (which would fight the real
+texture's own colour — the exact failure mode this unit exists to avoid).
+
+**`ArtStyle.apply_textured_toon_to_tree(root, world_id)`** — the real-mesh
+tree-walker, sibling to `apply_outline_to_tree`: per surface, tries
+`make_toon_material_textured` first; a surface that honestly returns `null`
+(no real texture to preserve) falls back to the EXACT SAME outline-only
+duplicate treatment `apply_outline_to_tree` already used — never skipped,
+never given a fabricated texture. Returns `{textured, outline_only}`, both
+real counts, so a caller/test can tell the two treatments apart rather than
+one opaque total. Wired into all three real-mesh call sites that used to
+call `apply_outline_to_tree`: `scene_bootstrap.gd#_upgrade_one_node`
+(buildings), `avatar_rig.gd#_on_glb_loaded` (avatar bodies) and
+`#_on_weapon_glb_loaded` (weapons) — `apply_outline_to_tree` itself is
+untouched and still used by its own existing tests/probe (a real, smaller,
+still-valid building block, not superseded).
+
+**Real-engine proof — pure-logic suite + a real-rasterizer probe.**
+`tests/test_art_style.gd` gained 5 new checks (90 total, was 76): a
+non-`BaseMaterial3D` source honestly returns null; a `BaseMaterial3D` with
+no `albedo_texture` honestly returns null; a real texture builds a real
+`ShaderMaterial` using the real cached `toon_textured_shader()` with the
+REAL source texture bound (not a substitute) plus the real outline
+`next_pass`; `apply_textured_toon_to_tree` on a two-surface tree (one
+textured, one not) routes exactly 1 to each treatment and the untextured
+surface's original material TYPE and albedo colour are genuinely preserved;
+an empty tree honestly reports `{0, 0}`. Full suite: **47/47 test files
+green** (unchanged file count — these extend `test_art_style.gd`, not a
+new file).
+
+**New `tools/textured_toon_shader_probe.gd`, run this session under a REAL
+rasterizer** (`xvfb-run -s "-screen 0 1280x720x24" … --rendering-driver
+opengl3`, the same "software GL, not headless-dummy" setup Phase S1/S2
+proved renders real pixels) — the check the pure-logic suite structurally
+cannot make: does the shader actually COMPILE and produce the real
+texture's colour, not silently fall back to the flat palette or a pink
+error material? Renders the SAME box three ways and samples real
+framebuffer pixels: (a) `make_toon_material_textured` fed a distinct
+warm-orange 4x4 texture, (b) the flat `make_toon_material` (no texture
+involved, for contrast), (c) the raw texture alone under an unshaded
+material (ground truth for what the texture's own colour reads as).
+**Real measured RGB averages this run**: (a) textured_toon =
+`(0.522, 0.149, 0.098)`, (b) flat_toon = `(0.604, 0.584, 0.561)` — near-
+neutral grey, matching "crime"'s own 0.62 desaturation floor — (c)
+raw_texture_reference = `(0.714, 0.373, 0.157)`. (a)'s R≫G>B warm-orange
+hue clearly matches (c)'s hue signature and is clearly NOT (b)'s
+near-neutral grey — proof the shader is genuinely sampling and lighting the
+real texture, not silently degrading to the flat palette; (a) is uniformly
+darker than (c) as expected from real banded Lambertian lighting on top of
+an unshaded reference. Screenshots saved to `/tmp/textured_toon_probe_
+phase{0,1,2}.png` (not committed — reproducible via the run command in the
+probe's own header).
+
+**What this does NOT settle.** No human has watched this render in an
+actual browser session against a real building/avatar/weapon GLB (the
+probe uses a synthetic textured box, deliberately — no HTTP/GLB dependency
+needed to prove the SHADER works; `glb_outline_probe.gd`'s own pattern of
+fetching a real GLB over HTTP was not repeated here since no frontend
+server was running this session, same residual that file already carries).
+Whether the specific `shadow_darken` clamp range (0.25..0.85) or the
+brightness-only banding (vs. a richer texture-aware hue-preserving ramp)
+looks GOOD on a real character/building — as opposed to merely "genuinely
+texture-sampling and genuinely banded," which this unit did verify — is an
+art-direction judgment call for a human with eyes on a real render, not
+something a pixel-average probe can certify. Multi-texture-map surfaces
+(normal/roughness/metallic beyond albedo) are not specially handled —
+`make_toon_material_textured` only reads `albedo_texture`/`albedo_color`,
+so a surface relying heavily on a normal map for its read will lose that
+detail under the new shader (same category of simplification the flat toon
+material already makes for placeholders, now also true for textured
+meshes) — not silently claimed as full PBR-preserving.
+
 ## Character archetype signal + customization (2026-08-08)
 
 Closes the standing gap named in avatar_rig.gd's own doc comment ever since

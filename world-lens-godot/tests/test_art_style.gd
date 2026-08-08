@@ -37,6 +37,11 @@ static func run() -> TestUtils:
 	_test_apply_outline_to_tree_preserves_the_original_material(t)
 	_test_apply_outline_to_tree_never_mutates_the_shared_source_material(t)
 	_test_apply_outline_to_tree_is_honest_on_an_empty_tree(t)
+	_test_make_toon_material_textured_null_for_non_base_material(t)
+	_test_make_toon_material_textured_null_without_albedo_texture(t)
+	_test_make_toon_material_textured_builds_real_material_with_texture(t)
+	_test_apply_textured_toon_to_tree_routes_textured_and_untextured_correctly(t)
+	_test_apply_textured_toon_to_tree_is_honest_on_an_empty_tree(t)
 	return t
 
 
@@ -250,3 +255,79 @@ static func _test_apply_outline_to_tree_is_honest_on_an_empty_tree(t: TestUtils)
 	var empty_root := Node3D.new()
 	var touched := ArtStyle.apply_outline_to_tree(empty_root, "cyber")
 	t.check_eq(touched, 0, "an empty tree touches zero surfaces, never fabricates work done")
+
+
+## "Toon-shading reach" (2026-08-08) — a 1x1 real ImageTexture, standing in
+## for a real GLB's baked albedo texture. Real Image/ImageTexture objects,
+## not mocks — `make_toon_material_textured` genuinely reads `.albedo_
+## texture` off a real BaseMaterial3D.
+static func _make_fake_albedo_texture() -> ImageTexture:
+	var img := Image.create(1, 1, false, Image.FORMAT_RGB8)
+	img.set_pixel(0, 0, Color(0.8, 0.5, 0.2))
+	return ImageTexture.create_from_image(img)
+
+
+static func _test_make_toon_material_textured_null_for_non_base_material(t: TestUtils) -> void:
+	var not_base := ShaderMaterial.new()
+	var result := ArtStyle.make_toon_material_textured("cyber", not_base)
+	t.check_eq(result, null, "a source that isn't a BaseMaterial3D (e.g. an already-custom ShaderMaterial) honestly returns null, never a fabricated texture")
+
+
+static func _test_make_toon_material_textured_null_without_albedo_texture(t: TestUtils) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.5, 0.5, 0.5)  # a real color, but no texture
+	var result := ArtStyle.make_toon_material_textured("cyber", mat)
+	t.check_eq(result, null, "a BaseMaterial3D with no albedo_texture returns null, so the caller falls back to outline-only rather than a fabricated flat swap")
+
+
+static func _test_make_toon_material_textured_builds_real_material_with_texture(t: TestUtils) -> void:
+	var mat := StandardMaterial3D.new()
+	var tex := _make_fake_albedo_texture()
+	mat.albedo_texture = tex
+	var result := ArtStyle.make_toon_material_textured("cyber", mat)
+	t.check(result != null, "a BaseMaterial3D with a real albedo_texture builds a real textured toon material")
+	if result != null:
+		t.check_eq(result.shader, ArtStyle.toon_textured_shader(), "uses the real cached texture-preserving shader")
+		t.check_eq(result.get_shader_parameter("albedo_tex"), tex, "the REAL source texture is bound, not a fabricated substitute")
+		t.check(result.next_pass != null, "carries the same outline next_pass as the flat toon material")
+		if result.next_pass is ShaderMaterial:
+			t.check_eq(result.next_pass.shader, ArtStyle.outline_shader(), "next_pass uses the real cached outline shader")
+
+
+static func _test_apply_textured_toon_to_tree_routes_textured_and_untextured_correctly(t: TestUtils) -> void:
+	var root := Node3D.new()
+	# One surface WITH a real albedo texture, one WITHOUT.
+	var mi_textured := MeshInstance3D.new()
+	var box1 := BoxMesh.new()
+	var mat_textured := StandardMaterial3D.new()
+	mat_textured.albedo_texture = _make_fake_albedo_texture()
+	box1.material = mat_textured
+	mi_textured.mesh = box1
+	root.add_child(mi_textured)
+
+	var mi_plain := MeshInstance3D.new()
+	var box2 := BoxMesh.new()
+	var mat_plain := StandardMaterial3D.new()
+	mat_plain.albedo_color = Color(0.3, 0.3, 0.3)
+	box2.material = mat_plain
+	mi_plain.mesh = box2
+	root.add_child(mi_plain)
+
+	var result := ArtStyle.apply_textured_toon_to_tree(root, "cyber")
+	t.check_eq(int(result.get("textured", -1)), 1, "the surface with a real albedo texture gets the textured treatment")
+	t.check_eq(int(result.get("outline_only", -1)), 1, "the surface without one honestly falls back to outline-only, not skipped")
+
+	var textured_active := mi_textured.get_active_material(0)
+	t.check(textured_active is ShaderMaterial, "the textured surface's active material is the real textured toon ShaderMaterial")
+
+	var plain_active := mi_plain.get_active_material(0)
+	t.check(plain_active is StandardMaterial3D, "the untextured surface keeps its original material TYPE (outline-only never replaces it with a flat toon material)")
+	if plain_active is StandardMaterial3D:
+		t.check_almost((plain_active as StandardMaterial3D).albedo_color.r, 0.3, "the untextured surface's real albedo colour is preserved")
+
+
+static func _test_apply_textured_toon_to_tree_is_honest_on_an_empty_tree(t: TestUtils) -> void:
+	var empty_root := Node3D.new()
+	var result := ArtStyle.apply_textured_toon_to_tree(empty_root, "cyber")
+	t.check_eq(int(result.get("textured", -1)), 0, "an empty tree textures zero surfaces, never fabricates work done")
+	t.check_eq(int(result.get("outline_only", -1)), 0, "an empty tree outlines zero surfaces either")

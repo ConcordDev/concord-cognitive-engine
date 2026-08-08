@@ -64,6 +64,55 @@ void fragment() {
 }
 """
 
+## Texture-preserving toon shader (2026-08-08, "toon-shading reach" unit) —
+## the deferred piece Phase S3's own class doc named: TOON_SHADER's flat
+## band_shadow/mid/light gradient has no texture to read, so applying it to
+## a real GLB surface would DISCARD that surface's baked albedo texture
+## entirely (Phase S3 deliberately did NOT do this — outline-only). This
+## shader instead SAMPLES the surface's own existing albedo texture in
+## fragment() (ALBEDO = the real texture's colour, unchanged) and bands only
+## the LIGHTING response in light() — the quantised N.L term scales the
+## real texture colour between `shadow_darken` and full brightness in
+## `bands` discrete steps, the texture-preserving analogue of TOON_SHADER's
+## hue-shifted band_shadow/mid/light ramp (which can afford a full palette
+## shift because it has no texture to protect). Same GROUNDED_DIAL blend and
+## fresnel rim light as TOON_SHADER, so a scene mixing textured real meshes
+## and flat-shaded placeholders still reads as ONE coherent look.
+const TOON_TEXTURED_SHADER := """
+shader_type spatial;
+render_mode diffuse_lambert, specular_disabled;
+
+uniform sampler2D albedo_tex : source_color;
+uniform vec4 albedo_tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform int bands = 3;
+uniform float grounded_dial = 0.45;
+uniform float shadow_darken = 0.55;
+uniform vec3 rim_color;
+uniform float rim_strength = 0.35;
+uniform float rim_power = 2.5;
+
+void fragment() {
+	vec4 tex_color = texture(albedo_tex, UV) * albedo_tint;
+	ALBEDO = tex_color.rgb;
+	ALPHA = tex_color.a;
+	float fresnel = pow(1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0), rim_power);
+	EMISSION = rim_color * fresnel * rim_strength;
+}
+
+void light() {
+	float ndotl = clamp(dot(normalize(NORMAL), normalize(LIGHT)), 0.0, 1.0);
+	// Same quantisation TOON_SHADER's light() uses, but the output feeds a
+	// brightness FACTOR on the real ALBEDO rather than a hue-shifted ramp
+	// colour — the texture stays the texture, only how lit it looks bands.
+	float step_i = floor(clamp(ndotl, 0.0, 0.999999) * float(bands));
+	float t = step_i / max(float(bands - 1), 1.0);
+	float banded = mix(shadow_darken, 1.0, t);
+	float grounded = mix(shadow_darken, 1.0, ndotl);
+	float factor = mix(banded, grounded, grounded_dial);
+	DIFFUSE_LIGHT += ALBEDO * factor * ATTENUATION;
+}
+"""
+
 ## Inverted-hull outline (Phase S2) — the standard toon-outline technique:
 ## expand the mesh outward along its own vertex normals by `outline_width`
 ## (metres — `OUTLINE_WIDTH_M`), then render ONLY the back-facing side of
@@ -95,6 +144,7 @@ static var _spec_cache: Dictionary = {}
 static var _spec_loaded := false
 static var _toon_shader: Shader = null
 static var _outline_shader: Shader = null
+static var _toon_textured_shader: Shader = null
 
 
 ## Loads (and caches) the generated art spec. Returns {} honestly if absent.
@@ -289,6 +339,13 @@ static func outline_shader() -> Shader:
 	return _outline_shader
 
 
+static func toon_textured_shader() -> Shader:
+	if _toon_textured_shader == null:
+		_toon_textured_shader = Shader.new()
+		_toon_textured_shader.code = TOON_TEXTURED_SHADER
+	return _toon_textured_shader
+
+
 ## The inverted-hull outline pass for a world — `outline_color(world_id)` x
 ## `outline_width_m()`, the same two ART_STYLE_GUIDE-locked constants every
 ## silhouette in the game already shares. Returns null (never a fabricated
@@ -346,6 +403,87 @@ static func make_toon_material_from(
 	mat.set_shader_parameter("rim_strength", rim_strength())
 	mat.set_shader_parameter("rim_power", rim_power())
 	return mat
+
+
+## Texture-preserving toon material (2026-08-08) — the real-mesh analogue of
+## `make_toon_material()`. Requires a REAL source material to read the
+## surface's own albedo texture off of: returns null (never a fabricated
+## texture, never a silent flat-colour swap) when `source` isn't a
+## `BaseMaterial3D` (Godot's glTF importer's normal output for an imported
+## StandardMaterial3D — anything else, e.g. an already-custom ShaderMaterial,
+## is left alone by the caller) or carries no `albedo_texture` at all —
+## callers MUST fall back to the existing outline-only
+## `apply_outline_to_tree` treatment on null, never skip the surface
+## entirely. Carries the same outline `next_pass` as `make_toon_material()`
+## so a textured real mesh gets the identical silhouette treatment as every
+## placeholder.
+static func make_toon_material_textured(world_id: String, source: Material) -> ShaderMaterial:
+	if not (source is BaseMaterial3D):
+		return null
+	var src := source as BaseMaterial3D
+	if src.albedo_texture == null:
+		return null
+	var grad := toon_gradient(world_id)
+	if grad.size() < 3:
+		return null
+	var mat := ShaderMaterial.new()
+	mat.shader = toon_textured_shader()
+	mat.set_shader_parameter("albedo_tex", src.albedo_texture)
+	var tint := src.albedo_color
+	mat.set_shader_parameter("albedo_tint", Vector4(tint.r, tint.g, tint.b, tint.a))
+	mat.set_shader_parameter("bands", ramp_bands())
+	mat.set_shader_parameter("grounded_dial", grounded_dial())
+	# Reuses the SAME grad[0] (shadow-band) luminance the flat toon material
+	# darkens toward, expressed as a 0..1 brightness factor rather than a
+	# hue-shifted colour — so a textured real mesh's shadow side darkens
+	# roughly as much as a flat-shaded placeholder's does, without adopting
+	# its palette hue (which would fight the real texture's own colour).
+	var saturation := saturation_for_world(world_id)
+	var shadow_luma := apply_saturation(grad[0], saturation).get_luminance()
+	mat.set_shader_parameter("shadow_darken", clampf(shadow_luma, 0.25, 0.85))
+	var light_band := apply_saturation(grad[2], saturation)
+	mat.set_shader_parameter("rim_color", _v3(light_band))
+	mat.set_shader_parameter("rim_strength", rim_strength())
+	mat.set_shader_parameter("rim_power", rim_power())
+	mat.next_pass = make_outline_material(world_id)
+	return mat
+
+
+## Walks a loaded GLB's tree (same traversal as `apply_outline_to_tree`) and
+## gives every mesh surface the texture-preserving toon treatment where a
+## real albedo texture can be read off its existing material —
+## `make_toon_material_textured` honestly returns null for anything else
+## (no BaseMaterial3D, no albedo_texture), and THOSE surfaces fall back to
+## the existing outline-only duplicate (`apply_outline_to_tree`'s own
+## behaviour) rather than being skipped or getting a fabricated texture.
+## Returns `{textured: int, outline_only: int}` — both real counts, so a
+## caller/test can tell the two treatments apart instead of one opaque
+## total.
+static func apply_textured_toon_to_tree(root: Node, world_id: String) -> Dictionary:
+	var outline := make_outline_material(world_id)
+	var result := {"textured": 0, "outline_only": 0}
+	if root == null:
+		return result
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is MeshInstance3D:
+			var mesh_node := n as MeshInstance3D
+			if mesh_node.mesh != null:
+				for i in range(mesh_node.mesh.get_surface_count()):
+					var base := mesh_node.get_active_material(i)
+					var textured := make_toon_material_textured(world_id, base) if base != null else null
+					if textured != null:
+						mesh_node.set_surface_override_material(i, textured)
+						result["textured"] = int(result["textured"]) + 1
+					elif outline != null:
+						var override: Material = base.duplicate() if base != null else StandardMaterial3D.new()
+						override.next_pass = outline
+						mesh_node.set_surface_override_material(i, override)
+						result["outline_only"] = int(result["outline_only"]) + 1
+		for c in n.get_children():
+			stack.append(c)
+	return result
 
 
 static func _v3(c: Color) -> Vector3:

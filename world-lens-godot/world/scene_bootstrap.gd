@@ -238,10 +238,12 @@ func _upgrade_one_node(mi: MeshInstance3D, template: Node3D) -> bool:
 	# Phase S3 — real GLB meshes bypassed the toon material's outline
 	# next_pass entirely (this function replaces the placeholder mesh
 	# `material_override` was on with the clone's own baked materials).
-	# Extend the SAME outline pass to the real mesh's own surfaces, without
-	# touching their albedo/texture detail — see ArtStyle.apply_outline_
-	# to_tree's own doc for why this is outline-only, not the flat toon ramp.
-	ArtStyle.apply_outline_to_tree(clone, world_id)
+	# "Toon-shading reach" (2026-08-08) upgraded this from outline-only to
+	# the texture-preserving banded-lighting treatment where a real albedo
+	# texture exists on the surface — see ArtStyle.apply_textured_toon_
+	# to_tree's own doc; a surface without one still gets the honest
+	# outline-only fallback, never skipped.
+	ArtStyle.apply_textured_toon_to_tree(clone, world_id)
 	return true
 
 
