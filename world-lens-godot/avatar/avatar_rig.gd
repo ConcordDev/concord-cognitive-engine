@@ -133,6 +133,37 @@ func apply_transform(pos: Vector3, rotation_y: float) -> void:
 	rotation.y = rotation_y
 
 
+## Combat, remote-target hit feedback (2026-08-08) — a brief scale "punch"
+## on THIS rig's root, deliberately independent of `position`/`rotation`:
+## a remote rig's transform is entirely owned by snapshot interpolation
+## (avatar_manager.gd applies the next incoming `city:positions` sample
+## every frame), so a positional knockback nudge here would just be
+## overwritten by the very next sample — see this file's own class doc and
+## player/character_controller.gd's "Combat Phase C" note for the fuller
+## explanation of why remote-target feedback was deferred until this unit.
+## Scaling the whole Node3D instead works uniformly whether this rig is
+## currently showing its real GLB body or the honest primitive-box
+## placeholder — it needs no knowledge of what mesh/material is underneath.
+## HIT_FLASH_PUNCH/_DURATION_S are first-draft, run-and-looked-at constants
+## (same honesty class as CLAUDE.md's "Phase D first-draft constants"),
+## not a closed-form fit.
+const HIT_FLASH_DURATION_S := 0.16
+const HIT_FLASH_PUNCH := 1.28
+
+var _hit_flash_tween: Tween = null
+
+func flash_hit() -> void:
+	if _hit_flash_tween != null and _hit_flash_tween.is_valid():
+		_hit_flash_tween.kill()
+	scale = Vector3.ONE
+	_hit_flash_tween = create_tween()
+	_hit_flash_tween.set_trans(Tween.TRANS_QUAD)
+	_hit_flash_tween.tween_property(
+		self, "scale", Vector3.ONE * HIT_FLASH_PUNCH, HIT_FLASH_DURATION_S * 0.35)
+	_hit_flash_tween.tween_property(
+		self, "scale", Vector3.ONE, HIT_FLASH_DURATION_S * 0.65)
+
+
 ## Record the current locomotion/override decision (from
 ## animation_state_machine.select_state()). This unit does not yet wire real
 ## AnimationPlayer clips onto the primitive or a loaded GLB — that lands with

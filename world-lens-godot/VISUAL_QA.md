@@ -1,5 +1,68 @@
 # Visual QA — Godot World Lens
 
+## Combat — remote-target hit feedback (2026-08-08)
+
+Closes the deferred "remote-target visual feedback" residual documented in
+both `player/character_controller.gd`'s "Combat Phase C" class doc and
+`avatar/avatar_manager.gd`'s own header ever since Combat Phase C's first
+slice: when the LOCAL player attacks and hits a REMOTE avatar, the target's
+`AvatarRig` previously showed nothing — only the LOCAL player's OWN
+`_on_combat_impact` (knockback) fires, gated to `targetId == local_user_id`.
+
+**Why not a positional knockback for remote rigs, and what was built
+instead.** A remote `AvatarRig`'s `position`/`rotation` are entirely owned
+by `avatar_manager.gd`'s snapshot interpolation — the next incoming
+`city:positions` sample overwrites whatever a local nudge would have set,
+so a knockback impulse (the LOCAL player's own treatment) would be
+invisible or jittery there. The real fix: `avatar/avatar_rig.gd` gained
+`flash_hit()` — a brief scale "punch" (`HIT_FLASH_PUNCH = 1.28` over
+`HIT_FLASH_DURATION_S = 0.16`s, via a real `Tween`, killing/restarting on a
+rapid re-hit rather than stacking) on the rig's own `scale`, deliberately
+never touching `position`/`rotation` — so it survives the very next
+interpolated sample untouched, and works identically whether the rig is
+currently showing its real GLB body or the honest primitive-box
+placeholder (scaling the whole `Node3D` needs no knowledge of what mesh/
+material is underneath).
+
+**Wiring.** `avatar/avatar_manager.gd` gained `flash_hit(target_id) ->
+bool`: looks up `target_id` in the same `_rigs` dictionary `nearest_target`/
+`npc_positions_snapshot` already read, calls the real rig's `flash_hit()`
+if found, returns an honest `false` (no mutation) if not — covering both a
+genuinely stale/despawned id and, notably, the LOCAL player's own id (which
+`AvatarManager` never tracks at all — remote avatars only, by design).
+`world/boot.gd`'s `_on_event` gained a `"combat:hit"` case (a SEPARATE
+listener on the same `gateway.event_received` signal the LOCAL player's own
+HUD/audio handling already consumes in `character_controller.gd` — Godot
+signals support multiple subscribers) that calls `_avatar_manager.
+flash_hit(targetId)` only when `attackerId == local_user_id` AND
+`targetId != local_user_id` — i.e. exactly "the local player's own hit
+landing on someone else," matching the deferred note's original framing,
+not a broader "flash on any combat:hit in the world" (spectator feedback
+for OTHER players' fights is a real, separate, unscoped feature).
+
+**Real-engine proof — `tools/hit_flash_probe.gd`.** A real `AvatarRig` +
+real `AvatarManager` in a real `SceneTree`: `flash_hit()` genuinely drives
+`scale` away from `Vector3.ONE` mid-tween and genuinely settles back to
+`Vector3.ONE` once the real `Tween` completes (checked at real, separated
+frames — not assumed from the constants alone); `AvatarManager.flash_hit`
+correctly routes to the tracked rig (confirmed the SAME rig's scale
+actually changed); and calling it with an untracked id returns a real
+`false` AND leaves the tracked rig's scale completely untouched — the
+honest-no-op half of the contract, verified by absence of mutation, not
+just a boolean.
+
+**What this does NOT settle.** No human has watched the flash render —
+headless mode's dummy rasterizer processes real `Tween`/`scale` state
+without producing pixels (same standing caveat as every other entry in this
+file). No feedback exists yet for a REMOTE player hitting another remote
+target (pure spectator visibility) or for the local player getting hit by a
+remote attacker's melee swing timing specifically (only the pre-existing
+`combat:impact` knockback path, unchanged by this unit, covers "local
+player got hit"). Full suite after this unit: **42/42 test files green**
+(no new pure-logic suite added — `flash_hit`'s engine-dependent behavior is
+covered by the real-engine probe above, matching `test_avatar_manager.gd`'s
+own stated split between pure-logic-here / engine-gated-in-tools/).
+
 ## UI — pause menu, real settings control, session-wide input freeze (2026-08-08)
 
 The client's first interactive menu. Scoped deliberately: a real pause

@@ -202,6 +202,24 @@ func nearest_target(from_pos: Vector3, max_range: float) -> String:
 	return AvatarManager.nearest_target_id(candidates, from_pos, max_range)
 
 
+## Combat, remote-target hit feedback (2026-08-08) — plays `target_id`'s
+## real `AvatarRig.flash_hit()` if that id is a currently-tracked rig.
+## Honest no-op (`false`) when it isn't — e.g. the target despawned/went
+## stale between the hit landing server-side and this event arriving here,
+## or `target_id` is the LOCAL player (who has no entry in `_rigs` at all;
+## remote avatars only — see this file's own header), never a fabricated
+## "handled" claim. `world/boot.gd` is the caller, from its `combat:hit`
+## handler, only when `attackerId` is the local player.
+func flash_hit(target_id: String) -> bool:
+	if not _rigs.has(target_id):
+		return false
+	var rig = _rigs[target_id]
+	if not is_instance_valid(rig) or not rig.has_method("flash_hit"):
+		return false
+	rig.flash_hit()
+	return true
+
+
 ## Phase Q — real, live positions of every currently-tracked "npc"-kind rig,
 ## keyed by id, for `world/wayfinding_markers.gd#quest_pois` to resolve a
 ## `talk_to` quest objective's target against. Same "read the already-live

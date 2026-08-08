@@ -1037,6 +1037,21 @@ func _on_event(evt: String, data: Dictionary) -> void:
 			if event_matches_world(data, world_id):
 				_avatar_manager.ingest_snapshot(
 					Time.get_ticks_msec(), users_array_to_dict(data.get("users", [])), "player")
+		"combat:hit":
+			# Combat, remote-target hit feedback (2026-08-08) — the LOCAL
+			# player's OWN combat:hit handling (HUD text, hit-confirm SFX) is
+			# a SEPARATE listener on the same `gateway.event_received` signal
+			# (player/character_controller.gd's `_on_gateway_event` — Godot
+			# signals support multiple subscribers). This is the other half:
+			# when WE are the attacker and the target is a remote,
+			# currently-spawned AvatarRig (never our own body, which
+			# AvatarManager doesn't track), play its real flash_hit(). Honest
+			# no-op via AvatarManager.flash_hit()'s own return when the rig
+			# isn't currently tracked (despawned/stale/nonexistent).
+			if not _local_user_id.is_empty() and String(data.get("attackerId", "")) == _local_user_id:
+				var hit_target_id := String(data.get("targetId", ""))
+				if not hit_target_id.is_empty() and hit_target_id != _local_user_id:
+					_avatar_manager.flash_hit(hit_target_id)
 		"macro:started", "macro:completed", "conkay:verdict":
 			# R5/E22 — ConKay spatial mode. Real facts only: an in-flight
 			# macro call (busy) and the last verdict's capability tier. See
