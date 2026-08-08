@@ -97,6 +97,8 @@ const CreatureManager := preload("res://world/creature_manager.gd")
 const CreaturePoller := preload("res://world/creature_poller.gd")
 const VegetationRenderer := preload("res://world/vegetation_renderer.gd")
 const QuestPoller := preload("res://world/quest_poller.gd")
+const QuestAvailablePoller := preload("res://world/quest_available_poller.gd")
+const QuestActions := preload("res://world/quest_actions.gd")
 const QuestBreadcrumb := preload("res://world/quest_breadcrumb.gd")
 const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 const WayfindingController := preload("res://world/wayfinding_controller.gd")
@@ -185,6 +187,8 @@ var _target_hud: Label = null
 ## depend on `_character` existing (quests are account/world state, not
 ## avatar state), so it's set up unconditionally in `_ready()`.
 var _quest_poller: QuestPoller = null
+var _quest_available_poller: QuestAvailablePoller = null
+var _quest_actions: QuestActions = null
 var _quest_hud: Label = null
 ## Mirrors QuestTracker.tsx's `TrackerMode` ('breadcrumb' | 'list'), toggled
 ## by the J key — see `_unhandled_input`. No localStorage-equivalent
@@ -488,6 +492,34 @@ func _ready() -> void:
 	_quest_poller.auth_token = auth_token
 	add_child(_quest_poller)
 	_quest_poller.poll_succeeded.connect(_on_quest_poll_succeeded)
+
+	# Quest interaction slice (2026-08-08) — discovers quests offerable via
+	# a DIFFERENT real route (`?status=available`) than the active-quest
+	# poller above; QuestActions composes both into the single K-key
+	# accept/claim interaction. See quest_actions.gd's own class doc for why
+	# this is deliberately ONE action at a time, not a quest-log UI.
+	_quest_available_poller = QuestAvailablePoller.new()
+	_quest_available_poller.base_url = "http://127.0.0.1:5050"
+	_quest_available_poller.world_id = world_id
+	_quest_available_poller.auth_token = auth_token
+	add_child(_quest_available_poller)
+	_quest_available_poller.poll_succeeded.connect(func(_c): _render_quest_hud())
+
+	_quest_actions = QuestActions.new()
+	_quest_actions.base_url = "http://127.0.0.1:5050"
+	_quest_actions.world_id = world_id
+	_quest_actions.auth_token = auth_token
+	_quest_actions.quest_poller = _quest_poller
+	_quest_actions.available_poller = _quest_available_poller
+	add_child(_quest_actions)
+	# On a real success, re-poll both quest feeds immediately rather than
+	# waiting up to 60s for the next scheduled cycle — the player just took
+	# a real action and the HUD should reflect it promptly.
+	_quest_actions.action_succeeded.connect(func(_kind, _qid, _result):
+		_quest_poller.poll_now()
+		_quest_available_poller.poll_now()
+	)
+
 	_setup_quest_hud()
 
 	# F26/F27, wired for real here — see the class-level comment on
@@ -719,16 +751,25 @@ func _on_quest_poll_succeeded(_count: int) -> void:
 
 
 ## Renders `_quest_poller`'s current snapshot into `_quest_hud` per
-## `_quest_tracker_mode`. Honest empty state: zero active quests means no
-## HUD text at all (mirrors QuestTracker.tsx's `if (quests.length === 0)
-## return null`), never a stale/fabricated line.
+## `_quest_tracker_mode`, plus a trailing `[K] ...` action hint line when
+## `QuestActions.resolve_action` finds something to do (claim/accept) — see
+## quest_actions.gd's own class doc. Honest empty state: zero active quests
+## AND no offerable action means no HUD text at all (mirrors
+## QuestTracker.tsx's `if (quests.length === 0) return null`, extended by
+## this slice's own accept case), never a stale/fabricated line.
 func _render_quest_hud() -> void:
 	if _quest_hud == null or _quest_poller == null:
 		return
 	var quests := _quest_poller.get_quests()
+	var action_hint := _quest_action_hint()
+
 	if quests.is_empty():
-		_quest_hud.visible = false
-		_quest_hud.text = ""
+		if action_hint.is_empty():
+			_quest_hud.visible = false
+			_quest_hud.text = ""
+			return
+		_quest_hud.text = action_hint
+		_quest_hud.visible = true
 		return
 
 	if _quest_tracker_mode == "list":
@@ -741,6 +782,8 @@ func _render_quest_hud() -> void:
 			else:
 				line = "%s: %s" % [String(q.get("title", "")), QuestBreadcrumb.breadcrumb_text(q, obj)]
 			lines.append(line)
+		if not action_hint.is_empty():
+			lines.append(action_hint)
 		_quest_hud.text = "\n".join(lines)
 		_quest_hud.visible = true
 		return
@@ -748,11 +791,31 @@ func _render_quest_hud() -> void:
 	# Breadcrumb (default) mode.
 	var breadcrumb := QuestBreadcrumb.pick_breadcrumb(quests)
 	if breadcrumb.is_empty():
-		_quest_hud.visible = false
-		_quest_hud.text = ""
+		if action_hint.is_empty():
+			_quest_hud.visible = false
+			_quest_hud.text = ""
+			return
+		_quest_hud.text = action_hint
+		_quest_hud.visible = true
 		return
-	_quest_hud.text = QuestBreadcrumb.breadcrumb_text(breadcrumb["quest"], breadcrumb["obj"])
+	var line := QuestBreadcrumb.breadcrumb_text(breadcrumb["quest"], breadcrumb["obj"])
+	if not action_hint.is_empty():
+		line += "\n" + action_hint
+	_quest_hud.text = line
 	_quest_hud.visible = true
+
+
+## Resolves the current K-key action (via QuestActions.resolve_action) into
+## a display line, or "" when there's nothing to do. Honest: reads directly
+## from both pollers' real last-fetched snapshots, never a cached guess.
+func _quest_action_hint() -> String:
+	if _quest_actions == null or _quest_poller == null or _quest_available_poller == null:
+		return ""
+	var action := QuestActions.resolve_action(
+		_quest_poller.get_quests(), _quest_available_poller.get_available_quests())
+	if action.is_empty():
+		return ""
+	return "[K] %s" % String(action.get("label", ""))
 
 
 ## J toggles breadcrumb <-> list mode, matching QuestTracker.tsx's own J
@@ -763,6 +826,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_J:
 		_quest_tracker_mode = "list" if _quest_tracker_mode == "breadcrumb" else "breadcrumb"
 		_render_quest_hud()
+	# Quest interaction slice — K accepts the first offerable quest (when no
+	# quest is active) or claims the reward for the currently-tracked quest
+	# (when it's all-done). See quest_actions.gd's own class doc for the
+	# exact one-action-at-a-time resolution rule; a K press with nothing to
+	# do is an honest no-op (QuestActions.try_action() itself guards this).
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_K:
+		if _quest_actions != null:
+			_quest_actions.try_action()
 
 
 ## F26 — feeds the local player's real position into `_rooftop_controller`

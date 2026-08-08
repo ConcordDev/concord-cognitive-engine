@@ -1,5 +1,89 @@
 # Visual QA — Godot World Lens
 
+## Quest interaction — K-key accept/claim, wired to the real routes; closes the Phase Q "no live talk_to-first proof" residual (2026-08-08)
+
+Wires the two remaining named residuals from the Quests entry below: the
+`accept`/`complete`/`claim-reward` interaction, and a genuine live proof
+that a real `talk_to`-first quest resolves to a real map POI (previously
+proven only via the pure-logic test's synthetic fixture).
+
+**Deliberately ONE action at a time, not a quest-log UI.** `world/quest_
+actions.gd` (new) composes two real, DIFFERENT poller feeds —
+`quest_poller.gd`'s existing `/quests/active` (real `quest_objectives`/
+`player_quest_progress` rows) and a new `world/quest_available_poller.gd`
+polling `GET /:worldId/quests?status=available` (the `world_quests`
+table's own `objectives_json`/`reward_json` blob shape — a genuinely
+different real representation of the same quest system, not a bug) — into
+one pure `resolve_action(active, available)` rule: an all-done active
+quest → claim; no active quests + a real offerable one → accept the
+first; anything else (mid-quest, nothing offered) → honest no-op. K
+dispatches whatever `resolve_action` finds via the exact real REST routes
+(`POST /:worldId/quests/:questId/accept` and `.../claim-reward`) — no new
+backend code was needed, both routes already existed and already worked.
+The breadcrumb HUD (from the entry below) grows a trailing `[K] Accept:
+...`/`[K] Claim Reward: ...` hint line whenever there's something to do,
+and honestly shows nothing when there isn't (mirrors this session's
+consistent "no fabricated affordance" discipline).
+
+**A real, deliberate scope cut, stated plainly.** "Accept" here means "the
+first available quest by the poller's own listing order" — there is no
+quest-giver-NPC dialogue/offer UI in this client (Phase N only renders NPC
+positions; no interaction system exists yet). Building that is real,
+separate follow-up scope, not silently implied as done by this slice.
+
+**Verified three ways, the last one closing a real, previously-open gap.**
+1. Pure-logic: `tests/test_quest_available_poller.gd` (9 checks) pins
+   `quests_response_to_quests`'s verbatim-passthrough-or-drop contract for
+   the `?status=available` shape. `tests/test_quest_actions.gd` (14 checks)
+   pins `resolve_action`'s exact priority rule (claim beats accept, claim
+   is found even when not first in the active list, no accept while a
+   quest is mid-progress, malformed/non-Dictionary entries skipped without
+   crashing, genuinely-nothing-to-do returns `{}` honestly). Full
+   `tests/run_all.gd`: **43/43 suites PASS, 0 fail**, real non-zero
+   per-suite counts confirmed.
+2. Real-engine, against a genuinely live spawned server (fresh migrated
+   DB, real registered user, real bearer token): `tools/quest_actions_
+   probe.gd` (new) ran the real accept flow against the real seeded
+   onboarding quest `first_cycle_cook` (discovered via the real
+   `?status=available` poll, 52 real quests returned) — verbatim result:
+   `{"action_result":{"kind":"accept","outcome":"succeeded","questId":
+   "first_cycle_cook",...},"active_quests_fetched":0,"available_quests_
+   fetched":52,...}`. A follow-up `curl` against `/quests/active` on the
+   SAME live server confirmed the accept genuinely bridged from the
+   `world_quests` blob-shape row into real per-objective `quest_
+   objectives` rows with real generated UUIDs — the schema-duality
+   concern flagged when this poller was designed turned out not to be a
+   problem in practice, verified rather than assumed.
+3. **Closes the Phase Q residual: a genuine, live `talk_to`-first quest
+   round trip, not just the synthetic fixture.** The same live server had
+   `a_new_compact` available with a REAL `talk_to:archivist_maren` first
+   objective (discovered by scanning all 52 real available quests for one
+   whose first objective type is `talk_to` — several existed:
+   `the_choice`, `warden_crackdown`, `a_new_compact`, others). Accepted it
+   via the real accept route, then re-ran `tools/quest_poller_probe.gd`
+   (the same probe from the Quests entry below) against the same live
+   server: verbatim result included **`"quest_pois_resolved":1`** — a
+   real map pin, genuinely resolved from a real accepted quest's real
+   `talk_to` objective against `archivist_maren`'s real live position
+   (one of the 56 real NPC positions the same probe run fetched). The
+   Phase Q entry's own "What this does NOT settle" caveat — "no real
+   talk_to-first-objective quest was ever actually accepted+verified live
+   in this session... proven only via the pure-logic test's synthetic
+   fixture" — is now closed, not merely repeated.
+
+**What this does NOT settle.** No on-screen pixel verification of the new
+`[K] ...` hint line (same residual as every other HUD text this session
+has shipped — headless draws nothing for this specific claim). `complete`
+(as opposed to `claim-reward`) was never exercised — `claim-reward` alone
+sufficed because `checkQuestCompletion` already runs automatically inside
+the server's `recordObjectiveProgress` path, so a quest is already
+`status='completed'` server-side by the time `quest_all_done` reads true
+client-side; this is a design choice (verified against the route/engine
+source), not an untested gap. The quest-giver-NPC dialogue/offer UI
+remains real, separate follow-up scope. Test server + its temp data
+directory were torn down after verification; confirmed no stray process
+remained.
+
 ## Combat C6 — F/R/Q ground-context tap actions (parry, kick, dodge) (2026-08-08)
 
 Extends Combat Phase C's E-only first slice with the rest of the GROUND

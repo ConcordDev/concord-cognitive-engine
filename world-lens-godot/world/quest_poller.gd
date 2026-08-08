@@ -68,6 +68,14 @@ func _on_timer_timeout() -> void:
 	_poll()
 
 
+## Public re-poll trigger — used by quest_actions.gd to refresh immediately
+## after a real accept/claim succeeds, rather than reaching into the
+## private `_poll()` or waiting up to `poll_interval_sec` for the next
+## scheduled cycle.
+func poll_now() -> void:
+	_poll()
+
+
 func _poll() -> void:
 	if _in_flight or world_id.is_empty():
 		return
