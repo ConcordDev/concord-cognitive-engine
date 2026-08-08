@@ -19,6 +19,7 @@ static func run() -> TestUtils:
 	_test_honest_empty_on_no_candidates(t)
 	_test_range_is_inclusive(t)
 	_test_skips_blank_id(t)
+	_test_stale_timeout_player_vs_npc(t)
 	return t
 
 
@@ -59,3 +60,18 @@ static func _test_skips_blank_id(t: TestUtils) -> void:
 	var found := AvatarManager.nearest_target_id(candidates, Vector3.ZERO, 10.0)
 	t.check_eq(found, "real",
 		"a candidate with a blank id is skipped even when it would otherwise be nearest")
+
+
+## Phase N — NPCs are fed by npc_poller.gd's 10s REST poll, not players'
+## ~100ms broadcast cadence; a single shared stale-despawn timeout would
+## flicker-despawn every NPC between poll cycles (see stale_timeout_for_kind's
+## own doc comment in avatar_manager.gd for the full reasoning).
+static func _test_stale_timeout_player_vs_npc(t: TestUtils) -> void:
+	t.check_eq(AvatarManager.stale_timeout_for_kind("player"), AvatarManager.STALE_TIMEOUT_MS_PLAYER,
+		"player kind uses the tight, broadcast-cadence-matched timeout")
+	t.check_eq(AvatarManager.stale_timeout_for_kind("npc"), AvatarManager.STALE_TIMEOUT_MS_NPC,
+		"npc kind uses a longer timeout sized for the 10s REST poll cadence, not the 100ms player broadcast cadence")
+	t.check(AvatarManager.STALE_TIMEOUT_MS_NPC > AvatarManager.STALE_TIMEOUT_MS_PLAYER,
+		"the NPC timeout must genuinely exceed the player timeout, or the flicker bug this exists to fix isn't actually fixed")
+	t.check_eq(AvatarManager.stale_timeout_for_kind("unknown_kind"), AvatarManager.STALE_TIMEOUT_MS_PLAYER,
+		"an unrecognized kind falls back to the tighter player timeout rather than silently going stale-tolerant")

@@ -27,15 +27,27 @@ extends Node
 ## predicts its own movement every physics tick (uncapped local framerate)
 ## and streams intent at <=30Hz; this manager only ever touches OTHER
 ## entities, sampled at whatever cadence their snapshots arrive
-## (~100ms/10Hz for players per docs/GODOT_INTEGRATION.md, ~2Hz for NPCs
-## mirroring AvatarSystem3D.tsx's `NPC_UPDATE_RATE`).
+## (~100ms/10Hz for players per docs/GODOT_INTEGRATION.md). NPCs (Phase N)
+## are fed by world/npc_poller.gd's 10s REST poll against
+## `GET /api/worlds/:worldId/npcs` — corrected here from a prior stale claim
+## ("~2Hz mirroring AvatarSystem3D.tsx's `NPC_UPDATE_RATE`"): that Three.js
+## constant is an interpolation-smoothing factor, not a fetch cadence — the
+## Three.js client's own actual fetch cadence for NPCs is also 10s
+## (`useSmartPolling(loadNPCs, 10_000, ...)`), which `npc_poller.gd` mirrors.
 
 const SnapshotBuffer := preload("res://net/snapshot_buffer.gd")
 const AnimationStateMachine := preload("res://avatar/animation_state_machine.gd")
 const AvatarRig := preload("res://avatar/avatar_rig.gd")
 
 ## Despawn an entity's rig after this many ms with no fresh snapshot mention.
-const STALE_TIMEOUT_MS: int = 3000
+## Kind-aware (Phase N) — see `stale_timeout_for_kind` below for why a single
+## shared value would flicker-despawn REST-polled NPCs between poll cycles.
+const STALE_TIMEOUT_MS_PLAYER: int = 3000
+## ~3x npc_poller.gd's 10s poll interval — generous enough to absorb one
+## dropped/slow poll cycle without flickering, without needing the player
+## path's full ~30x margin (a momentarily-stale NPC isn't safety/anti-cheat
+## relevant the way missed player state is).
+const STALE_TIMEOUT_MS_NPC: int = 30000
 
 ## m/s of interpolated-position vertical rate-of-change beyond which an
 ## entity is considered airborne. Godot-native heuristic (see header comment
@@ -149,7 +161,8 @@ func _despawn_stale(now_ms: int) -> void:
 	var stale: Array = []
 	for id in _rigs.keys():
 		var seen: int = _last_seen_ms.get(id, 0)
-		if now_ms - seen > STALE_TIMEOUT_MS:
+		var kind: String = _kinds.get(id, "player")
+		if now_ms - seen > AvatarManager.stale_timeout_for_kind(kind):
 			stale.append(id)
 	for id in stale:
 		var rig = _rigs[id]
@@ -181,6 +194,18 @@ func nearest_target(from_pos: Vector3, max_range: float) -> String:
 			continue
 		candidates.append({"id": id, "position": rig.global_position})
 	return AvatarManager.nearest_target_id(candidates, from_pos, max_range)
+
+
+## Kind-aware stale-despawn timeout (Phase N). Players stream at ~100ms/10Hz
+## (city-presence.js#broadcastPositions) so STALE_TIMEOUT_MS_PLAYER is a real
+## ~30x safety margin over one missed frame. NPCs are fed by npc_poller.gd's
+## 10s REST poll — a single shared 3000ms timeout would despawn every NPC
+## ~7s before its next real refresh, a visible flicker/respawn cycle this
+## function exists to prevent. An unrecognized kind falls back to the
+## tighter player timeout rather than silently going stale-tolerant on an
+## unknown value.
+static func stale_timeout_for_kind(kind: String) -> int:
+	return STALE_TIMEOUT_MS_NPC if kind == "npc" else STALE_TIMEOUT_MS_PLAYER
 
 
 # ── Pure static kinematics inference ─────────────────────────────────────────

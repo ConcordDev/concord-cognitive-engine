@@ -1,5 +1,99 @@
 # Visual QA — Godot World Lens
 
+## NPC visibility — real REST poll, real backend round trip, 56 real NPCs spawned (2026-08-08, Phase N)
+
+Not a rendering claim — real object-state mutation from a genuinely live
+server, the strongest proof level this session's probes have reached (a
+real spawned `server.js`, not a static-asset stub). Full context: NPCs
+were completely invisible in Godot because the one broadcast that could
+carry live positions, `city:npcs`, was deliberately retired server-side —
+NOT for staleness/cost/correctness, but because it had zero consumers on
+every transport (confirmed by direct read of `server/lib/city-presence.js`'s
+"DET-C batch 8" comment). Rather than reviving that broadcast or building a
+new one, the fix ports the Three.js client's own already-working design:
+poll `GET /api/worlds/:worldId/npcs` — the exact route
+`concord-frontend/app/lenses/world/page.tsx` already polls every 10s — feed
+the response into `AvatarManager.ingest_snapshot(..., "npc")`, which was
+already kind-agnostic and already had the full rig/GLB/weapon/outline
+pipeline built for the player case. **Zero backend changes were needed or
+made.**
+
+**What was built.** `world/npc_poller.gd` (new) — a `Timer`-driven
+`HTTPRequest` GET poller (the first `GET` HTTPRequest and the first `Timer`
+anywhere in this client tree; every prior fetch was a one-shot POST) with
+the same `Authorization: Bearer` convention `fea_scene_builder.gd`/
+`dtu_prop_renderer.gd` already use, and a pure static
+`npcs_array_to_entities()` translating the REST response into
+`ingest_snapshot`'s expected shape (the REST analogue of `boot.gd
+#users_array_to_dict`'s `city:positions` translator — same "drop malformed/
+blank-id entries, never fabricate" discipline). `avatar/avatar_manager.gd`
+gained a kind-aware stale-despawn timeout (`stale_timeout_for_kind`) — a
+real correctness fix found by reasoning through the design *before* writing
+code, not discovered after the fact: the pre-existing single
+`STALE_TIMEOUT_MS = 3000` was tuned for players' ~100ms broadcast cadence,
+and would have despawned every REST-polled NPC ~7 seconds before its next
+10-second refresh, a genuine visible flicker/respawn cycle. `world/boot.gd`
+mounts the new poller right after `AvatarManager`, wiring the DI reference
+immediately; its class doc is updated so a future reader who sees NPCs
+rendering doesn't mistake it for the retired broadcast coming back.
+
+**Verified two ways, same discipline as every phase this session.**
+1. Pure-logic: `tests/test_npc_poller.gd` (new, 14 checks) pins
+   `npcs_array_to_entities` against real `/npcs`-response-shaped fixtures —
+   basic translation, blank/missing id dropped, non-Dictionary entries
+   dropped, missing position defaults to `{0,0,0}`, empty array is an
+   honest empty result. `tests/test_avatar_manager.gd` gained 4 checks
+   pinning `stale_timeout_for_kind` (player vs. npc vs. an unrecognized
+   kind's fallback, plus a sanity check that the NPC timeout genuinely
+   exceeds the player one — a check that would have caught the flicker bug
+   if the fix had been implemented backwards). Full `tests/run_all.gd`:
+   **36/36 suites PASS, 0 fail**, real non-zero per-suite counts confirmed
+   (AvatarManager 9, NpcPoller 14) — not the `(0 checks)` misleading-pass
+   shape a same-class `class_name`-qualified static call bug produced on
+   the first attempt here too (see below).
+2. **Real-engine, against a genuinely live spawned server — the strongest
+   verification this session has done.** A real `server.js` was booted in
+   this sandbox (fresh migrated SQLite DB, real content-seeding, real
+   `POST /api/auth/register` for a real bearer token), then
+   `tools/npc_poller_probe.gd` (new) was run against it with
+   `CONCORD_BACKEND_URL` pointed at the real listening port. Result,
+   verbatim: `{"frames_waited":13,"ok":true,"poll_result":{"count":56,
+   "outcome":"succeeded"},"rigs_spawned":56}` — a real HTTP GET fired, a
+   real `requireAuth`-gated route accepted the real bearer token, real JSON
+   parsed, and `AvatarManager` genuinely spawned 56 real `AvatarRig` nodes
+   (concordia-hub's density-scaled live NPC population, not just its 16
+   hand-authored entries) from a live round trip. The scratch server and
+   its data directory were torn down afterward — no residual process, no
+   stranded disk.
+
+**Real bug caught during implementation, not by luck.** The first
+implementation attempt called the new pure static translator as
+`NpcPoller.npcs_array_to_entities(...)` (qualified by its own `class_name`)
+from inside `npc_poller.gd` itself, reproducing the EXACT "Identifier not
+found" compile error `net/gateway_client.gd`'s own class doc already warns
+about for this precise pattern — caught immediately by `tests/run_all.gd`
+reporting `[PASS] NpcPoller (0 checks)` (the misleading-pass shape a
+prior phase this session also hit and documented: an empty check count
+reads as green but means nothing ran). Fixed by calling the bare function
+name instead; the check count coming back non-zero afterward is what
+actually confirmed the fix, not the PASS word alone.
+
+**What this does NOT settle.** Whether spawned NPCs read as visually
+coherent, correctly-placed, or correctly-animated on a real display — this
+sandbox proves object-state mutation, not pixels (no screenshot was taken;
+this probe is deliberately headless per its own class doc, since its claim
+doesn't need rendering to be true). Whether the 10-second poll cadence
+feels acceptable in practice for a genuinely fast-moving world (Three.js's
+own client accepts this cadence today, so this is a ported design decision,
+not a new judgment call, but still unplaytested here). The small,
+mechanic-spawned patrol-NPC population (`city-presence.js`'s `_npcState`)
+remains fully unaddressed — this unit reads exclusively from `world_npcs`/
+`GET /:worldId/npcs` and has no visibility into that separate population.
+Dialogue/interaction with NPCs found this way, NPC-death signals beyond the
+generic stale-timeout path, and spatial/nearby-only filtering are all
+explicitly out of scope for this slice — see the plan file's own
+"Explicitly out of scope this slice" list for the full accounting.
+
 ## Combat, first slice — real target selection, real attack dispatch, real hit-feel mutation (2026-08-07, Phase C)
 
 Not a rendering claim — pure object-state mutation, real-engine-verified.

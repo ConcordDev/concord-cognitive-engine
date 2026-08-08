@@ -54,7 +54,22 @@ extends Node3D
 ##      history). `city:npcs` is NOT wired here: that broadcast was
 ##      DELIBERATELY RETIRED server-side (city-presence.js, same comment) —
 ##      re-adding a client subscriber for an event the server no longer
-##      emits would be dead code, not a fix.
+##      emits would be dead code, not a fix. **Phase N (below) does NOT
+##      change this** — NPCs are now genuinely visible, but via a REST poll
+##      (`world/npc_poller.gd`), not via a revived `city:npcs`. If you see
+##      NPCs rendering, that is Phase N, not this broadcast coming back.
+##
+## ── Phase N — NPC visibility (world_npcs / npc-simulator.js) ────────────────
+## `_npc_poller` (world/npc_poller.gd) is a `Timer`-driven REST poller
+## against `GET /api/worlds/:worldId/npcs` — the SAME route the Three.js
+## client already polls every 10s — feeding the SAME `AvatarManager.
+## ingest_snapshot(..., "npc")` pipeline `city:positions` above already
+## uses. Zero new backend code. See `npc_poller.gd`'s own class doc for the
+## full rationale (including why this is a strictly better answer than
+## either of `city:npcs`'s two original options — reviving it, or building
+## a new broadcast). This is a SEPARATE population from the small,
+## mechanic-spawned patrol NPCs `city-presence.js`'s `_npcState` still
+## simulates — that population remains fully unaddressed.
 ##   3. `spectator_mode` (env `CONCORD_GODOT_SPECTATOR`) requests
 ##      SessionManager.Mode.SPECTATE once authenticated — a free-fly,
 ##      no-character-input camera anyone can point at a running world
@@ -77,6 +92,7 @@ const FeaSceneBuilder := preload("res://engineering/fea_scene_builder.gd")
 const CharacterController := preload("res://player/character_controller.gd")
 const AvatarRig := preload("res://avatar/avatar_rig.gd")
 const TerrainTextureLoader := preload("res://assets/terrain_texture_loader.gd")
+const NpcPoller := preload("res://world/npc_poller.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -125,6 +141,10 @@ var _fea_scene: FeaSceneBuilder
 ## per client session (see `_on_event`'s `scene:data` branch) -- this
 ## client has no world-switch flow that would need a re-spawn.
 var _character: CharacterController = null
+## Phase N — NPC visibility (world/npc_poller.gd's own class doc has the
+## full rationale for why this is a REST poller, not a revived `city:npcs`
+## broadcast).
+var _npc_poller: NpcPoller
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -367,6 +387,27 @@ func _ready() -> void:
 	_avatar_manager.base_url = frontend_asset_base_url
 	_avatar_manager.world_id = world_id
 	add_child(_avatar_manager)
+
+	# Phase N — authored NPC visibility (world_npcs / npc-simulator.js). Polls
+	# the SAME REST route the Three.js client already polls every 10s
+	# (concord-frontend/app/lenses/world/page.tsx's
+	# useSmartPolling(loadNPCs, 10_000, ...) against
+	# GET /api/worlds/:worldId/npcs) rather than reviving the deliberately-
+	# retired city:npcs broadcast (see this file's R6 class doc above and
+	# npc_poller.gd's own class doc) — zero new backend code. Feeds
+	# AvatarManager.ingest_snapshot(..., "npc") directly: AvatarManager is
+	# already kind-agnostic, so NPCs get the full existing rig/animation/GLB
+	# pipeline for free. `base_url` is the BACKEND origin (matches
+	# `_fea_scene.base_url` below, NOT `frontend_asset_base_url` — that
+	# export is for GLB-asset serving only, see `_avatar_manager.base_url`'s
+	# own comment just above for why that distinction matters). Mounted
+	# right after `_avatar_manager` so the DI reference is ready immediately.
+	_npc_poller = NpcPoller.new()
+	_npc_poller.base_url = "http://127.0.0.1:5050"
+	_npc_poller.world_id = world_id
+	_npc_poller.auth_token = auth_token
+	_npc_poller.avatar_manager = _avatar_manager
+	add_child(_npc_poller)
 
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
 	# presence here; see conkay/conkay_presence.gd's class doc. `user:<id>`
