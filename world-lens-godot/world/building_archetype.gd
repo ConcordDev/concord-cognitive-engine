@@ -21,6 +21,30 @@ extends RefCounted
 ## the genuinely forge/tower-mapped subset has no real Godot mesh yet and
 ## stays on the placeholder box (`scene_bootstrap.gd`'s existing, honest
 ## fallback — never fabricated).
+##
+## Genuinely searched and closed as a real gap, not an oversight
+## (2026-08-08): every one of the SAME trusted CC0 source's 17
+## sub-collections (Polygonal Mind, via the ToxSam open-source-3D-assets
+## registry — the same source market/tavern/archive came from) was searched
+## for forge/furnace/smith/anvil/kiln/workshop/foundry-named assets; none
+## exist. A `towers`-named sub-collection DOES exist, but turned out to be
+## a themed collection of surreal floating sci-fi monuments (BlockChain/
+## Colony/MemeFactory/LoveDeath/Spooky-prefixed) — its `Tower_Base_*`
+## entries are real, valid, but INCOMPLETE modular base/platform pieces
+## (verified by loading them in a real headless Godot instance and
+## screenshotting: a classical open-columned rotunda with a floating disc
+## roof, not an enclosed tower body), and its full `*_Tower_Art` entries
+## are enormous, thematically mismatched sci-fi assemblies (a UFO-and-
+## rock-island "Colony_Tower_Art" scene, 28k+ vertices) — neither is an
+## honest fit for a grounded, medieval-toned "tower" archetype alongside
+## market/tavern/archive. A companion already-integrated CC0 source
+## (KayKit-Dungeon-Remastered-1.0, used for weapons) was also checked and
+## is a modular dungeon-prop kit with no standalone building mesh of
+## either kind. Shipping either a mislabeled incomplete piece or a
+## thematically-clashing asset would violate this project's own zero-
+## fabrication/honest-labeling discipline more than leaving the box
+## placeholder in place — so neither was added. Full search trail in
+## VISUAL_QA.md.
 
 const DEFAULT_ARCHETYPE := "market"
 

@@ -46,5 +46,5 @@ static func _test_has_real_mesh_true_for_market_tavern_archive_only(t: TestUtils
 	t.check(BuildingArchetype.has_real_mesh("market"), "market has a real mesh")
 	t.check(BuildingArchetype.has_real_mesh("tavern"), "tavern has a real mesh")
 	t.check(BuildingArchetype.has_real_mesh("archive"), "archive has a real mesh")
-	t.check(not BuildingArchetype.has_real_mesh("forge"), "forge has NO real mesh (honest fallback stays a box)")
-	t.check(not BuildingArchetype.has_real_mesh("tower"), "tower has NO real mesh (honest fallback stays a box)")
+	t.check(not BuildingArchetype.has_real_mesh("forge"), "forge has NO real mesh (verified absent across the whole trusted CC0 source; honest fallback stays a box)")
+	t.check(not BuildingArchetype.has_real_mesh("tower"), "tower has NO real mesh (2026-08-08: real candidates exist but are either incomplete modular pieces or thematically-mismatched sci-fi assemblies; shipping either would violate honest-labeling discipline — see VISUAL_QA.md)")

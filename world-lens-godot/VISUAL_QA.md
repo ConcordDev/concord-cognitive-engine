@@ -1,5 +1,62 @@
 # Visual QA — Godot World Lens
 
+## Forge/tower building GLBs — searched exhaustively, closed as a genuine gap, not shipped (2026-08-08)
+
+A residual from the earlier mesh-sourcing pass: `market`/`tavern`/`archive`
+have real CC0 GLBs; `forge`/`tower` don't. This entry records a real,
+thorough search that ended in NOT shipping either asset — a negative
+result worth recording so a future session doesn't re-walk the same path.
+
+**Forge: genuinely absent from the one trusted CC0 source.** All 17
+sub-collections of the Polygonal Mind catalog (the same source
+market/tavern/archive came from, via the ToxSam open-source-3D-assets
+registry) were fetched and searched for forge/furnace/smith/anvil/kiln/
+workshop/foundry-named assets. None exist. A companion already-integrated
+CC0 source (`KayKit-Dungeon-Remastered-1.0`, used for this project's
+weapon GLBs) was also cloned and checked — it's a 200+-piece modular
+dungeon-prop kit (walls, stairs, chests, banners) with no standalone
+building mesh of any kind, forge or otherwise.
+
+**Tower: real candidates exist but neither is an honest fit — verified by
+actually loading and screenshotting them in a real engine, not judged from
+a filename.** A `towers` sub-collection exists in the same trusted source.
+Its `Tower_Base_01_Art`/`Tower_Base_02_Art` entries are real, valid,
+non-degenerate GLBs (`gltf-transform validate`: clean; loaded and
+rendered via `tools/glb_load_probe.gd` against a real local HTTP server:
+8,456/8,212 real vertices, real screenshot) — but the screenshot showed a
+classical open-columned rotunda with a floating disc roof, not an
+enclosed tower body. The "Tower_Base" naming turns out to be literal: it's
+a modular FOUNDATION piece meant to have a themed tower body stacked on
+top, not a complete standalone structure — using it as-is would mislabel
+an incomplete piece as a finished building. The collection's full
+`*_Tower_Art` entries (`Colony_Tower_Art`, checked directly) ARE complete
+assemblies, but the collection turns out to be themed around surreal
+sci-fi/crypto-culture monuments (`BlockChain_`/`Colony_`/`MemeFactory_`/
+`LoveDeath_`/`Spooky_`-prefixed): `Colony_Tower_Art` rendered as a UFO
+hovering over a floating rock island with a staircase to nowhere — 28,569
+real vertices, genuinely loaded, genuinely screenshotted, and genuinely
+the wrong thing. Shipping either the incomplete base piece (mislabeled as
+complete) or the sci-fi monument (thematically clashing with the
+grounded, medieval-toned market/tavern/archive trio) would be exactly the
+"looks plausible, isn't honest" failure mode this project's own
+CREDITS.md sourcing discipline exists to prevent.
+
+**What this closes and what remains open.** `world/building_archetype.gd`
+gained a detailed comment recording this search trail (so the next
+attempt starts from "these two named collections are ruled out, try a
+different source" rather than re-discovering the same dead ends);
+`REAL_MESH_ARCHETYPES` and its pinning test (`tests/test_building_
+archetype.gd`) are unchanged — still exactly `["market", "tavern",
+"archive"]`, still `40/40` (now 43/43 with the quest-interaction suites
+added below) full test suite green. No asset files were added; the
+`concord-frontend/public/models/building/` directory is unchanged from
+before this search (every downloaded candidate was deleted after
+inspection, confirmed via `git status`/directory listing). Forge and
+tower both remain on the honest placeholder-box fallback. A genuinely
+different CC0 source (not yet tried: a dedicated fantasy-architecture
+pack, if one can be found and verified the same way) is the real next
+step, not a re-search of these same two collections.
+
 ## Quest interaction — K-key accept/claim, wired to the real routes; closes the Phase Q "no live talk_to-first proof" residual (2026-08-08)
 
 Wires the two remaining named residuals from the Quests entry below: the
