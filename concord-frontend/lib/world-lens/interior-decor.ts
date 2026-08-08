@@ -390,6 +390,12 @@ export function decorateInterior(
 
       // Extra dressing beside the stall — no procedural equivalent, real-mesh only.
       addRealMeshExtra(THREE, group, 'furniture_cabinet', [-size.x / 2 + 0.6, 0, -size.z / 2 + 0.6], Math.PI / 4);
+
+      // Crate/barrel/pallet cluster opposite the cabinet — KayKit-Prototype-Bits-1.0
+      // world-dressing, same honest-absence contract as every other extra.
+      addRealMeshExtra(THREE, group, 'market_barrel', [size.x / 2 - 0.8, 0, -size.z / 2 + 0.7], 0.4);
+      addRealMeshExtra(THREE, group, 'market_crate', [size.x / 2 - 1.4, 0, -size.z / 2 + 0.9], 0.9);
+      addRealMeshExtra(THREE, group, 'market_pallet', [size.x / 2 - 1.1, 0, -size.z / 2 + 1.5], 0);
       break;
     }
     case 'tower': {

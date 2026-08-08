@@ -3,9 +3,14 @@ import * as THREE from 'three';
 import { decorateInterior, type InteriorArchetype } from '@/lib/world-lens/interior-decor';
 import { createInstancedMeshPool } from '@/lib/world-lens/instanced-mesh-pool';
 
+const MOCKED_ASSET_IDS = new Set([
+  'furniture_table', 'furniture_rug', 'furniture_armchair',
+  'market_barrel', 'market_crate', 'market_pallet',
+]);
+
 vi.mock('@/lib/world-lens/asset-loader', () => ({
   loadAsset: vi.fn(async (ref: { kind: string; id: string }) => {
-    if (ref.id === 'furniture_table' || ref.id === 'furniture_rug' || ref.id === 'furniture_armchair') {
+    if (MOCKED_ASSET_IDS.has(ref.id)) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
       mesh.name = `real-${ref.id}`;
       return mesh;
@@ -92,6 +97,24 @@ describe('decorateInterior', () => {
     expect(shelfUpgrades).toBe(0);
     // propCount() is unaffected either way — the synchronous contract never changes.
     expect(decor.propCount()).toBeGreaterThan(0);
+    decor.dispose();
+  });
+
+  it('market interior adds real barrel/crate/pallet world-dressing once loadAsset resolves', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'market' });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const dressingIds = new Set<string>();
+    decor.group.traverse((obj) => {
+      const id = obj.userData.sourceAssetId;
+      if (id) dressingIds.add(id);
+    });
+    expect(dressingIds.has('market_barrel')).toBe(true);
+    expect(dressingIds.has('market_crate')).toBe(true);
+    expect(dressingIds.has('market_pallet')).toBe(true);
+    // furniture_cabinet is NOT in the mock set — honest absence, same contract.
+    expect(dressingIds.has('furniture_cabinet')).toBe(false);
     decor.dispose();
   });
 });

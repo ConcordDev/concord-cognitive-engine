@@ -64,6 +64,10 @@
     { "file": "models/prop/furniture_rug.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "rug", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
     { "file": "models/prop/furniture_shelf.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "shelf", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
     { "file": "models/prop/furniture_cabinet.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "cabinet", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
-    { "file": "models/prop/furniture_armchair.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "armchair", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 }
+    { "file": "models/prop/furniture_armchair.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "armchair", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
+
+    { "file": "models/prop/market_barrel.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "barrel", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 },
+    { "file": "models/prop/market_crate.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "crate", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 },
+    { "file": "models/prop/market_pallet.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "pallet", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 }
   ]
 }

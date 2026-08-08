@@ -731,6 +731,27 @@ in `asset-loader.ts` with **zero real files behind it anywhere in the
 codebase** (flagged as a known gap in `docs/KAYKIT_INVENTORY.md`); this is
 the first content in that slot.
 
+## Market world-dressing — real CC0 crate/barrel/pallet props (2026-08-08)
+
+Three more CC0 meshes from `KayKit-Prototype-Bits-1.0` (Kay Lousberg,
+CC0 — verified via `LICENSE.txt` directly) close the "building variety +
+world props" item's remaining half (per-world building variants were
+already wired; this is the "crates/barrels near market stalls" world
+props). Added as pure extras (no procedural equivalent) to the market
+interior via the same `addRealMeshExtra` honest-absence contract:
+
+| File | Source (`Assets/gltf/`) | Role |
+|---|---|---|
+| `prop/market_barrel.glb` | `Barrel_A.gltf` | storage-corner dressing opposite the cabinet |
+| `prop/market_crate.glb` | `Box_A.gltf` | stacked beside the barrel |
+| `prop/market_pallet.glb` | `Pallet_Small.gltf` | ground dressing under the crate |
+
+Registered into the evo-asset pipeline (`category: "prop"`,
+`world-dressing` tag) alongside the furniture set above. The remaining ~69
+Prototype-Bits assets (generic blockout walls/floors/pillars/target props)
+are genuinely genre-neutral blockout geometry per the pack's own stated
+purpose — no further Concordia-specific fit identified this pass.
+
 **Explicitly not attempted this pass**: a full house-furniture *placement*
 renderer consuming `building_rooms.furniture_layout_json` (the per-coord
 JSON substrate documented in `CLAUDE.md`'s Belonging-sprint invariants) —
