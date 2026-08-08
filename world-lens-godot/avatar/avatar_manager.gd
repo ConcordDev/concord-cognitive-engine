@@ -34,6 +34,12 @@ extends Node
 ## constant is an interpolation-smoothing factor, not a fetch cadence — the
 ## Three.js client's own actual fetch cadence for NPCs is also 10s
 ## (`useSmartPolling(loadNPCs, 10_000, ...)`), which `npc_poller.gd` mirrors.
+##
+## Creatures (Phase M3) are DELIBERATELY NOT routed through this manager —
+## `_spawn_rig` below collapses any non-"player" kind to "npc", which would
+## silently render a fox/bird/fish through AvatarRig's humanoid pipeline.
+## See world/creature_manager.gd/world/creature_rig.gd (a separate, simpler
+## pair) for the real creature spawn path.
 
 const SnapshotBuffer := preload("res://net/snapshot_buffer.gd")
 const AnimationStateMachine := preload("res://avatar/animation_state_machine.gd")

@@ -93,6 +93,8 @@ const CharacterController := preload("res://player/character_controller.gd")
 const AvatarRig := preload("res://avatar/avatar_rig.gd")
 const TerrainTextureLoader := preload("res://assets/terrain_texture_loader.gd")
 const NpcPoller := preload("res://world/npc_poller.gd")
+const CreatureManager := preload("res://world/creature_manager.gd")
+const CreaturePoller := preload("res://world/creature_poller.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -145,6 +147,12 @@ var _character: CharacterController = null
 ## full rationale for why this is a REST poller, not a revived `city:npcs`
 ## broadcast).
 var _npc_poller: NpcPoller
+## Phase M3 — creature spawner. Deliberately SEPARATE from
+## _avatar_manager/AvatarRig — see world/creature_manager.gd's own class
+## doc for why (a fox is not a humanoid; routing it through AvatarManager
+## would silently mis-render it through the player/NPC pipeline).
+var _creature_manager: CreatureManager
+var _creature_poller: CreaturePoller
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -408,6 +416,25 @@ func _ready() -> void:
 	_npc_poller.auth_token = auth_token
 	_npc_poller.avatar_manager = _avatar_manager
 	add_child(_npc_poller)
+
+	# Phase M3 — creature spawner. Deliberately SEPARATE from
+	# _avatar_manager (see world/creature_manager.gd's own class doc). Two
+	# distinct base URLs, same dual-origin split as everywhere else in this
+	# file: `_creature_manager.base_url` is the FRONTEND asset origin
+	# (threaded to each spawned CreatureRig's own GLB fetch), while
+	# `_creature_poller.base_url` is the BACKEND origin (the macro POST
+	# that fetches live positions).
+	_creature_manager = CreatureManager.new()
+	_creature_manager.base_url = frontend_asset_base_url
+	_creature_manager.world_id = world_id
+	add_child(_creature_manager)
+
+	_creature_poller = CreaturePoller.new()
+	_creature_poller.base_url = "http://127.0.0.1:5050"
+	_creature_poller.world_id = world_id
+	_creature_poller.auth_token = auth_token
+	_creature_poller.creature_manager = _creature_manager
+	add_child(_creature_poller)
 
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
 	# presence here; see conkay/conkay_presence.gd's class doc. `user:<id>`

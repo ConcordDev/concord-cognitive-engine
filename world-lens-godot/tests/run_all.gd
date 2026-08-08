@@ -58,6 +58,8 @@ const TestGatewayClientSeq := preload("res://tests/test_gateway_client_seq.gd")
 const TestBootResync := preload("res://tests/test_boot_resync.gd")
 const TestAvatarManager := preload("res://tests/test_avatar_manager.gd")
 const TestNpcPoller := preload("res://tests/test_npc_poller.gd")
+const TestCreaturePoller := preload("res://tests/test_creature_poller.gd")
+const TestCreatureRig := preload("res://tests/test_creature_rig.gd")
 
 
 func _init() -> void:
@@ -98,6 +100,8 @@ func _init() -> void:
 		"BootResync": TestBootResync.run(),
 		"AvatarManager": TestAvatarManager.run(),
 		"NpcPoller": TestNpcPoller.run(),
+		"CreaturePoller": TestCreaturePoller.run(),
+		"CreatureRig": TestCreatureRig.run(),
 	}
 
 	var all_ok := true

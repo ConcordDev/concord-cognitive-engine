@@ -1,5 +1,94 @@
 # Visual QA — Godot World Lens
 
+## Creature spawner — real macro round trip, separate non-humanoid rig pipeline, zero backend changes (2026-08-08, Phase M3)
+
+Not a rendering claim — real object-state mutation from a genuinely live
+server, same discipline as Phase N. Full context: `server/domains/
+creatures.js#for_world` already served live creature positions (`world_npcs`
+rows with `archetype LIKE 'creature:%'`, their OWN dedicated `x/y/z`
+columns, distinct from the JSON column Phase N's `/npcs` route reads) via
+`POST /api/lens/run {domain:"creatures", name:"for_world"}` — the exact
+call `concord-frontend/lib/world-lens/creature-renderer.ts` already makes
+every 4 seconds. **Zero backend changes were needed or made.**
+
+**The real design problem this phase exists to solve.**
+`avatar/avatar_manager.gd#_spawn_rig` collapses any non-`"player"` kind down
+to `"npc"` — naively calling `AvatarManager.ingest_snapshot(...,
+"creature")` would have silently routed a fox/bird through `AvatarRig`'s
+humanoid pipeline (hero-mesh archetype resolution, 14-bone gait/IK, weapon
+attachment) — a defect class this codebase's invariants exist to catch, not
+a hypothetical. Fixed by building a genuinely separate, deliberately
+simpler pair: `world/creature_manager.gd` + `world/creature_rig.gd`,
+mirroring `world/dtu_prop_renderer.gd`'s "real GLB or tinted placeholder,
+no skeleton" asset strategy instead of `AvatarRig`'s humanoid machinery.
+Real on-disk creature GLBs are keyed by **topology + variant index**
+(`quadruped_01/02/03.glb`, `winged_biped_01.glb`), ported verbatim from
+`creature-renderer.ts`'s own `REAL_ASSET_TOPOLOGIES` table — any other
+topology (serpentine/eel/shark/fish/cephalopod/polyped/amorphous/humanoid)
+honestly stays on the placeholder, a real content gap, never a guessed
+substitute. `avatar_manager.gd`/`avatar_rig.gd` themselves are UNTOUCHED by
+this unit — only a one-line class-doc note was added so a future reader
+doesn't reintroduce the bug this split exists to avoid.
+
+**The double-`ok` envelope, verified live, not just assumed.** `/api/lens/
+run` wraps a MACROS-table handler's raw return in `{ok:true, result:<raw>}`;
+`creatures.for_world` itself returns `{ok, creatures, count}` un-nested — so
+the real wire shape is `{ok:true, result:{ok:true, creatures:[...],
+count}}`. Confirmed by a real `curl` against a real spawned server (not
+just read from source):
+`{"ok":true,"result":{"ok":true,"creatures":[],"count":0}}`. `world/
+creature_poller.gd#_on_request_completed` checks BOTH `ok` flags — missing
+the inner one would silently treat a macro-level failure
+(`result.ok === false`) as success.
+
+**Verified two ways.**
+1. Pure-logic: `tests/test_creature_poller.gd` (22 checks) pins the request-
+   body shape and `creatures_array_to_entities` (flat x/y/z with no
+   `position` wrapper, blank/missing-id and non-Dictionary entries dropped,
+   honest defaults on missing fields — `topology` defaults to the real,
+   covered `"quadruped"` rather than an empty string that would otherwise
+   uselessly degrade every malformed entry straight to the placeholder).
+   `tests/test_creature_rig.gd` (17 checks) pins `real_asset_id_for_topology`
+   (every covered topology resolves to a real on-disk id, every one of the
+   8 uncovered topologies honestly returns `""`, same `creature_id` always
+   picks the same variant) and `placeholder_color` (valid hex parses to a
+   real `Color`, missing/malformed falls back to the same neutral default).
+   Full `tests/run_all.gd`: **38/38 suites PASS, 0 fail**, real non-zero
+   per-suite counts confirmed for both new suites — a same-class
+   `class_name`-qualified static-call compile bug (the exact one
+   `net/gateway_client.gd`'s own class doc warns about, and the exact one
+   Phase N's `npc_poller.gd` hit) was caught and fixed in
+   `creature_rig.gd#_try_resolve_glb` via the same `[PASS] CreatureRig
+   (0 checks)` misleading-pass signal, before it ever reached this final
+   green run.
+2. **Real-engine, against a genuinely live spawned server.** A real
+   `server.js` was booted (fresh migrated DB, real content-seeding, real
+   registered user/token — same setup as Phase N's probe), and `tools/
+   creature_poller_probe.gd` was run against it with `CONCORD_BACKEND_URL`
+   pointed at the real listening port. Result, verbatim:
+   `{"frames_waited":8,"ok":true,"poll_result":{"count":0,"outcome":
+   "succeeded"},"rigs_spawned":0}` — a real HTTP POST fired, the real
+   double-nested envelope was correctly unwrapped, and the poller/manager
+   wiring genuinely completed a round trip end to end.
+
+**What this does NOT settle — stated plainly, not glossed over.**
+concordia-hub had **zero** live creatures in this session's test window
+(confirmed directly via repeated `curl` polls over 90 seconds — not a
+poller bug, a genuinely empty population). `server/lib/fauna-spawner.js`'s
+density model appears to scale spawn targets with player presence, and no
+player was ever actually in the world during this probe (only a REST
+registration, no `city:positions` activity) — so **this pass did NOT
+observe a real nonzero `rigs_spawned` count against a live server**, only
+against the pure-logic tests' synthetic fixtures. Reproducing a genuine
+`count > 0` live proof needs a session with an actual player present in the
+target world (or a fauna-spawn trigger this pass didn't find/build) — flagged
+as a real, named residual, not silently implied as covered. Also unverified,
+same as every other phase: on-display visual correctness (placeholder shape/
+tint, real GLB appearance at spawned positions); whether the 4s poll cadence
+feels right (a ported, not re-judged, design decision); creature facing/
+heading (no server field exists to consume — `apply_transform` is
+position-only by design, not a truncated feature).
+
 ## NPC visibility — real REST poll, real backend round trip, 56 real NPCs spawned (2026-08-08, Phase N)
 
 Not a rendering claim — real object-state mutation from a genuinely live
