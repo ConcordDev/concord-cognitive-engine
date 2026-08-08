@@ -6,6 +6,7 @@ import { createInstancedMeshPool } from '@/lib/world-lens/instanced-mesh-pool';
 const MOCKED_ASSET_IDS = new Set([
   'furniture_table', 'furniture_rug', 'furniture_armchair',
   'market_barrel', 'market_crate', 'market_pallet',
+  'kitchen_counter', 'kitchen_stove', 'kitchen_hood', 'kitchen_fridge', 'kitchen_dishrack', 'kitchen_table',
 ]);
 
 vi.mock('@/lib/world-lens/asset-loader', () => ({
@@ -28,7 +29,7 @@ describe('decorateInterior', () => {
   });
 
   it('builds distinct groups per archetype', () => {
-    const archetypes: InteriorArchetype[] = ['tavern', 'archive', 'forge', 'market', 'tower'];
+    const archetypes: InteriorArchetype[] = ['tavern', 'archive', 'forge', 'market', 'tower', 'restaurant'];
     for (const a of archetypes) {
       const decor = decorateInterior(THREE, { archetype: a, seed: 1 });
       expect(decor.group.name).toBe(`interior-decor-${a}`);
@@ -115,6 +116,24 @@ describe('decorateInterior', () => {
     expect(dressingIds.has('market_pallet')).toBe(true);
     // furniture_cabinet is NOT in the mock set — honest absence, same contract.
     expect(dressingIds.has('furniture_cabinet')).toBe(false);
+    decor.dispose();
+  });
+
+  it('restaurant interior is a real kitchen — counter upgrade + stove/hood/fridge/dishrack/table extras', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'restaurant' });
+    expect(decor.group.name).toBe('interior-decor-restaurant');
+    expect(decor.propCount()).toBeGreaterThan(0); // synchronous contract unaffected
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const realIds = new Set<string>();
+    decor.group.traverse((obj) => {
+      const id = obj.userData.sourceAssetId;
+      if (id) realIds.add(id);
+    });
+    for (const id of ['kitchen_counter', 'kitchen_stove', 'kitchen_hood', 'kitchen_fridge', 'kitchen_dishrack', 'kitchen_table']) {
+      expect(realIds.has(id)).toBe(true);
+    }
     decor.dispose();
   });
 });

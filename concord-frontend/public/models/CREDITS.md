@@ -765,21 +765,53 @@ KayKit-Furniture-Bits assets (beds, chairs, couches, cabinets, shelves,
 bookcases, lamps, picture frames, more rugs) are the natural content for
 that future renderer once it exists.
 
-## Restaurant-Bits — checked, genuinely no consuming 3D surface exists
+## Restaurant kitchen — real 3D interior, sourced from KayKit-Restaurant-Bits-1.0 (2026-08-08)
 
-`KayKit-Restaurant-Bits-1.0` (144 CC0 assets — full kitchen build-out:
-crates, cookware, dishracks, extractor hoods, counters, stoves) was
-checked against the live restaurant gameplay system before deciding not to
-wire it. `RestaurantDashboard.tsx` (the real Diner-Dash-style restaurant
-mechanic CLAUDE.md documents — tip-timing constants, order flow) is a 2D
-DOM overlay mounted by `StationInteractionRouter.tsx`'s proximity-gated
-`_StationOverlayShell` pattern, the same class of panel every other
-station type (farm, mahjong, hacking terminal, etc.) uses — **there is no
-3D kitchen-interior rendering surface anywhere in the world lens for these
-assets to attach to** (confirmed: no `kitchen`-shaped 3D scene/interior
-archetype exists; `BuildingInterior.tsx`'s one "kitchen" hit is an unrelated
-2D theming label for a station overlay type). Wiring this pack would mean
-designing and building a new 3D interior-rendering surface from scratch —
-a real, scoped feature decision on the order of the Godot-side "Phase
-M2/M3" work, not a same-pass asset drop. Flagged here honestly rather than
-force-fit into an unrelated surface.
+**Correction to the earlier session's finding on this same day**: it was
+first concluded that Restaurant-Bits had "no consuming 3D surface" because
+`RestaurantDashboard.tsx` (the 2D Diner-Dash overlay CLAUDE.md documents)
+has no 3D scene of its own. That was true but missed the right mechanism —
+`interior-decor.ts`'s `decorateInterior` is a **genre-agnostic archetype
+system**, not tavern/archive/forge/market/tower-specific; a restaurant is
+just a 6th archetype away, the same way every other building interior in
+this codebase already works. Also found while wiring this: the reveal
+system that toggles a building's interior visible on camera zoom/door-entry
+(`interior-reveal.ts#shouldRevealInterior`) is itself real, tested, pure
+logic with **zero live caller anywhere in the 3D scene** — its own file
+header's claim of "a ConcordiaScene listener... reads this" is aspirational,
+not yet true for ANY archetype. So today every archetype's interior (this
+new restaurant one included) is real and mountable via
+`attachInteriorDecor`/`setInteriorVisible`, but nothing in the live scene
+calls those yet — a real, separate, deeper gap than "restaurant has no
+kitchen," left honestly unaddressed this pass (it's not restaurant-specific
+and fixing it safely means touching the large, load-bearing
+`ConcordiaScene.tsx`, out of scope for this asset-sourcing session).
+
+`restaurant` is now a 6th real `BuildingArchetype`
+(`lib/world-lens/procedural-buildings.ts`) with its own procedural
+diner-shaped exterior (flat roof + rooftop exhaust vent, distinct from
+tavern's pitched-cone silhouette) and a matching `InteriorArchetype` in
+`interior-decor.ts` whose interior is real-mesh-first from the ground up
+(no procedural kitchen primitives existed to retrofit, unlike the
+furniture/market cases above). `building-silhouette.ts` maps the real
+`restaurant` station `building_type` (`StationInteractionRouter`'s
+`ROUTER_TABLE` key) to it — previously fell through to the `market`
+default.
+
+| File | Source (`Assets/gltf/`) | Role |
+|---|---|---|
+| `prop/kitchen_counter.glb` | `kitchencounter_straight_A.gltf` | base counter (primitive-upgraded, same pattern as furniture_table) |
+| `prop/kitchen_stove.glb` | `stove_multi.gltf` | cooking range |
+| `prop/kitchen_hood.glb` | `extractorhood.gltf` | wall-mounted extractor hood over the stove |
+| `prop/kitchen_fridge.glb` | `fridge_A.gltf` | walk-in-adjacent fridge |
+| `prop/kitchen_dishrack.glb` | `dishrack.gltf` | dishrack |
+| `prop/kitchen_table.glb` | `kitchentable_A.gltf` | prep/dining table |
+
+Source: `KayKit-Restaurant-Bits-1.0` (Kay Lousberg, kaylousberg.com),
+**CC0** — verified via `LICENSE.txt` directly. Repacked via `gltf-transform
+copy`, validated clean. Registered into the evo-asset manifest
+(`category: "prop"`, `restaurant`/`kitchen` tags). The remaining ~138
+Restaurant-Bits assets (ingredient props, plated food, more counter/table
+variants, paper-towel shelf) are the natural content for a future denser
+pass on this same archetype — this pass covers the 6 pieces that make the
+room read as a real kitchen, not the full catalog.

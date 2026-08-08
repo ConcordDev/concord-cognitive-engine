@@ -10,11 +10,12 @@
  *
  * When a building's zoom level transitions to 'interior', this module
  * spawns archetype-appropriate props:
- *   - tavern   → fireplace + table + bench cluster + rug
- *   - archive  → shelves with scrolls + reading table + rug
- *   - forge    → anvil + bellows + tool rack
- *   - market   → stall counter + sack pile
- *   - tower    → spiral staircase mock + window slit + standing torch
+ *   - tavern     → fireplace + table + bench cluster + rug
+ *   - archive    → shelves with scrolls + reading table + rug
+ *   - forge      → anvil + bellows + tool rack
+ *   - market     → stall counter + sack pile
+ *   - tower      → spiral staircase mock + window slit + standing torch
+ *   - restaurant → kitchen counter + stove + hood + fridge + dishrack + table
  *
  * Each prop is a simple primitive group attached as a child of the
  * caller-provided buildingGroup, so disposing the building auto-cleans
@@ -104,7 +105,7 @@ function addRealMeshExtra(
     .catch(() => { /* honest absence: no procedural equivalent exists */ });
 }
 
-export type InteriorArchetype = 'tavern' | 'archive' | 'forge' | 'market' | 'tower';
+export type InteriorArchetype = 'tavern' | 'archive' | 'forge' | 'market' | 'tower' | 'restaurant';
 
 export interface InteriorDecorOptions {
   archetype: InteriorArchetype;
@@ -410,6 +411,28 @@ export function decorateInterior(
       );
       glow.position.set(size.x / 2 - 0.1, size.y * 0.6, 0);
       group.add(glow); props.push(glow);
+      break;
+    }
+    case 'restaurant': {
+      // A kitchen — the real Diner-Dash-style restaurant mechanic's honest
+      // 3D interior (2026-08-08), sourced from KayKit-Restaurant-Bits-1.0
+      // (CC0, Kay Lousberg — see CREDITS.md). Mirrors the market case's
+      // shape: one primitive-then-real-mesh-upgraded base piece (the
+      // counter) plus pure real-mesh extras for the rest of the line —
+      // this archetype was designed real-mesh-first from the start rather
+      // than retrofitted, since KayKit-Restaurant-Bits-1.0 has no
+      // procedural-box equivalent worth hand-building for a stove/hood/
+      // fridge/dishrack.
+      const counter = buildStallCounter(THREE, pbr.wood);
+      counter.position.set(0, 0, -size.z / 2 + 0.5);
+      group.add(counter); props.push(counter);
+      upgradeToRealMesh(THREE, group, counter, 'kitchen_counter');
+
+      addRealMeshExtra(THREE, group, 'kitchen_stove', [-size.x / 2 + 1.2, 0, -size.z / 2 + 0.5], 0);
+      addRealMeshExtra(THREE, group, 'kitchen_hood', [-size.x / 2 + 1.2, size.y * 0.55, -size.z / 2 + 0.5], 0);
+      addRealMeshExtra(THREE, group, 'kitchen_fridge', [size.x / 2 - 0.8, 0, -size.z / 2 + 0.6], -Math.PI / 2);
+      addRealMeshExtra(THREE, group, 'kitchen_dishrack', [size.x / 2 - 1.8, 0, -size.z / 2 + 0.5], 0);
+      addRealMeshExtra(THREE, group, 'kitchen_table', [0, 0, size.z / 2 - 1.5], 0);
       break;
     }
   }

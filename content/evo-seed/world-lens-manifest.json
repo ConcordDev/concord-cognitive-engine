@@ -68,6 +68,13 @@
 
     { "file": "models/prop/market_barrel.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "barrel", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 },
     { "file": "models/prop/market_crate.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "crate", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 },
-    { "file": "models/prop/market_pallet.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "pallet", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 }
+    { "file": "models/prop/market_pallet.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "world-dressing", "market", "pallet", "cc0", "kaykit-prototype-bits"], "qualityLevel": 4 },
+
+    { "file": "models/prop/kitchen_counter.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "counter", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/kitchen_stove.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "stove", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/kitchen_hood.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "hood", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/kitchen_fridge.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "fridge", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/kitchen_dishrack.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "dishrack", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/kitchen_table.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "kitchen", "restaurant", "table", "cc0", "kaykit-restaurant-bits"], "qualityLevel": 5 }
   ]
 }
