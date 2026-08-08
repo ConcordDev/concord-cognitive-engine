@@ -1,5 +1,106 @@
 # Visual QA — Godot World Lens
 
+## UI — pause menu, real settings control, session-wide input freeze (2026-08-08)
+
+The client's first interactive menu. Scoped deliberately: a real pause
+overlay (Escape toggles it) with a functioning Master Volume control and a
+capability-gated Quit action — NOT a title screen / main menu, and that
+omission is a real, load-bearing finding, not laziness: `world/boot.gd`'s
+`_ready()` connects to the gateway and spawns the local player
+unconditionally, immediately, so there is no pre-connect "not yet playing"
+state anywhere in this client for a title screen to represent. Building one
+honestly needs restructuring `_ready()` into an explicit
+idle→connecting→spawned state machine — real, separate, larger scope than
+this slice, flagged rather than faked with a "Play" button that has nothing
+behind it (the boot sequence already ran by the time any menu could render).
+
+**Session-level gate, mirroring the already-proven FEA-overlay pattern.**
+`session/session_manager.gd` gained `pause_overlay_active` (a flag, not a
+`Mode` — same "modal overlay, not a state-machine node" reasoning the file's
+own doc comment already gives for `fea_overlay_active`) plus
+`open_pause_overlay()`/`close_pause_overlay()` (idempotent, honest
+false-on-already-open, matching `open_fea_overlay`'s shape) and signals
+`pause_overlay_opened`/`_closed`. Critically, `is_input_owner()` checks
+`pause_overlay_active` FIRST, unconditionally, before deriving
+`current_input_owner()` from `mode`/`fea_overlay_active` — pausing freezes
+EVERY input-owning controller (character movement, FEA orbit-camera
+manipulation, free-fly design editing) regardless of which mode or overlay
+was active the moment Escape was pressed, not just the common WORLD case.
+The camera's `RigMode` is deliberately left untouched by pausing: WORLD's
+default FOLLOW mode already leaves the mouse cursor visible (`camera_rig.gd`
+only captures it in FREE_FLY), so an ordinary `Control` overlay is already
+clickable with zero extra camera-mode plumbing — verified by not needing any
+of it, not merely assumed.
+
+**`ui/pause_menu.gd`** (new `CanvasLayer`, `layer = 100` — above every other
+CanvasLayer this client mounts) builds a real `Control` tree: a dimming
+`ColorRect` (`MOUSE_FILTER_STOP`, so a click on the background doesn't leak
+through to the game), a centered `PanelContainer` → `VBoxContainer` with a
+title, a "Master Volume" `HSlider` live-bound to the injected `SfxPlayer`'s
+real `master_volume` @export (moving it changes what plays immediately — not
+decorative), a "Resume" button, and a "Quit to Desktop" button built ONLY
+when `not OS.has_feature("web")` — a genuine capability check, not a merely-
+hidden button: `get_tree().quit()` is a documented no-op in a browser export
+(no window/process for the engine to close there), so the button doesn't
+exist at all on that target rather than existing and silently doing nothing.
+`world/boot.gd` wires Escape (`_unhandled_input`) to
+`session.open_pause_overlay()`/`close_pause_overlay()` only — never touches
+`_pause_menu` directly — and reacts to the real `pause_overlay_opened`/
+`_closed` signals via `_on_pause_overlay_opened`/`_closed` (calling
+`_pause_menu.open()`/`close()`), mirroring the file's own pre-existing
+`_on_fea_overlay_opened`/`_closed` convention exactly.
+
+**Real-engine proof.**
+- `tests/test_session_manager.gd` gained `_test_pause_overlay_gating` (10 of
+  the suite's new checks, 31→41 total): a fresh `SessionManager` instance
+  (no scene tree needed — `_camera_rig` stays null, and every touched method
+  guards on it) confirms `open_pause_overlay()` genuinely overrides
+  `is_input_owner(CHARACTER)` to false while WORLD mode is still active,
+  overrides `is_input_owner(FREE_FLY)` too (pausing blocks EVERY candidate,
+  not just the mode's own owner), returns `false` on a redundant second
+  open (honest no-op), restores `CHARACTER` ownership on close, and —
+  the sharpest check — overrides the FEA overlay's own real `ORBIT`
+  ownership when both overlays are open at once, proving pause really is an
+  unconditional top-level override and not just another per-mode case.
+- `tools/pause_menu_probe.gd` (new): constructs a REAL `PauseMenu` + REAL
+  `SfxPlayer` in a real `SceneTree` and checks genuine engine state — the
+  menu starts `visible == false`; the panel's real `get_global_rect()`
+  center matches the real viewport's center to within 2px (computed
+  geometrically against the actual rendered rect, not assumed from the
+  anchor-preset call alone); `open()` re-syncs the slider from the SfxPlayer's
+  live `master_volume` (changed AFTER `_ready()`'s own initial sync, so this
+  genuinely exercises `open()`'s own re-sync, not just the constructor path);
+  dragging the slider (`.value = X`, which Godot's `Range` node treats
+  identically to a real user drag — it emits `value_changed` on any set) 
+  genuinely mutates the injected `SfxPlayer.master_volume`; `close()` hides
+  it again; and pressing the real "Resume" `Button` (`.pressed.emit()`,
+  not a bypassing direct method call) genuinely fires `resume_requested`.
+  One real GDScript gotcha surfaced and was fixed while building this probe
+  (recorded here since it's a real, reusable lesson, not implementation
+  noise): a `bool` local captured by a lambda is snapshotted BY VALUE at
+  lambda-creation time in GDScript, so `var fired := false; sig.connect(func():
+  fired = true)` silently mutates only the lambda's own copy — the fix is a
+  one-element `Array` (a reference type) instead of a bare `bool`, e.g.
+  `var fired := [false]; sig.connect(func(): fired[0] = true)`. Confirmed
+  this does NOT affect any shipped code in this unit: `boot.gd`'s own
+  `resume_requested.connect(func(): _session.close_pause_overlay())` reads
+  `_session` as a class MEMBER (implicit `self._session`), not a captured
+  local, so it always sees the live value regardless of this gotcha.
+
+Full suite after this unit: **42/42 test files green**, SessionManager's own
+count 31→41.
+
+**What this does NOT settle.** No human has looked at the rendered pause
+menu — headless mode's dummy rasterizer processes real `Control`/`CanvasLayer`
+state (`.visible`, `.get_global_rect()`, real button/slider values) without
+producing pixels, so this proves the WIRING and LAYOUT MATH are real, not
+that it looks good (same "structurally complete but visually unproven"
+caveat this file's closing section applies everywhere). No gamepad/touch
+binding for Resume/Quit exists yet (keyboard/mouse only, matching the rest
+of this client today — see the separate gamepad/touch backlog item). No
+main-menu/title-screen state exists, as explained above — a real, named,
+deferred follow-up, not an oversight.
+
 ## Audio — ported SFX_MAP synthesis engine, wired into real gameplay moments (2026-08-08)
 
 Godot's world lens had zero audio before this unit — no sample assets exist

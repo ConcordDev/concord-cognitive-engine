@@ -119,6 +119,8 @@ signal mode_transition_rejected(requested_mode: int, reason: String)
 signal fea_overlay_opened()
 signal fea_overlay_closed()
 signal fea_overlay_rejected(reason: String)
+signal pause_overlay_opened()
+signal pause_overlay_closed()
 signal input_owner_changed(owner: int)
 
 enum Mode { WORLD, DESIGN_EDIT, PLAYTEST, SPECTATE }
@@ -127,6 +129,20 @@ enum InputOwner { CHARACTER, FREE_FLY, ORBIT }
 const CameraRig := preload("res://session/camera_rig.gd")
 
 var mode: int = Mode.WORLD
+## UI (2026-08-08) — the pause menu's overlay flag. Deliberately NOT a
+## `Mode` (same "modal overlay, not a Mode" reasoning as `fea_overlay_active`
+## above) and deliberately NOT folded into `fea_overlay_active`'s own
+## InputOwner/CameraRig derivation — pausing must freeze input regardless of
+## which Mode or overlay was active the moment Escape was pressed (even
+## FEA's own orbit-camera manipulation), so it's checked as an unconditional
+## override at the very top of `is_input_owner` instead of being woven into
+## `input_owner_for`'s per-Mode table. The camera's RigMode is deliberately
+## left UNCHANGED by pausing (see `camera_rig_mode_for` — pause never
+## touches it): WORLD's default FOLLOW mode already leaves the mouse cursor
+## visible (`camera_rig.gd`'s own `Input.mouse_mode` line only captures it
+## in FREE_FLY), so a pause menu built as an ordinary `Control` overlay is
+## already clickable without any extra camera-mode plumbing.
+var pause_overlay_active: bool = false
 var fea_overlay_active: bool = false
 
 ## Optional injected DesignPlaytestClient (design/design_playtest_client.gd)
@@ -267,13 +283,39 @@ func close_fea_overlay() -> void:
 	input_owner_changed.emit(current_input_owner())
 
 
+## Open the pause overlay. Idempotent (`false` if already open — mirrors
+## `open_fea_overlay`'s honest-no-op-on-already-open shape) rather than a
+## silent double-open. No legality gate: unlike FEA (refused during
+## PLAYTEST — see `can_open_fea_overlay`), pausing is legal from every Mode.
+func open_pause_overlay() -> bool:
+	if pause_overlay_active:
+		return false
+	pause_overlay_active = true
+	pause_overlay_opened.emit()
+	input_owner_changed.emit(current_input_owner())
+	return true
+
+
+func close_pause_overlay() -> void:
+	if not pause_overlay_active:
+		return
+	pause_overlay_active = false
+	pause_overlay_closed.emit()
+	input_owner_changed.emit(current_input_owner())
+
+
 func current_input_owner() -> int:
 	return SessionManager.input_owner_for(mode, fea_overlay_active)
 
 
 ## Convenience for a controller's own `_physics_process`/`_process` gate:
 ## `if not session_manager.is_input_owner(SessionManager.InputOwner.CHARACTER): return`.
+## `pause_overlay_active` is an unconditional override, checked BEFORE
+## `current_input_owner()` is even derived — see `pause_overlay_active`'s own
+## doc comment for why this sits outside `input_owner_for`'s per-Mode table.
 func is_input_owner(candidate: int) -> bool:
+	if pause_overlay_active:
+		return false
 	return current_input_owner() == candidate
 
 

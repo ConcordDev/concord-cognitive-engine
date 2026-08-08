@@ -104,6 +104,7 @@ const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 const WayfindingController := preload("res://world/wayfinding_controller.gd")
 const RooftopAccessController := preload("res://world/rooftop_access_controller.gd")
 const SfxPlayer := preload("res://audio/sfx_player.gd")
+const PauseMenu := preload("res://ui/pause_menu.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -176,6 +177,15 @@ var _vegetation_renderer: VegetationRenderer
 ## then handed to `_character` as its `sfx_player` DI slot once the local
 ## player spawns, and to `_quest_actions` for accept/claim feedback.
 var _sfx_player: SfxPlayer
+
+## UI (2026-08-08) — the pause overlay. Mounted unconditionally in
+## `_ready()` alongside `_sfx_player` (no scene-data dependency, and it's
+## the one thing here Escape must always be able to reach even before the
+## local player has spawned). `world/boot.gd` itself is the reactive
+## consumer of `SessionManager.pause_overlay_opened`/`_closed` — see
+## `_on_pause_overlay_opened`/`_closed` below, mirroring the existing FEA-
+## overlay pattern (`_on_fea_overlay_opened`/`_closed`).
+var _pause_menu: PauseMenu
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -415,6 +425,11 @@ func _ready() -> void:
 	_sfx_player = SfxPlayer.new()
 	add_child(_sfx_player)
 
+	_pause_menu = PauseMenu.new()
+	_pause_menu.sfx_player = _sfx_player
+	add_child(_pause_menu)
+	_pause_menu.resume_requested.connect(func(): _session.close_pause_overlay())
+
 	_bootstrap = SceneBootstrap.new()
 	_bootstrap.enable_real_building_meshes = true
 	_bootstrap.enable_collision = true
@@ -609,6 +624,8 @@ func _ready() -> void:
 	_session.fea_overlay_closed.connect(_on_fea_overlay_closed)
 	_session.mode_transition_rejected.connect(_on_mode_transition_rejected)
 	_session.fea_overlay_rejected.connect(_on_fea_overlay_rejected)
+	_session.pause_overlay_opened.connect(_on_pause_overlay_opened)
+	_session.pause_overlay_closed.connect(_on_pause_overlay_closed)
 
 	_gateway.connected.connect(_on_connected)
 	_gateway.authenticated.connect(_on_authenticated)
@@ -860,6 +877,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _quest_actions != null:
 			_quest_actions.try_action()
 
+	# UI (2026-08-08) — Escape toggles the pause overlay. SessionManager
+	# stays the single source of truth for whether the game is paused (see
+	# its own `pause_overlay_active` doc comment); this handler only ever
+	# calls its open/close methods, never touches `_pause_menu` directly —
+	# `_on_pause_overlay_opened`/`_closed` above are what actually show/hide
+	# it, reacting to the real state change.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+		if _session != null:
+			if _session.pause_overlay_active:
+				_session.close_pause_overlay()
+			else:
+				_session.open_pause_overlay()
+
 
 ## F26 — feeds the local player's real position into `_rooftop_controller`
 ## every frame once a local player exists, so `rooftop_entered`/
@@ -1086,3 +1116,11 @@ func _on_mode_transition_rejected(requested_mode: int, reason: String) -> void:
 
 func _on_fea_overlay_rejected(reason: String) -> void:
 	print("[boot] fea overlay rejected: ", reason)
+
+
+func _on_pause_overlay_opened() -> void:
+	_pause_menu.open()
+
+
+func _on_pause_overlay_closed() -> void:
+	_pause_menu.close()
