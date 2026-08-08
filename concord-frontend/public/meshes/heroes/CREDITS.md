@@ -165,12 +165,58 @@ not left as FBX2glTF's placeholder images. Avatars were pre-screened via
 professions carry helmet/gear textures that would need a 6th+ image slot
 the documented patch order doesn't handle) before downloading anything.
 
-`legend` and the other 5 worlds' per-world variants remain on the prior
-pass's Mixamo characters — extending this to the rest is a mechanical
-repeat of the same script with a new avatar-selection table per world, not
-attempted further this pass for scope reasons (each world needs its own
-"which 6 avatars fit this world's tone" judgment call, not just a
-technical rerun).
+### The other 5 worlds — also real Rocketbox avatars now (2026-08-08, same session)
+
+Extended to every remaining world with per-world variants. The Rocketbox
+catalog turned out to be non-uniform in a way the first pass's "exactly 7
+`.tga` files, canonical names" filter didn't capture: some avatars have no
+`opacity_color` texture at all (FBX2glTF then emits 4 placeholder images,
+not 5), and file-naming details vary avatar to avatar (`_acu` suffixes,
+different numeric prefixes with no relation to the folder name). Rather
+than hand-verify 30 more avatars against a fixed template, the pipeline was
+made manifest-driven: every avatar folder under `Assets/Avatars/` was
+scanned once (via the same blob-less `git ls-tree` partial clone, still
+zero blob fetches) into a lookup table of each avatar's *actual*
+`body_color`/`body_normal`/`head_color`/`head_normal`/`opacity_color`
+filenames, filtered to avatars with ≤8 total textures (excludes
+heavily-geared professions the same way the first pass's manual screen
+did). The conversion script looks up real filenames per avatar instead of
+assuming a template, and probes each GLB's actual texture count (4 or 5)
+before patching — verified empirically first against a no-opacity avatar
+(`Male_Adult_11`: FBX2glTF emits exactly 4 textures, order
+`[bodyNormal, bodyColor, headNormal, headColor]`, no 5th slot) so the patch
+step never guesses.
+
+Per-world avatar selection (loosely themed per world's tone; no avatar is
+reused within a world, and none collide with the universal set or
+`concordia-hub`'s table above):
+
+| World | warrior | guard | hunter | scholar | mystic | trader |
+|---|---|---|---|---|---|---|
+| `sovereign-ruins` | Male_Adult_01 | Male_Adult_04 | Male_Adult_06 | Medical_Male_01 | Female_Adult_06 | Female_Adult_07 |
+| `cyber` | Male_Adult_08 | Male_Adult_09 | Male_Adult_10 | Business_Male_03 | Female_Adult_08 | Business_Female_04 |
+| `fantasy` | Male_Adult_11 | Male_Adult_12 | Male_Adult_13 | Male_Adult_14 | Female_Adult_09 | Female_Adult_10 |
+| `lattice-crucible` | Male_Adult_15 | Male_Adult_16 | Male_Adult_17 | Medical_Male_02 | Female_Adult_11 | Female_Adult_12 |
+| `concord-link-frontier` | Male_Adult_18 | Male_Adult_20 | Pilot_Male_01 | Business_Male_04 | Female_Adult_13 | Female_Adult_14 |
+
+All under `Assets/Avatars/Adults/` or `Assets/Avatars/Professions/` per
+name (e.g. `Assets/Avatars/Adults/Male_Adult_01`,
+`Assets/Avatars/Professions/Medical_Male_01`). `fantasy` intentionally
+avoids Business/Medical/Military avatars (a business suit or lab coat
+would read as a wrong-world mismatch); `sovereign-ruins` leans rugged
+civilian + one medical for a "survivor camp" tone; `cyber` leans corporate
++ business for a corpo-hacker tone; `concord-link-frontier` includes a
+real Pilot avatar for its exploration/scouting theme.
+
+All 30 outputs validated clean (`gltf-transform validate`, 0 errors) and
+inspected to confirm the right texture count landed (18 avatars got the
+full 5-slot patch, 12 got the 4-slot no-opacity variant — both counts are
+correct FBX2glTF behavior for those specific source avatars, not a bug).
+
+`legend` in every world remains on the prior pass's Mixamo Xbot.glb — no
+Rocketbox avatar obviously reads as "legendary" the way the other 6
+archetypes map onto real professions/civilians, so it's left alone rather
+than force-fitting a mismatch just because a replacement pipeline exists.
 
 ## The Three Above All (unchanged)
 
