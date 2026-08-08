@@ -1,5 +1,67 @@
 # Visual QA — Godot World Lens
 
+## Wayfinding wire-the-unwired — `WayfindingController`/`RooftopAccessController` actually mounted in `boot.gd` (2026-08-08, closes the Phase Q gap)
+
+Closes the exact gap the Quests entry below flagged as a PRE-EXISTING,
+separately-scoped finding: `WayfindingController` and its dependency
+`RooftopAccessController` had real, tested pure-logic modules (F26/F27) but
+were never instantiated anywhere in `world/boot.gd` — so the quest-POI data
+layer that same phase built (`set_quest_pois`, `quest_pois`) had no live
+on-screen consumer, and neither did the pad/rooftop/district POIs that
+predate it. This is a "wire-the-unwired" fix in the same spirit CLAUDE.md
+documents for backend heartbeats, applied client-side: no new logic, only
+real instantiation + real wiring of code that already existed and already
+worked in isolation.
+
+**What changed in `world/boot.gd`.** Both controllers are constructed and
+`add_child`ed at `_ready()` (`_rooftop_controller =
+RooftopAccessController.new()`, `_wayfinding = WayfindingController.new()`),
+matching the mount style every other subsystem in this file already uses.
+Wiring is deferred to the `"scene:data"` event case, right after
+`_bootstrap.apply_scene(data)`: `_rooftop_controller.wire_from_scene_
+bootstrap(_bootstrap)` then `_wayfinding.wire_sources(_bootstrap,
+_rooftop_controller)` — so a reconnect or world-switch re-wires both
+controllers against fresh geometry rather than leaving them stuck on
+whatever loaded first. A new `_process(_delta)` (this file had none before)
+calls `_rooftop_controller.update(_character.global_position)` every frame,
+guarded on both being non-null.
+
+**Verified against a second real, genuinely live server — not a synthetic
+fixture, not just "compiles."** `tools/live_probe.gd` (an existing tool that
+already boots the real `res://scenes/boot.tscn` against a real running
+server) was extended to walk `boot`'s children by class name (same pattern
+already used for `SceneBootstrap`) and report on both new controllers. A
+fresh `server.js` was spawned (fresh migrated temp DB), a real user was
+registered (`POST /api/auth/register` — this run is what surfaced a
+previously-undocumented required field, `dateOfBirth`, now noted for future
+probes), a real bearer token obtained, and `live_probe.gd` run against it
+under `xvfb-run` for `concordia-hub`. Verbatim result:
+`{"rooftop_buildings_count":1,"rooftop_controller_found":true,
+"spawned_children":125,"wayfinding_found":true,"wayfinding_poi_count":10,
+...}` — both controllers genuinely found as live children of the real boot
+scene, `RooftopAccessController` genuinely resolved 1 real rooftop-accessible
+building from the live scene bootstrap, and `WayfindingController` genuinely
+resolved 10 real POIs (landing pads + rooftop + district markers, per its
+existing `collect_pois` logic) from that same live data — none of these
+numbers fabricated or assumed; each is exactly what the real objects reported
+when asked. The server, its temp data directory, log, pidfile, and screenshot
+were torn down afterward; confirmed via `ps aux` that no stray process
+remained (the pidfile-captured PID was stale again, same as a prior probe
+this session — the real PID was found via `ps aux | grep server.js` and
+killed directly).
+
+**What this does NOT settle.** The quest-POI layer from the entry below now
+has a live consumer for the first time, but no accepted `talk_to`-first quest
+was exercised through this specific probe (that residual is already recorded
+below, unchanged by this fix). On-screen legibility of the compass/marker
+UI itself — does a POI actually render as a readable on-screen marker, not
+just exist in `WayfindingController`'s internal list — is unverified; this
+probe confirms the DATA layer is wired end-to-end from real scene data to a
+real, queryable controller, not that anything is pixel-verified as visible.
+`tests/run_all.gd`'s full suite (40/40, unchanged by this fix — no new
+pure-logic surface was added, only instantiation/wiring in `boot.gd`) was
+re-confirmed green after these edits.
+
 ## Quests — real fetch, real breadcrumb HUD, quest objectives as a 4th wayfinding POI source (2026-08-08, Phase Q slice 1)
 
 Zero backend changes needed or made — `world/quest_poller.gd` polls the SAME

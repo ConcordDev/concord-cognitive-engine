@@ -69,6 +69,22 @@ func _process(_delta: float) -> bool:
 		bounds_center = bootstrap.get_bounds_center()
 		bounds_radius = bootstrap.get_bounds_radius()
 
+	# F26/F27, wired into boot.gd for the first time this pass — walk for
+	# these the same by-class way as SceneBootstrap above, so this probe
+	# proves the real end-to-end wiring (scene:data -> wire_from_scene_
+	# bootstrap/wire_sources -> real, non-empty POI/rooftop data), not just
+	# that the pure-logic modules exist.
+	var rooftop_controller: Node = null
+	var wayfinding: Node = null
+	for child in _boot.get_children():
+		if child.get_script() == null:
+			continue
+		var cls := String(child.get_script().get_global_name())
+		if cls == "RooftopAccessController":
+			rooftop_controller = child
+		elif cls == "WayfindingController":
+			wayfinding = child
+
 	var result := {
 		"ok": true,
 		"bootstrap_found": bootstrap != null,
@@ -78,6 +94,10 @@ func _process(_delta: float) -> bool:
 		"camera": cam_info,
 		"bounds_center": str(bounds_center),
 		"bounds_radius": bounds_radius,
+		"rooftop_controller_found": rooftop_controller != null,
+		"rooftop_buildings_count": rooftop_controller.rooftop_buildings.size() if rooftop_controller != null else -1,
+		"wayfinding_found": wayfinding != null,
+		"wayfinding_poi_count": wayfinding.poi_count() if wayfinding != null else -1,
 	}
 	print("[live_probe] RESULT ", JSON.stringify(result))
 	return true

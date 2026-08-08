@@ -99,6 +99,8 @@ const VegetationRenderer := preload("res://world/vegetation_renderer.gd")
 const QuestPoller := preload("res://world/quest_poller.gd")
 const QuestBreadcrumb := preload("res://world/quest_breadcrumb.gd")
 const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
+const WayfindingController := preload("res://world/wayfinding_controller.gd")
+const RooftopAccessController := preload("res://world/rooftop_access_controller.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -189,6 +191,14 @@ var _quest_hud: Label = null
 ## persistence yet (deliberate first-slice scope; matches this session's
 ## other "port the design, not every persistence detail" calls).
 var _quest_tracker_mode: String = "breadcrumb"
+## F26/F27 — real modules with their own tests since Sprint F, but never
+## previously mounted anywhere in this file (a real, checked finding from
+## the Phase Q pass, not an assumption — see VISUAL_QA.md's "Quests" entry).
+## Wired here so the quest-objective POI layer (and the pre-existing pad/
+## rooftop/district POIs) finally has a live path from real scene data to
+## real, queryable markers.
+var _rooftop_controller: RooftopAccessController = null
+var _wayfinding: WayfindingController = null
 
 
 ## Pure static so it's unit-testable without a scene tree (same rationale as
@@ -480,6 +490,16 @@ func _ready() -> void:
 	_quest_poller.poll_succeeded.connect(_on_quest_poll_succeeded)
 	_setup_quest_hud()
 
+	# F26/F27, wired for real here — see the class-level comment on
+	# `_rooftop_controller`/`_wayfinding` above. `wire_sources`/
+	# `wire_from_scene_bootstrap` are re-callable (both classes' own
+	# doc comments say so) and are re-invoked from `_on_event`'s
+	# "scene:data" case below on every fresh scene payload.
+	_rooftop_controller = RooftopAccessController.new()
+	add_child(_rooftop_controller)
+	_wayfinding = WayfindingController.new()
+	add_child(_wayfinding)
+
 	# R5/E22 — ConKay spatial mode. Same identity as the web widget, given a
 	# presence here; see conkay/conkay_presence.gd's class doc. `user:<id>`
 	# is auto-joined by the gateway on successful auth (no room:join needed
@@ -690,6 +710,12 @@ func _setup_quest_hud() -> void:
 
 func _on_quest_poll_succeeded(_count: int) -> void:
 	_render_quest_hud()
+	# F27 — recompute just the quest-POI subset (see WayfindingController's
+	# own class-level comment on `_quest_pois` for why this is split from
+	# `wire_sources`). `npc_positions_snapshot()` is a real, live read —
+	# an NPC not yet spawned or aged out is honestly absent, never guessed.
+	if _wayfinding != null and _avatar_manager != null:
+		_wayfinding.set_quest_pois(_quest_poller.get_quests(), _avatar_manager.npc_positions_snapshot())
 
 
 ## Renders `_quest_poller`'s current snapshot into `_quest_hud` per
@@ -739,6 +765,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_render_quest_hud()
 
 
+## F26 — feeds the local player's real position into `_rooftop_controller`
+## every frame once a local player exists, so `rooftop_entered`/
+## `rooftop_exited` genuinely fire on real state transitions rather than
+## sitting wired-but-never-called. No consumer for those two signals exists
+## yet (see `rooftop_access_controller.gd`'s own class doc: "a future unit
+## would connect rooftop_entered to whatever prompt/menu surface the client
+## eventually builds") — this only makes the controller's own internal
+## state genuinely live and queryable via `nearest_rooftop_building`, which
+## F27's wayfinding markers already consume.
+func _process(_delta: float) -> void:
+	if _rooftop_controller != null and _character != null:
+		_rooftop_controller.update(_character.global_position)
+
+
 func _on_connected() -> void:
 	print("[boot] gateway socket open")
 
@@ -785,6 +825,14 @@ func _on_event(evt: String, data: Dictionary) -> void:
 	match evt:
 		"scene:data":
 			_bootstrap.apply_scene(data)
+			# F26/F27 — real modules with real tests since Sprint F, wired
+			# for the first time here (see the class-level comment on
+			# `_rooftop_controller`/`_wayfinding` above). Both re-pull from
+			# `_bootstrap`/`_rooftop_controller`'s freshly-parsed state, so
+			# a later `scene:data` (a reconnect, a world switch) keeps them
+			# current rather than stuck on stale first-load geometry.
+			_rooftop_controller.wire_from_scene_bootstrap(_bootstrap)
+			_wayfinding.wire_sources(_bootstrap, _rooftop_controller)
 			# Frame the real spawned world instead of leaving the camera at
 			# whatever the FOLLOW-mode-with-no-target fallback shows before
 			# this (session/camera_rig.gd's own honest Vector3.ZERO/tiny-
