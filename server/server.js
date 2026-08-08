@@ -7116,6 +7116,16 @@ function authMiddleware(req, res, next) {
     // Phase W — disease catalog + plague list public-read.
     "/api/diseases/catalog",
     "/api/diseases/plagues",
+    // EvoAsset resolve/material/file/by-category/stats are genuinely public
+    // per routes/evo-asset.js's own header + per-route design (no PII, no
+    // requireAuth on any of them) — the ONE mutating route in that file
+    // (POST /interaction) already carries its own `auth` middleware
+    // directly in the route registration, independent of this allowlist,
+    // so widening the prefix here cannot expose it. Found missing
+    // 2026-08-08 by an actual cross-origin Godot browser load: the route
+    // was written public but never allowlisted, so every real (non-
+    // same-loopback) caller 401'd before reaching the handler.
+    "/api/evo-asset",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -13430,6 +13440,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/connective-tissue", "/api/creatures", "/api/cross-world/feed",
     "/api/detective/crime", "/api/detective/open", "/api/diseases/catalog",
     "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
+    // "/api/evo-asset" — see Gate 1's matching addition + comment.
+    "/api/evo-asset",
     "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",

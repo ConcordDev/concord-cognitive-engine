@@ -4,9 +4,18 @@ extends Node
 ##
 ## Strategy:
 ##   1. Try the dynamic resolve endpoint (evo-asset promotions can supply a
-##      real, per-instance model URL): GET {base}/api/evo-asset/resolve?kind&id
+##      real, per-instance model URL): GET {base}/api/evo-asset/resolve?source&sourceId
 ##      → JSON { url }.
 ##   2. Fall back to the static convention: {base}/models/{kind}/{id}.glb
+##
+## `?source=&sourceId=` (2026-08-08, was `?kind=&id=`) — the real route
+## (server/routes/evo-asset.js#GET /resolve) reads `source`/`sourceId`, not
+## `kind`/`id`; the mismatched names meant this call always failed its own
+## `source and sourceId required` check, so the dynamic-promotion lookup has
+## never actually worked — only ever fell through to the static convention
+## below. Found by an actual cross-origin Godot browser load (also surfaced
+## a second, independent bug: `/api/evo-asset` was missing from server.js's
+## publicReadPaths/`_safeReadPaths`, now fixed too).
 ##
 ## Honest failure: if the resolve endpoint errors AND the caller wants strict
 ## resolution, `resolve_failed` fires. The `fallback_url` static func is always
@@ -41,7 +50,7 @@ func resolve(kind: String, id: String) -> void:
 	var req := HTTPRequest.new()
 	add_child(req)
 	req.request_completed.connect(_on_completed.bind(kind, id, req))
-	var endpoint := "%s/api/evo-asset/resolve?kind=%s&id=%s" % [
+	var endpoint := "%s/api/evo-asset/resolve?source=%s&sourceId=%s" % [
 		base_url, kind.uri_encode(), id.uri_encode()]
 	var err := req.request(endpoint)
 	if err != OK:
