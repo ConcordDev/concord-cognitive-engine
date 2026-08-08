@@ -1,5 +1,26 @@
 # KayKit-Game-Assets — full inventory (2026-08-08)
 
+## Status update — later same day still: furniture wired (Three.js, not Godot), restaurant checked and deferred
+
+Per the follow-up "wire everything, look for more assets" instruction:
+**`KayKit-Furniture-Bits-1.0`** (5 of its 53 assets — table/rug/shelf/
+cabinet/armchair) is now wired, but into the **Three.js web client**
+(`concord-frontend/lib/world-lens/interior-decor.ts`), not Godot — the
+consuming surface (the procedural building-interior decor system) only
+exists on that client today. Full detail, sourcing, and the honest scope
+note on the remaining 48 unused furniture assets: see
+`concord-frontend/public/models/CREDITS.md`'s "Interior furniture" section.
+
+**`KayKit-Restaurant-Bits-1.0`** (144 assets) was checked against the real
+restaurant gameplay system and genuinely has no 3D interior-rendering
+surface to attach to (the restaurant mechanic is a 2D DOM overlay) — not
+wired, documented as a real deferred-feature gap rather than force-fit.
+See the same CREDITS.md section for the full reasoning.
+
+Neither of these touches the Godot client — this doc's own per-pack
+inventory below (written for the Godot use case specifically) is otherwise
+unchanged and still accurate for that client.
+
 ## Status update — later same day: 2 more worlds wired, evo-asset registered
 
 Per follow-up instruction to wire the two queued candidates and check the

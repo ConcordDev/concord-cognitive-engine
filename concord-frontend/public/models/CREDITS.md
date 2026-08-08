@@ -699,3 +699,66 @@ building archetype.
   `CLAUDE.md` itself warns about, made and then caught within this same
   multi-session arc — recorded here rather than silently rewritten, per
   this repo's own "docs are a build artifact" discipline.
+
+## Interior furniture — real CC0 meshes upgrade the procedural interior decor (2026-08-08)
+
+`lib/world-lens/interior-decor.ts` previously rendered every building
+interior (tavern/archive/forge/market/tower) with hand-built primitive
+props only (box/cylinder/sphere geometry). Five real CC0 meshes now
+upgrade the highest-impact primitives in place, following the same
+real-mesh-first / honest-primitive-fallback pattern `resource-node-renderer.ts`
+already established for trees/bushes — the primitive is still built and
+returned synchronously exactly as before (so `decorateInterior`'s contract
+and `propCount()` never change), and a best-effort async upgrade swaps in
+the real mesh when it resolves, leaving the primitive untouched on any
+failure. Source: `KayKit-Furniture-Bits-1.0` (Kay Lousberg,
+kaylousberg.com), **CC0** — verified by reading `LICENSE.txt` directly in
+the cloned repo, not assumed from the pack name. Repacked via
+`gltf-transform copy` into self-contained `.glb`, validated clean.
+
+| File | Source (`Assets/gltf/`) | Used by | Role |
+|---|---|---|---|
+| `prop/furniture_table.glb` | `table_medium.gltf` | tavern, archive | upgrades the primitive dining/reading table |
+| `prop/furniture_rug.glb` | `rug_rectangle_A.gltf` | tavern, archive | upgrades the primitive floor rug |
+| `prop/furniture_shelf.glb` | `shelf_A_big.gltf` | archive (×2) | upgrades the primitive shelf-with-scrolls assembly (the real mesh replaces both the shelf frame AND the procedural scroll props, since they're children of the same primitive group the upgrade hides) |
+| `prop/furniture_cabinet.glb` | `cabinet_medium.gltf` | market | new extra dressing beside the stall counter — no procedural equivalent, honestly absent if the asset never resolves |
+| `prop/furniture_armchair.glb` | `armchair.gltf` | tavern | new extra dressing near the fireplace — same honest-absence contract |
+
+Registered into the evo-asset pipeline (`content/evo-seed/world-lens-manifest.json`,
+`category: "prop"`) so the refinement-pass scheduler has real reference
+material for this asset kind — `prop` was previously a declared `AssetKind`
+in `asset-loader.ts` with **zero real files behind it anywhere in the
+codebase** (flagged as a known gap in `docs/KAYKIT_INVENTORY.md`); this is
+the first content in that slot.
+
+**Explicitly not attempted this pass**: a full house-furniture *placement*
+renderer consuming `building_rooms.furniture_layout_json` (the per-coord
+JSON substrate documented in `CLAUDE.md`'s Belonging-sprint invariants) —
+that data exists server-side but has **no frontend consumer anywhere**
+today (confirmed by grep — zero references to `furniture_layout_json`/
+`furnitureLayout`/`placeFurniture` in `concord-frontend/`). Wiring it would
+mean building a new player-house interior scene/UI, not a same-pass asset
+swap-in into an already-live rendering path; a real, separate feature, not
+silently implied as done by this section. The remaining 48 unused
+KayKit-Furniture-Bits assets (beds, chairs, couches, cabinets, shelves,
+bookcases, lamps, picture frames, more rugs) are the natural content for
+that future renderer once it exists.
+
+## Restaurant-Bits — checked, genuinely no consuming 3D surface exists
+
+`KayKit-Restaurant-Bits-1.0` (144 CC0 assets — full kitchen build-out:
+crates, cookware, dishracks, extractor hoods, counters, stoves) was
+checked against the live restaurant gameplay system before deciding not to
+wire it. `RestaurantDashboard.tsx` (the real Diner-Dash-style restaurant
+mechanic CLAUDE.md documents — tip-timing constants, order flow) is a 2D
+DOM overlay mounted by `StationInteractionRouter.tsx`'s proximity-gated
+`_StationOverlayShell` pattern, the same class of panel every other
+station type (farm, mahjong, hacking terminal, etc.) uses — **there is no
+3D kitchen-interior rendering surface anywhere in the world lens for these
+assets to attach to** (confirmed: no `kitchen`-shaped 3D scene/interior
+archetype exists; `BuildingInterior.tsx`'s one "kitchen" hit is an unrelated
+2D theming label for a station overlay type). Wiring this pack would mean
+designing and building a new 3D interior-rendering surface from scratch —
+a real, scoped feature decision on the order of the Godot-side "Phase
+M2/M3" work, not a same-pass asset drop. Flagged here honestly rather than
+force-fit into an unrelated surface.

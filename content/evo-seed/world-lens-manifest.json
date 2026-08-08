@@ -58,6 +58,12 @@
     { "file": "meshes/heroes/_archetype_undead.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
     { "file": "meshes/heroes/_archetype_zombie.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "zombie", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
     { "file": "meshes/heroes/_archetype_wraith.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "wraith", "undead", "hostile", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
-    { "file": "meshes/heroes/_archetype_lich.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "lich", "undead", "hostile", "boss", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 }
+    { "file": "meshes/heroes/_archetype_lich.glb", "kind": "mesh", "category": "hero-archetype", "tags": ["character", "hero-archetype", "lich", "undead", "hostile", "boss", "cc0", "kaykit-character-pack-skeletons"], "qualityLevel": 5 },
+
+    { "file": "models/prop/furniture_table.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "table", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/furniture_rug.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "rug", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/furniture_shelf.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "shelf", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/furniture_cabinet.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "cabinet", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 },
+    { "file": "models/prop/furniture_armchair.glb", "kind": "mesh", "category": "prop", "tags": ["prop", "furniture", "interior", "armchair", "cc0", "kaykit-furniture-bits"], "qualityLevel": 5 }
   ]
 }

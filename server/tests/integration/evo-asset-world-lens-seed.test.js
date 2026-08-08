@@ -37,8 +37,9 @@ describe("evo-asset world-lens seed", () => {
     // 7 terrain + 15 weapons + 8 buildings (3 universal + forge/tower +
     // 3 per-world variants: market__crime, archive__sovereign-ruins,
     // tavern__concord-link-frontier) + 6 vegetation + 4 creatures +
-    // 11 hero archetypes (7 universal + undead/zombie/wraith/lich) = 51
-    assert.ok(stats.found >= 51, `expected >= 51 real files found on disk, got ${stats.found}`);
+    // 11 hero archetypes (7 universal + undead/zombie/wraith/lich) +
+    // 5 furniture props (table/rug/shelf/cabinet/armchair) = 56
+    assert.ok(stats.found >= 56, `expected >= 56 real files found on disk, got ${stats.found}`);
     assert.equal(stats.registered, stats.found, "every found file should register on a fresh DB");
 
     const rows = db.prepare(`SELECT * FROM evo_assets WHERE source = 'github'`).all();
@@ -117,6 +118,19 @@ describe("evo-asset world-lens seed", () => {
     assert.ok(tags.includes("crime"));
   });
 
+  it("registers the 5 new furniture props with real CC0 KayKit-Furniture-Bits provenance", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    for (const id of ["table", "rug", "shelf", "cabinet", "armchair"]) {
+      const row = db.prepare(`SELECT * FROM evo_assets WHERE source_id = ?`).get(`world-lens:models/prop/furniture_${id}.glb`);
+      assert.ok(row, `furniture_${id}.glb should be registered`);
+      assert.equal(row.category, "prop");
+      const tags = JSON.parse(row.tags_json);
+      assert.ok(tags.includes("cc0"));
+      assert.ok(tags.includes("furniture"));
+    }
+  });
+
   it("gracefully returns an empty result when the manifest directory doesn't exist", () => {
     const db = setupDb();
     const stats = bootstrapWorldLensAssets(db, "/nonexistent/path/xyz");
@@ -127,15 +141,15 @@ describe("evo-asset world-lens seed", () => {
     const db = setupDb();
     const result = await bootstrapAllSources(db);
     assert.ok(result.worldLensAssets, "bootstrapAllSources should report a worldLensAssets stat");
-    assert.ok(result.worldLensAssets.registered >= 51, "world-lens assets should be part of the boot-time floor");
-    assert.ok(result.total >= 51 + 3, "total should include both the primitive seed and the real world-lens assets");
+    assert.ok(result.worldLensAssets.registered >= 56, "world-lens assets should be part of the boot-time floor");
+    assert.ok(result.total >= 56 + 3, "total should include both the primitive seed and the real world-lens assets");
   });
 
   it("real world-lens assets are real evolution candidates", () => {
     const db = setupDb();
     bootstrapWorldLensAssets(db);
-    const candidates = selectEvolutionCandidates(db, 60);
-    assert.ok(candidates.length >= 51, "the scheduler should see the real assets as candidates");
+    const candidates = selectEvolutionCandidates(db, 65);
+    assert.ok(candidates.length >= 56, "the scheduler should see the real assets as candidates");
   });
 });
 
@@ -196,7 +210,7 @@ describe("evo-asset world-lens seed — frontend resolution alias (source/source
     bootstrapWorldLensAssets(db);
     const after = db.prepare(`SELECT COUNT(*) AS n FROM evo_assets WHERE source = 'concordia'`).get().n;
     assert.equal(before, after);
-    assert.ok(before >= 40, "one alias row per found asset");
+    assert.ok(before >= 56, "one alias row per found asset");
   });
 
   it("aliases resolve correctly for the other asset kinds real renderers actually query (weapon, vegetation, creature)", () => {

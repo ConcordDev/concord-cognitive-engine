@@ -1,7 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
 import { decorateInterior, type InteriorArchetype } from '@/lib/world-lens/interior-decor';
 import { createInstancedMeshPool } from '@/lib/world-lens/instanced-mesh-pool';
+
+vi.mock('@/lib/world-lens/asset-loader', () => ({
+  loadAsset: vi.fn(async (ref: { kind: string; id: string }) => {
+    if (ref.id === 'furniture_table' || ref.id === 'furniture_rug' || ref.id === 'furniture_armchair') {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+      mesh.name = `real-${ref.id}`;
+      return mesh;
+    }
+    return null; // honest fallback for ids with no mocked asset (shelf, cabinet)
+  }),
+}));
 
 describe('decorateInterior', () => {
   it('builds a group for tavern archetype', () => {
@@ -47,6 +58,40 @@ describe('decorateInterior', () => {
       if (obj instanceof THREE.Mesh) meshCount++;
     });
     expect(meshCount).toBeGreaterThan(20); // 2 shelves × multiple scrolls
+    decor.dispose();
+  });
+
+  it('upgrades table/rug to a real mesh and hides the primitive once loadAsset resolves', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'tavern' });
+    // Let the fire-and-forget upgrade promises settle.
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    let realUpgrades = 0;
+    let hiddenPrimitives = 0;
+    decor.group.traverse((obj) => {
+      if (obj.userData.isRealMeshUpgrade) realUpgrades++;
+      if (obj.visible === false) hiddenPrimitives++;
+    });
+    // table, rug, and the armchair extra all mock-resolve to a real mesh.
+    expect(realUpgrades).toBeGreaterThanOrEqual(3);
+    // table + rug primitives hidden (armchair is a pure addition, nothing to hide).
+    expect(hiddenPrimitives).toBeGreaterThanOrEqual(2);
+    decor.dispose();
+  });
+
+  it('leaves the primitive fully visible when loadAsset honestly returns null (no shelf/cabinet mock)', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'archive' });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    let shelfUpgrades = 0;
+    decor.group.traverse((obj) => {
+      if (obj.userData.sourceAssetId === 'furniture_shelf') shelfUpgrades++;
+    });
+    expect(shelfUpgrades).toBe(0);
+    // propCount() is unaffected either way — the synchronous contract never changes.
+    expect(decor.propCount()).toBeGreaterThan(0);
     decor.dispose();
   });
 });

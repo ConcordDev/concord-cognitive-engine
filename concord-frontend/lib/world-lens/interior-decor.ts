@@ -24,10 +24,85 @@
  * accepts authored DTU overrides via pbr-loader) so the surfaces read
  * as wood / cloth / stone / metal instead of flat colour, and improve
  * automatically as the content engine produces authored textures.
+ *
+ * Real-mesh-first upgrade (2026-08-08): table / rug / shelf are backed by
+ * real CC0 GLBs (KayKit-Furniture-Bits-1.0, Kay Lousberg — see
+ * public/models/CREDITS.md) resolved via the same `loadAsset`/`AssetKind`
+ * pipeline the rest of the world lens uses (`kind: 'prop'`, the one
+ * declared AssetKind that had zero real files behind it until now). The
+ * primitive is built and returned SYNCHRONOUSLY exactly as before — the
+ * real mesh is a best-effort async upgrade that swaps in on load and is a
+ * pure no-op (primitive stays) on any failure, so this never changes the
+ * function's synchronous contract or `propCount()`. Two archetype-specific
+ * extras (cabinet in market, armchair in tavern) are ADDED dressing with no
+ * procedural equivalent — honestly absent if the real mesh never resolves.
  */
 
 import type * as THREE_NS from 'three';
 import type { PBRTextureSet } from './procedural-texture';
+import { loadAsset } from './asset-loader';
+
+/**
+ * Best-effort real-mesh upgrade for a primitive already added to `group`.
+ * On success, clones the resolved GLB at `target`'s transform (scaled to
+ * `target`'s own bounding-box height so it reads at the same size as the
+ * primitive it replaces) and hides — never disposes — the primitive, so
+ * `dispose()`'s existing traversal still cleans everything up. On any
+ * failure (asset not found, network error, parse error) `target` simply
+ * stays visible — the honest fallback every other real-asset path in this
+ * codebase uses.
+ */
+function upgradeToRealMesh(
+  THREE: typeof THREE_NS,
+  group: THREE_NS.Group,
+  target: THREE_NS.Object3D,
+  assetId: string,
+): void {
+  loadAsset({ kind: 'prop', id: assetId }, THREE)
+    .then((scene) => {
+      if (!scene) return;
+      const real = (scene as THREE_NS.Object3D).clone(true);
+      const box = new THREE.Box3().setFromObject(real);
+      const size = box.getSize(new THREE.Vector3());
+      const targetBox = new THREE.Box3().setFromObject(target);
+      const targetSize = targetBox.getSize(new THREE.Vector3());
+      if (size.y > 0.001 && targetSize.y > 0.001) {
+        real.scale.multiplyScalar(targetSize.y / size.y);
+      }
+      real.position.copy(target.position);
+      real.rotation.copy(target.rotation);
+      real.userData.isRealMeshUpgrade = true;
+      real.userData.sourceAssetId = assetId;
+      group.add(real);
+      target.visible = false;
+    })
+    .catch(() => { /* honest fallback: primitive stays visible */ });
+}
+
+/**
+ * Add a brand-new real-mesh prop with no procedural equivalent. Honestly
+ * a no-op if the asset never resolves — never fabricates a fallback shape
+ * for dressing that has none.
+ */
+function addRealMeshExtra(
+  THREE: typeof THREE_NS,
+  group: THREE_NS.Group,
+  assetId: string,
+  position: [number, number, number],
+  rotationY = 0,
+): void {
+  loadAsset({ kind: 'prop', id: assetId }, THREE)
+    .then((scene) => {
+      if (!scene) return;
+      const real = (scene as THREE_NS.Object3D).clone(true);
+      real.position.set(...position);
+      real.rotation.y = rotationY;
+      real.userData.isRealMeshUpgrade = true;
+      real.userData.sourceAssetId = assetId;
+      group.add(real);
+    })
+    .catch(() => { /* honest absence: no procedural equivalent exists */ });
+}
 
 export type InteriorArchetype = 'tavern' | 'archive' | 'forge' | 'market' | 'tower';
 
@@ -226,6 +301,7 @@ export function decorateInterior(
       const rug = buildRug(THREE, pbr.cloth, size.x * 0.6, size.z * 0.4);
       rug.position.set(0, 0.005, 0);
       group.add(rug); props.push(rug);
+      upgradeToRealMesh(THREE, group, rug, 'furniture_rug');
 
       const fire = buildFireplace(THREE, pbr.stone);
       fire.position.set(0, 0, -size.z / 2 + 0.3);
@@ -234,6 +310,7 @@ export function decorateInterior(
       const table = buildTable(THREE, pbr.wood);
       table.position.set(0, 0, 0);
       group.add(table); props.push(table);
+      upgradeToRealMesh(THREE, group, table, 'furniture_table');
 
       const benchA = buildBench(THREE, pbr.wood);
       benchA.position.set(0, 0, -0.7);
@@ -250,26 +327,38 @@ export function decorateInterior(
       curtain.position.set(size.x / 2 - 0.05, size.y * 0.5, 0);
       curtain.rotation.y = -Math.PI / 2;
       group.add(curtain); props.push(curtain);
+
+      // Extra dressing near the fire — no procedural equivalent, real-mesh only.
+      addRealMeshExtra(THREE, group, 'furniture_armchair', [size.x / 2 - 1.2, 0, -size.z / 2 + 1.2], Math.PI * 0.75);
       break;
     }
     case 'archive': {
       const rug = buildRug(THREE, pbr.cloth, size.x * 0.4, size.z * 0.3);
       rug.position.set(0, 0.005, 0);
       group.add(rug); props.push(rug);
+      upgradeToRealMesh(THREE, group, rug, 'furniture_rug');
 
+      // upgradeToRealMesh hides the WHOLE primitive group on success —
+      // buildShelfWithScrolls's procedural scroll cylinders are children of
+      // that same group, so a successful upgrade replaces frame+scrolls
+      // together with the real (unfurnished) shelf mesh. Honest trade-off:
+      // a real KayKit shelf silhouette in place of procedural scroll props.
       const shelfA = buildShelfWithScrolls(THREE, pbr.wood);
       shelfA.position.set(-size.x / 2 + 0.3, 0, 0);
       shelfA.rotation.y = Math.PI / 2;
       group.add(shelfA); props.push(shelfA);
+      upgradeToRealMesh(THREE, group, shelfA, 'furniture_shelf');
 
       const shelfB = buildShelfWithScrolls(THREE, pbr.wood);
       shelfB.position.set(size.x / 2 - 0.3, 0, 0);
       shelfB.rotation.y = -Math.PI / 2;
       group.add(shelfB); props.push(shelfB);
+      upgradeToRealMesh(THREE, group, shelfB, 'furniture_shelf');
 
       const table = buildTable(THREE, pbr.wood);
       table.position.set(0, 0, 0);
       group.add(table); props.push(table);
+      upgradeToRealMesh(THREE, group, table, 'furniture_table');
       break;
     }
     case 'forge': {
@@ -298,6 +387,9 @@ export function decorateInterior(
         sack.position.set((i - 2) * 0.4, 0.35, size.z / 2 - 0.6);
         group.add(sack); props.push(sack);
       }
+
+      // Extra dressing beside the stall — no procedural equivalent, real-mesh only.
+      addRealMeshExtra(THREE, group, 'furniture_cabinet', [-size.x / 2 + 0.6, 0, -size.z / 2 + 0.6], Math.PI / 4);
       break;
     }
     case 'tower': {
