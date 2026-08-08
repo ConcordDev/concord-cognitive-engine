@@ -106,6 +106,7 @@ const RooftopAccessController := preload("res://world/rooftop_access_controller.
 const SfxPlayer := preload("res://audio/sfx_player.gd")
 const PauseMenu := preload("res://ui/pause_menu.gd")
 const PlayerAppearanceLoader := preload("res://world/player_appearance_loader.gd")
+const TouchControls := preload("res://ui/touch_controls.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -187,6 +188,15 @@ var _sfx_player: SfxPlayer
 ## `_on_pause_overlay_opened`/`_closed` below, mirroring the existing FEA-
 ## overlay pattern (`_on_fea_overlay_opened`/`_closed`).
 var _pause_menu: PauseMenu
+
+## Gamepad + touch input (2026-08-08) — see ui/touch_controls.gd's own
+## class doc for the full design (virtual joystick + scoped action-button
+## subset). Mounted unconditionally alongside `_sfx_player`/`_pause_menu`
+## above (no scene-data dependency, and it's a harmless, invisible-cost
+## overlay when nobody touches it — this client has no device-detection
+## heuristic to gate it behind, and building one would be a separate,
+## real, and currently unjustified feature).
+var _touch_controls: TouchControls
 
 ## Character archetype signal (2026-08-08) — see player_appearance_loader.gd's
 ## own class doc for the full rationale. Mounted + fetched unconditionally in
@@ -446,6 +456,9 @@ func _ready() -> void:
 	_pause_menu.sfx_player = _sfx_player
 	add_child(_pause_menu)
 	_pause_menu.resume_requested.connect(func(): _session.close_pause_overlay())
+
+	_touch_controls = TouchControls.new()
+	add_child(_touch_controls)
 
 	# Character archetype signal (2026-08-08) — kicked off as early as
 	# possible (needs only `auth_token`, already resolved a few lines above)
@@ -750,6 +763,7 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	_character.avatar_manager = _avatar_manager
 	_character.local_user_id = _local_user_id
 	_character.sfx_player = _sfx_player
+	_character.touch_controls = _touch_controls
 	_character.position = cluster_center + Vector3(0.0, SPAWN_DROP_HEIGHT_M, 0.0)
 
 	var shape := CollisionShape3D.new()

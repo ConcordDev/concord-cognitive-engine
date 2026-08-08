@@ -1,5 +1,101 @@
 # Visual QA — Godot World Lens
 
+## Gamepad + touch input support (2026-08-08)
+
+Every input in this client was keyboard-only until this unit. Both new
+sources are FALLBACKS read alongside the existing raw-keycode polling
+(`player/character_controller.gd`'s own class doc already establishes why
+this client polls `Input`/keycodes directly rather than Godot's InputMap —
+same reasoning extended here, not revisited) — never routed through
+project.godot config.
+
+**Gamepad** — real `Input.get_joy_axis`/`is_joy_button_pressed` polling
+against device 0 (the first connected pad, mirroring
+`concord-frontend/hooks/useGamepad.ts`'s own "first connected" scoping),
+needing zero new scene nodes. Button mapping ported from that file's own
+documented Standard Gamepad API table wherever it names a matching
+semantic (X=attack, RT=heavy attack, B=cancel/dodge — direct ports); LB=
+parry, RB=grab, A=kick, LS-click=sprint(as a hold surrogate for the
+reference's own documented toggle), Back=lock-cycle, RS-click=hard-lock
+are this file's own reasoned extension for concepts the reference has no
+Concordia-specific slot for (explicitly labeled as such in the class doc,
+not claimed as a port). `apply_deadzone`/`gamepad_move_vector` port
+useGamepad.ts's own deadzone rescale formula verbatim (0.15 deadzone,
+linear rescale above it, standard-gamepad axis signs matching WASD's
+directly with no flip needed). RT/RB dispatch heavy-attack/grab INSTANTLY
+on press (real distinct physical buttons), separate from keyboard E/F's
+hold-timing state machine (which exists only to disambiguate a single
+physical key) — X/LB are OR'd into that SAME state machine instead, so an
+X-tap still reads as a light attack exactly like a brief E-tap.
+
+**Touch** — new `ui/touch_controls.gd`: a real on-screen virtual joystick
+(hand-built `Control`, since Godot has no stock joystick node — tracked via
+`_input()` rather than `_gui_input()` so a drag can travel outside the
+base's visual rect without losing tracking, the standard technique) + 4
+real `TouchScreenButton` action buttons (Attack/Parry/Dodge/Kick — a genuine
+engine node purpose-built for tap detection, not hand-rolled). No TS
+reference exists for touch controls anywhere in this codebase (confirmed by
+grep) — an original design, not a port. Deliberately scoped to the
+ESSENTIAL subset only: heavy attack, grab, lock-on cycle, hard-lock, and
+sprint have NO touch button this pass (a real mobile screen has finite
+space for on-screen chrome) — a real, named follow-up, not silently
+dropped. Injected as optional DI into `character_controller.gd` (null-safe,
+same convention as `sfx_player`) and mounted unconditionally in `boot.gd`
+alongside `_sfx_player`/`_pause_menu` — this client has no device-detection
+heuristic to gate it behind, so it's simply a harmless, invisible-cost
+overlay when nobody touches it.
+
+**A real bug found and fixed while building this**: `TouchScreenButton`
+extends `Node2D`, NOT `Control` — a live engine run threw "Invalid call.
+Nonexistent function 'set_anchors_preset'" the first time the 4 action
+buttons were positioned via Control's anchor system. Fixed by computing
+each button's bottom-right-anchored position by hand from the real
+`get_viewport().get_visible_rect().size` instead — the same class of
+"found by actually running it, not assumed" finding this whole session's
+probes keep surfacing.
+
+**Real-engine proof — pure-logic suite + a real, injected-input probe.**
+`tests/test_character_controller.gd` gained 2 new tests (`apply_deadzone`
+mirroring useGamepad.ts's own rescale math including the linear-midpoint
+check; `gamepad_move_vector` covering the deadzone floor, direct axis-sign
+mapping onto WASD's convention, diagonal magnitude clamping, and partial-
+tilt magnitude preservation). New `tests/test_touch_controls.gd` (5 checks)
+pins `TouchControls.clamp_offset`'s pure joystick-offset math (radius
+scaling, beyond-radius clamping, diagonal direction preservation, honest
+zero on an invalid radius). Full suite: **48/48 test files green** (was
+47).
+
+New `tools/touch_controls_probe.gd`, run this session against the real
+engine — constructs a REAL `TouchControls` + REAL `CharacterController`
+wired together, and injects REAL `InputEventScreenTouch`/
+`InputEventScreenDrag` events via `Input.parse_input_event` (not direct
+method calls on the handler) to prove the whole pipeline fires for real:
+a touch-drag 30px into a 60px-radius joystick genuinely produces
+`(0.5, 0.0)` from `get_move_vector()`; `CharacterController._read_input_
+direction()` genuinely reads that same vector through the real DI wiring;
+a real touch at the Attack button's real global position genuinely flips
+`TouchScreenButton.is_pressed()` to true, and a release genuinely flips it
+back to false. Measured result this run: `{"ok": true, "joystick_vector_
+after_drag": {"x": 0.5, "y": 0.0}, "character_controller_reads_touch_
+vector": true, "attack_button_pressed_after_touch": true, "attack_button_
+pressed_after_release": false}`.
+
+**What this does NOT settle.** Gamepad DEVICE integration (a real
+controller physically connected) was not exercised — Godot's public Input
+API has no portable way to simulate a connected joypad without real
+hardware attached in this sandbox, so that half is verified by pure logic
+plus a live confirmation this session that the exact `JOY_BUTTON_*`/
+`JOY_AXIS_*` enum constants used in `character_controller.gd` resolve to
+the values Godot 4.4 actually reports (A=0, B=1, X=2, Y=3, LB=9, RB=10,
+LS=7, RS=8, Back=4, Start=6, LEFT_X=0, LEFT_Y=1, TRIGGER_L=4, TRIGGER_R=5)
+— a real, named residual, not silently implied as exercised. No human has
+watched the on-screen joystick/buttons render or feel right on a real
+touch device — headless probes prove the input PIPELINE fires correctly,
+not visual layout/sizing/tap-target ergonomics, which need a human with a
+real phone. Start-button-triggers-pause (the one gamepad action this unit
+intentionally left unwired, since `boot.gd` owns pause via a separate
+Escape-key path) is a real, small, separate follow-up.
+
 ## Toon-shading reach onto real GLB meshes (2026-08-08)
 
 Closes the deferred gap Phase S3's own class doc named explicitly: real GLB

@@ -112,6 +112,51 @@ extends CharacterBody3D
 ## Null `sfx_player` (the default) means every one of these is a silent
 ## no-op — same optional-DI convention as every other field on this
 ## controller (`gateway`, `session_manager`, `avatar_manager`).
+##
+## ── Gamepad + touch input (2026-08-08) ────────────────────────────────────────
+## Every action below was keyboard-only until this unit. Both new input
+## sources are FALLBACKS, read in `_read_input_direction()`/`_physics_
+## process()` alongside the existing raw-keycode polling — never routed
+## through Godot's InputMap, same "no project.godot config to fabricate"
+## reasoning the class doc above already gives for keyboard.
+##
+## Gamepad: real `Input.get_joy_axis`/`is_joy_button_pressed` polling
+## against device 0 (the first connected pad — same "first connected"
+## scoping concord-frontend/hooks/useGamepad.ts's own `readState()` uses),
+## needing zero new scene nodes. Button mapping ported from that file's own
+## documented Standard Gamepad API table wherever it names a matching
+## semantic (X=attack, RT=heavy attack, B=cancel/dodge — direct); the
+## remaining buttons (LB=parry, RB=grab, A=kick, LS-click=sprint-hold,
+## Back=lock-cycle, RS-click=hard-lock) are THIS FILE'S OWN reasoned
+## extension for the concepts that reference has no Concordia-specific slot
+## for — not a claim that useGamepad.ts specifies them. `apply_deadzone`/
+## `gamepad_move_vector` port that file's own deadzone rescale formula
+## verbatim (0.15 deadzone, linear rescale above it). RT/RB dispatch heavy-
+## attack/grab DIRECTLY on press (edge-triggered), unlike keyboard's E/F
+## which need a hold-timing heuristic to distinguish tap-vs-hold on a
+## single physical key — a real trigger/shoulder button doesn't need that
+## heuristic, so a controller player gets an instant heavy/grab, not "hold
+## RT for 220ms like a keyboard E".
+##
+## Touch: `ui/touch_controls.gd` (optional DI, null = silent no-op, same
+## convention as `sfx_player`) — a real on-screen virtual joystick +
+## `TouchScreenButton` action buttons, injected the same way `sfx_player`
+## is. Deliberately scoped to the ESSENTIAL subset only (movement + attack
+## + parry + dodge + kick) — heavy attack, grab, lock-on cycle, hard-lock,
+## and sprint have NO touch buttons this pass (a real mobile screen has
+## finite space for on-screen chrome); see that file's own class doc for
+## the full reasoning. No TS reference exists for touch controls anywhere
+## in this codebase (confirmed by grep) — this is an original design built
+## from Godot's own real `TouchScreenButton` node + a hand-built joystick
+## Control, not a port.
+##
+## Precedence when multiple sources are active: keyboard held > gamepad >
+## touch, for MOVEMENT (never summed — adding vectors together would let
+## combined inputs exceed normal speed). For discrete ACTIONS (attack/
+## parry/dodge/etc.) any source being down counts — these are booleans
+## OR'd together, not a priority chain, since pressing two input methods'
+## buttons for the same action at once is not a meaningful conflict the way
+## two different movement vectors would be.
 
 signal move_rejected(snapped_to: Vector3)
 signal target_acquired(target_id: String)
@@ -202,6 +247,13 @@ const ATTACK_RANGE_M: float = 3.0
 ## silent no-op, same DI convention as every other optional field here.
 @export var sfx_player: Node = null
 
+## Optional injected TouchControls (ui/touch_controls.gd) — see class doc
+## "Gamepad + touch input (2026-08-08)". Null (the default, e.g. a desktop
+## session with no on-screen controls mounted) means every touch check
+## below is a silent no-op, same DI convention as every other optional
+## field here.
+@export var touch_controls: Node = null
+
 ## Real stride distance between footstep SFX triggers — a real game
 ## constant (not tuned per-character), matches a typical adult stride.
 const FOOTSTEP_STRIDE_M: float = 1.4
@@ -236,6 +288,13 @@ var _attack_down_at_ms: int = -1
 var _attack_hold_fired: bool = false
 var _parry_down_at_ms: int = -1
 var _parry_hold_fired: bool = false
+
+## Gamepad + touch (2026-08-08) — see class doc. RT/RB dispatch their own
+## edge-triggered actions directly (real distinct buttons), separate from
+## the E/F hold-timing state machines above.
+const GAMEPAD_DEADZONE: float = 0.15
+var _heavy_trigger_was_down: bool = false
+var _grab_button_was_down: bool = false
 
 ## Combat, lock-on (2026-08-08) — Tab cycles, T hard-locks; see
 ## player/lock_on_state.gd's own class doc for the full rule set. Radius
@@ -288,7 +347,13 @@ func _physics_process(delta: float) -> void:
 	# AvatarSystem3D.tsx's `isRunning = keys.has('shift')` exactly. Before
 	# this unit there was no way for a Godot player to move faster than
 	# MOVE_SPEED at all.
-	var is_running := Input.is_key_pressed(KEY_SHIFT)
+	# LS-click as a HOLD surrogate for Shift's continuous-hold sprint (a
+	# deliberate adaptation — useGamepad.ts's own header documents LS click
+	# as a TOGGLE, but this client's sprint mechanic is hold-based, and
+	# reusing the toggle semantic here would fight the keyboard's own feel).
+	# No touch button — sprint is outside this pass's scoped touch subset,
+	# see class doc.
+	var is_running := Input.is_key_pressed(KEY_SHIFT) or _gamepad_button_down(JOY_BUTTON_LEFT_STICK)
 	var move_speed := RUN_SPEED if is_running else MOVE_SPEED
 	var desired_x := input_dir.x * move_speed
 	var desired_z := input_dir.y * move_speed
@@ -316,7 +381,12 @@ func _physics_process(delta: float) -> void:
 	# hold fires the INSTANT the threshold is crossed (not on release —
 	# matches CombatInputController.tsx's "lands at the moment you commit"
 	# feel); a hold that already fired suppresses the tap on keyup.
-	var attack_down := Input.is_key_pressed(KEY_E)
+	# Gamepad X / touch AttackButton OR'd into the SAME hold-timing state
+	# machine keyboard E uses (X-tap still reads as a light attack, exactly
+	# like a brief E-tap) — RT below is the real distinct-button path for
+	# an INSTANT heavy attack, not routed through this hold timer at all.
+	var attack_down := Input.is_key_pressed(KEY_E) or _gamepad_button_down(JOY_BUTTON_X) \
+		or _touch_button_down(_attack_touch_button())
 	if attack_down and _attack_down_at_ms < 0:
 		_attack_down_at_ms = now_ms
 		_attack_hold_fired = false
@@ -329,8 +399,19 @@ func _physics_process(delta: float) -> void:
 			_try_attack(now_ms)
 		_attack_down_at_ms = -1
 
-	# F — tap: parry, hold: grab. Same tap/hold shape as E above.
-	var parry_down := Input.is_key_pressed(KEY_F)
+	# Gamepad RT (a real, physically-distinct trigger) dispatches heavy
+	# attack the INSTANT it's pressed — no hold-timing heuristic needed
+	# (that heuristic exists only to disambiguate a single keyboard key).
+	var heavy_trigger_down := _gamepad_trigger_down(JOY_AXIS_TRIGGER_RIGHT)
+	if heavy_trigger_down and not _heavy_trigger_was_down:
+		_try_attack_heavy(now_ms)
+	_heavy_trigger_was_down = heavy_trigger_down
+
+	# F — tap: parry, hold: grab. Same tap/hold shape as E above. Gamepad LB
+	# / touch ParryButton OR'd into the SAME state machine (LB-tap = parry);
+	# RB below is grab's own real-button instant path, same reasoning as RT.
+	var parry_down := Input.is_key_pressed(KEY_F) or _gamepad_button_down(JOY_BUTTON_LEFT_SHOULDER) \
+		or _touch_button_down(_parry_touch_button())
 	if parry_down and _parry_down_at_ms < 0:
 		_parry_down_at_ms = now_ms
 		_parry_hold_fired = false
@@ -343,26 +424,40 @@ func _physics_process(delta: float) -> void:
 			_try_parry()
 		_parry_down_at_ms = -1
 
-	var dodge_down := Input.is_key_pressed(KEY_Q)
+	var grab_button_down := _gamepad_button_down(JOY_BUTTON_RIGHT_SHOULDER)
+	if grab_button_down and not _grab_button_was_down:
+		_try_grab(now_ms)
+	_grab_button_was_down = grab_button_down
+
+	# Gamepad B / touch DodgeButton — B is useGamepad.ts's own documented
+	# "cancel/dodge" semantic, a direct match.
+	var dodge_down := Input.is_key_pressed(KEY_Q) or _gamepad_button_down(JOY_BUTTON_B) \
+		or _touch_button_down(_dodge_touch_button())
 	if dodge_down and not _dodge_key_was_down:
 		_try_dodge()
 	_dodge_key_was_down = dodge_down
 
-	var kick_down := Input.is_key_pressed(KEY_R)
+	# Gamepad A / touch KickButton — A has no reference-documented "kick"
+	# semantic (its generic "interact/jump" doesn't apply — this client has
+	# no jump action at all), so this is this file's own reasoned slot for
+	# a free primary-offense button.
+	var kick_down := Input.is_key_pressed(KEY_R) or _gamepad_button_down(JOY_BUTTON_A) \
+		or _touch_button_down(_kick_touch_button())
 	if kick_down and not _kick_key_was_down:
 		_try_kick(now_ms)
 	_kick_key_was_down = kick_down
 
 	# Lock-on — Tab cycles, T hard-locks. Both read the SAME live,
 	# radius-filtered candidate list; see player/lock_on_state.gd's class
-	# doc for the full rule set.
-	var tab_down := Input.is_key_pressed(KEY_TAB)
+	# doc for the full rule set. Gamepad-only (Back/RS-click) — no touch
+	# buttons for lock-on this pass, see class doc's scoped touch subset.
+	var tab_down := Input.is_key_pressed(KEY_TAB) or _gamepad_button_down(JOY_BUTTON_BACK)
 	if tab_down and not _tab_key_was_down and avatar_manager != null \
 			and avatar_manager.has_method("candidates_in_range"):
 		_lock.cycle(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
 	_tab_key_was_down = tab_down
 
-	var lock_toggle_down := Input.is_key_pressed(KEY_T)
+	var lock_toggle_down := Input.is_key_pressed(KEY_T) or _gamepad_button_down(JOY_BUTTON_RIGHT_STICK)
 	if lock_toggle_down and not _lock_toggle_key_was_down and avatar_manager != null \
 			and avatar_manager.has_method("candidates_in_range"):
 		_lock.toggle_hard(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
@@ -385,7 +480,90 @@ func _read_input_direction() -> Vector2:
 		dir.x -= 1.0
 	if Input.is_key_pressed(KEY_D):
 		dir.x += 1.0
-	return dir.normalized() if dir.length() > 0.0 else dir
+	if dir != Vector2.ZERO:
+		return dir.normalized()
+
+	# Gamepad (2026-08-08) — real device-0 left-stick axes, only consulted
+	# when the keyboard gave nothing (see class doc's precedence rule).
+	# Standard Gamepad API's own axis sign convention already matches
+	# WASD's (stick right = +X = KEY_D, stick up/forward = -Y = KEY_W), so
+	# no flip is needed — see `gamepad_move_vector`'s own doc.
+	var joypads := Input.get_connected_joypads()
+	if not joypads.is_empty():
+		var device: int = joypads[0]
+		var gp_dir := CharacterController.gamepad_move_vector(
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_X),
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_Y), GAMEPAD_DEADZONE)
+		if gp_dir != Vector2.ZERO:
+			return gp_dir
+
+	# Touch (2026-08-08) — the on-screen virtual joystick, same shape/
+	# fallback tier as gamepad above.
+	if touch_controls != null and touch_controls.has_method("get_move_vector"):
+		var touch_dir: Vector2 = touch_controls.get_move_vector()
+		if touch_dir != Vector2.ZERO:
+			return touch_dir
+
+	return dir
+
+
+## Real device-0 joypad button read. Honest false when no joypad is
+## connected — never fabricates a press.
+func _gamepad_button_down(button: int) -> bool:
+	var joypads := Input.get_connected_joypads()
+	if joypads.is_empty():
+		return false
+	return Input.is_joy_button_pressed(joypads[0], button)
+
+
+## Analog trigger axes (Godot reports LT/RT as axes, not buttons) read as a
+## boolean past a real half-press threshold — mirrors how a physical
+## trigger's "click point" reads to a player, not an arbitrary cutoff (0.5
+## is the trigger's own mechanical midpoint on every controller this maps).
+const GAMEPAD_TRIGGER_THRESHOLD: float = 0.5
+func _gamepad_trigger_down(axis: int) -> bool:
+	var joypads := Input.get_connected_joypads()
+	if joypads.is_empty():
+		return false
+	return Input.get_joy_axis(joypads[0], axis) >= GAMEPAD_TRIGGER_THRESHOLD
+
+
+## Real `TouchScreenButton.is_pressed()` read. Honest false for a null/
+## freed button (no touch_controls injected, or a scoped-out action this
+## pass doesn't give a touch button to at all — see `_attack_touch_button`
+## and its siblings below).
+func _touch_button_down(btn: TouchScreenButton) -> bool:
+	return btn != null and is_instance_valid(btn) and btn.is_pressed()
+
+
+## Duck-typed accessors onto the optional `touch_controls` DI (ui/touch_
+## controls.gd) — null-safe by construction (`_touch_button_down` above
+## handles a null return the same as a null `touch_controls`). Kept as
+## thin accessors rather than reading `touch_controls.attack_button`
+## directly at each call site so a caller never needs its own null/
+## has-property guard.
+func _attack_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "attack_button" in touch_controls:
+		return touch_controls.attack_button
+	return null
+
+
+func _parry_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "parry_button" in touch_controls:
+		return touch_controls.parry_button
+	return null
+
+
+func _dodge_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "dodge_button" in touch_controls:
+		return touch_controls.dodge_button
+	return null
+
+
+func _kick_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "kick_button" in touch_controls:
+		return touch_controls.kick_button
+	return null
 
 
 func _update_grounded_state(now_ms: int) -> void:
@@ -831,6 +1009,30 @@ static func glide_horizontal_boost(
 	if not gliding:
 		return Vector2(desired_x, desired_z)
 	return Vector2(desired_x * (1.0 + boost), desired_z * (1.0 + boost))
+
+
+## Standard Gamepad API deadzone rescale — ported verbatim from
+## concord-frontend/hooks/useGamepad.ts#applyDeadzone. Below `deadzone`
+## magnitude reads as exactly 0 (avoids drift on aging analog sticks);
+## above it, rescales linearly so the usable range still spans -1..1
+## rather than jumping straight to deadzone..1.
+static func apply_deadzone(value: float, deadzone: float = GAMEPAD_DEADZONE) -> float:
+	if absf(value) < deadzone:
+		return 0.0
+	var sign_v := -1.0 if value < 0.0 else 1.0
+	return sign_v * ((absf(value) - deadzone) / (1.0 - deadzone))
+
+
+## Left-stick raw axes -> a movement vector in the SAME (x=right,
+## y=forward) convention `_read_input_direction()`'s WASD output uses.
+## Deliberately NOT force-normalized to exactly 1.0 like the WASD path (a
+## binary "any key = full speed" reading has no partial-magnitude concept)
+## — a light stick tilt should move slowly; `limit_length` only clamps the
+## diagonal-boost case (both axes near their extremes at once), preserving
+## real analog magnitude everywhere below that.
+static func gamepad_move_vector(raw_x: float, raw_y: float, deadzone: float = GAMEPAD_DEADZONE) -> Vector2:
+	var v := Vector2(apply_deadzone(raw_x, deadzone), apply_deadzone(raw_y, deadzone))
+	return v.limit_length(1.0)
 
 
 ## Coyote-time jump gate: true if grounded, or within `coyote_ms` of the

@@ -38,7 +38,54 @@ static func run() -> TestUtils:
 	_test_nack_snapback(t)
 	_test_classify_action(t)
 	_test_knockback_impulse(t)
+	_test_apply_deadzone(t)
+	_test_gamepad_move_vector(t)
 	return t
+
+
+## Gamepad + touch input (2026-08-08) — ported verbatim from
+## concord-frontend/hooks/useGamepad.ts#applyDeadzone; same 0.15 default.
+static func _test_apply_deadzone(t: TestUtils) -> void:
+	t.check_eq(CharacterController.apply_deadzone(0.1, 0.15), 0.0,
+		"a stick reading below the deadzone magnitude reads as exactly 0")
+	t.check_eq(CharacterController.apply_deadzone(-0.1, 0.15), 0.0,
+		"deadzone applies symmetrically to negative values")
+	t.check_almost(CharacterController.apply_deadzone(1.0, 0.15), 1.0,
+		"full deflection still rescales to exactly 1.0, not 0.85")
+	t.check_almost(CharacterController.apply_deadzone(-1.0, 0.15), -1.0,
+		"full negative deflection rescales to exactly -1.0")
+	# Halfway between deadzone and full deflection should rescale to ~0.5,
+	# proving the rescale is linear across the usable range, not a step.
+	var half_point := 0.15 + (1.0 - 0.15) * 0.5
+	t.check_almost(CharacterController.apply_deadzone(half_point, 0.15), 0.5,
+		"the midpoint of the usable range rescales to ~0.5, confirming linear rescale")
+
+
+static func _test_gamepad_move_vector(t: TestUtils) -> void:
+	var zero := CharacterController.gamepad_move_vector(0.05, -0.05, 0.15)
+	t.check_eq(zero, Vector2.ZERO, "both axes below deadzone -> a real zero vector")
+
+	# Stick right (+X) should map directly onto KEY_D's +1 x contribution —
+	# no axis flip, matching Standard Gamepad API's own sign convention.
+	var right := CharacterController.gamepad_move_vector(1.0, 0.0, 0.15)
+	t.check_almost(right.x, 1.0, "full-right stick maps to +1 x, same sign as KEY_D")
+	t.check_almost(right.y, 0.0, "no y contribution from a pure-x deflection")
+
+	# Stick up/forward (-Y in Standard Gamepad API) should map directly onto
+	# KEY_W's -1 y contribution — no flip needed here either.
+	var forward := CharacterController.gamepad_move_vector(0.0, -1.0, 0.15)
+	t.check_almost(forward.y, -1.0, "full-forward stick maps to -1 y, same sign as KEY_W")
+
+	# Diagonal at both axes' extremes would have magnitude sqrt(2) before
+	# clamping — must be capped to exactly 1.0, not left over-length.
+	var diagonal := CharacterController.gamepad_move_vector(1.0, -1.0, 0.15)
+	t.check_almost(diagonal.length(), 1.0, "a full diagonal deflection is magnitude-clamped to 1.0, not sqrt(2)")
+
+	# A light tilt (well above deadzone but far from full deflection) should
+	# preserve partial magnitude, unlike WASD's binary normalize.
+	var light_tilt := CharacterController.gamepad_move_vector(0.3, 0.0, 0.15)
+	t.check(light_tilt.length() > 0.0 and light_tilt.length() < 0.5,
+		"a light stick tilt preserves a real partial magnitude, not snapped to full speed")
 
 
 static func _test_gravity_and_glide(t: TestUtils) -> void:
