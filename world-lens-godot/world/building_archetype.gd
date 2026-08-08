@@ -46,6 +46,25 @@ extends RefCounted
 ## attribution and VISUAL_QA.md for the verification record (both search
 ## passes).
 
+## Per-world building variants (2026-08-08) — `assets/asset_resolver.gd`'s
+## `fallback_url` now also special-cases `kind == "building"` with a
+## non-empty `world_id`, preferring `{archetype}__{world_id}.glb` before
+## the universal `{archetype}.glb` — the same convention player/npc hero
+## meshes already use, extended to buildings. `world/scene_bootstrap.gd`'s
+## `_start_loading_archetype` does the real two-stage retry (per-world,
+## then universal, then placeholder) so a world with no authored variant
+## for a given archetype is unaffected — only `market` in the `crime`
+## world has a real per-world file today
+## (`concord-frontend/public/models/building/market__crime.glb`, a real
+## grounded modern storefront from KayKit-City-Builder-Bits-1.0, CC0 —
+## crime's own authored lore controls literal "dockside_warehouses"/
+## "abandoned_subway_lines" districts, a much better fit than the
+## universal Polygonal Mind market stall). See CREDITS.md +
+## docs/KAYKIT_INVENTORY.md for the sourcing record and the other
+## strongly-lore-matched candidates queued for the same mechanism
+## (concord-link-frontier + Space-Base-Bits' cargo/landing infrastructure;
+## sovereign-ruins + Halloween-Bits' grave/crypt/memorial set).
+
 const DEFAULT_ARCHETYPE := "market"
 
 const REAL_MESH_ARCHETYPES := ["market", "tavern", "archive", "forge", "tower"]

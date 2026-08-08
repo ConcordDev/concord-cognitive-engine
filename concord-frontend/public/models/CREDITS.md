@@ -388,6 +388,52 @@ to do that with no tool":
   gets, targeted at the NPC's own entity id. An NPC gathering resources
   is now a real, watchable action.
 
+## `building/market__crime.glb` — first per-world building variant (2026-08-08)
+
+Per explicit instruction to look at each sub-world's actual authored lore
+before placing an asset, not just its genre label: `content/world/crime/
+factions.json`'s Ghost Network faction literally controls
+`dockside_warehouses` and `abandoned_subway_lines` — a grounded modern
+urban-crime setting, not the fantasy-toned market/tavern/archive trio the
+universal buildings serve. `KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0`
+(Kay Lousberg, **CC0**, `LICENSE.txt` read directly) ships real modern
+storefront/apartment buildings (`building_A`..`building_H`) — 3 candidates
+(`building_A`/`C`/`E`) were re-packed and **actually screenshotted in a
+real Godot render** before picking one (not judged from bbox stats alone):
+`building_A` and `building_C` read as small single-shop storefronts;
+`building_E` (2,397 real vertices) is a genuine 3-story orange brownstone
+with a ground-floor shop, striped awning, and a fire hydrant — the most
+convincingly "real modern city block" of the three, and the one used.
+
+This is Godot-only today — `world-lens-godot/world/building_archetype.gd`
++ `assets/asset_resolver.gd`'s `fallback_url` gained a per-world
+`{archetype}__{world_id}.glb` preference (mirroring the existing player/
+npc hero-mesh convention), with a real two-stage retry in
+`scene_bootstrap.gd` (per-world, then universal, then placeholder) so
+every OTHER world/archetype pair without an authored variant is
+unaffected — verified this doesn't regress by loading both
+`market__crime.glb` and the pre-existing universal `market.glb` in a real
+engine render, confirming both are independently real and reachable.
+**The Three.js `BuildingRenderer3D.tsx`/`asset-loader.ts` path has no
+`worldId` parameter to thread through yet — an honest, documented gap,
+not a silent omission.** The component has no world context in scope
+today; threading one through was judged a real, separate risk to the
+flagship web client's existing building-render path rather than a safe
+same-pass addition, and was deliberately deferred rather than done
+blind. A future pass extending `AssetReference` with an optional
+`worldId` and wiring it through whatever parent actually holds world
+context is the concrete next step, not a redesign.
+
+See `world-lens-godot/docs/KAYKIT_INVENTORY.md` for the two other
+strongly lore-matched candidates queued for this same mechanism once
+picked up: `concord-link-frontier` (real "Frontier"/courier/link-post
+lore) + `KayKit-Space-Base-Bits-1.0`'s cargo depots/landing pads/base
+modules; `sovereign-ruins` (real "Archive"/"collapse memorial"/"silent
+library" lore) + `KayKit-Halloween-Bits-1.0`'s graves/coffins/crypt/
+broken-fence set — a much better fit for a ruined, archival, funerary
+setting than the horror-mode framing an earlier pass in this same
+inventory doc first guessed at.
+
 ## `building/forge.glb` and `building/tower.glb` (2026-08-08)
 
 **RESOLVED — both building archetypes now have a real CC0 mesh; the

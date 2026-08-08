@@ -27,6 +27,9 @@ static func run() -> TestUtils:
 	_test_undead_archetypes_resolve_to_their_own_mesh(t)
 	_test_lich_carries_the_staff_weapon(t)
 	_test_other_undead_archetypes_carry_no_weapon(t)
+	_test_building_kind_with_world_id_prefers_the_per_world_variant(t)
+	_test_building_kind_with_no_world_id_uses_the_universal_convention(t)
+	_test_building_kind_with_empty_world_id_matches_no_world_id(t)
 	return t
 
 
@@ -142,3 +145,30 @@ static func _test_other_undead_archetypes_carry_no_weapon(t: TestUtils) -> void:
 	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "undead"), "", "undead carries no weapon — an honest scope boundary, not an oversight")
 	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "zombie"), "", "zombie carries no weapon")
 	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "wraith"), "", "wraith carries no weapon")
+
+
+## Building per-world variant (2026-08-08) — pins that fallback_url's
+## "building" branch prefers `{id}__{world_id}.glb` whenever a world_id is
+## given, matching the player/npc convention's own per-world preference.
+## The retry-to-universal-on-404 behavior lives in scene_bootstrap.gd (a
+## real network round trip, not a pure function) — see that file's own
+## comment and tools/glb_load_probe.gd for the real-engine proof.
+static func _test_building_kind_with_world_id_prefers_the_per_world_variant(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "building", "market", "crime"),
+		"http://host:3000/models/building/market__crime.glb",
+		"a building kind with a world_id prefers that world's variant filename")
+
+
+static func _test_building_kind_with_no_world_id_uses_the_universal_convention(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "building", "market"),
+		"http://host:3000/models/building/market.glb",
+		"a building kind with no world_id falls to the pre-existing universal convention, unchanged")
+
+
+static func _test_building_kind_with_empty_world_id_matches_no_world_id(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "building", "market", ""),
+		AssetResolver.fallback_url("http://host:3000", "building", "market"),
+		"an explicit empty-string world_id is equivalent to omitting it — scene_bootstrap.gd's per-world/universal equality check relies on this")

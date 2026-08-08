@@ -152,11 +152,35 @@ func _start_loading_archetype(archetype: String) -> void:
 	if _building_templates.has(archetype):
 		return
 	_building_templates[archetype] = "loading"
-	var url := AssetResolver.fallback_url(frontend_asset_base_url, "building", archetype)
+	# Per-world variant first, universal second (2026-08-08) — mirrors the
+	# player/npc hero-mesh fallback chain in hero-mesh-registry.ts (try the
+	# world-specific file, THEN the universal one). Building here, not in
+	# AssetResolver.fallback_url itself, because that's a pure per-URL
+	# function with no retry concept — the retry has to live where the
+	# actual load attempts happen. Without this two-stage chain, flipping
+	# fallback_url's "building" branch to always prefer a per-world URL
+	# would have made EVERY archetype without an authored per-world file
+	# (i.e. everything except the one crime/market variant this pass adds)
+	# permanently fail and box-fallback in EVERY world — _on_building_glb_
+	# failed's own "failed" sentinel is deliberately terminal for a run, so
+	# a naive single-shot switch would have silently regressed every
+	# currently-working real building mesh. Caught before shipping, not
+	# after.
+	var per_world_url := AssetResolver.fallback_url(frontend_asset_base_url, "building", archetype, world_id)
+	var universal_url := AssetResolver.fallback_url(frontend_asset_base_url, "building", archetype)
+	if per_world_url == universal_url:
+		# No world_id set (or fallback_url's building branch declined to
+		# specialize) — a single attempt, exactly the pre-2026-08-08 path.
+		_load_building_url(universal_url, archetype, "")
+	else:
+		_load_building_url(per_world_url, archetype, universal_url)
+
+
+func _load_building_url(url: String, archetype: String, retry_url: String) -> void:
 	var loader := GlbLoader.new()
 	add_child(loader)
 	loader.loaded.connect(_on_building_glb_loaded.bind(archetype, loader))
-	loader.load_failed.connect(_on_building_glb_failed.bind(archetype, loader))
+	loader.load_failed.connect(_on_building_glb_failed.bind(archetype, loader, retry_url))
 	loader.load_glb(url)
 
 
@@ -170,8 +194,16 @@ func _on_building_glb_loaded(_url: String, root: Node3D, archetype: String, load
 	_upgrade_pending_nodes(archetype)
 
 
-func _on_building_glb_failed(_url: String, _reason: String, archetype: String, loader: GlbLoader) -> void:
+func _on_building_glb_failed(_url: String, _reason: String, archetype: String, loader: GlbLoader, retry_url: String) -> void:
 	loader.queue_free()
+	if not retry_url.is_empty():
+		# The per-world variant 404'd (or this world/archetype pair simply
+		# has no authored override) — retry the universal mesh exactly once
+		# before giving up. Passing "" as this call's own retry_url means a
+		# second failure goes straight to the terminal branch below, never
+		# a retry loop.
+		_load_building_url(retry_url, archetype, "")
+		return
 	# Honest failure: the archetype stays permanently box-only for THIS RUN.
 	# "failed" is a distinct, permanent sentinel from "loading" -- erasing
 	# the key entirely (an earlier version of this did that) let every

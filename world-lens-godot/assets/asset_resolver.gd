@@ -120,6 +120,20 @@ static func fallback_url(
 		if not world_id.is_empty():
 			return "%s/meshes/heroes/_archetype_%s__%s.glb" % [base, arch, world_id]
 		return "%s/meshes/heroes/_archetype_%s.glb" % [base, arch]
+	# `building` per-world variant (2026-08-08) — mirrors the player/npc
+	# convention just above: a world can override a shared archetype's mesh
+	# with its own real asset (e.g. crime's "market" archetype using a
+	# grounded modern storefront instead of the universal Polygonal Mind
+	# stall). This is Godot-only today — the Three.js
+	# BuildingRenderer3D.tsx/asset-loader.ts path has no worldId parameter
+	# to thread through yet (no per-world building variants exist there),
+	# an honest, documented gap, not a silent omission — see
+	# concord-frontend/public/models/CREDITS.md. GlbLoader honestly 404s
+	# and the caller's real universal mesh (or placeholder box, if even
+	# that's missing) stays up for any world/archetype pair with no
+	# variant — never fabricated.
+	if kind == "building" and not world_id.is_empty():
+		return "%s/models/building/%s__%s.glb" % [base, id, world_id]
 	return "%s/models/%s/%s.glb" % [base, kind, id]
 
 
