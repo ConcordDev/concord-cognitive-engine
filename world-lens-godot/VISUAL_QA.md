@@ -1,5 +1,113 @@
 # Visual QA — Godot World Lens
 
+## Audio — ported SFX_MAP synthesis engine, wired into real gameplay moments (2026-08-08)
+
+Godot's world lens had zero audio before this unit — no sample assets exist
+anywhere in the repo for it to play, and no synthesis engine existed either.
+Investigated the Three.js reference first rather than assuming a sourcing
+task: `concord-frontend/components/world-lens/SoundscapeEngine.tsx` turns
+out to be 100% procedural oscillator synthesis (createOscillator + linear
+ADSR gain ramps, zero `.mp3`/`.ogg`/`.wav` files anywhere in the repo), so
+this unit ports that synthesis MATH to GDScript rather than sourcing
+external CC0 audio — the same "port the real design, don't invent" rule
+every prior Godot phase in this file has followed.
+
+**What was built.** `audio/sfx_synth.gd` (pure `RefCounted`, no engine
+dependency) — `SFX_MAP` (~40 entries), `LAYER_MAP` (multi-step layered SFX:
+hit-confirm-{light,heavy,crit,kill}), `SFX_ALIASES` (~60 entries),
+`resolve_sfx_id` (byte-for-byte mirror of the TS `resolveSfxId`'s exact
+precedence: known voice → alias → suffix heuristic → hyphenated retry →
+honest passthrough for a genuinely unmapped id — NEVER a fabricated
+fallback sound), `_wave`/`_envelope_gain`/`generate_samples` (naive
+sine/square/sawtooth/triangle oscillator synthesis + semitone-chord
+arpeggiation + linear ADSR, a documented non-bandlimited-oscillator fidelity
+tradeoff), `float_samples_to_pcm16`. `audio/sfx_player.gd` (`Node`) — an
+8-player pooled `AudioStreamPlayer` for 2D/UI sounds, on-demand
+`AudioStreamPlayer3D` for spatial one-shots, `play_layered`/
+`play_layered_3d` scheduling each LAYER_MAP step via a real
+`SceneTree.create_timer` (mirrors the TS layered approach's setTimeout
+scheduling — a real transient tick, a real mid body, a real deep thump,
+genuinely time-offset, not pre-mixed), and a `_stream_cache` keyed by
+`(resolved_id, pitch)` so a repeated sound doesn't re-synthesize every call.
+`tests/test_sfx_synth.gd` (26 pure-logic checks: resolve precedence,
+generate_samples shape/range/determinism/silence, PCM conversion).
+`tools/sfx_player_probe.gd` (real-engine): single-tone playback on a real
+pool player (10,584 real PCM bytes), unknown-id genuine no-op, layered SFX
+real-timer-scheduled steps (cache grows 2→5 across real elapsed frames),
+spatial player created at the exact requested world position.
+
+**Gameplay wiring, in `player/character_controller.gd`** (new `sfx_player`
+optional-DI export, null-safe no-op like every other injected dependency on
+this controller): `_try_attack`/`_try_parry`/`_try_dodge`/`_try_kick` each
+play their SFX immediately on input (mirrors T2.2's "audible even on a
+miss" design — this client has no `combat:*:ack` handlers to gate on
+regardless); `_update_footsteps` (new, stride-accumulator triggered every
+`FOOTSTEP_STRIDE_M = 1.4m` of real grounded horizontal travel — an honest,
+documented simplification: always `'footstep-grass'` since this client has
+no per-position terrain-surface query yet, rather than fabricating a
+surface signal that doesn't exist); `_on_combat_hit` selects a layered
+hit-confirm tier via the REAL severity rule ported byte-for-byte from
+`components/world-lens/GameJuice.tsx` (~130-165): `targetKilled` →
+`'hit-confirm-kill'`; else `isCrit` → `'hit-confirm-crit'`; else
+`damage > 25` → `'hit-confirm-heavy'`; else → `'hit-confirm-light'`. `world/
+boot.gd` mounts one `SfxPlayer` unconditionally in `_ready()` (audio has no
+scene-data dependency, unlike the local player), hands it to `_character` at
+spawn and to `_quest_actions` — a real quest `claim` now plays
+`'victory-sting'` (the same real alias `ui_hack_complete` already resolves
+to) and a real `accept` plays `'gather-success'`.
+
+**Real-engine proof — `tools/sfx_gameplay_wiring_probe.gd`.** Constructs a
+REAL `CharacterController` + REAL `SfxPlayer` (a minimal fake gateway
+records `send_event` calls without touching the network — this probe is
+about the AUDIO side effect, the `combat:attack` transport itself is
+already covered by `tests/test_character_controller.gd`'s pure-function
+suite and the Combat Phase C probes) inside a real `SceneTree`, and checks
+GENUINE engine state, not mocked returns:
+- Attack/parry/dodge/kick each genuinely start a real pool `AudioStreamPlayer`
+  playing, and each genuinely sends its real, correctly-shaped
+  `combat:attack`/`combat:dodge` payload (checked by searching the fake
+  gateway's call log for the specific event — the controller is a real
+  `CharacterBody3D` also emitting its own `player:move` telemetry on the
+  physics tick, so a naive "exactly one call" assertion would be a false
+  negative against real, unrelated, correctly-interleaved traffic).
+- Kick with NO target in range: a genuinely honest no-op — zero
+  `combat:attack` sent, zero SFX played (never a fabricated request or
+  sound).
+- `_on_combat_hit`'s four severity tiers share a real 0ms-delay
+  `'hit-transient'` first LAYER_MAP step (cached immediately, confirmed);
+  their DISTINCTIVE later voices (`'hit-heavy'`; `'hit-crit'`+`'bone-crack'`;
+  `'kill-blow'`+`'rumble'`) are on real async `SceneTree.create_timer`
+  delays (10-90ms) and only get generated+cached once those timers actually
+  fire — the probe waits real frames (same proven pattern as
+  `tools/sfx_player_probe.gd`'s own layered-SFX check) and then confirms
+  each tier's EXACT expected cache key is present — proof the severity
+  branch really picked the right `LAYER_MAP` entry, not just "something got
+  cached."
+- A `combat:hit` for a DIFFERENT target than the one being tracked is a
+  genuine no-op (no new cache entries, no new pool player starts) — the
+  real filter, not a fabricated always-play.
+- Footsteps: driving real `velocity`/`is_airborne`/`swimming` state across
+  enough `_update_footsteps` calls to cross `FOOTSTEP_STRIDE_M` genuinely
+  starts a real pool player.
+
+Every one of the above is a real object-state check (pool-player `.playing`,
+`_stream_cache` key presence, a searched call log), never "no error thrown."
+Full suite after this unit: **44/44 test files green** (was 42; +
+`SfxSynth`'s 26 checks are counted within that, the probe is a separate
+real-engine tool, not part of the pure-logic suite count).
+
+**What this does NOT settle.** No actual audio hardware/speaker output was
+heard — headless mode's dummy audio driver processes real
+`AudioStreamPlayer` state (`.playing`, `.stream`, cache population) without
+producing sound, so this proves the WIRING is real, not that it sounds good
+(same "structurally complete but visually unproven" caveat this file's
+closing section applies to the whole client, now also true for audio).
+`MUSIC_PROFILES` (SoundscapeEngine.tsx's per-district procedural ambient
+music — chord/arp/bass layers) is explicitly OUT OF SCOPE this pass — only
+one-shot SFX were ported. `_try_kick`'s SFX id (`'combat-swing-heavy'`) and
+the footstep surface simplification are both real, honestly-documented
+choices, not oversights.
+
 ## Forge/tower building GLBs — searched exhaustively, closed as a genuine gap, not shipped (2026-08-08)
 
 A residual from the earlier mesh-sourcing pass: `market`/`tavern`/`archive`

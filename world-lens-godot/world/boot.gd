@@ -103,6 +103,7 @@ const QuestBreadcrumb := preload("res://world/quest_breadcrumb.gd")
 const WayfindingMarkers := preload("res://world/wayfinding_markers.gd")
 const WayfindingController := preload("res://world/wayfinding_controller.gd")
 const RooftopAccessController := preload("res://world/rooftop_access_controller.gd")
+const SfxPlayer := preload("res://audio/sfx_player.gd")
 
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
@@ -167,6 +168,14 @@ var _creature_poller: CreaturePoller
 ## world/scene_bootstrap.gd#parse_vegetation/vegetation_ready. No poller: it
 ## rides the existing scene fetch.
 var _vegetation_renderer: VegetationRenderer
+
+## Audio (2026-08-08) — ported SFX_MAP synthesis engine (audio/sfx_synth.gd
+## + audio/sfx_player.gd — see sfx_synth.gd's own header for why this is
+## procedural synthesis, not sample playback). Mounted unconditionally in
+## `_ready()` (audio has no scene-data dependency, unlike `_character`),
+## then handed to `_character` as its `sfx_player` DI slot once the local
+## player spawns, and to `_quest_actions` for accept/claim feedback.
+var _sfx_player: SfxPlayer
 
 ## R6 — every room this client has asked to join, replayed in full on every
 ## successful (re)auth by `_on_authenticated` (see this file's class doc).
@@ -398,6 +407,14 @@ func _ready() -> void:
 	_ground_body.position = Vector3(0.0, -GROUND_COLLISION_THICKNESS / 2.0, 0.0)
 	add_child(_ground_body)
 
+	# Audio (2026-08-08) — mounted unconditionally here, unlike `_character`,
+	# since it has no scene-data dependency: a synthesized SFX pool needs
+	# only a real SceneTree/AudioServer, which already exist by this point
+	# in _ready(). Handed to `_character` (once spawned) and `_quest_actions`
+	# below as their `sfx_player` DI slot.
+	_sfx_player = SfxPlayer.new()
+	add_child(_sfx_player)
+
 	_bootstrap = SceneBootstrap.new()
 	_bootstrap.enable_real_building_meshes = true
 	_bootstrap.enable_collision = true
@@ -518,6 +535,13 @@ func _ready() -> void:
 	_quest_actions.action_succeeded.connect(func(_kind, _qid, _result):
 		_quest_poller.poll_now()
 		_quest_available_poller.poll_now()
+		# Audio (2026-08-08) — a real quest action deserves real feedback.
+		# 'claim' uses the layered victory cue (mirrors ui_hack_complete's
+		# real alias -> 'victory-sting' in sfx_synth.gd's SFX_ALIASES); a
+		# bare 'accept' gets the same success chime the rest of this client
+		# already uses for a completed action.
+		if _sfx_player != null:
+			_sfx_player.play_sfx("victory-sting" if _kind == "claim" else "gather-success")
 	)
 
 	_setup_quest_hud()
@@ -655,6 +679,7 @@ func _spawn_local_player_if_needed(cluster_center: Vector3) -> void:
 	# reconnect (see that method).
 	_character.avatar_manager = _avatar_manager
 	_character.local_user_id = _local_user_id
+	_character.sfx_player = _sfx_player
 	_character.position = cluster_center + Vector3(0.0, SPAWN_DROP_HEIGHT_M, 0.0)
 
 	var shape := CollisionShape3D.new()

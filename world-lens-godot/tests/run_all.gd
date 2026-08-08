@@ -65,6 +65,7 @@ const TestQuestBreadcrumb := preload("res://tests/test_quest_breadcrumb.gd")
 const TestQuestPoller := preload("res://tests/test_quest_poller.gd")
 const TestQuestAvailablePoller := preload("res://tests/test_quest_available_poller.gd")
 const TestQuestActions := preload("res://tests/test_quest_actions.gd")
+const TestSfxSynth := preload("res://tests/test_sfx_synth.gd")
 
 
 func _init() -> void:
@@ -112,6 +113,7 @@ func _init() -> void:
 		"QuestPoller": TestQuestPoller.run(),
 		"QuestAvailablePoller": TestQuestAvailablePoller.run(),
 		"QuestActions": TestQuestActions.run(),
+		"SfxSynth": TestSfxSynth.run(),
 	}
 
 	var all_ok := true

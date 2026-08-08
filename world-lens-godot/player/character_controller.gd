@@ -92,6 +92,26 @@ extends CharacterBody3D
 ## a real, separate follow-up: AvatarRig's positions are snapshot-interpolated
 ## from server broadcasts, and a local knockback nudge there would just be
 ## overwritten by the next incoming sample — deferred, not attempted here.
+##
+## ── Audio (2026-08-08) ────────────────────────────────────────────────────────
+## Optional injected SfxPlayer (audio/sfx_player.gd — see that file's own
+## header for the full "why synthesized, not sample-based" rationale: the
+## Three.js reference, SoundscapeEngine.tsx, is 100% procedural oscillator
+## synthesis with zero sample assets in the repo, so audio/sfx_synth.gd ports
+## that synthesis math to GDScript rather than sourcing external files).
+## Wired at three real gameplay moments, each mirroring the TS reference's
+## own documented design rather than inventing new cues:
+## - Footsteps (`_update_footsteps`) — stride-accumulator triggered, always
+##   'footstep-grass' (an honest, documented simplification: this client has
+##   no per-position terrain-surface query yet).
+## - Combat swings/parry/dodge/kick — play IMMEDIATELY on input, not on a
+##   server ack, mirroring T2.2's "audible even on a miss" design (this
+##   client has no `combat:*:ack` handlers to gate on regardless).
+## - Hit-confirm (`_on_combat_hit`) — layered light/heavy/crit/kill SFX,
+##   severity selection ported byte-for-byte from GameJuice.tsx's real rule.
+## Null `sfx_player` (the default) means every one of these is a silent
+## no-op — same optional-DI convention as every other field on this
+## controller (`gateway`, `session_manager`, `avatar_manager`).
 
 signal move_rejected(snapped_to: Vector3)
 signal target_acquired(target_id: String)
@@ -176,6 +196,16 @@ const MOVE_SEND_MIN_INTERVAL_MS: int = 33
 ## (server/lib/combat-limits.js) is the real, authoritative cap.
 const ATTACK_RANGE_M: float = 3.0
 
+## Optional injected SfxPlayer (audio/sfx_player.gd) — see class doc
+## "Audio (2026-08-08)". Null means every combat/footstep SFX call is a
+## silent no-op, same DI convention as every other optional field here.
+@export var sfx_player: Node = null
+
+## Real stride distance between footstep SFX triggers — a real game
+## constant (not tuned per-character), matches a typical adult stride.
+const FOOTSTEP_STRIDE_M: float = 1.4
+var _footstep_distance_accum: float = 0.0
+
 var vertical_vel: float = 0.0
 var is_airborne: bool = false
 var gliding: bool = false
@@ -236,6 +266,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	_update_grounded_state(now_ms)
+	_update_footsteps(delta)
 
 	if CharacterController.should_send_move(now_ms, _last_move_sent_ms):
 		_last_move_sent_ms = now_ms
@@ -297,6 +328,34 @@ func _update_grounded_state(now_ms: int) -> void:
 			jump_buffered_at_ms = 0
 	elif absf(vertical_vel) > 0.01:
 		is_airborne = true
+
+
+## Real footstep SFX (2026-08-08) — accumulates horizontal distance
+## traveled while grounded and moving, triggers a footstep sound every
+## FOOTSTEP_STRIDE_M, matching real-game stride-based cadence (faster
+## movement = more frequent footsteps, for free, since distance
+## accumulates faster). Honest, documented simplification: this client has
+## no per-position terrain-surface query API yet, so every footstep uses
+## 'footstep-grass' (concordia-hub's dominant outdoor surface) rather than
+## fabricating a surface-detection signal that doesn't exist — a real
+## per-surface footstep voice (matching SfxSynth's already-ported
+## footstep-stone/wood/water/mud-squelch variants) is real, separate
+## follow-up work once a surface query exists. No-op with no sfx_player
+## wired, same DI convention as every other optional field here.
+func _update_footsteps(delta: float) -> void:
+	if sfx_player == null or not sfx_player.has_method("play_sfx"):
+		return
+	if is_airborne or swimming:
+		_footstep_distance_accum = 0.0
+		return
+	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
+	if horizontal_speed < LOCOMOTION_IDLE_MAX_SPEED:
+		_footstep_distance_accum = 0.0
+		return
+	_footstep_distance_accum += horizontal_speed * delta
+	if _footstep_distance_accum >= FOOTSTEP_STRIDE_M:
+		_footstep_distance_accum = fmod(_footstep_distance_accum, FOOTSTEP_STRIDE_M)
+		sfx_player.play_sfx("footstep-grass")
 
 
 ## Request a jump. Mirrors physicsWorld.requestJump: fires immediately if
@@ -397,6 +456,11 @@ func _try_attack() -> void:
 		"weapon": weapon_id if weapon_id != "" else "fist",
 		"style": "attack-light",
 	})
+	# T2.2-mirrored swing whoosh — plays on the SWING itself (before any hit
+	# resolves), same as CombatInputController.tsx's own "audible even on a
+	# miss" design. No-op with no sfx_player wired.
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing")
 
 
 ## F-key parry (Combat C6). Untargeted — mirrors CombatInputController.tsx's
@@ -410,6 +474,12 @@ func _try_parry() -> void:
 		"wasParry": true,
 		"style": "parry",
 	})
+	# Immediate-on-input feedback, same "plays on the action, not on a
+	# server ack" design as the attack-swing whoosh above — this client has
+	# no combat:dodge:ack handler yet (see the class doc's Combat C6
+	# section), so a real server round-trip isn't available to gate on.
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("block-clang")
 
 
 ## Q-key dodge (Combat C6). Untargeted, same shape as parry with
@@ -422,6 +492,8 @@ func _try_dodge() -> void:
 		"wasParry": false,
 		"style": "dodge",
 	})
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("dodge-whoosh")
 
 
 ## R-key kick (Combat C6). TARGETED, same honest-no-op-with-no-target
@@ -444,6 +516,8 @@ func _try_kick() -> void:
 		"style": "kick",
 		"actionOverride": "attack-heavy",
 	})
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing-heavy")
 
 
 func _on_gateway_event(evt: String, data: Dictionary) -> void:
@@ -462,12 +536,29 @@ func _on_gateway_event(evt: String, data: Dictionary) -> void:
 ## Only relevant to THIS controller's HUD when it's about the target we're
 ## actively tracking — a hit on some other pair in the same world is real
 ## data, just not ours to display.
+##
+## Hit-confirm SFX selection (2026-08-08) mirrors GameJuice.tsx's real
+## severity rule exactly (components/world-lens/GameJuice.tsx ~130-165):
+## targetKilled -> 'hit-confirm-kill'; else isCrit -> 'hit-confirm-crit';
+## else damage > 25 -> 'hit-confirm-heavy'; else -> 'hit-confirm-light'.
+## Dispatched via play_layered so each tier's real multi-step LAYER_MAP
+## (transient tick + body + thump, ported from SoundscapeEngine.tsx) fires,
+## not a single flat tone.
 func _on_combat_hit(data: Dictionary) -> void:
 	var target_id := String(data.get("targetId", ""))
 	if target_id.is_empty() or target_id != _current_target_id:
 		return
 	target_health_updated.emit(
 		target_id, float(data.get("targetHealth", 0.0)), float(data.get("targetMaxHealth", 0.0)))
+	if sfx_player != null and sfx_player.has_method("play_layered"):
+		var sfx_id := "hit-confirm-light"
+		if bool(data.get("targetKilled", false)):
+			sfx_id = "hit-confirm-kill"
+		elif bool(data.get("isCrit", false)):
+			sfx_id = "hit-confirm-crit"
+		elif float(data.get("damage", 0.0)) > 25.0:
+			sfx_id = "hit-confirm-heavy"
+		sfx_player.play_layered(sfx_id)
 
 
 ## `combat:impact` (server/lib/combat/impact-feel.js#buildImpactPayload)
