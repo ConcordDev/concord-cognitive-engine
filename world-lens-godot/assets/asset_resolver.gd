@@ -152,6 +152,16 @@ const ARCHETYPE_WEAPON := {
 	"legend": "greatsword",
 	"scholar": "",
 	"trader": "",
+	# Undead archetypes (2026-08-08) — see hero-mesh-registry.ts's matching
+	# table for why these 4 keys exist and which real mesh backs each.
+	# `lich` reuses the already-wired real `staff` asset (a spellcaster boss
+	# thematically carries one); the other 3 stay weaponless like
+	# scholar/trader above rather than sourcing 4 more assets this pass —
+	# an honest scope boundary, not an oversight.
+	"undead": "",
+	"zombie": "",
+	"wraith": "",
+	"lich": "staff",
 }
 
 

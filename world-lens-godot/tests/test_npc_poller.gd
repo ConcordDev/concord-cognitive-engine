@@ -18,6 +18,8 @@ static func run() -> TestUtils:
 	_test_skips_non_dictionary_entries(t)
 	_test_missing_position_defaults_to_zero(t)
 	_test_empty_array(t)
+	_test_archetype_for_occupation(t)
+	_test_archetype_threaded_through_entities(t)
 	return t
 
 
@@ -65,3 +67,35 @@ static func _test_missing_position_defaults_to_zero(t: TestUtils) -> void:
 static func _test_empty_array(t: TestUtils) -> void:
 	var entities := NpcPoller.npcs_array_to_entities([])
 	t.check(entities.is_empty(), "an empty npcs array yields an honestly empty dict, not an error")
+
+
+## Pins archetype_for_occupation against the hero-mesh-registry.ts source it
+## was ported from — the undead-specific patterns (2026-08-08) plus a
+## sample of the pre-existing living-archetype ones, to catch a future edit
+## that breaks parity with the TS table.
+static func _test_archetype_for_occupation(t: TestUtils) -> void:
+	t.check_eq(NpcPoller.archetype_for_occupation(""), "", "empty occupation -> no confident match")
+	t.check_eq(NpcPoller.archetype_for_occupation("lich_king"), "lich", "lich_king occupation text -> lich archetype")
+	t.check_eq(NpcPoller.archetype_for_occupation("wraith"), "wraith", "wraith archetype-as-occupation -> wraith")
+	t.check_eq(NpcPoller.archetype_for_occupation("zombie"), "zombie", "zombie archetype-as-occupation -> zombie")
+	t.check_eq(NpcPoller.archetype_for_occupation("undead"), "undead", "undead archetype-as-occupation -> undead")
+	t.check_eq(NpcPoller.archetype_for_occupation("wanderer"), "undead", "the shared undead-archetype occupation 'wanderer' -> undead")
+	t.check_eq(NpcPoller.archetype_for_occupation("plague_bearer"), "undead", "plague_bearer -> undead (no distinct mesh sourced, honest reuse)")
+	t.check_eq(NpcPoller.archetype_for_occupation("warrior"), "warrior", "the pre-existing 'warrior' self-match still works (undead patterns don't shadow it)")
+	t.check_eq(NpcPoller.archetype_for_occupation("hedge-mage"), "mystic", "a pre-existing living-archetype match is unaffected by the new undead entries")
+	t.check_eq(NpcPoller.archetype_for_occupation("lookout"), "guard", "a pre-existing keyword match still resolves correctly")
+	t.check_eq(NpcPoller.archetype_for_occupation("some genuinely unmatched text"), "", "no match returns empty, never a guess")
+
+
+## Confirms the field actually reaches npcs_array_to_entities's output, not
+## just that the helper function works in isolation.
+static func _test_archetype_threaded_through_entities(t: TestUtils) -> void:
+	var npcs := [
+		{"id": "npc_undead_1", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "occupation": "wraith"},
+		{"id": "npc_living_1", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "occupation": "beat cop"},
+		{"id": "npc_unmatched", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "occupation": "keeper of nothing genuinely categorizable"},
+	]
+	var entities := NpcPoller.npcs_array_to_entities(npcs)
+	t.check_eq(String(entities["npc_undead_1"]["archetype"]), "wraith", "an undead NPC's real occupation resolves to the wraith archetype in the output entity")
+	t.check_eq(String(entities["npc_living_1"]["archetype"]), "guard", "a living NPC's occupation still resolves correctly alongside undead entries")
+	t.check_eq(String(entities["npc_unmatched"]["archetype"]), "", "an unmatched occupation resolves to an honest empty archetype, not a guess")

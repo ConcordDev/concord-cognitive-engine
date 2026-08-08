@@ -71,6 +71,14 @@ const AIRBORNE_VY_EPS: float = 0.3
 var _buffer := SnapshotBuffer.new()
 var _rigs: Dictionary = {}          # id -> AvatarRig
 var _kinds: Dictionary = {}         # id -> "player" | "npc"
+## id -> archetype string (2026-08-08) — "" (the honest default, matching
+## AvatarRig's own "warrior" fallback) unless the snapshot entity carried a
+## resolved `archetype` (today: only NpcPoller.npcs_array_to_entities
+## populates this, via archetype_for_occupation on the real `occupation`
+## field). Read once at spawn time, not re-applied on every snapshot — an
+## NPC's archetype doesn't change mid-session, matching the equally
+## spawn-time-only `attach_weapon` flag just below.
+var _archetypes: Dictionary = {}
 var _actions: Dictionary = {}       # id -> last known action/currentAnimation string
 ## R5 continuation — id -> last known server-authoritative locomotion label
 ## (`city:positions.users[].locomotion`, city-presence.js#classifyLocomotion).
@@ -101,6 +109,9 @@ func ingest_snapshot(now_ms: int, entities: Dictionary, kind: String) -> void:
 		_kinds[id] = kind
 		_actions[id] = String(e.get("action", e.get("currentAnimation", "")))
 		_locomotion_hints[id] = String(e.get("locomotion", ""))
+		var arch := String(e.get("archetype", ""))
+		if not arch.is_empty():
+			_archetypes[id] = arch
 		_last_seen_ms[id] = now_ms
 	_buffer.ingest(now_ms, states)
 
@@ -155,9 +166,16 @@ func _spawn_rig(id: String) -> void:
 	rig.kind = "player" if _kinds.get(id, "npc") == "player" else "npc"
 	rig.base_url = base_url
 	rig.world_id = world_id
-	# Phase M1 — every remote/spectated avatar carries its (today: always
-	# "warrior", see AssetResolver's own honest-default comment) archetype's
-	# real weapon, same as the local player below.
+	# 2026-08-08 — real per-entity archetype when the snapshot carried one
+	# (today: NpcPoller-fed NPCs only). Falls to AvatarRig's own "warrior"
+	# default (unset export var) otherwise — every other caller (remote
+	# players via city:positions) still has no archetype signal, matching
+	# Phase M1's original honest-default comment, now narrowed to describe
+	# only the still-true remaining gap.
+	if _archetypes.has(id):
+		rig.archetype = _archetypes[id]
+	# Phase M1 — every remote/spectated avatar carries its resolved
+	# archetype's real weapon, same as the local player below.
 	rig.attach_weapon = true
 	add_child(rig)
 	_rigs[id] = rig
@@ -177,6 +195,7 @@ func _despawn_stale(now_ms: int) -> void:
 		_rigs.erase(id)
 		_kinds.erase(id)
 		_actions.erase(id)
+		_archetypes.erase(id)
 		_locomotion_hints.erase(id)
 		_last_seen_ms.erase(id)
 		_prev_sample.erase(id)

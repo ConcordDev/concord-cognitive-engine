@@ -1,5 +1,48 @@
 # Hero mesh asset credits
 
+## Undead archetypes — a real visual for hostile NPCs (2026-08-08)
+
+`server/lib/npc-archetypes.js` has real `body_type: 'undead'` NPC
+archetypes (`undead`/`zombie`/`wraith`/`lich_king`/`plague_bearer`,
+`faction: 'undead'`) that previously rendered as a color-tinted
+procedural humanoid (the `undead: '#37474f'`/`'#546e7a'` body-type tint)
+— no real mesh existed, unlike the 7 occupation archetypes below. Every
+hostile/undead encounter looked identical to a friendly NPC wearing a
+dark tint, which undercuts combat/horror content reading as designed.
+
+Sourced from
+[KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0)
+(Kay Lousberg / kaylousberg.com, **CC0**, `LICENSE.txt` read directly),
+downloaded via `git clone`. All 4 files are already self-contained `.glb`
+(no repack needed) and passed `gltf-transform validate` clean. One
+(`Skeleton_Warrior.glb`) was loaded in a real Godot 4.4 instance via
+`tools/glb_load_probe.gd` under `xvfb-run --rendering-driver opengl3` and
+the actual screenshot inspected: a real, unmistakably-toon-styled
+skeletal warrior (helmeted skull face, armored bone limbs, red cape,
+clawed boots) — visually distinct from every living archetype below, not
+an ambiguous shape mistaken for something else.
+
+Mapping is grounded in the source archetypes' own real game data
+(`level_range`, `occupation`, `is_immortal`/`quest_giver`), not arbitrary:
+
+| Archetype key | Source mesh | Real data justifying the pick |
+|---|---|---|
+| `undead` | `Skeleton_Warrior.glb` | generic `undead` archetype (`level_range [2,7]`, `occupation: 'wanderer'`) — the baseline hostile skeleton |
+| `zombie` | `Skeleton_Minion.glb` | weakest tier (`level_range [1,4]`) — the smallest/least-armored of the 4 source meshes |
+| `wraith` | `Skeleton_Rogue.glb` | higher tier (`level_range [5,9]`) — the source pack's agile/stealth-coded skeleton, fitting a wraith's speed theme |
+| `lich` | `Skeleton_Mage.glb` | `lich_king` is `is_immortal: 1, quest_giver: 1` — a named boss-tier spellcaster, matched to the pack's mage-coded skeleton |
+
+`plague_bearer` (`level_range [5,9]`) has no further distinct mesh
+available among the 4 sourced — it keyword-matches to `undead`
+(`hero-mesh-registry.ts`'s `OCCUPATION_KEYWORDS`), an honest reuse, not a
+fabricated new asset. Wired into both clients with **zero new resolution
+mechanism** — `ARCHETYPE_FALLBACK_PATH` + `OCCUPATION_KEYWORDS` in
+`hero-mesh-registry.ts` (Three.js) already generically support any
+archetype key; Godot's `AvatarRig`/`AssetResolver` already resolve
+per-instance `archetype` values the identical way. See
+`world-lens-godot/VISUAL_QA.md` for the Godot-side wiring + verification
+record.
+
 ## R7 — the local player now actually uses these (2026-07-30)
 
 Every asset below existed and was fully wired for hero NPCs before this

@@ -24,6 +24,9 @@ static func run() -> TestUtils:
 	_test_weapon_url_for_legend_is_greatsword(t)
 	_test_weapon_url_for_scholar_is_empty_not_fabricated(t)
 	_test_weapon_url_for_unknown_archetype_is_empty(t)
+	_test_undead_archetypes_resolve_to_their_own_mesh(t)
+	_test_lich_carries_the_staff_weapon(t)
+	_test_other_undead_archetypes_carry_no_weapon(t)
 	return t
 
 
@@ -101,3 +104,41 @@ static func _test_weapon_url_for_unknown_archetype_is_empty(t: TestUtils) -> voi
 		AssetResolver.weapon_url_for_archetype("http://host:3000", "not-a-real-archetype"),
 		"",
 		"an archetype with no table entry resolves to no weapon, not a guess")
+
+
+## Undead archetypes (2026-08-08) — pins that they resolve to their OWN
+## mesh file, not silently falling back to "warrior" the way a genuinely
+## unrecognised string does (the failure mode this section exists to catch:
+## fallback_url's `arch` validity check reads ARCHETYPE_WEAPON, so an
+## archetype missing from that table — even with a real body-mesh file on
+## disk — would incorrectly fall back).
+static func _test_undead_archetypes_resolve_to_their_own_mesh(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "npc", "npc-1", "", "wraith"),
+		"http://host:3000/meshes/heroes/_archetype_wraith.glb",
+		"wraith resolves to its own real mesh, not the warrior fallback")
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "npc", "npc-2", "", "zombie"),
+		"http://host:3000/meshes/heroes/_archetype_zombie.glb",
+		"zombie resolves to its own real mesh")
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "npc", "npc-3", "", "lich"),
+		"http://host:3000/meshes/heroes/_archetype_lich.glb",
+		"lich resolves to its own real mesh")
+	t.check_eq(
+		AssetResolver.fallback_url("http://host:3000", "npc", "npc-4", "", "undead"),
+		"http://host:3000/meshes/heroes/_archetype_undead.glb",
+		"undead resolves to its own real mesh")
+
+
+static func _test_lich_carries_the_staff_weapon(t: TestUtils) -> void:
+	t.check_eq(
+		AssetResolver.weapon_url_for_archetype("http://host:3000", "lich"),
+		"http://host:3000/models/weapon/staff.glb",
+		"lich (a spellcaster boss) reuses the already-wired real staff asset")
+
+
+static func _test_other_undead_archetypes_carry_no_weapon(t: TestUtils) -> void:
+	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "undead"), "", "undead carries no weapon — an honest scope boundary, not an oversight")
+	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "zombie"), "", "zombie carries no weapon")
+	t.check_eq(AssetResolver.weapon_url_for_archetype("http://host:3000", "wraith"), "", "wraith carries no weapon")

@@ -96,10 +96,23 @@ func _process(_delta: float) -> bool:
 		return false
 
 	var rig_count := _manager._rigs.size() if _manager != null else 0
+	# 2026-08-08 — real per-entity archetype threading proof: reports each
+	# spawned rig's ACTUAL AvatarRig.archetype field (not the poller's
+	# intermediate entity dict) so this probe proves the full chain
+	# (REST occupation text -> archetype_for_occupation -> AvatarManager
+	# ._archetypes -> AvatarRig.archetype) really lands, not just that a
+	# rig exists.
+	var archetypes := {}
+	if _manager != null:
+		for id in _manager._rigs.keys():
+			var rig = _manager._rigs[id]
+			if is_instance_valid(rig):
+				archetypes[id] = rig.archetype
 	var result := {
 		"ok": _poll_result.get("outcome", "") == "succeeded",
 		"poll_result": _poll_result,
 		"rigs_spawned": rig_count,
+		"rig_archetypes": archetypes,
 		"frames_waited": _frame,
 	}
 	print("[npc_poller_probe] RESULT ", JSON.stringify(result))

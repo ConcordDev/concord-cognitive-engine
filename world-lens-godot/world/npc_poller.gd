@@ -149,6 +149,13 @@ func _on_request_completed(
 ## state `AnimationStateMachine` understands) — left absent on purpose, so
 ## NPCs animate off pure velocity inference, matching what AvatarManager's
 ## own class doc already documents for the pre-retirement `city:npcs` case.
+##
+## `archetype` (2026-08-08) — resolved via `archetype_for_occupation()`
+## below from the route's real `occupation` field (falls back server-side
+## to the raw archetype column, so an undead NPC's occupation text is
+## frequently the literal archetype string itself — see that func's
+## comment). Empty string when no confident match; `AvatarManager` treats
+## that as "stay on the honest default," never forces a guess.
 static func npcs_array_to_entities(npcs: Array) -> Dictionary:
 	var out := {}
 	for n in npcs:
@@ -164,5 +171,41 @@ static func npcs_array_to_entities(npcs: Array) -> Dictionary:
 			"y": float(pos_dict.get("y", 0.0)),
 			"z": float(pos_dict.get("z", 0.0)),
 			"rotation": float(n.get("rotation", 0.0)),
+			"archetype": archetype_for_occupation(String(n.get("occupation", ""))),
 		}
 	return out
+
+
+## Ported from concord-frontend/lib/concordia/hero-mesh-registry.ts's
+## `archetypeForOccupation` — SAME hand-copied-duplicate relationship as
+## world/building_archetype.gd already has with its own TS source-of-truth
+## (can drift if the TS table changes and nobody updates this; the TS file
+## stays canonical). Order matters: undead-specific patterns are checked
+## before the generic 'warrior' catch-all, matching the TS list's own
+## ordering comment. Returns "" (not null — GDScript Dictionary values here
+## are always String) for no confident match.
+static func archetype_for_occupation(occupation: String) -> String:
+	if occupation.is_empty():
+		return ""
+	var o := occupation.to_lower()
+	if o.contains("lich"):
+		return "lich"
+	if o.contains("wraith"):
+		return "wraith"
+	if o.contains("zombie"):
+		return "zombie"
+	if o.contains("undead") or o.contains("plague") or o.contains("wanderer"):
+		return "undead"
+	if o.contains("guard") or o.contains("enforc") or o.contains("beat cop") or o.contains("bagman") or o.contains("lookout"):
+		return "guard"
+	if o.contains("hunt") or o.contains("beast-tamer") or o.contains("tracker"):
+		return "hunter"
+	if o.contains("mage") or o.contains("mystic") or o.contains("rune") or o.contains("hedge") or o.contains("heal") or o.contains("priest") or o.contains("shaman") or o.contains("witch"):
+		return "mystic"
+	if o.contains("scholar") or o.contains("archiv") or o.contains("lore") or o.contains("scribe") or o.contains("analy") or o.contains("lab tech") or o.contains("reporter") or o.contains("investigat"):
+		return "scholar"
+	if o.contains("trad") or o.contains("fence") or o.contains("fix") or o.contains("broker") or o.contains("runner") or o.contains("corpo") or o.contains("pilgrim") or o.contains("farm") or o.contains("merchant") or o.contains("vendor"):
+		return "trader"
+	if o.contains("warrior") or o.contains("sword") or o.contains("sellsword") or o.contains("vigilante") or o.contains("getaway") or o.contains("forg") or o.contains("smith") or o.contains("tinker") or o.contains("netrunner") or o.contains("ripperdoc") or o.contains("drone-tech") or o.contains("informant") or o.contains("forger"):
+		return "warrior"
+	return ""
