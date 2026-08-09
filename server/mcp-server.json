@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "websiteUrl": "https://concord-os.org",
   "repository": {
-    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine",
+    "url": "https://github.com/ConcordDev/concord-cognitive-engine",
     "source": "github"
   },
   "remotes": [

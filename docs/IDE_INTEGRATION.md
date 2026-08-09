@@ -7,6 +7,9 @@ connect to Concord without a custom plugin.
 This document is the "use Concord from your IDE" guide. No extension
 installation needed beyond the IDE's MCP support.
 
+For the combined quickstart that includes VS Code extension install plus MCP
+client connection, see `docs/VSCODE_MCP_QUICKSTART.md`.
+
 ## What you get
 
 Once connected, your IDE's AI assistant (Cursor's Composer, VS Code

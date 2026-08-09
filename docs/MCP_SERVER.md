@@ -4,6 +4,9 @@ Concord exposes a curated, **verified-compute** tool surface over the Model
 Context Protocol so any MCP client (Claude Code, Claude Desktop, Cursor, Windsurf)
 can reach for it. The wedge: *the substrate that verifies its own answers.*
 
+For the user-facing install flow (VS Code extension + MCP client config), use
+`docs/VSCODE_MCP_QUICKSTART.md`.
+
 ## Endpoint
 - **Transport:** Streamable HTTP (JSON-RPC 2.0) at `POST/GET/DELETE /mcp`.
 - **Discovery:** `GET /mcp/tools` (tool catalogue), `GET /.well-known/oauth-protected-resource` (RFC 9728 PRM).
