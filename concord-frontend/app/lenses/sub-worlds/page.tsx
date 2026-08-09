@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useWorldTravel } from '@/hooks/useWorldTravel';
-import { Compass, Boxes, Star, Search } from 'lucide-react';
+import { Compass, Boxes, Star, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -43,6 +43,7 @@ export default function SubWorldsPage() {
   const travelHook = useWorldTravel();
 
   const [tab, setTab] = useState<Tab>('discover');
+  const [showMetaverseRepos, setShowMetaverseRepos] = useState(false);
   const [worlds, setWorlds] = useState<SubWorld[]>([]);
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string | null>(null);
@@ -405,7 +406,19 @@ export default function SubWorldsPage() {
         )}
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <MetaverseRepos />
+          <button
+            type="button"
+            onClick={() => setShowMetaverseRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Metaverse / virtual-world repos (GitHub)</span>
+            {showMetaverseRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showMetaverseRepos && (
+            <div className="mt-3">
+              <MetaverseRepos />
+            </div>
+          )}
         </section>
       </div>
 

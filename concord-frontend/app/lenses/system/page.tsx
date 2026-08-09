@@ -56,7 +56,7 @@ import {
   RefreshCw, AlertTriangle, CheckCircle2, XCircle, Loader2,
   Zap, BookOpen, GitBranch, BarChart3, Puzzle,
   LineChart, Bell, ScrollText, Gauge, LayoutDashboard, TrendingUp,
-  Play, Pause,
+  Play, Pause, ChevronDown, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -110,6 +110,7 @@ export default function SystemLensPage() {
     'overview' | 'metrics' | 'alerts' | 'logs' | 'hbhealth' | 'traces' | 'dashboard'
     | 'trend' | 'heartbeats' | 'gaps' | 'coverage' | 'drift' | 'analytics' | 'plugins' | 'substrate'
   >('overview');
+  const [showSystemHealthPanel, setShowSystemHealthPanel] = useState(false);
 
   // Live-poll loop — shared `live` flag pauses every realtime panel at once.
   const { live, setLive, status: liveStatus } = useLiveStatus();
@@ -849,9 +850,21 @@ export default function SystemLensPage() {
           )}
         </AnimatePresence>
       </main>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SystemHealthPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSystemHealthPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSystemHealthPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          System Health
+        </button>
+        {showSystemHealthPanel && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <SystemHealthPanel />
+          </section>
+        )}
+      </div>
     </div>
 
           <RecentMineCard domain="system" limit={10} hideWhenEmpty className="mt-4" />

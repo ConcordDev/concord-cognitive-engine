@@ -23,12 +23,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic2, Play, Pause, Plus, Search, Rss, BarChart3,
   Clock, Users, X, Headphones, ListMusic, Trash2, Check,
-  Square, CircleDot,
+  Square, CircleDot, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useMusicStore } from '@/lib/music/store';
 import { getPlayer } from '@/lib/music/player';
 import { MediaUpload } from '@/components/media/MediaUpload';
@@ -138,6 +137,9 @@ export default function PodcastLensPage() {
 
   // ---- State ----
   const [activeTab, setActiveTab] = useState<ViewTab>('episodes');
+  const [showListeningHub, setShowListeningHub] = useState(false);
+  const [showItunesSearch, setShowItunesSearch] = useState(false);
+  const [showPodcastActionPanel, setShowPodcastActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [rssCopied, setRssCopied] = useState(false);
@@ -913,7 +915,6 @@ export default function PodcastLensPage() {
 
               {realtimeInsights.length > 0 && (
                 <>
-                  <UniversalActions domain="podcast" artifactId={null} compact />
                   <RealtimeDataPanel data={null} insights={realtimeInsights} />
                 </>
               )}
@@ -924,21 +925,57 @@ export default function PodcastLensPage() {
 
       {/* Listening hub — RSS ingestion, streaming player + chapters,
           transcripts, recommendations, cross-device sync, smart downloads */}
-      <section className="mt-6 mx-4">
-        <PodcastListeningHub />
-      </section>
+      <div className="mt-6 mx-4">
+        <button
+          type="button"
+          onClick={() => setShowListeningHub(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showListeningHub ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Listening Hub (RSS / streaming player / transcripts)
+        </button>
+        {showListeningHub && (
+          <section className="mt-3">
+            <PodcastListeningHub />
+          </section>
+        )}
+      </div>
 
       {/* Bespoke iTunes podcast search with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4 mx-4">
-        <ItunesSearch />
-      </section>
+      <div className="mt-6 mx-4">
+        <button
+          type="button"
+          onClick={() => setShowItunesSearch(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showItunesSearch ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          iTunes Podcast Search (external reference)
+        </button>
+        {showItunesSearch && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ItunesSearch />
+          </section>
+        )}
+      </div>
 
       {/* Apple Podcasts + Buzzsprout-shape workbench: analytics / guest / production / monetization + actions */}
-      <PipingProvider>
-        <section className="mt-6 mx-4">
-          <PodcastActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6 mx-4">
+        <button
+          type="button"
+          onClick={() => setShowPodcastActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showPodcastActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          More Actions
+        </button>
+        {showPodcastActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <PodcastActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
 
           <RecentMineCard domain="podcast" limit={10} hideWhenEmpty className="mt-4" />

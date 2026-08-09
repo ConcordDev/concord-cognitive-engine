@@ -23,13 +23,14 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Hammer, FileSignature, type LucideIcon } from 'lucide-react';
+import { Globe, Hammer, FileSignature, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 
 type TabKey = 'web' | 'compile' | 'esign';
 
 export default function ToolsLensPage() {
   useLensNav('tools');
   const [activeTab, setActiveTab] = useState<TabKey>('web');
+  const [showRepos, setShowRepos] = useState(false);
 
   // Lens-scoped keyboard commands. Single-letter aliases per tool.
   useLensCommand(
@@ -101,7 +102,19 @@ export default function ToolsLensPage() {
         </main>
 
         <section className="mx-auto mt-6 max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <ToolsRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Developer tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <ToolsRepos />
+            </div>
+          )}
         </section>
       </div>
 

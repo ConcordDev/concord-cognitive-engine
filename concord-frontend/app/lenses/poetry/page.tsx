@@ -26,16 +26,15 @@ import {
   Feather, Plus, Search, Edit2, Trash2, BookOpen, X, Save, Sparkles,
   AlignLeft, Globe, Download,
   Hash, Music, Layers, Moon, Zap, Compass, Wand2,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/store/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { FeedBanner } from '@/components/lens/FeedBanner';
 
 type PoetryTab = 'collection' | 'compose' | 'discover' | 'studio' | 'forms' | 'workshop';
@@ -322,6 +321,8 @@ export default function PoetryPage() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<PoetryTab>('collection');
+  const [showPoetryDb, setShowPoetryDb] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -350,7 +351,6 @@ export default function PoetryPage() {
 
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [formFilter, setFormFilter] = useState<PoemForm | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(true);
@@ -551,17 +551,14 @@ export default function PoetryPage() {
           </div>
           <div className="flex items-center gap-2">
             <DTUExportButton domain="poetry" data={{}} compact />
-            <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">Features</button>
             <button onClick={startNew} className="px-3 py-1.5 text-xs bg-rose-500/20 border border-rose-500/30 rounded-lg hover:bg-rose-500/30 flex items-center gap-1">
               <Plus className="w-3 h-3" /> New Poem
             </button>
           </div>
         </div>
 
-        {showFeatures && <LensFeaturePanel lensId="poetry" />}
         <FeedBanner domain="poetry" />
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="poetry" artifactId={null} compact />
 
         {/* Poetry Actions Panel — analyzes whatever's currently in the Compose editor */}
         <div className="bg-white/3 border border-white/10 rounded-xl p-4 space-y-3">
@@ -805,7 +802,19 @@ export default function PoetryPage() {
 
       {/* Bespoke PoetryDB search with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PoetryDbSearch />
+        <button
+          type="button"
+          onClick={() => setShowPoetryDb(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>PoetryDB search (external reference)</span>
+          {showPoetryDb ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPoetryDb && (
+          <div className="mt-3">
+            <PoetryDbSearch />
+          </div>
+        )}
       </section>
 
       <section className="mt-6">
@@ -814,8 +823,16 @@ export default function PoetryPage() {
 
       {/* Poetry Foundation + Poets.org-shape workbench: meter / rhyme / form / frequency + actions */}
       <PipingProvider>
-        <section className="mt-6">
-          <PoetryActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Poetry workbench (meter, rhyme, form)</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><PoetryActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>

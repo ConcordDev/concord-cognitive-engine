@@ -23,29 +23,41 @@ function _parseEndpoints(plural, singular, fallback) {
   return [singular || fallback];
 }
 
+// Single-instance fallback: someone who just ran `ollama serve` (or set
+// only OLLAMA_HOST/OLLAMA_URL, without reading the five-brain multi-port
+// docs) has ONE Ollama listening with every model pulled into it. Before
+// this fix, only conscious+vision honored OLLAMA_HOST/OLLAMA_URL —
+// subconscious/utility/repair always fell straight to an unreachable
+// Docker hostname (`ollama-subconscious:11434` etc.) regardless of what
+// was actually running, which is why a plain single-Ollama bare-metal
+// setup reported "no brains connected" even with models pulled and
+// running. A specific BRAIN_<NAME>_URL still wins when set (real
+// multi-instance deployments are unaffected).
+const _singleInstanceFallback = process.env.OLLAMA_URL || process.env.OLLAMA_HOST;
+
 const _conscious_urls = _parseEndpoints(
   process.env.BRAIN_CONSCIOUS_URLS,
-  process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST,
+  process.env.BRAIN_CONSCIOUS_URL || _singleInstanceFallback,
   "http://ollama-conscious:11434",
 );
 const _subconscious_urls = _parseEndpoints(
   process.env.BRAIN_SUBCONSCIOUS_URLS,
-  process.env.BRAIN_SUBCONSCIOUS_URL,
+  process.env.BRAIN_SUBCONSCIOUS_URL || _singleInstanceFallback,
   "http://ollama-subconscious:11434",
 );
 const _utility_urls = _parseEndpoints(
   process.env.BRAIN_UTILITY_URLS,
-  process.env.BRAIN_UTILITY_URL,
+  process.env.BRAIN_UTILITY_URL || _singleInstanceFallback,
   "http://ollama-utility:11434",
 );
 const _repair_urls = _parseEndpoints(
   process.env.BRAIN_REPAIR_URLS,
-  process.env.BRAIN_REPAIR_URL,
+  process.env.BRAIN_REPAIR_URL || _singleInstanceFallback,
   "http://ollama-repair:11434",
 );
 const _vision_urls = _parseEndpoints(
   process.env.BRAIN_VISION_URLS,
-  process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || process.env.OLLAMA_URL || process.env.OLLAMA_HOST,
+  process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || _singleInstanceFallback,
   "http://ollama-vision:11434",
 );
 

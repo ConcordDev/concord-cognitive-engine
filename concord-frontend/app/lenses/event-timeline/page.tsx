@@ -56,7 +56,7 @@ import { ChannelTrends } from '@/components/event-timeline/ChannelTrends';
 import { EventDetailPanel } from '@/components/event-timeline/EventDetailPanel';
 import { SavedViewsBar, type TimelineFilterState } from '@/components/event-timeline/SavedViewsBar';
 import { lensRun } from '@/lib/api/client';
-import { Loader2, Search, Download, Pause, Play, X } from 'lucide-react';
+import { Loader2, Search, Download, Pause, Play, X, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface TimelineRow {
   id: number;
@@ -156,6 +156,7 @@ export default function EventTimelineLens() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [rows, setRows] = useState<TimelineRow[]>([]);
+  const [showOnThisDay, setShowOnThisDay] = useState(false);
   const [statsByChannel, setStatsByChannel] = useState<ChannelStat[]>([]);
   const [knownChannels, setKnownChannels] = useState<ChannelInfo[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<string>>(
@@ -616,7 +617,19 @@ export default function EventTimelineLens() {
           </section>
 
           <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <OnThisDay />
+            <button
+              type="button"
+              onClick={() => setShowOnThisDay(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>On this day (external reference)</span>
+              {showOnThisDay ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showOnThisDay && (
+              <div className="mt-3">
+                <OnThisDay />
+              </div>
+            )}
           </section>
         </div>
 

@@ -16,10 +16,10 @@ import { PipingProvider } from '@/components/panel-polish';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Calculator, Play, CheckCircle, XCircle, Sigma, Pi, Loader2,
-  History, TrendingUp, Hash, Plus, Trash2, BarChart3, Layers, ChevronDown
+  History, TrendingUp, Hash, Plus, Trash2, BarChart3,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -29,7 +29,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import STSVKExplorer from '@/components/visualizations/STSVKExplorer';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { MathFormula } from '@/components/math/MathFormula';
@@ -149,6 +148,11 @@ export default function MathLensPage() {
 
   /* ─── Active tab ─── */
   const [activeTab, setActiveTab] = useState<'evaluator' | 'solver' | 'formulas' | 'plotter'>('evaluator');
+  const [showArxivPanel, setShowArxivPanel] = useState(false);
+  const [showSymbolicWorkbench, setShowSymbolicWorkbench] = useState(false);
+  const [showSTSVKExplorer, setShowSTSVKExplorer] = useState(false);
+  const [showMathStackFeed, setShowMathStackFeed] = useState(false);
+  const [showMathActionPanel, setShowMathActionPanel] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -160,7 +164,6 @@ export default function MathLensPage() {
     ],
     { lensId: 'math' }
   );
-  const [showFeatures, setShowFeatures] = useState(true);
 
   /* ─── Data from backend ─── */
   const {
@@ -371,7 +374,21 @@ export default function MathLensPage() {
       <DepthBadge lensId="math" size="sm" className="ml-2" />
     <div data-lens-theme="math" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv math feed. */}
-      <ArxivPanel domain="math" title="arXiv · Mathematics" />
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowArxivPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showArxivPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          arXiv · Mathematics (external reference)
+        </button>
+        {showArxivPanel && (
+          <div className="mt-3">
+            <ArxivPanel domain="math" title="arXiv · Mathematics" />
+          </div>
+        )}
+      </div>
       <header className="flex items-center gap-3">
         <Calculator className="w-7 h-7 text-neon-blue" />
         <div>
@@ -395,7 +412,6 @@ export default function MathLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="math" artifactId={expressionItems[0]?.id} compact />
       {isLoading ? (
         <div className="flex items-center justify-center p-12 text-gray-400">
           <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -428,10 +444,38 @@ export default function MathLensPage() {
           </div>
 
           {/* ── Computational Math Engine (CAS) — symbolic, step-solve, plot, units, number theory ── */}
-          <SymbolicWorkbench />
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowSymbolicWorkbench(v => !v)}
+              className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+            >
+              {showSymbolicWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              Computational Math Engine (CAS)
+            </button>
+            {showSymbolicWorkbench && (
+              <div className="mt-3">
+                <SymbolicWorkbench />
+              </div>
+            )}
+          </div>
 
           {/* ── STSVK Theorem Explorer ── */}
-          <STSVKExplorer />
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowSTSVKExplorer(v => !v)}
+              className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+            >
+              {showSTSVKExplorer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              STSVK Theorem Explorer
+            </button>
+            {showSTSVKExplorer && (
+              <div className="mt-3">
+                <STSVKExplorer />
+              </div>
+            )}
+          </div>
 
           {/* ── Sub-Lenses ── */}
           <SubLensQuickNav lensId="math" />
@@ -1110,34 +1154,40 @@ export default function MathLensPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowMathStackFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showMathStackFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Math Discussion (external reference)
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="math" />
-          </div>
+        {showMathStackFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MathStackFeed />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MathStackFeed />
-      </section>
 
       {/* math workbench: stats / matrix / polynomial / regression + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <MathActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowMathActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showMathActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          More Actions
+        </button>
+        {showMathActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <MathActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="math" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="math" hideWhenEmpty className="mt-3" title="More actions" />

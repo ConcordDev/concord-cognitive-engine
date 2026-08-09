@@ -11,13 +11,12 @@ import { SrsRepos } from '@/components/srs/SrsRepos';
 import { SrsWorkbench } from '@/components/srs/SrsWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Brain, Plus, Award, RotateCcw, Clock,
+  Brain, Plus, Award, RotateCcw, Clock, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { DTUPickerModal } from '@/components/dtu/DTUPickerModal';
 import type { DTU } from '@/lib/api/generated-types';
@@ -62,6 +61,8 @@ export default function SRSLensPage() {
   const [sessionReviewed, setSessionReviewed] = useState(0);
   const [sessionCorrect, setSessionCorrect] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [showWorkbench, setShowWorkbench] = useState(false);
+  const [showSrsRepos, setShowSrsRepos] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -296,11 +297,35 @@ export default function SRSLensPage() {
 
           {/* ===== ANKI-PARITY DECK ENGINE ===== */}
           <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <SrsWorkbench />
+            <button
+              type="button"
+              onClick={() => setShowWorkbench(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Deck engine (Anki-parity)</span>
+              {showWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showWorkbench && (
+              <div className="mt-3">
+                <SrsWorkbench />
+              </div>
+            )}
           </section>
 
           <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <SrsRepos />
+            <button
+              type="button"
+              onClick={() => setShowSrsRepos(v => !v)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+            >
+              <span>Spaced-repetition repos (GitHub)</span>
+              {showSrsRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+            {showSrsRepos && (
+              <div className="mt-3">
+                <SrsRepos />
+              </div>
+            )}
           </section>
 
           {realtimeData && (
@@ -313,7 +338,6 @@ export default function SRSLensPage() {
               compact
             />
           )}
-          <UniversalActions domain="srs" artifactId={null} compact />
         </div>
       </div>
 

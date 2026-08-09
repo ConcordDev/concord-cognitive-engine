@@ -19,11 +19,11 @@ import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Lightbulb, Plus, Search, Database, ArrowRight, Brain,
-  X, RefreshCw, ChevronDown,
-  Tag, Copy, BarChart3, Network, Eye, Layers, CheckCircle2, Shield,
+  X, RefreshCw,
+  Tag, Copy, BarChart3, Network, Eye, CheckCircle2, Shield,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -31,7 +31,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 interface Fact {
   id?: string;
@@ -78,6 +77,9 @@ export default function CommonsenseLensPage() {
   const [relation, setRelation] = useState('is_a');
   const [object, setObject] = useState('');
   const [queryText, setQueryText] = useState('');
+  const [showKbWorkbench, setShowKbWorkbench] = useState(false);
+  const [showConceptExplorer, setShowConceptExplorer] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [results, setResults] = useState<unknown>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortMode, setSortMode] = useState<SortMode>('newest');
@@ -86,7 +88,6 @@ export default function CommonsenseLensPage() {
   const [selectedFact, setSelectedFact] = useState<Fact | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // --- Lens Bridge ---
   const bridge = useLensBridge('commonsense', 'fact');
@@ -297,7 +298,6 @@ export default function CommonsenseLensPage() {
       </header>
 
       {/* AI Actions */}
-      <UniversalActions domain="commonsense" artifactId={bridge.selectedId} compact />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -776,39 +776,53 @@ export default function CommonsenseLensPage() {
       )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="commonsense" />
-          </div>
-        )}
-      </div>
 
       {/* Knowledge Base Workbench — graph, inference, contradiction,
           taxonomy, confidence query, text import, provenance */}
       <section className="mt-6 rounded-xl border border-amber-500/20 bg-zinc-950/40 p-4">
-        <KnowledgeBaseWorkbench />
+        <button
+          type="button"
+          onClick={() => setShowKbWorkbench(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Knowledge base workbench</span>
+          {showKbWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showKbWorkbench && (
+          <div className="mt-3">
+            <KnowledgeBaseWorkbench />
+          </div>
+        )}
       </section>
 
       {/* Bespoke ConceptNet concept graph explorer with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ConceptExplorer />
+        <button
+          type="button"
+          onClick={() => setShowConceptExplorer(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>ConceptNet explorer (external reference)</span>
+          {showConceptExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showConceptExplorer && (
+          <div className="mt-3">
+            <ConceptExplorer />
+          </div>
+        )}
       </section>
 
       <PipingProvider>
-        <section className="mt-6">
-          <CommonsenseActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Commonsense workbench</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && <div className="mt-3"><CommonsenseActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>

@@ -33,10 +33,139 @@ extends CharacterBody3D
 ## exactly as it did before this unit — always active — so every existing
 ## pure-function test and any standalone use of this controller is
 ## unaffected.
+##
+## ── Combat Phase C — first slice (E = attack only) ───────────────────────────
+## Deliberately narrow scope, ported from the Three.js reference
+## (`CombatInputController.tsx`'s E/F/R/Q/Shift scheme) rather than
+## redesigned: this unit ports ONLY the E-key light-attack path.
+## F/R/Q/Shift (parry/kick/dodge/modifier), combo chains, and lock-on camera
+## behavior are explicitly deferred, real follow-up work — not silently
+## implied as done.
+##
+## ── Combat C6 (2026-08-08) — F/R/Q tap actions added ──────────────────────────
+## Extends Combat Phase C with the rest of the GROUND-context tap row from
+## `CombatInputController.tsx`'s `CONTEXT_KEYMAP.ground` — F=parry, R=kick,
+## Q=dodge. Deliberately still narrow: only the GROUND context exists here
+## (no aerial/vehicle/hacker/underwater combat contexts in this client), only
+## TAP variants (no hold-vs-tap distinction, so F never fires 'grab' — that's
+## `CONTEXT_KEYMAP.ground.F.hold`, a real, separate follow-up), no double-tap
+## finisher, no client-prediction swing animation, no whiff-cancel windows.
+## Shift stays bound to sprint (see MOVE_SPEED/RUN_SPEED above) — the TS
+## reference's `modifier-boost` (Shift as a combat modifier flag) is NOT
+## ported; overloading an already-bound movement key for combat would be a
+## real, separate design decision, not a mechanical port.
+##
+## Parry (F) and dodge (Q) are UNTARGETED — mirrors `CombatInputController
+## .tsx`'s `parry`/`dodge` cases exactly (no `targetId` field in their
+## `combat:dodge` payload at all): they fire regardless of `_current_target_id`.
+## Kick (R) IS targeted, same as the existing E-attack (`combat:attack` with
+## `targetId`, `actionOverride: 'attack-heavy'`, `style: 'kick'` — mirrors
+## the TS `kick`/`dismount-kick` case's exact payload shape) — honest no-op
+## with no target in range, same discipline as `_try_attack`.
+##
+## Server-side: `combat:attack` (kick's transport) already had Godot-gateway
+## dispatch since Combat Phase C. `combat:dodge` (parry/dodge's transport)
+## did NOT — `_onGodotClientMessage`'s switch had no case for it before this
+## unit; added server-side alongside this client change
+## (`_dispatchGodotCombatDodge`, server.js), reusing the SAME `_attemptDodge`/
+## `_grantIFrames`/`recordCombatFlow` primitives the socket.io `combat:dodge`
+## handler already resolves through — not a second implementation.
+##
+## Target selection is a query over `avatar_manager`'s already-live `_rigs`
+## (optional injected `avatar/avatar_manager.gd`, same DI convention as
+## `gateway`/`session_manager` above) — re-run every physics frame so the HUD
+## can honestly show "no target"/"target in range" even before an attack is
+## thrown. `_try_attack()` sends a deliberately minimal `combat:attack`
+## payload (targetId + weapon + style only) — no client-asserted
+## baseDamage/range: the server (`_dispatchGodotCombatAttack`,
+## server.js:68748) is authoritative and clamps its own defaults, matching
+## every other anti-cheat gate in this codebase. No target in range is an
+## honest no-op, never a wasted/fabricated request.
+##
+## `combat:hit`/`combat:impact` already arrive for free over the open gateway
+## connection (`realtimeEmit` mirrors into Godot gateway rooms — confirmed at
+## server.js:9256/9337/9360 — no new backend wiring needed for this slice).
+## Hit-feel (knockback) is applied ONLY when `local_user_id` (set by
+## world/boot.gd from the real `authenticated` user id) matches the event's
+## `targetId` — i.e. only when the LOCAL player was hit. Remote-target visual
+## feedback (an attacker seeing their OWN hit land on someone else's rig) is
+## a real, separate follow-up: AvatarRig's positions are snapshot-interpolated
+## from server broadcasts, and a local knockback nudge there would just be
+## overwritten by the next incoming sample — deferred, not attempted here.
+##
+## ── Audio (2026-08-08) ────────────────────────────────────────────────────────
+## Optional injected SfxPlayer (audio/sfx_player.gd — see that file's own
+## header for the full "why synthesized, not sample-based" rationale: the
+## Three.js reference, SoundscapeEngine.tsx, is 100% procedural oscillator
+## synthesis with zero sample assets in the repo, so audio/sfx_synth.gd ports
+## that synthesis math to GDScript rather than sourcing external files).
+## Wired at three real gameplay moments, each mirroring the TS reference's
+## own documented design rather than inventing new cues:
+## - Footsteps (`_update_footsteps`) — stride-accumulator triggered, always
+##   'footstep-grass' (an honest, documented simplification: this client has
+##   no per-position terrain-surface query yet).
+## - Combat swings/parry/dodge/kick — play IMMEDIATELY on input, not on a
+##   server ack, mirroring T2.2's "audible even on a miss" design (this
+##   client has no `combat:*:ack` handlers to gate on regardless).
+## - Hit-confirm (`_on_combat_hit`) — layered light/heavy/crit/kill SFX,
+##   severity selection ported byte-for-byte from GameJuice.tsx's real rule.
+## Null `sfx_player` (the default) means every one of these is a silent
+## no-op — same optional-DI convention as every other field on this
+## controller (`gateway`, `session_manager`, `avatar_manager`).
+##
+## ── Gamepad + touch input (2026-08-08) ────────────────────────────────────────
+## Every action below was keyboard-only until this unit. Both new input
+## sources are FALLBACKS, read in `_read_input_direction()`/`_physics_
+## process()` alongside the existing raw-keycode polling — never routed
+## through Godot's InputMap, same "no project.godot config to fabricate"
+## reasoning the class doc above already gives for keyboard.
+##
+## Gamepad: real `Input.get_joy_axis`/`is_joy_button_pressed` polling
+## against device 0 (the first connected pad — same "first connected"
+## scoping concord-frontend/hooks/useGamepad.ts's own `readState()` uses),
+## needing zero new scene nodes. Button mapping ported from that file's own
+## documented Standard Gamepad API table wherever it names a matching
+## semantic (X=attack, RT=heavy attack, B=cancel/dodge — direct); the
+## remaining buttons (LB=parry, RB=grab, A=kick, LS-click=sprint-hold,
+## Back=lock-cycle, RS-click=hard-lock) are THIS FILE'S OWN reasoned
+## extension for the concepts that reference has no Concordia-specific slot
+## for — not a claim that useGamepad.ts specifies them. `apply_deadzone`/
+## `gamepad_move_vector` port that file's own deadzone rescale formula
+## verbatim (0.15 deadzone, linear rescale above it). RT/RB dispatch heavy-
+## attack/grab DIRECTLY on press (edge-triggered), unlike keyboard's E/F
+## which need a hold-timing heuristic to distinguish tap-vs-hold on a
+## single physical key — a real trigger/shoulder button doesn't need that
+## heuristic, so a controller player gets an instant heavy/grab, not "hold
+## RT for 220ms like a keyboard E".
+##
+## Touch: `ui/touch_controls.gd` (optional DI, null = silent no-op, same
+## convention as `sfx_player`) — a real on-screen virtual joystick +
+## `TouchScreenButton` action buttons, injected the same way `sfx_player`
+## is. Deliberately scoped to the ESSENTIAL subset only (movement + attack
+## + parry + dodge + kick) — heavy attack, grab, lock-on cycle, hard-lock,
+## and sprint have NO touch buttons this pass (a real mobile screen has
+## finite space for on-screen chrome); see that file's own class doc for
+## the full reasoning. No TS reference exists for touch controls anywhere
+## in this codebase (confirmed by grep) — this is an original design built
+## from Godot's own real `TouchScreenButton` node + a hand-built joystick
+## Control, not a port.
+##
+## Precedence when multiple sources are active: keyboard held > gamepad >
+## touch, for MOVEMENT (never summed — adding vectors together would let
+## combined inputs exceed normal speed). For discrete ACTIONS (attack/
+## parry/dodge/etc.) any source being down counts — these are booleans
+## OR'd together, not a priority chain, since pressing two input methods'
+## buttons for the same action at once is not a meaningful conflict the way
+## two different movement vectors would be.
 
 signal move_rejected(snapped_to: Vector3)
+signal target_acquired(target_id: String)
+signal target_lost()
+signal target_health_updated(target_id: String, health: float, max_health: float)
 
 const SessionManager := preload("res://session/session_manager.gd")
+const AssetResolver := preload("res://assets/asset_resolver.gd")
+const LockOnState := preload("res://player/lock_on_state.gd")
 
 # ── Constants — mirrored 1:1 from physics-world.ts / jump-forgiveness.ts ────
 const GRAVITY: float = 9.81
@@ -93,6 +222,42 @@ const MOVE_SEND_MIN_INTERVAL_MS: int = 33
 ## class doc "Session-manager input gate". Null means "always active", the
 ## pre-R5/E24 behavior.
 @export var session_manager: Node = null
+## Optional injected AvatarManager (avatar/avatar_manager.gd) — see class doc
+## "Combat Phase C". Null means target selection never runs (no combat
+## input), matching every other optional-DI field here: this controller
+## stays fully functional (movement-only) with nothing wired.
+@export var avatar_manager: Node = null
+## The LOCAL player's real user id, set by world/boot.gd once
+## GatewayClient.authenticated fires (see boot.gd's `_on_authenticated`).
+## Blank until then — `_on_combat_impact` treats blank as "can't possibly be
+## me" and never applies hit-feel from an unresolved identity.
+@export var local_user_id: String = ""
+## Which of the 7 hero archetypes this controller's own weapon-in-hand
+## resolves to (assets/asset_resolver.gd#ARCHETYPE_WEAPON) — mirrors the
+## honest "warrior" default every other archetype-driven resolve in this
+## client uses absent a real per-avatar archetype signal on the wire.
+@export var archetype: String = "warrior"
+## Max distance (m) `_update_target()` will select a target within. A
+## client-side intent value only — the server's own `clampAttackRange`
+## (server/lib/combat-limits.js) is the real, authoritative cap.
+const ATTACK_RANGE_M: float = 3.0
+
+## Optional injected SfxPlayer (audio/sfx_player.gd) — see class doc
+## "Audio (2026-08-08)". Null means every combat/footstep SFX call is a
+## silent no-op, same DI convention as every other optional field here.
+@export var sfx_player: Node = null
+
+## Optional injected TouchControls (ui/touch_controls.gd) — see class doc
+## "Gamepad + touch input (2026-08-08)". Null (the default, e.g. a desktop
+## session with no on-screen controls mounted) means every touch check
+## below is a silent no-op, same DI convention as every other optional
+## field here.
+@export var touch_controls: Node = null
+
+## Real stride distance between footstep SFX triggers — a real game
+## constant (not tuned per-character), matches a typical adult stride.
+const FOOTSTEP_STRIDE_M: float = 1.4
+var _footstep_distance_accum: float = 0.0
 
 var vertical_vel: float = 0.0
 var is_airborne: bool = false
@@ -105,6 +270,55 @@ var jump_vy_pending: float = 0.0
 var _last_move_sent_ms: int = 0
 var _snap_target: Vector3 = Vector3.ZERO
 var _pending_snap: bool = false
+var _current_target_id: String = ""
+var _dodge_key_was_down: bool = false
+var _kick_key_was_down: bool = false
+
+## Combat C7 (2026-08-08) — hold-vs-tap tracking for E (attack) and F
+## (parry/grab). `_down_at_ms < 0` means the key isn't currently held;
+## `_hold_fired` records whether the HOLD variant already fired during this
+## press so keyup doesn't ALSO fire the tap (mirrors CombatInputController
+## .tsx's own `holdFiredRef` — the hold fires the instant the threshold is
+## crossed, not on release, and release only fires the tap if the hold
+## never did). R and Q have no hold variant in ground context (see class
+## doc's Combat C6 section) so they keep the original simple rising-edge
+## rising-edge pattern above.
+const HOLD_THRESHOLD_MS: int = 220
+var _attack_down_at_ms: int = -1
+var _attack_hold_fired: bool = false
+var _parry_down_at_ms: int = -1
+var _parry_hold_fired: bool = false
+
+## Gamepad + touch (2026-08-08) — see class doc. RT/RB dispatch their own
+## edge-triggered actions directly (real distinct buttons), separate from
+## the E/F hold-timing state machines above.
+const GAMEPAD_DEADZONE: float = 0.15
+var _heavy_trigger_was_down: bool = false
+var _grab_button_was_down: bool = false
+
+## Combat, lock-on (2026-08-08) — Tab cycles, T hard-locks; see
+## player/lock_on_state.gd's own class doc for the full rule set. Radius
+## mirrors LockOnController.tsx's DEFAULT_LOCK_RADIUS.
+const LOCK_ON_RADIUS_M: float = 25.0
+var _lock := LockOnState.new()
+var _tab_key_was_down: bool = false
+var _lock_toggle_key_was_down: bool = false
+
+## Combat, combo chains (2026-08-08) — lightweight chainId/stepIndex
+## metadata for the flow-recorder/evolution substrate (server/lib/combat/
+## flow-recorder.js + flow-engine.js) — the SAME substrate the Three.js
+## client's much larger "evolved combo" hotbar system also feeds (that
+## system needs server-fetched combo definitions + a trigger UI; genuinely
+## out of scope here — this only makes ordinary consecutive swings from
+## THIS client contribute honest chain data too). A chain continues while
+## consecutive OFFENSIVE actions (attack/heavy/grab/kick) land within
+## COMBO_CONTINUE_WINDOW_MS of each other; otherwise a new chain starts.
+## First-draft, un-playtested window (same honesty class as CLAUDE.md's
+## "Phase D first-draft constants").
+const COMBO_CONTINUE_WINDOW_MS: int = 1500
+var _combo_chain_id: String = ""
+var _combo_step_index: int = 0
+var _combo_last_offense_at_ms: int = -1
 
 
 func _ready() -> void:
@@ -133,7 +347,13 @@ func _physics_process(delta: float) -> void:
 	# AvatarSystem3D.tsx's `isRunning = keys.has('shift')` exactly. Before
 	# this unit there was no way for a Godot player to move faster than
 	# MOVE_SPEED at all.
-	var is_running := Input.is_key_pressed(KEY_SHIFT)
+	# LS-click as a HOLD surrogate for Shift's continuous-hold sprint (a
+	# deliberate adaptation — useGamepad.ts's own header documents LS click
+	# as a TOGGLE, but this client's sprint mechanic is hold-based, and
+	# reusing the toggle semantic here would fight the keyboard's own feel).
+	# No touch button — sprint is outside this pass's scoped touch subset,
+	# see class doc.
+	var is_running := Input.is_key_pressed(KEY_SHIFT) or _gamepad_button_down(JOY_BUTTON_LEFT_STICK)
 	var move_speed := RUN_SPEED if is_running else MOVE_SPEED
 	var desired_x := input_dir.x * move_speed
 	var desired_z := input_dir.y * move_speed
@@ -149,10 +369,99 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	_update_grounded_state(now_ms)
+	_update_footsteps(delta)
 
 	if CharacterController.should_send_move(now_ms, _last_move_sent_ms):
 		_last_move_sent_ms = now_ms
 		_send_move_intent()
+
+	_update_target()
+
+	# E — tap: attack-light, hold (>=HOLD_THRESHOLD_MS): attack-heavy. The
+	# hold fires the INSTANT the threshold is crossed (not on release —
+	# matches CombatInputController.tsx's "lands at the moment you commit"
+	# feel); a hold that already fired suppresses the tap on keyup.
+	# Gamepad X / touch AttackButton OR'd into the SAME hold-timing state
+	# machine keyboard E uses (X-tap still reads as a light attack, exactly
+	# like a brief E-tap) — RT below is the real distinct-button path for
+	# an INSTANT heavy attack, not routed through this hold timer at all.
+	var attack_down := Input.is_key_pressed(KEY_E) or _gamepad_button_down(JOY_BUTTON_X) \
+		or _touch_button_down(_attack_touch_button())
+	if attack_down and _attack_down_at_ms < 0:
+		_attack_down_at_ms = now_ms
+		_attack_hold_fired = false
+	if attack_down and not _attack_hold_fired and _attack_down_at_ms >= 0 \
+			and now_ms - _attack_down_at_ms >= HOLD_THRESHOLD_MS:
+		_attack_hold_fired = true
+		_try_attack_heavy(now_ms)
+	if not attack_down and _attack_down_at_ms >= 0:
+		if not _attack_hold_fired:
+			_try_attack(now_ms)
+		_attack_down_at_ms = -1
+
+	# Gamepad RT (a real, physically-distinct trigger) dispatches heavy
+	# attack the INSTANT it's pressed — no hold-timing heuristic needed
+	# (that heuristic exists only to disambiguate a single keyboard key).
+	var heavy_trigger_down := _gamepad_trigger_down(JOY_AXIS_TRIGGER_RIGHT)
+	if heavy_trigger_down and not _heavy_trigger_was_down:
+		_try_attack_heavy(now_ms)
+	_heavy_trigger_was_down = heavy_trigger_down
+
+	# F — tap: parry, hold: grab. Same tap/hold shape as E above. Gamepad LB
+	# / touch ParryButton OR'd into the SAME state machine (LB-tap = parry);
+	# RB below is grab's own real-button instant path, same reasoning as RT.
+	var parry_down := Input.is_key_pressed(KEY_F) or _gamepad_button_down(JOY_BUTTON_LEFT_SHOULDER) \
+		or _touch_button_down(_parry_touch_button())
+	if parry_down and _parry_down_at_ms < 0:
+		_parry_down_at_ms = now_ms
+		_parry_hold_fired = false
+	if parry_down and not _parry_hold_fired and _parry_down_at_ms >= 0 \
+			and now_ms - _parry_down_at_ms >= HOLD_THRESHOLD_MS:
+		_parry_hold_fired = true
+		_try_grab(now_ms)
+	if not parry_down and _parry_down_at_ms >= 0:
+		if not _parry_hold_fired:
+			_try_parry()
+		_parry_down_at_ms = -1
+
+	var grab_button_down := _gamepad_button_down(JOY_BUTTON_RIGHT_SHOULDER)
+	if grab_button_down and not _grab_button_was_down:
+		_try_grab(now_ms)
+	_grab_button_was_down = grab_button_down
+
+	# Gamepad B / touch DodgeButton — B is useGamepad.ts's own documented
+	# "cancel/dodge" semantic, a direct match.
+	var dodge_down := Input.is_key_pressed(KEY_Q) or _gamepad_button_down(JOY_BUTTON_B) \
+		or _touch_button_down(_dodge_touch_button())
+	if dodge_down and not _dodge_key_was_down:
+		_try_dodge()
+	_dodge_key_was_down = dodge_down
+
+	# Gamepad A / touch KickButton — A has no reference-documented "kick"
+	# semantic (its generic "interact/jump" doesn't apply — this client has
+	# no jump action at all), so this is this file's own reasoned slot for
+	# a free primary-offense button.
+	var kick_down := Input.is_key_pressed(KEY_R) or _gamepad_button_down(JOY_BUTTON_A) \
+		or _touch_button_down(_kick_touch_button())
+	if kick_down and not _kick_key_was_down:
+		_try_kick(now_ms)
+	_kick_key_was_down = kick_down
+
+	# Lock-on — Tab cycles, T hard-locks. Both read the SAME live,
+	# radius-filtered candidate list; see player/lock_on_state.gd's class
+	# doc for the full rule set. Gamepad-only (Back/RS-click) — no touch
+	# buttons for lock-on this pass, see class doc's scoped touch subset.
+	var tab_down := Input.is_key_pressed(KEY_TAB) or _gamepad_button_down(JOY_BUTTON_BACK)
+	if tab_down and not _tab_key_was_down and avatar_manager != null \
+			and avatar_manager.has_method("candidates_in_range"):
+		_lock.cycle(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
+	_tab_key_was_down = tab_down
+
+	var lock_toggle_down := Input.is_key_pressed(KEY_T) or _gamepad_button_down(JOY_BUTTON_RIGHT_STICK)
+	if lock_toggle_down and not _lock_toggle_key_was_down and avatar_manager != null \
+			and avatar_manager.has_method("candidates_in_range"):
+		_lock.toggle_hard(avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M))
+	_lock_toggle_key_was_down = lock_toggle_down
 
 
 ## Raw WASD polling — deliberately NOT routed through Godot's InputMap
@@ -171,7 +480,90 @@ func _read_input_direction() -> Vector2:
 		dir.x -= 1.0
 	if Input.is_key_pressed(KEY_D):
 		dir.x += 1.0
-	return dir.normalized() if dir.length() > 0.0 else dir
+	if dir != Vector2.ZERO:
+		return dir.normalized()
+
+	# Gamepad (2026-08-08) — real device-0 left-stick axes, only consulted
+	# when the keyboard gave nothing (see class doc's precedence rule).
+	# Standard Gamepad API's own axis sign convention already matches
+	# WASD's (stick right = +X = KEY_D, stick up/forward = -Y = KEY_W), so
+	# no flip is needed — see `gamepad_move_vector`'s own doc.
+	var joypads := Input.get_connected_joypads()
+	if not joypads.is_empty():
+		var device: int = joypads[0]
+		var gp_dir := CharacterController.gamepad_move_vector(
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_X),
+			Input.get_joy_axis(device, JOY_AXIS_LEFT_Y), GAMEPAD_DEADZONE)
+		if gp_dir != Vector2.ZERO:
+			return gp_dir
+
+	# Touch (2026-08-08) — the on-screen virtual joystick, same shape/
+	# fallback tier as gamepad above.
+	if touch_controls != null and touch_controls.has_method("get_move_vector"):
+		var touch_dir: Vector2 = touch_controls.get_move_vector()
+		if touch_dir != Vector2.ZERO:
+			return touch_dir
+
+	return dir
+
+
+## Real device-0 joypad button read. Honest false when no joypad is
+## connected — never fabricates a press.
+func _gamepad_button_down(button: int) -> bool:
+	var joypads := Input.get_connected_joypads()
+	if joypads.is_empty():
+		return false
+	return Input.is_joy_button_pressed(joypads[0], button)
+
+
+## Analog trigger axes (Godot reports LT/RT as axes, not buttons) read as a
+## boolean past a real half-press threshold — mirrors how a physical
+## trigger's "click point" reads to a player, not an arbitrary cutoff (0.5
+## is the trigger's own mechanical midpoint on every controller this maps).
+const GAMEPAD_TRIGGER_THRESHOLD: float = 0.5
+func _gamepad_trigger_down(axis: int) -> bool:
+	var joypads := Input.get_connected_joypads()
+	if joypads.is_empty():
+		return false
+	return Input.get_joy_axis(joypads[0], axis) >= GAMEPAD_TRIGGER_THRESHOLD
+
+
+## Real `TouchScreenButton.is_pressed()` read. Honest false for a null/
+## freed button (no touch_controls injected, or a scoped-out action this
+## pass doesn't give a touch button to at all — see `_attack_touch_button`
+## and its siblings below).
+func _touch_button_down(btn: TouchScreenButton) -> bool:
+	return btn != null and is_instance_valid(btn) and btn.is_pressed()
+
+
+## Duck-typed accessors onto the optional `touch_controls` DI (ui/touch_
+## controls.gd) — null-safe by construction (`_touch_button_down` above
+## handles a null return the same as a null `touch_controls`). Kept as
+## thin accessors rather than reading `touch_controls.attack_button`
+## directly at each call site so a caller never needs its own null/
+## has-property guard.
+func _attack_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "attack_button" in touch_controls:
+		return touch_controls.attack_button
+	return null
+
+
+func _parry_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "parry_button" in touch_controls:
+		return touch_controls.parry_button
+	return null
+
+
+func _dodge_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "dodge_button" in touch_controls:
+		return touch_controls.dodge_button
+	return null
+
+
+func _kick_touch_button() -> TouchScreenButton:
+	if touch_controls != null and "kick_button" in touch_controls:
+		return touch_controls.kick_button
+	return null
 
 
 func _update_grounded_state(now_ms: int) -> void:
@@ -189,6 +581,34 @@ func _update_grounded_state(now_ms: int) -> void:
 			jump_buffered_at_ms = 0
 	elif absf(vertical_vel) > 0.01:
 		is_airborne = true
+
+
+## Real footstep SFX (2026-08-08) — accumulates horizontal distance
+## traveled while grounded and moving, triggers a footstep sound every
+## FOOTSTEP_STRIDE_M, matching real-game stride-based cadence (faster
+## movement = more frequent footsteps, for free, since distance
+## accumulates faster). Honest, documented simplification: this client has
+## no per-position terrain-surface query API yet, so every footstep uses
+## 'footstep-grass' (concordia-hub's dominant outdoor surface) rather than
+## fabricating a surface-detection signal that doesn't exist — a real
+## per-surface footstep voice (matching SfxSynth's already-ported
+## footstep-stone/wood/water/mud-squelch variants) is real, separate
+## follow-up work once a surface query exists. No-op with no sfx_player
+## wired, same DI convention as every other optional field here.
+func _update_footsteps(delta: float) -> void:
+	if sfx_player == null or not sfx_player.has_method("play_sfx"):
+		return
+	if is_airborne or swimming:
+		_footstep_distance_accum = 0.0
+		return
+	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
+	if horizontal_speed < LOCOMOTION_IDLE_MAX_SPEED:
+		_footstep_distance_accum = 0.0
+		return
+	_footstep_distance_accum += horizontal_speed * delta
+	if _footstep_distance_accum >= FOOTSTEP_STRIDE_M:
+		_footstep_distance_accum = fmod(_footstep_distance_accum, FOOTSTEP_STRIDE_M)
+		sfx_player.play_sfx("footstep-grass")
 
 
 ## Request a jump. Mirrors physicsWorld.requestJump: fires immediately if
@@ -253,12 +673,305 @@ func _send_move_intent() -> void:
 	})
 
 
-func _on_gateway_event(evt: String, data: Dictionary) -> void:
-	if evt != "player:move:nack":
+## Re-run every physics frame so a HUD can honestly reflect "no target"/
+## "target in range" even before an attack is ever thrown, not just at the
+## moment of attack. No-op (never selects/clears a target) when no
+## AvatarManager is wired — see the `avatar_manager` export's own doc.
+##
+## Combat, lock-on (2026-08-08) — an active lock (Tab/T) OVERRIDES the
+## auto-nearest pick below: `_current_target_id` becomes whatever's locked,
+## and the lock's own release rule (`LockOnState.update_release`) is
+## evaluated first using this frame's real radius-filtered candidates +
+## real distance, so a lock that's genuinely gone (out of range, despawned)
+## clears itself honestly before falling back to auto-nearest.
+func _update_target() -> void:
+	if avatar_manager == null:
 		return
-	_snap_target = CharacterController.snapback_position(data, global_position)
-	_pending_snap = true
-	move_rejected.emit(_snap_target)
+
+	if avatar_manager.has_method("candidates_in_range") and avatar_manager.has_method("distance_to"):
+		var lock_candidates: Array = avatar_manager.candidates_in_range(global_position, LOCK_ON_RADIUS_M)
+		var still_in_range := false
+		for c in lock_candidates:
+			if String(c.get("id", "")) == _lock.locked_id:
+				still_in_range = true
+				break
+		var lock_dist := -1.0
+		if not _lock.locked_id.is_empty():
+			lock_dist = avatar_manager.distance_to(_lock.locked_id, global_position)
+		_lock.update_release(still_in_range, lock_dist, LOCK_ON_RADIUS_M)
+
+	if not _lock.locked_id.is_empty():
+		if _lock.locked_id == _current_target_id:
+			return
+		_current_target_id = _lock.locked_id
+		target_acquired.emit(_current_target_id)
+		return
+
+	if not avatar_manager.has_method("nearest_target"):
+		return
+	var found: String = avatar_manager.nearest_target(global_position, ATTACK_RANGE_M)
+	if found == _current_target_id:
+		return
+	_current_target_id = found
+	if found.is_empty():
+		target_lost.emit()
+	else:
+		target_acquired.emit(found)
+
+
+func get_current_target_id() -> String:
+	return _current_target_id
+
+
+## Combat, lock-on (2026-08-08) — read by `world/boot.gd`'s Escape handler
+## so an active lock clears BEFORE the pause menu opens (a deliberate
+## precedence choice: Escape "backs out" of the more immediate combat state
+## first, mirroring common third-person action-game convention — this
+## client's own choice, since LockOnController.tsx's Escape handling and
+## this client's pause menu are independent systems with no existing
+## precedent to port).
+func has_active_lock() -> bool:
+	return not _lock.locked_id.is_empty()
+
+
+func clear_lock() -> void:
+	_lock.clear()
+
+
+func get_lock_mode() -> String:
+	return _lock.lock_mode
+
+
+## Combat, combo chains (2026-08-08) — advances the chain/step for THIS
+## offensive action and returns the `{chainId, stepIndex}` to stamp on its
+## payload. See the `_combo_*` members' own class-doc comment for the full
+## contract. `now_ms` is caller-supplied (from `_physics_process`'s own
+## `Time.get_ticks_msec()` read) so the RULE itself doesn't need a live
+## clock to be testable in isolation — though as an instance method (not
+## static) it's exercised via the real-engine probe, not a pure-logic test,
+## matching this file's existing split for engine-adjacent state.
+func _advance_combo(now_ms: int) -> Dictionary:
+	if _combo_chain_id.is_empty() or now_ms - _combo_last_offense_at_ms > COMBO_CONTINUE_WINDOW_MS:
+		_combo_chain_id = "chain:%d" % now_ms
+		_combo_step_index = 0
+	else:
+		_combo_step_index += 1
+	_combo_last_offense_at_ms = now_ms
+	return {"chainId": _combo_chain_id, "stepIndex": _combo_step_index}
+
+
+## E-key light attack (tap). Honest no-op with no target in range or no
+## gateway wired — never fabricates a wasted request. Sends a deliberately
+## minimal payload (no client-asserted baseDamage/range) — see class doc
+## "Combat Phase C". `now_ms` defaults to a fresh clock read so existing
+## zero-arg callers (real-engine probes included) are unaffected.
+func _try_attack(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var weapon_id: String = AssetResolver.ARCHETYPE_WEAPON.get(archetype, "")
+	var payload := {
+		"targetId": _current_target_id,
+		"weapon": weapon_id if weapon_id != "" else "fist",
+		"style": "attack-light",
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	# T2.2-mirrored swing whoosh — plays on the SWING itself (before any hit
+	# resolves), same as CombatInputController.tsx's own "audible even on a
+	# miss" design. No-op with no sfx_player wired.
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing")
+
+
+## E-key heavy attack (hold, Combat C7). TARGETED, same honest-no-op-with-
+## no-target discipline as `_try_attack`. Unlike the tap variant, this
+## sends a REAL `baseDamage` (18, mirroring CombatInputController.tsx's own
+## heavy value) — `_try_attack`'s omitted baseDamage clamps to a nominal 1
+## server-side (`combat-limits.js#clampBaseDamage`'s honest floor for a
+## missing/invalid input), which would make "hold for heavy" observably
+## IDENTICAL to a tap if this variant copied that same omission. Sending a
+## real, distinguishing value here is the honest choice — an inert "heavy"
+## button would itself be a fabricated feature.
+func _try_attack_heavy(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var weapon_id: String = AssetResolver.ARCHETYPE_WEAPON.get(archetype, "")
+	var payload := {
+		"targetId": _current_target_id,
+		"weapon": weapon_id if weapon_id != "" else "fist",
+		"style": "attack-heavy",
+		"heavy": true,
+		"baseDamage": 18,
+		"armorPierce": 1,
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing-heavy")
+
+
+## F-key parry (Combat C6). Untargeted — mirrors CombatInputController.tsx's
+## `parry` case exactly (no `targetId`). Honest no-op only when no gateway is
+## wired; unlike attack/kick this never depends on `_current_target_id`.
+## DEFENSIVE, so unlike the offensive actions above it does NOT advance the
+## combo chain — mirrors the TS reference's own `isOffense` check, which
+## covers attack/kick/grab but not parry/dodge.
+func _try_parry() -> void:
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	gateway.send_event("combat:dodge", {
+		"direction": "back",
+		"wasParry": true,
+		"style": "parry",
+	})
+	# Immediate-on-input feedback, same "plays on the action, not on a
+	# server ack" design as the attack-swing whoosh above — this client has
+	# no combat:dodge:ack handler yet (see the class doc's Combat C6
+	# section), so a real server round-trip isn't available to gate on.
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("block-clang")
+
+
+## F-key grab (hold, Combat C7). TARGETED — mirrors CombatInputController
+## .tsx's `grab` case: emitted as `combat:attack` (no dedicated server
+## event, same "No dedicated server event yet" reasoning the TS reference's
+## own comment gives) with `actionOverride: 'grapple'` so the flow recorder
+## tags it correctly. Honest no-op with no target in range, same discipline
+## as every other targeted action here. OFFENSIVE — advances the combo
+## chain. Reuses 'combat-swing' for SFX (no dedicated grab/grapple voice
+## exists in the ported SFX_MAP — an honest reuse of an existing real voice
+## for a similar melee-contact action, not a fabricated new sound).
+func _try_grab(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var payload := {
+		"targetId": _current_target_id,
+		"baseDamage": 12,
+		"range": 2,
+		"armorPierce": 0,
+		"heavy": false,
+		"style": "grab",
+		"actionOverride": "grapple",
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing")
+
+
+## Q-key dodge (Combat C6). Untargeted, same shape as parry with
+## `wasParry: false` — mirrors CombatInputController.tsx's `dodge` case.
+## DEFENSIVE — does not advance the combo chain (see `_try_parry`'s note).
+func _try_dodge() -> void:
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	gateway.send_event("combat:dodge", {
+		"direction": "back",
+		"wasParry": false,
+		"style": "dodge",
+	})
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("dodge-whoosh")
+
+
+## R-key kick (Combat C6). TARGETED, same honest-no-op-with-no-target
+## discipline as `_try_attack` — mirrors CombatInputController.tsx's `kick`
+## case exactly, including reusing `combat:attack` as the transport (the TS
+## reference's own comment: "No dedicated server event yet"). No `weapon`
+## field — the TS payload omits it for kick (barehanded regardless of
+## loadout), unlike `_try_attack`'s weapon-in-hand lookup. OFFENSIVE —
+## advances the combo chain.
+func _try_kick(now_ms: int = -1) -> void:
+	if _current_target_id.is_empty():
+		return
+	if gateway == null or not gateway.has_method("send_event"):
+		return
+	if now_ms < 0:
+		now_ms = Time.get_ticks_msec()
+	var payload := {
+		"targetId": _current_target_id,
+		"baseDamage": 14,
+		"range": 3,
+		"armorPierce": 0,
+		"heavy": false,
+		"style": "kick",
+		"actionOverride": "attack-heavy",
+	}
+	payload.merge(_advance_combo(now_ms))
+	gateway.send_event("combat:attack", payload)
+	if sfx_player != null and sfx_player.has_method("play_sfx"):
+		sfx_player.play_sfx("combat-swing-heavy")
+
+
+func _on_gateway_event(evt: String, data: Dictionary) -> void:
+	match evt:
+		"player:move:nack":
+			_snap_target = CharacterController.snapback_position(data, global_position)
+			_pending_snap = true
+			move_rejected.emit(_snap_target)
+		"combat:hit":
+			_on_combat_hit(data)
+		"combat:impact":
+			_on_combat_impact(data)
+
+
+## `combat:hit` (server.js:68839) carries the resolved damage/health numbers.
+## Only relevant to THIS controller's HUD when it's about the target we're
+## actively tracking — a hit on some other pair in the same world is real
+## data, just not ours to display.
+##
+## Hit-confirm SFX selection (2026-08-08) mirrors GameJuice.tsx's real
+## severity rule exactly (components/world-lens/GameJuice.tsx ~130-165):
+## targetKilled -> 'hit-confirm-kill'; else isCrit -> 'hit-confirm-crit';
+## else damage > 25 -> 'hit-confirm-heavy'; else -> 'hit-confirm-light'.
+## Dispatched via play_layered so each tier's real multi-step LAYER_MAP
+## (transient tick + body + thump, ported from SoundscapeEngine.tsx) fires,
+## not a single flat tone.
+func _on_combat_hit(data: Dictionary) -> void:
+	var target_id := String(data.get("targetId", ""))
+	if target_id.is_empty() or target_id != _current_target_id:
+		return
+	target_health_updated.emit(
+		target_id, float(data.get("targetHealth", 0.0)), float(data.get("targetMaxHealth", 0.0)))
+	if sfx_player != null and sfx_player.has_method("play_layered"):
+		var sfx_id := "hit-confirm-light"
+		if bool(data.get("targetKilled", false)):
+			sfx_id = "hit-confirm-kill"
+		elif bool(data.get("isCrit", false)):
+			sfx_id = "hit-confirm-crit"
+		elif float(data.get("damage", 0.0)) > 25.0:
+			sfx_id = "hit-confirm-heavy"
+		sfx_player.play_layered(sfx_id)
+
+
+## `combat:impact` (server/lib/combat/impact-feel.js#buildImpactPayload)
+## carries the server-authoritative hit-feel. Applied ONLY when the LOCAL
+## player is the one who got hit (`local_user_id` matches `targetId`) — see
+## class doc for why remote-target feedback is deferred. `local_user_id ==
+## ""` (not yet authenticated) can never match a real targetId, so this is
+## already a safe no-op before boot.gd wires it.
+func _on_combat_impact(data: Dictionary) -> void:
+	if local_user_id.is_empty():
+		return
+	if String(data.get("targetId", "")) != local_user_id:
+		return
+	var feel: Dictionary = data.get("feel", {})
+	var impulse := CharacterController.knockback_impulse(
+		global_position, data.get("attackerPosition", null), float(feel.get("knockback", 0.0)))
+	if impulse != Vector3.ZERO:
+		velocity += impulse
 
 
 # ── Pure static movement math ────────────────────────────────────────────────
@@ -296,6 +1009,30 @@ static func glide_horizontal_boost(
 	if not gliding:
 		return Vector2(desired_x, desired_z)
 	return Vector2(desired_x * (1.0 + boost), desired_z * (1.0 + boost))
+
+
+## Standard Gamepad API deadzone rescale — ported verbatim from
+## concord-frontend/hooks/useGamepad.ts#applyDeadzone. Below `deadzone`
+## magnitude reads as exactly 0 (avoids drift on aging analog sticks);
+## above it, rescales linearly so the usable range still spans -1..1
+## rather than jumping straight to deadzone..1.
+static func apply_deadzone(value: float, deadzone: float = GAMEPAD_DEADZONE) -> float:
+	if absf(value) < deadzone:
+		return 0.0
+	var sign_v := -1.0 if value < 0.0 else 1.0
+	return sign_v * ((absf(value) - deadzone) / (1.0 - deadzone))
+
+
+## Left-stick raw axes -> a movement vector in the SAME (x=right,
+## y=forward) convention `_read_input_direction()`'s WASD output uses.
+## Deliberately NOT force-normalized to exactly 1.0 like the WASD path (a
+## binary "any key = full speed" reading has no partial-magnitude concept)
+## — a light stick tilt should move slowly; `limit_length` only clamps the
+## diagonal-boost case (both axes near their extremes at once), preserving
+## real analog magnitude everywhere below that.
+static func gamepad_move_vector(raw_x: float, raw_y: float, deadzone: float = GAMEPAD_DEADZONE) -> Vector2:
+	var v := Vector2(apply_deadzone(raw_x, deadzone), apply_deadzone(raw_y, deadzone))
+	return v.limit_length(1.0)
 
 
 ## Coyote-time jump gate: true if grounded, or within `coyote_ms` of the
@@ -354,6 +1091,26 @@ static func classify_action(horizontal_speed: float) -> String:
 	if horizontal_speed < LOCOMOTION_RUN_MIN_SPEED:
 		return "walk"
 	return "run"
+
+
+## Combat Phase C — derive a knockback velocity impulse from a `combat:impact`
+## payload's `feel.knockback` magnitude (server/lib/combat/impact-feel.js) and
+## a real or missing `attackerPosition`. Direction is away from the attacker
+## in the XZ plane (target_pos.y is preserved — this never launches a target
+## vertically); a missing/malformed `attacker_pos` (untyped `Variant`, since
+## it comes straight off a decoded JSON payload — may legitimately be `null`)
+## falls back to a fixed +Z push rather than fabricating a direction from
+## nothing. `knockback <= 0` (severity "none"/"flinch" per SEVERITY_FEEL)
+## returns Vector3.ZERO honestly — no impulse, not a tiny fabricated one.
+static func knockback_impulse(target_pos: Vector3, attacker_pos, knockback: float) -> Vector3:
+	if knockback <= 0.0:
+		return Vector3.ZERO
+	var dir := Vector3(0.0, 0.0, 1.0)
+	if typeof(attacker_pos) == TYPE_DICTIONARY and attacker_pos.has("x") and attacker_pos.has("z"):
+		var away := target_pos - Vector3(float(attacker_pos["x"]), target_pos.y, float(attacker_pos["z"]))
+		if away.length() > 0.01:
+			dir = away.normalized()
+	return dir * knockback
 
 
 ## Select the snap-back position from a `player:move:nack` payload's `prev`

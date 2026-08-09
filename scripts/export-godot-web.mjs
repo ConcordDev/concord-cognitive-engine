@@ -30,6 +30,30 @@
  * machine-readable `{ok:false, ...}` line and non-zero exit, never a silent
  * partial build. Nothing here fabricates success.
  *
+ * WHY index.html IS NOT A STATIC PUBLIC FILE (found by actually loading the
+ * export in a real browser, not assumed)
+ * ------------------------------------------------------------------------
+ * Concord's Next.js layer runs a nonce + `strict-dynamic` CSP
+ * (`middleware.ts`). Godot's stock Web export template ships two
+ * `<script>` tags (an external `<script src="index.js">` and an inline
+ * bootstrap `<script>`) with no nonce — under `strict-dynamic`, a static
+ * script tag with no nonce is blocked outright regardless of `'self'`.
+ * Verified directly with a real headless Chromium load of the raw static
+ * export: both script tags were refused
+ * ("Refused to load the script ... violates ... strict-dynamic ...",
+ * "Refused to execute inline script ... nonce ... required"). A per-request
+ * nonce can't live in a static file (Next serves `public/` bytes verbatim,
+ * unmodified per request) — so `index.html` alone is served by a real Next.js
+ * Route Handler (`app/godot-client/index.html/route.ts`) that injects the
+ * CURRENT request's nonce into both `<script>` tags at request time. Every
+ * OTHER export file (`index.js`, `index.wasm`, `index.pck`, worklets, icons)
+ * is untouched binary/script content — the nonce lives only in the HTML
+ * markup that references them, so those still ship as plain static files
+ * under `public/godot-client/`, unmodified by this script beyond copying
+ * them there. `index.html` itself is deliberately kept OUT of `public/` (in
+ * a gitignored staging dir) so there is only one way to reach it — through
+ * the nonce-injecting route handler, never the static passthrough.
+ *
  * USAGE
  *   node scripts/export-godot-web.mjs
  *   npm run export:web          (from the repo root — see package.json)
@@ -38,7 +62,8 @@
  * bundle. No iframe-embed convention exists anywhere in this repo today;
  * that is new UI ground and a separate feature decision, not a serving fix.
  * This script's job ends at "the bundle exists at a URL the frontend already
- * serves" — index.html is directly reachable at /godot-client/index.html.
+ * serves" — index.html is reachable at /godot-client/index.html via the
+ * route handler described above.
  */
 
 // execFileSync ONLY, argv form, never a shell string — same rule as
@@ -52,8 +77,14 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GODOT_PROJECT_DIR = path.join(REPO_ROOT, "world-lens-godot");
 const GODOT_BIN = path.join(REPO_ROOT, ".godot-runtime", "bin", "godot");
+// Godot exports ALL its output files (index.html, .js, .wasm, .pck, icons,
+// audio worklets) relative to wherever the given output filename lives, so
+// it must be pointed at a single directory. Everything except index.html is
+// then copied into the real public/ dir below; index.html stays only here
+// (gitignored) — see the file header for why.
+const STAGING_DIR = path.join(REPO_ROOT, "concord-frontend", ".godot-web-staging");
+const STAGED_INDEX = path.join(STAGING_DIR, "index.html");
 const OUT_DIR = path.join(REPO_ROOT, "concord-frontend", "public", "godot-client");
-const OUT_FILE = path.join(OUT_DIR, "index.html");
 
 function log(msg) {
   process.stderr.write(`[export-godot-web] ${msg}\n`);
@@ -103,39 +134,64 @@ function main() {
     fail("import_failed", { detail: e.message });
   }
 
-  // 4. Export.
-  fs.mkdirSync(OUT_DIR, { recursive: true });
-  log(`exporting "Web" preset -> ${OUT_FILE}`);
+  // 4. Export — into the gitignored staging dir, never directly into public/.
+  fs.rmSync(STAGING_DIR, { recursive: true, force: true });
+  fs.mkdirSync(STAGING_DIR, { recursive: true });
+  log(`exporting "Web" preset -> ${STAGED_INDEX}`);
   try {
     run(GODOT_BIN, [
       "--headless", "--path", GODOT_PROJECT_DIR,
-      "--export-release", "Web", OUT_FILE,
+      "--export-release", "Web", STAGED_INDEX,
     ]);
   } catch (e) {
     fail("export_failed", { detail: e.message });
   }
 
   const expectedFiles = ["index.html", "index.js", "index.pck", "index.wasm"];
-  const missing = expectedFiles.filter((f) => !fs.existsSync(path.join(OUT_DIR, f)));
-  if (missing.length) {
-    fail("export_artefact_incomplete", { outDir: OUT_DIR, missing });
+  const missingStaged = expectedFiles.filter((f) => !fs.existsSync(path.join(STAGING_DIR, f)));
+  if (missingStaged.length) {
+    fail("export_artefact_incomplete", { stagingDir: STAGING_DIR, missing: missingStaged });
   }
 
-  const sizes = Object.fromEntries(
-    expectedFiles.map((f) => [f, fs.statSync(path.join(OUT_DIR, f)).size])
+  // 5. Copy every staged file EXCEPT index.html into public/ (plain static
+  // bytes, untouched — see the file header for why index.html is excluded).
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  // Clear stale files from a prior export before copying the fresh set, so a
+  // renamed/removed Godot output file doesn't linger as a dead orphan.
+  for (const f of fs.readdirSync(OUT_DIR)) {
+    fs.rmSync(path.join(OUT_DIR, f), { recursive: true, force: true });
+  }
+  let copiedCount = 0;
+  for (const f of fs.readdirSync(STAGING_DIR)) {
+    if (f === "index.html") continue;
+    fs.cpSync(path.join(STAGING_DIR, f), path.join(OUT_DIR, f), { recursive: true });
+    copiedCount++;
+  }
+
+  const publicSizes = Object.fromEntries(
+    expectedFiles
+      .filter((f) => f !== "index.html")
+      .map((f) => [f, fs.statSync(path.join(OUT_DIR, f)).size])
   );
+  const stagedIndexSize = fs.statSync(STAGED_INDEX).size;
 
   console.log(JSON.stringify({
     ok: true,
     action: "exported",
     outDir: OUT_DIR,
+    stagingDir: STAGING_DIR,
+    copiedToPublic: copiedCount,
     servedAt: "/godot-client/index.html",
-    files: sizes,
-    note: "index.html is now servable by whatever already serves concord-frontend/public/ "
-      + "(Next.js static file serving; both nginx/conf.d/default.conf and "
-      + "infra/cloudflare/cloudflared.yml.example fall through unmatched paths to the "
-      + "frontend already — no new infra rule was needed). No in-app lens page embeds "
-      + "it yet (out of scope for this script — see the file header).",
+    files: { ...publicSizes, "index.html (staged, nonce-injected at request time)": stagedIndexSize },
+    note: "index.js/.wasm/.pck/etc. are servable as plain static files under "
+      + "concord-frontend/public/godot-client/ (both nginx/conf.d/default.conf and "
+      + "infra/cloudflare/cloudflared.yml.example already fall through unmatched paths "
+      + "to the frontend, no new infra rule needed). index.html is served instead by "
+      + "app/godot-client/index.html/route.ts, which reads the staged file above and "
+      + "injects the current request's CSP nonce into both <script> tags -- required "
+      + "because the app's strict-dynamic CSP blocks un-nonced script tags outright "
+      + "(verified with a real browser load; see the file header). No in-app lens page "
+      + "embeds the client yet (out of scope for this script — see the file header).",
   }, null, 2));
 }
 

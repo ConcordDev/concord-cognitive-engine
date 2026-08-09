@@ -25,6 +25,8 @@ import {
   Mic,
   Square,
   Play,
+  ChevronDown,
+  ChevronRight,
   Pause,
   SkipBack,
   SkipForward,
@@ -45,7 +47,6 @@ import {
   GitCompare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -168,6 +169,10 @@ export default function VoiceLensPage() {
 
   // Recording state
   const [status, setStatus] = useState<RecordingStatus>('ready');
+  const [showVoiceRepos, setShowVoiceRepos] = useState(false);
+  const [showVoiceTranscripts, setShowVoiceTranscripts] = useState(false);
+  const [showVoiceOtterSuite, setShowVoiceOtterSuite] = useState(false);
+  const [showVoiceActionPanel, setShowVoiceActionPanel] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [sessionTime, setSessionTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1206,7 +1211,6 @@ export default function VoiceLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="voice" artifactId={null} compact />
           <RealtimeDataPanel
             domain="voice"
             data={realtimeData}
@@ -1218,23 +1222,71 @@ export default function VoiceLensPage() {
         </>
       )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <VoiceRepos />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVoiceRepos(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVoiceRepos ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world Voice Tooling (external reference)
+        </button>
+        {showVoiceRepos && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <VoiceRepos />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <VoiceTranscripts />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVoiceTranscripts(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVoiceTranscripts ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Transcripts (Otter.ai-shape)
+        </button>
+        {showVoiceTranscripts && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <VoiceTranscripts />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <VoiceOtterSuite />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVoiceOtterSuite(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVoiceOtterSuite ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Live Transcription & Meeting Suite
+        </button>
+        {showVoiceOtterSuite && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <VoiceOtterSuite />
+          </section>
+        )}
+      </div>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <VoiceActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVoiceActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVoiceActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          More Actions
+        </button>
+        {showVoiceActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <VoiceActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="voice" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="voice" hideWhenEmpty className="mt-3" title="More actions" />

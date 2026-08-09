@@ -11,7 +11,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useMutation } from '@tanstack/react-query';
@@ -20,11 +19,11 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, Plus, Play, Power, Activity, Clock, Zap, Settings, Search,
-  Terminal, Eye, ChevronRight, BarChart3,
+  Terminal, Eye, ChevronRight, ChevronDown, BarChart3,
   Code, Brain, Shield, Cpu,
   CheckCircle, XCircle,
   Workflow, Database,
-  Layers, TrendingUp, ChevronDown, Trash2,
+  Layers, TrendingUp, Trash2,
   Gauge, Route, Radio, Timer, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -32,7 +31,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { AgentRoster } from '@/components/agents/AgentRoster';
 import { AgentRuntime } from '@/components/agents/AgentRuntime';
 import { AgentSelfPanel } from '@/components/agents/AgentSelfPanel';
@@ -109,6 +107,8 @@ export default function AgentsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('agents');
 
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [showAgentRoster, setShowAgentRoster] = useState(false);
+  const [showForkPreview, setShowForkPreview] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState<AgentFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,7 +148,6 @@ export default function AgentsLensPage() {
   const [newModel, setNewModel] = useState('claude-sonnet-4-5-20250929');
   const [newTemp, setNewTemp] = useState(0.3);
   const [newMaxTokens, setNewMaxTokens] = useState(4096);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Backend action wiring
   const runAction = useRunArtifact('agents');
@@ -1386,7 +1385,6 @@ export default function AgentsLensPage() {
                 </button>
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="agents" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="agents"
@@ -1403,32 +1401,38 @@ export default function AgentsLensPage() {
         )}
       </AnimatePresence>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowAgentRoster(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showAgentRoster ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Agent Roster
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="agents" />
-          </div>
+        {showAgentRoster && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <AgentRoster />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <AgentRoster />
-      </section>
       {/* P-D — lattice-fork "forked self" preview (preview-only, non-money;
           see docs/GOVERNANCE_DESIGN.md §5.5). */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ForkPreviewPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowForkPreview(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showForkPreview ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Forked-Self Preview
+        </button>
+        {showForkPreview && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ForkPreviewPanel />
+          </section>
+        )}
+      </div>
     </div>
           <SessionRail lensId="agents" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="agents" limit={10} hideWhenEmpty className="mt-4" />

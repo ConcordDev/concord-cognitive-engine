@@ -29,7 +29,7 @@
 // NEVER silently falls back to a live CDN fetch. That fallback would
 // re-introduce the exact network dependency this module exists to remove.
 
-import fs from "node:fs/promises";
+import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -56,12 +56,23 @@ function resolvePyodideLockPath() {
   return path.dirname(_require.resolve("pyodide/package.json")) + "/pyodide-lock.json";
 }
 
+// Both the loader and its cache are async so the (small, one-time) JSON
+// read never blocks the event loop on the request path — resolvePackageClosure()
+// is called from python-sandbox.js#resolveRequestedPackages() per `run_python`
+// call, not just at boot. Memoized on the resolved value (not re-read per
+// call); concurrent first-callers share the same in-flight promise so a
+// burst of simultaneous requests doesn't fire N redundant reads.
 let _lockCache = null;
+let _lockLoadPromise = null;
 export async function loadPyodideLock() {
   if (_lockCache) return _lockCache;
-  const raw = await fs.readFile(resolvePyodideLockPath(), "utf8");
-  _lockCache = JSON.parse(raw);
-  return _lockCache;
+  if (!_lockLoadPromise) {
+    _lockLoadPromise = fsp.readFile(resolvePyodideLockPath(), "utf8").then((raw) => {
+      _lockCache = JSON.parse(raw);
+      return _lockCache;
+    });
+  }
+  return _lockLoadPromise;
 }
 
 /**
@@ -70,7 +81,7 @@ export async function loadPyodideLock() {
  * graph — never a hand-maintained list that can drift from what's actually
  * installed.
  * @param {string[]} names
- * @returns {{ok:true, names:string[]}|{ok:false, error:string, unknown:string[]}}
+ * @returns {Promise<{ok:true, names:string[]}|{ok:false, error:string, unknown:string[]}>}
  */
 export async function resolvePackageClosure(names) {
   const lock = await loadPyodideLock();
@@ -95,6 +106,7 @@ export async function resolvePackageClosure(names) {
 /**
  * Map resolved package names to {name, fileName, sha256, vendoredPath, exists}.
  * @param {string[]} names — already-resolved (via resolvePackageClosure)
+ * @returns {Promise<Array<{name:string, fileName:?string, sha256:?string, vendoredPath:?string, exists:boolean}>>}
  */
 export async function packageFileInfo(names) {
   const lock = await loadPyodideLock();
@@ -103,7 +115,7 @@ export async function packageFileInfo(names) {
     const meta = pkgs[name];
     const fileName = meta?.file_name;
     const vendoredPath = fileName ? path.join(PYODIDE_VENDOR_DIR, fileName) : null;
-    const exists = vendoredPath ? await fs.access(vendoredPath).then(() => true, () => false) : false;
+    const exists = vendoredPath ? await fsp.access(vendoredPath).then(() => true, () => false) : false;
     return {
       name,
       fileName,

@@ -17,7 +17,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Thermometer,
   Wrench,
@@ -38,6 +37,8 @@ import {
   Gauge,
   Zap,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -173,6 +174,8 @@ export default function HVACLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<TradeArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showFieldService, setShowFieldService] = useState(false);
+  const [showHvacFeed, setShowHvacFeed] = useState(false);
+  const [showManualJCalc, setShowManualJCalc] = useState(false);
 
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -714,7 +717,6 @@ export default function HVACLensPage() {
         );
       })()}
 
-      <UniversalActions domain="hvac" artifactId={items[0]?.id} compact />
       {showFieldService ? (
         <FieldService />
       ) : (
@@ -744,11 +746,35 @@ export default function HVACLensPage() {
         </>
       )}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <HvacFeed />
+        <button
+          type="button"
+          onClick={() => setShowHvacFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>HVAC discussion (external reference)</span>
+          {showHvacFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showHvacFeed && (
+          <div className="mt-3">
+            <HvacFeed />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6">
-        <ManualJCalc />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowManualJCalc(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Manual J load calculator</span>
+          {showManualJCalc ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showManualJCalc && (
+          <div className="mt-3">
+            <ManualJCalc />
+          </div>
+        )}
       </section>
     </LensPageShell>
     

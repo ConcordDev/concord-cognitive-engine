@@ -16,7 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
-import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, Layers, ChevronDown, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound } from 'lucide-react';
+import { Upload, Settings2, CheckCircle2, AlertTriangle, Loader2, Clock, Database, FileUp, FileJson, FileText, Image as ImageIcon, Gauge, ArrowDownToLine, Activity, BarChart3, Search, List, Table2, KeyRound, ChevronDown, ChevronRight } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -24,7 +24,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { showToast } from '@/components/common/Toasts';
 
@@ -133,8 +132,8 @@ export default function IngestLensPage() {
   const [title, setTitle] = useState('');
   const [domain, setDomain] = useState('');
   const [showConfig, setShowConfig] = useState(false);
+  const [showIngestionRepos, setShowIngestionRepos] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // ── Ingest Analysis Actions — run the real ingest.* workbench macros on the
@@ -891,26 +890,20 @@ export default function IngestLensPage() {
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="ingest" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowIngestionRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <span>Real-world ingestion tooling (external reference)</span>
+          {showIngestionRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="ingest" />
+        {showIngestionRepos && (
+          <div className="mt-3">
+            <IngestionRepos />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <IngestionRepos />
       </section>
     </div>
           <RecentMineCard domain="ingest" limit={10} hideWhenEmpty className="mt-4" />

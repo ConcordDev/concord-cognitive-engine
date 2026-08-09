@@ -18,14 +18,13 @@ import { useRunArtifact, useArtifacts, useCreateArtifact } from '@/lib/hooks/use
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Layers, ChevronDown, Search, FileText, Loader2, XCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertTriangle, Star, ArrowUpDown, Search, FileText, Loader2, XCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 interface DTUWithCRETI {
   id: string;
@@ -62,7 +61,9 @@ export default function CRILensPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [selectedDtu, setSelectedDtu] = useState<DTUWithCRETI | null>(null);
   const [thresholdFilter, setThresholdFilter] = useState(0);
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showQualityDist, setShowQualityDist] = useState(false);
+  const [showQualityLoop, setShowQualityLoop] = useState(false);
+  const [showCrisisPanel, setShowCrisisPanel] = useState(false);
 
   useLensCommand(
     [
@@ -729,37 +730,51 @@ export default function CRILensPage() {
         })()}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowQualityDist(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <span>Quality distribution</span>
+          {showQualityDist ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="cri" />
+        {showQualityDist && (
+          <div className="mt-3">
+            <QualityDistribution />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <QualityDistribution />
       </section>
 
       {/* Quality-loop workbench: trend / score-rules / remediation / alerts / root-cause / compare */}
-      <section className="mt-6">
-        <QualityLoopPanel />
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowQualityLoop(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Quality loop workbench</span>
+          {showQualityLoop ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showQualityLoop && (
+          <div className="mt-3">
+            <QualityLoopPanel />
+          </div>
+        )}
       </section>
 
       {/* Crisis-response workbench: severity / timeline / impact + actions */}
       <PipingProvider>
-        <section className="mt-6">
-          <CrisisActionPanel />
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowCrisisPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Crisis response workbench</span>
+            {showCrisisPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showCrisisPanel && <div className="mt-3"><CrisisActionPanel /></div>}
         </section>
       </PipingProvider>
     </div>

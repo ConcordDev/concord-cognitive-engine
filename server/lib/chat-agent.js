@@ -39,6 +39,7 @@ import { recordInferenceSpan } from "./inference-metering.js";
 import { scanForInjection } from "./provenance-guard.js";
 import { resolveDualRegistry } from "./dual-registry-resolve.js";
 import { createInitiativeEngine } from "./initiative-engine.js";
+import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -66,6 +67,7 @@ Available tools:
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
+- list_lens_actions: Look up the REAL action names (and, where documented, their input fields) registered for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Params: {"domain": "domain_name"}
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
 - create_document: Produce a REAL downloadable file (a spec, blueprint, report) — never just describe one in prose. Formats: pdf, md, json, csv, txt, zip. For zip, pass files. Params: {"title": "...", "format": "pdf", "summary": "...", "claims": ["..."], "files": [{"name": "a.md", "content": "..."}]}
 - export_dtu: Convert an EXISTING DTU into a real file in whatever format is requested. Params: {"dtuId": "dtu_...", "format": "pdf"}
@@ -83,8 +85,9 @@ Rules:
 - After the tool call marker(s), STOP and wait for results. Do not continue the response in the same turn.
 - For any math/calculation use run_compute. Never guess at numbers.
 - For current events / facts you don't know, use web_search.
-- For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action.
-- For deep cited research over Concord's substrate, use expert_mode.`;
+- For specialized expertise (legal, finance, music, code, design, atlas, etc.) use run_lens_action. If you don't know the exact action name/params, call list_lens_actions first — don't guess.
+- For deep cited research over Concord's substrate, use expert_mode.
+- Chain tool calls across turns for multi-step engineering/HVAC/mechanical work: run a domain calculator via run_lens_action, and when its result includes a "cadParams" field, pipe it straight into engineering.parametricSolid or engineering.partMesh for a real 3D model — then engineering.runFEA (or a domain-specific structural check, e.g. hvac.hangerSpanCheck) to validate it. Don't stop at the numbers if a CAD/structural follow-up is what the user actually needs.`;
 
 /**
  * Parse [TOOL_CALL: {...}] markers out of a brain response.
@@ -250,6 +253,32 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         } catch (err) {
           return { tool: call.tool, ok: false, error: `lens action error: ${err?.message}` };
         }
+      }
+      case "list_lens_actions": {
+        // Discoverability — look up REAL macro names/params before calling
+        // them via run_lens_action, instead of guessing from training-data
+        // priors. Mirrors the introspection GET /api/lens-actions/:domain
+        // already does for the frontend's AutoActionStrip (server.js), just
+        // done in-process against the SAME lensActions map run_lens_action
+        // itself resolves against — no new HTTP round-trip, no new global
+        // wiring. Scoped to LENS_ACTIONS (registerLensAction) only — the
+        // dominant modern registration pattern; legacy MACROS-only domains
+        // aren't enumerable here since executeToolCall isn't given that map.
+        const domain = String(call.params.domain || "");
+        if (!domain) return { tool: call.tool, ok: false, error: "domain required" };
+        if (!lensActions || typeof lensActions.keys !== "function") {
+          return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
+        }
+        const actions = [];
+        for (const key of lensActions.keys()) {
+          const [d, ...rest] = key.split(".");
+          if (d !== domain) continue;
+          const action = rest.join(".");
+          const fields = MACRO_INPUT_HINTS[key];
+          actions.push({ action, ...(fields ? { fields } : {}) });
+        }
+        actions.sort((a, b) => a.action.localeCompare(b.action));
+        return { tool: call.tool, ok: true, domain, total: actions.length, actions };
       }
       case "create_dtu": {
         const r = await runMacro("dtu", "create", {

@@ -13,7 +13,6 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Trophy,
@@ -24,8 +23,6 @@ import {
   Target,
   Clock,
   TrendingUp,
-  Layers,
-  ChevronDown,
   Zap,
   Medal,
   Swords,
@@ -33,6 +30,8 @@ import {
   X,
   BarChart3,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
@@ -41,7 +40,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ActivityActionPanel } from '@/components/sports/ActivityActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -157,6 +155,9 @@ export default function SportsLensPage() {
   const [sportsActiveAction, setSportsActiveAction] = useState<string | null>(null);
 
   const [tab, setTab] = useState<Tab>('games');
+  const [showActivityActionPanel, setShowActivityActionPanel] = useState(false);
+  const [showLiveScoreboard, setShowLiveScoreboard] = useState(false);
+  const [showSpectatorHub, setShowSpectatorHub] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -180,7 +181,6 @@ export default function SportsLensPage() {
   );
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [newGame, setNewGame] = useState({
     title: '',
     sport: '',
@@ -430,7 +430,6 @@ export default function SportsLensPage() {
         </motion.div>
       )}
 
-      <UniversalActions domain="sports" artifactId={items[0]?.id} compact />
 
       <AnimatePresence>
         {showCreate && (
@@ -1086,41 +1085,58 @@ export default function SportsLensPage() {
         <LensFeedPanel lensId="sports" />
       </div>
 
-      <div className="border-t border-white/10">
+      {/* ESPN Fantasy + Strava-shape activity workbench */}
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowActivityActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')}
-          />
+          {showActivityActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Activity Workbench (ESPN Fantasy/Strava-shape)
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="sports" />
-          </div>
+        {showActivityActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ActivityActionPanel />
+            </section>
+          </PipingProvider>
         )}
       </div>
-      {/* ESPN Fantasy + Strava-shape activity workbench */}
-      <PipingProvider>
-        <section className="mt-6">
-          <ActivityActionPanel />
-        </section>
-      </PipingProvider>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <LiveScoreboard />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowLiveScoreboard(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showLiveScoreboard ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Live Scoreboard
+        </button>
+        {showLiveScoreboard && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <LiveScoreboard />
+          </section>
+        )}
+      </div>
 
       {/* ESPN spectator core — play-by-play, schedules, standings, news,
           rosters, player pages, reminders, brackets, win-probability */}
-      <section className="mt-6">
-        <SportsSpectatorHub />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSpectatorHub(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSpectatorHub ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Spectator Hub (ESPN-shape: play-by-play / standings / news / rosters)
+        </button>
+        {showSpectatorHub && (
+          <section className="mt-3">
+            <SportsSpectatorHub />
+          </section>
+        )}
+      </div>
     </div>
           <section className="mt-4"><LensFeedButton domain="sports" label="Live fixtures feed" /></section>
           <RecentMineCard domain="sports" limit={10} hideWhenEmpty className="mt-4" />

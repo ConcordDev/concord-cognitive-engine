@@ -48,10 +48,9 @@ import { Skeleton } from '@/components/ui';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
-  ChevronRight, ChevronDown, File, Folder, FolderOpen,
+  ChevronRight, ChevronDown, File, Folder, FolderOpen, Github,
   Sparkles, RefreshCw, Copy,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,
@@ -63,7 +62,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { GithubTrending } from '@/components/code/GithubTrending';
 import { CodeActionPanel } from '@/components/code/CodeActionPanel';
@@ -521,8 +519,11 @@ export default function CodeLensPage() {
   const [showOutput, setShowOutput] = useState(true);
   const [showApiRef, setShowApiRef] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showCodeWorkbench, setShowCodeWorkbench] = useState(false);
+  const [showAdvancedPanel, setShowAdvancedPanel] = useState(false);
+  const [showGithubTrending, setShowGithubTrending] = useState(false);
+  const [showCodeActionPanel, setShowCodeActionPanel] = useState(false);
   const [outputTab, setOutputTab] = useState<'output' | 'console'>('output');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [showForge, setShowForge] = useState(false);
   const [forgePrompt, setForgePrompt] = useState('');
   const [forgeResult, setForgeResult] = useState<string | null>(null);
@@ -1360,11 +1361,31 @@ export default function CodeLensPage() {
       <ManifestActionBar />
       <DepthBadge lensId="code" size="sm" className="ml-2" />
       <ShellPreview lensId="code" defaultOpen={true} />
-      <div className="px-4 mt-3">
-        <CodeWorkbenchSection />
-      </div>
-      <div className="px-4 mt-3">
-        <CodeAdvancedPanel />
+      {/* Full project workbench (file tree, git, agent composer, run/problems
+          panels) — a separate, more IDE-like flow from the scratch-script
+          "Code Workspace" editor below. Collapsed by default: it used to sit
+          permanently above that editor on every visit. */}
+      <div className="px-4 mt-3 space-y-2">
+        <button
+          type="button"
+          onClick={() => setShowCodeWorkbench((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showCodeWorkbench}
+        >
+          <span>Project workbench (files, git, agent, run, problems)</span>
+          {showCodeWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showCodeWorkbench && <CodeWorkbenchSection />}
+        <button
+          type="button"
+          onClick={() => setShowAdvancedPanel((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showAdvancedPanel}
+        >
+          <span>Advanced IDE panel (IntelliSense, remote push/pull, debugger, AI chat, extensions, split-pane, Live Share)</span>
+          {showAdvancedPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showAdvancedPanel && <CodeAdvancedPanel />}
       </div>
     <div data-lens-theme="code" className={`flex flex-col font-mono ${isFullscreen ? 'fixed inset-0 z-50 bg-[#0d1117]' : 'h-full bg-[#0d1117]'}`}>
       {/* Header */}
@@ -1529,7 +1550,6 @@ export default function CodeLensPage() {
       </AnimatePresence>
 
       {/* AI Actions */}
-      <UniversalActions domain="code" artifactId={savedScripts[0]?.id} compact />
 
       {/* Backend Code Analysis Actions */}
       <div className="px-4 py-3 border-b border-green-900/30 bg-[#161b22] space-y-3">
@@ -2211,24 +2231,6 @@ export default function CodeLensPage() {
         />
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="code" />
-          </div>
-        )}
-      </div>
       </div>
     </div>
 
@@ -2636,14 +2638,47 @@ export default function CodeLensPage() {
       onApply={applyMultiFileAgent}
       onRegenerate={() => openMultiFileAgent(agentPrompt)}
     />
-    <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <GithubTrending />
+    {/* External reference — GitHub trending repos, not this lens's own
+        code. Collapsed by default rather than promoted open on every
+        visit; still reachable for anyone who wants it. */}
+    <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+      <button
+        type="button"
+        onClick={() => setShowGithubTrending((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showGithubTrending}
+      >
+        <span className="flex items-center gap-2">
+          <Github className="w-4 h-4 text-gray-400" /> GitHub trending (external reference)
+        </span>
+        {showGithubTrending ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showGithubTrending && (
+        <div className="px-4 pb-4">
+          <GithubTrending />
+        </div>
+      )}
     </section>
 
-    {/* Code review workbench: complexity / deps / coverage / snippet + actions */}
+    {/* Code review workbench: complexity / deps / coverage / snippet + actions.
+        Collapsed by default — was previously mounted unconditionally below
+        every session regardless of what the user was doing. */}
     <PipingProvider>
-      <section className="mt-6 mx-4">
-        <CodeActionPanel />
+      <section className="mt-6 mx-4 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowCodeActionPanel((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showCodeActionPanel}
+        >
+          <span>Code review workbench (complexity / deps / coverage / snippet)</span>
+          {showCodeActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showCodeActionPanel && (
+          <div className="px-4 pb-4">
+            <CodeActionPanel />
+          </div>
+        )}
       </section>
     </PipingProvider>
           <SessionRail lensId="code" hideWhenEmpty className="mt-4" />

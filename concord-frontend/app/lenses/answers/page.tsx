@@ -40,6 +40,8 @@ import {
   Brain,
   Sparkles,
   Eye,
+  ChevronDown,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -454,6 +456,7 @@ export default function AnswersLensPage() {
   const [remoteAnswers, setRemoteAnswers] = useState<AnswerEntry[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showStackOverflow, setShowStackOverflow] = useState(false);
   const [query, setQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -725,7 +728,19 @@ export default function AnswersLensPage() {
         <AnswersQA />
       </section>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <StackOverflowSearch />
+        <button
+          type="button"
+          onClick={() => setShowStackOverflow(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Stack Overflow search (external reference)</span>
+          {showStackOverflow ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showStackOverflow && (
+          <div className="mt-3">
+            <StackOverflowSearch />
+          </div>
+        )}
       </section>
     </div>
 

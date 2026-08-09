@@ -20,6 +20,12 @@ npm run compile
 # Open the folder in VS Code → Run → "Run Extension"
 ```
 
+## Release workflow (Marketplace)
+
+- Push a semver bump to `concord-vscode/package.json`.
+- Create a git tag in the form `concord-dx-vX.Y.Z` (example: `concord-dx-v0.1.1`) and push it.
+- The `dx-extension` GitHub Actions workflow packages `concord-dx.vsix`, verifies tag/package version match, then publishes via `VSCE_PAT`.
+
 ## Getting started
 
 1. Install the extension from the VS Code Marketplace.
@@ -82,8 +88,9 @@ You see the cost before any operation that exceeds `concord.billing.confirmThres
 
 ## Support
 
-- Issues: https://github.com/ryttps94jq-gif/concord-cognitive-engine/issues
+- Issues: https://github.com/ConcordDev/concord-cognitive-engine/issues
 - Docs: https://concord-os.org/docs
+- Quickstart (VS Code + MCP): `/docs/VSCODE_MCP_QUICKSTART.md`
 
 ## License
 

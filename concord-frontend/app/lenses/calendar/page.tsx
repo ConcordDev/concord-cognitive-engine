@@ -21,7 +21,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, MapPin,
+  Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Clock, MapPin,
   Plus, X, Edit2, Trash2, Bell, Repeat, Users,
   Search, Settings, Check, Video,
   ExternalLink, Rocket, CalendarDays, Megaphone, BookOpen, CheckSquare,
@@ -343,6 +343,11 @@ export default function CalendarLensPage() {
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showTimezoneTools, setShowTimezoneTools] = useState(false);
+  const [showScheduleAnalyzer, setShowScheduleAnalyzer] = useState(false);
+  const [showAppointmentSchedules, setShowAppointmentSchedules] = useState(false);
+  const [showParityHub, setShowParityHub] = useState(false);
+  const [showCalendarActionPanel, setShowCalendarActionPanel] = useState(false);
 
   // New event form
   const [newEvent, setNewEvent] = useState<Partial<CalendarEvent>>({
@@ -2353,27 +2358,105 @@ export default function CalendarLensPage() {
         </div>
       )}
 
-      {/* Bespoke timezone + iCal tools with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
-        <TimezoneTools />
+      {/* Bespoke timezone + iCal tools with Save-as-DTU. Collapsed by
+          default — was previously mounted unconditionally below the
+          calendar grid on every visit. */}
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40">
+        <button
+          type="button"
+          onClick={() => setShowTimezoneTools((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showTimezoneTools}
+        >
+          <span>Timezone + iCal tools</span>
+          {showTimezoneTools ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showTimezoneTools && (
+          <div className="px-4 pb-4">
+            <TimezoneTools />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
-        <ScheduleAnalyzer />
+      {/* Conflict/availability surface over the same event source as the
+          main grid — overlaps with the scheduler bench below (both wire
+          detectConflicts/findAvailability). Collapsed by default — was
+          previously mounted unconditionally below the calendar grid on
+          every visit. */}
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40">
+        <button
+          type="button"
+          onClick={() => setShowScheduleAnalyzer((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showScheduleAnalyzer}
+        >
+          <span>Schedule analyzer (conflicts + availability)</span>
+          {showScheduleAnalyzer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showScheduleAnalyzer && (
+          <div className="px-4 pb-4">
+            <ScheduleAnalyzer />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4">
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40 p-4 space-y-3">
         <LensFeedButton domain="calendar" />
-        <AppointmentSchedules />
+        {/* Booking pages (publish bookable windows, manage reservations).
+            Collapsed by default — was previously mounted unconditionally
+            below the calendar grid on every visit. */}
+        <button
+          type="button"
+          onClick={() => setShowAppointmentSchedules((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showAppointmentSchedules}
+        >
+          <span>Appointment schedules (booking pages)</span>
+          {showAppointmentSchedules ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showAppointmentSchedules && <AppointmentSchedules />}
       </section>
 
-      <section className="mt-6">
-        <CalendarParityHub />
+      {/* Google Calendar-parity hub (sync, sharing, reminders, OOO, video
+          links, RSVP — its own internal tab system). Collapsed by
+          default — was previously mounted unconditionally below the
+          calendar grid on every visit. */}
+      <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40">
+        <button
+          type="button"
+          onClick={() => setShowParityHub((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showParityHub}
+        >
+          <span>Calendar parity hub (sync, sharing, reminders, OOO, video, RSVP)</span>
+          {showParityHub ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showParityHub && (
+          <div className="px-4 pb-4">
+            <CalendarParityHub />
+          </div>
+        )}
       </section>
 
+      {/* Scheduler bench: conflict detection / availability / optimize /
+          ical-export + actions. Collapsed by default — was previously
+          mounted unconditionally below the calendar grid on every visit. */}
       <PipingProvider>
-        <section className="mt-6">
-          <CalendarActionPanel />
+        <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-surface/40">
+          <button
+            type="button"
+            onClick={() => setShowCalendarActionPanel((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+            aria-expanded={showCalendarActionPanel}
+          >
+            <span>Scheduler bench (conflicts / availability / optimize / export)</span>
+            {showCalendarActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {showCalendarActionPanel && (
+            <div className="px-4 pb-4">
+              <CalendarActionPanel />
+            </div>
+          )}
         </section>
       </PipingProvider>
     </div>

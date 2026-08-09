@@ -11,6 +11,8 @@
 // Error handling: LensErrorBoundary (auto-mounted by LensShell) catches render/effect errors.
 // Empty state: handled inline by SyncDashboard when there are no devices.
 
+import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -23,6 +25,8 @@ import { SyncthingReleases } from '@/components/sync/SyncthingReleases';
 import { SyncRepos } from '@/components/sync/SyncRepos';
 
 export default function SyncPage() {
+  const [showReleases, setShowReleases] = useState(false);
+  const [showRepos, setShowRepos] = useState(false);
   useLensCommand([
     { id: 'sync-help', keys: '?', description: 'Lens help', category: 'navigation', action: () => { /* surfaced via tooltip */ } },
   ], { lensId: 'sync' });
@@ -44,11 +48,35 @@ export default function SyncPage() {
         <SyncDashboard />
 
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <SyncthingReleases />
+          <button
+            type="button"
+            onClick={() => setShowReleases(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Syncthing releases (GitHub)</span>
+            {showReleases ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showReleases && (
+            <div className="mt-3">
+              <SyncthingReleases />
+            </div>
+          )}
         </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <SyncRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Sync tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <SyncRepos />
+            </div>
+          )}
         </section>
       </div>
 

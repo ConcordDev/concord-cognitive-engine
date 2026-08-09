@@ -13,7 +13,7 @@
 
 import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -58,6 +58,8 @@ export default function ObservePage() {
   const [focus, setFocus] = useState('');
   const [composing, setComposing] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
+  const [showRepos, setShowRepos] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   const compose = async () => {
     setComposing(true);
@@ -119,15 +121,39 @@ export default function ObservePage() {
           </div>
         )}
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <ObservabilityRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Observability tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <ObservabilityRepos />
+            </div>
+          )}
         </section>
 
         {/* Datadog-shape observability workbench: serviceLog / alerts / SLO / incident + actions */}
-        <PipingProvider>
-          <section className="mt-6">
-            <ObserveActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Quick ops actions</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <ObserveActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
 
         {/* Full telemetry platform — live metrics, dashboards, log search,
             distributed tracing, alert monitors, synthetics, on-call paging. */}

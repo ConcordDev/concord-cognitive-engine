@@ -17,7 +17,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Atom, Beaker, FlaskConical, Sparkles, Zap, TestTube2, AlertTriangle } from 'lucide-react';
+import { Atom, Beaker, FlaskConical, Sparkles, Zap, TestTube2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -53,6 +53,8 @@ export default function ChemLensPage() {
   const [reactionInput, setReactionInput] = useState('');
   const [activeTab, setActiveTab] = useState<'elements' | 'reactions' | 'compounds'>('reactions');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showStructureLab, setShowStructureLab] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('chem');
 
   useLensCommand(
@@ -396,15 +398,39 @@ export default function ChemLensPage() {
 
       {/* 2026 parity backlog — structure editor, 3D viewer, SMILES/InChI,
           stoichiometry, spectroscopy, mechanisms, lab notebook. */}
-      <div className="mt-6">
-        <ChemStructureLab />
-      </div>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowStructureLab(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Structure lab (editor, 3D viewer, SMILES/InChI, spectroscopy)</span>
+          {showStructureLab ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showStructureLab && (
+          <div className="mt-3">
+            <ChemStructureLab />
+          </div>
+        )}
+      </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <ChemActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Lab bench (calc + mint/publish)</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <ChemActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
           <RecentMineCard domain="chem" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="chem" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="chem" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

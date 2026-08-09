@@ -18,7 +18,6 @@ export default function registerDomainRoutes(app, {
   runMacro,
   _withAck,
   kernelTick,
-  uiJson,
   listDomains,
   listMacros,
   _dtusArray,
@@ -155,7 +154,7 @@ export default function registerDomainRoutes(app, {
     const ctx = makeCtx(req);
     const out = await runMacro("wrapper","run", req.body || {}, ctx);
     kernelTick({ type: out?.ok ? "WRAPPER_RUN" : "VERIFIER_FAIL", meta: { path: req.path }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.3 } });
-    return uiJson(res, _withAck(out, req, ["state","logs"], ["/api/state/latest","/api/logs"], null, { panel: "wrapper_run" }), req, { panel: "wrapper_run" });
+    return res.json(_withAck(out, req, ["state","logs"], ["/api/state/latest","/api/logs"], null, { panel: "wrapper_run" }));
   }));
 
   // ---- Layers ----
@@ -225,7 +224,7 @@ export default function registerDomainRoutes(app, {
     try {
       const out = await runMacro(domain, name, input, ctx);
       kernelTick({ type: "MACRO_RUN", meta: { path: req.path, domain, name }, signals: { benefit: out?.ok?0.1:0, error: out?.ok?0:0.2 } });
-      return uiJson(res, _withAck(out, req, ["state","logs"], ["/api/state/latest","/api/logs"], null, { panel: "macro_run", domain, name }), req, { panel: "macro_run", domain, name });
+      return res.json(_withAck(out, req, ["state","logs"], ["/api/state/latest","/api/logs"], null, { panel: "macro_run", domain, name }));
     } catch (e) {
       kernelTick({ type: "ERROR", meta: { path: req.path, domain, name }, signals: { error: 0.4 } });
       const msg = String(e?.message || e);

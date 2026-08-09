@@ -27,16 +27,14 @@ import {
   Camera, Search, Upload, Grid, Image as ImageIcon,
   Heart, Eye, X, Download,
   Aperture, Sliders, BarChart3,
-  Layers, ChevronLeft, ChevronRight, Focus,
+  Layers, ChevronLeft, ChevronRight, Focus, ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 
 type PhotoTab = 'gallery' | 'upload' | 'capture' | 'collections' | 'editing' | 'stats';
@@ -75,6 +73,8 @@ export default function PhotographyPage() {
   const photos = useMemo(() => photoItems.map(i => ({ ...(i.data as unknown as PhotoItem), id: i.id, title: i.title })), [photoItems]);
 
   const [tab, setTab] = useState<PhotoTab>('gallery');
+  const [showPexels, setShowPexels] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Lens-scoped keyboard commands. Lightroom / Capture One idiom.
@@ -91,7 +91,6 @@ export default function PhotographyPage() {
     ],
     { lensId: 'photography' }
   );
-  const [showFeatures, setShowFeatures] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -400,16 +399,13 @@ export default function PhotographyPage() {
           </div>
           <div className="flex items-center gap-2">
             <DTUExportButton domain="photography" data={{}} compact />
-            <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">Features</button>
             <button onClick={() => setShowUpload(true)} className="px-3 py-1.5 text-xs bg-sky-500/20 border border-sky-500/30 rounded-lg hover:bg-sky-500/30 flex items-center gap-1">
               <Upload className="w-3 h-3" /> Upload
             </button>
           </div>
         </div>
 
-        {showFeatures && <LensFeaturePanel lensId="photography" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="photography" artifactId={null} compact />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-white/5 p-1 rounded-lg border border-white/10">
@@ -887,14 +883,38 @@ export default function PhotographyPage() {
 
       {/* Bespoke Pexels stock-photo browser with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PexelsBrowser />
+        <button
+          type="button"
+          onClick={() => setShowPexels(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Stock photo browser (external reference)</span>
+          {showPexels ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showPexels && (
+          <div className="mt-3">
+            <PexelsBrowser />
+          </div>
+        )}
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <PhotographyActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Photography workbench</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <PipingProvider>
+            <div className="mt-3">
+              <PhotographyActionPanel />
+            </div>
+          </PipingProvider>
+        )}
+      </section>
     </div>
           <section className="mt-4"><LensFeedButton domain="photography" label="Live photo-archive feed" /></section>
           <RecentMineCard domain="photography" limit={10} hideWhenEmpty className="mt-4" />

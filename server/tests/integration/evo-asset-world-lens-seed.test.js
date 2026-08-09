@@ -34,8 +34,14 @@ describe("evo-asset world-lens seed", () => {
   it("registers the real terrain/weapon/building/vegetation/creature/hero assets with source='github'", () => {
     const db = setupDb();
     const stats = bootstrapWorldLensAssets(db);
-    // 7 terrain + 15 weapons + 3 buildings + 6 vegetation + 4 creatures + 7 hero archetypes = 42
-    assert.ok(stats.found >= 40, `expected >= 40 real files found on disk, got ${stats.found}`);
+    // 7 terrain + 15 weapons + 8 buildings (3 universal + forge/tower +
+    // 3 per-world variants: market__crime, archive__sovereign-ruins,
+    // tavern__concord-link-frontier) + 6 vegetation + 4 creatures +
+    // 11 hero archetypes (7 universal + undead/zombie/wraith/lich) +
+    // 5 furniture props (table/rug/shelf/cabinet/armchair) +
+    // 3 world-dressing props (market_barrel/crate/pallet) +
+    // 6 kitchen props (counter/stove/hood/fridge/dishrack/table) = 65
+    assert.ok(stats.found >= 65, `expected >= 65 real files found on disk, got ${stats.found}`);
     assert.equal(stats.registered, stats.found, "every found file should register on a fresh DB");
 
     const rows = db.prepare(`SELECT * FROM evo_assets WHERE source = 'github'`).all();
@@ -65,18 +71,91 @@ describe("evo-asset world-lens seed", () => {
     assert.ok(!tags.includes("cc0"), "club.glb is NOT CC0 — must not be mislabeled");
   });
 
-  it("registers only the 7 universal hero-archetype slots, not the ~46 per-world variants", () => {
+  it("registers exactly the 11 universal hero-archetype slots (7 living + 4 undead), not per-world palette variants", () => {
     const db = setupDb();
     bootstrapWorldLensAssets(db);
     // Scoped to source='github' — the primary provenance registration this
     // test is about. The concordia-alias row (see the "resolution alias"
     // describe block below) also carries category='hero-archetype', so an
-    // unscoped count would double to 14 and this assertion would be testing
-    // the alias mechanism by accident instead of the hero-slot dedup logic.
+    // unscoped count would double and this assertion would be testing the
+    // alias mechanism by accident instead of the hero-slot dedup logic.
+    //
+    // 2026-08-08: grew from 7 to 11 — the 4 new undead/zombie/wraith/lich
+    // archetypes (KayKit-Character-Pack-Skeletons-1.0, CC0) are genuinely
+    // NEW universal archetype slots, not per-world palette variants of an
+    // existing archetype (those still stay unregistered here, unchanged
+    // rationale — same underlying mesh reused across worlds, not distinct
+    // assets worth separate evolution tracking).
     const heroRows = db.prepare(`SELECT * FROM evo_assets WHERE category = 'hero-archetype' AND source = 'github'`).all();
-    assert.equal(heroRows.length, 7, "exactly the 7 universal archetype slots");
+    assert.equal(heroRows.length, 11, "exactly the 11 universal archetype slots (7 living + 4 undead)");
     for (const row of heroRows) {
       assert.ok(!row.source_id.includes("__"), "per-world variant files (double-underscore suffix) must not be registered");
+    }
+  });
+
+  it("registers the 4 new undead hero archetypes with real CC0 KayKit-Character-Pack-Skeletons provenance", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    for (const key of ["undead", "zombie", "wraith", "lich"]) {
+      const row = db.prepare(`SELECT * FROM evo_assets WHERE source_id = ?`).get(`world-lens:meshes/heroes/_archetype_${key}.glb`);
+      assert.ok(row, `${key} archetype should be registered`);
+      assert.equal(row.category, "hero-archetype");
+      const tags = JSON.parse(row.tags_json);
+      assert.ok(tags.includes("cc0"));
+      assert.ok(tags.includes("undead") || key === "undead", `${key} row should carry the undead tag`);
+    }
+  });
+
+  it("registers the 3 new per-world building variants, distinct rows from their universal counterpart", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    const variant = db.prepare(`SELECT * FROM evo_assets WHERE source_id = 'world-lens:models/building/market__crime.glb'`).get();
+    const universal = db.prepare(`SELECT * FROM evo_assets WHERE source_id = 'world-lens:models/building/market.glb'`).get();
+    assert.ok(variant, "market__crime.glb should be registered as its own row");
+    assert.ok(universal, "the pre-existing universal market.glb row is untouched");
+    assert.notEqual(variant.id, universal.id, "the per-world variant is a distinct asset, not an alias of the universal one");
+    assert.equal(variant.category, "building");
+    const tags = JSON.parse(variant.tags_json);
+    assert.ok(tags.includes("per-world-variant"));
+    assert.ok(tags.includes("crime"));
+  });
+
+  it("registers the 5 new furniture props with real CC0 KayKit-Furniture-Bits provenance", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    for (const id of ["table", "rug", "shelf", "cabinet", "armchair"]) {
+      const row = db.prepare(`SELECT * FROM evo_assets WHERE source_id = ?`).get(`world-lens:models/prop/furniture_${id}.glb`);
+      assert.ok(row, `furniture_${id}.glb should be registered`);
+      assert.equal(row.category, "prop");
+      const tags = JSON.parse(row.tags_json);
+      assert.ok(tags.includes("cc0"));
+      assert.ok(tags.includes("furniture"));
+    }
+  });
+
+  it("registers the 3 new market world-dressing props with real CC0 KayKit-Prototype-Bits provenance", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    for (const id of ["barrel", "crate", "pallet"]) {
+      const row = db.prepare(`SELECT * FROM evo_assets WHERE source_id = ?`).get(`world-lens:models/prop/market_${id}.glb`);
+      assert.ok(row, `market_${id}.glb should be registered`);
+      assert.equal(row.category, "prop");
+      const tags = JSON.parse(row.tags_json);
+      assert.ok(tags.includes("cc0"));
+      assert.ok(tags.includes("world-dressing"));
+    }
+  });
+
+  it("registers the 6 new kitchen props with real CC0 KayKit-Restaurant-Bits provenance", () => {
+    const db = setupDb();
+    bootstrapWorldLensAssets(db);
+    for (const id of ["counter", "stove", "hood", "fridge", "dishrack", "table"]) {
+      const row = db.prepare(`SELECT * FROM evo_assets WHERE source_id = ?`).get(`world-lens:models/prop/kitchen_${id}.glb`);
+      assert.ok(row, `kitchen_${id}.glb should be registered`);
+      assert.equal(row.category, "prop");
+      const tags = JSON.parse(row.tags_json);
+      assert.ok(tags.includes("cc0"));
+      assert.ok(tags.includes("restaurant"));
     }
   });
 
@@ -90,15 +169,15 @@ describe("evo-asset world-lens seed", () => {
     const db = setupDb();
     const result = await bootstrapAllSources(db);
     assert.ok(result.worldLensAssets, "bootstrapAllSources should report a worldLensAssets stat");
-    assert.ok(result.worldLensAssets.registered >= 40, "world-lens assets should be part of the boot-time floor");
-    assert.ok(result.total >= 40 + 3, "total should include both the primitive seed and the real world-lens assets");
+    assert.ok(result.worldLensAssets.registered >= 65, "world-lens assets should be part of the boot-time floor");
+    assert.ok(result.total >= 65 + 3, "total should include both the primitive seed and the real world-lens assets");
   });
 
   it("real world-lens assets are real evolution candidates", () => {
     const db = setupDb();
     bootstrapWorldLensAssets(db);
-    const candidates = selectEvolutionCandidates(db, 50);
-    assert.ok(candidates.length >= 40, "the scheduler should see the real assets as candidates");
+    const candidates = selectEvolutionCandidates(db, 65);
+    assert.ok(candidates.length >= 65, "the scheduler should see the real assets as candidates");
   });
 });
 
@@ -159,7 +238,7 @@ describe("evo-asset world-lens seed — frontend resolution alias (source/source
     bootstrapWorldLensAssets(db);
     const after = db.prepare(`SELECT COUNT(*) AS n FROM evo_assets WHERE source = 'concordia'`).get().n;
     assert.equal(before, after);
-    assert.ok(before >= 40, "one alias row per found asset");
+    assert.ok(before >= 65, "one alias row per found asset");
   });
 
   it("aliases resolve correctly for the other asset kinds real renderers actually query (weapon, vegetation, creature)", () => {

@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -16,12 +14,10 @@ import QuoteCompare from '@/components/insurance/QuoteCompare';
 import CoverageAnalyzer from '@/components/insurance/CoverageAnalyzer';
 import AmsWorkbench from '@/components/insurance/AmsWorkbench';
 import MutualAidPactsPanel from '@/components/insurance/MutualAidPactsPanel';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   ShieldCheck,
   LayoutDashboard,
@@ -29,10 +25,10 @@ import {
   AlertTriangle,
   Building2,
   HeartHandshake,
-  ChevronDown,
-  Layers,
   X,
   Sparkles,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -70,7 +66,8 @@ export default function InsuranceLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('insurance');
 
   const [mode, setMode] = useState<ModeTab>('Overview');
-  const [showFeatures, setShowFeatures] = useState(true);
+  const [showPolicyTalk, setShowPolicyTalk] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [visionNote, setVisionNote] = useState<{ analysis: string; tags?: string[] } | null>(null);
 
   useLensCommand(
@@ -87,7 +84,6 @@ export default function InsuranceLensPage() {
   return (
     <LensShell lensId="insurance" asMain={false}>
       <FirstRunTour lensId="insurance" />
-      <ManifestActionBar />
       <DepthBadge lensId="insurance" size="sm" className="ml-2" />
       <div className="px-4 mt-3">
         <InsuranceWalletSection />
@@ -172,40 +168,43 @@ export default function InsuranceLensPage() {
         {mode === 'AMS' && <AmsWorkbench />}
         {mode === 'Pacts' && <MutualAidPactsPanel />}
 
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+            type="button"
+            onClick={() => setShowPolicyTalk(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
           >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+            <span>Community discussion (Reddit)</span>
+            {showPolicyTalk ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="insurance" />
+          {showPolicyTalk && (
+            <div className="mt-3">
+              <InsurancePolicyTalk />
             </div>
           )}
-        </div>
-
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <InsurancePolicyTalk />
         </section>
 
-        <PipingProvider>
-          <section className="mt-6">
-            <InsuranceActionPanel />
-          </section>
-        </PipingProvider>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowActionPanel(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>More actions</span>
+            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showActionPanel && (
+            <div className="mt-3">
+              <PipingProvider>
+                <InsuranceActionPanel />
+              </PipingProvider>
+            </div>
+          )}
+        </section>
       </div>
 
       <a href="#insurance-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to insurance content</a>
-      <RecentMineCard domain="insurance" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="insurance" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

@@ -21,13 +21,13 @@ import {
   Check,
   Key,
   Loader2,
-  Layers,
-  ChevronDown,
   Gauge,
   ShieldAlert,
   Ban,
   Activity,
   Play,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { motion } from 'framer-motion';
@@ -35,12 +35,10 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { apiHelpers } from '@/lib/api/client';
 import { useMutation } from '@tanstack/react-query';
 import { ErrorState } from '@/components/common/EmptyState';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { SovereigntyDashboard } from '@/components/sovereignty/SovereigntyDashboard';
 import { SovereigntySetup } from '@/components/sovereignty/SovereigntySetup';
@@ -68,8 +66,8 @@ export default function LockLensPage() {
     lastUpdated,
   } = useRealtimeLens('lock');
   const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats } = use70Lock();
-  const [showFeatures, setShowFeatures] = useState(true);
   const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
+  const [showSecurityRepos, setShowSecurityRepos] = useState(false);
   const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
     message: string;
     localCount: number;
@@ -103,7 +101,6 @@ export default function LockLensPage() {
     [
       { id: 'open-setup',     keys: 's', description: 'Open sovereignty setup', category: 'actions', action: () => setShowSovereigntySetup(true) },
       { id: 'close-setup',    keys: 'esc', description: 'Close sovereignty setup', category: 'navigation', action: () => setShowSovereigntySetup(false) },
-      { id: 'toggle-features', keys: 'f', description: 'Toggle features panel', category: 'view', action: () => setShowFeatures((v) => !v) },
     ],
     { lensId: 'lock' }
   );
@@ -309,7 +306,6 @@ export default function LockLensPage() {
       </motion.div>
 
       {/* AI Actions */}
-      <UniversalActions domain="lock" artifactId={historyItems[0]?.id} compact />
       {/* Lock Gauge */}
       <div className="panel p-6">
         <div className="relative w-full h-12 bg-lattice-deep rounded-full overflow-hidden">
@@ -847,28 +843,20 @@ export default function LockLensPage() {
 
       <ConnectiveTissueBar lensId="lock" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowSecurityRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
+          <span>Security tooling (external reference)</span>
+          {showSecurityRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="lock" />
+        {showSecurityRepos && (
+          <div className="mt-3">
+            <SecurityRepos />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SecurityRepos />
       </section>
     </div>
 

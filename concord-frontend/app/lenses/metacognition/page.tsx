@@ -21,7 +21,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers, lensRun } from '@/lib/api/client';
 import { useState, useMemo, useEffect } from 'react';
 import { useLensBridge } from '@/lib/hooks/use-lens-bridge';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Eye,
   Brain,
@@ -43,8 +42,8 @@ import {
   Gauge,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   RefreshCw,
-  Layers,
   Play,
   Loader2,
 } from 'lucide-react';
@@ -53,7 +52,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 type TabId = 'dashboard' | 'introspection' | 'predictions' | 'learning' | 'journal' | 'practice';
 
@@ -113,6 +111,7 @@ export default function MetacognitionLensPage() {
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [showCogsciFeed, setShowCogsciFeed] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -131,7 +130,6 @@ export default function MetacognitionLensPage() {
   const [predictionDomain, setPredictionDomain] = useState('');
   const [introspectFocus, setIntrospectFocus] = useState('');
   const [expandedPrediction, setExpandedPrediction] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
@@ -564,7 +562,6 @@ export default function MetacognitionLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="metacognition" artifactId={bridge.selectedId} compact />
 
       {/* Summary Status Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1540,27 +1537,21 @@ export default function MetacognitionLensPage() {
           deferred" section for the prior gap). */}
       <ReasoningToolkit />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowCogsciFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showCogsciFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Cognitive Science Papers (external reference)
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="metacognition" />
-          </div>
+        {showCogsciFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CogsciFeed />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CogsciFeed />
-      </section>
     </div>
           <RecentMineCard domain="metacognition" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="metacognition" hideWhenEmpty className="mt-3" />

@@ -13,7 +13,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   FlaskConical,
   TestTubes,
@@ -38,8 +37,8 @@ import {
   Eye,
   GraduationCap,
   ClipboardList,
-  Layers,
   ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -47,7 +46,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ExperimentActionPanel } from '@/components/science/ExperimentActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
@@ -362,9 +360,10 @@ export default function ScienceLensPage() {
     lastUpdated,
   } = useRealtimeLens('science');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Dashboard');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showExperimentPanel, setShowExperimentPanel] = useState(false);
+  const [showScienceArxiv, setShowScienceArxiv] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
@@ -1779,7 +1778,6 @@ export default function ScienceLensPage() {
       </header>
 
       {/* AI Actions */}
-      <UniversalActions domain="science" artifactId={experiments[0]?.id} compact />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2014,26 +2012,6 @@ export default function ScienceLensPage() {
         <LensFeedPanel lensId="science" />
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="science_fieldwork" />
-          </div>
-        )}
-      </div>
     </div>
     
       <a href="#science-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to science content</a>
@@ -2049,15 +2027,39 @@ export default function ScienceLensPage() {
       </button>
       <ScienceWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
       {/* Quartzy + Benchling-shape experiment workbench: calibration / protocol / quality / custody + actions */}
-      <PipingProvider>
-        <section className="mt-6 mx-auto max-w-7xl">
-          <ExperimentActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6 mx-auto max-w-7xl">
+        <button
+          type="button"
+          onClick={() => setShowExperimentPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showExperimentPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Experiment Workbench (calibration / protocol / quality / custody)
+        </button>
+        {showExperimentPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ExperimentActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
 
-      <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ScienceArxiv />
-      </section>
+      <div className="mt-6 mx-auto max-w-7xl">
+        <button
+          type="button"
+          onClick={() => setShowScienceArxiv(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showScienceArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          arXiv Search (external reference)
+        </button>
+        {showScienceArxiv && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ScienceArxiv />
+          </section>
+        )}
+      </div>
           <RecentMineCard domain="science" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="science" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="science" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />

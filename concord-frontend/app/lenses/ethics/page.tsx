@@ -31,12 +31,12 @@ import { PhilosophyStack } from '@/components/ethics/PhilosophyStack';
 import { DecisionToolkit, TOOL_TABS, type ToolTab } from '@/components/ethics/DecisionToolkit';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { Scale } from 'lucide-react';
+import { Scale, ChevronDown, ChevronRight } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
 export default function EthicsLensPage() {
   const [activeTab, setActiveTab] = useState<ToolTab>('multiframework');
+  const [showPhilStack, setShowPhilStack] = useState(false);
 
   // One discoverable single-key shortcut per toolkit tab (shown in the kbd
   // chip on each tab button and in the command palette / help modal via
@@ -63,12 +63,23 @@ export default function EthicsLensPage() {
         description="Multi-framework decision analysis, stakeholder equity, bias auditing, and a peer-reviewed case library"
         headerIcon={<Scale className="w-6 h-6" />}
       >
-        <UniversalActions domain="ethics" artifactId={undefined} compact />
 
         <DecisionToolkit activeTab={activeTab} onTabChange={setActiveTab} />
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <PhilosophyStack />
+          <button
+            type="button"
+            onClick={() => setShowPhilStack(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Philosophy Q&amp;A (Stack Exchange)</span>
+            {showPhilStack ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showPhilStack && (
+            <div className="mt-3">
+              <PhilosophyStack />
+            </div>
+          )}
         </section>
       </LensPageShell>
 

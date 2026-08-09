@@ -11,7 +11,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Boxes, Plus, CheckCircle, ArrowUp, Layers, ChevronDown, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { Boxes, Plus, CheckCircle, ArrowUp, Layers, Rocket, Layout, ShoppingCart, Briefcase, UserCircle, Star, TrendingUp, Loader2, XCircle, Zap, BarChart3, Code, Ruler, ClipboardCheck, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -20,7 +20,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { NpmPackageSearch } from '@/components/app-maker/NpmPackageSearch';
 import { AppBuilderStudio } from '@/components/app-maker/AppBuilderStudio';
@@ -38,8 +37,8 @@ export default function AppMakerLens() {
   useLensNav('app-maker');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('app-maker');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const newNameInputRef = useRef<HTMLInputElement>(null);
+  const [showNpmSearch, setShowNpmSearch] = useState(false);
 
   // ── Keyboard shortcuts (Bubble / Glide / Retool idiom) ──────────
   useLensCommand(
@@ -50,7 +49,6 @@ export default function AppMakerLens() {
       { id: 'tpl-ecommerce',  keys: '2', description: 'E-commerce template',       category: 'view',       action: () => setSelectedTemplate('ecommerce') },
       { id: 'tpl-portfolio',  keys: '3', description: 'Portfolio template',        category: 'view',       action: () => setSelectedTemplate('portfolio') },
       { id: 'tpl-dashboard',  keys: '4', description: 'Dashboard template',        category: 'view',       action: () => setSelectedTemplate('dashboard') },
-      { id: 'toggle-features', keys: 'f', description: 'Toggle features panel',     category: 'view',       action: () => setShowFeatures((v) => !v) },
     ],
     { lensId: 'app-maker' }
   );
@@ -685,26 +683,20 @@ export default function AppMakerLens() {
 
       <ConnectiveTissueBar lensId="app_maker" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowNpmSearch(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <span>NPM package search (external reference)</span>
+          {showNpmSearch ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="app_maker" />
+        {showNpmSearch && (
+          <div className="mt-3">
+            <NpmPackageSearch />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <NpmPackageSearch />
       </section>
     </div>
 

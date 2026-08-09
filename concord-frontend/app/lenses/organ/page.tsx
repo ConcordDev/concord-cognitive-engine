@@ -16,8 +16,8 @@ import { api, lensRun } from '@/lib/api/client';
 import { useState, useMemo } from 'react';
 import {
   Heart, Activity, Zap, TrendingUp, TrendingDown, RefreshCw,
-  AlertTriangle, Clock, Wrench,
-  ChevronDown, Search, BarChart3, Layers, GitBranch, Play, Loader2, X, Upload,
+  AlertTriangle, Clock, Wrench, Search, BarChart3, Layers, GitBranch, Play, Loader2, X, Upload,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -25,7 +25,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // Concord's own self-model: `GET /api/growth/organs` returns the live state
 // of the ~169 named organs in `server/server.js`'s ORGAN_DEFS registry
@@ -124,10 +123,11 @@ export default function OrganLensPage() {
   useLensNav('organ');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('organ');
   const [selectedOrgan, setSelectedOrgan] = useState<string | null>(null);
+  const [showOrgDesigner, setShowOrgDesigner] = useState(false);
+  const [showAnatomy, setShowAnatomy] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortMode, setSortMode] = useState<SortMode>('health');
   const [searchFilter, setSearchFilter] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Backend: GET /api/growth/organs — live state of Concord's own 169-organ
   // self-model registry (server.js ORGAN_DEFS). Real fields only: maturity is
@@ -257,7 +257,19 @@ export default function OrganLensPage() {
       {/* ChartHop-parity org-design platform: visual chart, drag-reassign,
           HRIS import, headcount scenarios, comp rollups, tenure, snapshots */}
       <section className="panel p-4">
-        <OrgDesigner />
+        <button
+          type="button"
+          onClick={() => setShowOrgDesigner(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Org designer (headcount, HRIS, comp)</span>
+          {showOrgDesigner ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showOrgDesigner && (
+          <div className="mt-3">
+            <OrgDesigner />
+          </div>
+        )}
       </section>
 
       {/* Org Analysis — real graph-theory macros run against the live roster */}
@@ -610,26 +622,20 @@ export default function OrganLensPage() {
 
       <RealtimeDataPanel data={realtimeInsights} />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowAnatomy(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <span>Anatomy reference (external, Wikipedia)</span>
+          {showAnatomy ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="organ" />
+        {showAnatomy && (
+          <div className="mt-3">
+            <AnatomyExplorer />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <AnatomyExplorer />
       </section>
     </div>
           <RecentMineCard domain="organ" limit={10} hideWhenEmpty className="mt-4" />

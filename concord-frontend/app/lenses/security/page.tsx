@@ -20,8 +20,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   Shield,
   Plus,
@@ -47,7 +45,6 @@ import {
   Skull,
   CheckCircle2,
   ChevronRight,
-  Layers,
   ChevronDown,
   Lock,
   AlertTriangle,
@@ -257,12 +254,14 @@ export default function SecurityLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('security');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [showSecurityAdvisories, setShowSecurityAdvisories] = useState(false);
+  const [showThreatVulnPanel, setShowThreatVulnPanel] = useState(false);
+  const [showVulnManager, setShowVulnManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   const [formTitle, setFormTitle] = useState('');
   const [formStatus, setFormStatus] = useState<string>('detected');
@@ -981,7 +980,6 @@ export default function SecurityLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="security" artifactId={incidents[0]?.id} compact />
       {/* Mode Tabs */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map(tab => {
@@ -1397,39 +1395,57 @@ export default function SecurityLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="security" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <SOCConsole />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SecurityAdvisories />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSecurityAdvisories(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSecurityAdvisories ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Security Advisories (external reference)
+        </button>
+        {showSecurityAdvisories && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <SecurityAdvisories />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ThreatVulnPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowThreatVulnPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showThreatVulnPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Threat & Vulnerability Scanner
+        </button>
+        {showThreatVulnPanel && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ThreatVulnPanel />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6">
-        <VulnManager />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowVulnManager(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showVulnManager ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Vulnerability Manager (OpenCVE/NVD-shape)
+        </button>
+        {showVulnManager && (
+          <section className="mt-3">
+            <VulnManager />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#security-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to security content</a>

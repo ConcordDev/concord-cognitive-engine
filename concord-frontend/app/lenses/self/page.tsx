@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Heart, Moon, Smile, BookOpen, Activity, TrendingUp, Loader2,
   Sun, Trophy, Award, Calendar, Link2, Target, ScrollText, Flame, Upload,
+  ChevronDown, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -56,6 +57,7 @@ type TabKey =
 export default function UnifiedSelfLensPage() {
   useLensNav('self');
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [showSelfFeed, setShowSelfFeed] = useState(false);
   // Bumped whenever a reading is logged/imported so every dependent
   // panel re-pulls from the ledger.
   const [refreshKey, setRefreshKey] = useState(0);
@@ -489,7 +491,19 @@ export default function UnifiedSelfLensPage() {
         </AnimatePresence>
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SelfFeed />
+        <button
+          type="button"
+          onClick={() => setShowSelfFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Self-improvement discussion (external reference)</span>
+          {showSelfFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showSelfFeed && (
+          <div className="mt-3">
+            <SelfFeed />
+          </div>
+        )}
       </section>
     </div>
 

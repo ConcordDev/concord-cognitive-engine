@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -22,6 +22,8 @@ import {
   Receipt,
   Hammer,
   CalendarDays,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 
@@ -74,6 +76,7 @@ function useMasonryStats() {
 
 export default function MasonryLensPage() {
   const stats = useMasonryStats();
+  const [showFeed, setShowFeed] = useState(false);
 
   return (
     <LensShell lensId="masonry" asMain={false}>
@@ -126,7 +129,19 @@ export default function MasonryLensPage() {
         </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <MasonryFeed />
+          <button
+            type="button"
+            onClick={() => setShowFeed(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Industry chatter (Reddit)</span>
+            {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showFeed && (
+            <div className="mt-3">
+              <MasonryFeed />
+            </div>
+          )}
         </section>
       </LensPageShell>
 

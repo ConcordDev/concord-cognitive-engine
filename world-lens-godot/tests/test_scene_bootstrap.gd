@@ -38,6 +38,18 @@ static func run() -> TestUtils:
 	_test_parses_rooftop_buildings_from_nodes(t)
 	_test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t)
 	_test_node_basis_rotates_the_footprint(t)
+	_test_centroid_averages_positions_honestly_empty(t)
+	_test_bounds_center_and_radius_from_spawned_nodes(t)
+	_test_robust_cluster_bounds_small_n_matches_plain_bounds(t)
+	_test_robust_cluster_bounds_no_trim_without_a_real_gap(t)
+	_test_robust_cluster_bounds_trims_a_clear_outlier_cluster(t)
+	_test_robust_cluster_bounds_concordia_hub_shaped_data(t)
+	_test_collision_disabled_by_default(t)
+	_test_collision_spawns_one_body_per_node_at_the_matching_transform(t)
+	_test_collision_cleared_on_reapply(t)
+	_test_parses_well_shaped_vegetation_verbatim(t)
+	_test_drops_malformed_vegetation_without_crashing(t)
+	_test_empty_vegetation_yields_empty_array(t)
 	return t
 
 
@@ -139,6 +151,48 @@ static func _test_drops_malformed_districts_without_crashing(t: TestUtils) -> vo
 	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")
 
 
+## Phase M2 — same verbatim-passthrough-or-drop coverage as the pad/district
+## tests above, for the additive `vegetation` field
+## (server/lib/vegetation-scatter.js), consumed downstream by
+## world/vegetation_renderer.gd.
+static func _test_parses_well_shaped_vegetation_verbatim(t: TestUtils) -> void:
+	var raw := [
+		{
+			"id": "concordia-hub:plaza:veg:0", "species": "tree_02",
+			"x": 12.5, "y": 0.0, "z": -30.25, "rotationY": 1.2, "scale": 1.05,
+			"districtId": "concordia-hub:plaza",
+		},
+	]
+	var parsed := SceneBootstrap.parse_vegetation(raw)
+	t.check_eq(parsed.size(), 1, "one well-shaped vegetation entry parses to one output entry")
+	t.check_eq(parsed[0]["id"], "concordia-hub:plaza:veg:0", "id is passed through verbatim")
+	t.check_eq(parsed[0]["species"], "tree_02", "species is passed through verbatim")
+	t.check_eq(parsed[0]["x"], 12.5, "x is passed through verbatim, real server-authored coordinate")
+
+
+static func _test_drops_malformed_vegetation_without_crashing(t: TestUtils) -> void:
+	var raw := [
+		{"id": "no-species", "x": 0, "y": 0, "z": 0},
+		{"species": "tree_01", "x": 0, "y": 0, "z": 0},  # no id
+		{"id": "no-x", "species": "tree_01", "y": 0, "z": 0},
+		{"id": "no-y", "species": "tree_01", "x": 0, "z": 0},
+		{"id": "no-z", "species": "tree_01", "x": 0, "y": 0},
+		"not-even-a-dict",
+		{"id": "well-shaped", "species": "bush_01", "x": 1, "y": 0, "z": 2},
+	]
+	var parsed := SceneBootstrap.parse_vegetation(raw)
+	t.check_eq(
+		parsed.size(), 1,
+		"only the one well-shaped entry survives — malformed entries are dropped, never fabricated")
+	t.check_eq(parsed[0]["id"], "well-shaped", "the surviving entry is the genuinely well-shaped one")
+
+
+static func _test_empty_vegetation_yields_empty_array(t: TestUtils) -> void:
+	t.check(
+		SceneBootstrap.parse_vegetation([]).is_empty(),
+		"an empty raw array yields an empty result — honest 'no vegetation' for worlds with none scattered")
+
+
 ## F26 — real node shape from server/lib/scene-export.js (`extras.levels`
 ## naming a "rooftop" entry, exactly like "station-observatory" in
 ## content/world/concordia-hub/city-layout.json), reduced to the flat
@@ -198,3 +252,266 @@ static func _test_rooftop_parsing_drops_non_rooftop_and_malformed_nodes(t: TestU
 	t.check_eq(
 		parsed[0]["id"], "well-shaped-rooftop",
 		"the surviving entry is the genuinely well-shaped one")
+
+
+## Added alongside wiring get_bounds_center()/get_bounds_radius() into
+## world/boot.gd's default camera framing (2026-08-07 — see VISUAL_QA.md's
+## "Camera framing — closed" entry). Mirrors
+## engineering/fea_scene_builder.gd's `centroid` pure-average contract
+## exactly, including the same honest Vector3.ZERO-for-empty behavior.
+static func _test_centroid_averages_positions_honestly_empty(t: TestUtils) -> void:
+	var empty: Array[Vector3] = []
+	t.check(
+		SceneBootstrap.centroid(empty).is_equal_approx(Vector3.ZERO),
+		"an empty position array yields Vector3.ZERO, never a fabricated center")
+
+	var single: Array[Vector3] = [Vector3(10.0, 2.0, -4.0)]
+	t.check(
+		SceneBootstrap.centroid(single).is_equal_approx(Vector3(10.0, 2.0, -4.0)),
+		"a single position IS the centroid")
+
+	var three: Array[Vector3] = [Vector3(0.0, 0.0, 0.0), Vector3(6.0, 0.0, 0.0), Vector3(3.0, 0.0, 9.0)]
+	t.check(
+		SceneBootstrap.centroid(three).is_equal_approx(Vector3(3.0, 0.0, 3.0)),
+		"centroid is the plain average, not a weighted or clamped one")
+
+
+## get_bounds_center/get_bounds_radius read the REAL spawned MeshInstance3D
+## children after a real apply_scene() call — not the raw input payload —
+## so this exercises the actual engine-instantiated node positions, the
+## same nodes `world/boot.gd`'s default camera framing reads from.
+static func _test_bounds_center_and_radius_from_spawned_nodes(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+
+	# Empty (nothing spawned yet) — same honest zero-fallback as
+	# FeaSceneBuilder.get_bounds_center(), never an assumed origin claim.
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3.ZERO),
+		"no scene applied yet -> honest Vector3.ZERO center")
+	t.check_eq(
+		bootstrap.get_bounds_radius(), 0.0,
+		"no scene applied yet -> honest zero radius, not a fabricated spread")
+
+	var payload := {
+		"ok": true,
+		"format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "b", "transform": {"translation": [20.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "c", "transform": {"translation": [-20.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	}
+	bootstrap.apply_scene(payload)
+
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3.ZERO),
+		"three nodes symmetric about the origin -> centroid IS the origin")
+	t.check_almost(
+		bootstrap.get_bounds_radius(), 20.0,
+		"radius is the REAL max distance to a spawned node (20m), not the node count or a guess")
+
+	# Re-applying clears the prior spawn (SceneBootstrap._clear()) — bounds
+	# must reflect the CURRENT scene, never a stale one from a prior world.
+	bootstrap.apply_scene({
+		"ok": true,
+		"format": "concord-scene/v1",
+		"nodes": [
+			{"id": "solo", "transform": {"translation": [5.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check(
+		bootstrap.get_bounds_center().is_equal_approx(Vector3(5.0, 0.0, 0.0)),
+		"re-applying a scene recomputes bounds from the NEW spawn, not the old one")
+	t.check_almost(
+		bootstrap.get_bounds_radius(), 0.0,
+		"a single spawned node has zero radius (it IS the centroid)")
+
+	bootstrap.free()
+
+
+## robust_cluster_bounds(): added alongside get_camera_bounds() to fix a
+## real, measured camera-framing defect (see world/scene_bootstrap.gd's own
+## doc comment on MIN_NODES_FOR_TRIM for the full story and the real
+## concordia-hub distance data that motivated it).
+
+## Below MIN_NODES_FOR_TRIM there's no meaningful "majority" to detect an
+## outlier against, so this must be byte-identical to plain centroid + max
+## distance -- even with a lone far-away point present.
+static func _test_robust_cluster_bounds_small_n_matches_plain_bounds(t: TestUtils) -> void:
+	var positions: Array[Vector3] = [
+		Vector3(0.0, 0.0, 0.0), Vector3(10.0, 0.0, 0.0), Vector3(-10.0, 0.0, 0.0),
+		Vector3(500.0, 0.0, 0.0),  # a lone "outlier" -- still only 4 nodes total
+	]
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var plain_center := SceneBootstrap.centroid(positions)
+	t.check(
+		(result["center"] as Vector3).is_equal_approx(plain_center),
+		"below MIN_NODES_FOR_TRIM, center is the untouched plain centroid")
+	t.check_almost(
+		float(result["radius"]), plain_center.distance_to(Vector3(500.0, 0.0, 0.0)),
+		"below MIN_NODES_FOR_TRIM, radius is the untouched true max distance")
+
+
+## A continuously, evenly spread-out world (no real cluster/outlier
+## separation) must NOT get clipped -- this is exactly the shape a fixed
+## percentile cutoff would get wrong (it would always trim SOMETHING),
+## which is why this is gap-detection, not a percentile.
+static func _test_robust_cluster_bounds_no_trim_without_a_real_gap(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	for i in range(10):
+		positions.append(Vector3(float(i) * 20.0, 0.0, 0.0))  # evenly spaced, 0..180
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var plain_center := SceneBootstrap.centroid(positions)
+	var plain_max := 0.0
+	for p in positions:
+		plain_max = maxf(plain_max, p.distance_to(plain_center))
+	t.check(
+		(result["center"] as Vector3).is_equal_approx(plain_center),
+		"evenly-spread positions: no gap large enough to trim, center unchanged")
+	t.check_almost(
+		float(result["radius"]), plain_max,
+		"evenly-spread positions: radius unchanged, nothing excluded")
+
+
+## The core case this was built for: a tight cluster plus a handful of
+## nodes clearly separated from it. Mirrors the REAL shape measured live
+## against concordia-hub (50 buildings within ~140-360m, then a hard jump
+## to ~980-1100m for 12 more) at a smaller scale for a fast, exact test.
+static func _test_robust_cluster_bounds_trims_a_clear_outlier_cluster(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	# Tight cluster: 8 nodes within 10-80 of the origin.
+	for i in range(8):
+		positions.append(Vector3(10.0 + float(i) * 10.0, 0.0, 0.0))
+	# Clear outlier cluster: 3 nodes far past a huge gap.
+	positions.append(Vector3(500.0, 0.0, 0.0))
+	positions.append(Vector3(520.0, 0.0, 0.0))
+	positions.append(Vector3(540.0, 0.0, 0.0))
+
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var refined_center := result["center"] as Vector3
+	var refined_radius := float(result["radius"])
+
+	t.check(
+		refined_center.x < 100.0,
+		"trimmed center stays near the dense cluster, not dragged toward the outliers")
+	t.check(
+		refined_radius < 100.0,
+		"trimmed radius reflects only the dense cluster's own tight spread")
+
+	var plain_center := SceneBootstrap.centroid(positions)
+	var plain_max := 0.0
+	for p in positions:
+		plain_max = maxf(plain_max, p.distance_to(plain_center))
+	t.check(
+		refined_radius < plain_max,
+		"trimmed radius is strictly smaller than the untrimmed max (the real bug being fixed)")
+
+
+## Reproduces the real SHAPE of concordia-hub's measured distance-from-
+## centroid distribution (tools/live_probe.gd against a real running
+## server, see VISUAL_QA.md/CLAUDE.md: ~50 buildings within a ~140-360m
+## band, then a hard jump straight to a ~980-1100m band for ~12 more) at
+## the real node counts, to pin the exact bug this was written to fix:
+## get_bounds_radius() there reported 1114m (a single farthest-outlier
+## max); the trimmed radius must land near the dense core's own tight
+## span, nowhere close to 1114m.
+static func _test_robust_cluster_bounds_concordia_hub_shaped_data(t: TestUtils) -> void:
+	var positions: Array[Vector3] = []
+	# 50 nodes forming a tight core cluster, spread across ~220 units.
+	for i in range(50):
+		positions.append(Vector3(140.0 + float(i) * 4.4, 0.0, 0.0))
+	# 12 nodes forming a clearly separated distant cluster, past a huge gap.
+	for i in range(12):
+		positions.append(Vector3(980.0 + float(i) * 12.0, 0.0, 0.0))
+
+	var result := SceneBootstrap.robust_cluster_bounds(positions)
+	var refined_radius := float(result["radius"])
+	t.check(
+		refined_radius < 400.0,
+		"concordia-hub-shaped data: trimmed radius stays near the dense core's own span (~220 units), nowhere close to the outlier-inflated ~1100")
+
+
+## enable_collision (2026-08-07) — added so a real CharacterController's
+## move_and_slide() has something solid to stand on/collide with. Default
+## false: every existing test that spawns synthetic nodes without expecting
+## physics bodies must see zero behavior change.
+static func _test_collision_disabled_by_default(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 0,
+		"enable_collision defaults false -- no StaticBody3D spawned unless opted in")
+	bootstrap.free()
+
+
+static func _test_collision_spawns_one_body_per_node_at_the_matching_transform(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.enable_collision = true
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [10.0, 0.0, -5.0], "rotationY": PI / 2.0, "scale": [8.0, 3.0, 2.0]}},
+			{"id": "b", "transform": {"translation": [-40.0, 0.0, 12.0], "scale": [4.0, 4.0, 4.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 2,
+		"one collision body per spawned node")
+
+	var body_a := bootstrap.get_node_or_null(NodePath("a_collision")) as StaticBody3D
+	t.check(body_a != null, "collision body for node 'a' exists, named per its source id")
+	if body_a != null:
+		t.check(
+			body_a.transform.origin.is_equal_approx(Vector3(10.0, 0.0, -5.0)),
+			"collision body origin matches the visual node's origin")
+		var cs := body_a.get_child(0) as CollisionShape3D
+		t.check(cs != null, "collision body has a CollisionShape3D child")
+		if cs != null:
+			var box := cs.shape as BoxShape3D
+			t.check(box != null, "collision shape is a BoxShape3D")
+			if box != null:
+				t.check(
+					box.size.is_equal_approx(Vector3.ONE),
+					"BoxShape3D is a unit box -- footprint scale lives in the body's own transform basis, same convention the visual MeshInstance3D already uses")
+
+	# The VISUAL node's own transform must be untouched by adding collision
+	# (see enable_collision's own doc comment -- this is the exact regression
+	# it warns against: _upgrade_one_node's footprint-rescale math reads
+	# `mi.transform.basis.get_scale()` directly).
+	var mi_a := bootstrap.get_node_or_null(NodePath("a")) as MeshInstance3D
+	t.check(mi_a != null, "the visual MeshInstance3D for node 'a' still exists, unreparented")
+	if mi_a != null:
+		t.check(
+			mi_a.transform.basis.get_scale().is_equal_approx(Vector3(8.0, 3.0, 2.0)),
+			"visual node's own transform still carries its real footprint scale, unaffected by the sibling collision body")
+
+	bootstrap.free()
+
+
+static func _test_collision_cleared_on_reapply(t: TestUtils) -> void:
+	var bootstrap := SceneBootstrap.new()
+	bootstrap.enable_collision = true
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "a", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+			{"id": "b", "transform": {"translation": [5.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(bootstrap.get_collision_body_count(), 2, "two collision bodies from the first scene")
+
+	bootstrap.apply_scene({
+		"ok": true, "format": "concord-scene/v1",
+		"nodes": [
+			{"id": "solo", "transform": {"translation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]}},
+		],
+	})
+	t.check_eq(
+		bootstrap.get_collision_body_count(), 1,
+		"re-applying a scene clears the PRIOR world's collision bodies too, not just its visuals")
+	bootstrap.free()

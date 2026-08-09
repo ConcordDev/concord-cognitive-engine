@@ -18,7 +18,6 @@ import { useMutation } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Target,
   Plus,
@@ -34,6 +33,7 @@ import {
   Users,
   Calendar,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   Award,
   TrendingUp,
@@ -223,6 +223,10 @@ export default function GoalsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('goals');
 
   const [activeTab, setActiveTab] = useState<'goals' | 'challenges' | 'milestones'>('goals');
+  const [showAnalyticsTools, setShowAnalyticsTools] = useState(false);
+  const [showOKRWorkspace, setShowOKRWorkspace] = useState(false);
+  const [showAgentAutonomy, setShowAgentAutonomy] = useState(false);
+  const [showProductivityFeed, setShowProductivityFeed] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -489,7 +493,6 @@ export default function GoalsLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="goals" artifactId={goalItems[0]?.id} compact />
       {/* ---- Hero Stats Bar ---- */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="lens-card flex flex-col items-center justify-center col-span-1 relative overflow-hidden group">
@@ -1013,17 +1016,69 @@ export default function GoalsLensPage() {
         />
       )}
 
-      <GoalsAnalyticsTools />
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowAnalyticsTools(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showAnalyticsTools ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Analytics Tools (OKR scoring / decomposition / forecast)
+        </button>
+        {showAnalyticsTools && (
+          <div className="mt-3">
+            <GoalsAnalyticsTools />
+          </div>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <OKRWorkspace />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowOKRWorkspace(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showOKRWorkspace ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          OKR Workspace
+        </button>
+        {showOKRWorkspace && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <OKRWorkspace />
+          </section>
+        )}
+      </div>
 
-      <AgentAutonomyPanel />
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowAgentAutonomy(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showAgentAutonomy ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Agent Autonomy (Concord's self-directed goals)
+        </button>
+        {showAgentAutonomy && (
+          <div className="mt-3">
+            <AgentAutonomyPanel />
+          </div>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ProductivityFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowProductivityFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showProductivityFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Productivity Discussion (external reference)
+        </button>
+        {showProductivityFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ProductivityFeed />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="goals" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="goals" hideWhenEmpty className="mt-3" />

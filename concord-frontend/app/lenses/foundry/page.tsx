@@ -29,6 +29,7 @@
  */
 
 import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { FoundryWorldsPanel } from '@/components/foundry/FoundryWorldsPanel';
 import { LensShell } from '@/components/lens/LensShell';
@@ -41,7 +42,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { WorldBuilderRepos } from '@/components/foundry/WorldBuilderRepos';
 import { BuilderStudio } from '@/components/foundry/BuilderStudio';
-import { Boxes, Loader2 } from 'lucide-react';
+import { Boxes, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Drag-drop + the catalog fetch are browser-only — load client-side.
 const FoundryCanvas = dynamic(() => import('@/components/foundry/FoundryCanvas'), {
@@ -58,6 +59,7 @@ export default function FoundryLensPage() {
   // artifact store). Drives the front-door worlds count badge; the panel
   // below wires the live foundry.* macro loop.
   const { total: worldArtifacts } = useLensData('foundry', 'foundry_world', { noSeed: true });
+  const [showRepos, setShowRepos] = useState(false);
 
   return (
     <LensShell lensId="foundry" asMain={false}>
@@ -97,7 +99,19 @@ export default function FoundryLensPage() {
           <FoundryCanvas />
         </section>
         <section className="mx-auto mt-6 max-w-screen-2xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <WorldBuilderRepos />
+          <button
+            type="button"
+            onClick={() => setShowRepos(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>World-building tooling (GitHub)</span>
+            {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showRepos && (
+            <div className="mt-3">
+              <WorldBuilderRepos />
+            </div>
+          )}
         </section>
 
         {/* Roblox-Studio-parity builder: visual scripting, playtest hot-reload,

@@ -116,10 +116,6 @@ vi.mock('@/hooks/useAuth', () => ({
 vi.mock('@/components/lens/LensContextPanel', () => ({ LensContextPanel: () => null }));
 vi.mock('@/components/artifact/ArtifactUploader', () => ({ ArtifactUploader: () => null }));
 vi.mock('@/components/feedback/FeedbackWidget', () => ({ FeedbackWidget: () => null }));
-vi.mock('@/components/lens/LiveIndicator', () => ({ LiveIndicator: () => null }));
-vi.mock('@/components/lens/DTUExportButton', () => ({ DTUExportButton: () => null }));
-vi.mock('@/components/lens/RealtimeDataPanel', () => ({ RealtimeDataPanel: () => null }));
-vi.mock('@/components/lens/LensFeaturePanel', () => ({ LensFeaturePanel: () => null }));
 vi.mock('@/components/dtu/DTUDetailView', () => ({ DTUDetailView: () => null }));
 vi.mock('@/components/chat/MessageRenderer', () => ({
   default: ({ content }: { content: string }) => <div data-testid="message-renderer">{content}</div>,

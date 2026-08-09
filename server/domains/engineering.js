@@ -14,7 +14,7 @@ import { runFEA } from '../lib/simulation/fea-solver.js';
 // unsurfaced" section, now closed). Named imports mirror how server.js's
 // structuralCheck/electricalCheck combinators already consume this module's
 // other named exports (eng.columnBuckling, eng.voltageDrop, …).
-import { boltedConnection, transformerSizing } from '../lib/compute/engineering-compute.js';
+import { boltedConnection, transformerSizing, sectionProperties } from '../lib/compute/engineering-compute.js';
 // checkThermalGate is the thermal-stress cross-check adapter (Wave E,
 // Cross-System Multi-Physics CAD): given the SAME nodes/members/loads/
 // supports model shape this file's own `runFEA` action already accepts
@@ -139,14 +139,18 @@ function computePrimitive(kind, p, densityKgM3) {
   const d = densityKgM3 || 7850;
   const round = (v) => Math.round(v * 1e9) / 1e9;
   let volume = 0, surfaceArea = 0, bbox = [0, 0, 0];
-  let section = null;
+  // Section (area/Ix/Iy) math is delegated to the shared compute primitive
+  // (lib/compute/engineering-compute.js#sectionProperties) so it's reusable
+  // outside this file (e.g. server/domains/hvac.js's hangerSpanCheck, which
+  // needs a real duct wall's hollow-section properties) — same formulas,
+  // this is a pure delegation, not a behavior change.
+  let section = sectionProperties(kind, p);
   switch (kind) {
     case 'box': {
       const [w, h, l] = [p.width || 0.1, p.height || 0.1, p.length || 0.1];
       volume = w * h * l;
       surfaceArea = 2 * (w * h + h * l + w * l);
       bbox = [w, h, l];
-      section = { area: w * h, Ix: (w * h ** 3) / 12, Iy: (h * w ** 3) / 12 };
       break;
     }
     case 'cylinder': {
@@ -154,7 +158,6 @@ function computePrimitive(kind, p, densityKgM3) {
       volume = Math.PI * r * r * len;
       surfaceArea = 2 * Math.PI * r * (r + len);
       bbox = [2 * r, 2 * r, len];
-      section = { area: Math.PI * r * r, Ix: (Math.PI * r ** 4) / 4, Iy: (Math.PI * r ** 4) / 4 };
       break;
     }
     case 'tube': {
@@ -164,11 +167,18 @@ function computePrimitive(kind, p, densityKgM3) {
       volume = Math.PI * (ro * ro - ri * ri) * len;
       surfaceArea = 2 * Math.PI * (ro + ri) * len + 2 * Math.PI * (ro * ro - ri * ri);
       bbox = [2 * ro, 2 * ro, len];
-      section = {
-        area: Math.PI * (ro * ro - ri * ri),
-        Ix: (Math.PI / 4) * (ro ** 4 - ri ** 4),
-        Iy: (Math.PI / 4) * (ro ** 4 - ri ** 4),
-      };
+      break;
+    }
+    case 'rect-tube': {
+      // Hollow rectangular tube — a rectangular duct's real wall geometry.
+      // Outer width/height, wall thickness. Mesh preview (partMesh, below)
+      // renders the outer shell only, matching the same simplification the
+      // 'tube' case already uses for round ducts.
+      const w = p.width || 0.1, h = p.height || 0.1, t = p.wallThickness ?? 0.001, len = p.length || 0.2;
+      const wi = Math.max(0, w - 2 * t), hi = Math.max(0, h - 2 * t);
+      volume = (w * h - wi * hi) * len;
+      surfaceArea = 2 * (w * h + h * len + w * len); // outer-shell surface (matches the mesh's outer-only render)
+      bbox = [w, h, len];
       break;
     }
     case 'sphere': {
@@ -189,10 +199,6 @@ function computePrimitive(kind, p, densityKgM3) {
       volume = area * len;
       surfaceArea = (2 * bf + 4 * tf + 2 * (dh - 2 * tf)) * len + 2 * area;
       bbox = [bf, dh, len];
-      const Ix =
-        (bf * dh ** 3) / 12 - ((bf - tw) * (dh - 2 * tf) ** 3) / 12;
-      const Iy = (2 * tf * bf ** 3) / 12 + ((dh - 2 * tf) * tw ** 3) / 12;
-      section = { area, Ix, Iy };
       break;
     }
     default: {
@@ -609,7 +615,10 @@ export default function registerEngineeringActions(registerLensAction) {
         void aabb;
         bbox = [bf, dh, len];
       } else {
-        // box (default)
+        // box (default) — also covers 'rect-tube' (outer-shell mesh only,
+        // same simplification the cylinder/tube case above uses: the visual
+        // preview renders the outer surface, wall thickness only affects
+        // the section/mass math above, not the mesh).
         const w = p.width || 0.1, h = p.height || 0.1, l = p.length || 0.1;
         const x = w / 2, y = h / 2, z = l / 2;
         const v = [

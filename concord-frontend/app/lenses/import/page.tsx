@@ -11,10 +11,9 @@ import { ImportToolingGallery } from '@/components/import/ImportToolingGallery';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Layers, ChevronDown, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge } from 'lucide-react';
+import { Upload, FileJson, Database, Check, AlertTriangle, Loader2, FileText, Archive, RefreshCw, Clock, CheckCircle2, Download, BarChart3, Map, Search, GitMerge, ChevronDown, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -22,7 +21,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { UniversalImport } from '@/components/import/UniversalImport';
 import { ImportParityWorkbench } from '@/components/import/ImportParityWorkbench';
 import { RestoreDtuExport } from '@/components/import/RestoreDtuExport';
@@ -183,6 +181,9 @@ export default function ImportLens() {
   } as ImportJob));
 
   const [importActionResult, setImportActionResult] = useState<{ action: string; data: unknown } | null>(null);
+  const [showRestoreDtuExport, setShowRestoreDtuExport] = useState(false);
+  const [showImportParityWorkbench, setShowImportParityWorkbench] = useState(false);
+  const [showImportToolingGallery, setShowImportToolingGallery] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
 
   // Real rows parsed from the uploaded CSV/JSON — the analysis macros
@@ -226,7 +227,6 @@ export default function ImportLens() {
     }
   }, [analysisRows, analysisSchema, analysisColumns, targetFieldsInput, keyFieldsInput, transformField, transformOp]);
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [dragActive, setDragActive] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -570,7 +570,6 @@ export default function ImportLens() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="import" artifactId={importJobItems[0]?.id} compact />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1138,35 +1137,53 @@ export default function ImportLens() {
         })()}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowRestoreDtuExport(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showRestoreDtuExport ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Restore from DTU Export
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="export_import" />
-          </div>
+        {showRestoreDtuExport && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <RestoreDtuExport />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <RestoreDtuExport />
-      </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ImportParityWorkbench />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowImportParityWorkbench(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showImportParityWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Import Workbench (Flatfile/Airbyte-shape)
+        </button>
+        {showImportParityWorkbench && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ImportParityWorkbench />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ImportToolingGallery />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowImportToolingGallery(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showImportToolingGallery ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world ETL Tooling (external reference)
+        </button>
+        {showImportToolingGallery && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ImportToolingGallery />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="import" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="import" hideWhenEmpty className="mt-3" />

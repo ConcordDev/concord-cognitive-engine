@@ -16,7 +16,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { apiHelpers } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Hammer,
   HardHat,
@@ -64,6 +63,7 @@ import {
   Send,
   Star,
   ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -72,7 +72,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import QuoteChart, { type QuoteSnapshot } from '@/components/lens/QuoteChart';
 import TradesWorkbench from '@/components/trades/TradesWorkbench';
@@ -274,6 +273,7 @@ export default function TradesLensPage() {
   // ----- Top-level navigation -----
   const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showServiceTitanWorkbench, setShowServiceTitanWorkbench] = useState(false);
   const [subView, setSubView] = useState<SubView>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -281,7 +281,6 @@ export default function TradesLensPage() {
   const [editingItem, setEditingItem] = useState<LensItem<TradesArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // ── Keyboard shortcuts (ServiceTitan / Buildertrend idiom) ────────
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -2271,7 +2270,21 @@ export default function TradesLensPage() {
       <DepthBadge lensId="trades" size="sm" className="ml-2" />
     <div className={cn(ds.pageContainer, 'lens-trades')} data-lens-theme="trades">
       <ShellPreview lensId="trades" defaultOpen={true} />
-      <ServiceTitanWorkbenchSection />
+      {/* ServiceTitan/Jobber-parity workbench (dispatch/calendar/techs/field-GPS/
+          route/quotes/bookings/timesheets/invoices/payments/portal/recurring/
+          pricebook/reminders/reviews/reports — 16 sub-tabs). Collapsed by
+          default: it used to sit permanently above the header on every visit,
+          stacked on top of this lens's own 6-tab MODE_TABS system. */}
+      <button
+        type="button"
+        onClick={() => setShowServiceTitanWorkbench((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={showServiceTitanWorkbench}
+      >
+        <span>ServiceTitan/Jobber-parity workbench (dispatch, scheduling, billing, ops)</span>
+        {showServiceTitanWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {showServiceTitanWorkbench && <ServiceTitanWorkbenchSection />}
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -2348,7 +2361,6 @@ export default function TradesLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="trades" artifactId={items[0]?.id} compact />
       {/* Mode tabs (original 6) */}
       <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
         {MODE_TABS.map(tab => (
@@ -2505,24 +2517,6 @@ export default function TradesLensPage() {
       {/* Editor modal */}
       {renderEditor()}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="trades" />
-          </div>
-        )}
-      </div>
     </div>
     
       <a href="#trades-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to trades content</a>

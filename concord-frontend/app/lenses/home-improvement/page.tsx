@@ -23,7 +23,7 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import {
   Hammer, Plus, Search, Trash2, DollarSign,
-  CheckCircle2, Wrench, Layers, ChevronDown,
+  CheckCircle2, Wrench, ChevronDown, ChevronRight,
   Home, ToggleLeft, ToggleRight, Loader2, BarChart3, Calculator,
   Camera, Lightbulb, ShoppingCart, Boxes, GanttChartSquare, CalendarClock,
   ListChecks, Receipt, X,
@@ -33,7 +33,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 const DOMAIN = 'home-improvement';
 
@@ -152,10 +151,10 @@ export default function HomeImprovementLensPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<
     'projects' | 'budget' | 'timeline' | 'gallery' | 'ideas' | 'pros' | 'shopping' | 'inventory' | 'maintenance'
   >('projects');
+  const [showHomeImprovementFeed, setShowHomeImprovementFeed] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -946,16 +945,21 @@ export default function HomeImprovementLensPage() {
         })()}
       </div>
 
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
-          <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowHomeImprovementFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showHomeImprovementFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
         </button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="home-improvement" /></div>}
+        {showHomeImprovementFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <HomeImprovementFeed />
+          </section>
+        )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <HomeImprovementFeed />
-      </section>
     </div>
           <section className="mt-4"><ProductRecalls /></section>
           <RecentMineCard domain="home-improvement" limit={10} hideWhenEmpty className="mt-4" />

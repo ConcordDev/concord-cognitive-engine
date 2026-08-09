@@ -38,7 +38,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Landmark,
   FileCheck,
@@ -86,7 +85,7 @@ import {
   CalendarClock,
   CircleDot,
   Target,
-  Layers,
+  Wrench,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
@@ -94,14 +93,13 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court' | 'MyReps' | 'Bills' | 'CivicAlerts' | 'FOIA' | 'Budget';
+type ModeTab = 'Permits' | 'Public Works' | 'Code Enforcement' | 'Emergency' | 'Records' | 'Court' | 'MyReps' | 'Bills' | 'CivicAlerts' | 'FOIA' | 'Budget' | 'CivicWorkbench';
 type ViewMode = 'library' | 'dashboard' | 'detail';
 type ArtifactType = 'Permit' | 'Project' | 'Violation' | 'EmergencyPlan' | 'Record' | 'CourtCase';
 
@@ -223,7 +221,16 @@ const MODE_TABS: {
   { id: 'CivicAlerts', icon: Bell, artifactType: 'CourtCase', label: 'Alerts' },
   { id: 'FOIA', icon: FileText, artifactType: 'CourtCase', label: 'FOIA' },
   { id: 'Budget', icon: PieChart, artifactType: 'CourtCase', label: 'Budget' },
+  { id: 'CivicWorkbench', icon: Wrench, artifactType: 'CourtCase', label: 'Civic Workbench' },
 ];
+
+// Tabs that render their own self-contained component instead of going
+// through the shared dashboard/library/detail view system. Named once so
+// the dashboard-view and library-view exclusion checks can't drift apart —
+// they did before this: the library-view branch had no exclusion at all,
+// so switching to "Library" then clicking e.g. "Bills" rendered BOTH
+// BillTracker AND the generic library search/filter/item-list at once.
+const PARITY_SPRINT_TABS: ModeTab[] = ['MyReps', 'Bills', 'CivicAlerts', 'FOIA', 'Budget', 'CivicWorkbench'];
 
 const STATUS_COLORS: Record<string, string> = {
   submitted: 'neon-blue',
@@ -625,7 +632,6 @@ export default function GovernmentLensPage() {
   useLensNav('government');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('government');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [mode, setMode] = useState<ModeTab>('Permits');
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -3204,7 +3210,6 @@ export default function GovernmentLensPage() {
       <DepthBadge lensId="government" size="sm" className="ml-2" />
     <div data-lens-theme="government" className={ds.pageContainer}>
       <ShellPreview lensId="government" defaultOpen={true} />
-      <CivicWorkbenchSection />
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -3299,7 +3304,6 @@ export default function GovernmentLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="government" artifactId={items[0]?.id} compact />
       {/* Federal Register Wire — live Federal Register + House Clerk feeds */}
       <LiveFeed
         articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
@@ -3354,13 +3358,18 @@ export default function GovernmentLensPage() {
       {mode === 'CivicAlerts' && <div className="p-4"><CivicAlerts /></div>}
       {mode === 'FOIA' && <div className="p-4"><FOIATracker /></div>}
       {mode === 'Budget' && <div className="p-4"><BudgetVisualizer /></div>}
+      {/* SeeClickFix/Accela-parity civic workbench — was previously mounted
+          unconditionally above the page header (visible on every visit
+          regardless of tab); now a normal tab like its parity-sprint
+          siblings above. */}
+      {mode === 'CivicWorkbench' && <CivicWorkbenchSection />}
 
       {/* Content */}
-      {view === 'dashboard' && !['MyReps','Bills','CivicAlerts','FOIA','Budget'].includes(mode) && renderDashboard()}
+      {view === 'dashboard' && !PARITY_SPRINT_TABS.includes(mode) && renderDashboard()}
 
-      {view === 'detail' && renderDetailView()}
+      {view === 'detail' && !PARITY_SPRINT_TABS.includes(mode) && renderDetailView()}
 
-      {view === 'library' && (
+      {view === 'library' && !PARITY_SPRINT_TABS.includes(mode) && (
         <>
           {/* Search, filter, actions bar */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -3541,26 +3550,6 @@ export default function GovernmentLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="government" />
-          </div>
-        )}
-      </div>
 
       {/* Bespoke Congress.gov recent-bills list with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

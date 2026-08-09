@@ -13,13 +13,12 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, AlertTriangle, CheckCircle2,
-  Brain, Eye, Shield, BarChart3, Layers, ChevronDown,
+  Brain, Eye, Shield, BarChart3,
   BookOpen, Users,
 } from 'lucide-react';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
 import { ErrorState } from '@/components/common/EmptyState';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // Mirror icon alias
 const Mirror = Eye;
@@ -38,7 +37,6 @@ type Mode = 'journal' | 'selfcritique';
 export default function ReflectionLensPage() {
   useLensNav('reflection');
   const [mode, setMode] = useState<Mode>('journal');
-  const [showFeatures, setShowFeatures] = useState(false);
 
   const { data: status, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['reflection-status'],
@@ -389,24 +387,6 @@ export default function ReflectionLensPage() {
         {/* ConnectiveTissueBar */}
         <ConnectiveTissueBar lensId="reflection" />
 
-        {/* Lens Features */}
-        <div className="border-t border-white/10">
-          <button
-            onClick={() => setShowFeatures(!showFeatures)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-          >
-            <span className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              Lens Features & Capabilities
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-          </button>
-          {showFeatures && (
-            <div className="px-4 pb-4">
-              <LensFeaturePanel lensId="reflection" />
-            </div>
-          )}
-        </div>
 
         <a href="#reflection-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to reflection content</a>
       </div>

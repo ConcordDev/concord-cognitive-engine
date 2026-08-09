@@ -21,18 +21,16 @@ import { useUIStore } from '@/store/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Film, Plus, Search, Play, Users, Clock, Eye, TrendingUp, Clapperboard, Camera, Mic,
-  Music, Layers, BarChart3, Share2, X, ChevronRight,
+  Music, Layers, BarChart3, Share2, X, ChevronRight, ChevronDown,
   Monitor, Globe, Sparkles, Loader2, DollarSign, Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { UniversalPlayer } from '@/components/media/UniversalPlayer';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { showToast } from '@/components/common/Toasts';
 
 type FilmTab = 'discover' | 'my-films' | 'create' | 'analytics' | 'watch-parties';
@@ -56,9 +54,9 @@ export default function FilmStudiosPage() {
   const { contextDTUs, isLoading: dtusLoading } = useLensDTUs({ lens: 'film-studios' });
 
   const [tab, setTab] = useState<FilmTab>('discover');
+  const [showFilmStack, setShowFilmStack] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Lens-scoped keyboard commands. Letterboxd / Final Cut idiom:
   // single-letter section jumps; n new film.
@@ -245,18 +243,13 @@ export default function FilmStudiosPage() {
                 {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
               </span>
             )}
-            <button onClick={() => setShowFeatures(!showFeatures)} className="px-3 py-1.5 text-xs bg-white/5 border border-white/10 rounded-lg hover:bg-white/10">
-              Features
-            </button>
             <button onClick={() => setShowCreateModal(true)} className="px-3 py-1.5 text-xs bg-neon-purple/20 border border-neon-purple/30 rounded-lg hover:bg-neon-purple/30 flex items-center gap-1">
               <Plus className="w-3 h-3" /> New Film
             </button>
           </div>
         </div>
 
-        {showFeatures && <LensFeaturePanel lensId="film_studios" />}
         <RealtimeDataPanel data={realtimeData} insights={realtimeInsights} />
-      <UniversalActions domain="film-studios" artifactId={null} compact />
 
         {/* Film Studio Actions */}
         <div className="panel p-4 space-y-3">
@@ -877,7 +870,19 @@ export default function FilmStudiosPage() {
         </AnimatePresence>
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <FilmStackFeed />
+        <button
+          type="button"
+          onClick={() => setShowFilmStack(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Filmmaking Q&A (external reference)</span>
+          {showFilmStack ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFilmStack && (
+          <div className="mt-3">
+            <FilmStackFeed />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="film-studios" limit={10} hideWhenEmpty className="mt-4" />

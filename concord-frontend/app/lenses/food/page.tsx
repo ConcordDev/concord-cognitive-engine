@@ -30,7 +30,6 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useWasteLog, useFloorPlan, usePrepList, type WasteReason, type TableStatus, type FloorTable } from '@/lib/hooks/use-food-ops';
 import { ds } from '@/lib/design-system';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   ChefHat, UtensilsCrossed, Warehouse, CalendarClock, FlaskConical, Clock,
   Plus, Search, Filter, X, Edit2, Trash2, Users, AlertTriangle, CheckCircle2,
@@ -38,7 +37,7 @@ import {
   TrendingUp, Flame, Leaf, Scale, DollarSign, ClipboardList, CalendarDays,
   Star, Puzzle, TrendingDown, Package, FileText, UserCheck, MapPin,
   ArrowDown, ArrowUp, Minus, Hash, CircleDot, Layers,
-  RotateCcw, Zap, Target, PieChart, Armchair, ChevronDown, Camera, Link,
+  RotateCcw, Zap, Target, PieChart, Armchair, Camera, Link,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -54,7 +53,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 
@@ -233,7 +231,6 @@ export default function FoodLensPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<FoodArtifact> | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Sub-views
   const [recipeScaleId, setRecipeScaleId] = useState<string | null>(null);
@@ -2798,11 +2795,10 @@ export default function FoodLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="food" artifactId={allRecipes[0]?.id} compact />
       {/* Live WHO + food safety alerts */}
       <LiveFeed
         articles={adaptToLiveFeedArticles(realtimeData as Record<string, unknown> | null)}
-        domain="legal"
+        domain="food"
         isLive={isLive}
         lastUpdated={lastUpdated}
         limit={8}
@@ -2880,24 +2876,6 @@ export default function FoodLensPage() {
       {renderEditor()}
       {renderRecipeScaler()}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="food" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
         <OpenFoodFactsSearch />
       </section>

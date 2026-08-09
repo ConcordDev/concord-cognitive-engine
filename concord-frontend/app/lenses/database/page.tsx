@@ -13,7 +13,6 @@ import { LiveDbClient } from '@/components/database/LiveDbClient';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -22,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Database, Server, HardDrive, Cpu, RefreshCw, Play, CheckCircle, XCircle,
   AlertCircle, Table2, Search, Clock, Columns, Eye, Trash2,
-  Copy, ChevronLeft, ChevronRight, List, BarChart3, Link2, Key,
+  Copy, ChevronLeft, ChevronRight, ChevronDown, List, BarChart3, Link2, Key,
   FileJson, FileSpreadsheet, Terminal, History, Layers, Loader2, Zap,
   Plug,
 } from 'lucide-react';
@@ -239,6 +238,8 @@ export default function DatabaseLensPage() {
 
   // --- Tab state ---
   const [activeTab, setActiveTab] = useState<TabId>('live');
+  const [showSchemaDesigner, setShowSchemaDesigner] = useState(false);
+  const [showDbProjectExplorer, setShowDbProjectExplorer] = useState(false);
 
   useLensCommand(
     [
@@ -1241,7 +1242,6 @@ export default function DatabaseLensPage() {
       </div>
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="database" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="database"
@@ -1256,12 +1256,36 @@ export default function DatabaseLensPage() {
           )}
         </motion.div>
       </AnimatePresence>
-      <section className="mt-6">
-        <SchemaDesigner />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DbProjectExplorer />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowSchemaDesigner(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showSchemaDesigner ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Schema Designer (dbdiagram.io/DrawSQL-shape)
+        </button>
+        {showSchemaDesigner && (
+          <section className="mt-3">
+            <SchemaDesigner />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowDbProjectExplorer(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showDbProjectExplorer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world Database Projects (external reference)
+        </button>
+        {showDbProjectExplorer && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <DbProjectExplorer />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="database" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="database" hideWhenEmpty className="mt-3" />

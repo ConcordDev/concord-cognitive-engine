@@ -16,7 +16,7 @@ import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Heart, Shield, AlertTriangle, Sparkles, Loader2 } from 'lucide-react';
+import { Brain, Heart, Shield, AlertTriangle, Sparkles, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -45,6 +45,7 @@ export default function MentalHealthLensPage() {
   // ── Coping strategies ──────────────────────────────────────────────
   const [selectedTriggers, setSelectedTriggers] = useState<string[]>([]);
   const [copingBusy, setCopingBusy] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [copingResult, setCopingResult] = useState<CopingResult | null>(null);
   const [copingError, setCopingError] = useState<string | null>(null);
 
@@ -284,11 +285,23 @@ export default function MentalHealthLensPage() {
         <CrisisPanel />
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <MentalHealthActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>More actions</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <MentalHealthActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </div>
           <RecentMineCard domain="mental-health" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="mental-health" hideWhenEmpty className="mt-3" title="More actions" />

@@ -39,6 +39,7 @@ const AgentBuilder = dynamic(
 );
 import {
   Users, Coins, Scale, GraduationCap, Gavel, Sparkles, Loader2,
+  ChevronDown, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { DataExplorer } from '@/components/society/DataExplorer';
@@ -50,6 +51,8 @@ type TabKey = 'culture' | 'economy' | 'autonomy' | 'conflict' | 'teaching' | 'pe
 export default function SocietyLensPage() {
   useLensNav('society');
   const [activeTab, setActiveTab] = useState<TabKey>('culture');
+  const [showDataExplorer, setShowDataExplorer] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
 
   // Lens-scoped keyboard commands.
   useLensCommand(
@@ -183,14 +186,38 @@ export default function SocietyLensPage() {
         </AnimatePresence>
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DataExplorer />
+        <button
+          type="button"
+          onClick={() => setShowDataExplorer(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Data explorer</span>
+          {showDataExplorer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showDataExplorer && (
+          <div className="mt-3">
+            <DataExplorer />
+          </div>
+        )}
       </section>
 
-      <PipingProvider>
-        <section className="mt-6">
-          <SocietyActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Society actions</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <SocietyActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </div>
 
           <RecentMineCard domain="society" limit={10} hideWhenEmpty className="mt-4" />

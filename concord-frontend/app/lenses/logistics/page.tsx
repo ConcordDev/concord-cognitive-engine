@@ -36,7 +36,6 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -53,6 +52,8 @@ import {
   Gauge,
   Activity,
   Map,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -145,6 +146,8 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function LogisticsLensPage() {
   const [mode, setMode] = useState<ModeTab>('fleet');
+  const [showTmsWorkbench, setShowTmsWorkbench] = useState(false);
+  const [showVisibilityTower, setShowVisibilityTower] = useState(false);
   // Live BTS + DOT transit feed.
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('logistics');
 
@@ -210,8 +213,36 @@ export default function LogisticsLensPage() {
       <DepthBadge lensId="logistics" size="sm" className="ml-2" />
       <div className="px-4 mt-2">
         <ShellPreview lensId="logistics" defaultOpen={true} />
-        <TmsWorkbenchSection />
-        <VisibilityTower />
+        <section className="mt-6 rounded-xl border border-cyan-900/30 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowTmsWorkbench(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-cyan-300"
+          >
+            <span>FedEx/Project44-parity workbench</span>
+            {showTmsWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showTmsWorkbench && (
+            <div className="mt-3">
+              <TmsWorkbenchSection />
+            </div>
+          )}
+        </section>
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <button
+            type="button"
+            onClick={() => setShowVisibilityTower(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Visibility tower</span>
+            {showVisibilityTower ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showVisibilityTower && (
+            <div className="mt-3">
+              <VisibilityTower />
+            </div>
+          )}
+        </section>
       </div>
     <LensPageShell
       domain="logistics"
@@ -260,7 +291,6 @@ export default function LogisticsLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="logistics" artifactId={undefined} compact />
 
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
@@ -369,8 +399,7 @@ function TmsWorkbenchSection() {
     { id: 'events', label: 'EDI events' },
   ] as const;
   return (
-    <section className="mt-6 space-y-3">
-      <h2 className="text-sm font-semibold text-cyan-300 uppercase tracking-wider">FedEx/Project44-parity workbench</h2>
+    <section className="space-y-3">
       <nav className="flex items-center gap-1 border-b border-cyan-900/30 pb-2 overflow-x-auto">
         {TABS.map(t => (
           <button

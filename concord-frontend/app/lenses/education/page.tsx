@@ -32,7 +32,6 @@ import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   GraduationCap,
   Users,
@@ -119,7 +118,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import LiveFeed from '@/components/lens/LiveFeed';
 
@@ -286,6 +284,21 @@ const MODE_TABS: { id: ModeTab; icon: LucideIcon; defaultType: ArtifactType }[] 
   { id: 'Mastery', icon: Brain, defaultType: 'Student' },
   { id: 'LessonQA', icon: MessageSquare, defaultType: 'Course' },
 ];
+
+// Groups the 27 flat MODE_TABS above into 4 categories (the natural grouping
+// already implied by the comments in that array) so the nav renders as a
+// small always-visible category strip + the active category's tabs, instead
+// of 27 buttons wrapped across several rows before any real content shows.
+const MODE_TAB_CATEGORIES: { id: string; label: string; icon: LucideIcon; tabs: ModeTab[] }[] = [
+  { id: 'engine', label: 'Learning Engine', icon: Dna, tabs: ['Genome', 'Path', 'Proof', 'Tutor', 'Cohort', 'Assessment', 'Credentials', 'Earnings'] },
+  { id: 'classroom', label: 'Classroom', icon: GraduationCap, tabs: ['Students', 'Courses', 'Assignments', 'Grades', 'Plans', 'Resources', 'Quizzes', 'Certifications', 'Study'] },
+  { id: 'tools', label: 'Study Tools', icon: BookMarked, tabs: ['Flashcards', 'Socratic', 'QuizGen', 'LessonPlan'] },
+  { id: 'more', label: 'More', icon: Layers, tabs: ['Video', 'Exercises', 'Paths', 'Cohorts', 'Mastery', 'LessonQA'] },
+];
+
+function categoryForTab(tab: ModeTab): string {
+  return MODE_TAB_CATEGORIES.find((c) => c.tabs.includes(tab))?.id ?? MODE_TAB_CATEGORIES[0].id;
+}
 
 const ALL_STATUSES: Status[] = ['enrolled', 'active', 'completed', 'withdrawn', 'graduated'];
 
@@ -551,36 +564,54 @@ export default function EducationLensPage() {
 
   /* ---------- core state ---------- */
   const [activeTab, setActiveTab] = useState<ModeTab>('Students');
+  const [activeCategory, setActiveCategory] = useState<string>(() => categoryForTab('Students'));
+  const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
+  const [showGradeBook, setShowGradeBook] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
+  const [showCurriculum, setShowCurriculum] = useState(false);
+  const [showAssignmentBuilder, setShowAssignmentBuilder] = useState(false);
+
+  const selectTab = useCallback((tab: ModeTab) => {
+    setActiveTab(tab);
+    setActiveCategory(categoryForTab(tab));
+    setFilterStatus('all');
+    setShowGradeBook(false);
+    setShowAttendance(false);
+    setShowCurriculum(false);
+    setShowAssignmentBuilder(false);
+  }, []);
+
+  const selectCategory = useCallback((catId: string) => {
+    setActiveCategory(catId);
+    const cat = MODE_TAB_CATEGORIES.find((c) => c.id === catId);
+    if (cat && !cat.tabs.includes(activeTab)) {
+      selectTab(cat.tabs[0]);
+    }
+  }, [activeTab, selectTab]);
 
   // Lens-scoped keyboard commands. LMS idiom (Canvas / Schoology):
   // single-letter section jumps for the teaching workflow.
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLensCommand(
     [
-      { id: 'tab-students', keys: 's', description: 'Students', category: 'navigation', action: () => setActiveTab('Students') },
-      { id: 'tab-courses', keys: 'c', description: 'Courses', category: 'navigation', action: () => setActiveTab('Courses') },
-      { id: 'tab-assignments', keys: 'a', description: 'Assignments', category: 'navigation', action: () => setActiveTab('Assignments') },
-      { id: 'tab-grades', keys: 'g', description: 'Grades', category: 'navigation', action: () => setActiveTab('Grades') },
-      { id: 'tab-quizzes', keys: 'q', description: 'Quizzes', category: 'navigation', action: () => setActiveTab('Quizzes') },
-      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => setActiveTab('Resources') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
+      { id: 'tab-students', keys: 's', description: 'Students', category: 'navigation', action: () => selectTab('Students') },
+      { id: 'tab-courses', keys: 'c', description: 'Courses', category: 'navigation', action: () => selectTab('Courses') },
+      { id: 'tab-assignments', keys: 'a', description: 'Assignments', category: 'navigation', action: () => selectTab('Assignments') },
+      { id: 'tab-grades', keys: 'g', description: 'Grades', category: 'navigation', action: () => selectTab('Grades') },
+      { id: 'tab-quizzes', keys: 'q', description: 'Quizzes', category: 'navigation', action: () => selectTab('Quizzes') },
+      { id: 'tab-resources', keys: 'r', description: 'Resources', category: 'navigation', action: () => selectTab('Resources') },      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
 
     ],
     { lensId: 'education' }
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingItem, setEditingItem] = useState<LensItem<EducationArtifact> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [showStudyPanel, setShowStudyPanel] = useState(false);
 
   /* ---------- detail views ---------- */
   const [selectedStudent, setSelectedStudent] = useState<LensItem<EducationArtifact> | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<LensItem<EducationArtifact> | null>(null);
-  const [showGradeBook, setShowGradeBook] = useState(false);
-  const [showAttendance, setShowAttendance] = useState(false);
-  const [showCurriculum, setShowCurriculum] = useState(false);
-  const [showAssignmentBuilder, setShowAssignmentBuilder] = useState(false);
 
   /* ---------- gradebook state ---------- */
   const [categoryWeights, setCategoryWeights] = useState<Record<GradeCategory, number>>(DEFAULT_CATEGORY_WEIGHTS);
@@ -1119,7 +1150,6 @@ export default function EducationLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="education" artifactId={items[0]?.id} compact />
         {/* Key Metrics */}
         <div className={ds.grid4}>
           <div className={ds.panel}>
@@ -1387,12 +1417,30 @@ export default function EducationLensPage() {
 
       <RealtimeDataPanel domain="education" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
-      {/* Mode Tabs */}
-      <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-3 flex-wrap">
-        {MODE_TABS.map(tab => (
+      {/* Mode categories — 27 flat tabs grouped into 4 sections so the nav
+          reads as a short strip, not a wall of buttons above the content. */}
+      <nav className="flex items-center gap-1 border-b border-amber-800/20 pb-2" aria-label="Education sections">
+        {MODE_TAB_CATEGORIES.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => selectCategory(cat.id)}
+            aria-current={activeCategory === cat.id ? 'true' : undefined}
+            className={cn(ds.btnGhost, 'rounded-lg', activeCategory === cat.id && 'bg-amber-500/15 text-amber-400 border-amber-400/20')}
+          >
+            <cat.icon className="w-4 h-4" />
+            {cat.label}
+          </button>
+        ))}
+      </nav>
+      <nav
+        className="flex items-center gap-1 border-b border-amber-800/20 pb-3 flex-wrap"
+        aria-label={`${MODE_TAB_CATEGORIES.find(c => c.id === activeCategory)?.label ?? ''} views`}
+        data-testid="education-subtab-nav"
+      >
+        {MODE_TABS.filter(tab => MODE_TAB_CATEGORIES.find(c => c.id === activeCategory)?.tabs.includes(tab.id)).map(tab => (
           <button
             key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setFilterStatus('all'); setShowGradeBook(false); setShowAttendance(false); setShowCurriculum(false); setShowAssignmentBuilder(false); }}
+            onClick={() => selectTab(tab.id)}
             className={cn(ds.btnGhost, 'whitespace-nowrap rounded-lg', activeTab === tab.id && 'bg-amber-500/15 text-amber-400 border-amber-400/20')}
           >
             <tab.icon className="w-4 h-4" />
@@ -3247,24 +3295,6 @@ export default function EducationLensPage() {
         <StudyModePanel />
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="education" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <GutenbergCurriculum />
       </section>
@@ -3294,7 +3324,7 @@ export default function EducationLensPage() {
         { id: 'Study',        label: 'Study',   icon: MobileTabBrain },
       ]}
       active={activeTab}
-      onSelect={(id) => setActiveTab(id as ModeTab)}
+      onSelect={(id) => selectTab(id as ModeTab)}
     />
     </LensShell>
   );

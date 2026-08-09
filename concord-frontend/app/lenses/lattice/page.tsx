@@ -52,7 +52,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Network, Brain, ShieldCheck, History, Activity,
   Loader2, RefreshCw, Check, X, LineChart, CalendarClock, ScrollText,
-  AlertTriangle, Info, type LucideIcon,
+  AlertTriangle, Info, ChevronDown, ChevronRight, type LucideIcon,
 } from 'lucide-react';
 
 type TabKey =
@@ -104,6 +104,7 @@ export default function LatticeLensPage() {
   useLensNav('lattice');
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [showLatticeRepos, setShowLatticeRepos] = useState(false);
 
   useLensCommand(
     [
@@ -484,7 +485,19 @@ export default function LatticeLensPage() {
         </AnimatePresence>
       </main>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <LatticeRepos />
+        <button
+          type="button"
+          onClick={() => setShowLatticeRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Lattice tooling (external reference)</span>
+          {showLatticeRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showLatticeRepos && (
+          <div className="mt-3">
+            <LatticeRepos />
+          </div>
+        )}
       </section>
     </div>
 

@@ -54,9 +54,11 @@ import {
   ArrowUpDown,
   UserCog,
   Layers,
+  ChevronDown,
+  ChevronRight,
+  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useUIStore } from '@/store/ui';
@@ -431,6 +433,8 @@ export default function FeedLensPage() {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [showProfile, setShowProfile] = useState(false);
+  const [showFeedTools, setShowFeedTools] = useState(false);
+  const [showHnFrontPage, setShowHnFrontPage] = useState(false);
   const composeRef = useRef<HTMLTextAreaElement>(null);
 
   // Product tagging state for compose
@@ -1916,7 +1920,6 @@ export default function FeedLensPage() {
         <FeedbackWidget targetType="lens" targetId="feed" />
 
         {/* Real-time Data Panel */}
-        <UniversalActions domain="feed" artifactId={null} compact />
 
         {/* Feed Analytics Actions */}
         <div className="panel p-4 space-y-3">
@@ -2368,13 +2371,48 @@ export default function FeedLensPage() {
         )}
       </div>
       {/* 2026 X/Threads parity tools — ranked For You, threads, lists,
-          polls, bookmark folders + saved searches, audio Spaces, controls */}
-      <section className="mt-6">
-        <FeedToolsPanel candidates={feedCandidates} />
+          polls, bookmark folders + saved searches, audio Spaces, controls.
+          Collapsed by default: this used to sit permanently below the main
+          feed regardless of which of its own 7 internal tabs anyone wanted. */}
+      <section className="mt-6 rounded-xl border border-white/10 bg-white/5">
+        <button
+          type="button"
+          onClick={() => setShowFeedTools((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showFeedTools}
+        >
+          <span className="flex items-center gap-2">
+            <Wrench className="w-4 h-4 text-neon-pink" /> Feed tools (For You, threads, lists, polls, saved, spaces, controls)
+          </span>
+          {showFeedTools ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showFeedTools && (
+          <div className="px-4 pb-4">
+            <FeedToolsPanel candidates={feedCandidates} />
+          </div>
+        )}
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <HnFrontPage />
+      {/* External reference — Hacker News front page, not this lens's own
+          feed content. Collapsed by default rather than promoted open on
+          every visit; still reachable for anyone who wants it. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowHnFrontPage((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showHnFrontPage}
+        >
+          <span className="flex items-center gap-2">
+            <Newspaper className="w-4 h-4 text-orange-400" /> Hacker News front page (external reference)
+          </span>
+          {showHnFrontPage ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showHnFrontPage && (
+          <div className="px-4 pb-4">
+            <HnFrontPage />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="feed" limit={10} hideWhenEmpty className="mt-4" />

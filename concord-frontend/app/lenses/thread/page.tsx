@@ -16,7 +16,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useAuth } from '@/hooks/useAuth';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useUIStore } from '@/store/ui';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
@@ -188,6 +187,9 @@ export default function ThreadLensPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const newThreadInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const [showThreadComposer, setShowThreadComposer] = useState(false);
+  const [showThreadStudio, setShowThreadStudio] = useState(false);
+  const [showThreadFeed, setShowThreadFeed] = useState(false);
 
   useLensNav('thread');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('thread');
@@ -579,7 +581,6 @@ export default function ThreadLensPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <UniversalActions domain="thread" artifactId={selectedThreadId} compact />
           <div className="flex items-center gap-1 bg-lattice-surface rounded-lg p-1">
             {(['tree', 'timeline', 'linear'] as ViewMode[]).map((mode) => (
               <button
@@ -1071,15 +1072,51 @@ export default function ThreadLensPage() {
         )}
       </div>
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ThreadComposer />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ThreadStudio />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ThreadFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowThreadComposer(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showThreadComposer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Composer (Typefully-shape)
+        </button>
+        {showThreadComposer && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ThreadComposer />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowThreadStudio(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showThreadStudio ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Publishing Studio (accounts / media / calendar / AI / style / analytics)
+        </button>
+        {showThreadStudio && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ThreadStudio />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowThreadFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showThreadFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
+        </button>
+        {showThreadFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ThreadFeed />
+          </section>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="thread" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="thread" hideWhenEmpty className="mt-3" />

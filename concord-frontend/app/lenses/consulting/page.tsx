@@ -14,7 +14,6 @@ import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { ConsultingFirmReference } from '@/components/consulting/ConsultingFirmReference';
 import { EngagementTracker } from '@/components/consulting/EngagementTracker';
@@ -37,6 +36,8 @@ import {
   BookOpen,
   Star,
   Zap,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 type ModeTab =
@@ -132,6 +133,9 @@ export default function ConsultingLensPage() {
   );
 
   const [activeTab, setActiveTab] = useState<ModeTab>('engagements');
+  const [showFirmReference, setShowFirmReference] = useState(false);
+  const [showEngagementTracker, setShowEngagementTracker] = useState(false);
+  const [showWorkbench, setShowWorkbench] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -585,7 +589,6 @@ export default function ConsultingLensPage() {
         </>
       }
     >
-      <UniversalActions domain="consulting" artifactId={items[0]?.id} compact />
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -712,18 +715,54 @@ export default function ConsultingLensPage() {
       {showDashboard ? renderDashboard() : renderLibrary()}
       {renderEditor()}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ConsultingFirmReference />
+        <button
+          type="button"
+          onClick={() => setShowFirmReference(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Consulting firm reference (external)</span>
+          {showFirmReference ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFirmReference && (
+          <div className="mt-3">
+            <ConsultingFirmReference />
+          </div>
+        )}
       </section>
 
       {/* Engagement workbench: client engagement CRUD + time log + dashboard */}
-      <section className="mt-4">
-        <EngagementTracker />
+      <section className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowEngagementTracker(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Engagement tracker</span>
+          {showEngagementTracker ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showEngagementTracker && (
+          <div className="mt-3">
+            <EngagementTracker />
+          </div>
+        )}
       </section>
 
       {/* Practice-management workbench: timer, invoicing, proposals,
           staffing, expenses, retainers, profitability, client portal */}
-      <section className="mt-4">
-        <ConsultingWorkbench />
+      <section className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowWorkbench(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Practice management workbench</span>
+          {showWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showWorkbench && (
+          <div className="mt-3">
+            <ConsultingWorkbench />
+          </div>
+        )}
       </section>
     </LensPageShell>
     

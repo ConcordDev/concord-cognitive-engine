@@ -14,7 +14,6 @@ import { BoardWorkspace } from '@/components/board/BoardWorkspace';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Lightbulb,
   ListTodo,
@@ -25,6 +24,7 @@ import {
   GripVertical,
   X,
   ChevronDown,
+  ChevronRight,
   Calendar,
   Paperclip,
   MessageSquare,
@@ -43,7 +43,6 @@ import {
   Circle,
   Activity,
   Upload,
-  Layers,
   Trash2,
   Tag,
   Loader2,
@@ -57,7 +56,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -378,6 +376,7 @@ export default function BoardLensPage() {
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('board');
+  const [showBggHotList, setShowBggHotList] = useState(false);
   const [activeProject, setActiveProject] = useState(projects[0]);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const [dragOverColumn, setDragOverColumn] = useState<ColumnId | null>(null);
@@ -392,7 +391,6 @@ export default function BoardLensPage() {
   const [filterLabel, setFilterLabel] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
     // Lens-scoped keyboard commands. Standard kanban verbs: b/t/g switch
   // view, / focuses search, f toggles filter panel.
@@ -897,7 +895,6 @@ export default function BoardLensPage() {
           </header>
 
           {/* AI Actions */}
-          <UniversalActions domain="board" artifactId={lensItems[0]?.id} compact />
 
           {/* Board AI Action Panel */}
           <div className="flex-shrink-0 px-6 pb-3 space-y-3">
@@ -1639,28 +1636,24 @@ export default function BoardLensPage() {
         <BoardWorkspace />
       </section>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      {/* External reference — BoardGameGeek hot-games list, not this
+          lens's own boards. Collapsed by default rather than promoted
+          open on every visit. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowBggHotList((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showBggHotList}
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
+          <span>BoardGameGeek hot list (external reference)</span>
+          {showBggHotList ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
-        {showFeatures && (
+        {showBggHotList && (
           <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="board" />
+            <BggHotList />
           </div>
         )}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <BggHotList />
       </section>
     </div>
           <RecentMineCard domain="board" limit={10} hideWhenEmpty className="mt-4" />

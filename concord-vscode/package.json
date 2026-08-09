@@ -23,11 +23,11 @@
   "homepage": "https://concord-os.org",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine",
+    "url": "https://github.com/ConcordDev/concord-cognitive-engine",
     "directory": "concord-vscode"
   },
   "bugs": {
-    "url": "https://github.com/ryttps94jq-gif/concord-cognitive-engine/issues"
+    "url": "https://github.com/ConcordDev/concord-cognitive-engine/issues"
   },
   "main": "./out/extension.js",
   "activationEvents": ["onStartupFinished"],

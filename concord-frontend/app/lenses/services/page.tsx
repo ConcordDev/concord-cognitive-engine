@@ -18,8 +18,6 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import {
   Scissors,
   Users,
@@ -44,6 +42,8 @@ import {
   TrendingUp,
   Star,
   Bell,
+  ChevronDown,
+  ChevronRight,
   Heart,
   ShoppingBag,
   CreditCard,
@@ -54,8 +54,6 @@ import {
   Receipt,
   Tag,
   UserPlus,
-  Layers,
-  ChevronDown,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -224,12 +222,13 @@ export default function ServicesLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('services');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [showServicesFeed, setShowServicesFeed] = useState(false);
+  const [showRevenueRetention, setShowRevenueRetention] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [dockAppointmentId, setDockAppointmentId] = useState<string | null>(null);
   const [showCloseDayModal, setShowCloseDayModal] = useState(false);
 
@@ -900,7 +899,6 @@ export default function ServicesLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="services" artifactId={appointments[0]?.id} compact />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1242,35 +1240,41 @@ export default function ServicesLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="services" />
-          </div>
-        )}
-      </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <BookingSuite />
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ServicesFeed />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowServicesFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showServicesFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Small Business Discussion (external reference)
+        </button>
+        {showServicesFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ServicesFeed />
+          </section>
+        )}
+      </div>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <RevenueRetentionPanel />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowRevenueRetention(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showRevenueRetention ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Revenue & Retention
+        </button>
+        {showRevenueRetention && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <RevenueRetentionPanel />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#services-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to services content</a>

@@ -19,7 +19,7 @@ import type { CreateWebhookRequest } from '@/lib/api/generated-types';
 import { useUIStore } from '@/store/ui';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plug, Webhook, Zap, Plus, Trash2, ToggleLeft, ToggleRight, Link, AlertCircle, Loader2, CheckCircle, Send, Clock, Activity, ShieldCheck } from 'lucide-react';
+import { Plug, Webhook, Zap, Plus, Trash2, ToggleLeft, ToggleRight, Link, AlertCircle, Loader2, CheckCircle, Send, Clock, Activity, ShieldCheck, ChevronDown, ChevronRight } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -35,6 +35,7 @@ export default function IntegrationsLensPage() {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('integrations');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('workflows');
+  const [showIntegrationsRepos, setShowIntegrationsRepos] = useState(false);
 
   // Lens-scoped keyboard commands (surfaced as kbd chips on each tab).
   useLensCommand(
@@ -418,7 +419,19 @@ export default function IntegrationsLensPage() {
       <RealtimeDataPanel data={realtimeInsights} />
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <IntegrationsRepos />
+        <button
+          type="button"
+          onClick={() => setShowIntegrationsRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Integration tooling (external reference)</span>
+          {showIntegrationsRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showIntegrationsRepos && (
+          <div className="mt-3">
+            <IntegrationsRepos />
+          </div>
+        )}
       </section>
     </div>
           <RecentMineCard domain="integrations" limit={10} hideWhenEmpty className="mt-4" />

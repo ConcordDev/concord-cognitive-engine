@@ -38,6 +38,9 @@ const TestDesignPlaytestClient := preload("res://tests/test_design_playtest_clie
 const TestLandAirTransitionController := preload(
 	"res://tests/test_land_air_transition_controller.gd")
 const TestSceneBootstrap := preload("res://tests/test_scene_bootstrap.gd")
+const TestBuildingArchetype := preload("res://tests/test_building_archetype.gd")
+const TestAssetResolver := preload("res://tests/test_asset_resolver.gd")
+const TestGlbLoader := preload("res://tests/test_glb_loader.gd")
 const TestAerialTrafficController := preload("res://tests/test_aerial_traffic_controller.gd")
 const TestAirLegibility := preload("res://tests/test_air_legibility.gd")
 const TestFeaSceneBuilder := preload("res://tests/test_fea_scene_builder.gd")
@@ -53,6 +56,20 @@ const TestGatewayClientAuth := preload("res://tests/test_gateway_client_auth.gd"
 const TestBootRuntimeConfig := preload("res://tests/test_boot_runtime_config.gd")
 const TestGatewayClientSeq := preload("res://tests/test_gateway_client_seq.gd")
 const TestBootResync := preload("res://tests/test_boot_resync.gd")
+const TestAvatarManager := preload("res://tests/test_avatar_manager.gd")
+const TestNpcPoller := preload("res://tests/test_npc_poller.gd")
+const TestCreaturePoller := preload("res://tests/test_creature_poller.gd")
+const TestCreatureRig := preload("res://tests/test_creature_rig.gd")
+const TestVegetationRenderer := preload("res://tests/test_vegetation_renderer.gd")
+const TestQuestBreadcrumb := preload("res://tests/test_quest_breadcrumb.gd")
+const TestQuestPoller := preload("res://tests/test_quest_poller.gd")
+const TestQuestAvailablePoller := preload("res://tests/test_quest_available_poller.gd")
+const TestQuestActions := preload("res://tests/test_quest_actions.gd")
+const TestSfxSynth := preload("res://tests/test_sfx_synth.gd")
+const TestLockOnState := preload("res://tests/test_lock_on_state.gd")
+const TestAppearanceArchetype := preload("res://tests/test_appearance_archetype.gd")
+const TestPlayerAppearanceLoader := preload("res://tests/test_player_appearance_loader.gd")
+const TestTouchControls := preload("res://tests/test_touch_controls.gd")
 
 
 func _init() -> void:
@@ -73,6 +90,9 @@ func _init() -> void:
 		"DesignPlaytestClient": TestDesignPlaytestClient.run(),
 		"LandAirTransitionController": TestLandAirTransitionController.run(),
 		"SceneBootstrap": TestSceneBootstrap.run(),
+		"BuildingArchetype": TestBuildingArchetype.run(),
+		"AssetResolver": TestAssetResolver.run(),
+		"GlbLoader": TestGlbLoader.run(),
 		"AerialTrafficController": TestAerialTrafficController.run(),
 		"AirLegibility": TestAirLegibility.run(),
 		"FeaSceneBuilder": TestFeaSceneBuilder.run(),
@@ -88,6 +108,20 @@ func _init() -> void:
 		"BootRuntimeConfig": TestBootRuntimeConfig.run(),
 		"GatewayClientSeq": TestGatewayClientSeq.run(),
 		"BootResync": TestBootResync.run(),
+		"AvatarManager": TestAvatarManager.run(),
+		"NpcPoller": TestNpcPoller.run(),
+		"CreaturePoller": TestCreaturePoller.run(),
+		"CreatureRig": TestCreatureRig.run(),
+		"VegetationRenderer": TestVegetationRenderer.run(),
+		"QuestBreadcrumb": TestQuestBreadcrumb.run(),
+		"QuestPoller": TestQuestPoller.run(),
+		"QuestAvailablePoller": TestQuestAvailablePoller.run(),
+		"QuestActions": TestQuestActions.run(),
+		"SfxSynth": TestSfxSynth.run(),
+		"LockOnState": TestLockOnState.run(),
+		"AppearanceArchetype": TestAppearanceArchetype.run(),
+		"PlayerAppearanceLoader": TestPlayerAppearanceLoader.run(),
+		"TouchControls": TestTouchControls.run(),
 	}
 
 	var all_ok := true

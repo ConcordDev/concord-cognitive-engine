@@ -52,6 +52,9 @@ const DOMAIN_META: Record<string, { accent: string; label: string; emptyTip: str
   fitness:       { accent: 'border-lime-400/30 text-lime-300',       label: 'Health & Fitness',     emptyTip: 'CDC + MMWR feeds connecting…' },
   agriculture:   { accent: 'border-green-400/30 text-green-300',     label: 'Ag Wire',              emptyTip: 'USDA AMS + USDA Press feeds connecting…' },
   education:     { accent: 'border-indigo-400/30 text-indigo-300',   label: 'Education Wire',       emptyTip: 'Department of Education + NCES feeds connecting…' },
+  healthcare:    { accent: 'border-red-400/30 text-red-300',         label: 'Health Wire',          emptyTip: 'WHO Disease Outbreak News feeds connecting…' },
+  food:          { accent: 'border-yellow-400/30 text-yellow-300',   label: 'Food Safety Wire',     emptyTip: 'WHO + FDA food safety feeds connecting…' },
+  research:      { accent: 'border-purple-400/30 text-purple-300',   label: 'Research Wire',        emptyTip: 'arXiv feeds connecting…' },
   news:          { accent: 'border-neon-cyan/30 text-neon-cyan',     label: 'Breaking News',        emptyTip: 'Reuters / BBC / NPR feeds connecting…' },
 };
 

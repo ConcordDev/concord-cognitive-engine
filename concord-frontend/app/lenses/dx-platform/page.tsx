@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import Link from "next/link";
 import { LensShell } from "@/components/lens/LensShell";
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -36,6 +36,7 @@ export default function DxPlatformPage() {
   ], { lensId: 'dx-platform' });
 
   const [progress, setProgress] = useState<OnboardingProgress>({});
+  const [showWorkbench, setShowWorkbench] = useState(false);
 
   // Pull live progress from the server when available — falls back to
   // localStorage hint so anonymous browsers can still see the steps.
@@ -198,13 +199,24 @@ export default function DxPlatformPage() {
         {/* DX workbench — chat-with-codebase, PR review, search, team
             dashboard, detector config, usage analytics, CI integration */}
         <section aria-labelledby="workbench-heading" className="space-y-3">
-          <h2 id="workbench-heading" className="text-lg font-medium">DX workbench</h2>
-          <p className="text-sm text-zinc-400">
-            Index a codebase by pasting files, then ask questions about it,
-            review diffs, search across files, share findings with a team,
-            tune detectors, track usage, and emit a CI gate — all in-browser.
-          </p>
-          <DxWorkbench />
+          <button
+            type="button"
+            onClick={() => setShowWorkbench(v => !v)}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <h2 id="workbench-heading" className="text-lg font-medium">DX workbench</h2>
+            {showWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showWorkbench && (
+            <>
+              <p className="text-sm text-zinc-400">
+                Index a codebase by pasting files, then ask questions about it,
+                review diffs, search across files, share findings with a team,
+                tune detectors, track usage, and emit a CI gate — all in-browser.
+              </p>
+              <DxWorkbench />
+            </>
+          )}
         </section>
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

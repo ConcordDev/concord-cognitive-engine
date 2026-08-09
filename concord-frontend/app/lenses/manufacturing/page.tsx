@@ -14,6 +14,7 @@ import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import {
   Gauge as MTabOEE, ClipboardList as MTabWO, ShieldCheck as MTabQC,
   Factory as MTabFloor, Wrench as MTabTools,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { PipingProvider } from '@/components/panel-polish';
 import OEEDashboard from '@/components/manufacturing/OEEDashboard';
@@ -26,7 +27,6 @@ import { LensPageShell } from '@/components/lens/LensPageShell';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import LiveFeed from '@/components/lens/LiveFeed';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -102,6 +102,8 @@ function StatCard({
 // ---------------------------------------------------------------------------
 export default function ManufacturingLensPage() {
   const [mode, setMode] = useState<ModeTab>('shopFloor');
+  const [showFeed, setShowFeed] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const { latestData: realtimeData, isLive, lastUpdated } = useRealtimeLens('manufacturing');
 
   useLensCommand(
@@ -196,7 +198,6 @@ export default function ManufacturingLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="manufacturing" artifactId={undefined} compact />
 
       {/* Mode Tabs */}
       <nav className="flex items-center gap-1 border-b border-lattice-border pb-3 flex-wrap">
@@ -230,14 +231,38 @@ export default function ManufacturingLensPage() {
       </div>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ManufacturingFeed />
+        <button
+          type="button"
+          onClick={() => setShowFeed(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Manufacturing community (Reddit)</span>
+          {showFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showFeed && (
+          <div className="mt-3">
+            <ManufacturingFeed />
+          </div>
+        )}
       </section>
 
-      <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4">
-          <ManufacturingActionPanel />
-        </section>
-      </PipingProvider>
+      <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowActionPanel(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>More actions</span>
+          {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showActionPanel && (
+          <div className="mt-3">
+            <PipingProvider>
+              <ManufacturingActionPanel />
+            </PipingProvider>
+          </div>
+        )}
+      </section>
     </LensPageShell>
 
       <a href="#manufacturing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to manufacturing content</a>

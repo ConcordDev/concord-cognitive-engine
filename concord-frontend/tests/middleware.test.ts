@@ -93,6 +93,17 @@ describe('Auth Middleware', () => {
       middleware(makeRequest('/manifest.json'));
       expect(mockNext).toHaveBeenCalled();
     });
+
+    it('allows /godot-client/* through (Web export index.html/.js/.wasm are not covered by STATIC_ASSET_RE)', () => {
+      middleware(makeRequest('/godot-client/index.html'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/godot-client/index.wasm'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/godot-client/index.js'));
+      expect(mockNext).toHaveBeenCalled();
+    });
   });
 
   describe('protected routes', () => {

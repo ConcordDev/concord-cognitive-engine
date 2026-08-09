@@ -22,6 +22,7 @@ import {
   Store, TrendingUp, Package, Coins, Search, Filter, X,
   ShoppingCart, Tag, ArrowUpRight, ArrowDownRight,
   RefreshCw, DollarSign, BarChart3,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -60,6 +61,7 @@ export default function MarketLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('market');
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
+  const [showAnalysisWorkbench, setShowAnalysisWorkbench] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -465,7 +467,21 @@ export default function MarketLensPage() {
           competitorMatrix / priceElasticity, called directly via lensRun
           (virtual-artifact path) instead of the dead persisted-artifact
           action strip that used to sit here. */}
-      <MarketAnalysisWorkbench />
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <button
+          type="button"
+          onClick={() => setShowAnalysisWorkbench(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Market analysis workbench</span>
+          {showAnalysisWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showAnalysisWorkbench && (
+          <div className="mt-3">
+            <MarketAnalysisWorkbench />
+          </div>
+        )}
+      </section>
 
       {/* Purchase Confirmation Modal */}
       {showPurchaseConfirm && (

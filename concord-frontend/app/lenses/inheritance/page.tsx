@@ -15,6 +15,7 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
@@ -107,6 +108,7 @@ async function run(name: string, params: Record<string, unknown> = {}) {
 
 export default function InheritancePage() {
   const [tab, setTab] = useState<Tab>('overview');
+  const [showEstateChatter, setShowEstateChatter] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   // Discoverable keyboard navigation (fluidity invariant): 1–8 jump tabs,
@@ -879,7 +881,19 @@ export default function InheritancePage() {
         )}
 
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <EstateChatter />
+          <button
+            type="button"
+            onClick={() => setShowEstateChatter(v => !v)}
+            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+          >
+            <span>Estate planning discussion (external reference)</span>
+            {showEstateChatter ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {showEstateChatter && (
+            <div className="mt-3">
+              <EstateChatter />
+            </div>
+          )}
         </section>
       </div>
 

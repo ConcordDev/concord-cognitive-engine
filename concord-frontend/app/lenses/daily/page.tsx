@@ -14,7 +14,6 @@ import { DailyInspiration } from '@/components/daily/DailyInspiration';
 import { JournalStudio } from '@/components/daily/JournalStudio';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -23,7 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bell, Plus, Sparkles, CheckCircle2, Clock, Play, Pause, Square, RotateCcw,
   Coffee, CheckSquare, BookOpen, Target, TrendingUp, Flame, ChevronLeft,
-  ChevronRight, FileText, ListChecks, Loader2, XCircle,
+  ChevronRight, ChevronDown, FileText, ListChecks, Loader2, XCircle,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -138,6 +137,8 @@ export default function DailyLensPage() {
 
   // -- State ----------------------------------------------------------------
   const [selectedDate, setSelectedDate] = useState(today);
+  const [showJournalStudio, setShowJournalStudio] = useState(false);
+  const [showDailyInspiration, setShowDailyInspiration] = useState(false);
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderDue, setReminderDue] = useState('');
   const [selectedMood, setSelectedMood] = useState<number | null>(null);
@@ -877,7 +878,6 @@ export default function DailyLensPage() {
           <div className="h-6" />
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="daily" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="daily"
@@ -1089,13 +1089,37 @@ export default function DailyLensPage() {
         )}
       </div>
         </div>
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+        <div className="mt-6">
           <LensFeedButton domain="daily" />
-          <JournalStudio />
-        </section>
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <DailyInspiration />
-        </section>
+          <button
+            type="button"
+            onClick={() => setShowJournalStudio(v => !v)}
+            className="mt-3 flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showJournalStudio ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Journal Studio (Day One/Reflectly-shape)
+          </button>
+          {showJournalStudio && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <JournalStudio />
+            </section>
+          )}
+        </div>
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowDailyInspiration(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showDailyInspiration ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            More Inspiration (external reference)
+          </button>
+          {showDailyInspiration && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <DailyInspiration />
+            </section>
+          )}
+        </div>
       </main>
     </div>
           <RecentMineCard domain="daily" limit={10} hideWhenEmpty className="mt-4" />

@@ -23,15 +23,14 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Dumbbell, Users, ListChecks, CalendarDays, Shield, Medal, Sparkles,
   Plus, Search, X, Trash2, Target, Timer, Zap, User, Calendar,
   TrendingUp, Award, Activity,
-  ChevronRight, DollarSign, Calculator,
+  ChevronRight, ChevronDown, DollarSign, Calculator,
   MapPin, Phone, Mail,
   Brain, Layers, ArrowUpRight, ArrowDownRight, Minus,
-  ClipboardList, UserPlus, Eye, FileText, ChevronDown, AlertTriangle,
+  ClipboardList, UserPlus, Eye, FileText, AlertTriangle,
   Flame,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -39,7 +38,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { WorkoutFinishPanel } from '@/components/fitness/WorkoutFinishPanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 
@@ -328,7 +326,6 @@ export default function FitnessLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('fitness');
 
   /* ---------- core state ---------- */
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<ModeTab>('Clients');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
@@ -353,6 +350,8 @@ export default function FitnessLensPage() {
   const [selectedClient, setSelectedClient] = useState<LensItem<FitnessArtifact> | null>(null);
   const [showBodyComp, setShowBodyComp] = useState(false);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [showWorkoutFinish, setShowWorkoutFinish] = useState(false);
+  const [showFitnessFeed, setShowFitnessFeed] = useState(false);
 
   /* ---------- editor form state ---------- */
   const [formTitle, setFormTitle] = useState('');
@@ -770,7 +769,6 @@ export default function FitnessLensPage() {
 
 
       {/* AI Actions */}
-      <UniversalActions domain="fitness" artifactId={items[0]?.id} compact />
       {/* Health & Fitness Wire — CDC Physical Activity + MMWR live feed */}
       <LiveFeed
         articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
@@ -2091,32 +2089,47 @@ export default function FitnessLensPage() {
         </>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      {/* workout finisher: progression / HR zones / save / mint / DM / PR
+          publish / next workout. Collapsed by default — was previously
+          mounted unconditionally below every tab regardless of which was
+          active. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowWorkoutFinish((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showWorkoutFinish}
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          <span>Workout finisher (progression, HR zones, PR publish, next workout)</span>
+          {showWorkoutFinish ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
-        {showFeatures && (
+        {showWorkoutFinish && (
           <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="fitness" />
+            <WorkoutFinishPanel />
           </div>
         )}
-      </div>
-      {/* workout finisher: progression / HR zones / save / mint / DM / PR publish / next workout */}
-      <section className="mt-6">
-        <WorkoutFinishPanel />
       </section>
 
       <RoutesPanel className="mt-6" />
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <FitnessFeed />
+
+      {/* External reference — Reddit fitness communities, not this lens's
+          own data. Collapsed by default rather than promoted open on
+          every visit. */}
+      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <button
+          type="button"
+          onClick={() => setShowFitnessFeed((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showFitnessFeed}
+        >
+          <span>Reddit fitness communities (external reference)</span>
+          {showFitnessFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showFitnessFeed && (
+          <div className="px-4 pb-4">
+            <FitnessFeed />
+          </div>
+        )}
       </section>
     </div>
           <section className="mt-4"><LensFeedButton domain="fitness" label="Live exercise feed" /></section>

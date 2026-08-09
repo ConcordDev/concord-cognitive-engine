@@ -2,12 +2,9 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,12 +15,12 @@ import {
   Coins, Check, Zap, Crown,
   ArrowRight, Sparkles, ShieldCheck, TrendingUp,
   Download, BarChart3, Receipt, DollarSign,
-  CreditCard, History, Wallet, ChevronDown, Layers,
+  CreditCard, History, Wallet, Layers,
   Loader2, XCircle, AlertTriangle,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { EconomyDashboard } from '@/components/billing/EconomyDashboard';
 import { SubscriptionBillingSuite } from '@/components/billing/SubscriptionBillingSuite';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -64,8 +61,8 @@ export default function BillingPage() {
   const queryClient = useQueryClient();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'subscriptions' | 'billing'>('overview');
+  const [showEconomyDashboard, setShowEconomyDashboard] = useState(false);
   const [txFilter, setTxFilter] = useState<'all' | 'purchase' | 'usage' | 'credit'>('all');
-  const [showFeatures, setShowFeatures] = useState(true);
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
   const [isRunning, setIsRunning] = useState<string | null>(null);
 
@@ -275,7 +272,6 @@ export default function BillingPage() {
   return (
     <LensShell lensId="billing" asMain={false}>
       <FirstRunTour lensId="billing" />
-      <ManifestActionBar />
       <DepthBadge lensId="billing" size="sm" className="ml-2" />
     <div data-lens-theme="billing" className="p-6 max-w-6xl mx-auto space-y-8">
       {/* Header */}
@@ -1003,31 +999,23 @@ export default function BillingPage() {
         )}
       </motion.div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowEconomyDashboard(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showEconomyDashboard ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Platform Economy Status
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="billing" />
-          </div>
+        {showEconomyDashboard && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <EconomyDashboard />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <EconomyDashboard />
-      </section>
     </div>
-          <RecentMineCard domain="billing" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="billing" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="billing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <CrossLensRecentsPanel lensId="billing" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

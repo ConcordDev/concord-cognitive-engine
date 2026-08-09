@@ -19,11 +19,11 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Scale, Plus, Search, Users, MessageSquare,
-  ThumbsUp, ThumbsDown, Layers, ChevronDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
+  ThumbsUp, ThumbsDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
   AlertTriangle, CheckCircle, XCircle,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -31,7 +31,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { DebateActionPanel } from '@/components/debate/DebateActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 
@@ -403,6 +402,8 @@ export default function DebateLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('debate');
   // Public read-only share link — ?share=<token> opens a debate without owner scoping.
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [showArgumentMap, setShowArgumentMap] = useState(false);
+  const [showCmvFeed, setShowCmvFeed] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const t = new URLSearchParams(window.location.search).get('share');
@@ -419,7 +420,6 @@ export default function DebateLensPage() {
   const [search, setSearch] = useState('');
   const [selectedDebate, setSelectedDebate] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [showDebateTools, setShowDebateTools] = useState(false);
   const [newDebate, setNewDebate] = useState<{ topic: string; description: string; format: DebateData['format']; timeLimit: number }>({ topic: '', description: '', format: 'open', timeLimit: 30 });
   const [newArgument, setNewArgument] = useState('');
@@ -589,7 +589,6 @@ export default function DebateLensPage() {
         </button>
       </header>
 
-      <UniversalActions domain="debate" artifactId={items[0]?.id} compact />
 
       {/* ── Domain Action Panel ─────────────────────────────────── */}
       <div className="panel p-4 space-y-3">
@@ -1033,23 +1032,42 @@ export default function DebateLensPage() {
 
       <RealtimeDataPanel domain="debate" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
 
-      <div className="border-t border-white/10">
-        <button onClick={() => setShowFeatures(!showFeatures)} className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg">
-          <span className="flex items-center gap-2"><Layers className="w-4 h-4" />Lens Features & Capabilities</span>
-          <ChevronDown className={cn('w-4 h-4 transition-transform', showFeatures && 'rotate-180')} />
-        </button>
-        {showFeatures && <div className="px-4 pb-4"><LensFeaturePanel lensId="debate" /></div>}
-      </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        {shareToken ? (
+      {shareToken ? (
+        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <SharedDebateView shareToken={shareToken} onExit={exitShare} />
-        ) : (
-          <KialoArgumentMap />
+        </section>
+      ) : (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowArgumentMap(v => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+          >
+            {showArgumentMap ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            Argument Map (Kialo-shape)
+          </button>
+          {showArgumentMap && (
+            <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <KialoArgumentMap />
+            </section>
+          )}
+        </div>
+      )}
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowCmvFeed(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showCmvFeed ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Discussion (external reference)
+        </button>
+        {showCmvFeed && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <CmvFeed />
+          </section>
         )}
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <CmvFeed />
-      </section>
+      </div>
     </div>
           <SessionRail lensId="debate" hideWhenEmpty className="mt-4" />
           <RecentMineCard domain="debate" limit={10} hideWhenEmpty className="mt-4" />

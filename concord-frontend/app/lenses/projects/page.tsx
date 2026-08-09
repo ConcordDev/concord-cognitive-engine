@@ -12,7 +12,8 @@ import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { ProjectMgmtRepos } from '@/components/projects/ProjectMgmtRepos';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
-import { FolderKanban } from 'lucide-react';
+import { FolderKanban, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -21,6 +22,7 @@ import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 export default function ProjectsLensPage() {
   useLensNav('projects');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('projects');
+  const [showRepos, setShowRepos] = useState(false);
 
   return (
     <LensShell lensId="projects" asMain={false}>
@@ -43,7 +45,19 @@ export default function ProjectsLensPage() {
       </div>
 
       <section className="mt-6 rounded-xl border border-lattice-border bg-lattice-void/40 p-4">
-        <ProjectMgmtRepos />
+        <button
+          type="button"
+          onClick={() => setShowRepos(v => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        >
+          <span>Project management tooling (GitHub)</span>
+          {showRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        {showRepos && (
+          <div className="mt-3">
+            <ProjectMgmtRepos />
+          </div>
+        )}
       </section>
     </div>
 

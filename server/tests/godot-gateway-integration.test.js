@@ -526,6 +526,65 @@ test("combat:attack with an absurd client-declared baseDamage is still bounded b
   } finally { attackerWs.close(); targetWs.close(); }
 });
 
+// ── combat:dodge (Combat C6) ───────────────────────────────────────────────
+// Before this unit `_onGodotClientMessage`'s switch had no case for
+// combat:dodge at all — a Godot client dodging got the honest-but-inert
+// `unsupported_evt` fallback (proven by the "no fabricated success" test
+// above, run against the DIFFERENT unhandled evt it actually tests). These
+// prove the real dispatch now exists and resolves through
+// `_dispatchGodotCombatDodge`, which reuses the same `_attemptDodge`/
+// `_grantIFrames`/`recordCombatFlow` primitives the socket.io `combat:dodge`
+// handler already uses — not a second implementation.
+
+test("combat:dodge (Q) round-trips a real ack — untargeted, no player:move needed first", async () => {
+  const { token } = await registerUser(`godotit_${TS}_dodge1`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "combat:dodge", { direction: "back", wasParry: false, style: "dodge" });
+    const ack = await waitForEvt(ws, "combat:dodge:ack");
+
+    assert.equal(ack.data.ok, true, `expected a resolved dodge ack: ${JSON.stringify(ack.data)}`);
+    assert.equal(ack.data.wasParry, false);
+    assert.equal(ack.data.direction, "back");
+    assert.equal(typeof ack.data.iframeMs, "number");
+    assert.ok(ack.data.iframeMs > 0, "a dodge should always grant a non-zero baseline i-frame window");
+  } finally { ws.close(); }
+});
+
+test("combat:dodge (F, wasParry:true) round-trips a real ack with the parry flag preserved", async () => {
+  const { token } = await registerUser(`godotit_${TS}_dodge2`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "combat:dodge", { direction: "back", wasParry: true, style: "parry" });
+    const ack = await waitForEvt(ws, "combat:dodge:ack");
+
+    assert.equal(ack.data.ok, true, `expected a resolved parry ack: ${JSON.stringify(ack.data)}`);
+    assert.equal(ack.data.wasParry, true, "wasParry:true (F/parry) must round-trip, not be silently dropped to dodge");
+  } finally { ws.close(); }
+});
+
+test("combat:dodge with no data payload at all is still handled honestly (defaults, never a crash)", async () => {
+  const { token } = await registerUser(`godotit_${TS}_dodge3`);
+  const ws = await connect(WS_URL);
+  try {
+    sendMsg(ws, "auth", { token });
+    await nextFrame(ws); // hello
+
+    sendMsg(ws, "combat:dodge", {});
+    const ack = await waitForEvt(ws, "combat:dodge:ack");
+
+    assert.equal(ack.data.ok, true, `an empty payload should still resolve to a default dodge: ${JSON.stringify(ack.data)}`);
+    assert.equal(ack.data.direction, "back", "an unrecognized/missing direction defaults to back, never fabricated left/right");
+    assert.equal(ack.data.wasParry, false, "a missing wasParry defaults false (dodge, not parry)");
+  } finally { ws.close(); }
+});
+
 // ── design_command (Phase 4 / D17 first slice) ────────────────────────────────
 // Proves `design_command` frames sent BY the Godot client dispatch through the
 // SAME LENS_ACTIONS/MACROS resolution `/api/lens/run` uses, reaching the real

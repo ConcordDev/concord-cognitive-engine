@@ -6,7 +6,6 @@
  * Renders ANY sub-lens in the hierarchical sub-lens registry. Backed by the
  * /api/sub-lens/* endpoints (see server/routes/sub-lens.js), it:
  *  - Fetches the sub-lens' ancestors + children
- *  - Inherits features from the parent lens
  *  - Shows sub-lens-specific DTUs (filtered by tag)
  *  - Links back to the parent lens + siblings
  *  - Exposes an "Ask the Oracle" button pre-filled with the sub-lens domain
@@ -24,7 +23,6 @@ import {
 import { useLensNav } from '@/hooks/useLensNav';
 import { getLensById } from '@/lib/lens-registry';
 import { LensShell } from '@/components/lens/LensShell';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -151,8 +149,6 @@ export default function SubLensPage() {
       }
     },
   });
-
-  const [showFeatures, setShowFeatures] = useState(false);
 
   const siblings = useMemo(
     () => (siblingsData || []).filter((id) => id !== lensId),
@@ -405,27 +401,6 @@ export default function SubLensPage() {
         </section>
       )}
 
-      {/* ── Inherited Parent Features Panel ───────────── */}
-      <section className="border-t border-white/10 pt-2">
-        <button
-          onClick={() => setShowFeatures((v) => !v)}
-          className="w-full flex items-center justify-between px-3 py-3 text-sm text-gray-400 hover:text-white transition-colors"
-          aria-expanded={showFeatures}
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Inherited Features from {parentDisplay}
-          </span>
-          <ChevronRight
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-90' : ''}`}
-          />
-        </button>
-        {showFeatures && (
-          <div className="px-3 pb-4">
-            <LensFeaturePanel lensId={parent} />
-          </div>
-        )}
-      </section>
     </div>
     </LensShell>
   );

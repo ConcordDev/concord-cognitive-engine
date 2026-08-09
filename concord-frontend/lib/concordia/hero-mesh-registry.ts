@@ -58,6 +58,18 @@ const ARCHETYPE_FALLBACK_PATH: Record<string, string> = {
   hunter:  '/meshes/heroes/_archetype_hunter.glb',
   trader:  '/meshes/heroes/_archetype_trader.glb',
   legend:  '/meshes/heroes/_archetype_legend.glb',
+  // Hostile/undead archetypes (2026-08-08) — server/lib/npc-archetypes.js
+  // has real `body_type: 'undead'` NPC archetypes (undead/zombie/wraith/
+  // lich_king/plague_bearer) that previously had no real hero mesh and
+  // rendered as a color-tinted procedural humanoid (the `undead:
+  // '#37474f'` tint in that file's body-type palette). These 4 are real
+  // KayKit-Character-Pack-Skeletons-1.0 (CC0) meshes, mapped by the
+  // source archetypes' own level_range/occupation/quest_giver data, not
+  // arbitrary guessing — see public/meshes/heroes/CREDITS.md.
+  undead:  '/meshes/heroes/_archetype_undead.glb',
+  zombie:  '/meshes/heroes/_archetype_zombie.glb',
+  wraith:  '/meshes/heroes/_archetype_wraith.glb',
+  lich:    '/meshes/heroes/_archetype_lich.glb',
 };
 
 // Authored NPC occupations (content/world/*/npcs.json) are free-text —
@@ -71,6 +83,17 @@ const ARCHETYPE_FALLBACK_PATH: Record<string, string> = {
 // as "no hero mesh — use the procedural path", so this never worsens
 // coverage, only improves it.
 const OCCUPATION_KEYWORDS: [RegExp, string][] = [
+  // Undead body-type archetypes (2026-08-08) — occupation text for these
+  // falls back to the raw archetype column ('undead'strings verbatim) the
+  // same way 'warrior' does (see that entry's own comment below), plus
+  // their real seed occupation 'wanderer'. Must come BEFORE the generic
+  // 'warrior' match below since 'lich_king'/'plague_bearer' would
+  // otherwise never reach a keyword list that has no undead-specific
+  // entry — ordering matters here, first match wins.
+  [/lich/i, 'lich'],
+  [/wraith/i, 'wraith'],
+  [/zombie/i, 'zombie'],
+  [/undead|plague.?bearer|wanderer/i, 'undead'],
   [/guard|enforc|beat cop|bagman|lookout/i, 'guard'],
   [/hunt|beast-tamer|tracker/i, 'hunter'],
   [/mage|mystic|rune|hedge|heal|priest|shaman|witch/i, 'mystic'],

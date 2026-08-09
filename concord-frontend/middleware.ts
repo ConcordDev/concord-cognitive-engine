@@ -142,6 +142,16 @@ const PUBLIC_PREFIXES = [
   '/music/',
   '/sounds/',
   '/textures/',
+  // Godot Web export (scripts/export-godot-web.mjs -> public/godot-client/).
+  // index.html/.js/.wasm aren't covered by STATIC_ASSET_RE below (that list
+  // deliberately excludes .html/.js/.wasm as too broad a carve-out for the
+  // app generally), so without this prefix every file in the export 307'd
+  // an anonymous visitor to /login -- including index.html itself, the one
+  // file that must load before the embedded client can even attempt its
+  // own gateway auth. Same "static render-pipeline asset" reasoning as
+  // /meshes/ above: these are asset bytes, not a page route, and the real
+  // auth happens inside the client via the gateway token it's given at boot.
+  '/godot-client/',
   '/manifest.json',
   '/manifest.webmanifest',
   '/robots.txt',

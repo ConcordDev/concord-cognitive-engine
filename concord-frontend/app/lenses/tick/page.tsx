@@ -27,9 +27,9 @@ import {
   TrendingUp,
   BarChart3,
   Timer,
-  Layers,
-  ChevronDown,
   Eye,
+  ChevronDown,
+  ChevronRight,
   Gauge,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -38,7 +38,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { X } from 'lucide-react';
@@ -341,6 +340,8 @@ export default function TickLensPage() {
   const [isLive, setIsLive] = useState(true);
   const [tickHistory, setTickHistory] = useState<TickEvent[]>([]);
   const [activeTab, setActiveTab] = useState<TickViewTab>('stream');
+  const [showMonitorPanel, setShowMonitorPanel] = useState(false);
+  const [showTickRate, setShowTickRate] = useState(false);
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
   useLensCommand(
@@ -352,7 +353,6 @@ export default function TickLensPage() {
     ],
     { lensId: 'tick' }
   );
-  const [showFeatures, setShowFeatures] = useState(true);
   const { items: tickItems } = useLensData<Record<string, unknown>>('tick', 'heartbeat');
   const runTickAction = useRunArtifact('tick');
   const [tickActionResult, setTickActionResult] = useState<{ action: string; result: Record<string, unknown> } | null>(null);
@@ -609,9 +609,21 @@ export default function TickLensPage() {
           skipReport / alerts / latencyHistogram / heartbeatControl /
           uptimeSLA — all fed by recordSample over genuine governor
           tick history. */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <MonitorPanel />
-      </section>
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowMonitorPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showMonitorPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Heartbeat Monitor (Datadog/Better Uptime-shape)
+        </button>
+        {showMonitorPanel && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <MonitorPanel />
+          </section>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2">
@@ -1144,27 +1156,21 @@ export default function TickLensPage() {
         )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowTickRate(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showTickRate ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Tick Rate
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="tick" />
-          </div>
+        {showTickRate && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <TickRate />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <TickRate />
-      </section>
     </div>
 
       <a href="#tick-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to tick content</a>

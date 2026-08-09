@@ -27,27 +27,24 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Home, Users, UtensilsCrossed, CheckSquare, Wrench, PawPrint,
   Plus, Search, Filter, X, Edit3, Trash2,
   ShoppingCart, RotateCcw, AlertTriangle, Clock,
   Calendar, Heart,
   DollarSign, Shield, Phone,
-  Star, Award, ChevronLeft, ChevronRight,
+  Star, Award, ChevronLeft, ChevronRight, ChevronDown,
   CreditCard, PiggyBank, FileText, Stethoscope, Siren,
   Dog, Pill, MapPin, Zap,
   Sun, Snowflake, Leaf, CloudRain, ClipboardList,
   CheckCircle2, Coffee,
   Salad, Soup, Cake,
-  Layers, ChevronDown,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -185,6 +182,7 @@ export default function HouseholdLensPage() {
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('household');
 
   const [mode, setMode] = useState<ModeTab>('Dashboard');
+  const [showHouseholdWorkbench, setShowHouseholdWorkbench] = useState(false);
 
 
   // Lens-scoped keyboard commands (auto-wired by codemod).
@@ -222,7 +220,6 @@ export default function HouseholdLensPage() {
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showFeatures, setShowFeatures] = useState(true);
   const [calendarView, setCalendarView] = useState<'week' | 'month'>('week');
   const [calendarOffset, setCalendarOffset] = useState(0);
   const [mealWeekOffset, setMealWeekOffset] = useState(0);
@@ -1727,7 +1724,6 @@ export default function HouseholdLensPage() {
       </div>
 
       {/* AI Actions */}
-      <UniversalActions domain="household" artifactId={familyItems[0]?.id} compact />
       <RealtimeDataPanel domain="household" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       <DTUExportButton domain="household" data={{}} compact />
       {/* Mode tabs */}
@@ -1889,24 +1885,6 @@ export default function HouseholdLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="household" />
-          </div>
-        )}
-      </div>
 
       {/* Bespoke Open Food Facts barcode lookup with Save-as-DTU */}
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -1955,11 +1933,23 @@ export default function HouseholdLensPage() {
       </div>
 
       {/* Tody + Sweepy-shape household workbench: grocery / chores / maintenance / summary + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <HouseholdActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowHouseholdWorkbench(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showHouseholdWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Household Workbench (grocery / chores / maintenance / summary)
+        </button>
+        {showHouseholdWorkbench && (
+          <PipingProvider>
+            <section className="mt-3">
+              <HouseholdActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="household" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="household" hideWhenEmpty className="mt-3" title="More actions" />

@@ -27,14 +27,13 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { useState, useMemo, useCallback, useRef} from 'react';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Plane, Plus, Search, Clock, Users, Calendar, X, Navigation,
   Shield, Wrench, FileText, DollarSign, Weight, AlertTriangle, CheckCircle,
   XCircle, ChevronDown, ChevronRight, Fuel, MapPin,
   UserCheck, Clipboard, Calculator, BarChart3,
   Timer, Award, CloudRain, TrendingUp, Package,
-  Wind, Thermometer, Eye, Droplets, Layers, ShieldCheck,
+  Wind, Thermometer, Eye, Droplets, ShieldCheck,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { showToast } from '@/components/common/Toasts';
@@ -43,7 +42,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed from '@/components/lens/LiveFeed';
 import AviationWorkbench from '@/components/aviation/AviationWorkbench';
 import EFBSuite from '@/components/aviation/EFBSuite';
@@ -304,7 +302,6 @@ export default function AviationLensPage() {
   useLensNav('aviation');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('aviation');
 
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeMode, setActiveMode] = useState<ModeTab>('dashboard');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1681,7 +1678,21 @@ export default function AviationLensPage() {
       <DepthBadge lensId="aviation" size="sm" className="ml-2" />
     <div className={ds.pageContainer}>
       <ShellPreview lensId="aviation" defaultOpen={true} />
-      <ForeFlightWorkbenchSection />
+      {/* ForeFlight/FlightAware-parity workbench (aircraft, logbook,
+          currency, briefing, route advisor, track logs, fuel stops, live
+          tracking — 8 sub-tabs). Collapsed by default: it used to sit
+          permanently above the header on every visit, stacked on top of
+          this lens's own 8-tab MODE_TABS system. */}
+      <button
+        type="button"
+        onClick={() => toggleSection('foreflightWorkbench')}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+        aria-expanded={!!expandedSections.foreflightWorkbench}
+      >
+        <span>ForeFlight/FlightAware-parity workbench (aircraft, logbook, briefing, routes, tracking)</span>
+        {expandedSections.foreflightWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </button>
+      {expandedSections.foreflightWorkbench && <ForeFlightWorkbenchSection />}
       {/* Header */}
       <header className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
@@ -1826,7 +1837,6 @@ export default function AviationLensPage() {
       })()}
 
       {/* AI Actions */}
-      <UniversalActions domain="aviation" artifactId={items[0]?.id} compact />
       {/* Aviation Safety Wire — NTSB + FAA + ASN live feed */}
       <LiveFeed
         articles={(realtimeData as { articles?: Array<Record<string, unknown>> } | null)?.articles as React.ComponentProps<typeof LiveFeed>['articles']}
@@ -2241,24 +2251,6 @@ export default function AviationLensPage() {
         </div>
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="aviation" />
-          </div>
-        )}
-      </div>
     </div>
     
       <a href="#aviation-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to aviation content</a>
@@ -2285,9 +2277,26 @@ export default function AviationLensPage() {
         <AirportBrief />
       </section>
 
+      {/* Pilot's pre-flight bench: airport lookup / METAR weather / takeoff
+          & landing performance + actions. Collapsed by default — was
+          previously mounted unconditionally below every session
+          regardless of what the user was doing. */}
       <PipingProvider>
-        <section className="mx-auto mt-6 max-w-6xl">
-          <AviationActionPanel />
+        <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40">
+          <button
+            type="button"
+            onClick={() => toggleSection('aviationActionPanel')}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-gray-200 hover:text-white"
+            aria-expanded={!!expandedSections.aviationActionPanel}
+          >
+            <span>Pre-flight bench (airport lookup, METAR, takeoff/landing performance)</span>
+            {expandedSections.aviationActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+          {expandedSections.aviationActionPanel && (
+            <div className="px-4 pb-4">
+              <AviationActionPanel />
+            </div>
+          )}
         </section>
       </PipingProvider>
           <RecentMineCard domain="aviation" limit={10} hideWhenEmpty className="mt-4" />

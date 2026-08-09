@@ -20,9 +20,9 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import {
   Book,
   ChevronRight,
+  ChevronDown,
   Search,
   Layers,
-  ChevronDown,
   Code2,
   GitBranch,
   FileJson,
@@ -39,7 +39,6 @@ import {
 import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
 import { motion } from 'framer-motion';
 import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -205,6 +204,8 @@ export default function DocsLensPage() {
   const { items: docsItems } = useLensData('docs', 'document', { seed: [] });
   const runAction = useRunArtifact('docs');
   const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
+  const [showDocsWorkspace, setShowDocsWorkspace] = useState(false);
+  const [showDocsToolingGallery, setShowDocsToolingGallery] = useState(false);
   const [activeAction, setActiveAction] = useState<string | null>(null);
 
   const handleDocsAction = useCallback(
@@ -246,7 +247,6 @@ export default function DocsLensPage() {
 
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Live workspace stats from the docs domain (docs-dashboard macro).
   const [docsStats, setDocsStats] = useState<{
@@ -982,32 +982,36 @@ export default function DocsLensPage() {
       {/* ConnectiveTissueBar */}
       <ConnectiveTissueBar lensId="docs" />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowDocsWorkspace(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`}
-          />
+          {showDocsWorkspace ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Docs Workspace (Notion/Confluence-shape)
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="docs" />
-          </div>
+        {showDocsWorkspace && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <DocsWorkspace />
+          </section>
         )}
       </div>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DocsWorkspace />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <DocsToolingGallery />
-      </section>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowDocsToolingGallery(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showDocsToolingGallery ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Real-world Docs Tooling (external reference)
+        </button>
+        {showDocsToolingGallery && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <DocsToolingGallery />
+          </section>
+        )}
+      </div>
     </div>
 
       <a href="#docs-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to docs content</a>

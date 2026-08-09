@@ -22,6 +22,8 @@ import {
   Upload,
   Plus,
   Grid,
+  ChevronDown,
+  ChevronRight,
   Layers,
   Wand2,
   Download,
@@ -47,10 +49,8 @@ import {
   Move,
   Pipette,
   Save,
-  ChevronDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
@@ -63,7 +63,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ArtExplorer } from '@/components/art/ArtExplorer';
 import { PaletteWorkshop } from '@/components/art/PaletteWorkshop';
 import { ArtActionPanel } from '@/components/art/ArtActionPanel';
@@ -116,9 +115,11 @@ export default function ArtLensPage() {
   const queryClient = useQueryClient();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [showFeatures, setShowFeatures] = useState(true);
 
   const [viewMode, setViewMode] = useState<ViewMode>('gallery');
+  const [showArtExplorer, setShowArtExplorer] = useState(false);
+  const [showPaletteWorkshop, setShowPaletteWorkshop] = useState(false);
+  const [showArtActionPanel, setShowArtActionPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -1165,7 +1166,6 @@ export default function ArtLensPage() {
       </AnimatePresence>
 
       {/* Real-time Data Panel */}
-      <UniversalActions domain="art" artifactId={null} compact />
       {realtimeData && (
         <RealtimeDataPanel
           domain="art"
@@ -1177,39 +1177,57 @@ export default function ArtLensPage() {
         />
       )}
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
+
+      {/* Bespoke Met + Art Institute of Chicago artwork explorer with Save-as-DTU */}
+      <div className="mt-6">
         <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+          type="button"
+          onClick={() => setShowArtExplorer(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
         >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
+          {showArtExplorer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Museum Artwork Explorer (external reference)
         </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="artistry" />
-          </div>
+        {showArtExplorer && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <ArtExplorer />
+          </section>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowPaletteWorkshop(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showPaletteWorkshop ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Palette Workshop
+        </button>
+        {showPaletteWorkshop && (
+          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+            <PaletteWorkshop />
+          </section>
         )}
       </div>
 
-      {/* Bespoke Met + Art Institute of Chicago artwork explorer with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <ArtExplorer />
-      </section>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <PaletteWorkshop />
-      </section>
-
       {/* Met + Art Institute + Adobe Color-shape art workbench: harmony / composition / palette / style + actions */}
-      <PipingProvider>
-        <section className="mt-6">
-          <ArtActionPanel />
-        </section>
-      </PipingProvider>
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={() => setShowArtActionPanel(v => !v)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+        >
+          {showArtActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          Workbench (harmony / composition / palette / style)
+        </button>
+        {showArtActionPanel && (
+          <PipingProvider>
+            <section className="mt-3">
+              <ArtActionPanel />
+            </section>
+          </PipingProvider>
+        )}
+      </div>
     </div>
           <RecentMineCard domain="art" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="art" hideWhenEmpty className="mt-3" title="More actions" />

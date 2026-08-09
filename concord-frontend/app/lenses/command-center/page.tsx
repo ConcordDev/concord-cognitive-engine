@@ -18,17 +18,17 @@ import { useState, useEffect } from 'react';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useRouter } from 'next/navigation';
 import {
-  Shield, Activity, Brain, Layers, Puzzle, Cpu, Users, Settings,
+  Shield, Activity, Brain, Puzzle, Cpu, Users, Settings,
   AlertTriangle, Moon, FileText, Pause, Play,
   Save, Trash2, XCircle, Clock, ArrowUp,
-  Zap, Send, MapPin, Focus, ShieldAlert, ChevronDown,
+  Zap, Send, MapPin, Focus, ShieldAlert,
   Lightbulb, GitBranch, Globe, Undo2, Compass, Radio, Gauge,
+  Layers,
 } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import FoundationCard from '@/components/chat/FoundationCard';
 import { ActivityFeed } from '@/components/guidance/ActivityFeed';
 import { UndoTimeline } from '@/components/guidance/UndoTimeline';
@@ -1764,7 +1764,6 @@ export default function CommandCenterPage() {
   useLensNav('command-center');
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('command-center');
   const router = useRouter();
-  const [showFeatures, setShowFeatures] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('vitals');
 
   // Persist operator session opens as a 'session' lens artifact for the
@@ -1944,24 +1943,6 @@ export default function CommandCenterPage() {
       )}
       </div>
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="command_center" />
-          </div>
-        )}
-      </div>
 
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <ConcordVitals />

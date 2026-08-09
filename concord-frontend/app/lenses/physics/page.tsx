@@ -10,7 +10,6 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PhysicsArxiv } from '@/components/physics/PhysicsArxiv';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
-import { UniversalActions } from '@/components/lens/UniversalActions';
 import { SubLensQuickNav } from '@/components/lens/SubLensQuickNav';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,10 +27,10 @@ import {
   Download,
   Upload,
   ChevronDown,
+  ChevronRight,
   Move,
   Target,
   Magnet,
-  Layers,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensData } from '@/lib/hooks/use-lens-data';
@@ -39,7 +38,6 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import LiveFeed, { adaptToLiveFeedArticles } from '@/components/lens/LiveFeed';
 import PhysicsWorkbench from '@/components/physics/PhysicsWorkbench';
 import { PhysicsLab } from '@/components/physics/PhysicsLab';
@@ -261,6 +259,8 @@ export default function PhysicsLensPage() {
   const { items: savedSims, create: saveSim, remove: removeSim, isError, error, refetch } = useLensData<Record<string, unknown>>('physics', 'simulation', { noSeed: true });
 
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showPhysicsArxiv, setShowPhysicsArxiv] = useState(false);
+  const [showPhysicsActionPanel, setShowPhysicsActionPanel] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
@@ -288,7 +288,6 @@ export default function PhysicsLensPage() {
   const [selectedConstraint, setSelectedConstraint] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
-  const [showFeatures, setShowFeatures] = useState(true);
 
   // Physics-tool shortcuts (Algodoo / Box2D Phaser idiom).
   useLensCommand(
@@ -1599,7 +1598,6 @@ export default function PhysicsLensPage() {
       {/* Real-time Data Panel */}
       {realtimeData && (
         <>
-          <UniversalActions domain="physics" artifactId={null} compact />
           <RealtimeDataPanel
             domain="physics"
             data={realtimeData}
@@ -1631,24 +1629,6 @@ export default function PhysicsLensPage() {
           "Orbital Mechanics" tab rather than a replacement for it). */}
       <PhysicsKeplerianLab />
 
-      {/* Lens Features */}
-      <div className="border-t border-white/10">
-        <button
-          onClick={() => setShowFeatures(!showFeatures)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
-        >
-          <span className="flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Lens Features & Capabilities
-          </span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showFeatures ? 'rotate-180' : ''}`} />
-        </button>
-        {showFeatures && (
-          <div className="px-4 pb-4">
-            <LensFeaturePanel lensId="physics" />
-          </div>
-        )}
-      </div>
     </div>
     {/* 2026 parity workbench — kinematics, projectile, units, constants */}
     <button
@@ -1660,15 +1640,39 @@ export default function PhysicsLensPage() {
       Physics Workbench
     </button>
     <PhysicsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-    <section className="mt-6 mx-auto max-w-7xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <PhysicsArxiv />
-    </section>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowPhysicsArxiv(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showPhysicsArxiv ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        arXiv Search (external reference)
+      </button>
+      {showPhysicsArxiv && (
+        <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+          <PhysicsArxiv />
+        </section>
+      )}
+    </div>
 
-    <PipingProvider>
-      <section className="mt-6 mx-auto max-w-7xl">
-        <PhysicsActionPanel />
-      </section>
-    </PipingProvider>
+    <div className="mt-6 mx-auto max-w-7xl">
+      <button
+        type="button"
+        onClick={() => setShowPhysicsActionPanel(v => !v)}
+        className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
+      >
+        {showPhysicsActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        More Actions
+      </button>
+      {showPhysicsActionPanel && (
+        <PipingProvider>
+          <section className="mt-3">
+            <PhysicsActionPanel />
+          </section>
+        </PipingProvider>
+      )}
+    </div>
           <RecentMineCard domain="physics" limit={10} hideWhenEmpty className="mt-4" />
           <AutoActionStrip domain="physics" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="physics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
