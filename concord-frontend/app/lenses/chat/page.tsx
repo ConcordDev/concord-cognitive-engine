@@ -7,6 +7,7 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { HackerNewsReference } from '@/components/chat/HackerNewsReference';
+import { ExternalReferenceLocale } from '@/components/lens/ExternalReferenceLocale';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useTilePush } from '@/hooks/useTilePush';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
@@ -4821,9 +4822,9 @@ export default function ChatLensPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <ExternalReferenceLocale label="Hacker News" source="hn.algolia.com" className="mt-6">
         <HackerNewsReference />
-      </section>
+      </ExternalReferenceLocale>
     </div>
     {/* Phase 12 (C4) — mobile pane switcher. Chat has multiple overlays
         (sidebar, thread-search, tool-palette, scheduled, projects) that

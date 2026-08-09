@@ -15,7 +15,10 @@
 // (their own rich page is the depth) — that's fine.
 export const PANEL_AFFINITY: Record<string, string[]> = {
   // ── Core 6 ──
-  chat: ['research.academic-search'],
+  // chat intentionally has no cross-mounted panel — DTU citation/piping
+  // already covers cross-lens composition for chat, and a second
+  // "Cross-lens panels" strip on top of that was redundant screen space,
+  // not a distinct capability (owner feedback, 2026-08-06).
   board: ['projects.portfolio'],
   graph: ['research.academic-search'],
   code: ['code-quality.pr-decoration', 'observe.action'],
