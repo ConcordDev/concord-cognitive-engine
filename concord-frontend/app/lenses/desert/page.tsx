@@ -14,7 +14,7 @@ import {
   Sun, Plus, Search, Trash2, BarChart3,
   Layers, ChevronDown, MapPin, Users,
   Thermometer, Wind, Droplets, Mountain,
-  Eye, AlertTriangle, Navigation, Compass, Map, Binoculars, Cactus,
+  Eye, AlertTriangle, Navigation, Compass, Map,
 } from 'lucide-react';
 
 const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
@@ -170,7 +170,7 @@ export default function DesertLensPage() {
           <div><p className="text-lg font-bold text-white">{expeditions.length}</p><p className="text-xs text-gray-400">Expeditions</p></div>
         </div>
         <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center gap-3">
-          <Binoculars className="w-5 h-5 text-green-400" />
+          <Eye className="w-5 h-5 text-green-400" />
           <div><p className="text-lg font-bold text-white">{resources.length}</p><p className="text-xs text-gray-400">Species Cataloged</p></div>
         </div>
         <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center gap-3">

@@ -5,7 +5,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { Loading } from '@/components/common/Loading';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, MessageSquare, Target, Shield, Zap, Layers, ChevronDown, Handshake, Crown } from 'lucide-react';
+import { Users, Plus, MessageSquare, Target, Shield, Zap, Layers, ChevronDown, Crown } from 'lucide-react';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
 import { ErrorState } from '@/components/common/EmptyState';
 import { UniversalActions } from '@/components/lens/UniversalActions';
@@ -240,7 +240,7 @@ export default function AllianceLensPage() {
           { icon: Users, color: 'text-neon-purple', value: alliances.length, label: 'Total Alliances' },
           { icon: Zap, color: 'text-neon-green', value: alliances.filter((a) => a.status === 'active').length, label: 'Active' },
           { icon: Target, color: 'text-neon-blue', value: alliances.reduce((s, a) => s + a.activeProposals, 0), label: 'Joint Proposals' },
-          { icon: Handshake, color: 'text-neon-cyan', value: alliances.reduce((s, a) => s + a.members.length, 0), label: 'Total Members' },
+          { icon: Users, color: 'text-neon-cyan', value: alliances.reduce((s, a) => s + a.members.length, 0), label: 'Total Members' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

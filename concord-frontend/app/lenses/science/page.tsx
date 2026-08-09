@@ -929,7 +929,7 @@ export default function ScienceLensPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
-            <p className="text-lg font-bold">{publications.reduce((s, p) => s + ((p.data as Record<string, unknown>)?.citations as number || 0), 0)}</p>
+            <p className="text-lg font-bold">{publications.reduce((s, p) => s + ((p.data as unknown as Record<string, unknown>)?.citations as number || 0), 0)}</p>
             <p className="text-xs text-gray-500">Citations</p>
           </div>
         </motion.div>

@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 
 /* ------------------------------------------------------------------ */
 /*  Newsletter Public View                                             */
@@ -134,9 +135,9 @@ export default async function NewsletterPage({ params }: NewsletterPageProps) {
         <div className="max-w-2xl mx-auto px-6 py-6 text-center text-xs text-gray-400">
           <p>Published via Concord Cognitive Engine</p>
           <p className="mt-1">
-            <a href="/" className="text-indigo-500 hover:text-indigo-600">
+            <Link href="/" className="text-indigo-500 hover:text-indigo-600">
               Visit Concord
-            </a>
+            </Link>
           </p>
         </div>
       </footer>

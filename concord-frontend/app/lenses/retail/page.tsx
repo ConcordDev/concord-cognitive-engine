@@ -1772,8 +1772,8 @@ export default function RetailLensPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Products', value: items.length, icon: Package },
-          { label: 'Daily Sales', value: `$${items.reduce((s, i) => s + Number((i.data as Record<string, unknown>).revenue || 0), 0).toLocaleString()}`, icon: DollarSign },
-          { label: 'Inventory', value: items.reduce((s, i) => s + Number((i.data as Record<string, unknown>).stock || (i.data as Record<string, unknown>).qty || 0), 0), icon: ShoppingBag },
+          { label: 'Daily Sales', value: `$${items.reduce((s, i) => s + Number((i.data as unknown as Record<string, unknown>).revenue || 0), 0).toLocaleString()}`, icon: DollarSign },
+          { label: 'Inventory', value: items.reduce((s, i) => s + Number((i.data as unknown as Record<string, unknown>).stock || (i.data as unknown as Record<string, unknown>).qty || 0), 0), icon: ShoppingBag },
           { label: 'Active Orders', value: items.filter(i => i.meta?.status === 'active' || i.meta?.status === 'processing').length, icon: Store },
         ].map((stat) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>

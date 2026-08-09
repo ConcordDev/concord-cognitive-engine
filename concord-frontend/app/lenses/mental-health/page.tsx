@@ -13,6 +13,7 @@ import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import { LensFeaturePanel } from '@/components/lens/LensFeaturePanel';
+import { cn } from '@/lib/utils';
 
 type MoodLevel = 'great' | 'good' | 'neutral' | 'low' | 'crisis';
 

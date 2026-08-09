@@ -11,8 +11,8 @@ import { UniversalActions } from '@/components/lens/UniversalActions';
 import {
   Truck, Package, Warehouse, Globe, BarChart3, Users,
   Plus, Search, X, Trash2, Clock, DollarSign,
-  AlertTriangle, CheckCircle2, MapPin, ArrowRight,
-  Layers, ChevronDown, Ship, Factory, Route, Timer, CircleCheck,
+  AlertTriangle, CheckCircle, CheckCircle2, MapPin, ArrowRight,
+  Layers, ChevronDown, Ship, Factory, Route, Timer,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -185,7 +185,7 @@ export default function SupplyChainLensPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className={ds.panel}><Globe className="w-5 h-5 text-teal-400 mb-2" /><p className={ds.textMuted}>Nodes</p><p className="text-xl font-bold text-white">{[...new Set(all.map(a => a.supplier).filter(Boolean))].length + [...new Set(all.map(a => a.destination).filter(Boolean))].length}</p></div>
           <div className={ds.panel}><Ship className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Active Shipments</p><p className="text-xl font-bold text-white">{inTransit}</p></div>
-          <div className={ds.panel}><CircleCheck className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>On-Time Rate</p><p className="text-xl font-bold text-white">{onTimeRate}%</p></div>
+          <div className={ds.panel}><CheckCircle className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>On-Time Rate</p><p className="text-xl font-bold text-white">{onTimeRate}%</p></div>
           <div className={ds.panel}><DollarSign className="w-5 h-5 text-yellow-400 mb-2" /><p className={ds.textMuted}>Total Value</p><p className="text-xl font-bold text-white">${all.reduce((s, e) => s + (e.totalCost || 0), 0).toLocaleString()}</p></div>
         </div>
       ); })()}

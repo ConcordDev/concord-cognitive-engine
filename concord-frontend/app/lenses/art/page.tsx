@@ -139,9 +139,9 @@ export default function ArtLensPage() {
       else if (key === 'g') setCanvasTool('fill');
       else if (key === 'i') setCanvasTool('eyedropper');
       else if (key === 't') setCanvasTool('text');
-      else if (key === 'r') setCanvasTool('rectangle');
-      else if (key === 'c') setCanvasTool('circle');
-      else if (key === 'l') setCanvasTool('line');
+      else if (key === 'r') setCanvasTool('shape-rect');
+      else if (key === 'c') setCanvasTool('shape-circle');
+      else if (key === 'l') setCanvasTool('pen');
       else if (key === '[') setBrushSize(s => Math.max(1, s - 2));
       else if (key === ']') setBrushSize(s => Math.min(100, s + 2));
       else if (e.ctrlKey && key === 'z' && !e.shiftKey) { e.preventDefault(); undoFnRef.current(); }
@@ -744,7 +744,7 @@ export default function ArtLensPage() {
                   }
                 }}
                 onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={(e) => { handleCanvasMouseUp(e); setCursorPos(null); }}
+                onMouseLeave={() => { handleCanvasMouseUp(); setCursorPos(null); }}
                 onMouseEnter={() => setCursorPos({ x: 0, y: 0 })}
               />
               {/* Dynamic brush cursor */}

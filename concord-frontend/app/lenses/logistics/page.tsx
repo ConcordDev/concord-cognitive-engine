@@ -225,7 +225,7 @@ export default function LogisticsLensPage() {
     return {
       activeVehicles, totalVehicles, utilizationAvg: Math.round(utilizationAvg),
       inTransit, delivered, totalShipments,
-      onTimeRate: onTimeRate.toFixed(1),
+      onTimeRate: Number(onTimeRate.toFixed(1)),
       whUtilPct, whUsed, whCapacity,
       compAlerts,
       revPerMile: revPerMile.toFixed(2),

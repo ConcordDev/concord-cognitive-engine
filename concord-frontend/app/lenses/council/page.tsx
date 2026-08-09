@@ -1377,7 +1377,7 @@ export default function CouncilLensPage() {
         {[
           { label: 'Proposals', value: proposals.length, icon: FileText },
           { label: 'Active Votes', value: proposals.filter(p => p.status === 'voting').length, icon: Vote },
-          { label: 'Participation', value: `${stakeholders.length > 0 ? Math.round((stakeholders.filter(s => s.votingPower > 0).length / stakeholders.length) * 100) : 0}%`, icon: Users },
+          { label: 'Participation', value: `${stakeholders.length > 0 ? Math.round((stakeholders.filter(s => s.votingWeight > 0).length / stakeholders.length) * 100) : 0}%`, icon: Users },
           { label: 'Committees', value: committees.length, icon: Layers },
         ].map((stat) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>

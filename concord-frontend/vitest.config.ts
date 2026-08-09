@@ -10,8 +10,10 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'components/**/*.test.{ts,tsx}'],
     pool: 'forks',
-    forks: {
-      maxForks: process.env.CI ? 2 : undefined,
+    poolOptions: {
+      forks: {
+        maxForks: process.env.CI ? 2 : undefined,
+      },
     },
     coverage: {
       provider: 'v8',

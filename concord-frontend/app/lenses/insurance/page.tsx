@@ -973,10 +973,10 @@ export default function InsuranceLensPage() {
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Shield, label: 'Policies In-Force', value: dashboard.policiesInForce, color: 'text-blue-400' },
-          { icon: DollarSign, label: 'Premiums Written', value: `$${dashboard.premiumsWritten.toLocaleString()}`, color: 'text-green-400' },
-          { icon: FileText, label: 'Open Claims', value: dashboard.openClaims, color: 'text-amber-400' },
-          { icon: CheckCircle2, label: 'Loss Ratio', value: `${dashboard.lossRatio}%`, color: dashboard.lossRatio > 70 ? 'text-red-400' : 'text-green-400' },
+          { icon: Shield, label: 'Policies In-Force', value: dashboardStats.policiesInForce, color: 'text-blue-400' },
+          { icon: DollarSign, label: 'Premiums Written', value: `$${dashboardStats.premiumsWritten.toLocaleString()}`, color: 'text-green-400' },
+          { icon: FileText, label: 'Open Claims', value: dashboardStats.openClaims, color: 'text-amber-400' },
+          { icon: CheckCircle2, label: 'Loss Ratio', value: `${dashboardStats.lossRatio}%`, color: dashboardStats.lossRatio > 70 ? 'text-red-400' : 'text-green-400' },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className={ds.panel}>
             <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />

@@ -43,15 +43,15 @@ export default function AnonLensPage() {
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  // Anonymity level based on identity rotation and message count
-  const anonymityLevel = identity ? (identityItems.length > 0 && (identity as Record<string, unknown>).rotatedAt ? 'high' : 'medium') : 'low';
-  const anonymityColors = { low: 'text-red-400 bg-red-400/20', medium: 'text-amber-400 bg-amber-400/20', high: 'text-neon-green bg-neon-green/20' };
-
   const { items: messageItems, isLoading, isError: isError, error: error, refetch: refetch, create: createMessage } = useLensData<Record<string, unknown>>('anon', 'message', { seed: [] });
   const messages = messageItems.map(i => ({ id: i.id, ...(i.data || {}) })) as unknown as AnonMessage[];
 
   const { items: identityItems, isError: isError2, error: error2, refetch: refetch2, create: createIdentity, remove: removeIdentity } = useLensData<Record<string, unknown>>('anon', 'identity', { seed: [] });
   const identity = identityItems.length > 0 ? identityItems[0].data : null;
+
+  // Anonymity level based on identity rotation and message count
+  const anonymityLevel = identity ? (identityItems.length > 0 && (identity as Record<string, unknown>).rotatedAt ? 'high' : 'medium') : 'low';
+  const anonymityColors = { low: 'text-red-400 bg-red-400/20', medium: 'text-amber-400 bg-amber-400/20', high: 'text-neon-green bg-neon-green/20' };
 
   const sendMessage = useMutation({
     mutationFn: (payload: { content: string; recipient: string; ephemeral: boolean }) =>

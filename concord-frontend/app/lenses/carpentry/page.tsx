@@ -110,20 +110,25 @@ export default function CarpentryLensPage() {
     setEditorOpen(false);
   };
 
+  const carpentryStats = useMemo(() => {
+    const all = items.map(i => i.data as unknown as TradeArtifact);
+    const activeJobs = all.filter(j => j.status === 'in_progress' || j.status === 'scheduled').length;
+    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || j.amount || 0), 0);
+    const completedCount = all.filter(j => j.status === 'completed' || j.status === 'paid').length;
+    const outstandingCount = all.filter(j => j.status === 'invoiced').length;
+    return { activeJobs, totalRevenue, completedCount, outstandingCount, total: all.length };
+  }, [items]);
+
   if (isError) return <ErrorState error={error?.message} onRetry={refetch} />;
 
-  const renderDashboard = () => {
-    const all = items.map(i => i.data as unknown as TradeArtifact);
-    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || j.amount || 0), 0);
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={ds.panel}><Wrench className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Active Jobs</p><p className="text-xl font-bold text-white">{all.filter(j => j.status === 'in_progress' || j.status === 'scheduled').length}</p></div>
-        <div className={ds.panel}><DollarSign className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>Revenue</p><p className="text-xl font-bold text-white">${totalRevenue.toLocaleString()}</p></div>
-        <div className={ds.panel}><CheckCircle2 className="w-5 h-5 text-emerald-400 mb-2" /><p className={ds.textMuted}>Completed</p><p className="text-xl font-bold text-white">{all.filter(j => j.status === 'completed' || j.status === 'paid').length}</p></div>
-        <div className={ds.panel}><Receipt className="w-5 h-5 text-purple-400 mb-2" /><p className={ds.textMuted}>Outstanding</p><p className="text-xl font-bold text-white">{all.filter(j => j.status === 'invoiced').length}</p></div>
-      </div>
-    );
-  };
+  const renderDashboard = () => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className={ds.panel}><Wrench className="w-5 h-5 text-blue-400 mb-2" /><p className={ds.textMuted}>Active Jobs</p><p className="text-xl font-bold text-white">{carpentryStats.activeJobs}</p></div>
+      <div className={ds.panel}><DollarSign className="w-5 h-5 text-green-400 mb-2" /><p className={ds.textMuted}>Revenue</p><p className="text-xl font-bold text-white">${carpentryStats.totalRevenue.toLocaleString()}</p></div>
+      <div className={ds.panel}><CheckCircle2 className="w-5 h-5 text-emerald-400 mb-2" /><p className={ds.textMuted}>Completed</p><p className="text-xl font-bold text-white">{carpentryStats.completedCount}</p></div>
+      <div className={ds.panel}><Receipt className="w-5 h-5 text-purple-400 mb-2" /><p className={ds.textMuted}>Outstanding</p><p className="text-xl font-bold text-white">{carpentryStats.outstandingCount}</p></div>
+    </div>
+  );
 
   const renderEditor = () => {
     if (!editorOpen) return null;
@@ -181,15 +186,6 @@ export default function CarpentryLensPage() {
       })}
     </div>
   );
-
-  // Carpentry stat calculations
-  const carpentryStats = useMemo(() => {
-    const all = items.map(i => i.data as unknown as TradeArtifact);
-    const activeJobs = all.filter(j => j.status === 'in_progress' || j.status === 'scheduled').length;
-    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || j.amount || 0), 0);
-    const completedCount = all.filter(j => j.status === 'completed' || j.status === 'paid').length;
-    return { activeJobs, totalRevenue, completedCount, total: all.length };
-  }, [items]);
 
   return (
     <div data-lens-theme="carpentry" className="space-y-6 p-6">

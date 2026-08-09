@@ -457,7 +457,7 @@ export default function SpaceLensPage() {
       <div className="space-y-2">
         <AnimatePresence>
           {items.map((item, idx) => {
-            const d = item.data as Record<string, unknown>;
+            const d = item.data as Partial<MissionData> & Partial<SatelliteData> & Partial<TelemetryData> & { status?: string };
             const isMission = activeMode === 'Missions';
             const isSatellite = activeMode === 'Satellites';
             const isTelemetry = activeMode === 'Telemetry';

@@ -517,7 +517,7 @@ export default function PaperLensPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Papers', value: stats.papers, icon: FileText },
-          { label: 'Citations', value: allBibliography.length, icon: Link2 },
+          { label: 'Citations', value: allCitations.length, icon: Link2 },
           { label: 'Hypotheses', value: stats.hypotheses, icon: Lightbulb },
           { label: 'Experiments', value: stats.experiments, icon: Beaker },
         ].map((stat) => (

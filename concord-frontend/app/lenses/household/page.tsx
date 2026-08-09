@@ -1580,7 +1580,7 @@ export default function HouseholdLensPage() {
         {[
           { label: 'Rooms', value: maintenanceItems.length, icon: Home },
           { label: 'Chores Pending', value: choreItems.filter(c => c.meta?.status !== 'completed').length, icon: CheckSquare },
-          { label: 'Bills Due', value: items.filter(i => (i.data as Record<string, unknown>).type === 'BudgetEntry' && i.meta?.status === 'planned').length, icon: CreditCard },
+          { label: 'Bills Due', value: items.filter(i => (i.data as unknown as Record<string, unknown>).type === 'BudgetEntry' && i.meta?.status === 'planned').length, icon: CreditCard },
           { label: 'Family', value: familyItems.length, icon: Users },
         ].map((stat) => (
           <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
