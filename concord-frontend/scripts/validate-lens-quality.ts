@@ -24,7 +24,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import ts from 'typescript';
+import * as ts from 'typescript';
 
 import { LENS_REGISTRY } from '../lib/lens-registry';
 import { getLensManifest } from '../lib/lenses/manifest';
