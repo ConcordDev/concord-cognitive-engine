@@ -6,7 +6,9 @@
 // Pure data + lookup. The archetype picks the base procedural mesh
 // (lib/world-lens/procedural-buildings.ts createBuilding); the optional feature
 // appends an iconic cap (dome / spire / colonnade / belfry). Every building_type
-// resolves to one of the 5 real archetypes, so it always takes the rich
+// resolves to one of the 6 real archetypes (2026-08-08: added `restaurant`,
+// the diner-shaped archetype whose interior carries real KayKit-Restaurant-Bits
+// kitchen meshes — see interior-decor.ts), so it always takes the rich
 // procedural path rather than the generic box fallback.
 
 import type { BuildingArchetype, IconicFeature } from './procedural-buildings';
@@ -25,6 +27,7 @@ const SILHOUETTE: Record<string, BuildingSilhouette> = {
   forge: { archetype: 'forge' }, mine: { archetype: 'forge' },
   tower: { archetype: 'tower', feature: 'spire' },
   dock: { archetype: 'market' }, farm: { archetype: 'tavern' },
+  restaurant: { archetype: 'restaurant' },
 
   // ── Civic & governance (columned civic halls / bell-towers) ──
   courthouse: { archetype: 'archive', feature: 'colonnade' },

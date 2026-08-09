@@ -17,15 +17,19 @@ describe('silhouetteForBuildingType', () => {
     expect(silhouetteForBuildingType('forge')).toEqual({ archetype: 'forge' });
   });
 
-  it('resolves EVERY archetype to one of the 5 real procedural archetypes', () => {
-    const valid = new Set(['tavern', 'archive', 'forge', 'market', 'tower']);
-    const types = ['inn', 'house', 'market', 'tower', 'bank_house', 'powerhouse', 'agora', 'grange', 'mineshaft', 'unknown_type', ''];
+  it('resolves EVERY archetype to one of the 6 real procedural archetypes', () => {
+    const valid = new Set(['tavern', 'archive', 'forge', 'market', 'tower', 'restaurant']);
+    const types = ['inn', 'house', 'market', 'tower', 'bank_house', 'powerhouse', 'agora', 'grange', 'mineshaft', 'restaurant', 'unknown_type', ''];
     for (const t of types) {
       expect(valid.has(silhouetteForBuildingType(t).archetype)).toBe(true);
     }
     // Unknown / empty fall back, never throw.
     expect(silhouetteForBuildingType(undefined).archetype).toBe('market');
     expect(silhouetteForBuildingType('not_a_building').feature).toBeUndefined();
+  });
+
+  it('the restaurant station building_type resolves to the real restaurant archetype, not the market fallback', () => {
+    expect(silhouetteForBuildingType('restaurant')).toEqual({ archetype: 'restaurant' });
   });
 
   it('coerces stored materials to renderer material types (thatch → wood)', () => {

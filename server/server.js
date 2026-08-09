@@ -7116,6 +7116,16 @@ function authMiddleware(req, res, next) {
     // Phase W — disease catalog + plague list public-read.
     "/api/diseases/catalog",
     "/api/diseases/plagues",
+    // EvoAsset resolve/material/file/by-category/stats are genuinely public
+    // per routes/evo-asset.js's own header + per-route design (no PII, no
+    // requireAuth on any of them) — the ONE mutating route in that file
+    // (POST /interaction) already carries its own `auth` middleware
+    // directly in the route registration, independent of this allowlist,
+    // so widening the prefix here cannot expose it. Found missing
+    // 2026-08-08 by an actual cross-origin Godot browser load: the route
+    // was written public but never allowlisted, so every real (non-
+    // same-loopback) caller 401'd before reaching the handler.
+    "/api/evo-asset",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -10191,7 +10201,7 @@ async function tryInitWebSockets(server) {
       // Falls back to no-op modifiers when the context engine isn't loaded.
       let _contextModifiers = null;
       try {
-        const _pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+        const _pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
         // Synchronous-ish: the context engine is pure + tiny, but we import
         // it dynamically to keep server.js cold-start lean. Cache the import
         // promise on globalThis so subsequent attacks don't re-import.
@@ -10379,7 +10389,7 @@ async function tryInitWebSockets(server) {
         // come from the attack payload when supplied.
         try {
           import("./lib/combat/context-engine.js").then(({ detectCombatContext }) => {
-            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
             const ctx = detectCombatContext({
               position: pos,
               groundY: 0,
@@ -10755,7 +10765,7 @@ async function tryInitWebSockets(server) {
               const dropCount = Math.max(1, Math.floor(materials.length * 0.2));
               const dropped = materials.slice(0, dropCount);
               const nodeId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-              const pos = cityPresence?.getPlayerPosition?.(targetUserId) || { x: 0, y: 0, z: 0 };
+              const pos = cityPresence?.getUserPosition?.(targetUserId) || { x: 0, y: 0, z: 0 };
               try {
                 db.prepare(`
                   INSERT INTO loot_nodes (id, world_id, x, y, z, contents, created_at, expires_at, killer_id)
@@ -10830,7 +10840,7 @@ async function tryInitWebSockets(server) {
           import("./lib/combat/context-engine.js"),
           import("./lib/combat/flow-recorder.js"),
         ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
-          const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+          const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
           const ctx = detectCombatContext({
             position: pos, groundY: 0, grounded: data?.grounded !== false,
             inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
@@ -10900,7 +10910,7 @@ async function tryInitWebSockets(server) {
             import("./lib/combat/context-engine.js"),
             import("./lib/combat/flow-recorder.js"),
           ]).then(([{ detectCombatContext }, { recordCombatFlow }]) => {
-            const pos = cityPresence.getPlayerPosition?.(userId) || { x: 0, y: 0, z: 0 };
+            const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
             const ctx = detectCombatContext({
               position: pos, groundY: 0, grounded: data?.grounded !== false,
               inVehicle: !!data?.inVehicle, hackerMode: !!data?.hackerMode,
@@ -13430,6 +13440,8 @@ async function runMacro(domain, name, input, ctx) {
     "/api/connective-tissue", "/api/creatures", "/api/cross-world/feed",
     "/api/detective/crime", "/api/detective/open", "/api/diseases/catalog",
     "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
+    // "/api/evo-asset" — see Gate 1's matching addition + comment.
+    "/api/evo-asset",
     "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
@@ -68878,6 +68890,91 @@ async function _dispatchGodotCombatAttack(userId, data) {
   return result;
 }
 
+// Combat C6 (2026-08-08) — dodge/parry for the Godot gateway, reusing the
+// SAME real primitives the socket.io `combat:dodge` handler (server.js
+// ~10790) resolves through: `_attemptDodge` (perfect-dodge scoring),
+// `_grantIFrames` (i-frame grant), `recordCombatFlow` (combo/flow
+// substrate). Deliberately does NOT duplicate `_lastDodgeAt`'s per-
+// connection 400ms cooldown state (that variable is `let`-scoped inside
+// the per-socket `io.on("connection", ...)` closure and has no equivalent
+// here, since `_onGodotClientMessage` is a plain module-level function
+// shared across every Godot client) — instead it reuses `_combatSocketLimiter`,
+// the SAME per-userId token bucket `_dispatchGodotCombatAttack` above
+// already gates on, so a Godot user's dodge and attack requests draw from
+// one shared combat-action budget rather than a second, ungated channel.
+// `wasParry`/`direction`/`style` mirror the socket.io payload shape exactly
+// (see CombatInputController.tsx's `parry`/`dodge` cases) so the SAME
+// `combat_flow` rows land regardless of which transport a player used.
+async function _dispatchGodotCombatDodge(userId, data) {
+  if (!userId) return { ok: false, error: "not_authenticated" };
+  if (!data || typeof data !== "object") data = {};
+
+  if (process.env.CONCORD_SOCKET_RATELIMIT !== "0" && !_combatSocketLimiter.tryConsume(userId, 1, Date.now())) {
+    return { ok: false, error: "rate_limited" };
+  }
+
+  const now = Date.now();
+  const direction = ["left", "right", "back"].includes(data.direction) ? data.direction : "back";
+  const wasParry = !!data.wasParry;
+
+  let perfectDodge = false, dodgeDilation = 0;
+  try {
+    const incomingAt = Number(data.attackArrivesAt ?? data.incomingAt);
+    if (Number.isFinite(incomingAt)) {
+      const r = _attemptDodge(db, {
+        defenderKind: "player", defenderId: userId,
+        defenderInputAt: now, attackArrivesAt: incomingAt,
+      });
+      if (r?.dodged) { perfectDodge = !!r.perfect; dodgeDilation = r.time_dilation_pct || 0; }
+    }
+  } catch { /* scoring optional — baseline i-frames still granted */ }
+  try { _grantIFrames(userId, perfectDodge ? 500 : 350); } catch { /* in-memory state optional */ }
+
+  const iframeMs = perfectDodge ? 500 : 350;
+  // Two distinct payloads on purpose: the BROADCAST reuses the exact field
+  // set the socket.io combat:dodge handler already sends (and event-shapes.js
+  // already registers — {userId, direction, t, iframeMs, perfect}), so a
+  // spectator watching a Godot player's dodge sees a shape-identical event to
+  // a browser player's. The direct ACK below is Godot-private (never
+  // dev-mode shape-validated — see event-shapes.js's own doc, realtimeEmit-
+  // only) and can carry the extra `ok`/`wasParry` fields the calling client
+  // itself wants without polluting the public broadcast contract.
+  const broadcastPayload = { userId, direction, t: now, iframeMs, perfect: perfectDodge };
+  const result = { ok: true, userId, direction, wasParry, t: now, iframeMs, perfect: perfectDodge };
+
+  try {
+    let dodgeWorldId = "concordia-hub";
+    try { dodgeWorldId = cityPresence.getUserPosition?.(userId)?.worldId ?? "concordia-hub"; } catch { /* world lookup best-effort */ }
+    realtimeEmit("combat:dodge:ack", broadcastPayload, { worldId: dodgeWorldId });
+    if (perfectDodge) {
+      realtimeEmit("combat:dodge:perfect", { userId, timeDilationPct: dodgeDilation || 35, durationMs: 600, t: now }, { worldId: dodgeWorldId });
+    }
+  } catch { /* broadcast best-effort — never fails the ack */ }
+
+  try {
+    const { detectCombatContext } = await import("./lib/combat/context-engine.js");
+    const { recordCombatFlow } = await import("./lib/combat/flow-recorder.js");
+    const pos = cityPresence.getUserPosition?.(userId) || { x: 0, y: 0, z: 0 };
+    const ctx = detectCombatContext({
+      position: pos, groundY: 0, grounded: data.grounded !== false,
+      inVehicle: !!data.inVehicle, hackerMode: !!data.hackerMode,
+    });
+    recordCombatFlow(db, {
+      fighterId: userId, fighterKind: "player",
+      context: ctx.context, style: data.style || ctx.styleHints?.[0] || null,
+      action: wasParry ? "parry" : "dodge",
+      actionMeta: { direction, vsAttacker: data.vsAttacker || null },
+      targetId: data.vsAttacker || null,
+      hit: wasParry,
+      damage: 0,
+      chainId: data.chainId || null,
+      stepIndex: Number(data.stepIndex || 0),
+    });
+  } catch { /* flow record best-effort */ }
+
+  return result;
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   switch (evt) {
@@ -68991,6 +69088,24 @@ function _onGodotClientMessage(client, evt, data) {
         })
         .catch((e) => {
           _godotGatewaySend(client, "combat:attack:ack", {
+            ok: false, error: "handler_error", message: String(e?.message || e),
+          });
+        });
+      return;
+    }
+    case "combat:dodge": {
+      // Combat C6 — see _dispatchGodotCombatDodge's own header comment.
+      // Covers both the ground-context F (parry, wasParry:true) and Q
+      // (dodge, wasParry:false) tap actions from CombatInputController.tsx's
+      // CONTEXT_KEYMAP — the client sets `wasParry` per its own key, this
+      // dispatcher just resolves whichever was requested. Always emits a
+      // direct ack, matching the combat:attack precedent above.
+      _dispatchGodotCombatDodge(userId, data)
+        .then((result) => {
+          _godotGatewaySend(client, "combat:dodge:ack", result);
+        })
+        .catch((e) => {
+          _godotGatewaySend(client, "combat:dodge:ack", {
             ok: false, error: "handler_error", message: String(e?.message || e),
           });
         });

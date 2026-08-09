@@ -388,10 +388,154 @@ to do that with no tool":
   gets, targeted at the NPC's own entity id. An NPC gathering resources
   is now a real, watchable action.
 
+## All of this session's assets are now registered in the evo-asset pipeline (2026-08-08)
+
+Every real asset sourced this session — `building/forge.glb`,
+`building/tower.glb`, `building/market__crime.glb`,
+`building/archive__sovereign-ruins.glb`,
+`building/tavern__concord-link-frontier.glb`, and the 4 undead hero
+archetypes documented in `public/meshes/heroes/CREDITS.md` — is now
+registered in `content/evo-seed/world-lens-manifest.json`, which
+`server/lib/evo-asset/source-loaders.js#bootstrapWorldLensAssets` feeds
+into the evo-asset registry at server boot. This is the real procedural
+asset-refinement engine already in the codebase
+(`server/lib/evo-asset/refinement-passes.js`'s geometry subdivision,
+age/interaction-driven procedural wear, material upgrades, and LOD
+generation, scheduled by `scheduler.js#runEvolutionTick`) — registering
+these assets gives it genuine reference material to run those passes
+against instead of only the 3 CC0 primitive-placeholder seed meshes.
+Pinned by `server/tests/integration/evo-asset-world-lens-seed.test.js`.
+
+## `building/archive__sovereign-ruins.glb` and `building/tavern__concord-link-frontier.glb` (2026-08-08)
+
+The 2 remaining lore-matched candidates this doc's earlier entries
+flagged as queued, now wired using the same per-world mechanism as
+`market__crime.glb`:
+- `archive__sovereign-ruins.glb` — `crypt.gltf` from
+  `KayKit-Halloween-Bits-1.0` (Kay Lousberg, CC0). A real stone
+  mausoleum/crypt facade, screenshot-verified in a real Godot render
+  before use — matches `sovereign-ruins`' actual authored lore (`content/
+  world/sovereign-ruins/factions.json`'s Three Archivists faction:
+  "Sovereign Archive", "collapse memorial", "silent library") far better
+  than the universal fantasy-toned archive building.
+- `tavern__concord-link-frontier.glb` — `basemodule_A.gltf` from
+  `KayKit-Space-Base-Bits-1.0` (Kay Lousberg, CC0). A small dome-shaped
+  waypoint module with a landing ramp; screenshot-checked against the
+  pack's larger cargo-depot pieces too before picking this one, since
+  `concord-link-frontier`'s real lore (`content/world/concord-link-
+  frontier/factions.json`'s Couriers' Guild: "link_post_alpha",
+  "courier_safehouses", "human-scale walker network") reads as a modest
+  waypoint/rest-stop, not bulk shipping infrastructure.
+
+Both re-packed via `gltf-transform copy`, validated clean, and confirmed
+to load in a real Godot engine render before being committed — same
+discipline as every other asset in this file.
+
+## `building/market__crime.glb` — first per-world building variant (2026-08-08)
+
+Per explicit instruction to look at each sub-world's actual authored lore
+before placing an asset, not just its genre label: `content/world/crime/
+factions.json`'s Ghost Network faction literally controls
+`dockside_warehouses` and `abandoned_subway_lines` — a grounded modern
+urban-crime setting, not the fantasy-toned market/tavern/archive trio the
+universal buildings serve. `KayKit-Game-Assets/KayKit-City-Builder-Bits-1.0`
+(Kay Lousberg, **CC0**, `LICENSE.txt` read directly) ships real modern
+storefront/apartment buildings (`building_A`..`building_H`) — 3 candidates
+(`building_A`/`C`/`E`) were re-packed and **actually screenshotted in a
+real Godot render** before picking one (not judged from bbox stats alone):
+`building_A` and `building_C` read as small single-shop storefronts;
+`building_E` (2,397 real vertices) is a genuine 3-story orange brownstone
+with a ground-floor shop, striped awning, and a fire hydrant — the most
+convincingly "real modern city block" of the three, and the one used.
+
+This is Godot-only today — `world-lens-godot/world/building_archetype.gd`
++ `assets/asset_resolver.gd`'s `fallback_url` gained a per-world
+`{archetype}__{world_id}.glb` preference (mirroring the existing player/
+npc hero-mesh convention), with a real two-stage retry in
+`scene_bootstrap.gd` (per-world, then universal, then placeholder) so
+every OTHER world/archetype pair without an authored variant is
+unaffected — verified this doesn't regress by loading both
+`market__crime.glb` and the pre-existing universal `market.glb` in a real
+engine render, confirming both are independently real and reachable.
+**The Three.js `BuildingRenderer3D.tsx`/`asset-loader.ts` path has no
+`worldId` parameter to thread through yet — an honest, documented gap,
+not a silent omission.** The component has no world context in scope
+today; threading one through was judged a real, separate risk to the
+flagship web client's existing building-render path rather than a safe
+same-pass addition, and was deliberately deferred rather than done
+blind. A future pass extending `AssetReference` with an optional
+`worldId` and wiring it through whatever parent actually holds world
+context is the concrete next step, not a redesign.
+
+See `world-lens-godot/docs/KAYKIT_INVENTORY.md` for the two other
+strongly lore-matched candidates queued for this same mechanism once
+picked up: `concord-link-frontier` (real "Frontier"/courier/link-post
+lore) + `KayKit-Space-Base-Bits-1.0`'s cargo depots/landing pads/base
+modules; `sovereign-ruins` (real "Archive"/"collapse memorial"/"silent
+library" lore) + `KayKit-Halloween-Bits-1.0`'s graves/coffins/crypt/
+broken-fence set — a much better fit for a ruined, archival, funerary
+setting than the horror-mode framing an earlier pass in this same
+inventory doc first guessed at.
+
+## `building/forge.glb` and `building/tower.glb` (2026-08-08)
+
+**RESOLVED — both building archetypes now have a real CC0 mesh; the
+"Known limitations" bullet below describing them as unavailable is
+stale for these two and kept only for the still-genuinely-missing
+creature/vegetation gaps.** Sourced from
+[KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0](https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0)
+(Kay Lousberg / kaylousberg.com, **CC0** — "free to use in personal,
+educational and commercial projects", attribution not mandatory but
+credited here anyway), downloaded via `git clone` (plain HTTPS to
+GitHub — reachable in this environment even when the general
+domain-allowlist blocks kenney.nl/itch.io/opengameart.org/etc, since
+GitHub's git-protocol traffic rides a separate path from raw HTTPS
+fetches; confirmed empirically this session).
+
+This is a genuinely different source pack from the
+`market`/`tavern`/`archive` trio above (Polygonal Mind) — a prior
+session-long search of that same trusted source's 17 sub-collections,
+plus `KayKit-Dungeon-Remastered-1.0`, came up empty for forge/tower (see
+the "Known limitations" bullet's superseded text below and
+`world-lens-godot/VISUAL_QA.md` for the full search record). The
+Medieval Hexagon Pack is a *different* Kay Lousberg release built
+specifically around named building types (blacksmith, tower, tavern,
+market, church, mine, castle, barracks, ...) in 4 team-color palettes
+(yellow/green/red/blue; no neutral variant exists for buildings, only
+for terrain/wall/bridge pieces) — the `blue` variant was used for both,
+picked as a reasonably neutral-reading slate/stone tone rather than the
+brighter yellow/red.
+
+Verified before shipping, not judged by filename: both source `.gltf`
+files passed `gltf-transform validate` (zero errors/warnings) and were
+loaded in a **real Godot 4.4 instance** via `tools/glb_load_probe.gd`
+under `xvfb-run --rendering-driver opengl3` against a real local HTTP
+server, with the actual rendered screenshot inspected — `forge.glb`
+shows a stone furnace with a lit hearth, chimney, and a wood-and-canvas
+lean-to stall (visibly a blacksmith, not an ambiguous shape);
+`tower.glb` shows a complete, enclosed round stone tower with windows, a
+door, and a conical roof (not the incomplete "modular base" trap the
+prior tower search hit). Re-packed into self-contained `.glb` via
+`gltf-transform copy` (same technique as every other re-packed asset in
+this file — embeds the external `.bin`/texture references into one
+binary container) and re-validated post-repack (clean).
+
+| File | Source name | Used for |
+|---|---|---|
+| `building/forge.glb` | `building_blacksmith_blue.gltf` (KayKit Medieval Hexagon Pack) | `BuildingRenderer3D.tsx` / Godot `building_archetype.gd` `forge` archetype |
+| `building/tower.glb` | `building_tower_A_blue.gltf` (KayKit Medieval Hexagon Pack) | `BuildingRenderer3D.tsx` / Godot `building_archetype.gd` `tower` archetype |
+
+Both clients pick these up with **zero code changes** — `BuildingRenderer3D.tsx`
+already derives its scale from the loaded GLB's own measured AABB against
+the DTU's declared footprint (`cloned.scale.set(dtu.dimensions.width /
+size.x, ...)`), and Godot's `scene_bootstrap.gd` does the identical
+AABB-based rescale — both were already written to auto-pick-up a real
+asset dropped into this convention-based path, the same as every other
+building archetype.
+
 ## Known limitations (honest, not hidden)
 
-- **`forge` and `tower` building archetypes** have no real asset yet — they
-  keep the existing procedural silhouette. Same for every `serpentine` /
+- **`serpentine` /
   `eel` / `fish` / `shark` / `cephalopod` / `polyped` / `amorphous` /
   `humanoid` creature topology and `winged_quadruped`.
 - **No baked gait animation** on real creature assets in this pass — they
@@ -555,3 +699,119 @@ to do that with no tool":
   `CLAUDE.md` itself warns about, made and then caught within this same
   multi-session arc — recorded here rather than silently rewritten, per
   this repo's own "docs are a build artifact" discipline.
+
+## Interior furniture — real CC0 meshes upgrade the procedural interior decor (2026-08-08)
+
+`lib/world-lens/interior-decor.ts` previously rendered every building
+interior (tavern/archive/forge/market/tower) with hand-built primitive
+props only (box/cylinder/sphere geometry). Five real CC0 meshes now
+upgrade the highest-impact primitives in place, following the same
+real-mesh-first / honest-primitive-fallback pattern `resource-node-renderer.ts`
+already established for trees/bushes — the primitive is still built and
+returned synchronously exactly as before (so `decorateInterior`'s contract
+and `propCount()` never change), and a best-effort async upgrade swaps in
+the real mesh when it resolves, leaving the primitive untouched on any
+failure. Source: `KayKit-Furniture-Bits-1.0` (Kay Lousberg,
+kaylousberg.com), **CC0** — verified by reading `LICENSE.txt` directly in
+the cloned repo, not assumed from the pack name. Repacked via
+`gltf-transform copy` into self-contained `.glb`, validated clean.
+
+| File | Source (`Assets/gltf/`) | Used by | Role |
+|---|---|---|---|
+| `prop/furniture_table.glb` | `table_medium.gltf` | tavern, archive | upgrades the primitive dining/reading table |
+| `prop/furniture_rug.glb` | `rug_rectangle_A.gltf` | tavern, archive | upgrades the primitive floor rug |
+| `prop/furniture_shelf.glb` | `shelf_A_big.gltf` | archive (×2) | upgrades the primitive shelf-with-scrolls assembly (the real mesh replaces both the shelf frame AND the procedural scroll props, since they're children of the same primitive group the upgrade hides) |
+| `prop/furniture_cabinet.glb` | `cabinet_medium.gltf` | market | new extra dressing beside the stall counter — no procedural equivalent, honestly absent if the asset never resolves |
+| `prop/furniture_armchair.glb` | `armchair.gltf` | tavern | new extra dressing near the fireplace — same honest-absence contract |
+
+Registered into the evo-asset pipeline (`content/evo-seed/world-lens-manifest.json`,
+`category: "prop"`) so the refinement-pass scheduler has real reference
+material for this asset kind — `prop` was previously a declared `AssetKind`
+in `asset-loader.ts` with **zero real files behind it anywhere in the
+codebase** (flagged as a known gap in `docs/KAYKIT_INVENTORY.md`); this is
+the first content in that slot.
+
+## Market world-dressing — real CC0 crate/barrel/pallet props (2026-08-08)
+
+Three more CC0 meshes from `KayKit-Prototype-Bits-1.0` (Kay Lousberg,
+CC0 — verified via `LICENSE.txt` directly) close the "building variety +
+world props" item's remaining half (per-world building variants were
+already wired; this is the "crates/barrels near market stalls" world
+props). Added as pure extras (no procedural equivalent) to the market
+interior via the same `addRealMeshExtra` honest-absence contract:
+
+| File | Source (`Assets/gltf/`) | Role |
+|---|---|---|
+| `prop/market_barrel.glb` | `Barrel_A.gltf` | storage-corner dressing opposite the cabinet |
+| `prop/market_crate.glb` | `Box_A.gltf` | stacked beside the barrel |
+| `prop/market_pallet.glb` | `Pallet_Small.gltf` | ground dressing under the crate |
+
+Registered into the evo-asset pipeline (`category: "prop"`,
+`world-dressing` tag) alongside the furniture set above. The remaining ~69
+Prototype-Bits assets (generic blockout walls/floors/pillars/target props)
+are genuinely genre-neutral blockout geometry per the pack's own stated
+purpose — no further Concordia-specific fit identified this pass.
+
+**Explicitly not attempted this pass**: a full house-furniture *placement*
+renderer consuming `building_rooms.furniture_layout_json` (the per-coord
+JSON substrate documented in `CLAUDE.md`'s Belonging-sprint invariants) —
+that data exists server-side but has **no frontend consumer anywhere**
+today (confirmed by grep — zero references to `furniture_layout_json`/
+`furnitureLayout`/`placeFurniture` in `concord-frontend/`). Wiring it would
+mean building a new player-house interior scene/UI, not a same-pass asset
+swap-in into an already-live rendering path; a real, separate feature, not
+silently implied as done by this section. The remaining 48 unused
+KayKit-Furniture-Bits assets (beds, chairs, couches, cabinets, shelves,
+bookcases, lamps, picture frames, more rugs) are the natural content for
+that future renderer once it exists.
+
+## Restaurant kitchen — real 3D interior, sourced from KayKit-Restaurant-Bits-1.0 (2026-08-08)
+
+**Correction to the earlier session's finding on this same day**: it was
+first concluded that Restaurant-Bits had "no consuming 3D surface" because
+`RestaurantDashboard.tsx` (the 2D Diner-Dash overlay CLAUDE.md documents)
+has no 3D scene of its own. That was true but missed the right mechanism —
+`interior-decor.ts`'s `decorateInterior` is a **genre-agnostic archetype
+system**, not tavern/archive/forge/market/tower-specific; a restaurant is
+just a 6th archetype away, the same way every other building interior in
+this codebase already works. Also found while wiring this: the reveal
+system that toggles a building's interior visible on camera zoom/door-entry
+(`interior-reveal.ts#shouldRevealInterior`) is itself real, tested, pure
+logic with **zero live caller anywhere in the 3D scene** — its own file
+header's claim of "a ConcordiaScene listener... reads this" is aspirational,
+not yet true for ANY archetype. So today every archetype's interior (this
+new restaurant one included) is real and mountable via
+`attachInteriorDecor`/`setInteriorVisible`, but nothing in the live scene
+calls those yet — a real, separate, deeper gap than "restaurant has no
+kitchen," left honestly unaddressed this pass (it's not restaurant-specific
+and fixing it safely means touching the large, load-bearing
+`ConcordiaScene.tsx`, out of scope for this asset-sourcing session).
+
+`restaurant` is now a 6th real `BuildingArchetype`
+(`lib/world-lens/procedural-buildings.ts`) with its own procedural
+diner-shaped exterior (flat roof + rooftop exhaust vent, distinct from
+tavern's pitched-cone silhouette) and a matching `InteriorArchetype` in
+`interior-decor.ts` whose interior is real-mesh-first from the ground up
+(no procedural kitchen primitives existed to retrofit, unlike the
+furniture/market cases above). `building-silhouette.ts` maps the real
+`restaurant` station `building_type` (`StationInteractionRouter`'s
+`ROUTER_TABLE` key) to it — previously fell through to the `market`
+default.
+
+| File | Source (`Assets/gltf/`) | Role |
+|---|---|---|
+| `prop/kitchen_counter.glb` | `kitchencounter_straight_A.gltf` | base counter (primitive-upgraded, same pattern as furniture_table) |
+| `prop/kitchen_stove.glb` | `stove_multi.gltf` | cooking range |
+| `prop/kitchen_hood.glb` | `extractorhood.gltf` | wall-mounted extractor hood over the stove |
+| `prop/kitchen_fridge.glb` | `fridge_A.gltf` | walk-in-adjacent fridge |
+| `prop/kitchen_dishrack.glb` | `dishrack.gltf` | dishrack |
+| `prop/kitchen_table.glb` | `kitchentable_A.gltf` | prep/dining table |
+
+Source: `KayKit-Restaurant-Bits-1.0` (Kay Lousberg, kaylousberg.com),
+**CC0** — verified via `LICENSE.txt` directly. Repacked via `gltf-transform
+copy`, validated clean. Registered into the evo-asset manifest
+(`category: "prop"`, `restaurant`/`kitchen` tags). The remaining ~138
+Restaurant-Bits assets (ingredient props, plated food, more counter/table
+variants, paper-towel shelf) are the natural content for a future denser
+pass on this same archetype — this pass covers the 6 pieces that make the
+room read as a real kitchen, not the full catalog.

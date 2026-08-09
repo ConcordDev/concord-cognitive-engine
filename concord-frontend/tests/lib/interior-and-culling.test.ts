@@ -1,7 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as THREE from 'three';
 import { decorateInterior, type InteriorArchetype } from '@/lib/world-lens/interior-decor';
 import { createInstancedMeshPool } from '@/lib/world-lens/instanced-mesh-pool';
+
+const MOCKED_ASSET_IDS = new Set([
+  'furniture_table', 'furniture_rug', 'furniture_armchair',
+  'market_barrel', 'market_crate', 'market_pallet',
+  'kitchen_counter', 'kitchen_stove', 'kitchen_hood', 'kitchen_fridge', 'kitchen_dishrack', 'kitchen_table',
+]);
+
+vi.mock('@/lib/world-lens/asset-loader', () => ({
+  loadAsset: vi.fn(async (ref: { kind: string; id: string }) => {
+    if (MOCKED_ASSET_IDS.has(ref.id)) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+      mesh.name = `real-${ref.id}`;
+      return mesh;
+    }
+    return null; // honest fallback for ids with no mocked asset (shelf, cabinet)
+  }),
+}));
 
 describe('decorateInterior', () => {
   it('builds a group for tavern archetype', () => {
@@ -12,7 +29,7 @@ describe('decorateInterior', () => {
   });
 
   it('builds distinct groups per archetype', () => {
-    const archetypes: InteriorArchetype[] = ['tavern', 'archive', 'forge', 'market', 'tower'];
+    const archetypes: InteriorArchetype[] = ['tavern', 'archive', 'forge', 'market', 'tower', 'restaurant'];
     for (const a of archetypes) {
       const decor = decorateInterior(THREE, { archetype: a, seed: 1 });
       expect(decor.group.name).toBe(`interior-decor-${a}`);
@@ -47,6 +64,76 @@ describe('decorateInterior', () => {
       if (obj instanceof THREE.Mesh) meshCount++;
     });
     expect(meshCount).toBeGreaterThan(20); // 2 shelves × multiple scrolls
+    decor.dispose();
+  });
+
+  it('upgrades table/rug to a real mesh and hides the primitive once loadAsset resolves', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'tavern' });
+    // Let the fire-and-forget upgrade promises settle.
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    let realUpgrades = 0;
+    let hiddenPrimitives = 0;
+    decor.group.traverse((obj) => {
+      if (obj.userData.isRealMeshUpgrade) realUpgrades++;
+      if (obj.visible === false) hiddenPrimitives++;
+    });
+    // table, rug, and the armchair extra all mock-resolve to a real mesh.
+    expect(realUpgrades).toBeGreaterThanOrEqual(3);
+    // table + rug primitives hidden (armchair is a pure addition, nothing to hide).
+    expect(hiddenPrimitives).toBeGreaterThanOrEqual(2);
+    decor.dispose();
+  });
+
+  it('leaves the primitive fully visible when loadAsset honestly returns null (no shelf/cabinet mock)', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'archive' });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    let shelfUpgrades = 0;
+    decor.group.traverse((obj) => {
+      if (obj.userData.sourceAssetId === 'furniture_shelf') shelfUpgrades++;
+    });
+    expect(shelfUpgrades).toBe(0);
+    // propCount() is unaffected either way — the synchronous contract never changes.
+    expect(decor.propCount()).toBeGreaterThan(0);
+    decor.dispose();
+  });
+
+  it('market interior adds real barrel/crate/pallet world-dressing once loadAsset resolves', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'market' });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const dressingIds = new Set<string>();
+    decor.group.traverse((obj) => {
+      const id = obj.userData.sourceAssetId;
+      if (id) dressingIds.add(id);
+    });
+    expect(dressingIds.has('market_barrel')).toBe(true);
+    expect(dressingIds.has('market_crate')).toBe(true);
+    expect(dressingIds.has('market_pallet')).toBe(true);
+    // furniture_cabinet is NOT in the mock set — honest absence, same contract.
+    expect(dressingIds.has('furniture_cabinet')).toBe(false);
+    decor.dispose();
+  });
+
+  it('restaurant interior is a real kitchen — counter upgrade + stove/hood/fridge/dishrack/table extras', async () => {
+    const decor = decorateInterior(THREE, { archetype: 'restaurant' });
+    expect(decor.group.name).toBe('interior-decor-restaurant');
+    expect(decor.propCount()).toBeGreaterThan(0); // synchronous contract unaffected
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const realIds = new Set<string>();
+    decor.group.traverse((obj) => {
+      const id = obj.userData.sourceAssetId;
+      if (id) realIds.add(id);
+    });
+    for (const id of ['kitchen_counter', 'kitchen_stove', 'kitchen_hood', 'kitchen_fridge', 'kitchen_dishrack', 'kitchen_table']) {
+      expect(realIds.has(id)).toBe(true);
+    }
     decor.dispose();
   });
 });

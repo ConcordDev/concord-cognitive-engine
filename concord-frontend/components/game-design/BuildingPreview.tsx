@@ -67,6 +67,7 @@ const ARCH_STYLE_BY_ARCHETYPE: Record<
   forge: 'fortified',
   market: 'gracile',
   tower: 'fortified',
+  restaurant: 'organic',
 };
 
 /**

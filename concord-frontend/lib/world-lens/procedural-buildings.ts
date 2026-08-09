@@ -21,7 +21,7 @@
 
 import type * as THREE_NS from "three";
 
-export type BuildingArchetype = "tavern" | "archive" | "forge" | "market" | "tower";
+export type BuildingArchetype = "tavern" | "archive" | "forge" | "market" | "tower" | "restaurant";
 
 interface ArchetypePalette {
   wall:     string;
@@ -38,6 +38,7 @@ const PALETTES: Record<BuildingArchetype, ArchetypePalette> = {
   forge:   { wall: "#3a3a3a", roof: "#1a1a1a", trim: "#a04020", window: "#ff6020", emissive: "#ff4010", emissiveIntensity: 0.5  },
   market:  { wall: "#c0a070", roof: "#206030", trim: "#80a040", window: "#fff0a0", emissive: "#ffd040", emissiveIntensity: 0.1  },
   tower:   { wall: "#606570", roof: "#2a2a30", trim: "#c0c0d0", window: "#80a0ff", emissive: "#a0a0ff", emissiveIntensity: 0.15 },
+  restaurant: { wall: "#e0d8c0", roof: "#8a2020", trim: "#405030", window: "#fff0d0", emissive: "#ffd090", emissiveIntensity: 0.2 },
 };
 
 interface SeededRng { (): number; }
@@ -270,6 +271,7 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     forge:   { wall: 'stone', roof: 'metal'  },
     market:  { wall: 'brick', roof: 'wood'   },
     tower:   { wall: 'stone', roof: 'stone'  },
+    restaurant: { wall: 'brick', roof: 'wood' },
   };
   const pbr = PBR_BY_ARCHETYPE[opts.archetype];
   const pbrSeed = hashSeed(`pbr:${opts.seed}`);
@@ -289,6 +291,7 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     case "forge":   buildForge(THREE, group, rng, scale, bundle); break;
     case "market":  buildMarket(THREE, group, rng, scale, bundle); break;
     case "tower":   buildTower(THREE, group, rng, scale, bundle); break;
+    case "restaurant": buildRestaurant(THREE, group, rng, scale, bundle); break;
   }
 
   // V4 — parapet on fortified, columns on gracile. Cheap silhouette adds
@@ -736,6 +739,51 @@ function buildMarket(THREE: typeof THREE_NS, g: THREE_NS.Group, rng: SeededRng, 
     lantern.position.set(stall.position.x, 2.8 * s, stall.position.z);
     g.add(lantern);
   }
+}
+
+function buildRestaurant(THREE: typeof THREE_NS, g: THREE_NS.Group, rng: SeededRng, s: number, m: MaterialBundle) {
+  const w = (9 + rng() * 2) * s;
+  const d = (9 + rng() * 2) * s;
+  const h = (4.5 + rng()) * s;
+
+  // Walls — flat-roofed diner shape (distinct silhouette from tavern's
+  // pitched cone roof, per the silhouette-readability principle).
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m.wallMat);
+  walls.position.y = h / 2;
+  walls.castShadow = true; walls.receiveShadow = true;
+  g.add(walls);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4 * s, 0.3 * s, d + 0.4 * s), m.roofMat);
+  roof.position.y = h + 0.15 * s;
+  roof.castShadow = true;
+  g.add(roof);
+
+  // Rooftop exhaust vent — a real kitchen's most recognizable exterior
+  // tell, reused from the extractor-hood theme this archetype's real
+  // interior meshes carry (KayKit-Restaurant-Bits-1.0, see CREDITS.md).
+  const vent = new THREE.Mesh(new THREE.BoxGeometry(0.8 * s, 1.2 * s, 0.8 * s), m.trimMat);
+  vent.position.set(w / 4, h + 0.9 * s, -d / 4);
+  g.add(vent);
+  const ventPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.2 * s, 0.2 * s, 0.8 * s, 8), m.trimMat);
+  ventPipe.position.set(w / 4, h + 1.9 * s, -d / 4);
+  g.add(ventPipe);
+
+  // Door
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.5 * s, 2.5 * s, 0.2 * s), m.trimMat);
+  door.position.set(0, 1.25 * s, d / 2 + 0.05);
+  g.add(door);
+
+  // Storefront windows — larger + more of them than a tavern, diner-style.
+  for (const side of [-1, 1]) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(2.2 * s, 1.6 * s, 0.1 * s), m.windowMat);
+    win.position.set((side * w) / 3, 1.8 * s, d / 2 + 0.06);
+    g.add(win);
+  }
+
+  // Hanging sign
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2 * s, 0.6 * s, 0.1 * s), m.trimMat);
+  sign.position.set(0, 3.2 * s, d / 2 + 0.5 * s);
+  g.add(sign);
 }
 
 function buildTower(THREE: typeof THREE_NS, g: THREE_NS.Group, rng: SeededRng, s: number, m: MaterialBundle) {

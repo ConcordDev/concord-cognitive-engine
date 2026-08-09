@@ -1,5 +1,2340 @@
 # Visual QA — Godot World Lens
 
+## Forge/tower building GLBs — closed for real, a different CC0 source than the one already exhausted (2026-08-08, later same day)
+
+The earlier "Forge/tower building GLBs — searched exhaustively, closed as a
+genuine gap, not shipped" entry below documented a real, thorough dead end
+against ONE trusted source (Polygonal Mind, 17 sub-collections) plus
+`KayKit-Dungeon-Remastered-1.0`. This entry supersedes that outcome — not
+the search record, which stays accurate for the source it covered — by
+finding and verifying a DIFFERENT source the earlier pass never checked.
+
+Per the owner's explicit instruction this session ("download them straight
+into the repo from wherever you can... GitHub assets that are open source
+and downloadable... give them their credits"), `git clone` (not `curl`) was
+used against `https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0`
+— confirmed reachable even though this environment's general HTTPS egress
+policy blocks kenney.nl/itch.io/opengameart.org/etc: GitHub's git-protocol
+traffic (`git clone`/`git ls-remote`) rides a separate allowlisted path from
+raw HTTPS fetches, verified empirically (`curl` to arbitrary HTTPS hosts
+403s per the proxy's policy; `git clone` to a public GitHub repo succeeds).
+
+`LICENSE.txt` read directly (not assumed from a search summary): CC0,
+"free to use in personal, educational and commercial projects." The pack
+ships `building_blacksmith_<color>.gltf` and `building_tower_A_<color>.gltf`
+(plus `_B` and `_base` tower variants) in 4 team-color palettes — genuinely
+different content from anything the earlier search touched. `blue` was
+picked (no neutral variant exists for buildings specifically, only for
+terrain/wall/bridge pieces in this pack).
+
+**Verified by loading both in a real engine, not by filename — same
+discipline the earlier (correctly cautious) tower rejection used.** Both
+source `.gltf` files passed `gltf-transform validate` clean; re-packed into
+self-contained `.glb` via `gltf-transform copy` (same technique as every
+other re-packed CC0 asset in `concord-frontend/public/models/CREDITS.md`)
+and re-validated clean post-repack. Loaded via `tools/glb_load_probe.gd`
+under `xvfb-run -a -s "-screen 0 1280x720x24" godot --path world-lens-godot
+--display-driver x11 --rendering-driver opengl3` against a real local
+`python3 -m http.server`, real screenshots captured and inspected:
+- **`forge.glb`** (`building_blacksmith_blue.gltf`, 3,393 real vertices):
+  a stone furnace with a lit orange hearth opening, a chimney, and a small
+  wood-framed lean-to stall with a blue-striped awning — unambiguously a
+  blacksmith, grounded and medieval-toned, consistent with market/tavern/
+  archive.
+- **`tower.glb`** (`building_tower_A_blue.gltf`, 3,126 real vertices): a
+  complete, enclosed round stone tower — windows, a door, a conical blue
+  roof. This is the "complete standalone structure" the earlier pass's
+  `Tower_Base_*` candidates from the OTHER source were not (those were an
+  open-columned rotunda foundation piece, correctly rejected at the time).
+
+Wired into `world-lens-godot/world/building_archetype.gd`
+(`REAL_MESH_ARCHETYPES` now `["market", "tavern", "archive", "forge",
+"tower"]`, all 5 of the archetype's values) and
+`concord-frontend/public/models/building/{forge,tower}.glb` — the shared
+convention-based path both `BuildingRenderer3D.tsx` (Three.js) and Godot's
+`scene_bootstrap.gd` already resolve against with **zero code changes on
+either client**: both already derive GLB scale from the loaded mesh's own
+measured AABB against the building's declared footprint, the same as every
+other real building archetype. `tests/test_building_archetype.gd`'s
+`has_real_mesh` pinning test flipped from asserting forge/tower are absent
+to asserting they're present. Full attribution:
+`concord-frontend/public/models/CREDITS.md`.
+
+**What this does and doesn't settle.** Settles: both files are real,
+valid, CC0-licensed, thematically-correct meshes that load and render
+correctly under the real engine, and both clients will pick them up via
+the existing convention with no further wiring. Does NOT settle: whether
+the `blue` palette reads well in-context next to the Polygonal Mind trio's
+different art style once placed in an actual populated scene (a real
+side-by-side in a live world render was not captured this pass — the
+probe screenshots above are each asset in isolation against the standard
+probe sky, not a composed scene); recoloring/re-texturing to visually
+unify the two source packs is a legitimate follow-up, not attempted here.
+
+## Why the avatar looked like a Minecraft placeholder in a busy scene — a real thundering-herd bug, found and fixed (2026-08-08)
+
+Follow-on from the browser-perf check below: the owner looked at that check's
+own screenshot and correctly called it out — flat green grid terrain, a bare
+white capsule avatar, primitive box/hex placeholders for buildings and
+vegetation, none of it matching `docs/ART_STYLE_GUIDE.md`'s BotW/Palworld
+description. Investigated end-to-end with real browser network capture
+rather than guessing. Two real, independent bugs, found in this order:
+
+1. **A regression from the same-day evo-asset auth-gate fix (see below).**
+   With that gate now open, every entity's `AssetResolver.resolve()` started
+   making a REAL round trip to `/api/evo-asset/resolve` before falling back
+   to the static convention — and every one of those calls is a guaranteed
+   `not_registered` miss today (confirmed by grep: nothing anywhere writes
+   an `evo_assets` row under `source` "npc"/"vegetation"/"building"/"player").
+   With ~50 NPCs doing this at once, the calls piled up and 50/50 hit a real
+   429 in one captured run. Fixed by flipping `AssetResolver.
+   use_resolve_endpoint`'s default to `false` — `world/scene_bootstrap.gd`
+   already disabled this for buildings for the identical reason, which is
+   exactly why buildings kept rendering while avatars didn't; the fix just
+   makes NPCs/players consistent with that existing precedent.
+2. **The REAL bug, and the actual explanation for the screenshot: `assets/
+   glb_loader.gd`'s own Phase M4 header comment named this exact failure
+   mode as a known, deliberately-deferred gap — "many avatars requesting the
+   SAME not-yet-cached URL in the same tick... still fire N simultaneous
+   redundant fetches" — and it turned out to matter far more than that
+   comment assumed.** Every avatar in Concordia defaults to the identical
+   `"warrior"` hero-mesh URL (no per-NPC archetype signal exists on the wire
+   yet), so a scene with ~56 NPCs isn't a rare edge case for this bug — it's
+   the guaranteed, every-single-load common case. A real browser capture
+   (`page.on("request")`) counted **20+ literally-identical concurrent
+   requests** for `_archetype_warrior__concordia-hub.glb` alone, all
+   competing for Chromium's small per-origin connection limit — starving
+   even the LOCAL PLAYER's own body-mesh fetch, which visibly never got a
+   connection slot in a 35-second window.
+
+**Fixed**: `GlbLoader` now tracks in-flight fetches by URL
+(`static var _inflight: Dictionary`). The first caller for a not-yet-cached,
+not-yet-in-flight URL becomes the sole fetcher; every later caller for the
+identical URL piggybacks as a subscriber instead of firing a redundant
+request. On completion, every subscriber gets its own `loaded`/`load_failed`
+emission — the owner gets the live parsed node directly, every other
+subscriber gets its own `packed.instantiate()` copy (Godot nodes can't be
+shared as a child of more than one parent); if packing failed, only the
+owner can honestly receive a real node, so every other subscriber gets an
+honest `load_failed` rather than a fabricated share of a node it can never
+actually receive. `clear_cache()` now also clears `_inflight`, matching its
+own "clean process-lifetime-shared state" contract.
+
+**Measured before/after, same real browser + same real scene**: hero-mesh
+requests dropped from 20+ duplicates to exactly 1. The single real fetch
+then genuinely succeeded (HTTP 200, confirmed via `page.on("response")`) —
+just slowly in THIS sandbox's specific dev-server (Next.js's own "Slow
+filesystem detected" warning on this box, plus the many OTHER distinct real
+assets — creatures, vegetation, buildings — still competing for the same
+small connection pool): a 15s window wasn't enough to see it complete, a
+55s window was. Once it did, the growing scene showed genuine textured
+CC0 assets rendering — real pink-flowered vegetation, a real furred
+creature — proving the pipeline itself works end-to-end; only the AVATAR's
+own GLTF-parse-after-fetch hadn't finished by that exact screenshot moment.
+This residual is sandbox-specific dev-server latency, not a code bug — a
+real deployed server has none of this box's disk/CPU constraints, and the
+FIX (eliminating 20+ duplicate requests down to 1) is real and verified
+regardless of how fast any given box happens to serve static files.
+
+Tests: `world-lens-godot/tests/test_glb_loader.gd` extended from 2 to 11
+pinned checks (piggyback registration, multi-subscriber fail-fanout,
+freed-subscriber safety, `clear_cache()` symmetry) — all pure-logic, no
+real network call needed to pin the dedup contract itself. Full suite
+48/48 green.
+
+**What's still honestly missing for this to look like the described art
+style** (separate from the bug above, and NOT attempted in this pass — see
+the "what's next" note at the end of this section):
+- Only 3 of 5 building archetypes have real GLBs (market/tavern/archive;
+  forge/tower still fall to the placeholder box — a known, already-flagged
+  content gap, not a wiring gap).
+- Every NPC and the local player resolve to the SAME "warrior" hero-mesh
+  archetype — there's no per-NPC occupation/archetype signal on the wire,
+  so Concordia's world reads visually uniform even once every fetch
+  succeeds. This is a real content/wiring gap, distinct from today's bug.
+- The texture-preserving toon shader (Phase S1-S3, already built and
+  verified on buildings + hero meshes) needs the SAME reach extended onto
+  creatures/vegetation once their GLBs load reliably.
+- Godot ships with **zero** built-in game assets — it's an engine, not an
+  asset library (unlike, say, Unity's Asset Store bundles). The CC0 assets
+  already on disk (`concord-frontend/public/models/CREDITS.md`) were
+  individually sourced from Kenney.nl / Poly Haven / OpenGameArt-class
+  sources by hand. Separately, a REAL, already-built ingestion pipeline for
+  exactly those sources exists at `server/lib/evo-asset/source-loaders.js`
+  (`bootstrapPolyHaven`/`bootstrapAmbientCG`/Kenney/OS3A loaders, network-
+  dependent, graceful-on-failure) — but it registers assets under `source`
+  values like `"polyhaven"`/`"kenney"`/`"ambientcg"`/`"os3a"`/`"github"`/
+  `"authored"`/`"evolved"`, never under `"npc"`/`"vegetation"`/`"building"`/
+  `"player"`, so it has never actually fed Concordia's world geometry. Real,
+  substantial follow-on work — flagged here, not attempted in this pass.
+
+## Real-GPU browser performance check — honest about sandbox limitations, and a real backend-config bug found + fixed along the way (2026-08-08)
+
+**The honest headline first, since it's the whole point of this task's name:
+no genuine GPU-backed number can be produced in this sandbox, ever.** This is
+a headless container with no GPU passthrough. Confirmed by this session's own
+prior probes (`--headless` alone uses Godot's `RasterizerDummy`, which draws
+nothing) and reconfirmed here: the one real-pixel-rendering path available
+(`xvfb-run … --rendering-driver opengl3`) reports `"OpenGL API 4.5 (Core
+Profile) Mesa 25.2.8 … Using Device: Mesa - llvmpipe"` — a CPU software
+rasterizer, not a GPU. A real Chromium browser load in this same sandbox
+(below) similarly falls back to SwiftShader, Chromium's own CPU WebGL
+implementation, when launched with `--use-gl=swiftshader`. Neither number
+below says anything about real-GPU frame time on the actual A40 deployment
+target — that number can only come from a session with real hardware access,
+loading the same export the same way.
+
+**What IS real and was actually measured**, via a genuine end-to-end run: a
+real `server.js` (fresh migrated + content-seeded SQLite DB, real registered
+user, real JWT), a real `next dev` (Turbopack) frontend proxying to it, and a
+real Playwright `chromium.launch()` (the same browser this repo's own e2e
+suite uses) loading `/godot-client/index.html` with real query-param runtime
+config — **not the stale Aug-7 export**: `node scripts/export-godot-web.mjs`
+was re-run first so the served bundle includes every GDScript change from
+this session's own continuation (Phases M1–S4, N, C, Q, audio, UI, gamepad/
+touch, archetype signal, texture-preserving toon shading, and the multi-world
+verification pass).
+
+- **Boot is real and clean**: engine boot → WebGL init → `gateway socket
+  open` → `authenticated as <uid>` → `joined room world:concordia-hub`, all
+  observed for real in the console log, matching the exact sequence the
+  2026-08-07 "Browser (Web export)" section above first proved.
+- **Real transfer sizes, measured off `performance.getEntriesByType("resource")`,
+  not assumed from disk**: `index.wasm` 43,682,606 bytes decoded / 9,509,188
+  bytes over the wire (gzip, ~1.3–2.4s transfer in this run), `index.pck`
+  574,752–575,052 bytes (~25–240ms), `index.js` 317,142 bytes decoded /
+  81,059 bytes over the wire (~30–130ms). These are genuine HTTP timings
+  through a real dev server on this box — not GPU-bound, but a real measure
+  of what a visitor's browser actually has to fetch and parse before the
+  engine can even start.
+- **A real, non-synthetic screenshot** was captured mid-session
+  (`/tmp/godot-browser-perf.png`, not committed — a build artifact) showing,
+  together in one real frame: the local player's real humanoid rig standing
+  on the real toon-shaded/textured terrain, real vegetation/building
+  placeholder geometry in the distance, the real Phase Q quest breadcrumb
+  ("[K] Accept: The First Cycle — Cook"), and the real Phase 376 on-screen
+  touch-control buttons (E/F/R/Q) — genuine end-to-end integration across
+  six separate phases of this session's own work, rendered by SwiftShader,
+  not a mock.
+
+### A real, previously-undiscovered bug, found only by running this in a non-default topology
+
+Every prior Godot browser verification in this repo (the 2026-08-07 "Browser
+(Web export)" section above) ran with the frontend and backend effectively
+reachable at the SAME implied origin. This task's honest performance check
+required standing up frontend and backend on two genuinely different ports
+(`:3098` / `:5098`, simulating any real deployment where the browser is not
+running on the same machine as the server) — and that surfaced a real defect:
+**only the WebSocket gateway URL (`CONCORD_GATEWAY_URL`) was ever
+runtime-configurable.** Every REST-based subsystem this session built or
+extended — `_npc_poller`, `_creature_poller`, `_quest_poller`,
+`_quest_available_poller`, `_quest_actions`, `_fea_scene`, and
+`_player_appearance_loader` — had its `base_url` hardcoded to the literal
+`"http://127.0.0.1:5050"` in `world/boot.gd`, with **no override path of any
+kind**. First symptom, captured verbatim from a real browser console: `Refused
+to connect to 'http://127.0.0.1:5050/api/lens/run' because it violates the
+… Content-Security-Policy directive: "connect-src 'self' https: wss: ws:
+http://127.0.0.1:5098"` — the CSP correctly allowed the real backend origin
+the page was told about, and just as correctly refused the hardcoded wrong
+one. This is not a sandbox artifact: it would silently break NPCs, quests,
+appearance, and FEA scene data in essentially **every** real deployment,
+since the browser runs on the visitor's machine, never at the literal
+loopback address the server itself listens on.
+
+**Fixed**, mirroring the existing `CONCORD_FRONTEND_URL`/`frontend_asset_base_url`
+pattern exactly:
+- `world-lens-godot/world/boot.gd`: new `@export var backend_api_base_url:
+  String = "http://127.0.0.1:5050"`, resolved from a new `CONCORD_BACKEND_URL`
+  env var (native) / cmdline arg (Web) in `_ready()`, same precedence rule as
+  every other override here (non-empty override wins, blank leaves the
+  default). All 7 hardcoded `"http://127.0.0.1:5050"` assignments now read
+  `backend_api_base_url` instead.
+- `concord-frontend/app/godot-client/index.html/route.ts`: `CONCORD_BACKEND_URL`
+  added to `CONFIG_PARAM_KEYS`; `injectConfigArgs` now defaults it (like
+  `CONCORD_FRONTEND_URL` already did) to the request's own resolved public
+  origin when the embedding page didn't specify one — correct by construction
+  for the real deployment shape this repo already documents, where `/api/*`
+  is proxied through the SAME public origin as the page (nginx/Cloudflare
+  both fall through unmatched paths to the same backend).
+- Tests extended in both places: `world-lens-godot/tests/test_boot_runtime_
+  config.gd` was already pinning `resolve_runtime_config`'s override contract
+  (unchanged — `CONCORD_BACKEND_URL` follows the same `_frontend_env`-style
+  direct-read path as `CONCORD_FRONTEND_URL`, not through that function);
+  `concord-frontend/tests/godot-client-route.test.ts` gained coverage for
+  the new key defaulting alongside `CONCORD_FRONTEND_URL` and for an explicit
+  override winning — 15/15 passing.
+
+**Re-verified after the fix**: the exact same CSP-refusal class of error is
+gone. Re-running the full GDScript suite (`tests/run_all.gd`) shows all 48
+suites `[PASS]` with real non-zero per-suite check counts, zero `[FAIL]`.
+Re-running the real Playwright load with `CONCORD_BACKEND_URL` now passed
+explicitly (mirroring an operator setting it for a cross-origin deployment)
+shows real `200` responses from the real backend for `/api/lens/run`,
+`/api/worlds/concordia-hub/npcs`, `/api/worlds/concordia-hub/quests/active`,
+and `/api/worlds/concordia-hub/quests?status=available` — confirmed directly
+in the server's own structured request log, not just inferred from the
+absence of console errors.
+
+### A second, smaller, pre-existing gap found in the same pass — documented, not fixed this pass
+
+With the backend URL now reachable, a residual class of `401` responses
+surfaced for `GET /api/evo-asset/resolve?kind=…&id=…` (the optional
+EvoAsset-promotion lookup `assets/asset_resolver.gd` tries before falling
+back to the static `{base}/models/{kind}/{id}.glb` convention). Traced to two
+stacked, independent, pre-existing issues, neither introduced by this
+session:
+1. **Param-name mismatch**: `asset_resolver.gd` sends `?kind=&id=`; the real
+   route (`server/routes/evo-asset.js#GET /resolve`) reads `?source=&sourceId=`
+   — so even with a valid token this call would always fail its own
+   `source and sourceId required` check. This dynamic-promotion lookup has
+   therefore never actually worked; the honest static-fallback path is why
+   nothing visibly broke.
+2. **Gate 1 doesn't allowlist it**: the route's own header comment says
+   "public read, no auth required," and its handler genuinely has no
+   `requireAuth` call — but `/api/evo-asset` never appears in `server.js`'s
+   `publicReadPaths` allowlist, so the global auth middleware rejects the
+   request before it ever reaches that handler.
+Both are real and independently fixable, but fixing #2 means editing the
+security-sensitive `publicReadPaths` surface this repo's own CLAUDE.md
+documents as having been carefully, narrowly audited in a prior pass — not a
+change to make casually inside an unrelated performance-check task. Left as
+a named, scoped residual rather than silently fixed or silently ignored:
+**degrades gracefully today** (the static-convention fallback still resolves
+real GLBs, as Phase M1/M2/M3/N's own verified screenshots show), so nothing
+user-visible is broken — it only means EvoAsset-evolved/promoted asset
+variants never actually override the default mesh in the Godot client, a
+gap that already existed before this task started.
+
+### What a future session with real GPU-backed hardware needs to do
+
+Load the same export (`concord-frontend/public/godot-client/index.html`,
+built via `node scripts/export-godot-web.mjs`) in a real browser on a machine
+with actual GPU acceleration — Forward+ is this project's real target
+renderer (`project.godot`'s `rendering/renderer/rendering_method`), not the
+`gl_compatibility` fallback every visual-QA shot in this file has been
+captured under so far. Capture real frame times via Chromium's own
+`performance` API or a simple `requestAnimationFrame` counter over a fixed
+window, with and without Phase S4's SDFGI/bloom/SSAO real-time GI enabled,
+to get the first genuine "does this run smoothly on real hardware" answer —
+nothing in this sandbox can produce that number, and nothing here claims to.
+
+## Verify other sub-worlds render in Godot (2026-08-08)
+
+Every prior probe in this whole session that touches `SceneBootstrap`
+(directly or via a default) targeted `concordia-hub` only. This unit checks
+the real, load-bearing question directly: does the client's real scene-data
+pipeline actually have real content to render for the other 9 authored
+sub-worlds (`content/world/{tunya,cyber,crime,fantasy,superhero,
+sovereign-ruins,lattice-crucible,concord-link-frontier,sere}/`), and does
+`SceneBootstrap` genuinely parse a REAL non-hub payload correctly?
+
+**Method — real server, real DB, real function call, not assumed.**
+Started a real, migrated, content-seeded `server.js` instance (a fresh
+`DB_PATH`, `CONCORD_NO_LISTEN=false`, no Ollama brains available — the
+same honest degrade documented throughout this codebase) and called
+`server/lib/scene-export.js#exportScene(db, worldId)` directly — the EXACT
+function `godot-gateway.js`'s `scene:request` handler calls for a live
+Godot session — for every canon world id, reading real rows out of
+`world_buildings`/`world_npcs`.
+
+**Real measured results, all 9 canon sub-worlds plus concordia-hub:**
+
+| worldId | buildings | districts | npcs |
+|---|---:|---:|---:|
+| concordia-hub | 62 | 6 | 56 |
+| tunya | 12 | 0 | 36 |
+| cyber | 12 | 0 | 33 |
+| crime | 11 | 0 | 30 |
+| fantasy | 11 | 0 | 30 |
+| superhero | 10 | 0 | 30 |
+| sovereign-ruins | 11 | 0 | 31 |
+| lattice-crucible | 11 | 0 | 30 |
+| concord-link-frontier | 11 | 0 | 30 |
+| sere | 10 | 0 | 34 |
+
+Every one of the 9 sub-worlds has real, non-trivial building + NPC data —
+Godot's already-verified rendering pipeline (`SceneBootstrap` + `ArtStyle` +
+`AvatarManager`/`NpcPoller` + `VegetationRenderer`) is data-driven, not
+concordia-hub-specific in its LOGIC (confirmed by reading `parse_vegetation`/
+`parse_landing_pads`/`parse_districts`'s own "verbatim passthrough or drop"
+posture, and `apply_scene`'s field reads), so a real client session against
+any of these 9 worlds has real content to spawn.
+
+**A real, separate finding, not previously documented anywhere in this
+client**: `districtCount: 0` / `hasPlaza: false` / `landingPadCount: 0` for
+EVERY world except `concordia-hub`. This confirms (with real numbers,
+where Phase M2's own doc previously only asserted it by design reasoning)
+that Phase M2's vegetation scatter — which is deliberately district-bounded
+— genuinely returns `[]` for all 9 non-hub worlds today: a real content
+gap (no authored `districts` data exists for them yet), not a code gap,
+exactly as Phase M2's own class doc already named as a known, deferred
+limitation. This unit is the first real DB-backed confirmation of that
+claim across every world, not just an assumption.
+
+**A second real finding, newly surfaced by this unit**: the literal string
+`"concordia"` (the legacy alias `ArtStyle.saturation_for_world`/`_theme_
+for_world_id` treat as equivalent to `"concordia-hub"` for PALETTE
+purposes) resolves to an almost-EMPTY scene in `world_buildings`/
+`world_npcs` — 1 building, 0 districts, 2 NPCs — because `exportScene`
+queries those tables by the LITERAL `world_id` string, and the real
+authored content lives under `"concordia-hub"`, not `"concordia"`. The
+palette alias and the scene-data alias are NOT the same mechanism, and
+only one of them actually covers `"concordia"`. A Godot session
+misconfigured with `world_id="concordia"` instead of `"concordia-hub"`
+would render the CORRECT art style but an almost-empty world. Flagged
+honestly as a real, named residual — not fixed here (a content/config
+question, not this unit's scope, and not previously known before this
+verification pass).
+
+**Real-engine proof that the CLIENT genuinely parses non-hub data — new
+`tools/multi_world_scene_probe.gd`.** Dumped the real, live `tunya` scene
+payload (the exact JSON shape a Godot client would receive over
+`scene:data` for a tunya session) from the running server above, fed it
+into a REAL `SceneBootstrap.apply_scene()` (not a synthetic/hand-authored
+fixture), and confirmed real object-state: 12 real child nodes spawned
+(matching the real payload's 12 buildings exactly), `worldId` field read
+back correctly as `"tunya"`, and a real, non-degenerate computed camera-
+bounds center/radius (`center: (12.76, 0.0, -11.73)`, `radius: 92.57`) —
+proving `get_camera_bounds()`'s AABB math genuinely operates on tunya's own
+real building layout, not a hardcoded/hub-shaped assumption. Measured
+result: `{"ok": true, "world_id_in_payload": "tunya", "real_node_count_
+spawned": 12, "raw_nodes_in_payload": 12, "camera_bounds": {...}}`.
+
+**What this does NOT settle.** No human has watched any of the 9 non-hub
+worlds actually render in a browser session — this proves the DATA exists
+and the PARSING pipeline genuinely consumes it, using the same standing
+headless-mode caveat every other entry in this file carries. NPC/creature
+polling (`Phase N`/`Phase M3`), quest fetching (`Phase Q`), and combat
+(`Phase C`) were not re-verified per-world here — those pipelines are
+similarly world-agnostic by construction (all take `world_id` as a plain
+parameter, none hardcode `"concordia-hub"`), but that's an architectural
+inference from reading the code, not a fresh per-world re-test in this
+pass. The verification server + its throwaway DB were stopped and deleted
+at the end of this session — not a claim about a persistent deployment.
+
+## Gamepad + touch input support (2026-08-08)
+
+Every input in this client was keyboard-only until this unit. Both new
+sources are FALLBACKS read alongside the existing raw-keycode polling
+(`player/character_controller.gd`'s own class doc already establishes why
+this client polls `Input`/keycodes directly rather than Godot's InputMap —
+same reasoning extended here, not revisited) — never routed through
+project.godot config.
+
+**Gamepad** — real `Input.get_joy_axis`/`is_joy_button_pressed` polling
+against device 0 (the first connected pad, mirroring
+`concord-frontend/hooks/useGamepad.ts`'s own "first connected" scoping),
+needing zero new scene nodes. Button mapping ported from that file's own
+documented Standard Gamepad API table wherever it names a matching
+semantic (X=attack, RT=heavy attack, B=cancel/dodge — direct ports); LB=
+parry, RB=grab, A=kick, LS-click=sprint(as a hold surrogate for the
+reference's own documented toggle), Back=lock-cycle, RS-click=hard-lock
+are this file's own reasoned extension for concepts the reference has no
+Concordia-specific slot for (explicitly labeled as such in the class doc,
+not claimed as a port). `apply_deadzone`/`gamepad_move_vector` port
+useGamepad.ts's own deadzone rescale formula verbatim (0.15 deadzone,
+linear rescale above it, standard-gamepad axis signs matching WASD's
+directly with no flip needed). RT/RB dispatch heavy-attack/grab INSTANTLY
+on press (real distinct physical buttons), separate from keyboard E/F's
+hold-timing state machine (which exists only to disambiguate a single
+physical key) — X/LB are OR'd into that SAME state machine instead, so an
+X-tap still reads as a light attack exactly like a brief E-tap.
+
+**Touch** — new `ui/touch_controls.gd`: a real on-screen virtual joystick
+(hand-built `Control`, since Godot has no stock joystick node — tracked via
+`_input()` rather than `_gui_input()` so a drag can travel outside the
+base's visual rect without losing tracking, the standard technique) + 4
+real `TouchScreenButton` action buttons (Attack/Parry/Dodge/Kick — a genuine
+engine node purpose-built for tap detection, not hand-rolled). No TS
+reference exists for touch controls anywhere in this codebase (confirmed by
+grep) — an original design, not a port. Deliberately scoped to the
+ESSENTIAL subset only: heavy attack, grab, lock-on cycle, hard-lock, and
+sprint have NO touch button this pass (a real mobile screen has finite
+space for on-screen chrome) — a real, named follow-up, not silently
+dropped. Injected as optional DI into `character_controller.gd` (null-safe,
+same convention as `sfx_player`) and mounted unconditionally in `boot.gd`
+alongside `_sfx_player`/`_pause_menu` — this client has no device-detection
+heuristic to gate it behind, so it's simply a harmless, invisible-cost
+overlay when nobody touches it.
+
+**A real bug found and fixed while building this**: `TouchScreenButton`
+extends `Node2D`, NOT `Control` — a live engine run threw "Invalid call.
+Nonexistent function 'set_anchors_preset'" the first time the 4 action
+buttons were positioned via Control's anchor system. Fixed by computing
+each button's bottom-right-anchored position by hand from the real
+`get_viewport().get_visible_rect().size` instead — the same class of
+"found by actually running it, not assumed" finding this whole session's
+probes keep surfacing.
+
+**Real-engine proof — pure-logic suite + a real, injected-input probe.**
+`tests/test_character_controller.gd` gained 2 new tests (`apply_deadzone`
+mirroring useGamepad.ts's own rescale math including the linear-midpoint
+check; `gamepad_move_vector` covering the deadzone floor, direct axis-sign
+mapping onto WASD's convention, diagonal magnitude clamping, and partial-
+tilt magnitude preservation). New `tests/test_touch_controls.gd` (5 checks)
+pins `TouchControls.clamp_offset`'s pure joystick-offset math (radius
+scaling, beyond-radius clamping, diagonal direction preservation, honest
+zero on an invalid radius). Full suite: **48/48 test files green** (was
+47).
+
+New `tools/touch_controls_probe.gd`, run this session against the real
+engine — constructs a REAL `TouchControls` + REAL `CharacterController`
+wired together, and injects REAL `InputEventScreenTouch`/
+`InputEventScreenDrag` events via `Input.parse_input_event` (not direct
+method calls on the handler) to prove the whole pipeline fires for real:
+a touch-drag 30px into a 60px-radius joystick genuinely produces
+`(0.5, 0.0)` from `get_move_vector()`; `CharacterController._read_input_
+direction()` genuinely reads that same vector through the real DI wiring;
+a real touch at the Attack button's real global position genuinely flips
+`TouchScreenButton.is_pressed()` to true, and a release genuinely flips it
+back to false. Measured result this run: `{"ok": true, "joystick_vector_
+after_drag": {"x": 0.5, "y": 0.0}, "character_controller_reads_touch_
+vector": true, "attack_button_pressed_after_touch": true, "attack_button_
+pressed_after_release": false}`.
+
+**What this does NOT settle.** Gamepad DEVICE integration (a real
+controller physically connected) was not exercised — Godot's public Input
+API has no portable way to simulate a connected joypad without real
+hardware attached in this sandbox, so that half is verified by pure logic
+plus a live confirmation this session that the exact `JOY_BUTTON_*`/
+`JOY_AXIS_*` enum constants used in `character_controller.gd` resolve to
+the values Godot 4.4 actually reports (A=0, B=1, X=2, Y=3, LB=9, RB=10,
+LS=7, RS=8, Back=4, Start=6, LEFT_X=0, LEFT_Y=1, TRIGGER_L=4, TRIGGER_R=5)
+— a real, named residual, not silently implied as exercised. No human has
+watched the on-screen joystick/buttons render or feel right on a real
+touch device — headless probes prove the input PIPELINE fires correctly,
+not visual layout/sizing/tap-target ergonomics, which need a human with a
+real phone. Start-button-triggers-pause (the one gamepad action this unit
+intentionally left unwired, since `boot.gd` owns pause via a separate
+Escape-key path) is a real, small, separate follow-up.
+
+## Toon-shading reach onto real GLB meshes (2026-08-08)
+
+Closes the deferred gap Phase S3's own class doc named explicitly: real GLB
+meshes (buildings, avatars, weapons) only ever got the OUTLINE pass —
+`apply_outline_to_tree` deliberately never touched their surfaces' own
+baked albedo textures, because the existing flat toon material
+(`make_toon_material`, band_shadow/mid/light) has no texture input at all —
+applying it to a real mesh would have discarded the real texture detail
+entirely (Mixamo/Rocketbox skin+clothing textures, weapon GLB materials,
+building facade textures). That tradeoff was deliberate and documented, not
+an oversight — but it meant real, textured meshes never actually read as
+"toon-shaded," only outlined; the coherent cel look Phase S1 wired onto
+placeholders never reached what most players actually see.
+
+**New `ArtStyle.TOON_TEXTURED_SHADER`** — a second shader, distinct from
+`TOON_SHADER`: `fragment()` samples the surface's own existing albedo
+texture and writes it to `ALBEDO` unchanged (the real texture, full detail,
+never discarded); `light()` quantises N·L into the same `RAMP_BANDS` steps
+`TOON_SHADER` uses, but instead of writing a hue-shifted band_shadow/mid/
+light gradient (which has no texture to protect), it computes a
+**brightness factor** (`shadow_darken`..1.0, banded, GROUNDED_DIAL-blended
+exactly like TOON_SHADER) and multiplies it onto the real sampled `ALBEDO`.
+Same fresnel rim light as TOON_SHADER, keyed off the same palette. This is
+the texture-preserving analogue the Phase S3 note flagged as real, separate,
+not-yet-attempted work — attempted and verified this unit.
+
+**`ArtStyle.make_toon_material_textured(world_id, source_material)`** —
+honestly returns `null` (never a fabricated texture or a silent flat-colour
+swap) when `source_material` isn't a `BaseMaterial3D` (Godot's glTF
+importer's normal StandardMaterial3D output — anything already a
+ShaderMaterial is left alone) or carries no real `albedo_texture` at all.
+Carries the SAME outline `next_pass` as the flat toon material, so a
+textured real mesh gets the identical silhouette treatment as everything
+else. `shadow_darken` derives from the world's own shadow-band luminance
+(clamped 0.25..0.85) rather than a hand-picked constant, so a textured
+surface's shadow side darkens roughly as much as a flat-shaded
+placeholder's does, without adopting its hue (which would fight the real
+texture's own colour — the exact failure mode this unit exists to avoid).
+
+**`ArtStyle.apply_textured_toon_to_tree(root, world_id)`** — the real-mesh
+tree-walker, sibling to `apply_outline_to_tree`: per surface, tries
+`make_toon_material_textured` first; a surface that honestly returns `null`
+(no real texture to preserve) falls back to the EXACT SAME outline-only
+duplicate treatment `apply_outline_to_tree` already used — never skipped,
+never given a fabricated texture. Returns `{textured, outline_only}`, both
+real counts, so a caller/test can tell the two treatments apart rather than
+one opaque total. Wired into all three real-mesh call sites that used to
+call `apply_outline_to_tree`: `scene_bootstrap.gd#_upgrade_one_node`
+(buildings), `avatar_rig.gd#_on_glb_loaded` (avatar bodies) and
+`#_on_weapon_glb_loaded` (weapons) — `apply_outline_to_tree` itself is
+untouched and still used by its own existing tests/probe (a real, smaller,
+still-valid building block, not superseded).
+
+**Real-engine proof — pure-logic suite + a real-rasterizer probe.**
+`tests/test_art_style.gd` gained 5 new checks (90 total, was 76): a
+non-`BaseMaterial3D` source honestly returns null; a `BaseMaterial3D` with
+no `albedo_texture` honestly returns null; a real texture builds a real
+`ShaderMaterial` using the real cached `toon_textured_shader()` with the
+REAL source texture bound (not a substitute) plus the real outline
+`next_pass`; `apply_textured_toon_to_tree` on a two-surface tree (one
+textured, one not) routes exactly 1 to each treatment and the untextured
+surface's original material TYPE and albedo colour are genuinely preserved;
+an empty tree honestly reports `{0, 0}`. Full suite: **47/47 test files
+green** (unchanged file count — these extend `test_art_style.gd`, not a
+new file).
+
+**New `tools/textured_toon_shader_probe.gd`, run this session under a REAL
+rasterizer** (`xvfb-run -s "-screen 0 1280x720x24" … --rendering-driver
+opengl3`, the same "software GL, not headless-dummy" setup Phase S1/S2
+proved renders real pixels) — the check the pure-logic suite structurally
+cannot make: does the shader actually COMPILE and produce the real
+texture's colour, not silently fall back to the flat palette or a pink
+error material? Renders the SAME box three ways and samples real
+framebuffer pixels: (a) `make_toon_material_textured` fed a distinct
+warm-orange 4x4 texture, (b) the flat `make_toon_material` (no texture
+involved, for contrast), (c) the raw texture alone under an unshaded
+material (ground truth for what the texture's own colour reads as).
+**Real measured RGB averages this run**: (a) textured_toon =
+`(0.522, 0.149, 0.098)`, (b) flat_toon = `(0.604, 0.584, 0.561)` — near-
+neutral grey, matching "crime"'s own 0.62 desaturation floor — (c)
+raw_texture_reference = `(0.714, 0.373, 0.157)`. (a)'s R≫G>B warm-orange
+hue clearly matches (c)'s hue signature and is clearly NOT (b)'s
+near-neutral grey — proof the shader is genuinely sampling and lighting the
+real texture, not silently degrading to the flat palette; (a) is uniformly
+darker than (c) as expected from real banded Lambertian lighting on top of
+an unshaded reference. Screenshots saved to `/tmp/textured_toon_probe_
+phase{0,1,2}.png` (not committed — reproducible via the run command in the
+probe's own header).
+
+**What this does NOT settle.** No human has watched this render in an
+actual browser session against a real building/avatar/weapon GLB (the
+probe uses a synthetic textured box, deliberately — no HTTP/GLB dependency
+needed to prove the SHADER works; `glb_outline_probe.gd`'s own pattern of
+fetching a real GLB over HTTP was not repeated here since no frontend
+server was running this session, same residual that file already carries).
+Whether the specific `shadow_darken` clamp range (0.25..0.85) or the
+brightness-only banding (vs. a richer texture-aware hue-preserving ramp)
+looks GOOD on a real character/building — as opposed to merely "genuinely
+texture-sampling and genuinely banded," which this unit did verify — is an
+art-direction judgment call for a human with eyes on a real render, not
+something a pixel-average probe can certify. Multi-texture-map surfaces
+(normal/roughness/metallic beyond albedo) are not specially handled —
+`make_toon_material_textured` only reads `albedo_texture`/`albedo_color`,
+so a surface relying heavily on a normal map for its read will lose that
+detail under the new shader (same category of simplification the flat toon
+material already makes for placeholders, now also true for textured
+meshes) — not silently claimed as full PBR-preserving.
+
+## Character archetype signal + customization (2026-08-08)
+
+Closes the standing gap named in avatar_rig.gd's own doc comment ever since
+Phase M1: every avatar (local player AND every remote NPC/player) always
+resolved to the hardcoded "warrior" default, because no per-avatar archetype
+signal reached the client. This unit gives the LOCAL player a real one.
+Remote avatars are explicitly, deliberately still out of scope — see below.
+
+**Investigation found the real signal is richer than the obvious one.** The
+web client's own `archetypeForPlayerAppearance` heuristic
+(`AvatarSystem3D.tsx:328-347`) looked like the thing to port, but reading
+its actual live call site (`app/lenses/world/page.tsx`'s `playerAvatar`
+useState) found it's fed a **degenerate, effectively-constant input in
+production**: that file's own appearance-load effect only merges
+`skinColor`/`hairColor`/clothing COLOR fields from the loaded
+`RichAppearanceConfig`, never `bodyArchetype`/`clothing.top.kind`/
+`hairStyle` — and the local state's own TypeScript type pins those three
+fields to single-value literals (`bodyType:'average'`, `clothing.top.type:
+'shirt'`, `hairStyle:'short'`). So the web client's own heuristic always
+evaluates the same branch today (shirt + non-stocky → 'hunter'), regardless
+of what a player actually customized. Porting THAT behavior verbatim would
+have been fabricated precision dressed as personalization — a real finding,
+not assumed, confirmed by reading the actual merge code.
+
+The real, live, per-player-varying signal instead is
+`server/domains/appearance.js#save`/`load_for_user` — confirmed genuinely
+used by reading `app/onboarding/character/page.tsx`'s actual save/load
+calls, which persist the FULL `RichAppearanceConfig`
+(`character-schema.ts:271-309`: `bodyArchetype` 7 values, `clothing.top.kind`
+14 values — note `kind`, not `type` — `hairStyle` 13 values). **This
+client now reads that macro DIRECTLY**, bypassing the web client's lossy
+local merge entirely — so this client's local-player archetype is honestly
+MORE accurate than what currently ships in the browser reference, not a
+divergence for its own sake (documented in full in both
+`avatar/appearance_archetype.gd`'s and `world/player_appearance_loader.gd`'s
+class docs).
+
+**`avatar/appearance_archetype.gd`** (new, pure `RefCounted`) —
+`archetype_for_appearance(body_archetype, top_kind, hair_style)` matches
+`archetypeForPlayerAppearance`'s 5 TS-covered branches (shirt/vest/coat/
+robe/apron + the 'legend' bodyType shortcut) EXACTLY, extended to the real
+`ClothingTopKind`'s other 9 values (tunic/jacket/trench/breastplate/
+synth-jacket/cassock/kanga/duster/cape) — grouped onto the nearest matching
+TS bucket by real-world garment family, explicitly labeled in the file's own
+class doc as THIS FILE'S OWN extension, not a claim about what the TS
+reference "would" do. `resolve_from_dict(appearance)` extracts the 3 fields
+from a parsed `RichAppearanceConfig`-shaped Dictionary, returning an honest
+`""` (never a fabricated archetype) when `appearance` itself is null/
+missing/malformed — the real "brand-new player, never saved a character"
+case — while still resolving a real archetype from a PARTIALLY-saved
+profile using the same defaults `character-schema.ts`'s own generator uses.
+
+**`world/player_appearance_loader.gd`** (new) — one real, bounded, one-shot
+`POST /api/lens/run {domain:"appearance", name:"load_for_user"}` (the SAME
+macro the onboarding character page calls). `settled(archetype)` fires
+EXACTLY ONCE, from whichever comes first: a real HTTP response or a
+`TIMEOUT_S=4.0` timer — so a slow/hung backend can never delay world entry;
+the appearance signal is a nicety, never a blocker. Unwraps the real
+double-`ok` `/api/lens/run` envelope (`{ok:true, result:{ok:true,
+appearance:{...}|null}}` — `appearance.load_for_user` returns `{ok,
+appearance}` directly, so no extra nesting beyond the standard envelope;
+verified by reading the macro handler, same discipline as
+creature_poller.gd's own documented envelope-unwrap finding).
+
+**`world/boot.gd` wiring** — `_player_appearance_loader` is mounted and
+`.fetch()`'d as early as possible (right after `auth_token` resolves, same
+posture as `_sfx_player`/`_pause_menu` — no scene-data dependency).
+`_spawn_local_player_if_needed` is now GATED behind a new
+`_try_spawn_local_player()` that waits for BOTH real prerequisites — camera
+bounds (`world:data`, a much heavier round trip in practice) AND the
+appearance loader's `settled` signal — before constructing the local
+player's `AvatarRig` at all. This was a deliberate design choice over
+re-resolving an already-mounted rig's GLB after a late-arriving signal:
+gating spawn keeps `avatar_rig.gd`'s already-verified resolve flow
+completely untouched, at the cost of the local player's own visual spawn
+waiting on one extra bounded (≤4s) network round trip in the worst case.
+`rig.archetype` is overridden with the resolved value only when non-empty
+— an empty result (no saved appearance / auth failure / timeout) falls
+through to `AvatarRig`'s own "warrior" default exactly as before this unit.
+
+**Real-engine proof — pure-logic suite + a real-server probe.**
+`tests/test_appearance_archetype.gd` (24 checks: all 5 TS-matching
+branches + the legend shortcut + all 9 extended-kind groupings + 4
+`resolve_from_dict` cases including the honest-empty and malformed-input
+paths) and `tests/test_player_appearance_loader.gd` (3 checks, the request-
+body builder). Full suite: **47/47 test files green** (was 45).
+`tools/player_appearance_probe.gd` (new) mirrors `npc_poller_probe.gd`'s
+"real backend, real HTTP round trip, real settle" pattern — requires
+`CONCORD_BACKEND_URL` (+ optional `CONCORD_APPEARANCE_PROBE_AUTH_TOKEN`)
+against an already-running server; verified this session to compile and
+report its own honest `no_backend_url` failure with no server pointed at
+it, but **NOT run against a live server this session** (none was running)
+— the same class of residual this file already carries for several other
+probes, named plainly rather than silently implied as exercised.
+
+**A real, pre-existing bug found in the Three.js reference, NOT fixed
+here** (out of this client's scope, lives in
+`concord-frontend/app/lenses/world/page.tsx`'s own appearance-load effect):
+the web client's local player permanently shows the wrong-by-omission
+`bodyArchetype`/`clothing.top.kind`/`hairStyle` for anyone who customized
+their character past the color pickers — flagged in both new files' class
+docs for whoever picks up Three.js-side work next, not silently patched in
+this Godot-focused pass.
+
+**What this does NOT settle.** No human has watched the resolved archetype
+actually change which hero-mesh GLB loads in a real browser session tied to
+a real saved character — same standing headless-mode caveat as every other
+entry in this file. Remote avatars (every other player, every NPC) still
+resolve to the "warrior" default — `city:positions` (the only live remote-
+avatar broadcast) carries no appearance/archetype field at all, and adding
+one is a real, separate backend-surface decision this unit deliberately did
+not make unprompted (same posture Phase N's own class doc took for
+creatures before that unit was scoped). The probe's real-server round trip
+was not exercised this session (no backend was running).
+
+## Combat C7 — hold-variants, combo chains, lock-on (2026-08-08)
+
+Closes the three items the class doc named as deferred since Combat C6:
+"no hold-vs-tap distinction, so F never fires 'grab'", "combo chains
+(chainId/stepIndex)", and "lock-on camera behavior." Scoped down from the
+Three.js reference's much larger surface (gamepad input, input buffering,
+whiff-cancel windows, double-tap finishers, ranged combat, the full
+server-fetched "evolved combo" hotbar system, facing-cone target
+filtering) — each of those is real, separate, unscoped follow-up work,
+named explicitly below rather than silently implied as covered.
+
+**Hold-variants.** `player/character_controller.gd`'s E and F keys gained
+real tap-vs-hold classification, `HOLD_THRESHOLD_MS = 220` mirroring
+`CombatInputController.tsx` exactly, firing the HOLD action the instant the
+threshold is crossed (not on release — same "lands at the moment you
+commit" feel as the reference). E-hold is a new `_try_attack_heavy()`;
+F-hold is a new `_try_grab()` (targeted, `combat:attack` with
+`actionOverride: 'grapple'`, mirroring the TS reference's own "no
+dedicated server event yet" choice). **A real finding surfaced while
+building this**: `_try_attack()`'s existing tap path omits `baseDamage`
+entirely, and `combat-limits.js#clampBaseDamage` clamps a missing/invalid
+input to a nominal `1` server-side — meaning tap attacks have always dealt
+essentially no damage. Copying that omission into the new heavy variant
+would have made "hold for heavy" an inert, fabricated feature (tap and
+hold identically weak). The honest fix scoped to this unit: `_try_attack_
+heavy`/`_try_grab` send REAL, distinguishing `baseDamage` values (18 and
+12, mirroring the TS reference's own heavy/grab damage) — `_try_attack`'s
+tap path itself is left untouched (a pre-existing characteristic, not
+something this unit silently changes).
+
+**Combo chains.** A lightweight `chainId`/`stepIndex` generator
+(`_advance_combo`, `COMBO_CONTINUE_WINDOW_MS = 1500`ms first-draft/
+untuned) stamps the SAME metadata fields `server/lib/combat/flow-
+recorder.js` + `flow-engine.js` already consume for combo-evolution — the
+identical substrate the Three.js client's much larger "evolved combo"
+hotbar system feeds (that system needs server-fetched combo definitions
+plus a trigger UI; genuinely out of scope here). This is deliberately NOT
+that hotbar system — just honest chain metadata from ordinary consecutive
+offensive swings (E light/heavy, F grab, R kick), so this client's combat
+contributes to the same evolution engine too. Defensive actions (F-tap
+parry, Q dodge) do NOT advance the chain, mirroring the TS reference's own
+`isOffense` check.
+
+**Lock-on.** New `player/lock_on_state.gd` (pure `RefCounted` state
+machine — cycle/toggle_hard/clear/update_release) ports
+`LockOnController.tsx`'s Tab-cycle / T-hard-lock / release rules.
+**A real, load-bearing simplification, found by reading the code rather
+than assuming the TS reference's math would port cleanly**: this client's
+local player `rotation.y` is only ever WRITTEN as `player:move` telemetry
+— nothing derives it from movement direction or camera look, confirmed by
+grep. Porting the TS reference's real facing-cone filter against a yaw
+value that never tracks where the player is actually looking would have
+been a fabricated facing signal dressed as a real one. The honest choice:
+radius-only filtering (`AvatarManager.candidates_in_radius`, new pure
+static function, 25m radius mirroring the TS `DEFAULT_LOCK_RADIUS`), no
+cone — documented as a deliberate, known simplification, not silently
+dropped. `_update_target()` now checks `LockOnState.update_release` every
+frame using real radius-membership + real distance, and an active lock
+OVERRIDES the auto-nearest pick entirely. `world/boot.gd`'s target HUD
+gained a real `[LOCK]`/`[HARD LOCK]` text suffix (not a full projected
+reticle — `LockOnController.tsx`'s own rendered overlay needs a real
+world-to-screen projector this plain `Label` HUD doesn't have; flagged as
+a named follow-up, not silently reduced). **Escape precedence, a real
+design decision this client had to make on its own** (LockOnController.tsx
+and this client's pause menu are independent systems with no existing
+reference resolving the conflict): an active lock now clears BEFORE Escape
+opens the pause menu, mirroring common third-person action-game
+convention.
+
+**Real-engine proof — `tools/combat_c7_probe.gd`.** A real
+`CharacterController` + real `AvatarManager` + two real `AvatarRig`s (5m
+and 15m from the player — both beyond melee `ATTACK_RANGE_M=3.0` but
+within lock-on's 25m radius, so auto-nearest finds nothing while lock-on
+genuinely does) + a fake gateway recording real `send_event` calls. All
+checks are genuine engine-state assertions: two attacks 200ms apart
+(inside the combo window) share the SAME real `chainId` with
+`stepIndex` 0→1; an attack 3.8s later (past the window) genuinely starts a
+NEW chain; heavy/grab send real, distinguishing payload fields (not just
+"some request went out"); heavy/grab are honest no-ops with no target
+(zero gateway calls); Tab-cycle genuinely locks the nearer of two real
+candidates and `_update_target()` genuinely overrides the (empty)
+auto-nearest pick with it; toggling hard-lock while a lock is active
+genuinely clears it; `clear_lock()` (the Escape-precedence path) genuinely
+clears an active lock; and — the sharpest check — moving the locked rig's
+REAL position beyond the lock radius and re-running `_update_target()`
+genuinely auto-releases the soft lock, proving the release rule reads live
+position data each frame rather than a cached snapshot. One real,
+non-fatal engine timing quirk surfaced while building this probe (recorded
+for anyone extending it): setting a freshly-`add_child`ed `AvatarRig`'s
+`global_position` in the SAME call as construction logs a harmless
+`!is_inside_tree()` warning from an internal transform read — every check
+still passed correctly (the position was genuinely applied), so this is
+cosmetic engine noise, not a functional defect. 22 new pure-logic checks
+(`test_lock_on_state.gd`, all 22, plus 10 new `candidates_in_radius`
+checks extending `test_avatar_manager.gd`); full suite **45/45 test files
+green** (was 42).
+
+**What this does NOT settle.** No human has watched hold-vs-tap timing,
+combo chains, or the lock-on HUD render — same standing headless-mode
+caveat as every other entry in this file. R/Q have no hold variant in
+ground context (unchanged, matches `CONTEXT_KEYMAP.ground`). Gamepad
+lock-on/hold input, aerial/vehicle/hacker combat contexts, the full
+evolved-combo hotbar UI, a real projected reticle, and facing-cone target
+filtering (blocked on this client having no real look-direction signal at
+all) are all real, named, deferred follow-ups — not silently implied as
+done.
+
+## Combat — remote-target hit feedback (2026-08-08)
+
+Closes the deferred "remote-target visual feedback" residual documented in
+both `player/character_controller.gd`'s "Combat Phase C" class doc and
+`avatar/avatar_manager.gd`'s own header ever since Combat Phase C's first
+slice: when the LOCAL player attacks and hits a REMOTE avatar, the target's
+`AvatarRig` previously showed nothing — only the LOCAL player's OWN
+`_on_combat_impact` (knockback) fires, gated to `targetId == local_user_id`.
+
+**Why not a positional knockback for remote rigs, and what was built
+instead.** A remote `AvatarRig`'s `position`/`rotation` are entirely owned
+by `avatar_manager.gd`'s snapshot interpolation — the next incoming
+`city:positions` sample overwrites whatever a local nudge would have set,
+so a knockback impulse (the LOCAL player's own treatment) would be
+invisible or jittery there. The real fix: `avatar/avatar_rig.gd` gained
+`flash_hit()` — a brief scale "punch" (`HIT_FLASH_PUNCH = 1.28` over
+`HIT_FLASH_DURATION_S = 0.16`s, via a real `Tween`, killing/restarting on a
+rapid re-hit rather than stacking) on the rig's own `scale`, deliberately
+never touching `position`/`rotation` — so it survives the very next
+interpolated sample untouched, and works identically whether the rig is
+currently showing its real GLB body or the honest primitive-box
+placeholder (scaling the whole `Node3D` needs no knowledge of what mesh/
+material is underneath).
+
+**Wiring.** `avatar/avatar_manager.gd` gained `flash_hit(target_id) ->
+bool`: looks up `target_id` in the same `_rigs` dictionary `nearest_target`/
+`npc_positions_snapshot` already read, calls the real rig's `flash_hit()`
+if found, returns an honest `false` (no mutation) if not — covering both a
+genuinely stale/despawned id and, notably, the LOCAL player's own id (which
+`AvatarManager` never tracks at all — remote avatars only, by design).
+`world/boot.gd`'s `_on_event` gained a `"combat:hit"` case (a SEPARATE
+listener on the same `gateway.event_received` signal the LOCAL player's own
+HUD/audio handling already consumes in `character_controller.gd` — Godot
+signals support multiple subscribers) that calls `_avatar_manager.
+flash_hit(targetId)` only when `attackerId == local_user_id` AND
+`targetId != local_user_id` — i.e. exactly "the local player's own hit
+landing on someone else," matching the deferred note's original framing,
+not a broader "flash on any combat:hit in the world" (spectator feedback
+for OTHER players' fights is a real, separate, unscoped feature).
+
+**Real-engine proof — `tools/hit_flash_probe.gd`.** A real `AvatarRig` +
+real `AvatarManager` in a real `SceneTree`: `flash_hit()` genuinely drives
+`scale` away from `Vector3.ONE` mid-tween and genuinely settles back to
+`Vector3.ONE` once the real `Tween` completes (checked at real, separated
+frames — not assumed from the constants alone); `AvatarManager.flash_hit`
+correctly routes to the tracked rig (confirmed the SAME rig's scale
+actually changed); and calling it with an untracked id returns a real
+`false` AND leaves the tracked rig's scale completely untouched — the
+honest-no-op half of the contract, verified by absence of mutation, not
+just a boolean.
+
+**What this does NOT settle.** No human has watched the flash render —
+headless mode's dummy rasterizer processes real `Tween`/`scale` state
+without producing pixels (same standing caveat as every other entry in this
+file). No feedback exists yet for a REMOTE player hitting another remote
+target (pure spectator visibility) or for the local player getting hit by a
+remote attacker's melee swing timing specifically (only the pre-existing
+`combat:impact` knockback path, unchanged by this unit, covers "local
+player got hit"). Full suite after this unit: **42/42 test files green**
+(no new pure-logic suite added — `flash_hit`'s engine-dependent behavior is
+covered by the real-engine probe above, matching `test_avatar_manager.gd`'s
+own stated split between pure-logic-here / engine-gated-in-tools/).
+
+## UI — pause menu, real settings control, session-wide input freeze (2026-08-08)
+
+The client's first interactive menu. Scoped deliberately: a real pause
+overlay (Escape toggles it) with a functioning Master Volume control and a
+capability-gated Quit action — NOT a title screen / main menu, and that
+omission is a real, load-bearing finding, not laziness: `world/boot.gd`'s
+`_ready()` connects to the gateway and spawns the local player
+unconditionally, immediately, so there is no pre-connect "not yet playing"
+state anywhere in this client for a title screen to represent. Building one
+honestly needs restructuring `_ready()` into an explicit
+idle→connecting→spawned state machine — real, separate, larger scope than
+this slice, flagged rather than faked with a "Play" button that has nothing
+behind it (the boot sequence already ran by the time any menu could render).
+
+**Session-level gate, mirroring the already-proven FEA-overlay pattern.**
+`session/session_manager.gd` gained `pause_overlay_active` (a flag, not a
+`Mode` — same "modal overlay, not a state-machine node" reasoning the file's
+own doc comment already gives for `fea_overlay_active`) plus
+`open_pause_overlay()`/`close_pause_overlay()` (idempotent, honest
+false-on-already-open, matching `open_fea_overlay`'s shape) and signals
+`pause_overlay_opened`/`_closed`. Critically, `is_input_owner()` checks
+`pause_overlay_active` FIRST, unconditionally, before deriving
+`current_input_owner()` from `mode`/`fea_overlay_active` — pausing freezes
+EVERY input-owning controller (character movement, FEA orbit-camera
+manipulation, free-fly design editing) regardless of which mode or overlay
+was active the moment Escape was pressed, not just the common WORLD case.
+The camera's `RigMode` is deliberately left untouched by pausing: WORLD's
+default FOLLOW mode already leaves the mouse cursor visible (`camera_rig.gd`
+only captures it in FREE_FLY), so an ordinary `Control` overlay is already
+clickable with zero extra camera-mode plumbing — verified by not needing any
+of it, not merely assumed.
+
+**`ui/pause_menu.gd`** (new `CanvasLayer`, `layer = 100` — above every other
+CanvasLayer this client mounts) builds a real `Control` tree: a dimming
+`ColorRect` (`MOUSE_FILTER_STOP`, so a click on the background doesn't leak
+through to the game), a centered `PanelContainer` → `VBoxContainer` with a
+title, a "Master Volume" `HSlider` live-bound to the injected `SfxPlayer`'s
+real `master_volume` @export (moving it changes what plays immediately — not
+decorative), a "Resume" button, and a "Quit to Desktop" button built ONLY
+when `not OS.has_feature("web")` — a genuine capability check, not a merely-
+hidden button: `get_tree().quit()` is a documented no-op in a browser export
+(no window/process for the engine to close there), so the button doesn't
+exist at all on that target rather than existing and silently doing nothing.
+`world/boot.gd` wires Escape (`_unhandled_input`) to
+`session.open_pause_overlay()`/`close_pause_overlay()` only — never touches
+`_pause_menu` directly — and reacts to the real `pause_overlay_opened`/
+`_closed` signals via `_on_pause_overlay_opened`/`_closed` (calling
+`_pause_menu.open()`/`close()`), mirroring the file's own pre-existing
+`_on_fea_overlay_opened`/`_closed` convention exactly.
+
+**Real-engine proof.**
+- `tests/test_session_manager.gd` gained `_test_pause_overlay_gating` (10 of
+  the suite's new checks, 31→41 total): a fresh `SessionManager` instance
+  (no scene tree needed — `_camera_rig` stays null, and every touched method
+  guards on it) confirms `open_pause_overlay()` genuinely overrides
+  `is_input_owner(CHARACTER)` to false while WORLD mode is still active,
+  overrides `is_input_owner(FREE_FLY)` too (pausing blocks EVERY candidate,
+  not just the mode's own owner), returns `false` on a redundant second
+  open (honest no-op), restores `CHARACTER` ownership on close, and —
+  the sharpest check — overrides the FEA overlay's own real `ORBIT`
+  ownership when both overlays are open at once, proving pause really is an
+  unconditional top-level override and not just another per-mode case.
+- `tools/pause_menu_probe.gd` (new): constructs a REAL `PauseMenu` + REAL
+  `SfxPlayer` in a real `SceneTree` and checks genuine engine state — the
+  menu starts `visible == false`; the panel's real `get_global_rect()`
+  center matches the real viewport's center to within 2px (computed
+  geometrically against the actual rendered rect, not assumed from the
+  anchor-preset call alone); `open()` re-syncs the slider from the SfxPlayer's
+  live `master_volume` (changed AFTER `_ready()`'s own initial sync, so this
+  genuinely exercises `open()`'s own re-sync, not just the constructor path);
+  dragging the slider (`.value = X`, which Godot's `Range` node treats
+  identically to a real user drag — it emits `value_changed` on any set) 
+  genuinely mutates the injected `SfxPlayer.master_volume`; `close()` hides
+  it again; and pressing the real "Resume" `Button` (`.pressed.emit()`,
+  not a bypassing direct method call) genuinely fires `resume_requested`.
+  One real GDScript gotcha surfaced and was fixed while building this probe
+  (recorded here since it's a real, reusable lesson, not implementation
+  noise): a `bool` local captured by a lambda is snapshotted BY VALUE at
+  lambda-creation time in GDScript, so `var fired := false; sig.connect(func():
+  fired = true)` silently mutates only the lambda's own copy — the fix is a
+  one-element `Array` (a reference type) instead of a bare `bool`, e.g.
+  `var fired := [false]; sig.connect(func(): fired[0] = true)`. Confirmed
+  this does NOT affect any shipped code in this unit: `boot.gd`'s own
+  `resume_requested.connect(func(): _session.close_pause_overlay())` reads
+  `_session` as a class MEMBER (implicit `self._session`), not a captured
+  local, so it always sees the live value regardless of this gotcha.
+
+Full suite after this unit: **42/42 test files green**, SessionManager's own
+count 31→41.
+
+**What this does NOT settle.** No human has looked at the rendered pause
+menu — headless mode's dummy rasterizer processes real `Control`/`CanvasLayer`
+state (`.visible`, `.get_global_rect()`, real button/slider values) without
+producing pixels, so this proves the WIRING and LAYOUT MATH are real, not
+that it looks good (same "structurally complete but visually unproven"
+caveat this file's closing section applies everywhere). No gamepad/touch
+binding for Resume/Quit exists yet (keyboard/mouse only, matching the rest
+of this client today — see the separate gamepad/touch backlog item). No
+main-menu/title-screen state exists, as explained above — a real, named,
+deferred follow-up, not an oversight.
+
+## Audio — ported SFX_MAP synthesis engine, wired into real gameplay moments (2026-08-08)
+
+Godot's world lens had zero audio before this unit — no sample assets exist
+anywhere in the repo for it to play, and no synthesis engine existed either.
+Investigated the Three.js reference first rather than assuming a sourcing
+task: `concord-frontend/components/world-lens/SoundscapeEngine.tsx` turns
+out to be 100% procedural oscillator synthesis (createOscillator + linear
+ADSR gain ramps, zero `.mp3`/`.ogg`/`.wav` files anywhere in the repo), so
+this unit ports that synthesis MATH to GDScript rather than sourcing
+external CC0 audio — the same "port the real design, don't invent" rule
+every prior Godot phase in this file has followed.
+
+**What was built.** `audio/sfx_synth.gd` (pure `RefCounted`, no engine
+dependency) — `SFX_MAP` (~40 entries), `LAYER_MAP` (multi-step layered SFX:
+hit-confirm-{light,heavy,crit,kill}), `SFX_ALIASES` (~60 entries),
+`resolve_sfx_id` (byte-for-byte mirror of the TS `resolveSfxId`'s exact
+precedence: known voice → alias → suffix heuristic → hyphenated retry →
+honest passthrough for a genuinely unmapped id — NEVER a fabricated
+fallback sound), `_wave`/`_envelope_gain`/`generate_samples` (naive
+sine/square/sawtooth/triangle oscillator synthesis + semitone-chord
+arpeggiation + linear ADSR, a documented non-bandlimited-oscillator fidelity
+tradeoff), `float_samples_to_pcm16`. `audio/sfx_player.gd` (`Node`) — an
+8-player pooled `AudioStreamPlayer` for 2D/UI sounds, on-demand
+`AudioStreamPlayer3D` for spatial one-shots, `play_layered`/
+`play_layered_3d` scheduling each LAYER_MAP step via a real
+`SceneTree.create_timer` (mirrors the TS layered approach's setTimeout
+scheduling — a real transient tick, a real mid body, a real deep thump,
+genuinely time-offset, not pre-mixed), and a `_stream_cache` keyed by
+`(resolved_id, pitch)` so a repeated sound doesn't re-synthesize every call.
+`tests/test_sfx_synth.gd` (26 pure-logic checks: resolve precedence,
+generate_samples shape/range/determinism/silence, PCM conversion).
+`tools/sfx_player_probe.gd` (real-engine): single-tone playback on a real
+pool player (10,584 real PCM bytes), unknown-id genuine no-op, layered SFX
+real-timer-scheduled steps (cache grows 2→5 across real elapsed frames),
+spatial player created at the exact requested world position.
+
+**Gameplay wiring, in `player/character_controller.gd`** (new `sfx_player`
+optional-DI export, null-safe no-op like every other injected dependency on
+this controller): `_try_attack`/`_try_parry`/`_try_dodge`/`_try_kick` each
+play their SFX immediately on input (mirrors T2.2's "audible even on a
+miss" design — this client has no `combat:*:ack` handlers to gate on
+regardless); `_update_footsteps` (new, stride-accumulator triggered every
+`FOOTSTEP_STRIDE_M = 1.4m` of real grounded horizontal travel — an honest,
+documented simplification: always `'footstep-grass'` since this client has
+no per-position terrain-surface query yet, rather than fabricating a
+surface signal that doesn't exist); `_on_combat_hit` selects a layered
+hit-confirm tier via the REAL severity rule ported byte-for-byte from
+`components/world-lens/GameJuice.tsx` (~130-165): `targetKilled` →
+`'hit-confirm-kill'`; else `isCrit` → `'hit-confirm-crit'`; else
+`damage > 25` → `'hit-confirm-heavy'`; else → `'hit-confirm-light'`. `world/
+boot.gd` mounts one `SfxPlayer` unconditionally in `_ready()` (audio has no
+scene-data dependency, unlike the local player), hands it to `_character` at
+spawn and to `_quest_actions` — a real quest `claim` now plays
+`'victory-sting'` (the same real alias `ui_hack_complete` already resolves
+to) and a real `accept` plays `'gather-success'`.
+
+**Real-engine proof — `tools/sfx_gameplay_wiring_probe.gd`.** Constructs a
+REAL `CharacterController` + REAL `SfxPlayer` (a minimal fake gateway
+records `send_event` calls without touching the network — this probe is
+about the AUDIO side effect, the `combat:attack` transport itself is
+already covered by `tests/test_character_controller.gd`'s pure-function
+suite and the Combat Phase C probes) inside a real `SceneTree`, and checks
+GENUINE engine state, not mocked returns:
+- Attack/parry/dodge/kick each genuinely start a real pool `AudioStreamPlayer`
+  playing, and each genuinely sends its real, correctly-shaped
+  `combat:attack`/`combat:dodge` payload (checked by searching the fake
+  gateway's call log for the specific event — the controller is a real
+  `CharacterBody3D` also emitting its own `player:move` telemetry on the
+  physics tick, so a naive "exactly one call" assertion would be a false
+  negative against real, unrelated, correctly-interleaved traffic).
+- Kick with NO target in range: a genuinely honest no-op — zero
+  `combat:attack` sent, zero SFX played (never a fabricated request or
+  sound).
+- `_on_combat_hit`'s four severity tiers share a real 0ms-delay
+  `'hit-transient'` first LAYER_MAP step (cached immediately, confirmed);
+  their DISTINCTIVE later voices (`'hit-heavy'`; `'hit-crit'`+`'bone-crack'`;
+  `'kill-blow'`+`'rumble'`) are on real async `SceneTree.create_timer`
+  delays (10-90ms) and only get generated+cached once those timers actually
+  fire — the probe waits real frames (same proven pattern as
+  `tools/sfx_player_probe.gd`'s own layered-SFX check) and then confirms
+  each tier's EXACT expected cache key is present — proof the severity
+  branch really picked the right `LAYER_MAP` entry, not just "something got
+  cached."
+- A `combat:hit` for a DIFFERENT target than the one being tracked is a
+  genuine no-op (no new cache entries, no new pool player starts) — the
+  real filter, not a fabricated always-play.
+- Footsteps: driving real `velocity`/`is_airborne`/`swimming` state across
+  enough `_update_footsteps` calls to cross `FOOTSTEP_STRIDE_M` genuinely
+  starts a real pool player.
+
+Every one of the above is a real object-state check (pool-player `.playing`,
+`_stream_cache` key presence, a searched call log), never "no error thrown."
+Full suite after this unit: **44/44 test files green** (was 42; +
+`SfxSynth`'s 26 checks are counted within that, the probe is a separate
+real-engine tool, not part of the pure-logic suite count).
+
+**What this does NOT settle.** No actual audio hardware/speaker output was
+heard — headless mode's dummy audio driver processes real
+`AudioStreamPlayer` state (`.playing`, `.stream`, cache population) without
+producing sound, so this proves the WIRING is real, not that it sounds good
+(same "structurally complete but visually unproven" caveat this file's
+closing section applies to the whole client, now also true for audio).
+`MUSIC_PROFILES` (SoundscapeEngine.tsx's per-district procedural ambient
+music — chord/arp/bass layers) is explicitly OUT OF SCOPE this pass — only
+one-shot SFX were ported. `_try_kick`'s SFX id (`'combat-swing-heavy'`) and
+the footstep surface simplification are both real, honestly-documented
+choices, not oversights.
+
+## Forge/tower building GLBs — searched exhaustively, closed as a genuine gap, not shipped (2026-08-08)
+
+A residual from the earlier mesh-sourcing pass: `market`/`tavern`/`archive`
+have real CC0 GLBs; `forge`/`tower` don't. This entry records a real,
+thorough search that ended in NOT shipping either asset — a negative
+result worth recording so a future session doesn't re-walk the same path.
+
+**Forge: genuinely absent from the one trusted CC0 source.** All 17
+sub-collections of the Polygonal Mind catalog (the same source
+market/tavern/archive came from, via the ToxSam open-source-3D-assets
+registry) were fetched and searched for forge/furnace/smith/anvil/kiln/
+workshop/foundry-named assets. None exist. A companion already-integrated
+CC0 source (`KayKit-Dungeon-Remastered-1.0`, used for this project's
+weapon GLBs) was also cloned and checked — it's a 200+-piece modular
+dungeon-prop kit (walls, stairs, chests, banners) with no standalone
+building mesh of any kind, forge or otherwise.
+
+**Tower: real candidates exist but neither is an honest fit — verified by
+actually loading and screenshotting them in a real engine, not judged from
+a filename.** A `towers` sub-collection exists in the same trusted source.
+Its `Tower_Base_01_Art`/`Tower_Base_02_Art` entries are real, valid,
+non-degenerate GLBs (`gltf-transform validate`: clean; loaded and
+rendered via `tools/glb_load_probe.gd` against a real local HTTP server:
+8,456/8,212 real vertices, real screenshot) — but the screenshot showed a
+classical open-columned rotunda with a floating disc roof, not an
+enclosed tower body. The "Tower_Base" naming turns out to be literal: it's
+a modular FOUNDATION piece meant to have a themed tower body stacked on
+top, not a complete standalone structure — using it as-is would mislabel
+an incomplete piece as a finished building. The collection's full
+`*_Tower_Art` entries (`Colony_Tower_Art`, checked directly) ARE complete
+assemblies, but the collection turns out to be themed around surreal
+sci-fi/crypto-culture monuments (`BlockChain_`/`Colony_`/`MemeFactory_`/
+`LoveDeath_`/`Spooky_`-prefixed): `Colony_Tower_Art` rendered as a UFO
+hovering over a floating rock island with a staircase to nowhere — 28,569
+real vertices, genuinely loaded, genuinely screenshotted, and genuinely
+the wrong thing. Shipping either the incomplete base piece (mislabeled as
+complete) or the sci-fi monument (thematically clashing with the
+grounded, medieval-toned market/tavern/archive trio) would be exactly the
+"looks plausible, isn't honest" failure mode this project's own
+CREDITS.md sourcing discipline exists to prevent.
+
+**What this closes and what remains open.** `world/building_archetype.gd`
+gained a detailed comment recording this search trail (so the next
+attempt starts from "these two named collections are ruled out, try a
+different source" rather than re-discovering the same dead ends);
+`REAL_MESH_ARCHETYPES` and its pinning test (`tests/test_building_
+archetype.gd`) are unchanged — still exactly `["market", "tavern",
+"archive"]`, still `40/40` (now 43/43 with the quest-interaction suites
+added below) full test suite green. No asset files were added; the
+`concord-frontend/public/models/building/` directory is unchanged from
+before this search (every downloaded candidate was deleted after
+inspection, confirmed via `git status`/directory listing). Forge and
+tower both remain on the honest placeholder-box fallback. A genuinely
+different CC0 source (not yet tried: a dedicated fantasy-architecture
+pack, if one can be found and verified the same way) is the real next
+step, not a re-search of these same two collections.
+
+## Quest interaction — K-key accept/claim, wired to the real routes; closes the Phase Q "no live talk_to-first proof" residual (2026-08-08)
+
+Wires the two remaining named residuals from the Quests entry below: the
+`accept`/`complete`/`claim-reward` interaction, and a genuine live proof
+that a real `talk_to`-first quest resolves to a real map POI (previously
+proven only via the pure-logic test's synthetic fixture).
+
+**Deliberately ONE action at a time, not a quest-log UI.** `world/quest_
+actions.gd` (new) composes two real, DIFFERENT poller feeds —
+`quest_poller.gd`'s existing `/quests/active` (real `quest_objectives`/
+`player_quest_progress` rows) and a new `world/quest_available_poller.gd`
+polling `GET /:worldId/quests?status=available` (the `world_quests`
+table's own `objectives_json`/`reward_json` blob shape — a genuinely
+different real representation of the same quest system, not a bug) — into
+one pure `resolve_action(active, available)` rule: an all-done active
+quest → claim; no active quests + a real offerable one → accept the
+first; anything else (mid-quest, nothing offered) → honest no-op. K
+dispatches whatever `resolve_action` finds via the exact real REST routes
+(`POST /:worldId/quests/:questId/accept` and `.../claim-reward`) — no new
+backend code was needed, both routes already existed and already worked.
+The breadcrumb HUD (from the entry below) grows a trailing `[K] Accept:
+...`/`[K] Claim Reward: ...` hint line whenever there's something to do,
+and honestly shows nothing when there isn't (mirrors this session's
+consistent "no fabricated affordance" discipline).
+
+**A real, deliberate scope cut, stated plainly.** "Accept" here means "the
+first available quest by the poller's own listing order" — there is no
+quest-giver-NPC dialogue/offer UI in this client (Phase N only renders NPC
+positions; no interaction system exists yet). Building that is real,
+separate follow-up scope, not silently implied as done by this slice.
+
+**Verified three ways, the last one closing a real, previously-open gap.**
+1. Pure-logic: `tests/test_quest_available_poller.gd` (9 checks) pins
+   `quests_response_to_quests`'s verbatim-passthrough-or-drop contract for
+   the `?status=available` shape. `tests/test_quest_actions.gd` (14 checks)
+   pins `resolve_action`'s exact priority rule (claim beats accept, claim
+   is found even when not first in the active list, no accept while a
+   quest is mid-progress, malformed/non-Dictionary entries skipped without
+   crashing, genuinely-nothing-to-do returns `{}` honestly). Full
+   `tests/run_all.gd`: **43/43 suites PASS, 0 fail**, real non-zero
+   per-suite counts confirmed.
+2. Real-engine, against a genuinely live spawned server (fresh migrated
+   DB, real registered user, real bearer token): `tools/quest_actions_
+   probe.gd` (new) ran the real accept flow against the real seeded
+   onboarding quest `first_cycle_cook` (discovered via the real
+   `?status=available` poll, 52 real quests returned) — verbatim result:
+   `{"action_result":{"kind":"accept","outcome":"succeeded","questId":
+   "first_cycle_cook",...},"active_quests_fetched":0,"available_quests_
+   fetched":52,...}`. A follow-up `curl` against `/quests/active` on the
+   SAME live server confirmed the accept genuinely bridged from the
+   `world_quests` blob-shape row into real per-objective `quest_
+   objectives` rows with real generated UUIDs — the schema-duality
+   concern flagged when this poller was designed turned out not to be a
+   problem in practice, verified rather than assumed.
+3. **Closes the Phase Q residual: a genuine, live `talk_to`-first quest
+   round trip, not just the synthetic fixture.** The same live server had
+   `a_new_compact` available with a REAL `talk_to:archivist_maren` first
+   objective (discovered by scanning all 52 real available quests for one
+   whose first objective type is `talk_to` — several existed:
+   `the_choice`, `warden_crackdown`, `a_new_compact`, others). Accepted it
+   via the real accept route, then re-ran `tools/quest_poller_probe.gd`
+   (the same probe from the Quests entry below) against the same live
+   server: verbatim result included **`"quest_pois_resolved":1`** — a
+   real map pin, genuinely resolved from a real accepted quest's real
+   `talk_to` objective against `archivist_maren`'s real live position
+   (one of the 56 real NPC positions the same probe run fetched). The
+   Phase Q entry's own "What this does NOT settle" caveat — "no real
+   talk_to-first-objective quest was ever actually accepted+verified live
+   in this session... proven only via the pure-logic test's synthetic
+   fixture" — is now closed, not merely repeated.
+
+**What this does NOT settle.** No on-screen pixel verification of the new
+`[K] ...` hint line (same residual as every other HUD text this session
+has shipped — headless draws nothing for this specific claim). `complete`
+(as opposed to `claim-reward`) was never exercised — `claim-reward` alone
+sufficed because `checkQuestCompletion` already runs automatically inside
+the server's `recordObjectiveProgress` path, so a quest is already
+`status='completed'` server-side by the time `quest_all_done` reads true
+client-side; this is a design choice (verified against the route/engine
+source), not an untested gap. The quest-giver-NPC dialogue/offer UI
+remains real, separate follow-up scope. Test server + its temp data
+directory were torn down after verification; confirmed no stray process
+remained.
+
+## Combat C6 — F/R/Q ground-context tap actions (parry, kick, dodge) (2026-08-08)
+
+Extends Combat Phase C's E-only first slice with the rest of the GROUND
+CONTEXT_KEYMAP tap row from `CombatInputController.tsx`: F=parry, R=kick,
+Q=dodge. Deliberately still narrow — see `player/character_controller.gd`'s
+own updated class doc for the exact cut list (no aerial/vehicle/hacker/
+underwater contexts, tap-only, no double-tap finisher, no client-prediction
+anim, Shift stays bound to sprint rather than becoming a combat modifier).
+
+**A real, checked finding, not an assumption: `combat:dodge` had NO
+Godot-gateway dispatch at all before this unit.** `_onGodotClientMessage`'s
+switch (server.js) had exactly one case, `combat:attack` — a Godot client
+sending `combat:dodge` got the honest `unsupported_evt` fallback. This
+matters because parry/dodge (F/Q) route through `combat:dodge` on the
+Three.js reference, while kick (R) turns out to reuse `combat:attack`
+already (`CombatInputController.tsx`'s own comment: "No dedicated server
+event yet — emit as combat:attack with style", `actionOverride:
+'attack-heavy'`) — so kick needed ZERO server changes (`_dispatchGodotCombatAttack`
+already accepts `style`/`actionOverride`), but parry/dodge needed a new
+`_dispatchGodotCombatDodge` + a new switch case, added this unit. It reuses
+the SAME real primitives the socket.io `combat:dodge` handler (server.js
+~10790) already resolves through — `_attemptDodge` (perfect-dodge scoring),
+`_grantIFrames` (i-frame grant), `recordCombatFlow` (the same `combat_flow`
+substrate) — not a second implementation. Rate-limiting reuses
+`_combatSocketLimiter` (the same per-userId bucket `_dispatchGodotCombatAttack`
+already gates on) rather than a new per-connection cooldown var, since
+`_onGodotClientMessage` is a plain module-level function with no per-socket
+closure state to hold one.
+
+**A second real, pre-existing bug found while reading this exact code, fixed
+in the same unit: `cityPresence.getPlayerPosition` does not exist.** It's
+not a typo in one call site — 5 separate call sites (2 socket.io combat
+handlers, `combat:dodge` and `combat:block`, plus 3 elsewhere in the
+combat/loot code) called `cityPresence.getPlayerPosition?.(userId)`, and
+`cityPresence.js` only ever exported `getUserPosition`. Every one of these
+was a silent, permanent no-op — the optional-chain always resolved to
+`undefined`, so every caller always fell back to its own `{x:0,y:0,z:0}`
+default. Concretely: every `combat:dodge`/`combat:block` flow-recorder entry
+made through the socket.io path has been stamping position `{0,0,0}` instead
+of the real fighter position since these call sites were written, for BOTH
+the position used to derive combat context AND (indirectly) anything
+downstream that trusted that context. Fixed all 5 call sites to the real
+`getUserPosition` method name — mechanical, one-line-per-site, same fix
+repeated, verified by `grep -n getPlayerPosition server/server.js` returning
+zero matches afterward. The new `_dispatchGodotCombatDodge` was written using
+the correct name from the start (matching `_dispatchGodotCombatAttack`'s
+own already-correct usage), so this fix brings the two pre-existing socket.io
+handlers up to what the new Godot code already got right, not the reverse.
+
+**Untargeted vs. targeted, exactly mirroring the TS payload shapes.** Parry
+(`_try_parry`) and dodge (`_try_dodge`) fire regardless of
+`_current_target_id` — the TS `parry`/`dodge` cases carry no `targetId`
+field at all. Kick (`_try_kick`) IS targeted, honest no-op with no target in
+range — same discipline `_try_attack` already established — and omits the
+`weapon` field entirely (the TS kick payload has none; kick is barehanded
+regardless of loadout, unlike the E-attack's weapon-in-hand lookup).
+
+**Verified two ways.**
+1. `tests/run_all.gd`: full suite green, **40/40 suites, real non-zero
+   per-suite counts, 0 fail** (`CharacterController` stays at 38 checks — no
+   NEW pure-static surface was added by this unit, since parry/dodge/kick
+   are thin dispatch wrappers around real DI'd objects, the same shape as
+   the already-probe-verified `_try_attack`, not pure functions — verified
+   via the probe below instead, matching that same precedent).
+2. Real-engine: `tools/combat_target_probe.gd` (extended) constructed a real
+   `CharacterController` + `AvatarManager` + `FakeGatewayStub`, gave it a
+   real 2m-away target, and called `_try_parry`/`_try_dodge`/`_try_kick`
+   directly. Verbatim real dispatch results: parry →
+   `combat:dodge {"direction":"back","style":"parry","wasParry":true}`;
+   dodge → `combat:dodge {"direction":"back","style":"dodge","wasParry":false}`;
+   kick → `combat:attack {"actionOverride":"attack-heavy","armorPierce":0,
+   "baseDamage":14,"heavy":false,"range":3,"style":"kick","targetId":
+   "target-npc"}` — all three genuinely dispatched through the real gateway
+   DI slot, not asserted against a mock's return value.
+
+**A live client-server round trip WAS run for the new server-side half.**
+`server/tests/godot-gateway-integration.test.js` gained 3 real tests
+(spawning a real server, real `/godot-ws` WebSocket, real auth) proving
+`combat:dodge` now genuinely resolves through `_dispatchGodotCombatDodge`
+instead of the honest `unsupported_evt` fallback: a plain Q-dodge, an
+F-parry with `wasParry:true` correctly round-tripping, and an empty-payload
+call defaulting honestly (`direction:"back"`, `wasParry:false`) rather than
+crashing. Writing these caught a real shape-registry mismatch: the first
+draft reused one `result` object (with extra `ok`/`wasParry` fields) for
+BOTH the public `realtimeEmit` broadcast and the private Godot ack, which
+tripped `event-shapes.js`'s dev-mode validator (`ws_event_shape_violation`,
+unknown fields on the ALREADY-registered `combat:dodge:ack` shape) — fixed
+by splitting into a broadcast payload (byte-identical to what the socket.io
+handler already sends, so a spectator sees the same shape regardless of
+which transport a player used) and a separate, richer private ack. What
+this does NOT settle: only the GODOT gateway path was live-tested this
+unit — the pre-existing socket.io `combat:dodge`/`combat:block` handlers
+were touched only for the `getPlayerPosition`→`getUserPosition` fix below
+and were not re-verified end-to-end beyond the existing
+`combat-defensive-enforcement.test.js` (source-grep only, still green).
+Hold-variant actions (F-hold=grab, E-hold=attack-heavy), double-tap
+finishers, Shift-as-combat-modifier, and every non-ground context remain
+fully deferred, matching the class doc's own stated cut list.
+
+## Wayfinding wire-the-unwired — `WayfindingController`/`RooftopAccessController` actually mounted in `boot.gd` (2026-08-08, closes the Phase Q gap)
+
+Closes the exact gap the Quests entry below flagged as a PRE-EXISTING,
+separately-scoped finding: `WayfindingController` and its dependency
+`RooftopAccessController` had real, tested pure-logic modules (F26/F27) but
+were never instantiated anywhere in `world/boot.gd` — so the quest-POI data
+layer that same phase built (`set_quest_pois`, `quest_pois`) had no live
+on-screen consumer, and neither did the pad/rooftop/district POIs that
+predate it. This is a "wire-the-unwired" fix in the same spirit CLAUDE.md
+documents for backend heartbeats, applied client-side: no new logic, only
+real instantiation + real wiring of code that already existed and already
+worked in isolation.
+
+**What changed in `world/boot.gd`.** Both controllers are constructed and
+`add_child`ed at `_ready()` (`_rooftop_controller =
+RooftopAccessController.new()`, `_wayfinding = WayfindingController.new()`),
+matching the mount style every other subsystem in this file already uses.
+Wiring is deferred to the `"scene:data"` event case, right after
+`_bootstrap.apply_scene(data)`: `_rooftop_controller.wire_from_scene_
+bootstrap(_bootstrap)` then `_wayfinding.wire_sources(_bootstrap,
+_rooftop_controller)` — so a reconnect or world-switch re-wires both
+controllers against fresh geometry rather than leaving them stuck on
+whatever loaded first. A new `_process(_delta)` (this file had none before)
+calls `_rooftop_controller.update(_character.global_position)` every frame,
+guarded on both being non-null.
+
+**Verified against a second real, genuinely live server — not a synthetic
+fixture, not just "compiles."** `tools/live_probe.gd` (an existing tool that
+already boots the real `res://scenes/boot.tscn` against a real running
+server) was extended to walk `boot`'s children by class name (same pattern
+already used for `SceneBootstrap`) and report on both new controllers. A
+fresh `server.js` was spawned (fresh migrated temp DB), a real user was
+registered (`POST /api/auth/register` — this run is what surfaced a
+previously-undocumented required field, `dateOfBirth`, now noted for future
+probes), a real bearer token obtained, and `live_probe.gd` run against it
+under `xvfb-run` for `concordia-hub`. Verbatim result:
+`{"rooftop_buildings_count":1,"rooftop_controller_found":true,
+"spawned_children":125,"wayfinding_found":true,"wayfinding_poi_count":10,
+...}` — both controllers genuinely found as live children of the real boot
+scene, `RooftopAccessController` genuinely resolved 1 real rooftop-accessible
+building from the live scene bootstrap, and `WayfindingController` genuinely
+resolved 10 real POIs (landing pads + rooftop + district markers, per its
+existing `collect_pois` logic) from that same live data — none of these
+numbers fabricated or assumed; each is exactly what the real objects reported
+when asked. The server, its temp data directory, log, pidfile, and screenshot
+were torn down afterward; confirmed via `ps aux` that no stray process
+remained (the pidfile-captured PID was stale again, same as a prior probe
+this session — the real PID was found via `ps aux | grep server.js` and
+killed directly).
+
+**What this does NOT settle.** The quest-POI layer from the entry below now
+has a live consumer for the first time, but no accepted `talk_to`-first quest
+was exercised through this specific probe (that residual is already recorded
+below, unchanged by this fix). On-screen legibility of the compass/marker
+UI itself — does a POI actually render as a readable on-screen marker, not
+just exist in `WayfindingController`'s internal list — is unverified; this
+probe confirms the DATA layer is wired end-to-end from real scene data to a
+real, queryable controller, not that anything is pixel-verified as visible.
+`tests/run_all.gd`'s full suite (40/40, unchanged by this fix — no new
+pure-logic surface was added, only instantiation/wiring in `boot.gd`) was
+re-confirmed green after these edits.
+
+## Quests — real fetch, real breadcrumb HUD, quest objectives as a 4th wayfinding POI source (2026-08-08, Phase Q slice 1)
+
+Zero backend changes needed or made — `world/quest_poller.gd` polls the SAME
+`GET /api/worlds/:worldId/quests/active` route
+`concord-frontend/components/world/QuestTracker.tsx` already polls, on that
+component's own `useRealtimeRefresh` backstop cadence (30s — ported, not
+re-guessed; this client has no socket-event-driven quest refresh yet, so a
+plain backstop poll is the honest first slice, matching Phase N/M3's own
+"self-timered, not gateway-event-driven" first-slice posture).
+
+**A real, checked finding, not an assumption: quest objectives carry no
+coordinate of their own.** An objective's `target` is a semantic id
+(`talk_to` targets a real authored NPC id — verified directly against
+`content/quests/*.json`, e.g. `"gatekeeper_orin"`; `kill`/`gather`/
+`deliver`/`cook` target archetype/item ids with no spatial meaning;
+`reach_location` targets a semantic location string like
+`"first_cycle_glade"`) — and a direct search of `server/lib` and
+`content/world` found NO location-id-to-position resolver anywhere in this
+codebase for `reach_location`. So only `talk_to` objectives can be honestly
+turned into a map pin today, resolved against
+`AvatarManager.npc_positions_snapshot()` (new — Phase N's already-live
+`_rigs`/`_kinds` dictionaries, read the same way `nearest_target` already
+does). Every other objective type — and any `talk_to` whose target NPC
+isn't currently a live, positioned entity — is honestly OMITTED from the
+POI list, never guessed; it still appears in the breadcrumb TEXT (players
+still read "Gather 2 Wildroot"), just without a pin.
+
+**Domain split, mirroring `pickBreadcrumb`/`VERB_FOR` verbatim.**
+`world/quest_breadcrumb.gd` (new) is a pure port of
+`QuestTracker.tsx`'s breadcrumb-selection and text-formatting logic — same
+"prefer an all-done quest, else the first quest's first incomplete
+objective" rule, same `VERB_FOR` verb table with the same `'Do'` fallback.
+`world/wayfinding_markers.gd` gained `next_incomplete_objective`,
+`poi_from_quest_objective`, and `quest_pois` — the spatial half — and
+`world/wayfinding_controller.gd` gained `set_quest_pois(quests,
+npc_positions)`, held SEPARATELY from the existing pad/rooftop/district
+`_pois` (quest state and NPC positions change on their own, far more
+frequent cadence than a fresh `scene:data`, so recomputing only this subset
+avoids re-running the pad/rooftop/district work on every quest tick).
+
+**A real, honest finding about the wayfinding layer itself.**
+`WayfindingController`/`RooftopAccessController` — despite having their own
+real, tested pure-logic modules since F26/F27 — are **not mounted anywhere
+in `world/boot.gd`**, confirmed by direct grep, not assumed. This is a
+PRE-EXISTING gap this phase did not introduce and does not close: the new
+quest-POI data layer (`set_quest_pois`, `quest_pois`, `poi_from_quest_
+objective`) is real and fully tested, but has no live on-screen compass/
+marker consumer yet, because that consumer was never wired up in the first
+place. Wiring `WayfindingController` (+ `RooftopAccessController`, its own
+dependency) into `boot.gd` for real is separate, named follow-up scope —
+attempting it inside this pass would have been scope creep beyond "quest
+fetch + tracker HUD," this slice's actual deliverable.
+
+**The breadcrumb HUD IS live and mounted, unlike the map-pin layer above.**
+`world/boot.gd#_setup_quest_hud` mounts a bare top-center `Label` (same
+minimal posture as Combat Phase C4's `_target_hud` — not a port of the TS
+component's pill/icon/claim-button chrome, real separate follow-up UI
+work), updated from `QuestPoller.poll_succeeded`. `_unhandled_input` binds
+J to toggle breadcrumb ⇄ list mode, matching `QuestTracker.tsx`'s own J
+binding exactly. No localStorage-equivalent mode persistence yet (a
+deliberate first-slice scope cut, matching how other phases this session
+ported the design without every persistence/chrome detail). Honest empty
+state: zero active quests shows no HUD text at all, mirroring the TS
+component's own `if (quests.length === 0) return null`.
+
+**A real bug found by the test suite, not written around.**
+`quests_response_to_quests`'s first draft passed a Variant-typed loop var straight into
+`.duplicate(true)` without a type annotation, which the engine's static
+analyzer flagged as `Cannot infer the type of "entry" variable` — a real
+compile error, caught by `tests/run_all.gd`, fixed by declaring `var entry:
+Dictionary = q.duplicate(true)`. Separately, `quest_breadcrumb.gd`'s first
+draft called `quest_all_done`/`VERB_FOR` via its own `QuestBreadcrumb.`
+class-name prefix from inside its own file — the exact same same-class
+`class_name`-qualified static-call bug this session has now hit and fixed
+three times (`npc_poller.gd`, `creature_rig.gd`, and now this file) — fixed
+to bare-name calls. `wayfinding_markers.gd`'s own pre-existing
+self-qualified calls (`WayfindingMarkers.poi_from_landing_pad` etc.),
+by contrast, compiled cleanly both before and after this phase's edits —
+this bug does not reproduce in every file, only some; always verify with a
+real run rather than assuming either way.
+
+**Verified three ways.**
+1. Pure-logic: `tests/test_quest_breadcrumb.gd` (new, 17 checks) pins
+   `pick_breadcrumb`'s exact TS-mirrored precedence, `quest_all_done`, and
+   `breadcrumb_text`'s description/verb/suffix formatting including the
+   `'Do'` fallback for an unrecognized objective type. `tests/test_quest_
+   poller.gd` (new, 11 checks) pins `quests_response_to_quests`'s
+   verbatim-passthrough-or-drop contract. `tests/test_wayfinding_markers.gd`
+   gained 11 new checks (46 total, was 35) covering `next_incomplete_
+   objective`, `poi_from_quest_objective`'s real NPC-position resolution
+   AND its three honest-omission paths (non-talk_to type, unresolved
+   target, malformed quest/objective), and `quest_pois`'s end-to-end
+   filtering across a mixed real-shaped quest array. Full `tests/run_all.gd`:
+   **40/40 suites PASS, 0 fail**, real non-zero per-suite counts confirmed.
+2. **Real-engine, against a genuinely live spawned server with a genuinely
+   accepted quest** — not a synthetic fixture. A real `server.js` was
+   booted (fresh migrated DB), a real user was registered
+   (`POST /api/auth/register`), and that user genuinely accepted the real
+   seeded onboarding quest `first_cycle_cook`
+   (`POST /:worldId/quests/:questId/accept`) — confirmed via a direct
+   `curl` to `/quests/active` showing real objective rows before the Godot
+   probe ever ran. `tools/quest_poller_probe.gd` (new) was then run against
+   this live server and reported, verbatim:
+   `{"breadcrumb_text":"Walk into the glade where Concordia first speaks",
+   "npc_poll_result":{"count":56,"outcome":"succeeded"},
+   "npc_positions_known":56,"ok":true,"quest_pois_resolved":0,
+   "quest_poll_result":{"count":1,"outcome":"succeeded"},
+   "quests_fetched":1}` — a real quest genuinely fetched, a real breadcrumb
+   line genuinely derived from that quest's real first objective
+   description, and 56 real live NPC positions genuinely resolved via
+   `AvatarManager.npc_positions_snapshot()`. `quest_pois_resolved: 0` is
+   the CORRECT, honest answer for this specific accepted quest — its
+   current objective (`reach_location`, order_index 0) is not a `talk_to`
+   type, so per this phase's own documented design it gets no map pin. The
+   server, its temp data directory, and the registered test user were torn
+   down afterward; confirmed no stray process or directory left behind.
+3. A first run of this probe surfaced a real timing bug in the probe
+   itself (not the source): reading `AvatarManager.npc_positions_snapshot()`
+   in the SAME frame the NPC poll's signal fired reported `0` known
+   positions despite `poll_succeeded` reporting count 56, because rig
+   spawning happens in `AvatarManager._process()` on a LATER frame than the
+   HTTP signal handler that staged the snapshot — the exact same
+   settle-frame gap `npc_poller_probe.gd`/`avatar_manager_probe.gd` already
+   guard against. Fixed by adding the same one-frame settle; re-run
+   confirmed `npc_positions_known: 56`.
+
+**What this does NOT settle — stated plainly.** No real `talk_to`-first-
+objective quest was accepted in this pass (every one found in
+`content/quests/*.json` has prerequisite quests that would need completing
+first), so `quest_pois_resolved > 0` was proven only via the pure-logic
+test's synthetic fixture, not this live probe — a real, named residual, not
+silently implied as fully covered end to end. The map-pin layer has no live
+on-screen consumer at all yet (see the `WayfindingController` finding
+above). On-display visual correctness of the breadcrumb HUD (does the text
+actually render legibly at top-center, does the J-toggle read well) is
+unverified, same as every other HUD this session has shipped — headless
+installs `RasterizerDummy` and draws nothing for THIS particular claim (no
+pixel probe was built for the quest HUD specifically). Accept/complete/
+claim-reward interaction (item 4 of the original Phase Q scope) was
+deliberately deferred — this slice is read-only quest state, matching the
+"small, real, verified slice" discipline every other phase this session
+has followed; a follow-up pass wires the existing `/:worldId/quests/
+:questId/{accept,complete,claim-reward}` routes through a real interaction
+UI once one exists to hang it off of.
+
+## Vegetation scatter — real district-bounded backend data, real GLB swap over HTTP (2026-08-08, Phase M2)
+
+Closes the vegetation half of the "genuinely no placement data exists yet"
+scope note below (the creature half was closed by Phase M3, above). Unlike
+Phase M3, this genuinely needed new backend code — no live vegetation feed
+existed anywhere before this unit.
+
+**New deterministic scatter, grounded in real district geometry, not
+invented.** `server/lib/vegetation-scatter.js#scatterVegetationForWorld`
+places entries inside each of a world's REAL district boundary polygons
+(`server/lib/districts.js#listDistricts`/`pointInPolygon` — the same
+geometric test `districtAt` uses elsewhere), via rejection sampling seeded
+by `server/lib/world-terrain.js#hashSeed` (the same FNV-1a technique
+`TreeLayer.tsx`'s own client-side hash already uses, so the *method* is
+reused even though the resulting positions are new — this project's Three.js
+vegetation layer has zero server authority today, so there was no existing
+"real" placement design to port, only a proven hashing primitive). `y` comes
+from each district's real authored `elevationHint`, never guessed; species
+is drawn uniformly across the 6 real on-disk ids (concordia-hub has no biome
+data to weight by — an honest, documented simplification, not silently
+applied); a world with no recorded districts (every world but
+concordia-hub today) gets an honest `[]`, not fabricated placements. Wired
+into `server/lib/scene-export.js#exportScene`'s return as an additive
+`vegetation` field, same guarded try/catch-degrades-to-`[]` posture as the
+existing `districts`/`plaza`/`landingPads` fields — `godot-gateway.js`'s
+`scene:request` handler is a verbatim pass-through, so zero gateway changes
+were needed to deliver it.
+
+**Godot side mirrors the existing parse/spawn split exactly.**
+`world/scene_bootstrap.gd#parse_vegetation` follows the same
+verbatim-passthrough-or-drop contract as `parse_landing_pads`/
+`parse_districts` (a new `vegetation_ready` signal, emitted from
+`apply_scene()`); the actual spawning lives in a dedicated new consumer,
+`world/vegetation_renderer.gd`, which mirrors `world/dtu_prop_renderer.gd`'s
+asset strategy (real GLB when one resolves via `AssetResolver`/`GlbLoader`,
+else a tinted placeholder cylinder that stays up forever on a failed
+resolve — never fabricates). One `Node3D` holder per instance, deliberately
+NOT `PropInstancer`/MultiMesh — concordia-hub's real district geometry
+produces tens of entries, not hundreds, so MultiMesh's batching machinery
+isn't warranted, and `PropInstancer` doesn't support this class's
+per-instance async-GLB-upgrade lifecycle; flagged as a deferred optimization
+if density ever grows into the hundreds. `world/boot.gd` mounts
+`VegetationRenderer` right after `_bootstrap` and connects
+`_bootstrap.vegetation_ready` directly to `_vegetation_renderer.spawn` — no
+adapter needed, the signal shape already matches.
+
+**A real bug found by the test suite, not just written around.**
+`parse_vegetation`'s first draft required `species`/`x`/`y`/`z` but NOT
+`id` — yet `VegetationRenderer._spawn_one` dedupes/keys every spawned holder
+by `id` (`if id.is_empty() or _spawned.has(id): return`), so an id-less
+entry would either silently fail to render or collide with another id-less
+entry. Caught immediately by `tests/test_scene_bootstrap.gd`'s new
+`_test_drops_malformed_vegetation_without_crashing` case (expected 1
+surviving entry, got 2 — a real `[FAIL]`, not a misleading pass this time).
+Fixed by requiring `id` too, matching `parse_districts`' existing contract.
+
+**Verified three ways.**
+1. Pure-logic: `tests/test_scene_bootstrap.gd` gained 3 new cases
+   (well-shaped vegetation parses verbatim, malformed entries — including
+   the id-less case above — are dropped without crashing, an empty array
+   yields an honest empty result); `tests/test_vegetation_renderer.gd` (new,
+   7 checks) pins `entry_to_transform` (position/rotation/scale math,
+   honest identity defaults on missing fields) and
+   `placeholder_color_for_species` (every real species gets a visually
+   distinct tint, an unrecognized species gets an honest neutral default,
+   never a crash). Backend: `server/tests/vegetation-scatter.test.js` (7
+   tests — determinism, every point genuinely `pointInPolygon`-inside its
+   own district, species membership, real `elevationHint` for `y`, honest
+   empty on a districtless world, `maxPerDistrict` cap respected, density
+   monotonicity) plus a new `scene-export.test.js` case asserting the
+   `vegetation` field is present and honestly empty when no districts are
+   seeded — 35/35 backend tests green. Full `tests/run_all.gd`: **38/38
+   suites PASS, 0 fail**, real non-zero per-suite counts confirmed
+   (`SceneBootstrap` 66, `VegetationRenderer` 7) — the self-qualified
+   `SceneBootstrap.parse_vegetation(...)` call in `apply_scene()` (a
+   deliberate choice to match this file's own existing convention for
+   `parse_landing_pads`/`parse_districts`, rather than defensively
+   bare-naming it) compiled cleanly on the first real run, unlike the
+   `class_name`-qualified bug that bit `npc_poller.gd` and `creature_rig.gd`
+   earlier this session.
+2. **Real-engine, no server needed.** `tools/vegetation_renderer_probe.gd`
+   feeds a real `VegetationRenderer` a synthetic 4-entry scatter-shaped
+   array (matching the exact backend output shape) with no server or
+   frontend origin required, and reads the renderer's own `_spawned`
+   dictionary directly (not `child.name` — Godot silently sanitizes `:` out
+   of Node names, so a real id like `"concordia-hub:plaza:veg:0"` does NOT
+   round-trip through `child.name` unchanged; a probe-methodology fact,
+   caught and fixed mid-pass, not a renderer bug). Result:
+   `{"all_ids_present":true,"entries_sent":4,"holders_spawned":4,"ok":true}`
+   — every entry became a real spawned holder at the correct transform,
+   honest placeholder-only (no server = no GLB source to resolve against).
+3. **Real-engine, real HTTP GLB fetch.** Re-ran the same probe with
+   `CONCORD_FRONTEND_URL` pointed at a real `python3 -m http.server`
+   serving `concord-frontend/public/models/vegetation/*.glb` over plain
+   HTTP (this needed no `server.js` — vegetation GLBs are static files, not
+   macro-gated data). All 4 entries reported `"glb_swapped":true`
+   (distinguished by checking the surviving child's own class rather than
+   `child_count`, since `queue_free()` on the placeholder is deferred, not
+   immediate) and the captured screenshot (`/tmp/
+   vegetation_renderer_probe.png`) shows two genuinely distinct real tree/
+   bush meshes at the two visible spawn positions — not the tinted cylinder
+   placeholder. The test HTTP server was torn down afterward; confirmed no
+   process left running.
+
+**What this does NOT settle — stated plainly.** No building-footprint
+collision avoidance (a scattered tree can land inside a real building's
+footprint — not checked this pass); no per-biome species variation
+(concordia-hub has no biome data to weight against, so species selection is
+uniform, an honest documented simplification); wind/sway animation (nothing
+to port — the Three.js client has none either); on-display visual
+correctness beyond the one real screenshot above (does the scatter density
+*read* right at real gameplay camera distances — untested); any world
+besides concordia-hub (every other world has no authored districts today,
+so the scatter honestly returns `[]` for them — a content gap, not a code
+gap).
+
+## Creature spawner — real macro round trip, separate non-humanoid rig pipeline, zero backend changes (2026-08-08, Phase M3)
+
+Not a rendering claim — real object-state mutation from a genuinely live
+server, same discipline as Phase N. Full context: `server/domains/
+creatures.js#for_world` already served live creature positions (`world_npcs`
+rows with `archetype LIKE 'creature:%'`, their OWN dedicated `x/y/z`
+columns, distinct from the JSON column Phase N's `/npcs` route reads) via
+`POST /api/lens/run {domain:"creatures", name:"for_world"}` — the exact
+call `concord-frontend/lib/world-lens/creature-renderer.ts` already makes
+every 4 seconds. **Zero backend changes were needed or made.**
+
+**The real design problem this phase exists to solve.**
+`avatar/avatar_manager.gd#_spawn_rig` collapses any non-`"player"` kind down
+to `"npc"` — naively calling `AvatarManager.ingest_snapshot(...,
+"creature")` would have silently routed a fox/bird through `AvatarRig`'s
+humanoid pipeline (hero-mesh archetype resolution, 14-bone gait/IK, weapon
+attachment) — a defect class this codebase's invariants exist to catch, not
+a hypothetical. Fixed by building a genuinely separate, deliberately
+simpler pair: `world/creature_manager.gd` + `world/creature_rig.gd`,
+mirroring `world/dtu_prop_renderer.gd`'s "real GLB or tinted placeholder,
+no skeleton" asset strategy instead of `AvatarRig`'s humanoid machinery.
+Real on-disk creature GLBs are keyed by **topology + variant index**
+(`quadruped_01/02/03.glb`, `winged_biped_01.glb`), ported verbatim from
+`creature-renderer.ts`'s own `REAL_ASSET_TOPOLOGIES` table — any other
+topology (serpentine/eel/shark/fish/cephalopod/polyped/amorphous/humanoid)
+honestly stays on the placeholder, a real content gap, never a guessed
+substitute. `avatar_manager.gd`/`avatar_rig.gd` themselves are UNTOUCHED by
+this unit — only a one-line class-doc note was added so a future reader
+doesn't reintroduce the bug this split exists to avoid.
+
+**The double-`ok` envelope, verified live, not just assumed.** `/api/lens/
+run` wraps a MACROS-table handler's raw return in `{ok:true, result:<raw>}`;
+`creatures.for_world` itself returns `{ok, creatures, count}` un-nested — so
+the real wire shape is `{ok:true, result:{ok:true, creatures:[...],
+count}}`. Confirmed by a real `curl` against a real spawned server (not
+just read from source):
+`{"ok":true,"result":{"ok":true,"creatures":[],"count":0}}`. `world/
+creature_poller.gd#_on_request_completed` checks BOTH `ok` flags — missing
+the inner one would silently treat a macro-level failure
+(`result.ok === false`) as success.
+
+**Verified two ways.**
+1. Pure-logic: `tests/test_creature_poller.gd` (22 checks) pins the request-
+   body shape and `creatures_array_to_entities` (flat x/y/z with no
+   `position` wrapper, blank/missing-id and non-Dictionary entries dropped,
+   honest defaults on missing fields — `topology` defaults to the real,
+   covered `"quadruped"` rather than an empty string that would otherwise
+   uselessly degrade every malformed entry straight to the placeholder).
+   `tests/test_creature_rig.gd` (17 checks) pins `real_asset_id_for_topology`
+   (every covered topology resolves to a real on-disk id, every one of the
+   8 uncovered topologies honestly returns `""`, same `creature_id` always
+   picks the same variant) and `placeholder_color` (valid hex parses to a
+   real `Color`, missing/malformed falls back to the same neutral default).
+   Full `tests/run_all.gd`: **38/38 suites PASS, 0 fail**, real non-zero
+   per-suite counts confirmed for both new suites — a same-class
+   `class_name`-qualified static-call compile bug (the exact one
+   `net/gateway_client.gd`'s own class doc warns about, and the exact one
+   Phase N's `npc_poller.gd` hit) was caught and fixed in
+   `creature_rig.gd#_try_resolve_glb` via the same `[PASS] CreatureRig
+   (0 checks)` misleading-pass signal, before it ever reached this final
+   green run.
+2. **Real-engine, against a genuinely live spawned server.** A real
+   `server.js` was booted (fresh migrated DB, real content-seeding, real
+   registered user/token — same setup as Phase N's probe), and `tools/
+   creature_poller_probe.gd` was run against it with `CONCORD_BACKEND_URL`
+   pointed at the real listening port. Result, verbatim:
+   `{"frames_waited":8,"ok":true,"poll_result":{"count":0,"outcome":
+   "succeeded"},"rigs_spawned":0}` — a real HTTP POST fired, the real
+   double-nested envelope was correctly unwrapped, and the poller/manager
+   wiring genuinely completed a round trip end to end.
+
+**What this does NOT settle — stated plainly, not glossed over.**
+concordia-hub had **zero** live creatures in this session's test window
+(confirmed directly via repeated `curl` polls over 90 seconds — not a
+poller bug, a genuinely empty population). `server/lib/fauna-spawner.js`'s
+density model appears to scale spawn targets with player presence, and no
+player was ever actually in the world during this probe (only a REST
+registration, no `city:positions` activity) — so **this pass did NOT
+observe a real nonzero `rigs_spawned` count against a live server**, only
+against the pure-logic tests' synthetic fixtures. Reproducing a genuine
+`count > 0` live proof needs a session with an actual player present in the
+target world (or a fauna-spawn trigger this pass didn't find/build) — flagged
+as a real, named residual, not silently implied as covered. Also unverified,
+same as every other phase: on-display visual correctness (placeholder shape/
+tint, real GLB appearance at spawned positions); whether the 4s poll cadence
+feels right (a ported, not re-judged, design decision); creature facing/
+heading (no server field exists to consume — `apply_transform` is
+position-only by design, not a truncated feature).
+
+## NPC visibility — real REST poll, real backend round trip, 56 real NPCs spawned (2026-08-08, Phase N)
+
+Not a rendering claim — real object-state mutation from a genuinely live
+server, the strongest proof level this session's probes have reached (a
+real spawned `server.js`, not a static-asset stub). Full context: NPCs
+were completely invisible in Godot because the one broadcast that could
+carry live positions, `city:npcs`, was deliberately retired server-side —
+NOT for staleness/cost/correctness, but because it had zero consumers on
+every transport (confirmed by direct read of `server/lib/city-presence.js`'s
+"DET-C batch 8" comment). Rather than reviving that broadcast or building a
+new one, the fix ports the Three.js client's own already-working design:
+poll `GET /api/worlds/:worldId/npcs` — the exact route
+`concord-frontend/app/lenses/world/page.tsx` already polls every 10s — feed
+the response into `AvatarManager.ingest_snapshot(..., "npc")`, which was
+already kind-agnostic and already had the full rig/GLB/weapon/outline
+pipeline built for the player case. **Zero backend changes were needed or
+made.**
+
+**What was built.** `world/npc_poller.gd` (new) — a `Timer`-driven
+`HTTPRequest` GET poller (the first `GET` HTTPRequest and the first `Timer`
+anywhere in this client tree; every prior fetch was a one-shot POST) with
+the same `Authorization: Bearer` convention `fea_scene_builder.gd`/
+`dtu_prop_renderer.gd` already use, and a pure static
+`npcs_array_to_entities()` translating the REST response into
+`ingest_snapshot`'s expected shape (the REST analogue of `boot.gd
+#users_array_to_dict`'s `city:positions` translator — same "drop malformed/
+blank-id entries, never fabricate" discipline). `avatar/avatar_manager.gd`
+gained a kind-aware stale-despawn timeout (`stale_timeout_for_kind`) — a
+real correctness fix found by reasoning through the design *before* writing
+code, not discovered after the fact: the pre-existing single
+`STALE_TIMEOUT_MS = 3000` was tuned for players' ~100ms broadcast cadence,
+and would have despawned every REST-polled NPC ~7 seconds before its next
+10-second refresh, a genuine visible flicker/respawn cycle. `world/boot.gd`
+mounts the new poller right after `AvatarManager`, wiring the DI reference
+immediately; its class doc is updated so a future reader who sees NPCs
+rendering doesn't mistake it for the retired broadcast coming back.
+
+**Verified two ways, same discipline as every phase this session.**
+1. Pure-logic: `tests/test_npc_poller.gd` (new, 14 checks) pins
+   `npcs_array_to_entities` against real `/npcs`-response-shaped fixtures —
+   basic translation, blank/missing id dropped, non-Dictionary entries
+   dropped, missing position defaults to `{0,0,0}`, empty array is an
+   honest empty result. `tests/test_avatar_manager.gd` gained 4 checks
+   pinning `stale_timeout_for_kind` (player vs. npc vs. an unrecognized
+   kind's fallback, plus a sanity check that the NPC timeout genuinely
+   exceeds the player one — a check that would have caught the flicker bug
+   if the fix had been implemented backwards). Full `tests/run_all.gd`:
+   **36/36 suites PASS, 0 fail**, real non-zero per-suite counts confirmed
+   (AvatarManager 9, NpcPoller 14) — not the `(0 checks)` misleading-pass
+   shape a same-class `class_name`-qualified static call bug produced on
+   the first attempt here too (see below).
+2. **Real-engine, against a genuinely live spawned server — the strongest
+   verification this session has done.** A real `server.js` was booted in
+   this sandbox (fresh migrated SQLite DB, real content-seeding, real
+   `POST /api/auth/register` for a real bearer token), then
+   `tools/npc_poller_probe.gd` (new) was run against it with
+   `CONCORD_BACKEND_URL` pointed at the real listening port. Result,
+   verbatim: `{"frames_waited":13,"ok":true,"poll_result":{"count":56,
+   "outcome":"succeeded"},"rigs_spawned":56}` — a real HTTP GET fired, a
+   real `requireAuth`-gated route accepted the real bearer token, real JSON
+   parsed, and `AvatarManager` genuinely spawned 56 real `AvatarRig` nodes
+   (concordia-hub's density-scaled live NPC population, not just its 16
+   hand-authored entries) from a live round trip. The scratch server and
+   its data directory were torn down afterward — no residual process, no
+   stranded disk.
+
+**Real bug caught during implementation, not by luck.** The first
+implementation attempt called the new pure static translator as
+`NpcPoller.npcs_array_to_entities(...)` (qualified by its own `class_name`)
+from inside `npc_poller.gd` itself, reproducing the EXACT "Identifier not
+found" compile error `net/gateway_client.gd`'s own class doc already warns
+about for this precise pattern — caught immediately by `tests/run_all.gd`
+reporting `[PASS] NpcPoller (0 checks)` (the misleading-pass shape a
+prior phase this session also hit and documented: an empty check count
+reads as green but means nothing ran). Fixed by calling the bare function
+name instead; the check count coming back non-zero afterward is what
+actually confirmed the fix, not the PASS word alone.
+
+**What this does NOT settle.** Whether spawned NPCs read as visually
+coherent, correctly-placed, or correctly-animated on a real display — this
+sandbox proves object-state mutation, not pixels (no screenshot was taken;
+this probe is deliberately headless per its own class doc, since its claim
+doesn't need rendering to be true). Whether the 10-second poll cadence
+feels acceptable in practice for a genuinely fast-moving world (Three.js's
+own client accepts this cadence today, so this is a ported design decision,
+not a new judgment call, but still unplaytested here). The small,
+mechanic-spawned patrol-NPC population (`city-presence.js`'s `_npcState`)
+remains fully unaddressed — this unit reads exclusively from `world_npcs`/
+`GET /:worldId/npcs` and has no visibility into that separate population.
+Dialogue/interaction with NPCs found this way, NPC-death signals beyond the
+generic stale-timeout path, and spatial/nearby-only filtering are all
+explicitly out of scope for this slice — see the plan file's own
+"Explicitly out of scope this slice" list for the full accounting.
+
+## Combat, first slice — real target selection, real attack dispatch, real hit-feel mutation (2026-08-07, Phase C)
+
+Not a rendering claim — pure object-state mutation, real-engine-verified.
+Scope, per the approved plan: **E = attack only**. F/R/Q/Shift
+(parry/kick/dodge/modifier), combo chains, weapon-specific attack
+animations beyond the existing gait/pose system, and lock-on camera
+behavior are explicitly deferred, real follow-up work, not attempted this
+slice.
+
+**What was built.** `player/character_controller.gd` gained: (1) a
+per-physics-frame `_update_target()` query against an optional injected
+`avatar_manager` (`avatar/avatar_manager.gd`'s new `nearest_target()`,
+delegating to a pure static `nearest_target_id()` selection rule — nearest
+in-range candidate, honest `""` when nothing qualifies, never a fabricated
+id); (2) fresh-press E-key detection dispatching a deliberately minimal
+`combat:attack` payload (`{targetId, weapon, style}` — no client-asserted
+`baseDamage`/`range`, matching the server's own authoritative-clamp
+contract at `_dispatchGodotCombatAttack`, server.js:68748, which needed
+**zero changes** — it already handled Godot-originated attacks since
+2026-07-25); (3) `combat:hit`/`combat:impact` handling in the existing
+`_on_gateway_event` dispatcher, which these events already reach for free
+(`realtimeEmit` mirrors into Godot gateway rooms — confirmed at
+server.js:9256/9337/9360, no new backend wiring needed at all this slice);
+(4) a pure static `knockback_impulse()` translating a `combat:impact`
+payload's `feel.knockback` (server/lib/combat/impact-feel.js) + a real-or-
+missing `attackerPosition` into a velocity impulse, applied ONLY when
+`local_user_id` (threaded from `world/boot.gd`'s `_on_authenticated`)
+matches the event's `targetId` — i.e. only the LOCAL player's own hits
+apply feel this slice; a bare-Label target-health HUD in `boot.gd`.
+
+**Verified, real-engine, not asserted from code review alone.** Two proof
+layers, same discipline as every other phase this session:
+1. Pure-logic: `tests/test_avatar_manager.gd` (new, 5 checks) pins
+   `nearest_target_id`'s selection rule in isolation (nearest wins, out-of-
+   range excluded, empty-candidates is honest not fabricated, inclusive
+   range boundary, blank-id candidates skipped); `tests/
+   test_character_controller.gd` gained 6 checks pinning `knockback_impulse`
+   (real direction from a real attacker position, honest fixed-direction
+   fallback on a missing/malformed attacker position, zero/negative
+   knockback never fabricates an impulse, same-position edge case doesn't
+   NaN). Full `tests/run_all.gd`: **35/35 suites PASS, 0 fail** — CharacterController
+   38 checks (was 32), AvatarManager 5 checks (new suite) — the per-suite
+   CHECK COUNT was verified non-zero for both, not just the PASS/FAIL word
+   (see Phase M4/S3's own entries above for why that check specifically
+   matters — a real GDScript compile bug earlier this session produced a
+   misleadingly-green `[PASS] (0 checks)`).
+2. Real-engine, headless (`tools/combat_target_probe.gd`, new, run against
+   the real `.godot-runtime` binary): spawns a REAL `AvatarManager`, feeds
+   it a REAL `city:positions`-shaped snapshot for one remote entity 2m
+   away, spawns a REAL `CharacterController` wired to it, and lets several
+   real physics ticks run — no mocked selection logic. Result, verbatim:
+   `target_selected: "target-npc"` (the real AvatarManager-spawned
+   AvatarRig was genuinely found and selected); calling the real
+   `_try_attack()` produced `attack_dispatched: true` with payload
+   `{targetId: "target-npc", weapon: "longsword", style: "attack-light"}`
+   (the "warrior" default archetype's real weapon, from Phase M1's
+   `ARCHETYPE_WEAPON` table — confirming the two features compose
+   correctly); simulating a `combat:hit` event caused the real
+   `target_health_updated` signal to fire with the exact payload values
+   (`health: 88, max_health: 100`); simulating a `combat:impact` event
+   with `attackerPosition: {x:5,y:0,z:0}` and `feel.knockback: 6.0` changed
+   the character's REAL `velocity` from `(0, -1.47, 0)` (falling under
+   gravity — expected, no ground under the probe) to `(-6.0, -1.47, 0)` —
+   exactly the analytically-correct knockback vector (away from the
+   attacker on the X axis, magnitude 6.0, Z/gravity components
+   untouched). This is genuine object mutation from a real event dispatch,
+   not a return-value assertion.
+
+**What this does NOT settle** — honestly out of reach in this sandbox,
+same as every other phase: whether E-key attack input, weapon swing
+timing, and the resulting hitstop/knockback actually FEEL right on a real
+GPU/display (this sandbox has no live rendering target for that judgment
+at all, headless or otherwise); a live two-client round trip against a
+real running server (`combat:attack` actually reaching
+`_dispatchGodotCombatAttack` over a real WebSocket, and the resulting
+`combat:hit`/`combat:impact` broadcast actually arriving back at a second
+connected Godot client) — this slice's real-engine proof stops at
+"a simulated event dispatch correctly mutates local state," not a live
+network round trip, which needs a running `server.js` + two live gateway
+connections this sandbox wasn't set up to exercise this pass; remote-target
+hit-feel (an attacker seeing their OWN hit land on someone else's rig) is
+explicitly deferred — see the `_on_combat_impact` doc comment in
+`character_controller.gd` for why (AvatarRig positions are snapshot-
+interpolated, and a local knockback nudge there would just be overwritten
+by the next incoming sample without real reconciliation logic, which is
+real, separate follow-up work).
+
+## GlbLoader cache made process-shared, not per-instance (2026-08-07, Phase M4)
+
+Not a rendering claim — a consistency/efficiency fix, recorded here anyway
+since every phase this session has updated this file. Read
+`assets/glb_loader.gd` directly against its two real call patterns:
+`scene_bootstrap.gd` avoids per-instance redundancy itself (one `GlbLoader`
+per building ARCHETYPE, fanned out to every pending building of that
+archetype via `_pending_upgrade`), but `avatar_rig.gd` creates a fresh
+`GlbLoader.new()` — and therefore a fresh, empty `_cache` — per AVATAR, for
+both the body and weapon fetch. Since every avatar resolves to the same
+"warrior" archetype today (no per-avatar signal exists yet), N
+simultaneously-visible avatars would each independently download and parse
+the identical multi-MB GLB.
+
+Fix: `_cache` is now `static` (`assets/glb_loader.gd`), shared across every
+instance's process lifetime — safe, since these URLs serve static assets
+that never change at runtime. Verified with a real engine-executed test
+(`tests/test_glb_loader.gd`, new): a URL cached via one `GlbLoader`
+instance is a genuine hit on a completely separate instance, and an
+never-loaded URL is still honestly absent (never a fabricated hit).
+
+**What this does NOT fix, on purpose:** the "thundering herd" case — many
+avatars requesting the SAME not-yet-cached URL in the same tick (e.g.
+joining a world where many players are already present) still fire N
+simultaneous redundant fetches, since the cache only populates once the
+first fetch completes, not at request time. A real fix needs in-flight-
+request tracking + subscriber fan-out (generalizing scene_bootstrap.gd's
+`_pending_upgrade` pattern into `GlbLoader` itself) — a real behavior
+change several call sites depend on, flagged as a named follow-up rather
+than attempted here.
+
+## Real GLB meshes now get the outline pass too — reaches the mesh, subtler than the synthetic-box proof (2026-08-07, Phase S3)
+
+Before touching anything, read `world/scene_bootstrap.gd#_upgrade_one_node`
+directly rather than assuming Phase S1/S2's toon+outline work reached real
+assets. It didn't: a real building GLB is parented as a child of the
+placeholder `MeshInstance3D` whose `material_override` carried the toon/
+outline material — once the placeholder's own `mesh` is set to `null`,
+that material has nothing left to apply to, and the real GLB clone's own
+baked materials (imported straight from the `.glb`) render completely
+untouched, bypassing the shared art style entirely. The same was true for
+avatar bodies and Phase M1's weapon GLBs.
+
+**Fix** — `ArtStyle.apply_outline_to_tree(root, world_id)`: walks a loaded
+GLB's tree and gives every mesh surface the outline `next_pass`, without
+touching albedo/texture — each surface's own active material is
+`.duplicate()`d (never mutating the GLB's own shared/cached resource) and
+the duplicate gets `next_pass` pointed at the world's outline material.
+Wired at the three points a real GLB actually resolves: `scene_bootstrap.gd
+#_upgrade_one_node` (buildings), `avatar_rig.gd#_on_glb_loaded` (bodies),
+`avatar_rig.gd#_on_weapon_glb_loaded` (weapons). Deliberately does NOT
+force the flat toon-ramp material onto real meshes — see this file's Phase
+S3 planning note for why that's separate, bigger, and not attempted here.
+
+**A real GDScript bug was caught by actually running this, not by
+review**: the first version used `n.get_active_material(i)` inside a loop
+typed `var n: Node`, guarded by `if n is MeshInstance3D`. GDScript's static
+analyzer does not narrow a variable's type from an `is` check for
+subsequent method calls — this is a real language quirk, not a typo — so
+the real engine's compiler correctly rejected it (`Parser Error: Cannot
+infer the type of "base" variable`), which cascaded into ALL of `art_style
+.gd` failing to compile, which cascaded into `test_art_style.gd` reporting
+a silent, misleading **`[PASS] ArtStyle (0 checks)`** (a compile failure
+elsewhere left its `run()` never actually executing, and an empty
+failure-list still reads as "pass" to the harness). Fixed with an explicit
+`as MeshInstance3D` cast; the suite is back to 33/33 green, `ArtStyle` now
+76 checks. Flagging the 0-checks failure mode itself: a suite reporting
+"PASS" with zero checks is a `run()` that never ran, not a suite with
+nothing to test — worth grep-ing for `(0 checks)` specifically, not just
+`FAIL`, when trusting this harness's output going forward.
+
+**Real engine, real GLB, real pixels — an honest, more nuanced result than
+Phase S2's box.** `tools/glb_outline_probe.gd` loaded the real
+`tavern.glb` (confirmed: `surfaces_touched: 4`, matching its real surface
+count) with and without the outline pass and screenshotted both, close-up.
+Unlike Phase S2's synthetic box (where the outline was immediately obvious
+at a glance), the effect on this real architectural asset is genuinely
+subtle — a faint darkening along some roofline edges, visible on close
+side-by-side comparison but easy to miss, not the crisp border the box
+showed. This is a real, honestly-observed difference from the earlier
+result, not a weaker rehash of it: `OUTLINE_WIDTH_M = 0.018` (1.8cm) was
+proven to work correctly as an absolute metre value on a ~1.2m box (≈1.5%
+of the object's size); on a multi-metre building it's a much smaller
+fraction of the silhouette, so a thinner, subtler line is the
+mathematically-consistent result of the SAME constant applied to a larger
+object — and `docs/ART_STYLE_GUIDE.md` explicitly locks this as "one
+outline weight for everything... never per-asset," so a flat absolute
+width reading as more subtle at architectural scale may be the intended
+consequence of that rule, not a defect. Recorded here as an open question
+rather than resolved either way: **whether large-scale assets need a
+distinct, still-shared outline treatment (e.g. a screen-space-constant
+outline instead of a world-space one) is a real design call for a human to
+make, not something this pass decided unilaterally.**
+
+Reproduce:
+```
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_GLB_URL=http://127.0.0.1:8998/models/building/tavern.glb \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/glb_outline_probe.gd
+# then compare /tmp/glb_outline_probe_with.png vs _without.png
+```
+
+## Outline + rim light — the last two named ART_STYLE_GUIDE.md pieces, outline VISUALLY confirmed (2026-08-07, Phase S2)
+
+Closes the exact gap this file's own checklist named ("No outline/rim-light
+shader exists for silhouette_color specifically") and the last two pieces
+of the BotW reference `docs/ART_STYLE_GUIDE.md` cites ("rim-lit — rim light
+fakes subsurface").
+
+**Outline**: `ArtStyle.OUTLINE_SHADER` is the standard inverted-hull
+technique — a vertex pass pushes `VERTEX += NORMAL * outline_width`, then
+`cull_front` + `unshaded` render mode leaves only the expanded shell's
+back-faces visible, which poke out past the real mesh's silhouette on every
+edge. Wired via `Material.next_pass` (Godot's own built-in second-pass
+mechanism) directly onto `make_toon_material()`'s output, so `world_id ->
+outline` needs no new call-site changes anywhere — Phase S1's two spawn
+paths (building placeholder boxes, avatar primitive capsules) get real
+outlines automatically, already-shipped code included. Uses the SAME
+`outline_width_m()`/`outline_color()` constants that existed (correct,
+tested) since before this shader did — this pass gave them a shader to
+finally drive.
+
+**Rim light**: a fresnel term (`pow(1 - dot(N,V), RIM_POWER) * RIM_STRENGTH`)
+added to the toon shader's `fragment()` as `EMISSION`, additive on top of
+the existing banded `light()` ramp — never replacing it. Keyed off each
+world's own light-band colour (not a separately-tunable colour that could
+drift from the palette), per two new spec-driven constants
+(`RIM_STRENGTH`/`RIM_POWER`) through the same generated-JSON pipeline as
+everything else in this file.
+
+**Real engine, real pixels — not just property values this time.**
+`tools/outline_shader_probe.gd` rendered the SAME toon-shaded box twice
+(once with the real `next_pass` outline, once with it stripped) under a
+real `Xvfb` + `llvmpipe`/Compatibility-renderer session and saved both
+frames. Looked at both directly: the "with outline" frame shows a crisp,
+unmistakable dark border tracing the box's silhouette; the "without" frame
+has a plain edge with none. Unlike Phase S4's SDFGI (a Forward+/Vulkan-only
+feature that measurably did NOT activate under this sandbox's Compatibility
+render path), an inverted-hull outline is basic geometry+cull-mode
+manipulation with no renderer-tier dependency — and this run proves it:
+**this is the first claim in this whole Godot effort settled by actually
+looking at the rendered pixels, not by property-level engine assertions
+alone.** (My own crude same-probe pixel-count heuristic — counting near-
+black pixels — showed almost no difference between the two frames and
+would have wrongly read as inconclusive; the palette's shadow band was
+already dark enough for a naive luma threshold to miss the outline against
+it. Looking at the actual images caught what the cheap metric didn't.)
+
+Rim light was verified only at the property level this pass (shader
+parameters reach the material correctly, pinned by `tests/test_art_style.gd`)
+— its visual contribution is subtle by design (a thin fresnel highlight,
+not a dominant effect) and reads best on curved geometry under real
+lighting; a dedicated visual check is a smaller, lower-priority follow-up,
+not done here.
+
+Reproduce the pixel-level outline check:
+```
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/outline_shader_probe.gd
+# then open /tmp/outline_probe_with.png vs /tmp/outline_probe_without.png
+```
+
+## Toon material coverage — the real cel shader now actually reaches spawned geometry (2026-08-07, Phase S1)
+
+**A real, significant gap found while starting the graphics push**: `ArtStyle.
+make_toon_material()` (the real, tested, engine-verified toon shader) was
+called in exactly ZERO live spawn paths before this pass — only from test/
+QA-tool scripts. Every actually-spawned mesh in the running client used
+Godot's plain engine-default material or its own baked GLB material:
+`world/scene_bootstrap.gd`'s placeholder building box had no material
+assignment at all, and `avatar/avatar_rig.gd`'s primitive capsule limbs
+(the very first thing any avatar shows before/unless a GLB resolves) were
+the same. This is a big part of why today's earlier browser screenshots
+show flat, unstyled grey/olive shapes rather than the cel-shaded look the
+shader itself has been correct and tested for all along — the shader was
+real, but nothing was pointing a live mesh at it.
+
+Fixed both spawn paths, threading `world_id` the same way every sibling
+controller already does (`SceneBootstrap` gained the field; `boot.gd` now
+sets `_bootstrap.world_id = world_id` alongside its existing `_aerial_
+traffic.world_id`/`_avatar_manager.world_id` wiring). Both degrade
+honestly: `make_toon_material` returning null (spec unavailable) leaves the
+mesh on Godot's default rather than fabricating a color.
+
+**Real-engine evidence, not asserted:** `tools/toon_material_coverage_probe.gd`
+spawns a real `SceneBootstrap` node (via `apply_scene`) and a real
+`AvatarRig` (primitive path), then reads the actual `MeshInstance3D.
+material_override` back off each. Both are confirmed to be the real
+`ShaderMaterial` with the exact same `Shader` resource `ArtStyle.
+toon_shader()` returns (object identity, not a look-alike), and the box's
+`band_shadow` shader parameter matches `cyber`'s real palette exactly —
+proving the SPAWN PATH reaches the correct per-world material, not just
+that the accessor function works in isolation (already pinned separately
+by `tests/test_art_style.gd`).
+
+**Explicitly NOT done this pass, and why:** the ground plane
+(`world/boot.gd`) was deliberately left off this fix — it already carries a
+real terrain photo texture (`assets/terrain_texture_loader.gd`, a separate
+2026-08-07 addition) via `StandardMaterial3D.albedo_texture`, a property
+`ShaderMaterial` doesn't have. Swapping it to the toon material would
+silently break that texture rather than compose with it; giving the toon
+shader a texture-sampling uniform is real, separate shader work, not a
+one-line material swap — flagged, not silently skipped. Real GLB meshes
+(building archetypes, hero meshes) also keep their own baked materials
+untouched this pass — overriding a multi-surface imported mesh's materials
+wholesale is a bigger, higher-risk change than the two placeholder paths
+fixed here and deserves its own visual verification pass.
+
+Reproduce:
+```
+.godot-runtime/bin/godot --headless --path world-lens-godot --script tools/toon_material_coverage_probe.gd
+```
+(`--headless` alone is sufficient here, no `xvfb-run`/rendering driver
+needed — this probe reads material/shader *identity*, not pixels, unlike
+the rendered-pixel probes elsewhere in this file.)
+
+## Real-time GI + post-processing dials — wired and property-verified; visible-difference claim stays in the human-eyes queue (2026-08-07, Phase S4)
+
+Context: the user asked for the graphics level of a photoreal reference
+screenshot (Escape-from-Tarkov-tier). Checked `docs/ART_STYLE_GUIDE.md`
+directly — Concordia's art direction is a **locked, deliberate** choice
+(BotW lighting + Palworld forms, toon ramp) picked specifically to avoid
+that exact photoreal comparison. Put to the user explicitly; they chose to
+push the stylized direction further rather than pivot to PBR realism. This
+entry is that push: real-time GI + post-processing composited ON TOP of the
+existing toon material, not a fork away from it.
+
+`concord-frontend/lib/world-lens/concordia-theme.ts`'s `ART_STYLE` block
+gained 6 new numeric constants (`SDFGI_ENABLED`, `GLOW_ENABLED`,
+`GLOW_STRENGTH`, `SSAO_ENABLED`, `SSAO_INTENSITY`,
+`COLOR_ADJUSTMENT_ENABLED`) through the SAME generated-spec pipeline
+(`scripts/gen-art-style-spec.mjs` → `art_style.json`) the four locked
+constants already use — never hand-typed into the GDScript side.
+`world/art_style.gd#make_environment()` now sets the corresponding real
+Godot `Environment` properties (`sdfgi_enabled`, `glow_enabled`/
+`glow_strength`, `ssao_enabled`/`ssao_intensity`,
+`adjustment_enabled`/`adjustment_saturation`). The color-adjustment pass
+deliberately reuses `saturationForWorld()` — the SAME per-world dial every
+other pass already reads — rather than introducing a second, independently
+tunable saturation number.
+
+**Machine-verified, real engine, not asserted:** `tests/test_art_style.gd`
+now constructs a REAL `Environment` via `make_environment()` under the real
+Godot 4.4 test runner and reads its actual properties back — `sdfgi_enabled
+== true`, `glow_strength == 0.6`, `adjustment_saturation` matching each
+world's real `WORLD_SATURATION` entry (0.62 for crime, 1.35 for cyber),
+etc. This is stronger than a unit test of the accessor functions alone: it
+proves the values actually reach a real engine resource, not just that the
+JSON round-trips.
+
+**What remains genuinely unsettled, and why:** whether SDFGI/glow/SSAO
+produce a VISIBLE pixel difference could not be determined in this
+environment. A dedicated probe (`tools/env_gi_probe.gd`) rendered the same
+toon-shaded test scene twice — once with the new dials on, once forced
+off — and measured real framebuffer luma: **0.8897 (on) vs. 0.8907 (off), a
+~0.1% difference**, i.e. no measurable effect. This is an honest negative
+result, not a bug being hidden: `project.godot` configures
+`renderer/rendering_method="forward_plus"` for desktop, but Godot 4's
+Forward+/Mobile renderers require Vulkan — `--rendering-driver opengl3`
+(the flag every headless verification tool in this repo uses, including
+this one) forces the **Compatibility** renderer regardless of that project
+setting, and SDFGI specifically is a Forward+-only feature. The near-zero
+delta is consistent with GI genuinely not activating under Compatibility,
+not with the wiring being broken (which the Environment-property tests
+above already rule out independently). This is the same class of gap
+VISUAL_QA.md's own "why software rendering still cannot settle most of this
+file" section already documents for other GPU-only claims — it needs a real
+Vulkan-capable GPU session, not more code.
+
+Reproduce the property verification (real engine, works today):
+```
+.godot-runtime/bin/godot --headless --path world-lens-godot --script tests/run_all.gd
+```
+Reproduce the inconclusive visible-difference probe (documents the limit,
+not a pass/fail gate):
+```
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/env_gi_probe.gd
+```
+
+## Weapon-in-hand — real GLB weapons now attach to real avatars (2026-08-07, Phase M1)
+
+`assets/asset_resolver.gd` gained `ARCHETYPE_WEAPON` (a small, freshly-authored
+table — NOT a port; the Three.js client's weapon selection keys off a
+different axis, `character-schema.ts`'s body/faction-style `carryDefault`,
+which has no existing mapping onto the 7 occupation-flavoured hero
+archetypes this file resolves bodies against) mapping warrior→longsword,
+guard→spear, hunter→bow, mystic→staff, legend→greatsword (the one place the
+two axes do overlap — `enhanced-avatar-builder.ts`'s `bodyArchetype ===
+'legend' ? 'greatsword' : 'longsword'`), scholar/trader→none (honest: no
+real weapon GLB exists for tome/satchel carry items, so "no weapon" is the
+correct answer, not a fabricated blade). `avatar/avatar_rig.gd` resolves
+this independently of the body GLB (a weaponless archetype is a real
+answer, not a failure) and attaches the result to a `BoneAttachment3D` on
+the real skeleton's hand bone when found, falling back to the primitive
+placeholder's `rightForearm` socket otherwise — re-homing an already-
+attached weapon if the body GLB resolves after the weapon does (the two
+fetches race independently from `_ready()`).
+
+**The hand-bone name was found by running the real engine, not guessed.**
+A new `tools/avatar_bone_probe.gd` loaded `_archetype_warrior.glb` under a
+real Godot 4.4 + Xvfb/llvmpipe session and dumped its actual skeleton: 80
+real bones, Microsoft Rocketbox/3ds-Max **Biped** naming (`"Bip01 R Hand"`,
+`"Bip01 R Forearm"`, ...) — **not** Mixamo naming, despite this file's own
+prior "Mixamo humanoid" shorthand for these assets. Using a guessed
+Mixamo-style name (`"mixamorig:RightHand"`) here would have silently missed
+every real skeleton and fallen through to the primitive socket on every
+avatar — an honest failure, but a needless one the probe caught for free.
+
+**Real-engine evidence for the attach itself, not just the bone name:** a
+new `tools/weapon_attach_probe.gd` instantiates a real `AvatarRig` (real
+HTTP fetch of a real GLB via the real `AssetResolver`/`GlbLoader` pair, no
+mocks) and reports what actually happened after both async fetches settle.
+Four archetypes checked live, against a real static file server over
+`concord-frontend/public/`:
+
+| archetype | body resolved | weapon attached | weapon parent | mesh instances |
+|---|---|---|---|---|
+| warrior | glb | yes | `BoneAttachment3D` | 1 |
+| scholar | glb | **no** (honest — no table entry) | — | 0 |
+| legend | glb | yes | `Node3D` (primitive socket) | 1 |
+| mystic | glb | yes | `BoneAttachment3D` | 1 |
+
+The `legend` row is a real, honestly-observed finding, not a bug: that
+archetype's GLB resolved to a body mesh whose skeleton does NOT contain
+`"Bip01 R Hand"` (a different/bespoke rig from the other archetypes — the
+CREDITS.md-documented "first-hero" meshes are sourced separately from the
+shared archetype set), so the dual-fallback correctly degraded to the
+primitive's forearm socket instead of silently failing to attach at all.
+This is exactly the value of verifying against the real per-archetype
+assets instead of assuming they share one rig.
+
+**What this does NOT settle:** whether the attached weapon's *position/
+orientation* on the hand looks right at a glance (no offset/rotation tuning
+has been done — it rides the bone's raw transform), and the full live path
+(`city:positions` → `AvatarManager._spawn_rig` → this exact code, inside a
+real browser Web export with a second connected user) — same queued item as
+the "Avatars" section above, now also covering weapons.
+
+Reproduce:
+```
+node scripts/fetch-godot.mjs   # or confirm .godot-runtime/bin/godot already present
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_ASSET_BASE_URL=http://127.0.0.1:8998 CONCORD_WEAPON_PROBE_ARCHETYPE=warrior \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/weapon_attach_probe.gd
+```
+
+## Vegetation/creature meshes — genuinely no placement data exists yet (2026-08-07, scope note)
+
+**Superseded 2026-08-08 — both gaps this note identifies are now closed.**
+Creatures: see "Creature spawner" (Phase M3) above — a real live macro
+round trip, zero backend changes needed. Vegetation: see "Vegetation
+scatter" (Phase M2) above — a real new backend surface
+(`server/lib/vegetation-scatter.js`), district-bounded and deterministic.
+Kept below for the historical record of what was actually checked (not
+assumed) before either phase started.
+
+Before starting the "meshes" pass, checked directly (not assumed) whether a
+real placement-data feed exists for the vegetation (6 GLBs) and creature (4
+GLBs) libraries already sitting in `concord-frontend/public/models/` unused
+by Godot. Neither does, confirmed by reading the actual code, not a doc:
+- `server/lib/scene-export.js#exportScene`'s full return shape is
+  `{nodes (buildings only), bounds, districts, plaza, landingPads}` — no
+  vegetation/prop array. `content/world/concordia-hub/city-layout.json`'s
+  top-level keys are `{worldId, format, conceptsByDistrict, buildings,
+  landingPads}` — no vegetation field either.
+- `server/lib/city-presence.js`'s `city:npcs` broadcast — which would have
+  been the natural live-position feed for creatures — was **deliberately
+  retired server-side** (`DET-C batch 8 investigation, 2026-07-23`, that
+  file's own comment); `world/boot.gd`'s own header explicitly documents
+  why it isn't subscribed to. No replacement fauna/creature broadcast
+  exists (`realtimeEmit("fauna...`/`realtimeEmit("creature...` — zero
+  matches anywhere in `server/`).
+
+Building an asset-aware `PropInstancer` with nothing real to feed it would
+produce infrastructure with no live path to verify end-to-end, and inventing
+placement coordinates client-side would be exactly the fabrication this
+project's honesty invariant exists to prevent. Left for a follow-up pass:
+vegetation is a small, legitimate CURATION addition (author a real
+`vegetation` array in `city-layout.json`, mirroring the existing
+`landingPads` pattern, then wire it into `exportScene` the same additive
+way `plaza`/`landingPads` already are); creatures need a genuine new
+backend surface (a live position broadcast for the existing server-side
+fauna simulation) — bigger, deliberately not started without being called
+out explicitly first.
+
 **Updated 2026-07-25 — this project HAS now been run in a real Godot engine.**
 The previous header ("has never been opened in a real Godot editor or renderer",
 "the agent proxy blocks the Godot headless binary download") is **superseded**: a
@@ -45,6 +2380,264 @@ This file remains the queue of every claim that requires **eyes on a real
 machine**. **No document in this repo — including `docs/GODOT_INTEGRATION.md` —
 makes any visual-quality claim. All such claims live only here, unverified, until
 checked off below.**
+
+## Browser (Web export) — real client, real server, zero errors (2026-08-07)
+
+**The Godot Web export now loads and runs end-to-end in a real headless
+Chromium browser, against a real Concord server, with zero console errors.**
+Not the headless-native rasterizer used elsewhere in this file — a real
+`chromium.launch()` (Playwright, the same browser this repo's own e2e suite
+uses), loading `/godot-client/index.html` from a real `next dev` server, with
+`CONCORD_GATEWAY_URL`/`CONCORD_GODOT_AUTH_TOKEN`/`CONCORD_WORLD_ID` passed as
+query params on a real registered user against a real spawned `server.js`
+(fresh migrated DB). Console log for the final run: engine boot, WebGL init,
+`[boot] gateway socket open`, `[boot] authenticated as <uid>`, `[boot] joined
+room world:concordia-hub` — **and nothing else**. No CSP violation, no fetch
+error, no GLTF parse error. This is a real milestone, not a synthetic one:
+getting here required finding and fixing four separate, real defects, each
+found only by actually loading the page in a browser rather than reasoning
+about it:
+
+1. **The app's own auth middleware 307'd the Godot export to `/login`.**
+   `concord-frontend/middleware.ts`'s `STATIC_ASSET_RE` (the extension-based
+   static-file allowlist) doesn't cover `.html`/`.js`/`.wasm` — too broad a
+   carve-out for the app generally — so every file in the export, including
+   `index.html` itself, was gated behind a session cookie. Fixed by adding
+   `/godot-client/` to `PUBLIC_PREFIXES` (same pattern as the pre-existing
+   `/meshes/`, `/textures/` entries). Pinned by `concord-frontend/tests/
+   middleware.test.ts`.
+2. **The app's `strict-dynamic` CSP refused Godot's own un-nonced `<script>`
+   tags outright**, and separately refused `JavaScriptBridge.eval` (the
+   first-attempt way to read `window.location.search` for runtime config)
+   because the CSP has `wasm-unsafe-eval` but not the much broader
+   `unsafe-eval`. Fixed on two fronts: `index.html` is no longer a static
+   `public/` file at all — `scripts/export-godot-web.mjs` now exports into a
+   gitignored staging dir and `app/godot-client/index.html/route.ts` serves
+   it, injecting the current request's real CSP nonce into both `<script>`
+   tags at request time. Runtime config (gateway URL, auth token, world id,
+   frontend asset origin) is passed a completely different way — server-side,
+   spliced into the exported `GODOT_CONFIG.args` array as `-- KEY=VALUE`
+   entries, read on the Godot side via `OS.get_cmdline_user_args()`
+   (`world/boot.gd#parse_key_value_args`) — needing no CSP relaxation at all,
+   since Godot's own bootstrap already passes that array to the WASM
+   module's argv unconditionally. Pinned by `concord-frontend/tests/
+   godot-client-route.test.ts` and `world-lens-godot/tests/
+   test_boot_runtime_config.gd`.
+3. **The app's CSP `connect-src` (`'self' https: wss: ws:`) refused a
+   cross-origin plain-http fetch**, and separately Godot's own
+   `HTTPRequest._parse_url` rejects a schemeless/relative URL outright even
+   on Web (`"Error parsing URL: '/models/building/tavern.glb'"`) — so
+   neither "point at a different host" nor "use a relative URL" worked in
+   isolation. Fixed by having the SAME route handler default
+   `CONCORD_FRONTEND_URL` to the request's own real origin whenever the
+   caller didn't specify one — `resolveRequestOrigin()` reads
+   `X-Forwarded-Host`/`Host` (and `X-Forwarded-Proto`), NOT
+   `request.nextUrl.origin`, because that resolved to `"localhost"` under
+   `next dev`/Turbopack even when the browser was actually on `127.0.0.1` —
+   a real, measured mismatch (verified with an explicit `Host` header on the
+   request, which nextUrl.origin still ignored) that is a different CSP
+   origin and so was refused by `'self'` anyway. This also fixed a genuine,
+   separate correctness bug in `scene_bootstrap.gd`: the original failure
+   handler erased the "attempted" sentinel on every failure, so every
+   subsequently-spawned building of the same archetype re-triggered a brand
+   new fetch — a measured retry storm (hundreds of attempts loading
+   concordia-hub). `_on_building_glb_failed` now sets a permanent `"failed"`
+   sentinel instead, so a failed archetype is attempted exactly once per
+   session.
+4. **Godot's gzip response decoder failed mid-stream on Next.js's
+   dev-server-compressed responses** (`"Condition 'err != 0 && err != 1' is
+   true"` in `core/io/stream_peer_gzip.cpp`), so even a correctly-addressed,
+   CSP-clean fetch still failed. Fixed by setting `HTTPRequest.accept_gzip =
+   false` in `assets/glb_loader.gd` — trades a larger uncompressed transfer
+   for one that actually completes; for a multi-MB GLB fetched once and
+   cached, that trade is a clear win over silently never loading.
+
+**What this does NOT settle:** whether the resulting frame, once decoded,
+*looks* right at a glance. The screenshot from this exact browser run
+predates the camera-framing fix below (the ground plane dominated the wide
+shot at the time); that specific defect is now fixed and verified — see
+the "Camera framing" entry in the checklist below — but this section
+itself is about the pipeline actually working end-to-end in a real browser
+against a real server, not a claim about visual polish generally.
+
+Reproduce (see `scripts/export-godot-web.mjs` for the export step):
+```
+node scripts/export-godot-web.mjs   # exports into concord-frontend/public/godot-client/ + .godot-web-staging/
+cd concord-frontend && npm run dev  # or npm run build && npm start
+# then load, in a real browser:
+#   http://<host>/godot-client/index.html?CONCORD_GATEWAY_URL=ws://<host>:5050/godot-ws&CONCORD_GODOT_AUTH_TOKEN=<jwt>&CONCORD_WORLD_ID=concordia-hub
+```
+
+## Avatars — remote/spectated players now resolve a real humanoid GLB (2026-08-07)
+
+Before this pass, every remote player puppet (`avatar/avatar_manager.gd`,
+driven from `city:positions`) rendered as `avatar_rig.gd`'s honest capsule
+placeholder, permanently — even though `AvatarRig`'s GLB-resolution path
+(`assets/asset_resolver.gd` + `assets/glb_loader.gd`) was fully built. Two
+real bugs, found by tracing the actual resolve path rather than assuming it
+worked because the code existed:
+
+1. **`AssetResolver.fallback_url`'s static convention (`{base}/models/
+   {kind}/{id}.glb`) has no matching files for `kind="player"`/`"npc"`** —
+   only `kind="building"` has real files on disk. The Three.js client
+   already solved this with a real, shipped convention
+   (`concord-frontend/lib/concordia/hero-mesh-registry.ts`'s
+   `ARCHETYPE_FALLBACK_PATH` + its per-world "archetype-world" variant) —
+   `fallback_url` now special-cases `player`/`npc` onto that SAME
+   convention (`/meshes/heroes/_archetype_warrior[__<world_id>].glb`)
+   instead of inventing a new one. There is no per-user bespoke rig and the
+   `city:positions` wire payload carries no occupation signal to pick a
+   different archetype from, so every remote/spectated player resolves to
+   the shared "warrior" archetype — the same honest default the Three.js
+   client itself falls back to absent a more specific signal — with a
+   preference for the connected world's palette variant when one exists (6
+   of 7 archetypes have one today; a 404 on a missing variant is handled
+   exactly like any other GLB load failure, i.e. the primitive placeholder
+   stays up).
+2. **`world/boot.gd` pointed `AvatarManager.base_url` at the BACKEND
+   gateway origin** (`http://127.0.0.1:5050`), not the FRONTEND static
+   origin that actually serves `/meshes/heroes/*.glb` — the same mistake
+   `SceneBootstrap`'s building-mesh wiring had already correctly avoided by
+   using `frontend_asset_base_url`. This bug predates and is independent of
+   bug 1: even with a correct fallback URL, every resolve would have 404'd
+   against the wrong server. Fixed to reuse the same
+   `frontend_asset_base_url` value; `world_id` is now also threaded
+   `boot.gd` → `AvatarManager` → `AvatarRig` → `AssetResolver` so the
+   per-world variant preference above actually has a world to prefer.
+
+**Real-engine evidence, not assumed:** `tools/glb_load_probe.gd` (the same
+tool used to verify the building GLBs) was pointed at the exact file this
+new fallback path resolves to for `concordia-hub`
+(`_archetype_warrior__concordia-hub.glb` is the per-world variant; the
+screenshot below used the universal `_archetype_warrior.glb`, byte-identical
+code path) served over plain HTTP, run under a real `Xvfb` + `llvmpipe`
+software GL context: `{"ok":true,"mesh_instance_count":1,
+"total_vertex_count":4288,...}` — a real, correctly-textured Mixamo humanoid
+(denim shirt/jeans, boots, cap), not a garbled or empty mesh. Screenshot
+saved to `/tmp/hero-mesh-probe.png` at verification time (not committed —
+a build artifact, not source; regenerate with the command below).
+
+Reproduce:
+```
+python3 -m http.server 8998 --bind 127.0.0.1 &   # from concord-frontend/public/
+CONCORD_GLB_URL=http://127.0.0.1:8998/meshes/heroes/_archetype_warrior.glb \
+CONCORD_GLB_PROBE_OUT=/tmp/hero-mesh-probe.png \
+xvfb-run -a -s "-screen 0 1280x720x24" \
+  .godot-runtime/bin/godot --path world-lens-godot \
+  --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/glb_load_probe.gd
+```
+
+**What this does NOT settle:** this proves the GLB itself loads and
+renders correctly through the exact `GlbLoader`/`ArtStyle` path the live
+client uses — it does NOT prove the full live path (a real
+`city:positions` snapshot → `AvatarManager._spawn_rig` →
+`AvatarRig._try_resolve_glb` → this exact URL, inside a real browser Web
+export, with a second connected user actually moving) end-to-end; that
+needs two simultaneous real sessions and is still queued. Pure-logic
+coverage for the new `fallback_url` convention itself is real and
+committed: `tests/test_asset_resolver.gd` (5 checks).
+
+## Player physics, collision, and terrain (2026-08-07)
+
+Three previously-honest gaps closed in one pass, each verified against a
+real running server, not asserted: real ground collision + per-building
+collision (a real `CharacterController` would previously have fallen
+through the world forever — `world/boot.gd`'s own prior class doc named
+this as the exact reason no local player had ever been spawned), a real
+tiled grass texture on the ground plane (previously a flat placeholder
+color), and the local player itself — a real physics body, spawned at a
+real measured position, with a real humanoid visual, camera-followed.
+
+**Collision.** `world/scene_bootstrap.gd` gained `enable_collision` (off
+by default — every existing headless/offline test that spawns synthetic
+nodes is unaffected) — when on, each spawned building gets a sibling
+`StaticBody3D`/`CollisionShape3D` at the IDENTICAL transform as its visual
+`MeshInstance3D`, built the same "unit box + scaled transform" way the
+visual box already is. Deliberately a SIBLING, not a reparenting of the
+visual node: `_upgrade_one_node`'s real-mesh-upgrade math reads
+`mi.transform.basis.get_scale()` directly, so moving that scaled basis
+onto a collision-body ancestor would have silently broken it — this was
+checked before writing the code, not discovered by breaking it. `world/
+boot.gd`'s ground plane gained a matching `StaticBody3D` + `BoxShape3D`
+sized to its visual `PlaneMesh` exactly. Pure-logic + engine-executed
+tests: `tests/test_scene_bootstrap.gd` (+11 checks — disabled by default,
+one body per node at the matching transform with a real `BoxShape3D`, the
+visual node's own transform provably untouched, and bodies cleared on
+scene re-apply).
+
+**Terrain texture.** New `assets/terrain_texture_loader.gd` (mirrors
+`assets/glb_loader.gd`'s exact HTTPRequest shape, including the same real
+`accept_gzip = false` fix that file's own header documents) fetches a real
+grass photo (`concord-frontend/public/models/terrain/grass.jpg`) and tiles
+it across the ground plane's material; the solid placeholder color stays
+as the honest fallback on any failure, never a fabricated or broken
+texture. No test file (network-dependent, same as `glb_loader.gd` itself —
+verified live only, see below).
+
+**Local player.** `world/boot.gd#_spawn_local_player_if_needed` spawns a
+real `player/character_controller.gd` (already-existing, already-tested
+kinematic movement code — this unit is the first thing that ever actually
+mounted it in the live client) exactly once, at a real measured position
+(the same robust camera-framing cluster center this session's earlier fix
+computes — never a guessed coordinate), dropped from `SPAWN_DROP_HEIGHT_M`
+= 80m above it so real gravity integration + `move_and_slide()` settle it
+onto whatever real collision is actually there. Mounts a real `AvatarRig`
+child for its visual (`avatar/avatar_rig.gd`'s own class doc names this as
+its intended local-player mount point) — the SAME real Mixamo humanoid
+resolve chain this file's "Avatars" section above already verified, not a
+new asset path. `session/camera_rig.gd#set_follow_target` hands the shared
+camera to it, so `session/session_manager.gd`'s existing WORLD-mode
+FOLLOW behavior (previously dead code — no `CharacterController` had ever
+existed to follow) now genuinely activates.
+
+**Real-engine evidence.** New `tools/local_player_probe.gd` loads the
+REAL `boot.tscn` against a real running server + real registered user
+(same pattern as `tools/live_probe.gd`), finds the spawned
+`CharacterController`, and samples its `global_position.y` over many real
+physics frames. First run exposed a real timing bug IN THE PROBE, not the
+physics: a 120-frame sample window starting immediately at spawn measured
+a still-actively-falling body (`first_sampled_y: 112.99`,
+`last_sampled_y: 88.62`, `settled: false`) and correctly reported it as
+unsettled — physically correct free-fall kinematics (roughly matching
+g=9.81 from a ~113m spawn height), just sampled before it had time to
+land. Fixed by waiting `FALL_SETTLE_DELAY_FRAMES` (400, ~6.7s) after spawn
+before sampling; the corrected run shows the body decelerating into a
+dead stop — `tail_max_drift_m: 0.0` across the final 12 samples, i.e.
+genuinely, perfectly stationary, not floating or still falling — resting
+at `y≈37.4`, well above true ground (the flat plane's top surface is
+y=0). This is an honest, undetermined-but-not-fabricated outcome: either
+the character landed on a building's collision box near the spawn point
+(explicitly anticipated and documented in `_spawn_local_player_if_needed`'s
+own comment before this run — "a real, if less common, honest outcome is
+landing on a roof at the city center, not a bug") or concordia-hub's
+authored building Y-coordinates aren't uniformly ground-level to begin
+with; this probe doesn't yet distinguish the two and neither is asserted
+as the answer. What IS rigorously established, independent of which: the
+body hit something solid and stayed there — it does not fall through the
+world forever, which is the actual, previously-open claim this exists to
+verify. Screenshot corroborates: the real Mixamo humanoid stands on the
+real tiled grass texture with real building placeholders/GLBs visible at
+a normal ground-level vantage, and the camera is visibly in third-person
+FOLLOW framing (close behind-and-above the character), not the aerial
+establishing shot the "Camera framing" checklist entry above describes.
+
+Reproduce:
+```
+CONCORD_GATEWAY_URL=ws://<host>:5050/godot-ws \
+CONCORD_GODOT_AUTH_TOKEN=<real JWT> CONCORD_WORLD_ID=concordia-hub \
+CONCORD_FRONTEND_URL=http://<frontend-static-host> \
+CONCORD_LOCAL_PLAYER_PROBE_OUT=/tmp/out.png CONCORD_LOCAL_PLAYER_PROBE_FRAMES=1000 \
+xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+  --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+  --script res://tools/local_player_probe.gd
+```
+
+**What this does NOT settle:** the exact resting-surface question above;
+movement FEEL (WASD/jump/sprint) — the probe never sends input, only
+observes the drop-and-settle; and building collision boxes' correctness
+for NON-axis-aligned or unusually-shaped footprints beyond what the pure
+tests already pin geometrically.
 
 ## How to run the QA pass
 
@@ -300,17 +2893,101 @@ Read these limits as part of the claims above, not as footnotes to them.
         variant).
 
 ### Networking
-- [ ] `GatewayClient` connects to a live `/godot-ws` and receives `hello` after `auth`.
+- [x] **`GatewayClient` connects to a live `/godot-ws` and receives `hello`
+      after `auth` — 2026-08-07, real end-to-end run.** A real `server.js`
+      was booted (fresh SQLite DB, real migrations, real content-seeder — NOT
+      a fixture), a real user registered via `/api/auth/register`, and a real
+      JWT obtained. The Godot **project** (not headless — real X11/opengl3
+      via Xvfb, same rasterizer the pixel checks above use) was launched
+      against it with `CONCORD_GATEWAY_URL`/`CONCORD_GODOT_AUTH_TOKEN`/
+      `CONCORD_WORLD_ID` pointed at the live server. Console proof (from the
+      engine's own stdout, not a mocked transport):
+      ```
+      [boot] gateway socket open
+      [boot] authenticated as <real-user-uuid>
+      [boot] joined room world:concordia-hub
+      ```
+      This is the first time this client has ever spoken to a real server —
+      every prior claim in this file about the gateway was necessarily
+      code-inspection-only.
 - [ ] Reconnect/backoff behaves sanely after a server restart (1s→30s cap, jitter).
-- [ ] `room:join world:<id>` succeeds and world events arrive in the room.
+- [x] **`room:join world:<id>` succeeds — same run as above** (`joined room
+      world:concordia-hub`, real room echo from the real server, not asserted
+      from source).
 - [ ] Malformed / oversized inbound frames do not crash the client.
 
 ### Scene rendering
-- [ ] `scene:request` → placeholder BoxMesh geometry appears. **Half done:** the
-      RENDER half is machine-verified above (a `concord-scene/v1` payload handed
-      to `apply_scene` really does draw one region per node). What is still
-      unverified is the WIRE half — a real `scene:request` to a live gateway
-      returning a real `scene:data` frame. The gateway is not mounted yet.
+- [x] **`scene:request` → real BoxMesh geometry appears — WIRE half now
+      closed, 2026-08-07.** The RENDER half was already machine-verified (a
+      `concord-scene/v1` fixture payload draws the right region count). This
+      closes the WIRE half this file had flagged as the actual gap: the same
+      live run above triggers `boot.gd`'s real `_on_authenticated` →
+      `scene:request` → server's real `exportScene()` (reads the live
+      `world_buildings` SQL table, not a fixture) → real `scene:data` →
+      `SceneBootstrap.apply_scene()`. Verified **programmatically, not by
+      eye**: `world-lens-godot/tools/live_probe.gd` (new — a one-off live-server
+      probe, distinct from `tools/visual_probe.gd`'s synthetic-fixture harness)
+      walks the real scene tree after the round trip and counts
+      `SceneBootstrap`'s spawned children. Result:
+      `spawned_children: 62`, which is **exactly** the real, independently-
+      queried count of `concordia-hub` rows in `world_buildings` — city hall,
+      library, market, observatory, forge, courthouse, and 56 more, all
+      authored content, not synthetic. Reproduce (needs a running server +
+      real JWT + Xvfb):
+      ```bash
+      CONCORD_GATEWAY_URL=ws://127.0.0.1:5050/godot-ws \
+      CONCORD_GODOT_AUTH_TOKEN=<real JWT> CONCORD_WORLD_ID=concordia-hub \
+      CONCORD_LIVE_PROBE_OUT=/tmp/scene.png CONCORD_LIVE_PROBE_FRAMES=360 \
+      xvfb-run -a -s "-screen 0 1280x720x24" .godot-runtime/bin/godot \
+        --path world-lens-godot --display-driver x11 --rendering-driver opengl3 \
+        --script res://tools/live_probe.gd
+      ```
+      **Same run also found and fixed a real gap**, not just tested one: the
+      live boot path never applied `ArtStyle.make_environment`/`make_sun` —
+      only the synthetic `visual_probe.gd` harness did. So a real client
+      session had no sky, no sun, and every spawned building rendered as a
+      flat black silhouette regardless of `world_id`. Wired
+      `boot.gd#_ready()` to call the same `ArtStyle` functions
+      `visual_probe.gd` already proved correct (verbatim reuse, no new
+      shading logic) — confirmed by re-running the exact same live probe
+      before/after: `spawned_children` unchanged at 62 (the fix doesn't touch
+      what spawns), but the frame goes from a flat grey/black two-blob image
+      to a real lit sunset sky over toon-shaded buildings.
+      **Camera framing — closed, same pass.** The gap this section
+      previously described (default camera stuck at the scene origin, no
+      framing logic) is fixed: `SceneBootstrap.get_bounds_center()`/
+      `get_bounds_radius()` (new — mirrors
+      `FeaSceneBuilder.get_bounds_center()`'s exact honest-empty-fallback
+      posture) give the real spatial extent of whatever actually spawned;
+      `CameraRig` gained `set_orbit_distance`/`set_orbit_pitch`/
+      `set_orbit_yaw` (new public setters — the rig previously only exposed
+      `set_orbit_focus`) and its `FOLLOW`-with-no-target branch (there is no
+      player character to follow yet — see the C14/M1 sections below) now
+      falls back to the SAME `orbit_transform` math `ORBIT` mode uses,
+      framing whatever focus/distance/pitch/yaw `boot.gd` set from the real
+      spawned bounds, instead of freezing at a meaningless origin transform.
+      Verified against the live server (`tools/live_probe.gd`, extended to
+      also report camera position + measured bounds): concordia-hub's real
+      62 buildings — arranged in a real authored ring-city layout, plus a
+      real outlying district ~1000m away — are now clearly visible as
+      individually-distinguishable, correctly toon-shaded boxes in an aerial
+      three-quarter view, not 1-2 shapes near the origin. Two of the four
+      dials (focus, pitch-vs-shape reasoning) are derived/reasoned; the
+      distance multiplier (0.3) and the three-quarter yaw convention are
+      empirically tested defaults, not closed-form fits — a naive
+      `radius / tan(halfFov)` projection predicted a ~4x larger multiplier
+      than what actually filled the frame when run and screenshotted, which
+      is exactly why this was verified against real rendered pixels rather
+      than trusted from the formula. **Superseded, 2026-08-07 — see "Player
+      physics, collision, and terrain" below**: a real ground plane (now
+      textured, not floating-void), real per-building collision, and a
+      real local-player `CharacterController` that the camera now hands
+      off to via `set_follow_target` all now exist and are verified
+      against a live server. This fallback (the orbit-establishing-shot
+      math) is still real code and still the correct behavior for the
+      brief window before the local player has spawned, or for
+      SPECTATE-mode viewing — it just isn't the ONLY camera behavior
+      anymore.
 - [ ] Placeholder boxes render at the **correct position / rotation / scale**
       versus the Three.js client for the same world (side-by-side). *(The Godot
       side's transform mapping is now verified against the spec in absolute
@@ -328,10 +3005,189 @@ Read these limits as part of the claims above, not as footnotes to them.
       geometry)** — machine-verified: zero drawn regions.
 
 ### Assets
-- [ ] `GlbLoader` downloads and displays a real `.glb` correctly.
-- [ ] `AssetResolver` resolve-endpoint path returns a usable URL; static fallback
-      404s honestly (no fabricated asset).
+- [x] **`GlbLoader` downloads and displays a real `.glb` correctly —
+      2026-08-07, corrected same day.** This was the one item flagged as
+      genuinely never-exercised. First pass tested
+      `sovereign_first_refusal.glb` (61KB) purely because it was the
+      smallest/fastest file to fetch, without checking what it actually
+      depicted — it turned out to be a small narrative/lore-artifact prop
+      (842 verts, a disconnected-reading stylized humanoid), not
+      representative of Concord's real playable-character art, and was
+      called out as such. Re-run against the correct asset class per
+      `concord-frontend/public/meshes/heroes/README.md`:
+      `_archetype_warrior.glb` (6.9MB, one of 7 real Mixamo-sourced
+      archetype meshes covering warrior/guard/scholar/mystic/hunter/trader/
+      legend — see `CREDITS.md`). Served over plain HTTP, loaded through
+      the same real `GlbLoader` + `tools/glb_load_probe.gd` (real X11/
+      opengl3 rasterizer via Xvfb, no synthetic fixture, no mocked
+      HTTPRequest). Result, verified programmatically:
+      `mesh_instance_count: 1`, `total_vertex_count: 4288`, `child_count: 1`.
+      The rendered screenshot shows a properly assembled, textured, rigged
+      humanoid — hard hat, work shirt, jeans, boots, correct proportions,
+      standing in the T-pose GLTF rest pose (no animation clip is playing
+      in this probe, so T-pose is expected and correct, not a defect).
+      This is the representative result for the loader mechanism.
+      Reproduce: serve `_archetype_warrior.glb` (or any archetype file)
+      from `concord-frontend/public/meshes/heroes/` over plain HTTP, then
+      `CONCORD_GLB_URL=http://host:port/_archetype_warrior.glb
+      CONCORD_GLB_PROBE_OUT=/tmp/out.png xvfb-run -a -s "-screen 0 1280x720x24"
+      .godot-runtime/bin/godot --path world-lens-godot --display-driver x11
+      --rendering-driver opengl3 --script res://tools/glb_load_probe.gd`.
+- [x] **`AssetResolver` static fallback returns a usable URL for
+      `player`/`npc` kinds — 2026-08-07, closed same day as the item
+      above.** The URL-convention gap this item used to describe (fallback
+      expected `{base}/models/{kind}/{id}.glb`, hero meshes actually live
+      at `{frontend}/meshes/heroes/{name}.glb`) is fixed:
+      `fallback_url(base, kind, id, world_id)` now special-cases
+      `player`/`npc` onto the real hero-mesh convention (ported from
+      `concord-frontend/lib/concordia/hero-mesh-registry.ts`'s
+      `ARCHETYPE_FALLBACK_PATH` + its per-world variant), and
+      `world/boot.gd` was also fixed to point `AvatarManager.base_url` at
+      the frontend origin instead of the backend gateway origin it had
+      been pointed at (a second, independent bug — every resolve would
+      have 404'd against the wrong server even with a correct URL). The
+      `/api/evo-asset/resolve` dynamic endpoint this item's title also
+      names does not exist server-side (confirmed by grep), so resolution
+      always exercises the static fallback path in practice — which is
+      the path verified below. Pure-logic pin: `tests/
+      test_asset_resolver.gd` (5 checks). Live-engine pin: `tools/
+      glb_load_probe.gd` pointed at the EXACT URL this function now
+      returns for a player rig loaded a real, correctly-textured Mixamo
+      humanoid (see the "Avatars" section above) — not a synthetic
+      fixture, not a mocked HTTPRequest.
 - [ ] GLB cache returns visually-identical instances on repeat load.
+- [x] **A resolved GLB swaps cleanly onto a rig spawned by
+      `AvatarManager`, through the full `ingest_snapshot` -> `_spawn_rig`
+      -> `AvatarRig._try_resolve_glb` -> `_on_glb_loaded` chain —
+      2026-08-07.** New `tools/avatar_manager_probe.gd`: feeds
+      `AvatarManager.ingest_snapshot()` one synthetic `city:positions`-
+      shaped entity (the exact Dictionary shape `world/boot.gd#_on_event`
+      passes through from a real socket delivery — this tool starts from
+      `ingest_snapshot()` onward, so it does NOT re-prove the
+      gateway/socket delivery leg itself, which is exercised elsewhere in
+      this file), connects to the spawned rig's real `rig_ready` signal
+      (not a child-count heuristic — an earlier version of this probe used
+      one and got a false positive at frame 2, because `AssetResolver`/
+      `GlbLoader` are added as children synchronously at spawn time,
+      before any network I/O even starts; fixed to wait for the actual
+      later `rig_ready("glb")` signal, which only fires from inside
+      `_on_glb_loaded` once a real fetch+parse completes), and waits real
+      wall-clock frames for it. Against a real frontend static-asset
+      server: `frames_waited: 64` (i.e., this took real, observable
+      network+parse time, not an instant false completion),
+      `glb_swapped: true`. Screenshot shows the SAME real, correctly-
+      textured Mixamo humanoid this file's other GLB entries already
+      verified in isolation — now rendered specifically as the result of
+      `AvatarManager`'s own spawn path, replacing `AvatarRig`'s primitive
+      capsule placeholder, not a synthetic stand-in.
+
+      **Honest scope, narrowed, not eliminated**: this proves the CLIENT-
+      SIDE wiring from `ingest_snapshot()` through to a rendered mesh. It
+      does NOT prove a real second browser session's `player:move` traffic
+      reaches the server, gets relayed as a real `city:positions`
+      broadcast, and arrives at this client's `GatewayClient` — that
+      specific leg (server ↔ two real sessions) still needs two
+      simultaneous real sessions and remains unattempted.
+- [x] **`SceneBootstrap` upgrades real buildings from placeholder boxes to
+      real GLBs — 2026-08-07.** For the `market`/`tavern`/`archive`
+      archetypes specifically (the 3 that have a real GLB today at
+      `concord-frontend/public/models/building/*.glb` — `world/
+      building_archetype.gd` ports the Three.js client's `building-
+      silhouette.ts` archetype table), a spawned box is replaced with a
+      rescaled clone of the real mesh once it loads (async, via
+      `AssetResolver.fallback_url` — which, unlike the hero-mesh case
+      above, DOES match the real serving convention: `{frontend_origin}/
+      models/building/{archetype}.glb`). Verified against a REAL running
+      server (`server.js` spawned with a fresh migrated DB, a registered
+      user, real JWT) + a real static file server for
+      `concord-frontend/public/`: `tools/live_probe.gd` against
+      `concordia-hub` reports `spawned_children: 63`, `bootstrap_found:
+      true`; the resulting screenshot shows a mix of gray placeholder boxes
+      (forge/tower-archetype buildings — no real mesh for those yet, honest
+      fallback) and non-box shapes at the market/tavern/archive nodes.
+      Isolated proof of ONE such upgrade, framed close-up via
+      `tools/glb_load_probe.gd` (now accepts `CONCORD_GLB_PROBE_DISTANCE`/
+      `CONCORD_GLB_PROBE_HEIGHT` for building-scale assets, not just
+      character-scale): `market.glb` renders as a real, designed market
+      stall — canopy tent, counter, bunting flags, goods on the counter —
+      `mesh_instance_count: 2`, `total_vertex_count: 8218`. Not fabricated:
+      a `market`/`tavern`/`archive`-archetype building without network
+      access to the frontend origin, or whose fetch 404s, stays a box
+      forever (`_on_building_glb_failed` — logged, never retried into a
+      fabricated success). Pure-logic mapping table pinned by
+      `tests/test_building_archetype.gd` (16 checks); the async upgrade
+      path itself (network-dependent) is verified only by the live-server
+      run above, not by the headless pure-logic suite.
+- [x] **A real, non-generic ground plane exists under the scene —
+      2026-08-07.** Before this, `boot.gd` spawned SceneBootstrap's boxes
+      over the engine's default void with nothing underneath — the earlier
+      camera-framing screenshots in this file show buildings floating on
+      black. A large flat `PlaneMesh` is now added in `boot.gd` alongside
+      the bootstrap. Deliberately NOT textured terrain art (see that code's
+      own comment) — real terrain textures exist
+      (`concord-frontend/public/models/terrain/*.jpg`) but wiring per-
+      district UV-mapped ground geometry is separate, unbuilt work; this is
+      a flat placeholder plane, same honesty tier as the box buildings.
+      Caveat found by actually looking at the live-probe screenshot: at the
+      orbit camera's current pitch/distance, the flat plane visually
+      dominates the frame (buildings read small, clustered near the
+      bottom) — a real composition weakness at the time this was written.
+      **FIXED, 2026-08-07, same day — see the entry directly below.**
+- [x] **Camera framing dominated by an outlier-inflated bounds calculation
+      — 2026-08-07, found and fixed the same day the ground plane above
+      exposed it.** Root cause, found by actually measuring the live data
+      rather than re-tuning constants blind: `get_bounds_center()`/
+      `get_bounds_radius()` (world/scene_bootstrap.gd) are a plain mean +
+      single-farthest-node max — and concordia-hub genuinely has an
+      authored "outlying district" ~1000m from its main cluster (see
+      CLAUDE.md's content-seeder notes). Re-running `tools/live_probe.gd`
+      against the real server and dumping each spawned building's distance
+      from the plain centroid showed a clean two-cluster split: 50
+      buildings within 138-357m, then a hard jump straight to 981-1114m
+      for the remaining 12-13. `get_bounds_radius()` reported the
+      outlier-inflated 1114m, so `boot.gd`'s `0.3 * radius` camera distance
+      (334m) put the camera INSIDE that inflated sphere — closer to the
+      world origin than to either real cluster's own span — framing almost
+      nothing but ground plane, exactly matching the screenshot evidence
+      above.
+
+      Fix: a new `SceneBootstrap.robust_cluster_bounds()` (pure static) +
+      `get_camera_bounds()` (instance wrapper), used ONLY by `boot.gd`'s
+      overview camera — `get_bounds_center()`/`get_bounds_radius()`
+      themselves are untouched, since their own doc comments describe a
+      deliberate contract mirrored from `FeaSceneBuilder`'s equivalent
+      (a different, unrelated overlay with no outlier problem) and are
+      pinned by existing tests. The method is largest-relative-gap
+      detection, not a fixed percentile: sort every node's distance from
+      the plain centroid, find the single largest gap between consecutive
+      distances past the halfway point, and only treat it as a genuine
+      cluster/outlier boundary if the gap is larger than the entire "core"
+      span leading up to it — a continuously, evenly spread-out world (no
+      real separation) has no such gap and is correctly left untrimmed,
+      which a fixed percentile cutoff cannot tell apart from a real split.
+      When a split is found, BOTH the radius and the center are recomputed
+      from only the near side, so the outlier can't drag the focus point
+      either. Below `MIN_NODES_FOR_TRIM` (6) nodes this is byte-identical
+      to plain centroid + max distance (no meaningful "majority" exists to
+      detect an outlier against at that scale) — small/test scenes are
+      unaffected.
+
+      Verified against the exact same real running server + registered
+      user + real JWT this file's other live-probe entries use — before:
+      camera at height 242m, buildings crammed into a single tiny corner
+      behind a wall of green; after: camera at height ~55m, 10+
+      individually-distinguishable buildings (a real market-stall GLB
+      with its canopy/awning texture, several honest gray placeholder
+      boxes for forge/tower archetypes) spread legibly across the frame.
+      Pure-logic tests: `tests/test_scene_bootstrap.gd` (+8 checks —
+      small-N parity with the untouched plain bounds, no-trim on an evenly
+      spread set, a synthetic clear-outlier case, and a case built at
+      concordia-hub's real measured node counts and distance bands).
+      **Residual, honestly**: this fixes FRAMING (the right buildings are
+      now visible at a sensible scale); it does not touch texture/material
+      quality (the market canopy's orange swirl pattern is unchanged from
+      the isolated close-up already verified above) or add real terrain
+      art under the ground plane — those remain separately queued.
 
 ### Interpolation (Phase 2 dependent)
 - [ ] `SnapshotBuffer` sampling at now−120ms is visually smooth at real latency.

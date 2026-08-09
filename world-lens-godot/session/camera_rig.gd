@@ -147,9 +147,38 @@ func set_follow_target(target: Node3D) -> void:
 
 
 ## ORBIT focus — a real world position (e.g.
-## FeaSceneBuilder.get_bounds_center()), never an assumed origin.
+## FeaSceneBuilder.get_bounds_center() / SceneBootstrap.get_bounds_center()),
+## never an assumed origin.
 func set_orbit_focus(focus: Vector3) -> void:
 	_orbit_focus = focus
+
+
+## ORBIT yaw (radians) — set directly, not derived. See set_orbit_pitch's
+## doc for why a caller establishing a default view needs direct control
+## rather than the interactive-drag-only defaults this rig started with.
+func set_orbit_yaw(yaw: float) -> void:
+	_orbit_yaw = yaw
+
+
+## ORBIT pitch (radians, clamped the same as interactive drag) — set
+## directly, not derived from a measurement. Used by callers establishing a
+## deliberate default view angle (e.g. a steep aerial look-down for framing
+## a wide, mostly-flat authored world) rather than the shallow default this
+## rig was originally tuned for (small-object inspection, e.g. the FEA
+## overlay's beam models).
+func set_orbit_pitch(pitch: float) -> void:
+	_orbit_pitch = clampf(pitch, -1.4, 1.4)
+
+
+## ORBIT distance — set directly from a real measurement (e.g.
+## SceneBootstrap.get_bounds_radius()), NOT clamped to `orbit_max_distance`
+## (that clamp is an interactive player-zoom bound; a world's real authored
+## footprint can legitimately be far larger — concordia-hub's real buildings
+## span ~1000m, an order of magnitude past orbit_max_distance's 50m player-
+## zoom ceiling). Only floored at orbit_min_distance so a degenerate
+## (near-zero) measurement can't put the camera inside the focus point.
+func set_orbit_distance(distance: float) -> void:
+	_orbit_distance = maxf(distance, orbit_min_distance)
 
 
 func zoom_orbit(delta_steps: float) -> void:
@@ -169,6 +198,23 @@ func _process(delta: float) -> void:
 
 func _process_follow(delta: float) -> void:
 	if _follow_target == null:
+		# No real player/NPC to follow yet (no CharacterController is mounted
+		# in world/boot.gd today — see that file's own class doc for why).
+		# Rather than leave the camera frozen at whatever raw transform
+		# `_ready()` gave it (the world origin, showing nothing meaningful of
+		# a real authored world), fall back to the SAME pure orbit_transform
+		# math ORBIT mode uses, framing whatever real focus/distance the
+		# caller has set via set_orbit_focus/set_orbit_distance (both
+		# honestly default to Vector3.ZERO / a small distance until a real
+		# caller sets them from real spawned geometry — see
+		# world/boot.gd's scene:data handler). This does NOT change
+		# `rig_mode` (still FOLLOW, SessionManager's call) — it's a graceful
+		# default for the "mode says follow, but there is nothing to follow"
+		# case, the same class of honest fallback `_follow_target == null`
+		# already used before this (freeze-in-place), just no longer frozen
+		# at a meaningless position.
+		_camera.global_transform = CameraRig.orbit_transform(
+			_orbit_focus, _orbit_yaw, _orbit_pitch, _orbit_distance)
 		return
 	var desired := CameraRig.follow_transform(
 		_follow_target.global_position, _follow_target.rotation.y, follow_offset)

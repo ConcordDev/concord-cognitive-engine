@@ -37,6 +37,7 @@ static func run() -> TestUtils:
 	_test_camera_rig_mode_derivation(t)
 	_test_world_spectate_is_bidirectional_and_local(t)
 	_test_spectate_never_connects_directly_to_design_or_playtest(t)
+	_test_pause_overlay_gating(t)
 	return t
 
 
@@ -184,3 +185,44 @@ static func _test_spectate_never_connects_directly_to_design_or_playtest(t: Test
 		not SessionManager.is_legal_mode_transition(
 			SessionManager.Mode.SPECTATE, SessionManager.Mode.SPECTATE),
 		"a mode never legally transitions to itself (SPECTATE)")
+
+
+## UI (2026-08-08) — the pause overlay's instance-level gate. Exercises real
+## `SessionManager` instance methods (not the pure static helpers the tests
+## above cover) — safe to instantiate off-tree since `_camera_rig` stays
+## null and `_push_camera_rig_mode()`/`open_pause_overlay` both guard on it.
+static func _test_pause_overlay_gating(t: TestUtils) -> void:
+	var sm := SessionManager.new()
+	t.check(
+		sm.is_input_owner(SessionManager.InputOwner.CHARACTER),
+		"CHARACTER owns input in default WORLD mode with no overlay open")
+
+	t.check(sm.open_pause_overlay(), "open_pause_overlay succeeds the first time")
+	t.check(sm.pause_overlay_active, "pause_overlay_active is true after opening")
+	t.check(
+		not sm.is_input_owner(SessionManager.InputOwner.CHARACTER),
+		"pausing overrides CHARACTER ownership even though mode is still WORLD")
+	t.check(
+		not sm.is_input_owner(SessionManager.InputOwner.FREE_FLY),
+		"pausing overrides EVERY candidate, not just the mode's own owner")
+	t.check(
+		not sm.open_pause_overlay(),
+		"opening an already-open pause overlay is an honest no-op (false), not a silent re-open")
+
+	sm.close_pause_overlay()
+	t.check(not sm.pause_overlay_active, "pause_overlay_active is false after closing")
+	t.check(
+		sm.is_input_owner(SessionManager.InputOwner.CHARACTER),
+		"CHARACTER regains input ownership once the pause overlay closes")
+
+	# Pause overrides even the FEA overlay's own ORBIT ownership — pausing
+	# must freeze everything regardless of what was active beforehand.
+	sm.open_fea_overlay()
+	t.check(
+		sm.is_input_owner(SessionManager.InputOwner.ORBIT),
+		"sanity check: FEA overlay alone grants ORBIT ownership")
+	sm.open_pause_overlay()
+	t.check(
+		not sm.is_input_owner(SessionManager.InputOwner.ORBIT),
+		"pausing overrides the FEA overlay's ORBIT ownership too")
+	sm.free()

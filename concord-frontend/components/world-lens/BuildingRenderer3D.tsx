@@ -194,12 +194,12 @@ export default function BuildingRenderer3D({
     };
 
     // Phase A2: if the DTU has a recognised archetype (tavern / archive /
-    // forge / market / tower) AND faction visual heraldry, take the
-    // procedural-buildings path which builds richer silhouettes per
-    // architecture style (fortified / gracile / crystalline / organic /
+    // forge / market / tower / restaurant) AND faction visual heraldry,
+    // take the procedural-buildings path which builds richer silhouettes
+    // per architecture style (fortified / gracile / crystalline / organic /
     // industrial). Falls through to the legacy box-composite path when
     // archetype isn't in the procgen registry.
-    const knownArchetypes = ['tavern', 'archive', 'forge', 'market', 'tower'] as const;
+    const knownArchetypes = ['tavern', 'archive', 'forge', 'market', 'tower', 'restaurant'] as const;
     type ProcArch = typeof knownArchetypes[number];
     const explicitArch = (dtu as { archetype?: string }).archetype;
     const buildingType = (dtu as { building_type?: string }).building_type;
@@ -309,7 +309,7 @@ export default function BuildingRenderer3D({
         }
         const archStyleByArch: Record<ProcArch, 'fortified' | 'gracile' | 'crystalline' | 'organic' | 'industrial'> = {
           tavern: 'organic', archive: 'gracile', forge: 'fortified',
-          market: 'gracile', tower: 'fortified',
+          market: 'gracile', tower: 'fortified', restaurant: 'organic',
         };
         // WAVE WD — World Density: attach a lazy interior so the building's
         // door can open (the decor stays invisible until setInteriorVisible is

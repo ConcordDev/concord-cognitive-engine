@@ -52,6 +52,7 @@
 
 import { listDistricts, pointInPolygon, polygonArea } from "./districts.js";
 import { buildingPurposeForType, landingPadsForWorld } from "./building-purpose.js";
+import { scatterVegetationForWorld } from "./vegetation-scatter.js";
 
 export const SCENE_FORMAT = "concord-scene/v1";
 
@@ -181,7 +182,20 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     landingPads = [];
   }
 
-  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza, landingPads };
+  // Additive field (Phase M2 — Godot vegetation instancing) — real,
+  // deterministic vegetation placements scattered within this world's real
+  // district boundary polygons (server/lib/vegetation-scatter.js), or []
+  // for a world with no recorded districts (every world but concordia-hub
+  // today). Never fails the scene export: a scatter error degrades to [],
+  // same pattern as districts/plaza/landingPads above.
+  let vegetation = [];
+  try {
+    vegetation = scatterVegetationForWorld(db, worldId);
+  } catch {
+    vegetation = [];
+  }
+
+  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza, landingPads, vegetation };
 }
 
 /** Cheap stats without building the whole node list. */
