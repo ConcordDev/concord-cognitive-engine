@@ -200,6 +200,7 @@ import {
   createPurchase,
   transitionPurchase,
   recordSettlement,
+  executeTransfer,
 } from "./economy/index.js";
 
 // ---- Atlas + Platform Upgrade Imports (v2) ----
@@ -5292,38 +5293,6 @@ const _LLM_BUDGET = {
 
   checkBudget(userId) {
     // Local Ollama = free tokens, no budget needed
-    return { allowed: true };
-
-    // Reset global window if over 24h
-    if (Date.now() - this.windowStart > 86400000) {
-      this.totalTokensUsed = 0;
-      this.totalRequestCount = 0;
-      this.windowStart = Date.now();
-    }
-
-    // Check circuit breaker
-    if (this.circuitOpen) {
-      if (Date.now() - this.circuitOpenedAt > this.CIRCUIT_RESET_MS) {
-        this.circuitOpen = false;
-        this.consecutiveFailures = 0;
-      } else {
-        return { allowed: false, reason: "circuit_open", resetIn: this.CIRCUIT_RESET_MS - (Date.now() - this.circuitOpenedAt) };
-      }
-    }
-
-    // Check global budget
-    if (this.totalTokensUsed >= this.globalBudgetTokens) {
-      return { allowed: false, reason: "global_budget_exceeded", used: this.totalTokensUsed, limit: this.globalBudgetTokens };
-    }
-
-    // Check per-user budget
-    if (userId) {
-      const entry = this.perUser.get(userId);
-      if (entry && entry.tokens >= this.perUserBudgetTokens) {
-        return { allowed: false, reason: "user_budget_exceeded", used: entry.tokens, limit: this.perUserBudgetTokens };
-      }
-    }
-
     return { allowed: true };
   },
 
@@ -14787,7 +14756,6 @@ register("dtu", "create", async (ctx, input) => {
     source,
     meta,
     ownerId: ctx?.actor?.userId || ctx?.actor?.id || null,
-    scope: (ctx?.actor?.userId && ctx.actor.userId !== "anon") ? (input.scope || "personal") : "global",
     core: {
       definitions: Array.isArray(coreIn.definitions) ? coreIn.definitions : [],
       invariants: Array.isArray(coreIn.invariants) ? coreIn.invariants : [],
@@ -16341,9 +16309,9 @@ let localReply = formatCrispResponse({
     });
 
     // Race both against the pipeline timeout
-    const _timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("pipeline_timeout")), _pipelineTimeoutMs)
-    );
+    const _timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("pipeline_timeout")), _pipelineTimeoutMs);
+    });
 
     // Wait for conscious (required) + subconscious (best-effort parallel)
     const [_consciousResult, _subcResult] = await Promise.race([
