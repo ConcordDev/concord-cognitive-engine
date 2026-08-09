@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Github, Loader2, GitCommit, MessageCircle, Code2 } from 'lucide-react';
+import { Code2 as Github, Loader2, GitCommit, MessageCircle, Code2 } from 'lucide-react';
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 

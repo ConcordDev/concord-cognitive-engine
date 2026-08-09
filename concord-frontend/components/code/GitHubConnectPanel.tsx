@@ -32,7 +32,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Github, Loader2, Folder, FolderOpen, File as FileIcon, ChevronLeft,
+  Code2 as Github, Loader2, Folder, FolderOpen, File as FileIcon, ChevronLeft,
   GitCommit, GitBranch, CheckCircle2, XCircle, ExternalLink, RefreshCw,
   FilePlus, ChevronDown, ChevronRight,
 } from 'lucide-react';
