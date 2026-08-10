@@ -48,7 +48,7 @@ jobs:
     timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # MUST be 22: `node --test` only expands the recursive `tests/**/*.test.js`
           # glob natively on Node >= 21. On Node 20 the suite silently collapses to
@@ -385,7 +385,7 @@ jobs:
     needs: structural-audits
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
