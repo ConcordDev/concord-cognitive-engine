@@ -77,6 +77,8 @@ import { cn } from '@/lib/utils';
 // ConKay ("Kay") — Concord's JARVIS-style majordomo, as a voice-native chat MODE.
 import { ConKayBackdrop } from '@/components/conkay/ConKayBackdrop';
 import { ConKayHud } from '@/components/conkay/ConKayHud';
+import { CycleTelemetryRibbon } from '@/components/conkay/CycleTelemetryRibbon';
+import { SessionContextBadge } from '@/components/conkay/SessionContextBadge';
 import { ConKayMessage } from '@/components/conkay/ConKayViz';
 import { useConKayVoice } from '@/components/conkay/useConKayVoice';
 import { CONKAY_PERSONA_PROMPT, type ConKayState } from '@/components/conkay/conkay-persona';
@@ -131,6 +133,7 @@ import { ContextOverlay } from '@/components/chat/ContextOverlay';
 import ForgeCard from '@/components/chat/ForgeCard';
 import FoundationCard from '@/components/chat/FoundationCard';
 import { SessionSidebar } from '@/components/chat/SessionSidebar';
+import { BrainModePanel } from '@/components/byo-keys/BrainModePanel';
 // ── Systems panels ─────────────────────────────────────────────
 // These five panels round-trip through the /api/chat cognitive
 // pipeline and surface system-level context alongside the
@@ -2006,6 +2009,20 @@ export default function ChatLensPage() {
             return await r.json();
           } catch { return null; }
         },
+        // Thread the active chat sessionId so skills that target a
+        // specific session (e.g. `compress`) can act against the right
+        // STATE.sessions row. Falls back to a localStorage pin when
+        // the lens hasn't yet propagated the active sessionId prop.
+        // Resolve the active chat sessionId so skills that target a
+        // specific session (e.g. `compress`) act against the right
+        // STATE.sessions row. The chat lens keeps active sessionId in
+        // localStorage as 'concord:activeSessionId'; reading from
+        // there is honest (no guessing) and survives the closure
+        // boundary inside this useCallback.
+        sessionId:
+          typeof window !== 'undefined'
+            ? window.localStorage?.getItem('concord:activeSessionId') || null
+            : null,
       });
       // Live viz rides the existing conkay-viz fence ConKayMessage already parses.
       const fence = result.viz ? `\n\n\`\`\`conkay-viz\n${JSON.stringify(result.viz)}\n\`\`\`` : '';
@@ -3261,6 +3278,32 @@ export default function ChatLensPage() {
               >
                 <MessageSquare className="w-5 h-5" />
               </button>
+
+              {/* Brain Mode Pill — Private ↔ High Power, in-chat toggle */}
+              <BrainModePanel />
+
+              {/* Cycle Telemetry Ribbon — honest-by-construction "I'm
+                  healthy" surface that reads the real /api/admin/heartbeat-stats
+                  endpoint and reports 168 cycles' p50 latency + in-error
+                  count, with four strict states (live / no_data_yet /
+                  unreachable / no modules registered). Never fabricates
+                  "OK"; the doc in components/conkay/CycleTelemetryRibbon.tsx
+                  explains the full contract. */}
+              <CycleTelemetryRibbon />
+
+              {/* Session Context Badge — honest-by-construction "X
+                  turns · Y% full" chip. Reads the real
+                  /api/chat/context-budget/:sessionId endpoint. Six
+                  states (unreachable/empty/green/yellow/red/over). When
+                  85%+ full, says "say 'compress'" — and 'compress' is
+                  a real conkay skill (skill id 'compress') wired to
+                  the same /api/chat/summary macro that the auto-trigger
+                  uses. The badge NEVER fakes a recommendation. */}
+              <SessionContextBadge sessionId={
+                typeof window !== 'undefined'
+                  ? window.localStorage?.getItem('concord:activeSessionId') || null
+                  : null
+              } />
 
               {/* AI Mode selector */}
               <div className="relative">

@@ -53,6 +53,10 @@ export interface ConKaySkillContext {
    *  ({ ok, result, ... }) or null. Lets a skill DELEGATE to a deterministic
    *  backend engine (e.g. the math CAS) instead of reasoning. Never throws. */
   runMacro?: (domain: string, name: string, input: Record<string, unknown>) => Promise<unknown>;
+  /** The active chat sessionId, injected by the chat lens. Skills that
+   *  need to act on a specific session (e.g. `compress`) read it from
+   *  here. Null when not in a chat context. */
+  sessionId?: string | null;
 }
 
 export interface ConKaySkill {
@@ -275,9 +279,16 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
       return name.length >= 2 ? { name } : null;
     },
     run: async (a) => {
-      const lens = resolveLens(a.name);
+      const spokenName = (a?.name || '').trim();
+      // Defensive: the matcher's regex already guarantees `name.length >= 2`,
+      // but `run()` is also a public surface — direct callers may not pass
+      // `name`. Treat the missing case as the same "lens not found" branch
+      // below rather than throwing (which the audit caught in
+      // conkay-skills-honesty.test.ts).
+      const lens = spokenName ? resolveLens(spokenName) : null;
       if (!lens) {
-        return { spoken: `I couldn't find a "${a.name}" lens. Try the command palette — Control or Command K.` };
+        const target = spokenName || 'that';
+        return { spoken: `I couldn't find a "${target}" lens. Try the command palette — Control or Command K.` };
       }
       return { spoken: `Opening ${lens.name}.`, navigate: lens.path, acting: true };
     },
@@ -325,6 +336,114 @@ export const CONKAY_SKILLS: ConKaySkill[] = [
         // Marks the reply Grounded (computed by the CAS, not the model).
         toolCalls: [{ tool: 'math.naturalQuery', params: { query: q }, result: res, ok: true }],
         acting: true,
+      };
+    },
+  },
+  {
+    // ── compress ────────────────────────────────────────────────────────
+    // Compress the user's CURRENT session's oldest messages into a
+    // structured summary DTU. This is the user-invoked counterpart to
+    // the silent /api/chat POST auto-compression that fires when
+    // messages.length >= WINDOW_THRESHOLD (server/lib/conversation-memory.js:60-63);
+    // it gives the user a way to trigger compression before the
+    // threshold so they can manually manage their own context budget.
+    //
+    // Backed by /api/chat/summary/:sessionId + chat.summary macro +
+    // lib/conversation-memory.js#compressRollingWindow — the same
+    // pipeline that the auto-trigger uses. Never a no-op.
+    //
+    // The skill can also preflight the request via the new
+    // /api/chat/context-budget/:sessionId endpoint so the spoken reply
+    // tells the user exactly how many turns will be compressed (the
+    // server's authoritative "batchSize"), instead of guessing.
+    id: 'compress',
+    label: 'Compress this session',
+    hint: 'compress session',
+    match: (u) =>
+      /^\s*(?:compress|summarize|summarise|condense|shrink)\b(?:.{0,40}?\b(?:this|our|the|my)?\s*(?:session|conversation|chat|context|memory|window|talk))?\s*$/i.test(
+        u.trim(),
+      )
+        ? {}
+        : null,
+    run: async (_a, ctx) => {
+      // We need the active sessionId. The chat lens threads it in
+      // through `ctx.sessionId` (see ConKayOverlay; if it's missing
+      // here, fall through to the brain path with an honest reason).
+      const sessionId = (ctx as unknown as { sessionId?: string | null })
+        .sessionId;
+      if (!sessionId) {
+        return {
+          spoken:
+            "I can't tell which session to compress — open a chat window and try again.",
+          acting: false,
+        };
+      }
+      // Preflight: read the budget so the spoken reply can name the
+      // exact batch size. If the endpoint errors, we DON'T fail —
+      // we just say "compressing now" without the number and let the
+      // server's actual count show up in the result.
+      let preflightMessage = '';
+      try {
+        const budget = (await ctx.fetchJson(
+          `/api/chat/context-budget/${encodeURIComponent(sessionId)}`,
+        )) as {
+          ok?: boolean;
+          messageCount?: number;
+          batchSize?: number;
+          threshold?: number;
+          atOrOverThreshold?: boolean;
+        } | null;
+        if (budget && budget.ok && typeof budget.messageCount === 'number') {
+          const count = budget.messageCount;
+          const batch = budget.batchSize || 0;
+          preflightMessage = `I see ${count} turns in this session${batch ? ` and I'll compress the oldest ${batch}` : ', now compressing'}`;
+        }
+      } catch {
+        // Ignore — server's macro result will tell the real story.
+      }
+
+      // Run the real compression macro. This is the SAME entry the
+      // automatic threshold-trigger uses (server/routes/chat.js:355
+      // → chat.summary macro → compressRollingWindow). One call,
+      // no double-processing.
+      const env = (await (ctx.runMacro
+        ? ctx.runMacro('chat', 'summary', { sessionId })
+        : Promise.resolve(null))) as
+        | {
+            ok?: boolean;
+            dtusCreated?: number;
+            messagesCompressed?: number;
+            error?: string;
+          }
+        | null;
+
+      if (!env || env.ok === false) {
+        const err = env?.error || 'unknown';
+        return {
+          spoken: `Compression failed (${err}). You're under the threshold, so there's nothing compressible yet — say it again once the session grows past 50 turns.`,
+          acting: false,
+        };
+      }
+      const dtus = env.dtusCreated ?? 0;
+      const compressed = env.messagesCompressed ?? 0;
+      if (dtus === 0 && compressed === 0) {
+        return {
+          spoken: `${preflightMessage ? preflightMessage + '. ' : ''}Nothing to compress yet — session is under 50 turns.`,
+          acting: false,
+        };
+      }
+      return {
+        spoken: `${preflightMessage ? preflightMessage + '. ' : ''}Done — created ${dtus} summary DTU${dtus === 1 ? '' : 's'} from ${compressed} older turn${compressed === 1 ? '' : 's'}.`,
+        acting: true,
+        // Mark this as a real tool call so the run-store can show it.
+        toolCalls: [
+          {
+            tool: 'chat.summary',
+            params: { sessionId },
+            result: { dtusCreated: dtus, messagesCompressed: compressed },
+            ok: true,
+          },
+        ],
       };
     },
   },
