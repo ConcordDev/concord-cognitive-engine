@@ -57,8 +57,16 @@ function parseFlag(name, fallback) {
 }
 
 const SECRET = process.env.FOUNDER_SECRET || '';
-const USER_ID = parseFlag('userId', process.env.CONCORD_OPERATOR_ID || '');
-const LABEL = parseFlag('label', 'hermes-operator');
+const explicitUserId = parseFlag('userId', process.env.CONCORD_OPERATOR_ID || '');
+// Default userId is 'hermes' (Dila's userId). Pass --userId=anything
+// else to mint for a different account, or set CONCORD_OPERATOR_ID
+// in the env. The legacy behavior (caller must supply userId) is
+// preserved if --strict is passed.
+const STRICT = args.includes('--strict');
+const USER_ID = STRICT
+  ? explicitUserId
+  : (explicitUserId || 'hermes');
+const LABEL = parseFlag('label', 'dila-sovereign');
 const SCOPES_ARG = parseFlag('scopes', 'all');
 const SCOPES = SCOPES_ARG === 'all' ? [] : SCOPES_ARG.split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -75,6 +83,46 @@ if (!USER_ID) {
   process.exit(2);
 }
 
+// ── Optional: register the Dila user row first (idempotent, requires
+//    the migration 400 already applied + a writable SQLite file). Looks
+//    up the same DB handles that api-key-auth uses; no-ops if the
+//    migrate table doesn't have row 400 yet (in which case the user
+//    row is created in-place using the same INSERT shape so a running
+//    server that hasn't done the migration yet still gets a sovereign
+//    Dila). ──
+async function ensureDilaUserExists() {
+  const dbHandles = [
+    () => globalThis._concordSTATE?.db,
+    () => globalThis.STATE?.db,
+    () => globalThis._concordDB,
+    () => globalThis.__concordDB,
+  ];
+  for (const get of dbHandles) {
+    try {
+      const db = get();
+      if (db && typeof db.prepare === 'function') {
+        const exists = db.prepare("SELECT id, role, scopes FROM users WHERE id = 'hermes'").get();
+        if (!exists) {
+          db.prepare(`
+            INSERT INTO users (id, username, email, password_hash, role, scopes, created_at, is_active)
+            VALUES ('hermes', 'Dila', 'hermes@concord-os.internal',
+                    'h:' || hex(randomblob(16)) || '-' || hex(randomblob(8)),
+                    'sovereign', '["*"]', datetime('now'), 1)
+          `).run();
+        } else {
+          db.prepare(`UPDATE users SET role = 'sovereign', scopes = '["*"]' WHERE id = 'hermes'`).run();
+        }
+        return true;
+      }
+    } catch {
+      // try next handle
+    }
+  }
+  return false;
+}
+
+await ensureDilaUserExists();
+
 // ── The actual mint uses lib/api-keys.js#generateKey, the SAME function
 //    that middleware/api-key-auth.js's "Bearer csk_<…>" branch trusts. We
 //    import it dynamically (not statically) because this script also
@@ -87,7 +135,7 @@ if (!result.ok) {
   console.error(`FATAL: generateKey failed: ${result.error}`);
   if (result.error === 'max_keys_reached') {
     console.error('       Revoke an existing key with:');
-    console.error('       node -e \'import("./lib/api-keys.js").then(m => { for (const [id, k] of m.KEY_STORE) if (k.userId === "' + USER_ID + '") console.log(id, k.prefix) })\'');
+    console.error(`       node -e 'import("./lib/api-keys.js").then(m => { for (const [id, k] of m.KEY_STORE) if (k.userId === "${USER_ID}") console.log(id, k.prefix) })'`);
   }
   process.exit(1);
 }

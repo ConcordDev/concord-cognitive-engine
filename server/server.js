@@ -17032,11 +17032,10 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
       // concordia:combat-engaged/calm (DET-C batch 3, world/page.tsx) and
       // the sibling shadow_vault/quality:approved split below.
       const dtuBroadcastPayload = {
-        id: dtu.id,
+        dtuId: dtu.id,
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
-        updatedAt: dtu.updatedAt
       };
       if (isNew) {
         realtimeEmit("dtu:created", dtuBroadcastPayload);
@@ -23416,7 +23415,7 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
 
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
     realtimeEmit("dtu:created", {
-      id: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
+      dtuId: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
     });
     // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
     // they appear instantly in other players' feeds (and so the
@@ -28576,6 +28575,12 @@ registerDiscoveryMacros(register);
 // dtu_props — DTUs as tangible interactive world props (list/interact).
 import registerDtuPropsMacros from "./domains/dtu-props.js";
 registerDtuPropsMacros(register);
+// hermes_memory — Dila's auditable memory substrate (migration 400).
+// Seven actions: write/read/search/list/recall/compress/delete. All
+// gated to actor.role === 'sovereign' inside the handler. Operator
+// audit-visible by default; founder + Dila are the only callers.
+import registerHermesMemoryMacros from "./domains/hermes-memory.js";
+registerHermesMemoryMacros(register);
 // reason.verify — claim verification (citation-resolution floor + council judge).
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);
@@ -42089,7 +42094,7 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
     });
     // Broadcast DTU birth so LiveDTUFeed and ActivityFeed see lens-generated DTUs
     realtimeEmit("dtu:created", {
-      id: dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
+      dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
     });
     // Separate event so ActivityFeed can distinguish lens-generated DTUs from user-created ones
     realtimeEmit("lens:dtu_generated", {
@@ -43446,14 +43451,12 @@ try {
     }),
   });
   structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
-  // Reachability self-check: every advertised tool must resolve to a real macro
-  // OR lens-action, or it dies with "macro not found" on first call (the
-  // concord.math regression). Surface it loudly at boot instead.
-  try {
-    const _canResolve = (domain, name) => LENS_ACTIONS.has(`${domain}.${name}`) || !!(MACROS.get(domain)?.get(name));
-    const _deadTools = unreachableTools(_canResolve);
-    if (_deadTools.length) structuredLog("warn", "mcp_tools_unreachable", { tools: _deadTools, hint: "tool (domain,macro) not in MACROS or LENS_ACTIONS — it will throw on call" });
-  } catch { /* never block boot on the self-check */ }
+  // NOTE: the reachability self-check below fires AFTER `domainModules.forEach`
+  // (~line 45717) so the LENS_ACTIONS registry is fully populated. An earlier
+  // position (inside this try-block, ~line 43455) fired before domain modules
+  // registered their lens-actions and emitted a false-positive
+  // `mcp_tools_unreachable` warn even though every advertised tool was
+  // actually reachable.
 } catch (mcpErr) {
   structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
 }
@@ -45715,6 +45718,19 @@ registerLensAction("game", "balance", (ctx, artifact, params) => {
 // Load all super-lens domain action modules
 const { default: domainModules } = await import('./domains/index.js');
 domainModules.forEach(mod => mod(registerLensAction));
+
+// MCP reachability self-check (was previously inside the mountMcpServer
+// try-block above, where it fired BEFORE this forEach populated LENS_ACTIONS
+// and falsely reported every advertised tool as unreachable). Now that every
+// domain module has registered, run the actual reachability check: every
+// advertised tool must resolve to a real macro OR lens-action, or it dies
+// with "macro not found" on first call (the concord.math regression).
+// Surface it loudly at boot instead.
+try {
+  const _canResolve = (domain, name) => LENS_ACTIONS.has(`${domain}.${name}`) || !!(MACROS.get(domain)?.get(name));
+  const _deadTools = unreachableTools(_canResolve);
+  if (_deadTools.length) structuredLog("warn", "mcp_tools_unreachable", { tools: _deadTools, hint: "tool (domain,macro) not in MACROS or LENS_ACTIONS — it will throw on call" });
+} catch { /* never block boot on the self-check */ }
 
 // ── Universal Action Registrar ──────────────────────────────────────────────
 // Gives EVERY lens domain three AI-powered actions (analyze, generate, suggest)

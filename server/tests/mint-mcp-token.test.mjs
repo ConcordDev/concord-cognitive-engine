@@ -23,9 +23,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const CLI = resolve(process.cwd(), 'server/scripts/mint-mcp-token.mjs');
+// Tests can run from any repo-root-relative cwd; anchor to this file's
+// directory so the CLI is found regardless of where `node --test` was
+// invoked (vitest runs from concord-frontend/, but the CLI lives in
+// server/scripts/).
+const __filename_local = fileURLToPath(import.meta.url);
+const __dirname_local = dirname(__filename_local);
+const CLI = resolve(__dirname_local, '../scripts/mint-mcp-token.mjs');
 
 // The test environment FOUNDER_SECRET. Long enough to pass any
 // "min length" check.
@@ -85,8 +92,13 @@ test('mint-mcp-token: refuses with exit 2 when FOUNDER_SECRET is missing', () =>
   assert.match(res.stderr, /FOUNDER_SECRET/);
 });
 
-test('mint-mcp-token: refuses with exit 2 when --userId is missing and CONCORD_OPERATOR_ID is unset', () => {
-  const res = runCli({ CONCORD_OPERATOR_ID: '' });
+test('mint-mcp-token: refuses with exit 2 when --userId is missing AND --strict is passed (Dila default disabled)', () => {
+  // Post-2026-08-11: the CLI defaults --userId to 'hermes' so the
+  // common-case operator mint just works. Use --strict to recover
+  // the legacy behavior of requiring an explicit --userId (and a
+  // explicit --userId=foo to also fail), which is the test path this
+  // pins.
+  const res = runCli({ CONCORD_OPERATOR_ID: '' }, ['--strict']);
   assert.equal(res.status, 2);
   assert.equal(res.stdout, '');
   assert.match(res.stderr, /FATAL/i);

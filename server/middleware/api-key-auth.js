@@ -9,7 +9,28 @@
  * domain must match one of the allowed scopes.
  */
 
-import { validateKey, trackUsage, checkScope } from "../lib/api-keys.js";
+import { validateKey, trackUsage, checkScope } from "../lib/api-keys.js"; // no DB import — apiKeyAuth runs at request time when STATE.db is in scope (see resolveDb below)
+
+/**
+ * Resolve the better-sqlite3 handle from wherever the running Concord
+ * server has stashed it. Mirrors the same pattern used at server.js:9309
+ * and server.js:28522 — never assumes a specific global name, never
+ * throws. Returns null in test/CLI contexts where no DB exists yet.
+ */
+function resolveDb() {
+  try {
+    if (typeof globalThis === "undefined") return null;
+    // Prefer STATE.db (the running server), fall back to one of the
+    // three known global stashes in order of most-to-least common.
+    const s = globalThis._concordSTATE || globalThis.STATE;
+    if (s && s.db && typeof s.db.prepare === "function") return s.db;
+    const g = globalThis._concordDB || globalThis.__concordDB;
+    if (g && typeof g.prepare === "function") return g;
+  } catch {
+    // ignore — return null below
+  }
+  return null;
+}
 
 /**
  * Map common route prefixes to lens domain names for scope checking.
@@ -123,9 +144,51 @@ export default function apiKeyAuth(options = {}) {
     // Also set req.user if not already set (allows downstream auth guards
     // like requireAuth() to pass when only an API key is provided)
     if (!req.user) {
+      // Resolve the keyholder's REAL role from the DB instead of
+      // hardcoding 'member'. Pre-2026-08-11 this hardcoded 'member',
+      // which meant a sovereign-role user (e.g. the founder or Dila
+      // per migration 400) authenticating via `Bearer csk_<…>` would
+      // be silently demoted to 'member' — every requireRole check
+      // downstream would then fail. Migration 400 ships with this
+      // patch to restore the original privilege when authenticating
+      // via API key.
+      //
+      // The lookup is intentionally narrow (SELECT role, scopes only)
+      // and falls back to the historical default ('member') only when
+      // the DB is unconfigured (e.g. in an offline unit test). It
+      // never throws — auth failure surfaces through validateKey()
+      // above, not through this lookup.
+      let resolvedRole = "member";
+      let resolvedScopes = keyRecord.scopes;
+      try {
+        const db = resolveDb();
+        if (db) {
+          const row = db
+            .prepare("SELECT role, scopes FROM users WHERE id = ?")
+            .get(keyRecord.userId);
+          if (row && row.role) {
+            resolvedRole = row.role;
+            if (row.scopes) {
+              try {
+                const parsed = typeof row.scopes === "string"
+                  ? JSON.parse(row.scopes)
+                  : row.scopes;
+                if (Array.isArray(parsed)) resolvedScopes = parsed;
+              } catch {
+                // scope-parse failure: fall through with key's own scopes,
+                // not the user's — keeps the legacy safe default intact.
+              }
+            }
+          }
+        }
+      } catch {
+        // DB lookup threw — keep the hardcoded 'member' default. Auth
+        // still works (sovereign bypasses role checks anyway).
+      }
       req.user = {
         id: keyRecord.userId,
-        role: "member",
+        role: resolvedRole,
+        scopes: resolvedScopes,
         authMethod: "apiKey",
       };
     }
