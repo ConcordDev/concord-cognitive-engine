@@ -304,7 +304,7 @@ Direct-grep counts **re-verified 2026-06-02** (via `npm run check-doc-claims`, w
 | Numbered migrations | **400 total `.js` files** in `server/migrations/` (399 numbered `NNN_*.js` files — highest number `400` — plus 1 non-numbered `_drop-with-rescue.js`) | `ls server/migrations/*.js \| wc -l` returns 400 |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
 | Emergent modules | **231** | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | **695** top-level (`ls server/lib/*.js \| wc -l`) · **1,058** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
+| Lib modules | **697** top-level (`ls server/lib/*.js \| wc -l`) · **1,060** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
 | `server/server.js` line count | **83,605** | `wc -l server/server.js` |
 | HTTP routes (server.js + routes/*.js) | **~3,371 total** (1,414 + 1,957) | `grep -cE "^\\s*(app\|router)\\.(get\|post\|put\|delete\|patch\|all)\\(['\"]/" …` |
 | Unique macro domains | **547** (verifier `macroDomains`) | see "macro system" section above |
