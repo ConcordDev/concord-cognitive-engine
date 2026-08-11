@@ -30,8 +30,12 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
 
-const ROOT = path.resolve(new URL(import.meta.url).pathname, '..', '..');
+// Use fileURLToPath (not `new URL(...).pathname`) — the latter keeps the
+// percent-encoded form (e.g. "%20" for spaces), so a repo path that contains
+// a space resolves to a non-existent directory on disk.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SERVER = path.join(ROOT, 'server');
 const FRONTEND = path.join(ROOT, 'concord-frontend');
 
