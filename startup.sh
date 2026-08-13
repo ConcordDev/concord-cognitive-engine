@@ -100,16 +100,23 @@ fi
 # ── Recovery mode ─────────────────────────────────────────────────────────────
 if [ "${1:-}" = "--recover" ]; then
   log "Recovery mode: restoring from latest backup..."
-  BACKUP_DIR="./server/data/backups"
-  if [ -d "$BACKUP_DIR" ]; then
-    LATEST=$(ls -t "$BACKUP_DIR"/*.json 2>/dev/null | head -1)
-    if [ -n "$LATEST" ]; then
-      cp "$LATEST" "./server/data/concord_state.json"
-      log "Restored from: $LATEST"
-    else
-      log "No backups found in $BACKUP_DIR"
-    fi
+  # The modern DB lives at DB_PATH (e.g. /opt/concord-db/concord.db) with state
+  # in the state_snapshots SQLite table — the old ./server/data/concord_state.json
+  # restore below was dead in production (that JSON is a fallback the server no
+  # longer writes). Delegate to the real restore path instead.
+  if [ -f "${DB_PATH:-$DATA_DIR/concord.db}" ]; then
+    log "WARNING: A database already exists at ${DB_PATH:-$DATA_DIR/concord.db}."
+    log "  --recover overwrites it with the latest backup. If you meant to inspect"
+    log "  without clobbering, stop now (Ctrl-C) or move the current DB aside."
+    log "  Proceeding in 5 seconds..."
+    sleep 5
   fi
+  # PM2 is left alone during recovery: db-restore.sh would otherwise stop the
+  # stack and blindly `pm2 start all` from the OLD dump on success — startup.sh
+  # owns PM2 lifecycle and re-starts with the correct runpod env below.
+  DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" CONCORD_RESTORE_SKIP_PM2=1 \
+    bash "$SCRIPT_DIR/scripts/db-restore.sh" \
+    || { log "Restore failed — see scripts/db-restore.sh output above."; exit 1; }
 fi
 
 # ── Dev mode ──────────────────────────────────────────────────────────────────
@@ -289,10 +296,56 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     log "WARNING: scripts/runpod-cognition.sh not found — brains must be started separately (or Ollama managed some other way)."
   fi
 
+  # ── Fresh-pod bootstrap restore (data durability on pod reclaim) ──────────
+  # A pod reclaim wipes the EPHEMERAL container disk, but backups live on the
+  # PERSISTENT volume (CONCORD_BACKUP_DIR, e.g. /workspace/concord/backups).
+  # If the live DB is missing AND a volume backup exists, restore the latest
+  # BEFORE starting the backend — otherwise the server boots against an empty
+  # DB and the user's data sits in a volume tar.gz doing nothing. Only fires
+  # when DB_PATH doesn't exist, so a healthy boot is never touched.
+  BOOTSTRAP_DB="${DB_PATH:-${DATA_DIR:-$SCRIPT_DIR/data}/concord.db}"
+  if [ ! -f "$BOOTSTRAP_DB" ] && [ -n "${CONCORD_BACKUP_DIR:-}" ] && [ -d "$CONCORD_BACKUP_DIR" ]; then
+    if ls "$CONCORD_BACKUP_DIR"/concord-backup-*.tar.gz "$CONCORD_BACKUP_DIR"/concord-*.db.gz "$CONCORD_BACKUP_DIR"/concord-*.db >/dev/null 2>&1; then
+      log "Fresh-pod bootstrap: no DB at $BOOTSTRAP_DB but volume backups exist — restoring latest..."
+      DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="$CONCORD_BACKUP_DIR" CONCORD_RESTORE_SKIP_PM2=1 \
+        bash "$SCRIPT_DIR/scripts/db-restore.sh" \
+        && log "Bootstrap restore complete." \
+        || log "WARNING: bootstrap restore failed (see above) — backend will start against an empty DB."
+    else
+      log "No DB at $BOOTSTRAP_DB and no volume backups found — starting fresh (first boot?)."
+    fi
+  elif [ ! -f "$BOOTSTRAP_DB" ]; then
+    log "No DB at $BOOTSTRAP_DB and CONCORD_BACKUP_DIR unset/absent — starting fresh."
+  fi
+
   # Start or restart with RunPod env
   if pm2 list | grep -q "concord-backend"; then
     log "Restarting existing pm2 processes..."
+    # Hardening (2026-08-13, post-corruption-incident): pm2 on this box has
+    # been observed to not reliably reap the outgoing concord-backend
+    # process before starting its replacement -- multi-second SIGKILL
+    # delays and live duplicate `node server.js` processes both holding the
+    # SQLite DB open for 30s-2min windows were seen across several restarts
+    # in one session, immediately preceding a real DB corruption incident
+    # (server/data disk image malformed). Capture the pre-restart pid and
+    # explicitly verify it actually exits -- not just trust pm2's own
+    # bookkeeping -- force-killing it if it lingers, to close the
+    # dual-writer window rather than relying on pm2's kill timing.
+    OLD_BACKEND_PID=$(pm2 jlist 2>/dev/null | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const p=j.find(x=>x.name==='concord-backend');console.log(p&&p.pid||'')}catch{console.log('')}})" 2>/dev/null || true)
     pm2 restart ecosystem.config.cjs --env runpod
+    if [ -n "${OLD_BACKEND_PID:-}" ] && [ "$OLD_BACKEND_PID" != "0" ]; then
+      for i in $(seq 1 30); do
+        if ! kill -0 "$OLD_BACKEND_PID" 2>/dev/null; then
+          log "Previous concord-backend pid $OLD_BACKEND_PID confirmed exited."
+          break
+        fi
+        sleep 1
+        if [ "$i" -eq 30 ]; then
+          log "WARNING: previous concord-backend pid $OLD_BACKEND_PID still alive 30s after restart -- force-killing to prevent a dual-writer window against the SQLite DB."
+          kill -KILL "$OLD_BACKEND_PID" 2>/dev/null || true
+        fi
+      done
+    fi
   else
     log "Starting pm2 processes..."
     pm2 start ecosystem.config.cjs --env runpod

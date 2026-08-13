@@ -50,6 +50,10 @@
   ],
   "exclude": [
     "node_modules",
-    "tests"
+    "tests",
+    "scripts",
+    "vitest.config.ts",
+    "lib/dtu-cache.ts",
+    "lib/p2p-dtu.ts"
   ]
 }

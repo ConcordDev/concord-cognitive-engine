@@ -126,8 +126,16 @@ module.exports = {
         // libuv thread pool — Node's default is 4, which bottlenecks SQLite
         // (better-sqlite3 is sync but WAL checkpoints + disk I/O share the pool)
         // and file-system operations. 16 threads on 28 vCPU is conservative;
-        // raise to 32 under sustained file-write pressure on the artifact store.
-        UV_THREADPOOL_SIZE: '16',
+        // Sprint 32 — bumped 16→32 per operator. Symptom: with 16 workers
+        // a single 100s consolidation block (heartbeat_block_slow
+        // module=consolidation ms=109043) consumed all 16 libuv workers
+        // for the duration, freezing the event loop and leaving every
+        // HTTP request hanging for 30s+. With 32 workers, the same
+        // consolidation still uses ~16 (its own LLM calls + DB writes),
+        // leaving 16 free for incoming requests. Tradeoff: slightly
+        // more context-switch overhead (~1-2% CPU at idle) in exchange
+        // for actual request throughput under load.
+        UV_THREADPOOL_SIZE: '32',
         // Stability audit (2026-07-20) — the memory-pressure watchdog
         // (lib/memory-pressure.js) and /health's soft-pressure flag
         // (routes/system.js) both read MAX_OLD_SPACE_SIZE from the
@@ -172,7 +180,7 @@ module.exports = {
         BRAIN_CONSCIOUS_MODEL: 'concord-conscious:latest',
         BRAIN_SUBCONSCIOUS_MODEL: 'qwen2.5:7b-instruct-q4_K_M',
         BRAIN_UTILITY_MODEL: 'qwen2.5:3b',
-        BRAIN_REPAIR_MODEL: 'qwen2.5:0.5b',
+        BRAIN_REPAIR_MODEL: 'qwen2.5:1.5b',
         // Stability audit (2026-07-20) — FIXED a real licensing-exposure
         // bug: this was still 'llava:13b-v1.6-vicuna-q4_K_M', but
         // .env.runpod (and CLAUDE.md's "five-brain architecture" section)
@@ -331,37 +339,21 @@ module.exports = {
     // Fixed at the root: startup.sh now calls runpod-cognition.sh itself
     // (see its own comment), so there is exactly ONE real path, and this
     // app's removal closes the port-11434 collision for good.
-    {
-      // ── Cloudflare Tunnel (Vector 6 — eliminate tunnel SPOF) ─────────────
-      // PM2 supervises cloudflared so it auto-restarts on crash or hang.
-      // cloudflared already has built-in exponential-backoff reconnect for
-      // transient network drops; PM2 handles hard process death.
-      //
-      // Cloudflare natively supports multiple connectors on the same tunnel:
-      // running startup.sh on a second machine adds a second edge connector
-      // automatically — this is the zero-config HA story (no extra config).
-      //
-      // ACTIVATION: Set CLOUDFLARE_TUNNEL_TOKEN in .env. Without it PM2 will
-      // start this app but cloudflared exits immediately (non-fatal).
-      name: 'concord-tunnel',
-      script: 'cloudflared',
-      args: `tunnel --no-autoupdate run --token ${process.env.CLOUDFLARE_TUNNEL_TOKEN || 'CLOUDFLARE_TUNNEL_TOKEN_NOT_SET'}`,
-      instances: 1,
-      exec_mode: 'fork',
-      watch: false,
-      // Only auto-start when the token is present — prevents a crash-loop
-      // from flooding logs when the user hasn't configured the tunnel yet.
-      autorestart: Boolean(process.env.CLOUDFLARE_TUNNEL_TOKEN),
-      max_restarts: 20,
-      min_uptime: '10s',
-      restart_delay: 5000,
-      exp_backoff_restart_delay: 200,
-      max_memory_restart: '256M',     // cloudflared is lightweight (~50MB RSS)
-      kill_timeout: 5000,
-      error_file: 'logs/cloudflared-error.log',
-      out_file: 'logs/cloudflared-out.log',
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    },
+    // concord-tunnel is intentionally NOT defined here. It used to be,
+    // and that was a real landmine: `pm2 start ecosystem.config.cjs --env
+    // runpod` (needed for every backend/frontend/godot redeploy) also
+    // re-templated this app`s args from process.env.CLOUDFLARE_TUNNEL_TOKEN
+    // -- so any invocation in a shell that had not sourced .env first baked
+    // in the literal fallback string "CLOUDFLARE_TUNNEL_TOKEN_NOT_SET" and
+    // set autorestart:false, silently killing the public tunnel. Once
+    // broken this way, `pm2 restart concord-tunnel` (the branch startup.sh
+    // takes when it finds the app already registered) could never self-
+    // heal it, because restart reuses the already-bad cached args instead
+    // of re-reading this file. startup.sh already has its own dedicated,
+    // correctly-guarded `pm2 start cloudflared --name concord-tunnel ...`
+    // block (see "Cloudflare tunnel (Vector 6" further down in that file)
+    // that only runs with .env fully sourced -- that is now the single
+    // source of truth for this process. Do not re-add a concord-tunnel
+    // app entry here.
   ],
 };
