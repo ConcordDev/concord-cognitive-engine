@@ -463,7 +463,18 @@ api.interceptors.response.use(
       const shouldThrottle = existingToastCount >= 2;
 
       if (!shouldThrottle) {
-        if (toastStatus === 401) {
+        if (toastStatus === 401 && !isExpectedAuthRead) {
+          // isExpectedAuthRead (401 on a GET) means this is a normal
+          // logged-out app state, not a real session death -- the other
+          // 401 handler above already owns the genuine "session died"
+          // toast, gated on _authRetried (a refresh was actually attempted
+          // and failed). Without this guard, ANY 401 GET on a public page
+          // (register/login, or any background poll before the user has
+          // ever logged in) fired this same toast unconditionally, so a
+          // brand-new visitor who never had a session saw "Session
+          // expired -- please sign in again" on first load. Reproduced via
+          // headless walkthrough 2026-08-13: /register and /login both
+          // showed this toast for a fresh anonymous session.
           store.addToast({ type: 'warning', message: 'Session expired. Please log in again.' });
         } else if (toastStatus === 403) {
           store.addToast({ type: 'error', message: "You don't have permission to do that." });
