@@ -1,0 +1,11 @@
+{
+  "npc_id": "oracle_nesha_keep",
+  "primary_faction": "refusal_keep",
+  "default": 0.0,
+  "affinities": {
+    "refusal_keep": 0.95,
+    "preachers_of_concordia": 0.4,
+    "concordant_watch": 0.1
+  },
+  "notes": {}
+}

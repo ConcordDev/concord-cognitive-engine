@@ -10,6 +10,7 @@
 
 import crypto from "crypto";
 import securityHeaders from './security-headers.js';
+import apiKeyAuth from './api-key-auth.js';
 
 /**
  * Maximum nesting depth allowed in a parsed JSON request body. Deeply-nested
@@ -296,7 +297,8 @@ export default function configureMiddleware(app, deps) {
 
   // ---- Auth Pipeline ----
   app.use(cookieParserMiddleware);          // Parse cookies before auth
-  app.use(authMiddleware);                  // Authentication
+  app.use(apiKeyAuth({ jwtFallback: authMiddleware })); // csk_ API key auth (sets req.user); falls back to JWT
+  app.use(authMiddleware);                  // Authentication (JWT/cookie)
   app.use(productionWriteAuthMiddleware);   // Enforce auth on all writes in production
   app.use(csrfMiddleware);                  // CSRF protection after auth
 }

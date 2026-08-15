@@ -1,0 +1,107 @@
+[gd_scene load_steps=9 format=3 uid="uid://concord-plaza01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="mk1"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall.glb" id="w1"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/banner.glb" id="ban1"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-gate.glb" id="gate1"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_concord_link_frontier"]
+sky_top_color = Color(0.30, 0.20, 0.40, 1)
+sky_horizon_color = Color(0.60, 0.50, 0.75, 1)
+ground_horizon_color = Color(0.4, 0.35, 0.3, 1)
+ground_bottom_color = Color(0.18, 0.16, 0.14, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="Sky2_concord_link_frontier"]
+sky_material = SubResource("Sky_concord_link_frontier")
+
+[sub_resource type="Environment" id="Env_concord_link_frontier"]
+background_mode = 2
+sky = SubResource("Sky2_concord_link_frontier")
+ambient_light_source = 3
+ambient_light_color = Color(0.7, 0.6, 0.9, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.6
+fog_enabled = true
+fog_light_color = Color(0.50, 0.40, 0.70, 1)
+fog_density = 0.008
+
+[sub_resource type="StandardMaterial3D" id="Ground_concord_link_frontier"]
+albedo_color = Color(0.65, 0.6, 0.55, 1)
+roughness = 0.85
+metallic = 0.05
+
+[node name="ConcordLinkFrontierPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_concord_link_frontier")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(0.9, 0.7, 1.0, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+; === Plaza layout (4 link markers + 4 walls + 8 keeper flags + 1 gateway) ===
+[node name="LinkMarker1" parent="Markers" instance=ExtResource("mk1")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, -4, 0, -4)
+
+[node name="LinkMarker2" parent="Markers" instance=ExtResource("mk2")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, 4, 0, -4)
+
+[node name="LinkMarker3" parent="Markers" instance=ExtResource("mk3")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, 4, 0, 4)
+
+[node name="LinkMarker4" parent="Markers" instance=ExtResource("mk4")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, -4, 0, 4)
+
+[node name="LinkWall1" parent="Walls" instance=ExtResource("w1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="LinkWall2" parent="Walls" instance=ExtResource("w2")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 10, 0, 0)
+
+[node name="LinkWall3" parent="Walls" instance=ExtResource("w3")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 10)
+
+[node name="LinkWall4" parent="Walls" instance=ExtResource("w4")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -10, 0, 0)
+
+[node name="KeeperFlag1" parent="Flags" instance=ExtResource("ban1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.0, 0, 0.0)
+
+[node name="KeeperFlag2" parent="Flags" instance=ExtResource("ban2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.24, 0, 4.24)
+
+[node name="KeeperFlag3" parent="Flags" instance=ExtResource("ban3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, 6.0)
+
+[node name="KeeperFlag4" parent="Flags" instance=ExtResource("ban4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.24, 0, 4.24)
+
+[node name="KeeperFlag5" parent="Flags" instance=ExtResource("ban5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 0.0)
+
+[node name="KeeperFlag6" parent="Flags" instance=ExtResource("ban6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.24, 0, -4.24)
+
+[node name="KeeperFlag7" parent="Flags" instance=ExtResource("ban7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0, -6.0)
+
+[node name="KeeperFlag8" parent="Flags" instance=ExtResource("ban8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.24, 0, -4.24)
+
+[node name="LinkGateway" parent="Gateway" instance=ExtResource("gate1")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 12)
+
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("Ground_concord_link_frontier")

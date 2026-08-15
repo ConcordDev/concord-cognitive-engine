@@ -1,0 +1,126 @@
+[gd_scene load_steps=8 format=3 uid="uid://b8tunya01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/tree.glb" id="1_tree"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="2_mesa"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/bricks.glb" id="3_fire"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/statue.glb" id="4_stat"]
+
+[sub_resource type="ProceduralSkyMaterial" id="TunyaSky"]
+sky_top_color = Color(0.50, 0.65, 0.85, 1)
+sky_horizon_color = Color(0.85, 0.70, 0.50, 1)
+ground_horizon_color = Color(0.55, 0.40, 0.25, 1)
+ground_bottom_color = Color(0.25, 0.18, 0.12, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="TunyaSky2"]
+sky_material = SubResource("TunyaSky")
+
+[sub_resource type="Environment" id="TunyaEnv"]
+background_mode = 2
+sky = SubResource("TunyaSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.7, 0.55, 0.35, 1)
+ambient_light_energy = 0.7
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.6
+glow_strength = 0.8
+fog_enabled = false
+
+[sub_resource type="StandardMaterial3D" id="TunyaMat"]
+albedo_color = Color(0.60, 0.50, 0.35, 1)
+roughness = 0.90
+
+[node name="TunyaPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("TunyaEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(1.0, 0.85, 0.65, 1)
+light_energy = 1.4
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+[node name="Trees" type="Node3D" parent="."]
+
+[node name="Tree1" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, 0)
+
+[node name="Tree2" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 9.9, 0, 9.9)
+
+[node name="Tree3" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, 14)
+
+[node name="Tree4" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -9.9, 0, 9.9)
+
+[node name="Tree5" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -14, 0, 0)
+
+[node name="Tree6" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -9.9, 0, -9.9)
+
+[node name="Tree7" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -14)
+
+[node name="Tree8" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 9.9, 0, -9.9)
+
+[node name="Mesas" type="Node3D" parent="."]
+
+[node name="Mesa1" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
+
+[node name="Mesa2" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
+
+[node name="Mesa3" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="Mesa4" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
+
+[node name="Mesa5" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -7)
+
+[node name="Mesa6" parent="Mesas" instance=ExtResource("2_mesa")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 7)
+
+[node name="Fires" type="Node3D" parent="."]
+
+[node name="Fire1" parent="Fires" instance=ExtResource("3_fire")]
+transform = Transform3D(1, 0, 0, 0, 0.8, 0, 0, 0, 1, -3, 0, -3)
+
+[node name="Fire2" parent="Fires" instance=ExtResource("3_fire")]
+transform = Transform3D(0.707, 0, -0.707, 0, 0.8, 0, 0.707, 0, 0.707, 3, 0, -3)
+
+[node name="Fire3" parent="Fires" instance=ExtResource("3_fire")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 0.8, 0, 0.707, 0, -0.707, 3, 0, 3)
+
+[node name="Fire4" parent="Fires" instance=ExtResource("3_fire")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 0.8, 0, 8.74e-08, 0, -1, -3, 0, 3)
+
+[node name="Statues" type="Node3D" parent="."]
+
+[node name="Statue1" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -5)
+
+[node name="Statue2" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 5, 0, -5)
+
+[node name="Statue3" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 5, 0, 5)
+
+[node name="Statue4" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -5, 0, 5)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("TunyaMat")

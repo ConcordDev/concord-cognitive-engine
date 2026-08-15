@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Velka Ironhand
+; Data: res://data/npcs/merchant_velka_ironhand/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="merchant_velka_ironhand" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "merchant_velka_ironhand"
+display_name = "Velka Ironhand"
+title = "Master of the Concordant Bazaar"
+faction_id = "bazaar_consortium"
+archetype = "trader"
+world_id = "concordia-hub"
+body_color = Color(0.480, 0.360, 0.280, 1.0)
+accent_color = Color(0.700, 0.500, 0.250, 1.0)
+body_height = 1.72
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/merchant_velka_ironhand/dialogue-tree.json"
+schedule_path = "res://data/npcs/merchant_velka_ironhand/schedule.json"
+faction_affinity_path = "res://data/npcs/merchant_velka_ironhand/faction-affinity.json"
+

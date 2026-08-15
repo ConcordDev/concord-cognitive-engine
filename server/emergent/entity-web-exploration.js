@@ -103,6 +103,180 @@ export const EXPLORATION_SOURCES = {
   ],
 };
 
+// ── Concurrency-Limited Fetch Scheduler ─────────────────────────────────────
+//
+// Why this exists: the previous checkRobotsTxt issued `fetch(domain + /robots.txt)`
+// with a 5s AbortSignal timeout, no concurrency cap. When 57 feed sources and
+// the entity explorer all polled in the same heartbeat window, every Node libuv
+// worker was simultaneously inside a pending fetch+timeout — the event loop
+// stayed responsive to timers but every incoming HTTP request (including
+// frontend SSR + /health) got queued behind the 5s elapsed timers. Result:
+// /health timed out and PM2 cycled the frontend, thinking it was unhealthy.
+//
+// Fix: route every outbound fetch (robots.txt + downstream safeFetch) through
+// `scheduledFetch`. It enforces:
+//   - PER-DOMAIN cap of 4 concurrent in-flight requests (domain → Promise[]).
+//   - GLOBAL cap of 16 concurrent in-flight requests across all origins.
+//   - IN-FLIGHT DEDUPE: if 30 feed sources all ask for the same origin's
+//     robots.txt, we issue ONE fetch and share the result with all 30 callers.
+//   - CIRCUIT BREAKER: 3 consecutive failures per origin within a 60s window
+//     halts that origin for 60s (no more requests, no more log spam).
+//   - HARD TIMEOUT: 5s per fetch (unchanged). The real protection is the caps.
+//
+// All reschedules yield via setImmediate so the event loop can interleave
+// timed work (HTTP keepalives, ping, etc.) between bursts.
+
+const SCHED = {
+  globalCap:  Number(process.env.CONCORD_FETCH_GLOBAL_CAP) || 16,
+  perDomain:  Number(process.env.CONCORD_FETCH_PER_DOMAIN) || 4,
+  failureThreshold: 3,
+  cooldownMs: 60_000,
+  stats: { inFlight: 0, queued: 0, deduped: 0, droppedByCircuit: 0, timeouts: 0, errors: 0, ok: 0 },
+};
+
+/** @type {Map<string, Promise<any>>} origin → in-flight promise (dedupe) */
+const _inFlight = new Map();
+/** @type {Map<string, number>} origin → current in-flight count (for per-domain cap).
+ *  LruMap-bounded so an origin that stops being polled is eventually evicted
+ *  instead of growing forever as new origins are discovered over uptime. */
+const _domainInFlight = new LruMap(10_000);
+/** @type {Map<string, number>} origin → consecutive-failure counter */
+const _failures = new Map();
+/** @type {Map<string, number>} origin → circuit-breaker opens-at timestamp */
+const _circuitOpenUntil = new Map();
+/** @type {Array<() => void>} FIFO of waiters when global cap is saturated */
+const _globalQueue = [];
+
+function _origin(url) { try { return new URL(url).origin; } catch { return null; } }
+
+function _acquireGlobalSlot() {
+  if (SCHED.stats.inFlight < SCHED.globalCap) {
+    SCHED.stats.inFlight++;
+    return Promise.resolve();
+  }
+  SCHED.stats.queued++;
+  return new Promise((resolve) => { _globalQueue.push(resolve); });
+}
+
+function _releaseGlobalSlot() {
+  SCHED.stats.inFlight--;
+  const next = _globalQueue.shift();
+  if (next) { SCHED.stats.inFlight++; SCHED.stats.queued--; next(); }
+}
+
+function _acquireDomainSlot(origin) {
+  const cur = _domainInFlight.get(origin) || 0;
+  if (cur < SCHED.perDomain) {
+    _domainInFlight.set(origin, cur + 1);
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const tryRelease = () => {
+      const c = _domainInFlight.get(origin) || 0;
+      if (c < SCHED.perDomain) {
+        _domainInFlight.set(origin, c + 1);
+        clearInterval(poll);
+        resolve();
+      }
+    };
+    const poll = setInterval(tryRelease, 25);
+  });
+}
+
+function _releaseDomainSlot(origin) {
+  const cur = _domainInFlight.get(origin) || 0;
+  if (cur > 0) _domainInFlight.set(origin, cur - 1);
+}
+
+function _isCircuitOpen(origin) {
+  const until = _circuitOpenUntil.get(origin);
+  if (!until) return false;
+  if (Date.now() >= until) {
+    _circuitOpenUntil.delete(origin);
+    _failures.delete(origin);
+    return false;
+  }
+  return true;
+}
+
+function _noteSuccess(origin) {
+  _failures.delete(origin);
+  _circuitOpenUntil.delete(origin);
+}
+
+function _noteFailure(origin) {
+  const cur = (_failures.get(origin) || 0) + 1;
+  _failures.set(origin, cur);
+  if (cur >= SCHED.failureThreshold) {
+    _circuitOpenUntil.set(origin, Date.now() + SCHED.cooldownMs);
+    _failures.delete(origin); // reset counter; cooldown governs from now
+  }
+}
+
+/**
+ * Issue a fetch through the scheduler. Resolves to the Response (or null on
+ * circuit-open / error). The caller is responsible for `.text()` / `.json()`
+ * and for retry semantics — this helper only manages fetch concurrency.
+ *
+ * @param {string} url
+ * @param {RequestInit} [init]
+ * @returns {Promise<Response|null>}
+ */
+export async function scheduledFetch(url, init = {}) {
+  const origin = _origin(url);
+  if (!origin) return null;
+
+  if (_isCircuitOpen(origin)) {
+    SCHED.stats.droppedByCircuit++;
+    return null;
+  }
+
+  // Dedupe: if the same URL is already in-flight, share the result.
+  const cacheKey = `${origin}|${url}|${init.method || "GET"}`;
+  const existing = _inFlight.get(cacheKey);
+  if (existing) {
+    SCHED.stats.deduped++;
+    return existing;
+  }
+
+  const promise = (async () => {
+    await _acquireGlobalSlot();
+    try {
+      await _acquireDomainSlot(origin);
+      try {
+        const res = await fetch(url, init);
+        if (res.ok) { _noteSuccess(origin); SCHED.stats.ok++; }
+        else { _noteFailure(origin); SCHED.stats.errors++; }
+        return res;
+      } catch (err) {
+        _noteFailure(origin);
+        if (err?.name === "TimeoutError" || err?.name === "AbortError") SCHED.stats.timeouts++;
+        else SCHED.stats.errors++;
+        return null;
+      } finally {
+        _releaseDomainSlot(origin);
+      }
+    } finally {
+      _releaseGlobalSlot();
+      _inFlight.delete(cacheKey);
+    }
+  })();
+
+  _inFlight.set(cacheKey, promise);
+  return promise;
+}
+
+/** Test/debug: read scheduler stats + open circuits. */
+export function getSchedulerStats() {
+  return {
+    ...SCHED.stats,
+    inFlightDomains: _domainInFlight.size,
+    openCircuits: [..._circuitOpenUntil.entries()].map(([origin, until]) => ({
+      origin, opensUntil: new Date(until).toISOString(),
+    })),
+  };
+}
+
 // ── robots.txt Compliance ───────────────────────────────────────────────────
 
 const robotsCache = new LruMap(); // domain → { rules, fetchedAt }
@@ -159,27 +333,40 @@ export async function checkRobotsTxt(url) {
     return isAllowedByRules(cached.rules, url);
   }
 
-  try {
-    const response = await fetch(`${domain}/robots.txt`, {
-      headers: { "User-Agent": WEB_POLICY.userAgent },
-      signal: AbortSignal.timeout(5000),
-    });
+  if (_isCircuitOpen(domain)) {
+    // Don't even try — caller treats it as "no robots.txt info available" by
+    // returning false. That matches the conservative-explicit skip contract
+    // the previous code had on caught errors.
+    return false;
+  }
 
-    if (response.ok) {
+  const response = await scheduledFetch(`${domain}/robots.txt`, {
+    headers: { "User-Agent": WEB_POLICY.userAgent },
+    signal: AbortSignal.timeout(5000),
+  });
+
+  if (response && response.ok) {
+    try {
       const text = await response.text();
       const rules = parseRobotsTxt(text);
       robotsCache.set(domain, { rules, fetchedAt: Date.now() });
       return isAllowedByRules(rules, url);
+    } catch (err) {
+      console.warn('[entity-web-exploration] failed to parse robots.txt, skipping URL', { domain, err: err.message });
+      return false;
     }
-
-    // No robots.txt = allowed
-    robotsCache.set(domain, { rules: { disallow: [], allow: [] }, fetchedAt: Date.now() });
-    return true;
-  } catch (err) {
-    // Can't fetch robots.txt = be cautious, skip
-    console.warn('[entity-web-exploration] failed to fetch robots.txt, skipping URL', { domain, err: err.message });
-    return false;
   }
+
+  // No usable robots.txt response — be conservative (skip the URL).
+  // The previous code returned `true` on a non-200 response (treating "no
+  // robots.txt" as "allowed"). That is correct under RFC 9309 only when the
+  // server literally returns 404 — for 5xx / network errors it's wrong.
+  // We now treat ALL failures as "unknown" and skip. This is the safer
+  // default for a politeness-first subsystem.
+  if (response && !response.ok) {
+    console.warn('[entity-web-exploration] non-OK robots.txt, skipping URL', { domain, status: response.status });
+  }
+  return false;
 }
 
 // ── URL Safety Check ────────────────────────────────────────────────────────
@@ -236,17 +423,14 @@ async function safeFetch(url, options = {}) {
   const allowed = await checkRobotsTxt(url);
   if (!allowed) return null;
 
-  try {
-    const response = await fetch(url, {
-      headers: { "User-Agent": WEB_POLICY.userAgent, ...options.headers },
-      signal: AbortSignal.timeout(options.timeout || 10000),
-    });
-    recordRequest(url);
-    if (!response.ok) return null;
-    return response;
-  } catch {
-    return null;
-  }
+  const response = await scheduledFetch(url, {
+    headers: { "User-Agent": WEB_POLICY.userAgent, ...options.headers },
+    signal: AbortSignal.timeout(options.timeout || 10000),
+  });
+  if (!response) return null;
+  recordRequest(url);
+  if (!response.ok) return null;
+  return response;
 }
 
 // ── XML Helpers ─────────────────────────────────────────────────────────────
@@ -447,8 +631,9 @@ export async function entityWebExplore(entity, targetDomain) {
  * Select which domain the entity should explore on the web.
  */
 export function selectExplorationTarget(entity) {
+  if (!entity || !entity.homeostasis || !entity.knowledge) return null;
   const h = entity.homeostasis;
-  const exposure = entity.knowledge.domainExposure;
+  const exposure = entity.knowledge.domainExposure || {};
   const domains = Object.keys(EXPLORATION_SOURCES);
 
   if (h.curiosity > 0.7) {

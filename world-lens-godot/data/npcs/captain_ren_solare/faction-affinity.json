@@ -1,0 +1,12 @@
+{
+  "npc_id": "captain_ren_solare",
+  "primary_faction": "concordant_watch",
+  "default": 0.0,
+  "affinities": {
+    "concordant_watch": 0.9,
+    "concordant_curators": 0.35,
+    "brawling_pit": -0.2,
+    "bazaar_consortium": 0.15
+  },
+  "notes": {}
+}

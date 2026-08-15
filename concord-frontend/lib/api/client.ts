@@ -463,18 +463,7 @@ api.interceptors.response.use(
       const shouldThrottle = existingToastCount >= 2;
 
       if (!shouldThrottle) {
-        if (toastStatus === 401 && !isExpectedAuthRead) {
-          // isExpectedAuthRead (401 on a GET) means this is a normal
-          // logged-out app state, not a real session death -- the other
-          // 401 handler above already owns the genuine "session died"
-          // toast, gated on _authRetried (a refresh was actually attempted
-          // and failed). Without this guard, ANY 401 GET on a public page
-          // (register/login, or any background poll before the user has
-          // ever logged in) fired this same toast unconditionally, so a
-          // brand-new visitor who never had a session saw "Session
-          // expired -- please sign in again" on first load. Reproduced via
-          // headless walkthrough 2026-08-13: /register and /login both
-          // showed this toast for a fresh anonymous session.
+        if (toastStatus === 401) {
           store.addToast({ type: 'warning', message: 'Session expired. Please log in again.' });
         } else if (toastStatus === 403) {
           store.addToast({ type: 'error', message: "You don't have permission to do that." });
@@ -506,6 +495,14 @@ interface LensRunSpec {
    * Omitted by default → the platform's normal traffic emits nothing.
    */
   runId?: string;
+  /**
+   * Phase 6 advisory intent tag (CSL routing): one of
+   * 'chat' | 'vision' | 'slash' | 'skill' | 'macro'. The frontend stamps WHAT
+   * dispatched this lens action so cc-sonnet's csl-router.js can weight the
+   * confirmation — the routing decision itself stays server-side. Sent only
+   * when present; the platform's normal traffic sends nothing extra.
+   */
+  intentType?: string;
 }
 
 /**
@@ -540,6 +537,7 @@ export async function lensRun<T = any>(
     let inp: Record<string, unknown>;
     let signal: AbortSignal | undefined;
     let rid: string | undefined = runId;
+    let intent: string | undefined;
     if (typeof domainOrSpec === 'string') {
       domain = domainOrSpec;
       act = action || '';
@@ -550,15 +548,20 @@ export async function lensRun<T = any>(
       inp = domainOrSpec.input || {};
       signal = domainOrSpec.signal;
       rid = rid || domainOrSpec.runId;
+      intent = domainOrSpec.intentType;
     }
     // axios config: thread the abort signal and (when opted in) the ConKay
     // correlation id header so the server scopes its honest lifecycle emits.
     const config: { signal?: AbortSignal; headers?: Record<string, string> } = {};
     if (signal) config.signal = signal;
     if (rid) config.headers = { 'x-conkay-run-id': rid };
+    const body: Record<string, unknown> = { domain, action: act, input: inp };
+    // Phase 6 advisory intent tag — sent only when the caller opted in, so the
+    // platform's normal traffic (the other ~265 lenses) sends nothing extra.
+    if (intent) body.intentType = intent;
     const res = await api.post(
       '/api/lens/run',
-      { domain, action: act, input: inp },
+      body,
       Object.keys(config).length ? config : undefined,
     );
     let node: unknown = res?.data;

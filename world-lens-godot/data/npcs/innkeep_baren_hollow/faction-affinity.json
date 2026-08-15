@@ -1,0 +1,11 @@
+{
+  "npc_id": "innkeep_baren_hollow",
+  "primary_faction": "seven_spokes_inn",
+  "default": 0.0,
+  "affinities": {
+    "seven_spokes_inn": 0.9,
+    "bazaar_consortium": 0.45,
+    "concordant_bards": 0.5
+  },
+  "notes": {}
+}

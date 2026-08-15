@@ -1,0 +1,132 @@
+[gd_scene load_steps=12 format=3 uid="uid://b8lattice01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="1_col"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall.glb" id="2_wall"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/floor.glb" id="3_floor"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/bricks.glb" id="4_bricks"]
+
+[sub_resource type="ProceduralSkyMaterial" id="LatticeSky"]
+sky_top_color = Color(0.05, 0.02, 0.15, 1)
+sky_horizon_color = Color(0.20, 0.10, 0.40, 1)
+ground_horizon_color = Color(0.05, 0.02, 0.15, 1)
+ground_bottom_color = Color(0.02, 0.01, 0.05, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="LatticeSky2"]
+sky_material = SubResource("LatticeSky")
+
+[sub_resource type="Environment" id="LatticeEnv"]
+background_mode = 2
+sky = SubResource("LatticeSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.5, 0.3, 0.8, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 1.2
+glow_strength = 1.5
+fog_enabled = true
+fog_light_color = Color(0.10, 0.05, 0.30, 1)
+fog_density = 0.015
+
+[sub_resource type="StandardMaterial3D" id="LatticeMat"]
+albedo_color = Color(0.10, 0.05, 0.20, 1)
+emission_enabled = true
+emission = Color(0.40, 0.20, 0.80, 1)
+emission_energy_multiplier = 0.4
+metallic = 0.7
+roughness = 0.2
+
+[node name="LatticeCruciblePlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("LatticeEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(0.5, 0.3, 0.9, 1)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+[node name="Crystals" type="Node3D" parent="."]
+
+[node name="Crystal1" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(1, 0, 0, 0, 1.5, 0, 0, 0, 1, 7, 0, 0)
+
+[node name="Crystal2" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(0.5, 0, -0.866, 0, 1.5, 0, 0.866, 0, 0.5, 3.5, 0, 6.06)
+
+[node name="Crystal3" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(-0.5, 0, -0.866, 0, 1.5, 0, 0.866, 0, -0.5, -3.5, 0, 6.06)
+
+[node name="Crystal4" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1.5, 0, 8.74e-08, 0, -1, -7, 0, 0)
+
+[node name="Crystal5" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(-0.5, 0, 0.866, 0, 1.5, 0, -0.866, 0, -0.5, -3.5, 0, -6.06)
+
+[node name="Crystal6" parent="Crystals" instance=ExtResource("1_col")]
+transform = Transform3D(0.5, 0, 0.866, 0, 1.5, 0, -0.866, 0, 0.5, 3.5, 0, -6.06)
+
+[node name="Platforms" type="Node3D" parent="."]
+
+[node name="Platform1" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, 0)
+
+[node name="Platform2" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 2.12, 0, 2.12)
+
+[node name="Platform3" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, 3)
+
+[node name="Platform4" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -2.12, 0, 2.12)
+
+[node name="Platform5" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -3, 0, 0)
+
+[node name="Platform6" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -2.12, 0, -2.12)
+
+[node name="Platform7" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -3)
+
+[node name="Platform8" parent="Platforms" instance=ExtResource("3_floor")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 2.12, 0, -2.12)
+
+[node name="Tunnel" type="Node3D" parent="."]
+
+[node name="TunnelWallN" parent="Tunnel" instance=ExtResource("2_wall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="TunnelWallE" parent="Tunnel" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 10, 0, 0)
+
+[node name="TunnelWallS" parent="Tunnel" instance=ExtResource("2_wall")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 10)
+
+[node name="TunnelWallW" parent="Tunnel" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -10, 0, 0)
+
+[node name="Shards" type="Node3D" parent="."]
+
+[node name="Shard1" parent="Shards" instance=ExtResource("4_bricks")]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0, 0, 0, 1, -4, 0, -4)
+
+[node name="Shard2" parent="Shards" instance=ExtResource("4_bricks")]
+transform = Transform3D(0.707, 0, -0.707, 0, 0.7, 0, 0.707, 0, 0.707, 4, 0, -4)
+
+[node name="Shard3" parent="Shards" instance=ExtResource("4_bricks")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 0.7, 0, 0.707, 0, -0.707, 4, 0, 4)
+
+[node name="Shard4" parent="Shards" instance=ExtResource("4_bricks")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 0.7, 0, 8.74e-08, 0, -1, -4, 0, 4)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("LatticeMat")

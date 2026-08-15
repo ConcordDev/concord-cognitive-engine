@@ -205,7 +205,7 @@ const RESPONSE_PROMPTS = {
     TASK_PROMPTS.entityHiveAnalogize({
       receiverId: receiver.id,
       signal,
-      domainSpan: Object.keys(receiver.knowledge.domainExposure).join(", "),
+      domainSpan: Object.keys(receiver?.knowledge?.domainExposure || {}).join(", "),
     }),
   critique: (receiver, signal, knowledgeCtx) =>
     TASK_PROMPTS.entityHiveCritique({ receiverId: receiver.id, signal, knowledgeCtx }),
@@ -215,7 +215,7 @@ const RESPONSE_PROMPTS = {
     TASK_PROMPTS.entityHiveConnect({
       receiverId: receiver.id,
       signal,
-      domainSpan: Object.keys(receiver.knowledge.domainExposure).join(", "),
+      domainSpan: Object.keys(receiver?.knowledge?.domainExposure || {}).join(", "),
     }),
   "domain-deepen": (receiver, signal, knowledgeCtx) =>
     TASK_PROMPTS.entityHiveDomainDeepen({ receiverId: receiver.id, signal, knowledgeCtx }),
@@ -390,7 +390,7 @@ export function updateCuriosityFromHive(entity, signal, response) {
     entity.homeostasis.curiosity = clamp(entity.homeostasis.curiosity + 0.1);
   }
 
-  const domainExposure = entity.knowledge.domainExposure[signal.domain] || 0;
+  const domainExposure = entity?.knowledge?.domainExposure?.[signal.domain] || 0;
   if (domainExposure < 3 && entity.age < 20) {
     entity.nextExplorationHint = signal.domain;
   }

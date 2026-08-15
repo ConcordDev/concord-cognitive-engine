@@ -29,6 +29,13 @@ server/data/*
 !server/data/seed/
 !server/data/seed/**
 
+# Authored Godot hub NPC data (schedules / dialogue / affinity). The root
+# `data/` rule above would otherwise swallow world-lens-godot/data/npcs/**.
+!world-lens-godot/data/
+world-lens-godot/data/*
+!world-lens-godot/data/npcs/
+!world-lens-godot/data/npcs/**
+
 # Test coverage output
 coverage/
 
@@ -97,6 +104,11 @@ world-lens-godot/*.x86_64
 # concord-frontend/public/ so it's servable with zero new infra — see that
 # script's header for why nothing else needed to change.
 concord-frontend/public/godot-client/
+
+# AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
+# the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via
+# `npx asc <source>.ts --outFile server/lib/wasm/build/<name>.wasm --optimize`).
+server/lib/wasm/build/
 # Raw Godot export staging dir (scripts/export-godot-web.mjs) — holds the
 # exported index.html the app/godot-client/index.html/route.ts handler reads
 # and nonce-injects at request time. Never served directly; see either
@@ -116,3 +128,32 @@ server/data/pyodide-packages/
 # (world-lens-godot/tests/goldens/, ~2-4 KB each) ARE committed — that is the
 # whole point of a baseline — and are deliberately NOT ignored here.
 world-lens-godot/.visual-qa/
+
+# Next.js auto-generated
+concord-frontend/next-env.d.ts
+
+# Local DB files / snapshots — generated runtime artifacts, may contain user
+# data, never committed. (server/data/seed/** above is the real seed pack.)
+*.sqlite
+*.sqlite3
+concord.db
+server/concord.db
+
+# Ad-hoc env backups made during deploy/debug sessions — these routinely pick
+# up real secret values (tunnel tokens, API keys) that .env.runpod's tracked
+# template intentionally keeps blank. Never commit a backup of a real config.
+.env.bak*
+.env.*.bak*
+.env.runpod.bak*
+
+# macOS AppleDouble resource-fork junk (created by zip/unzip and Finder
+# copies over network/mfs volumes) — pure noise, never intentional content.
+._*
+
+# Runtime logs directory (pm2/deploy script output)
+logs/
+
+# Real secrets extracted out of a tracked .env.* template during a deploy
+# session (see .env.runpod's history for why this pattern exists — a real
+# Cloudflare tunnel token once got hand-appended to the tracked file).
+*.secrets.local

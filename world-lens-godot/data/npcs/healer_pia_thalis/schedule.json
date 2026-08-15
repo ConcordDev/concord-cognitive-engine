@@ -1,0 +1,73 @@
+{
+  "npc_id": "healer_pia_thalis",
+  "home_location": "hub_infirmary_quarters",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_infirmary_quarters",
+      "activity": "on-call sleep; may be roused for emergencies",
+      "need_addressed": "patient_rounds",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_infirmary_supply_room",
+      "activity": "morning supply audit; mixes day's herbal preparations",
+      "need_addressed": "infirmary_supply",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_infirmary_ward",
+      "activity": "patient rounds; surgery if scheduled",
+      "need_addressed": "patient_rounds",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_infirmary_ward",
+      "activity": "afternoon rounds; receives walk-ins",
+      "need_addressed": "patient_rounds",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_infirmary_back_door",
+      "activity": "off-ledger refugee clinic",
+      "need_addressed": "patient_rounds",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_infirmary_quarters",
+      "activity": "paperwork; tea; sleep",
+      "need_addressed": "infirmary_supply",
+      "interactable_by_player": false
+    }
+  ]
+}

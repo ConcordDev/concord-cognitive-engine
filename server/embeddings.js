@@ -1,11 +1,13 @@
 /**
  * Embedding Infrastructure for Concord Cognitive Engine
  *
- * Provides semantic embedding generation via local Ollama instances
- * using nomic-embed-text (137MB, CPU, millisecond inference).
+ * Provides semantic embedding generation via local Ollama instances.
+ * Sprint 32 E5: migrated to mxbai-embed-large (1024-dim, MTEB SOTA).
+ * (intfloat/e5-large-v2 was planned but not available in ollama library;
+ * mxbai is drop-in compatible, same prefixes + dimension.)
  *
  * Core API:
- *   embed(text)                         → Float32Array (was Float64, halved for memory)
+ *   embed(text, type)                   → Float32Array (type: 'query'|'passage')
  *   cosineSimilarity(vecA, vecB)        → number
  *   findSimilar(queryVec, candidates, topK) → DTU[]
  *   findCrossDomainConnections(dtuId, limit) → DTU[]
@@ -16,23 +18,34 @@
  *   3. Always include HYPERs and MEGAs in candidate pool regardless of lens
  *   4. Embedding dimension must be consistent — don't mix models
  *   5. Memory stays under control — batched search if substrate > 150K DTUs
+ *   6. MTEB models require prefix: "query: " for searches, "passage: " for documents
  */
 
 import crypto from "crypto";
+import * as presenceIdle from "./lib/presence-idle.js";
 import logger from './logger.js';
 import _qdrant from "./lib/qdrant-client.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────
-const EMBEDDING_MODEL = process.env.EMBEDDING_MODEL || "nomic-embed-text";
+const EMBEDDING_MODEL = process.env.CONCORD_EMBED_MODEL || "mxbai-embed-large";
 const EMBEDDING_FALLBACK_MODEL = "all-minilm";
-const EMBEDDING_DIMENSION = 768; // nomic-embed-text default
+const EMBEDDING_DIMENSION = Number(process.env.CONCORD_EMBED_DIM) || 1024; // 1024-dim for mxbai/e5
+const EMBEDDING_QUERY_PREFIX = process.env.CONCORD_EMBED_QUERY_PREFIX || "query: ";
+const EMBEDDING_PASSAGE_PREFIX = process.env.CONCORD_EMBED_PASSAGE_PREFIX || "passage: ";
 // In-memory embedding cache cap. At ~3KB per Float32Array (768 dims) the
 // default 150k entries occupy ~450MB. Operators on smaller boxes can shrink
 // via CONCORD_EMBEDDING_CACHE_MAX. SQLite remains the source of truth;
 // over-cap embeddings fall through to disk lookup.
 const MAX_IN_MEMORY = Number(process.env.CONCORD_EMBEDDING_CACHE_MAX) || 150_000;
 const BACKFILL_BATCH_SIZE = 50;   // Smaller batches to limit RSS growth
-const EMBED_TIMEOUT_MS = 5_000;  // GPU embeds are much faster
+// Sprint 32 — was 5_000 ms, which was tuned for GPU hosts. The deployed
+// pod (RunPod CPU-only A40 container with 7 Ollama instances sharing
+// 9 cores) frequently hits 5-15s on a single embed call under heartbeat
+// load, so the 5s AbortSignal timeout was tripping the embeddings
+// circuit breaker 8x in a row and locking out all embeddings for 30s.
+// 30s is generous enough to ride out a CPU contention spike without
+// hitting the half-open probe budget. Override via CONCORD_EMBED_TIMEOUT_MS.
+const EMBED_TIMEOUT_MS = Number(process.env.CONCORD_EMBED_TIMEOUT_MS) || 30_000;
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -150,13 +163,18 @@ export async function initEmbeddings({ db = null, ollamaUrls = [], structuredLog
  * Returns null if the embedding model is unavailable.
  *
  * @param {string} text
+ * @param {string} type - 'query' (prepend query prefix) or 'passage' (prepend passage prefix)
  * @returns {Promise<Float32Array|null>}
  */
-export async function embed(text) {
+export async function embed(text, type = "passage") {
   if (!embeddingState.available || !embeddingState.ollamaUrl) return null;
 
   const trimmed = String(text || "").trim().slice(0, 8192); // Model context limit
   if (!trimmed) return null;
+
+  // E5 models require prefixes for optimal performance
+  const prefix = type === "query" ? EMBEDDING_QUERY_PREFIX : EMBEDDING_PASSAGE_PREFIX;
+  const textWithPrefix = prefix + trimmed;
 
   embeddingState.stats.totalRequests++;
   const start = Date.now();
@@ -167,7 +185,7 @@ export async function embed(text) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: embeddingState.model,
-        prompt: trimmed,
+        prompt: textWithPrefix,
       }),
       signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
     });
@@ -183,6 +201,17 @@ export async function embed(text) {
     if (!Array.isArray(vec) || vec.length === 0) {
       embeddingState.stats.totalErrors++;
       return null;
+    }
+
+    // Validate dimension matches expected (1024 for e5-large-v2)
+    if (vec.length !== EMBEDDING_DIMENSION) {
+      if (_log) {
+        _log("warn", "embed_dimension_mismatch", {
+          expected: EMBEDDING_DIMENSION,
+          got: vec.length,
+          model: embeddingState.model
+        });
+      }
     }
 
     // Track dimension on first successful call
@@ -435,6 +464,9 @@ export async function embedDTU(dtu) {
  * @returns {Promise<{ embedded: number, skipped: number, errors: number }>}
  */
 export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
+  // Sprint 60+ — idle gate. Backfill processes every DTU through the embedding
+  // model (one LLM call each). With no users, this is pure waste.
+  if (!presenceIdle.shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users", processed: 0 };
   if (!embeddingState.available) {
     return { embedded: 0, skipped: 0, errors: 0, reason: "embeddings_unavailable" };
   }
@@ -480,7 +512,7 @@ export async function backfillEmbeddings(dtusMap, { onProgress = null } = {}) {
           errors,
         });
       }
-      await new Promise(r => { setTimeout(r, 10); });
+      await new Promise(r => { setTimeout(r, 100); });
     }
 
     // GC every BACKFILL_BATCH_SIZE DTUs to keep RSS stable
@@ -595,8 +627,8 @@ function _loadEmbeddingsFromDb() {
           );
           embeddingCache.set(row.dtu_id, vec);
           loaded++;
-        } catch {
-          // Corrupted embedding — skip
+        } catch (e) {
+          _log("warn", "embedding_load_corrupt", { dtuId: row.dtu_id, error: String(e) });
         }
       }
     }

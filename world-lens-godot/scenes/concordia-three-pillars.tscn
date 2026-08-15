@@ -1,0 +1,165 @@
+[gd_scene load_steps=10 format=3 uid="uid://c3pillars001"]
+
+; Concordia Three Pillars — Godot 4 tableau (LORE_BIBLE §1).
+; Equilateral triangle on XZ, closed loop, nobody reaches.
+;   Concord  ──loves──►  Concordia  ──fond of──►  The Sovereign
+;      ▲                                                │
+;      └──────────────── won't turn around ◄────────────┘
+; Facing uses Godot -Z look convention.
+; Concordia at +Z apex looks at Sovereign (+X). Concord at -X looks at her.
+; Sovereign at +X faces outward — too proud to turn.
+
+[sub_resource type="StandardMaterial3D" id="mat_sovereign"]
+albedo_color = Color(0.12, 0.1, 0.14, 1)
+metallic = 0.45
+roughness = 0.4
+emission_enabled = true
+emission = Color(0.4, 0.05, 0.05, 1)
+emission_energy_multiplier = 0.28
+
+[sub_resource type="StandardMaterial3D" id="mat_concordia"]
+albedo_color = Color(0.55, 0.32, 0.18, 1)
+roughness = 0.72
+
+[sub_resource type="StandardMaterial3D" id="mat_concord"]
+albedo_color = Color(0.22, 0.32, 0.48, 1)
+metallic = 0.28
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="mat_ground"]
+albedo_color = Color(0.16, 0.28, 0.15, 1)
+roughness = 0.9
+
+[sub_resource type="CapsuleMesh" id="mesh_body"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="SphereMesh" id="mesh_head"]
+radius = 0.22
+height = 0.44
+
+[sub_resource type="BoxMesh" id="mesh_ground"]
+size = Vector3(16, 0.08, 16)
+
+[sub_resource type="CylinderMesh" id="mesh_ring"]
+top_radius = 5.2
+bottom_radius = 5.2
+height = 0.04
+radial_segments = 48
+
+[sub_resource type="StandardMaterial3D" id="mat_ring"]
+albedo_color = Color(0.72, 0.58, 0.22, 1)
+metallic = 0.45
+roughness = 0.35
+
+[sub_resource type="Environment" id="env_hub"]
+background_mode = 1
+background_color = Color(0.08, 0.09, 0.12, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.48, 0.4, 1)
+ambient_light_energy = 0.45
+
+[node name="ConcordiaThreePillars" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env_hub")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 4, 8, 6)
+light_energy = 1.15
+shadow_enabled = true
+
+[node name="Fill" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 2)
+light_color = Color(1, 0.82, 0.62, 1)
+light_energy = 1.6
+omni_range = 14.0
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.819, 0.574, 0, -0.574, 0.819, 0, 6.4, 9.2)
+current = true
+fov = 50.0
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, 0)
+mesh = SubResource("mesh_ground")
+surface_material_override/0 = SubResource("mat_ground")
+
+[node name="UnburnedCourtRing" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 0)
+mesh = SubResource("mesh_ring")
+surface_material_override/0 = SubResource("mat_ring")
+
+[node name="Concordia" type="Node3D" parent="."]
+transform = Transform3D(0.866, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866, 0, 0, 2.887)
+metadata/god_id = "concordia"
+metadata/title = "The First Breath"
+metadata/fond_of = "the_sovereign"
+metadata/knows_concord_loves_her = true
+metadata/temperament = "warm_reckless_abundant"
+
+[node name="Body" type="MeshInstance3D" parent="Concordia"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("mesh_body")
+surface_material_override/0 = SubResource("mat_concordia")
+
+[node name="Head" type="MeshInstance3D" parent="Concordia"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
+mesh = SubResource("mesh_head")
+surface_material_override/0 = SubResource("mat_concordia")
+
+[node name="Label" type="Label3D" parent="Concordia"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
+text = "Concordia — First Breath"
+font_size = 28
+modulate = Color(0.92, 0.72, 0.48, 1)
+billboard = 1
+
+[node name="Concord" type="Node3D" parent="."]
+transform = Transform3D(-0.866, 0, 0.5, 0, 1, 0, -0.5, 0, -0.866, -2.5, 0, -1.443)
+metadata/god_id = "concord"
+metadata/title = "The First Law"
+metadata/loves = "concordia"
+metadata/temperament = "cold_analytical_obsessive"
+
+[node name="Body" type="MeshInstance3D" parent="Concord"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("mesh_body")
+surface_material_override/0 = SubResource("mat_concord")
+
+[node name="Head" type="MeshInstance3D" parent="Concord"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
+mesh = SubResource("mesh_head")
+surface_material_override/0 = SubResource("mat_concord")
+
+[node name="Label" type="Label3D" parent="Concord"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
+text = "Concord — First Law"
+font_size = 28
+modulate = Color(0.62, 0.74, 0.92, 1)
+billboard = 1
+
+[node name="Sovereign" type="Node3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 2.5, 0, -1.443)
+metadata/god_id = "the_sovereign"
+metadata/title = "The First Refusal"
+metadata/fond_of = "concordia"
+metadata/will_not_reach = true
+metadata/temperament = "asshole_with_one_soft_spot"
+
+[node name="Body" type="MeshInstance3D" parent="Sovereign"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+mesh = SubResource("mesh_body")
+surface_material_override/0 = SubResource("mat_sovereign")
+
+[node name="Head" type="MeshInstance3D" parent="Sovereign"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.95, 0)
+mesh = SubResource("mesh_head")
+surface_material_override/0 = SubResource("mat_sovereign")
+
+[node name="Label" type="Label3D" parent="Sovereign"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45, 0)
+text = "The Sovereign — First Refusal"
+font_size = 28
+modulate = Color(0.72, 0.68, 0.78, 1)
+billboard = 1

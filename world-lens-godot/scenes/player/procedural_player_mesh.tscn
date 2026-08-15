@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://cplayerprim001"]
+
+; ProceduralPlayerMesh — standalone instanceable player silhouette.
+; Default palette = average adult, short hair, cloth top/bottom. Callers
+; (or the inspector) set body_archetype / colors / hair_style; GLB upgrade
+; remains AvatarRig's job when a real hero mesh resolves.
+
+[ext_resource type="Script" path="res://scripts/player/procedural_player_mesh.gd" id="1_mesh"]
+
+[node name="ProceduralPlayerMesh" type="Node3D"]
+script = ExtResource("1_mesh")
+body_archetype = "average"
+hair_style = "short"

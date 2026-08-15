@@ -1,0 +1,55 @@
+{
+  "npcId": "captain_ren_solare",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Ren Solare regards you without hurry. (Captain of the Concordant Watch)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Ren is exactly as warm as the job allows, which is barely. She remembers every face she's seen twice. She will hand back a stolen purse before she'll arrest you for stealing it \u2014 but she'll know.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Ren Solare, Captain of the Concordant Watch. short, observant, never lies but elides freely",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

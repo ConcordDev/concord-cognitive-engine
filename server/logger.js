@@ -109,10 +109,20 @@ function log(level, source, message, meta = {}) {
 
   // Sanitized message reaches stdout / docker / log shipper — no CRLF
   // injection vector regardless of caller hygiene.
+  // Sprint 32 — when `message` is a constant placeholder like "silent catch",
+  // append the meta.error payload so the actual failure shows up in tail.
+  // Without this, the meta is silently dropped and 1601+ catch sites log
+  // identical useless strings (a real incident on 2026-08-12: chat-stream
+  // detectLensRecommendation was failing every request and the only signal
+  // was identical "silent catch" lines).
+  const placeholderMessages = new Set(["silent catch", "individual symbol failure is ok", "silent rejection"]);
+  const _meta = /** @type {Record<string, unknown>} */ (meta); const tail = (meta && typeof meta === "object" && placeholderMessages.has(safeMessage) && _meta.error)
+    ? ` {${JSON.stringify(meta).slice(0, 200)}}`
+    : "";
   const prefix = `[${safeSource}] [${safeLevel.toUpperCase()}]`;
-  if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}`);
-  else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}`);
-  else console.log(`${prefix} ${safeMessage}`);
+  if (safeLevel === 'error') console.error(`${prefix} ${safeMessage}${tail}`);
+  else if (safeLevel === 'warn') console.warn(`${prefix} ${safeMessage}${tail}`);
+  else console.log(`${prefix} ${safeMessage}${tail}`);
 }
 
 /**

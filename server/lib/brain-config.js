@@ -5,11 +5,18 @@
 // timeout, priority, and concurrency limit. The repair brain always runs
 // at highest priority (0). Conscious (user-facing) beats subconscious (autonomous).
 
+// Adaptive system monitoring and resource scaling
+import './system-monitor.js';
+import { systemMonitor } from './system-monitor.js';
+
 // Private/High Power Mode, concurrency item (b) — pickBrainEndpoint's
 // opt-in cloud pool candidates (see that function's own header comment
 // below). No cycle risk: platform-providers.js -> byo-providers.js /
 // platform-providers-budget.js, neither of which imports this file.
 import { platformProviderIdForSlot } from "./platform-providers.js";
+
+// Environment-based toggle for adaptive brain scaling
+const ADAPTIVE_BRAIN_SCALING = process.env.CONCORD_ADAPTIVE_BRAIN_SCALING !== 'false';
 
 // Phase D — multi-endpoint scale-out.
 // If BRAIN_<NAME>_URLS is set (comma-separated), it overrides the singular
@@ -66,7 +73,7 @@ export const BRAIN_CONFIG = Object.freeze({
     url: _conscious_urls[0],
     urls: _conscious_urls,
     model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
-    role: "chat, deep reasoning, council deliberation",
+    role: "chat, deep reasoning, council deliberation, user-facing interactions",
     temperature: 0.7,
     timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 45000, // GPU inference; override per-deployment
     priority: 1,       // CRITICAL — user-facing
@@ -74,35 +81,45 @@ export const BRAIN_CONFIG = Object.freeze({
     // service. Anything lower bottlenecks the JS queue while the GPU
     // sits idle.
     maxConcurrent: Number(process.env.BRAIN_CONSCIOUS_CONCURRENT) || 8,
-    contextWindow: 32768,
+    // High context for conscious brain — handles chat history, reasoning chains,
+    // and complex user queries. This is the brain users interact with directly.
+    // Conscious is USER-FACING — needs full conversation memory.
+// 8192 = ~5GB KV cache max, still leaves 3GB cushion on 48GB A40
+// when combined with the low-cap background brains.
+// (Bumped back up 2026-08-15 from 4096 — background brains stay capped
+// at 2048-4096 to keep total KV cache headroom under ~6GB.)
+contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 8192),
     maxTokens: 4096,   // Full output — let it think
   },
   subconscious: {
     url: _subconscious_urls[0],
     urls: _subconscious_urls,
     model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
-    role: "autogen, dream, evolution, synthesis, birth",
+    role: "autogen, dream, evolution, synthesis, birth, background analysis",
     temperature: 0.85,
     timeout: Number(process.env.BRAIN_SUBCONSCIOUS_TIMEOUT_MS) || 30000,
     priority: 2,       // NORMAL — autonomous background
     // Bumped 4 → 12 to match OLLAMA_NUM_PARALLEL=12 on the
     // subconscious service.
     maxConcurrent: Number(process.env.BRAIN_SUBCONSCIOUS_CONCURRENT) || 12,
-    contextWindow: 8192,
+    // Moderate context for background generation tasks
+    contextWindow: Math.min(Number(process.env.BRAIN_SUBCONSCIOUS_CONTEXT) || 4096, 4096),
     maxTokens: 1200,   // GPU: 7B brain can generate longer, more coherent DTUs
   },
   utility: {
     url: _utility_urls[0],
     urls: _utility_urls,
     model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
-    role: "lens interactions, entity actions, quick domain tasks",
+    role: "lens interactions, entity actions, quick domain tasks, function calls",
     temperature: 0.3,
     timeout: Number(process.env.BRAIN_UTILITY_TIMEOUT_MS) || 20000,
     priority: 3,       // LOW — support tasks
-    // Bumped 6 → 16 to match OLLAMA_NUM_PARALLEL=16 on the utility
-    // service. Lens action spam doesn't queue at the JS layer anymore.
+    // Utility brain handles quick actions and lens interactions - doesn't need
+    // large context windows. Tasks are typically short prompts with structured outputs.
     maxConcurrent: Number(process.env.BRAIN_UTILITY_CONCURRENT) || 16,
-    contextWindow: 16384,
+    // Reduced from 16384 - utility tasks are typically short function calls
+    // and entity actions that don't need deep context
+    contextWindow: Math.min(Number(process.env.BRAIN_UTILITY_CONTEXT) || 2048, 4096),
     maxTokens: 800,    // GPU: more complete outputs for entity actions
   },
   repair: {
@@ -119,7 +136,7 @@ export const BRAIN_CONFIG = Object.freeze({
     priority: 0,       // HIGHEST — system health
     // Bumped 2 → 4 to match OLLAMA_NUM_PARALLEL=4 on repair.
     maxConcurrent: Number(process.env.BRAIN_REPAIR_CONCURRENT) || 4,
-    contextWindow: 4096,
+    contextWindow: Math.min(Number(process.env.BRAIN_REPAIR_CONTEXT) || 2048, 4096),
     maxTokens: 500,    // GPU: 1.5B can actually articulate error analysis now
   },
   multimodal: {
@@ -147,7 +164,7 @@ export const BRAIN_CONFIG = Object.freeze({
     // vision queries; bumped from 2 so the food-vision endpoint and
     // personal-locker upload pipeline don't serialize.
     maxConcurrent: Number(process.env.BRAIN_VISION_CONCURRENT) || 8,
-    contextWindow: 8192,
+    contextWindow: Math.min(Number(process.env.BRAIN_MULTIMODAL_CONTEXT) || 4096, 4096),
     maxTokens: 1500,
   },
 });
@@ -244,7 +261,89 @@ export async function initBrainProfile(opts = {}) {
  * static BRAIN_CONFIG when initBrainProfile() hasn't been called yet.
  */
 export function getActiveBrainConfig() {
-  return _activeConfig || BRAIN_CONFIG;
+  let config = _activeConfig || BRAIN_CONFIG;
+
+  // Apply adaptive scaling when enabled
+  if (ADAPTIVE_BRAIN_SCALING && systemMonitor.metrics.memory.total > 0) {
+    const settings = systemMonitor.getRecommendedSettings();
+    const stress = systemMonitor.getSystemStressLevel();
+
+    // Critical brain is never scaled down
+    const scaled = { ...config };
+
+    if (stress.score > 30) {
+      // Scale down non-critical brains based on system load
+      const { contextScale, concurrentLimit, timeoutScale } = settings;
+
+      // Conscious brain (user-facing chat) should NEVER lose context capacity
+      // even under load - it's the core user experience. Only reduce concurrency.
+      const brainScales = {
+        conscious: { 
+          context: 1.0, // Always keep full context for conscious brain
+          concurrent: Math.max(0.5, concurrentLimit * 0.5) 
+        },
+        utility: { 
+          // Utility does quick actions - can scale context aggressively
+          // even under normal load since tasks are typically short
+          context: Math.max(0.25, contextScale * 0.5),
+          concurrent: Math.max(0.5, concurrentLimit * 0.5) 
+        },
+        subconscious: { 
+          context: Math.max(0.25, contextScale * 0.75),
+          concurrent: Math.max(0.25, concurrentLimit * 0.5) 
+        },
+        multimodal: { 
+          context: Math.max(0.5, contextScale * 0.75),
+          concurrent: Math.max(0.5, concurrentLimit * 0.5) 
+        }
+      };
+
+      for (const [brainName, cfg] of Object.entries(scaled)) {
+        if (brainName === 'repair') continue; // Never scale repair
+
+        const scale = brainScales[brainName];
+        if (scale) {
+          scaled[brainName] = {
+            ...cfg,
+            contextWindow: brainName === 'conscious' ? cfg.contextWindow : // Preserve conscious context
+                             Math.floor(cfg.contextWindow * scale.context),
+            maxConcurrent: Math.max(
+              brainName === 'repair' ? 2 : Math.floor(cfg.maxConcurrent * scale.concurrent),
+              brainName === 'repair' ? 4 : 2
+            ),
+            timeout: Math.floor(cfg.timeout * timeoutScale)
+          };
+
+          // Deactivate background brains under heavy load
+          if (brainName === 'subconscious' && stress.score > 70) {
+            scaled[brainName] = { ...scaled[brainName], active: false };
+          }
+          if (brainName === 'multimodal' && stress.score > 75) {
+            scaled[brainName] = { ...scaled[brainName], active: false };
+          }
+        }
+      }
+    }
+
+    config = scaled;
+  }
+
+  return config;
+}
+
+// Get adaptive system status
+export function getSystemStatus() {
+  if (!ADAPTIVE_BRAIN_SCALING) {
+    return { adaptiveScaling: false, stressScore: 0 };
+  }
+
+  return {
+    adaptiveScaling: true,
+    stressScore: systemMonitor.getSystemStressLevel().score,
+    recommendations: systemMonitor.getRecommendedSettings(),
+    ...systemMonitor.getSystemStressLevel(),
+    timestamp: systemMonitor.lastCheck
+  };
 }
 
 /** Diagnostic — returns the resolved profile metadata. */
@@ -389,4 +488,14 @@ export function _resetEndpointStats() {
   _endpointFailures.clear();
   _endpointLastHealthy.clear();
   _rrCursor.clear();
+}
+
+/** Dynamic context for request — used by the context orchestrator. */
+export function dynamicContextForRequest(brainName = 'conscious', request = {}) {
+  if (request._useOrchestrator) {
+    return null;
+  }
+  const config = getActiveBrainConfig();
+  const brainConfig = config[brainName] || config.conscious;
+  return brainConfig.contextWindow || 8192;
 }

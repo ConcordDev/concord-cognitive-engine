@@ -1,0 +1,73 @@
+{
+  "npc_id": "preacher_old_seam",
+  "home_location": "hub_great_plaza",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_great_plaza",
+      "activity": "sleeps wherever evening ended",
+      "need_addressed": "wandering",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_market_district",
+      "activity": "begs bread",
+      "need_addressed": "wandering",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_great_plaza",
+      "activity": "preaches softly; mostly to herself",
+      "need_addressed": "wandering",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_dome_perimeter",
+      "activity": "walks the dome perimeter; sometimes follows Nesha at a distance",
+      "need_addressed": "wandering",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_seven_spokes_common_room",
+      "activity": "the Innkeep gives her a small supper",
+      "need_addressed": "wandering",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_great_plaza",
+      "activity": "settles in for the night",
+      "need_addressed": "wandering",
+      "interactable_by_player": false
+    }
+  ]
+}

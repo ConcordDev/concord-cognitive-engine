@@ -13,19 +13,42 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DATA_DIR="${DATA_DIR:-$PROJECT_ROOT/data}"
-DB_PATH="$DATA_DIR/concord.db"
-STATE_PATH="$DATA_DIR/concord_state.json"
 
-# --- Validate arguments ---
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <backup-file.tar.gz>"
-  echo ""
-  echo "Available backups:"
-  ls -lh "$DATA_DIR/backups"/concord-backup-*.tar.gz 2>/dev/null || echo "  (none found in $DATA_DIR/backups/)"
-  exit 1
+# --- Resolve the live DB path (respect the real DB_PATH the server uses) ---
+# Same resolution order as db-backup.sh: DB_PATH env wins. The deployed box
+# runs DB_PATH=/opt/concord-db/concord.db, which is NOT $DATA_DIR/concord.db —
+# a restore that hardcoded the latter would silently write the snapshot to
+# the wrong path while the real (empty) DB stayed untouched.
+if [ -n "${DB_PATH:-}" ]; then
+  DB_PATH="${DB_PATH}"
+elif [ -f "$DATA_DIR/concord.db" ]; then
+  DB_PATH="$DATA_DIR/concord.db"                    # the REAL server default (server.js)
+elif [ -f "$DATA_DIR/db/concord.db" ]; then
+  DB_PATH="$DATA_DIR/db/concord.db"                  # legacy fallback only — see db-backup.sh
+else
+  DB_PATH="$DATA_DIR/concord.db"
 fi
+STATE_PATH="${STATE_PATH:-$DATA_DIR/concord_state.json}"
+BACKUP_DIR="${CONCORD_BACKUP_DIR:-$DATA_DIR/backups}"
 
-BACKUP_FILE="$1"
+# --- Resolve which backup to restore ---
+BACKUP_FILE="${1:-}"
+if [ -z "$BACKUP_FILE" ]; then
+  # No arg: auto-pick the latest volume backup (prefer the current tar.gz
+  # format, fall back to the legacy .db.gz / .db shapes backup.sh wrote).
+  BACKUP_FILE=$(ls -t "$BACKUP_DIR"/concord-backup-*.tar.gz 2>/dev/null | head -1 || true)
+  [ -z "$BACKUP_FILE" ] && BACKUP_FILE=$(ls -t "$BACKUP_DIR"/concord-*.db.gz 2>/dev/null | head -1 || true)
+  [ -z "$BACKUP_FILE" ] && BACKUP_FILE=$(ls -t "$BACKUP_DIR"/concord-*.db 2>/dev/null | head -1 || true)
+  if [ -n "$BACKUP_FILE" ]; then
+    echo "[db-restore] No backup arg given — auto-selected latest: $BACKUP_FILE"
+  else
+    echo "Usage: $0 [<backup-file>]   (default: latest in $BACKUP_DIR)"
+    echo ""
+    echo "[db-restore] No backups found in $BACKUP_DIR:"
+    ls -lh "$BACKUP_DIR" 2>/dev/null || echo "  (empty)"
+    exit 1
+  fi
+fi
 
 if [ ! -f "$BACKUP_FILE" ]; then
   echo "[db-restore] ERROR: Backup file not found: $BACKUP_FILE"
@@ -35,8 +58,13 @@ fi
 echo "[db-restore] Restoring from: $BACKUP_FILE"
 
 # --- Stop PM2 processes if PM2 is available and running ---
+# Only when restoring over a LIVE database. CONCORD_RESTORE_SKIP_PM2=1 (or a
+# fresh target DB, i.e. the bootstrap-restore case) skips this entirely — a
+# bootstrap restore happens before any backend is up, so there's nothing to
+# stop, and stopping PM2 on a dev box from an unrelated restore test is a
+# footgun (this script's pm2 stop all once halted a developer's local stack).
 PM2_STOPPED=false
-if command -v pm2 &>/dev/null; then
+if [ "${CONCORD_RESTORE_SKIP_PM2:-0}" != "1" ] && [ -f "$DB_PATH" ] && command -v pm2 &>/dev/null; then
   RUNNING=$(pm2 jlist 2>/dev/null | grep -c '"status":"online"' || true)
   if [ "$RUNNING" -gt 0 ]; then
     echo "[db-restore] Stopping PM2 processes..."
@@ -50,7 +78,23 @@ STAGING_DIR=$(mktemp -d)
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
 echo "[db-restore] Extracting backup..."
-tar -xzf "$BACKUP_FILE" -C "$STAGING_DIR"
+RESTORED_DB="$STAGING_DIR/concord.db"
+case "$BACKUP_FILE" in
+  *.tar.gz)
+    tar -xzf "$BACKUP_FILE" -C "$STAGING_DIR"
+    ;;
+  *.db.gz)
+    gunzip -c "$BACKUP_FILE" > "$RESTORED_DB"
+    ;;
+  *.db)
+    cp "$BACKUP_FILE" "$RESTORED_DB"
+    ;;
+  *)
+    echo "[db-restore] ERROR: Unrecognized backup format: $BACKUP_FILE"
+    echo "[db-restore]   Expected a *.tar.gz from db-backup.sh or a *.db.gz / *.db from backup.sh"
+    exit 1
+    ;;
+esac
 
 # --- Validate the extracted database ---
 RESTORED_DB="$STAGING_DIR/concord.db"
@@ -96,7 +140,8 @@ else
 fi
 
 # --- Safety backup of the current database ---
-mkdir -p "$DATA_DIR"
+mkdir -p "$(dirname "$DB_PATH")"
+mkdir -p "$(dirname "$STATE_PATH")" 2>/dev/null || true
 if [ -f "$DB_PATH" ]; then
   SAFETY_BACKUP="$DB_PATH.pre-restore-$(date +%Y%m%d_%H%M%S)"
   echo "[db-restore] Safety backup of current DB: $SAFETY_BACKUP"

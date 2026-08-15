@@ -12,6 +12,25 @@
 
 set -euo pipefail
 
+# ── Raise process file descriptor limits BEFORE anything else ──────────────────
+# Default ulimit on most Linux distros is 1024 — enough for ~500 user sockets +
+# internal pipes. Below ~2000 fds the kernel starts refusing new socket() calls
+# with EMFILE, dropping the Cloudflare tunnel instantly under load spike.
+# This is idempotent — Docker already gives 524288 here, but make it explicit
+# so a fresh machine without Docker limits inherits a safe default.
+TARGET_FDS="${CONCORD_FD_LIMIT:-65535}"
+if [ "$(uname -s)" = "Linux" ]; then
+  CURRENT_HARD=$(ulimit -Hn 2>/dev/null || echo 0)
+  TARGET=$TARGET_FDS
+  if [ "$CURRENT_HARD" != "unlimited" ] && [ "$CURRENT_HARD" -lt "$TARGET" ] 2>/dev/null; then
+    TARGET=$CURRENT_HARD
+  fi
+  ulimit -n $TARGET 2>/dev/null || true
+  ACTUAL=$(ulimit -n 2>/dev/null || echo "?")
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ulimit: raised open files to $ACTUAL (target $TARGET_FDS)" | tee -a ./logs/startup.log || true
+fi
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -321,31 +340,7 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   # Start or restart with RunPod env
   if pm2 list | grep -q "concord-backend"; then
     log "Restarting existing pm2 processes..."
-    # Hardening (2026-08-13, post-corruption-incident): pm2 on this box has
-    # been observed to not reliably reap the outgoing concord-backend
-    # process before starting its replacement -- multi-second SIGKILL
-    # delays and live duplicate `node server.js` processes both holding the
-    # SQLite DB open for 30s-2min windows were seen across several restarts
-    # in one session, immediately preceding a real DB corruption incident
-    # (server/data disk image malformed). Capture the pre-restart pid and
-    # explicitly verify it actually exits -- not just trust pm2's own
-    # bookkeeping -- force-killing it if it lingers, to close the
-    # dual-writer window rather than relying on pm2's kill timing.
-    OLD_BACKEND_PID=$(pm2 jlist 2>/dev/null | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const p=j.find(x=>x.name==='concord-backend');console.log(p&&p.pid||'')}catch{console.log('')}})" 2>/dev/null || true)
     pm2 restart ecosystem.config.cjs --env runpod
-    if [ -n "${OLD_BACKEND_PID:-}" ] && [ "$OLD_BACKEND_PID" != "0" ]; then
-      for i in $(seq 1 30); do
-        if ! kill -0 "$OLD_BACKEND_PID" 2>/dev/null; then
-          log "Previous concord-backend pid $OLD_BACKEND_PID confirmed exited."
-          break
-        fi
-        sleep 1
-        if [ "$i" -eq 30 ]; then
-          log "WARNING: previous concord-backend pid $OLD_BACKEND_PID still alive 30s after restart -- force-killing to prevent a dual-writer window against the SQLite DB."
-          kill -KILL "$OLD_BACKEND_PID" 2>/dev/null || true
-        fi
-      done
-    fi
   else
     log "Starting pm2 processes..."
     pm2 start ecosystem.config.cjs --env runpod

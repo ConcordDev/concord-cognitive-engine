@@ -1,4 +1,5 @@
 'use client';
+import * as THREE from 'three';
 
 import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';

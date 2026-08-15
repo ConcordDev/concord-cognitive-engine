@@ -1214,6 +1214,19 @@ Choose one action for this NPC. Return JSON only:
 
   async _maybeGenerateQuests() {
     if (Math.random() > 0.05) return; // 5% chance per tick
+    // Sprint 32 - per-tick global cap. Symptom: heartbeat_block_slow
+    // module=forgetting ms=33241 and event_loop_lag_spike maxMs=17515
+    // trace back to detectQuestOpportunities -> createQuestFromNeed ->
+    // selectBrain("subconscious") firing hundreds of LLM calls per
+    // heartbeat tick when many NPCSimulator worlds each call this in
+    // parallel via Promise.allSettled. Each call is a 5-30s Ollama
+    // inference; 200 NPCs at 5% rate = 10 LLM calls = 50-300s of
+    // sequential brain work on the main loop. Cap so the tick can
+    // drain within CONCORD_NPC_QUEST_BUDGET_MS (default 2000ms - fits
+    // inside a 15s heartbeat with margin). Quests skipped this tick
+    // spill to the next - no data loss, just slower cadence.
+    if (NPC_QUEST_TICK_CALLS >= NPC_QUEST_TICK_LIMIT) return;
+    NPC_QUEST_TICK_CALLS++;
     try {
       const { detectQuestOpportunities } = await import("./quest-emergence.js");
       await detectQuestOpportunities(this, this._db, this._selectBrain);
@@ -1230,6 +1243,13 @@ Choose one action for this NPC. Return JSON only:
     ).run(JSON.stringify(this.state), JSON.stringify(this.location), this.id);
   }
 }
+
+// Sprint 32 - per-tick budget counter for _maybeGenerateQuests. Reset each
+// governor tick (see server.js governorTick) so the cap resets per heartbeat
+// cycle, not per NPCSimulator instance.
+export let NPC_QUEST_TICK_CALLS = 0;
+export const NPC_QUEST_TICK_LIMIT = Number(process.env.CONCORD_NPC_QUEST_BUDGET_LIMIT) || 3;
+export function resetNpcQuestTickCounter() { NPC_QUEST_TICK_CALLS = 0; }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // NPCSimulator

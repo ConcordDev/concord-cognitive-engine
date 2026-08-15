@@ -15,6 +15,7 @@ const nextConfig = {
   },
   // Tree-shake heavy icon libraries and UI packages
   experimental: {
+    useTypeScriptCli: true,
     optimizePackageImports: [
       'lucide-react',
       'framer-motion',

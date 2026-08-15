@@ -1,0 +1,11 @@
+{
+  "npc_id": "healer_pia_thalis",
+  "primary_faction": "infirmary_thalis",
+  "default": 0.0,
+  "affinities": {
+    "infirmary_thalis": 0.9,
+    "concordant_curators": 0.35,
+    "brawling_pit": 0.1
+  },
+  "notes": {}
+}

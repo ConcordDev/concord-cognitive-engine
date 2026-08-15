@@ -47,7 +47,7 @@ import {
   Upload,
   ChevronDown,
   ChevronRight,
-  Github,
+  Code2 as Github,
 } from 'lucide-react';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 

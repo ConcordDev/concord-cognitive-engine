@@ -1,0 +1,55 @@
+{
+  "npcId": "merchant_velka_ironhand",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Velka Ironhand regards you without hurry. (Master of the Concordant Bazaar)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Velka treats every price as a story whose middle she's writing. She is generous with her time and ruthless with her terms. She loathes liars and tolerates haggling as artisan craft.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Velka Ironhand, Master of the Concordant Bazaar. warm, peppered with bazaar idioms, slips in numbers without warning",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "npc_id": "courier_kel_sandren",
+  "home_location": "hub_courier_house",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_courier_house",
+      "activity": "sleeps in the courier house dormitory",
+      "need_addressed": "running",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_portal_plaza",
+      "activity": "morning crossing",
+      "need_addressed": "running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_portal_plaza",
+      "activity": "deliveries inbound; sorts the bags",
+      "need_addressed": "running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_great_plaza",
+      "activity": "deliveries within the hub",
+      "need_addressed": "running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_portal_plaza",
+      "activity": "evening crossing; checks the off-schedule portal",
+      "need_addressed": "running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_courier_house",
+      "activity": "supper with the courier house; logs the day's runs",
+      "need_addressed": "running",
+      "interactable_by_player": true
+    }
+  ]
+}

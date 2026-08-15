@@ -49,6 +49,16 @@ declare -A KEEPALIVE=( [conscious]="${BRAIN_CONSCIOUS_KEEP_ALIVE:-}" [subconscio
 # biggest "AI keeps dropping" cause on this box. The embed model now lives with
 # the 3B utility model, where dual-residency costs ~2.2GB total and evicts nothing.
 declare -A MAXLOADED=( [utility]="${BRAIN_UTILITY_MAX_LOADED:-2}" )
+# Per-role OLLAMA_NUM_PARALLEL override. Default 1 globally (KV-cache-fit
+# load-bearing on the 14B conscious brain — see the long comment above
+# `export OLLAMA_NUM_PARALLEL=...` for why). UTILITY is safe to raise because
+# nomic-embed-text has no KV cache (encoder-only transformer, no autoregressive
+# decode state) and qwen2.5:3b fits ~4 slots at 2k context. Sprint 32 bumped
+# UTILITY to 4 so the embedding backfill can drive the embed model at full GPU
+# saturation instead of serializing 1 request at a time on a 5% utilized A40.
+# Other roles stay at the global OLLAMA_NUM_PARALLEL (1) — touching them is a
+# measured VRAM-fit change, not a knob to flip.
+declare -A ROLE_NUM_PARALLEL=( [utility]="${BRAIN_UTILITY_NUM_PARALLEL:-4}" )
 ROLES=(conscious subconscious utility repair vision)
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Custom models that are NOT on the Ollama registry are BUILT from a Modelfile via
@@ -222,12 +232,13 @@ for role in "${ROLES[@]}"; do
   ka="${KEEPALIVE[$role]:-$OLLAMA_KEEP_ALIVE}"          # per-role residency; empty inherits global
   fa="${FLASHATTN[$role]:-$OLLAMA_FLASH_ATTENTION}"     # per-role flash attn; vision defaults off
   kv="$OLLAMA_KV_CACHE_TYPE"; [ "$fa" = "0" ] && kv="f16"   # q8_0 KV needs FA — drop to f16 when FA off
-  log "Brain ${role}: port ${p}  cores ${c:-<unpinned>}  gpu ${gid}  keep-alive ${ka}  flash-attn ${fa}  kv ${kv}  model ${MODEL[$role]}"
+  np="${ROLE_NUM_PARALLEL[$role]:-$OLLAMA_NUM_PARALLEL}"
+  log "Brain ${role}: port ${p}  cores ${c:-<unpinned>}  gpu ${gid}  keep-alive ${ka}  flash-attn ${fa}  kv ${kv}  num-parallel ${np}  model ${MODEL[$role]}"
   (
     restarts=0
     while true; do
       env $gpuenv OLLAMA_HOST="127.0.0.1:${p}" OLLAMA_KEEP_ALIVE="$ka" OLLAMA_FLASH_ATTENTION="$fa" \
-          OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS="${MAXLOADED[$role]:-1}" OLLAMA_NUM_PARALLEL="$OLLAMA_NUM_PARALLEL" \
+          OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_MAX_LOADED_MODELS="${MAXLOADED[$role]:-1}" OLLAMA_NUM_PARALLEL="$np" \
           $pin ollama serve >> "${LOG_DIR}/brain-${role}.log" 2>&1
       code=$?
       restarts=$((restarts + 1))
@@ -265,7 +276,10 @@ done
 # MAXLOADED map above). Do NOT move this back to the conscious instance: with
 # MAX_LOADED_MODELS=1 there, every embed call evicted the resident 14B model.
 # Keep CONCORD_EMBED_OLLAMA_URL in .env.runpod pointed at the utility port.
-OLLAMA_HOST="127.0.0.1:${PORT[utility]}" ollama pull "${CONCORD_EMBED_MODEL:-nomic-embed-text}" >/dev/null 2>&1 || true
+# Sprint 32 E5: migrated from nomic-embed-text to intfloat/e5-large-v2 (1024-dim, SOTA on MTEB).
+# The CONCORD_EMBED_MODEL env var controls which model is pulled; both can co-exist on
+# OLLAMA_MAX_LOADED_MODELS=2 if needed during transition (estimated ~1.3GB + 2.9GB = 4.2GB with qwen2.5:3b).
+OLLAMA_HOST="127.0.0.1:${PORT[utility]}" ollama pull "${CONCORD_EMBED_MODEL:-intfloat/e5-large-v2}" >/dev/null 2>&1 || true
 
 # ── the wiring map the app needs (.env.runpod), then verify ──────────────────
 echo ""; log "Brain ⇆ endpoint wiring (set these in .env.runpod):"

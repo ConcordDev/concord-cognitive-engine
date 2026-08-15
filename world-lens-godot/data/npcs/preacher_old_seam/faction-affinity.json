@@ -1,0 +1,11 @@
+{
+  "npc_id": "preacher_old_seam",
+  "primary_faction": "preachers_of_concordia",
+  "default": 0.0,
+  "affinities": {
+    "preachers_of_concordia": 0.9,
+    "refusal_keep": 0.35,
+    "concordant_assembly": 0.4
+  },
+  "notes": {}
+}

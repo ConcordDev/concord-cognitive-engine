@@ -1,0 +1,123 @@
+[gd_scene load_steps=8 format=3 uid="uid://b8superhero01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="1_tower"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column-damaged.glb" id="2_dam"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/floor-detail.glb" id="3_bridge"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/statue.glb" id="4_stat"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ShSky"]
+sky_top_color = Color(0.20, 0.30, 0.55, 1)
+sky_horizon_color = Color(0.55, 0.65, 0.90, 1)
+ground_horizon_color = Color(0.30, 0.35, 0.45, 1)
+ground_bottom_color = Color(0.10, 0.12, 0.20, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="ShSky2"]
+sky_material = SubResource("ShSky")
+
+[sub_resource type="Environment" id="ShEnv"]
+background_mode = 2
+sky = SubResource("ShSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.6, 0.7, 1.0, 1)
+ambient_light_energy = 0.8
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.9
+glow_strength = 1.2
+fog_enabled = true
+fog_light_color = Color(0.7, 0.8, 1.0, 1)
+fog_density = 0.006
+
+[sub_resource type="StandardMaterial3D" id="ShMat"]
+albedo_color = Color(0.85, 0.88, 0.92, 1)
+metallic = 0.6
+roughness = 0.20
+
+[node name="SuperheroPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("ShEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(0.95, 0.95, 1.0, 1)
+light_energy = 1.3
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+[node name="Towers" type="Node3D" parent="."]
+
+[node name="TowerNE" parent="Towers" instance=ExtResource("1_tower")]
+transform = Transform3D(1, 0, 0, 0, 2.5, 0, 0, 0, 1, -6, 0, -6)
+
+[node name="TowerSE" parent="Towers" instance=ExtResource("1_tower")]
+transform = Transform3D(1, 0, 0, 0, 2.5, 0, 0, 0, 1, 6, 0, -6)
+
+[node name="TowerSW" parent="Towers" instance=ExtResource("1_tower")]
+transform = Transform3D(1, 0, 0, 0, 2.5, 0, 0, 0, 1, 6, 0, 6)
+
+[node name="TowerNW" parent="Towers" instance=ExtResource("1_tower")]
+transform = Transform3D(1, 0, 0, 0, 2.5, 0, 0, 0, 1, -6, 0, 6)
+
+[node name="Damaged" type="Node3D" parent="."]
+
+[node name="DamagedE" parent="Damaged" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, 8, 0, 0)
+
+[node name="DamagedW" parent="Damaged" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, -8, 0, 0)
+
+[node name="DamagedN" parent="Damaged" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="DamagedS" parent="Damaged" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 2.0, 0, 0, 0, 1, 0, 0, 8)
+
+[node name="Bridges" type="Node3D" parent="."]
+
+[node name="Bridge1" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 0)
+
+[node name="Bridge2" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 2.83, 0, 2.83)
+
+[node name="Bridge3" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, 4)
+
+[node name="Bridge4" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -2.83, 0, 2.83)
+
+[node name="Bridge5" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -4, 0, 0)
+
+[node name="Bridge6" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -2.83, 0, -2.83)
+
+[node name="Bridge7" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -4)
+
+[node name="Bridge8" parent="Bridges" instance=ExtResource("3_bridge")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 2.83, 0, -2.83)
+
+[node name="Statues" type="Node3D" parent="."]
+
+[node name="Statue1" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -3)
+
+[node name="Statue2" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 0, -3)
+
+[node name="Statue3" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 3, 0, 3)
+
+[node name="Statue4" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -3, 0, 3)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("ShMat")

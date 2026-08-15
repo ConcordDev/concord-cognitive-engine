@@ -22,6 +22,7 @@
 import { getSummaryText } from "./conversation-summarizer.js";
 import { filterByEmergentConsent } from "./consent.js";
 import { decryptBlob } from "./personal-locker/crypto.js";
+import { applyDHTP } from "./dhtp.js";
 
 // ── Hardware Detection ───────────────────────────────────────────────────────
 
@@ -176,7 +177,7 @@ export function formatEntityStateBlock(entityState) {
   }
 
   return lines.length > 0
-    ? `[Entity State]\n${lines.join("\n")}`
+    ? `[Entity State]\n${lines.join("\n")}\n`
     : "";
 }
 
@@ -341,6 +342,21 @@ export function runContextHarvest(STATE, opts = {}) {
   // Prepend personal DTUs — user's own context is highest relevance
   const fullWorkingSet = [...personalSubstrate, ...consolidated].slice(0, maxN);
 
+  // DHTP — apply preset compression (Sprint 60+)
+  // If a preset matches the prompt, it specifies a reduced DTU budget
+  // and produces a compact token-efficient context block.
+  const _dhtp = applyDHTP({
+    prompt: prompt || "",
+    workingSetDtus: fullWorkingSet,
+    baseSystemPrompt: "",  // system prompt composed later
+  });
+  // Filter working set by preset's budget (if matched)
+  let dhtpFilteredSet = fullWorkingSet;
+  if (_dhtp.compressed && _dhtp.dtuBudgetPct < 50) {
+    const reducedN = Math.max(1, Math.floor((fullWorkingSet.length * _dhtp.dtuBudgetPct) / 50));
+    dhtpFilteredSet = fullWorkingSet.slice(0, reducedN);
+  }
+
   return {
     ok: true,
     sources: {
@@ -349,12 +365,15 @@ export function runContextHarvest(STATE, opts = {}) {
       entityState: entityResult.ok ? "available" : "unavailable",
       megaHyperConsolidation: removedCount,
       personalSubstrate: personalSubstrate.length,
+      dhtp: _dhtp.compressed ? "compressed" : "passthrough",
     },
     conversationSummary,
     entityState,
     entityStateBlock,
     personalSubstrate,
-    consolidatedWorkingSet: fullWorkingSet,
+    consolidatedWorkingSet: dhtpFilteredSet,
+    dhtpBlock: _dhtp,
+    fullWorkingSet: fullWorkingSet,
     hardwareTier,
     maxWorkingSet: maxN,
     totalCandidates: semanticDtus.length,

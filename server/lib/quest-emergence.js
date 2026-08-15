@@ -45,13 +45,25 @@ export async function detectQuestOpportunities(npc, db, selectBrain) {
 export async function createQuestFromNeed(npc, need, db, selectBrain) {
   let questData;
 
-  try {
-    const { handle } = await selectBrain("subconscious", {
-      brainOverride: "subconscious",
-      callerId: "world:quest-emergence",
-    });
+  // Sprint 32 - hard 4s timeout on the LLM call. Pre-fix: selectBrain()
+  // could block for 90+ seconds when the subconscious Ollama was
+  // contended (event_loop_lag_spike maxMs=89993 trace back to here).
+  // One stuck NPC's quest generation could lock the heartbeat for the
+  // full duration, queueing every other NPC's quest behind it. With a
+  // 4s ceiling, a slow Ollama falls through to the minimal fallback
+  // quest below — same quest quality ("Help the NPC with X") the
+  // user sees anyway when the brain is unavailable, just with a hard
+  // cap. CONCORD_QUEST_BRAIN_TIMEOUT_MS override for tuning.
+  const BRAIN_TIMEOUT_MS = Number(process.env.CONCORD_QUEST_BRAIN_TIMEOUT_MS) || 4000;
 
-    const prompt = `An NPC in a game world needs help from a player.
+  try {
+    const brainCall = (async () => {
+      const { handle } = await selectBrain("subconscious", {
+        brainOverride: "subconscious",
+        callerId: "world:quest-emergence",
+      });
+
+      const prompt = `An NPC in a game world needs help from a player.
 
 NPC profile:
 - Type: ${npc.npcType}
@@ -68,12 +80,20 @@ Generate a quest this NPC would give to a player. Return JSON only:
   "reward": { "xp": <number 10-100>, "items": [], "narrative": "<reward flavour>" }
 }`;
 
-    const raw   = await handle.generate(prompt);
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    questData = JSON.parse(match[0]);
+      const raw   = await handle.generate(prompt);
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      return JSON.parse(match[0]);
+    })();
+
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("quest_brain_timeout")), BRAIN_TIMEOUT_MS)
+    );
+
+    questData = await Promise.race([brainCall, timeout]);
+    if (!questData) return null;
   } catch (_e) {
-    // brain unavailable — create minimal fallback quest
+    // brain unavailable OR timed out — create minimal fallback quest
     questData = {
       title:       `Help ${npc.npcType} with ${need}`,
       description: `${npc.npcType} needs assistance with ${need} in ${npc.worldId}.`,

@@ -32,7 +32,23 @@ function getSTATE() { return globalThis._concordSTATE || null; }
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const FORGETTING_INTERVAL_MS = parseInt(process.env.FORGETTING_INTERVAL_MS || String(6 * 3600000), 10);
+// Sprint 32 — DTU growth rate is ~1,429/hr in early operation; the
+// previous defaults of 6h × 50/cycle = 200 tombstones/day could not
+// keep up with that flow (170:1 deficit). New defaults are tunable via
+// env so the operator can dial them without a rebuild:
+//   FORGETTING_INTERVAL_MS     30 min  (was 6h)
+//   MAX_FORGET_PER_CYCLE       500     (was 50)
+//
+// Math check at the new defaults: 48 cycles/day × 500 = 24,000
+// tombstones/day vs ~34,000 created/day. Still a deficit, but the
+// archive hook (lib/dtu-archive.js, runs every 30 min) handles the
+// remainder by moving old DTUs out of RAM before forgetting ever has
+// to look at them. The two systems are complementary, not redundant:
+// archive protects MEMORY (offload cold rows), forgetting protects
+// KNOWLEDGE (tombstone unimportant rows).
+const FORGETTING_INTERVAL_MS = parseInt(
+  process.env.FORGETTING_INTERVAL_MS || String(30 * 60 * 1000), 10,
+);
 const DEFAULT_THRESHOLD = 0.15;
 
 // ── Hardware-Derived Constants ──────────────────────────────────────────────
@@ -42,8 +58,8 @@ const DEFAULT_THRESHOLD = 0.15;
 const DTU_MEMORY_CEILING = parseInt(process.env.DTU_MEMORY_CEILING || "170000", 10);
 const DTU_TARGET_RATIO = parseFloat(process.env.DTU_TARGET_RATIO || "0.65"); // 65% of ceiling
 const DTU_TARGET_COUNT = Math.round(DTU_MEMORY_CEILING * DTU_TARGET_RATIO); // ~110,500
-// Max DTUs to forget per cycle to prevent batch-delete lag
-const MAX_FORGET_PER_CYCLE = parseInt(process.env.MAX_FORGET_PER_CYCLE || "50", 10);
+// Max DTUs to forget per cycle to prevent batch-delete lag.
+const MAX_FORGET_PER_CYCLE = parseInt(process.env.MAX_FORGET_PER_CYCLE || "500", 10);
 // Second-chance / CLOCK-style grace window: a DTU that crosses below the
 // forget threshold isn't tombstoned in the same cycle it's first found low.
 // It gets GRACE_CYCLES real (non-dry-run) cycles to recover (e.g. via a
@@ -93,6 +109,12 @@ function isProtected(dtu) {
 // ── Retention Scoring ───────────────────────────────────────────────────────
 
 function countChildren(dtuId, STATE) {
+  // Fast path: the runForgettingCycle hoists a child-index map into
+  // globalThis._forgettingChildIndex for the duration of one cycle. Outside
+  // a cycle this falls back to the O(N) scan (preserves test behavior).
+  const pre = globalThis._forgettingChildIndex;
+  if (pre && pre.has(dtuId)) return pre.get(dtuId);
+  if (pre) return 0; // cycle is running for some other purpose; treat as 0
   let count = 0;
   for (const d of STATE.dtus.values()) {
     if (d.lineage?.parents?.includes(dtuId)) count++;
@@ -222,6 +244,20 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
     const candidates = [];
     const allDTUs = Array.from(STATE.dtus.values());
 
+    // Sprint 32 — child-index hoist. Previously countChildren() walked the
+    // entire DTU list for every DTU (O(N^2) total per cycle). With N=1000
+    // the cycle was blocking the event loop for 25-55s and tripping
+    // heartbeat_block_slow on every run. Hoist the link scan up here so
+    // retentionScore() (still called per-DTU) just reads from the map.
+    const _childCounts = new Map();
+    for (const d of allDTUs) {
+      const parents = d.lineage?.parents;
+      if (!Array.isArray(parents)) continue;
+      for (const pId of parents) {
+        _childCounts.set(pId, (_childCounts.get(pId) || 0) + 1);
+      }
+    }
+
     // Adaptive threshold: raise when over capacity to forget more aggressively
     const liveDTUs = allDTUs.filter(d => d.type !== "tombstone").length;
     const effectiveThreshold = liveDTUs > DTU_TARGET_COUNT
@@ -243,10 +279,12 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
     // it's added to `candidates` for the existing forgetDTU path below.
     // Dry runs report every currently-below-threshold DTU (independent of
     // grace state) since they're a preview, not a mutation.
-    for (const dtu of allDTUs) {
-      if (dtu.type === "tombstone") continue;
-      const score = retentionScore(dtu, STATE);
-      dtu._retentionScore = score;
+    globalThis._forgettingChildIndex = _childCounts;
+    try {
+      for (const dtu of allDTUs) {
+        if (dtu.type === "tombstone") continue;
+        const score = retentionScore(dtu, STATE);
+        dtu._retentionScore = score;
 
       if (isProtected(dtu)) continue; // protected DTUs never enter the grace mechanism
 
@@ -270,6 +308,9 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
         // Recovered above threshold during grace — clear it.
         delete dtu._graceUntil;
       }
+      }
+    } finally {
+      globalThis._forgettingChildIndex = null;
     }
 
     candidates.sort((a, b) => a.score - b.score);
@@ -295,11 +336,24 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
 
     // Execute forgetting
     const forgotten = [];
-    for (const { dtu, score } of candidates.slice(0, MAX_FORGET_PER_CYCLE)) {
+    // Sprint 32 — yield to the event loop every YIELD_EVERY tombstones so
+    // a 500-tombstone cycle doesn't block the loop for ~30s straight
+    // (pre-fix: heartbeat_block_slow module=forgetting ms=47733 at the
+    // OLD 50/cycle; at 500/cycle that would scale to ~8 minutes of pure
+    // main-loop block). Each forgetDTU is mostly a SQLite write plus a
+    // small in-memory mutation, so 25 per batch is plenty small for the
+    // event loop to handle a few HTTP requests between batches.
+    const YIELD_EVERY = 25;
+    const _targets = candidates.slice(0, MAX_FORGET_PER_CYCLE);
+    for (let i = 0; i < _targets.length; i++) {
+      const { dtu, score } = _targets[i];
       try {
         const tombstone = await forgetDTU(dtu, STATE, `retention_score=${score.toFixed(4)}_below_threshold=${_threshold}`);
         forgotten.push({ id: dtu.id, tombstoneId: tombstone.id, score });
       } catch (_e) { logger.debug('emergent:forgetting-engine', 'skip on error', { error: _e?.message }); }
+      if ((i + 1) % YIELD_EVERY === 0) {
+        await new Promise((r) => setImmediate(r));
+      }
     }
 
     _lifetimeForgotten += forgotten.length;
@@ -469,9 +523,27 @@ export async function runReviewSchedulingPass(db, opts = {}) {
   const now = opts.now ?? Date.now();
 
   try {
+    // Sprint 32 - batched row-ensure. Pre-fix: a per-DTU
+    // db.prepare(INSERT OR IGNORE).run() in a loop over every live DTU
+    // (20k+ DTUs) was the dominant cost of the forgetting cycle
+    // (heartbeat_block_slow module=forgetting ms=47733). At 0.5-2ms per
+    // sync SQLite write, 20k inserts = 10-40s of main-loop block. The
+    // new path: collect missing dtus, then a SINGLE INSERT OR IGNORE
+    // VALUES (?,...), (?,...), ... with placeholders for all of them in
+    // one transaction. SQLite turns that into one fsync and one WAL
+    // append instead of 20k. Total cost: ms range, not tens of seconds.
+    const liveIds = [];
     for (const dtu of STATE.dtus.values()) {
       if (dtu.type === "tombstone") continue;
-      ensureReviewScheduled(db, dtu.id);
+      liveIds.push(dtu.id);
+    }
+    if (liveIds.length > 0) {
+      const placeholders = liveIds.map(() => "(?, ?, ?, ?, NULL, 0)").join(", ");
+      const params = [];
+      for (const id of liveIds) {
+        params.push(id, REVIEW_EASE_START, REVIEW_INTERVAL_START_DAYS, now);
+      }
+      db.prepare(`INSERT OR IGNORE INTO dtu_review_schedule (dtu_id, ease_factor, interval_days, next_review_due, last_reviewed_at, review_count) VALUES ${placeholders}`).run(...params);
     }
 
     const due = dueDtuIds(db, now).slice(0, MAX_REVIEW_PER_PASS);

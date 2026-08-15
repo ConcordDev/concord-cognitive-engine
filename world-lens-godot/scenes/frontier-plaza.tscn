@@ -1,0 +1,112 @@
+[gd_scene load_steps=8 format=3 uid="uid://frontierplaza01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="tower1"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/tree.glb" id="tree1"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/bricks.glb" id="fire1"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_frontier"]
+sky_top_color = Color(0.40, 0.55, 0.78, 1)
+sky_horizon_color = Color(0.75, 0.65, 0.55, 1)
+ground_horizon_color = Color(0.4, 0.35, 0.3, 1)
+ground_bottom_color = Color(0.18, 0.16, 0.14, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="Sky2_frontier"]
+sky_material = SubResource("Sky_frontier")
+
+[sub_resource type="Environment" id="Env_frontier"]
+background_mode = 2
+sky = SubResource("Sky2_frontier")
+ambient_light_source = 3
+ambient_light_color = Color(0.7, 0.5, 0.3, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.6
+fog_enabled = true
+fog_light_color = Color(0.30, 0.25, 0.20, 1)
+fog_density = 0.008
+
+[sub_resource type="StandardMaterial3D" id="Ground_frontier"]
+albedo_color = Color(0.65, 0.6, 0.55, 1)
+roughness = 0.85
+metallic = 0.05
+
+[node name="FrontierPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_frontier")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(1.0, 0.8, 0.4, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+; === Plaza layout (1 center tower + 8 trees in circle + 4 campfires) ===
+[node name="RelayTower" parent="Center" instance=ExtResource("tower1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="Tree1" parent="Trees" instance=ExtResource("tree1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.0, 0, 0.0)
+
+[node name="Tree2" parent="Trees" instance=ExtResource("tree2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.49, 0, 8.49)
+
+[node name="Tree3" parent="Trees" instance=ExtResource("tree3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, 12.0)
+
+[node name="Tree4" parent="Trees" instance=ExtResource("tree4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.48, 0, 8.49)
+
+[node name="Tree5" parent="Trees" instance=ExtResource("tree5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.0, 0, 0.0)
+
+[node name="Tree6" parent="Trees" instance=ExtResource("tree6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.49, 0, -8.48)
+
+[node name="Tree7" parent="Trees" instance=ExtResource("tree7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0, 0, -12.0)
+
+[node name="Tree8" parent="Trees" instance=ExtResource("tree8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.48, 0, -8.49)
+
+[node name="Campfire1" parent="Fires" instance=ExtResource("fire1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 4)
+
+[node name="Campfire2" parent="Fires" instance=ExtResource("fire2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 4)
+
+[node name="Campfire3" parent="Fires" instance=ExtResource("fire3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -4)
+
+[node name="Campfire4" parent="Fires" instance=ExtResource("fire4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, -4)
+
+[node name="Pole1" parent="Poles" instance=ExtResource("pole1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.0, 0, 0.0)
+
+[node name="Pole2" parent="Poles" instance=ExtResource("pole2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0, 6.93)
+
+[node name="Pole3" parent="Poles" instance=ExtResource("pole3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 6.93)
+
+[node name="Pole4" parent="Poles" instance=ExtResource("pole4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0, 0, 0.0)
+
+[node name="Pole5" parent="Poles" instance=ExtResource("pole5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, -6.93)
+
+[node name="Pole6" parent="Poles" instance=ExtResource("pole6")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 0, -6.93)
+
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("Ground_frontier")

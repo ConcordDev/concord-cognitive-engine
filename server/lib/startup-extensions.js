@@ -109,7 +109,17 @@ export async function initExtensions(app, db, STATE, io) {
     logger.info("[startup-extensions] feed manager disabled via CONCORD_FEED_MANAGER_ENABLED=0");
   } else
   {try {
-    const feedMgr = initFeedManager({ STATE, db, io, logger });
+    // Load-aware fetch gate. When system load is high, feed ticks defer
+    // instead of competing with user HTTP traffic for the event loop.
+    // The threshold is read from env so the operator can tune it without
+    // editing code; default 8 (= 8 runnable threads on the pod = "100% busy").
+    const loadThreshold = Number(process.env.CONCORD_FEED_LOAD_THRESHOLD) || 8;
+    // Synchronous form: read loadavg() once at boot, refresh lazily.
+    // (loadavg() is cheap and the OS already caches it — no need to import os
+    // inside a hot-path callback.)
+    const { loadavg } = await import("os");
+    const checkLoad = () => loadavg()[0] < loadThreshold;
+    const feedMgr = initFeedManager({ STATE, db, io, logger, checkLoad });
     // Register all default feed sources
     if (typeof feedMgr?.registerFeeds === "function") {
       feedMgr.registerFeeds(ALL_DEFAULT_FEEDS);

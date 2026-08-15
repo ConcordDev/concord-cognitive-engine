@@ -1,0 +1,73 @@
+{
+  "npc_id": "lord_curator_asbir_thelane",
+  "home_location": "hub_archive_curator_chambers",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_archive_curator_chambers",
+      "activity": "rises early; writes morning notes",
+      "need_addressed": "correspondence",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_archive_main_floor",
+      "activity": "audit of the seven-spoke vault",
+      "need_addressed": "archive_integrity",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_archive_audience_chamber",
+      "activity": "grants audience to petitioners and travellers",
+      "need_addressed": "archive_integrity",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_archive_curator_chambers",
+      "activity": "writes letters; receives no visitors",
+      "need_addressed": "correspondence",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_great_plaza",
+      "activity": "walks the plaza, observes city pulse",
+      "need_addressed": "archive_integrity",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_archive_curator_chambers",
+      "activity": "reads; sleeps after midnight",
+      "need_addressed": "archive_integrity",
+      "interactable_by_player": false
+    }
+  ]
+}

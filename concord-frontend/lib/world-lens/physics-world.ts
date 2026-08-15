@@ -79,6 +79,13 @@ interface KinematicState {
   // B1 — movement forgiveness layer.
   /** Wall-clock ms of the last ground contact (coyote-time source). */
   lastGroundedAt: number;
+  /**
+   * Wall-clock ms of the last airborne→grounded EDGE (not every grounded
+   * frame). The animation state machine's land-hold window keys off this
+   * — lastGroundedAt is stamped every grounded frame so it cannot tell a
+   * fresh landing from standing still. 0 = never landed this lifetime.
+   */
+  lastLandedAt: number;
   /** Wall-clock ms of a jump requested while airborne (jump-buffer; 0 = none). */
   jumpBufferedAt: number;
   /** Pending buffered jump velocity. */
@@ -751,12 +758,16 @@ class PhysicsWorld {
       // Only re-zero if we're moving down or already at rest. A jump
       // frame still has positive verticalVel; don't clobber it.
       if (ks.verticalVel <= 0) {
+        const wasAirborne = ks.isAirborne;
         ks.verticalVel = 0;
         ks.isAirborne = false;
         // B1 — record the ground contact (coyote source) + flush a buffered
         // jump that was pressed just before landing.
         const nowMs = Date.now();
         ks.lastGroundedAt = nowMs;
+        // Airborne→grounded EDGE only — the land-hold window keys off this,
+        // not lastGroundedAt (which is stamped every grounded frame).
+        if (wasAirborne) ks.lastLandedAt = nowMs;
         if (shouldFlushBuffer(ks, nowMs)) {
           ks.verticalVel = ks.jumpVyPending || JUMP_DEFAULT_VY;
           ks.isAirborne = true;
@@ -785,6 +796,7 @@ class PhysicsWorld {
         gliding: false,
         swimming: false,
         lastGroundedAt: 0,
+        lastLandedAt: 0,
         jumpBufferedAt: 0,
         jumpVyPending: 0,
       };
@@ -886,6 +898,22 @@ class PhysicsWorld {
   /** Returns true when the controller is currently airborne (jumping or falling). */
   isAirborne(id: string): boolean {
     return !!this.kinematic.get(id)?.isAirborne;
+  }
+
+  /** Vertical velocity in m/s (+up). 0 when the controller is unknown. */
+  getVerticalVelocity(id: string): number {
+    return this.kinematic.get(id)?.verticalVel ?? 0;
+  }
+
+  /**
+   * ms since the last airborne→grounded edge. Returns -1 when the
+   * controller has never landed this lifetime (so the state machine
+   * never enters the transient "land" state on first spawn).
+   */
+  msSinceLanded(id: string, now: number = Date.now()): number {
+    const at = this.kinematic.get(id)?.lastLandedAt ?? 0;
+    if (!at) return -1;
+    return Math.max(0, now - at);
   }
 
   /** Returns true when the controller's last frame resolved a grounded

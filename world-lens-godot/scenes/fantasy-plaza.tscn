@@ -1,0 +1,168 @@
+[gd_scene load_steps=14 format=3 uid="uid://b8xf7plazafantasy"]
+
+[ext_resource type="PackedScene" uid="uid://b8xf7tree" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/tree.glb" id="1_tree"]
+[ext_resource type="PackedScene" uid="uid://b8xf7wall" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall.glb" id="2_wall"]
+[ext_resource type="PackedScene" uid="uid://b8xf7wallcr" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-corner.glb" id="3_wall_corner"]
+[ext_resource type="PackedScene" uid="uid://b8xf7gate" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-gate.glb" id="4_gate"]
+[ext_resource type="PackedScene" uid="uid://b8xf7col" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="5_column"]
+[ext_resource type="PackedScene" uid="uid://b8xf7ban" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/banner.glb" id="6_banner"]
+[ext_resource type="PackedScene" uid="uid://b8xf7stat" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/statue.glb" id="7_statue"]
+[ext_resource type="PackedScene" uid="uid://b8xf7rack" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/weapon-rack.glb" id="8_rack"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fantasy"]
+sky_top_color = Color(0.38, 0.55, 0.78, 1)
+sky_horizon_color = Color(0.75, 0.65, 0.55, 1)
+ground_horizon_color = Color(0.4, 0.35, 0.3, 1)
+ground_bottom_color = Color(0.18, 0.16, 0.14, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="Sky_fantasy"]
+sky_material = SubResource("ProceduralSkyMaterial_fantasy")
+
+[sub_resource type="Environment" id="Environment_fantasy"]
+background_mode = 2
+sky = SubResource("Sky_fantasy")
+ambient_light_source = 3
+ambient_light_color = Color(0.5, 0.5, 0.6, 1)
+ambient_light_energy = 0.6
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.6
+glow_strength = 1.0
+fog_enabled = true
+fog_light_color = Color(0.7, 0.65, 0.6, 1)
+fog_density = 0.008
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fantasy_stone"]
+albedo_color = Color(0.65, 0.6, 0.55, 1)
+roughness = 0.85
+metallic = 0.05
+
+[node name="FantasyPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_fantasy")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(1, 0.92, 0.78, 1)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+; === 8 trees in a circle around origin, radius 8 ===
+[node name="Trees" type="Node3D" parent="."]
+
+[node name="Tree1" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 0)
+
+[node name="Tree2" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 5.66, 0, 5.66)
+
+[node name="Tree3" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 8)
+
+[node name="Tree4" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -5.66, 0, 5.66)
+
+[node name="Tree5" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -8, 0, 0)
+
+[node name="Tree6" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -5.66, 0, -5.66)
+
+[node name="Tree7" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, -8)
+
+[node name="Tree8" parent="Trees" instance=ExtResource("1_tree")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 5.66, 0, -5.66)
+
+; === 4 outer walls ===
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="WallN" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="WallS" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 10)
+
+[node name="WallE" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 10, 0, 0)
+
+[node name="WallW" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -10, 0, 0)
+
+; === 4 corner walls (diagonals) ===
+[node name="WallCornerNE" parent="Walls" instance=ExtResource("3_wall_corner")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 8, 0, -8)
+
+[node name="WallCornerSE" parent="Walls" instance=ExtResource("3_wall_corner")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8, 0, 8)
+
+[node name="WallCornerSW" parent="Walls" instance=ExtResource("3_wall_corner")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -8, 0, 8)
+
+[node name="WallCornerNW" parent="Walls" instance=ExtResource("3_wall_corner")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -8, 0, -8)
+
+; === 1 gate at south facing south ===
+[node name="Gate" parent="Walls" instance=ExtResource("4_gate")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 12)
+
+; === 4 columns near center ===
+[node name="Columns" type="Node3D" parent="."]
+
+[node name="ColumnN" parent="Columns" instance=ExtResource("5_column")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3)
+
+[node name="ColumnE" parent="Columns" instance=ExtResource("5_column")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 0, 0)
+
+[node name="ColumnS" parent="Columns" instance=ExtResource("5_column")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 3)
+
+[node name="ColumnW" parent="Columns" instance=ExtResource("5_column")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -3, 0, 0)
+
+; === 6 banners (3 pairs on alternating columns) ===
+[node name="Banners" type="Node3D" parent="."]
+
+[node name="Banner1" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5, -3)
+
+[node name="Banner2" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 3.5, 0)
+
+[node name="Banner3" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 3.5, 3)
+
+[node name="Banner4" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -3, 3.5, 0)
+
+[node name="Banner5" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(0.5, 0, -0.866, 0, 1, 0, 0.866, 0, 0.5, 1.5, 3.5, -2.6)
+
+[node name="Banner6" parent="Banners" instance=ExtResource("6_banner")]
+transform = Transform3D(-0.5, 0, -0.866, 0, 1, 0, 0.866, 0, -0.5, -1.5, 3.5, -2.6)
+
+; === 2 statues at cardinal diagonals ===
+[node name="Statues" type="Node3D" parent="."]
+
+[node name="StatueNE" parent="Statues" instance=ExtResource("7_statue")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -5)
+
+[node name="StatueSW" parent="Statues" instance=ExtResource("7_statue")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -5, 0, 5)
+
+; === 1 weapon rack near the gate ===
+[node name="WeaponRack" parent="." instance=ExtResource("8_rack")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 3, 0, 11)
+
+; === Ground plane ===
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("StandardMaterial3D_fantasy_stone")

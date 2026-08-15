@@ -108,6 +108,15 @@ const PauseMenu := preload("res://ui/pause_menu.gd")
 const PlayerAppearanceLoader := preload("res://world/player_appearance_loader.gd")
 const TouchControls := preload("res://ui/touch_controls.gd")
 
+## Audit v4 proposal #3 — authored hub level (Ring of Doors + Three
+## Pillars tableau). Instanced when world_id == "concordia-hub" and/or
+## scene:data carries scenePath pointing at this packed scene. The
+## server export (server/lib/scene-export.js) names the same path so
+## a client never has to hardcode it; the const here is the loadable
+## fallback when the payload omits scenePath but the world is the hub.
+const HUB_SCENE := preload("res://scenes/concordia-hub.tscn")
+const HUB_WORLD_ID := "concordia-hub"
+
 ## Runtime config — override via project settings or env at integration time.
 ## The env override (CONCORD_GATEWAY_URL / CONCORD_GODOT_API_KEY /
 ## CONCORD_GODOT_AUTH_TOKEN / CONCORD_WORLD_ID) is what actually makes this
@@ -268,6 +277,11 @@ var _quest_tracker_mode: String = "breadcrumb"
 ## real, queryable markers.
 var _rooftop_controller: RooftopAccessController = null
 var _wayfinding: WayfindingController = null
+
+## Audit v4 proposal #3 — live instance of concordia-hub.tscn when the
+## active world is the hub. Null for every other world. See
+## `_maybe_instance_hub_tableau`.
+var _hub_tableau: Node3D = null
 
 
 ## Pure static so it's unit-testable without a scene tree (same rationale as
@@ -1076,6 +1090,8 @@ func _on_event(evt: String, data: Dictionary) -> void:
 	match evt:
 		"scene:data":
 			_bootstrap.apply_scene(data)
+			# Audit v4 #3 — instance authored hub tableau when applicable.
+			_maybe_instance_hub_tableau(data)
 			# F26/F27 — real modules with real tests since Sprint F, wired
 			# for the first time here (see the class-level comment on
 			# `_rooftop_controller`/`_wayfinding` above). Both re-pull from
@@ -1266,3 +1282,41 @@ func _on_pause_overlay_opened() -> void:
 
 func _on_pause_overlay_closed() -> void:
 	_pause_menu.close()
+
+
+## Audit v4 proposal #3 — instance the authored hub level (Ring of Doors +
+## Three Pillars) when this client is viewing concordia-hub. Prefers the
+## `scenePath` returned by exportScene (server/lib/scene-export.js); falls
+## back to the preloaded HUB_SCENE when the world_id is the hub but the
+## payload has no path (e.g. an older server). Never instances for other
+## worlds. Clears any previous instance first so a reconnect/scene refresh
+## does not stack duplicates. The hub ground carries no combat colliders
+## (canon — the ground refuses violence).
+func _maybe_instance_hub_tableau(payload: Dictionary) -> void:
+	if _hub_tableau != null and is_instance_valid(_hub_tableau):
+		_hub_tableau.queue_free()
+		_hub_tableau = null
+	var path := String(payload.get("scenePath", ""))
+	var is_hub := world_id == HUB_WORLD_ID or String(payload.get("worldId", "")) == HUB_WORLD_ID
+	if path.is_empty() and is_hub:
+		path = "res://scenes/concordia-hub.tscn"
+	if path.is_empty():
+		return
+	if not is_hub and path.find("concordia-hub") == -1:
+		return
+	var packed: PackedScene = null
+	if path == "res://scenes/concordia-hub.tscn":
+		packed = HUB_SCENE
+	else:
+		if ResourceLoader.exists(path):
+			packed = load(path) as PackedScene
+	if packed == null:
+		push_warning("[boot] hub tableau scene unavailable at %s" % path)
+		return
+	_hub_tableau = packed.instantiate() as Node3D
+	if _hub_tableau == null:
+		push_warning("[boot] hub tableau instantiate failed for %s" % path)
+		return
+	_hub_tableau.name = "HubTableau"
+	add_child(_hub_tableau)
+	print("[boot] instanced hub tableau from %s" % path)

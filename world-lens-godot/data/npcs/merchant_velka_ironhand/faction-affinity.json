@@ -1,0 +1,11 @@
+{
+  "npc_id": "merchant_velka_ironhand",
+  "primary_faction": "bazaar_consortium",
+  "default": 0.0,
+  "affinities": {
+    "bazaar_consortium": 0.9,
+    "crosswind_couriers": 0.5,
+    "concordant_curators": 0.2
+  },
+  "notes": {}
+}

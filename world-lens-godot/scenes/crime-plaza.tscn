@@ -1,0 +1,129 @@
+[gd_scene load_steps=9 format=3 uid="uid://b8crime01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall.glb" id="1_wall"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-corner.glb" id="2_corner"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-gate.glb" id="3_gate"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="4_col"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/weapon-rack.glb" id="5_rack"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/bricks.glb" id="6_brick"]
+
+[sub_resource type="ProceduralSkyMaterial" id="CrimeSky"]
+sky_top_color = Color(0.05, 0.05, 0.10, 1)
+sky_horizon_color = Color(0.30, 0.20, 0.10, 1)
+ground_horizon_color = Color(0.10, 0.05, 0.05, 1)
+ground_bottom_color = Color(0.02, 0.01, 0.01, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="CrimeSky2"]
+sky_material = SubResource("CrimeSky")
+
+[sub_resource type="Environment" id="CrimeEnv"]
+background_mode = 2
+sky = SubResource("CrimeSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.5, 0.4, 0.3, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.8
+glow_strength = 1.0
+fog_enabled = true
+fog_light_color = Color(0.20, 0.10, 0.40, 1)
+fog_density = 0.014
+
+[sub_resource type="StandardMaterial3D" id="CrimeMat"]
+albedo_color = Color(0.45, 0.40, 0.35, 1)
+roughness = 0.95
+
+[node name="CrimePlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("CrimeEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(1.0, 0.7, 0.4, 1)
+light_energy = 0.7
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="WallN" parent="Walls" instance=ExtResource("1_wall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="WallE" parent="Walls" instance=ExtResource("1_wall")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 10, 0, 0)
+
+[node name="WallS" parent="Walls" instance=ExtResource("1_wall")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 10)
+
+[node name="WallW" parent="Walls" instance=ExtResource("1_wall")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -10, 0, 0)
+
+[node name="Corners" type="Node3D" parent="."]
+
+[node name="CornerNE" parent="Corners" instance=ExtResource("2_corner")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 8, 0, -8)
+
+[node name="CornerSE" parent="Corners" instance=ExtResource("2_corner")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8, 0, 8)
+
+[node name="CornerSW" parent="Corners" instance=ExtResource("2_corner")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -8, 0, 8)
+
+[node name="CornerNW" parent="Corners" instance=ExtResource("2_corner")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -8, 0, -8)
+
+[node name="Gate" parent="." instance=ExtResource("3_gate")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 12)
+
+[node name="Columns" type="Node3D" parent="."]
+
+[node name="ColumnN" parent="Columns" instance=ExtResource("4_col")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5)
+
+[node name="ColumnE" parent="Columns" instance=ExtResource("4_col")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 5, 0, 0)
+
+[node name="ColumnS" parent="Columns" instance=ExtResource("4_col")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 5)
+
+[node name="ColumnW" parent="Columns" instance=ExtResource("4_col")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -5, 0, 0)
+
+[node name="Racks" type="Node3D" parent="."]
+
+[node name="Rack1" parent="Racks" instance=ExtResource("5_rack")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -2)
+
+[node name="Rack2" parent="Racks" instance=ExtResource("5_rack")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 8, 0, -2)
+
+[node name="Rack3" parent="Racks" instance=ExtResource("5_rack")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 8, 0, 2)
+
+[node name="Rack4" parent="Racks" instance=ExtResource("5_rack")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -8, 0, 2)
+
+[node name="Debris" type="Node3D" parent="."]
+
+[node name="Bricks1" parent="Debris" instance=ExtResource("6_brick")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -3)
+
+[node name="Bricks2" parent="Debris" instance=ExtResource("6_brick")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 0, -3)
+
+[node name="Bricks3" parent="Debris" instance=ExtResource("6_brick")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 3, 0, 3)
+
+[node name="Bricks4" parent="Debris" instance=ExtResource("6_brick")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -3, 0, 3)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("CrimeMat")

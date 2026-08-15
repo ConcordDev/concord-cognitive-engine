@@ -1,0 +1,73 @@
+{
+  "npc_id": "merchant_velka_ironhand",
+  "home_location": "hub_merchant_quarters",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_merchant_quarters",
+      "activity": "sleeps; the bazaar runs without her at this hour",
+      "need_addressed": "market_pulse",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_market_district",
+      "activity": "morning stall round; greets vendors",
+      "need_addressed": "market_pulse",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_bazaar_central_row",
+      "activity": "high-volume trading",
+      "need_addressed": "market_pulse",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_bazaar_dispute_chamber",
+      "activity": "arbitrates guild disputes",
+      "need_addressed": "guild_arbitration",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_market_district",
+      "activity": "evening trade; meets fences quietly",
+      "need_addressed": "market_pulse",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_merchant_quarters",
+      "activity": "reviews ledger; sleeps after midnight",
+      "need_addressed": "market_pulse",
+      "interactable_by_player": false
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+[gd_scene load_steps=10 format=3 uid="uid://b8sovruins01"]
+
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-corner.glb" id="1_arch"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column-damaged.glb" id="2_dam"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/banner.glb" id="3_ban"]
+[ext_resource type="PackedScene" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/statue.glb" id="4_stat"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SovSky"]
+sky_top_color = Color(0.25, 0.25, 0.30, 1)
+sky_horizon_color = Color(0.55, 0.50, 0.45, 1)
+ground_horizon_color = Color(0.30, 0.25, 0.20, 1)
+ground_bottom_color = Color(0.15, 0.12, 0.10, 1)
+sun_angle_max = 30.0
+sun_curve = 0.15
+
+[sub_resource type="Sky" id="SovSky2"]
+sky_material = SubResource("SovSky")
+
+[sub_resource type="Environment" id="SovEnv"]
+background_mode = 2
+sky = SubResource("SovSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.6, 0.55, 0.50, 1)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.5
+glow_strength = 0.8
+fog_enabled = true
+fog_light_color = Color(0.5, 0.45, 0.40, 1)
+fog_density = 0.012
+
+[sub_resource type="StandardMaterial3D" id="SovMat"]
+albedo_color = Color(0.55, 0.50, 0.45, 1)
+roughness = 0.92
+metallic = 0.05
+
+[node name="SovereignRuinsPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("SovEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(1.0, 0.85, 0.7, 1)
+light_energy = 1.0
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+[node name="Arches" type="Node3D" parent="."]
+
+[node name="Arch1" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0, 0)
+
+[node name="Arch2" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 7.78, 0, 7.78)
+
+[node name="Arch3" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, 11)
+
+[node name="Arch4" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -7.78, 0, 7.78)
+
+[node name="Arch5" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -11, 0, 0)
+
+[node name="Arch6" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -7.78, 0, -7.78)
+
+[node name="Arch7" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, -11)
+
+[node name="Arch8" parent="Arches" instance=ExtResource("1_arch")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 7.78, 0, -7.78)
+
+[node name="Pillars" type="Node3D" parent="."]
+
+[node name="Pillar1" parent="Pillars" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, -2)
+
+[node name="Pillar2" parent="Pillars" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -2)
+
+[node name="Pillar3" parent="Pillars" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 0, 2)
+
+[node name="Pillar4" parent="Pillars" instance=ExtResource("2_dam")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, 2)
+
+[node name="Statues" type="Node3D" parent="."]
+
+[node name="Statue1" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -3)
+
+[node name="Statue2" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 0, -3)
+
+[node name="Statue3" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 3, 0, 3)
+
+[node name="Statue4" parent="Statues" instance=ExtResource("4_stat")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -3, 0, 3)
+
+[node name="Banners" type="Node3D" parent="."]
+
+[node name="Banner1" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -5)
+
+[node name="Banner2" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 2, 0, -5)
+
+[node name="Banner3" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 5, 0, -2)
+
+[node name="Banner4" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, 5, 0, 2)
+
+[node name="Banner5" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 2, 0, 5)
+
+[node name="Banner6" parent="Banners" instance=ExtResource("3_ban")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, -0.707, -2, 0, 5)
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("SovMat")

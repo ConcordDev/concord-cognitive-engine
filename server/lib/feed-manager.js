@@ -17,10 +17,13 @@
  */
 
 import { createHash, randomUUID } from "crypto";
+import { shouldRunHeavyMaintenance } from "./presence-idle.js";
 import logger from "../logger.js";
 import { LruMap } from "./lru-map.js";
 import { feedAttribution } from "./source-attribution.js";
 import { browserEngine } from "./browser-engine.js";
+import { checkQualityGate, logRejectedDTU, pruneQualityLog } from "./ingest-quality.js";
+import { getDedupKey, hashDedupKey } from "./dedup-keys.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS & LIMITS
@@ -52,6 +55,11 @@ const _seenHashes = new Set();
 
 /** @type {Map<string, NodeJS.Timeout>} Per-feed interval timers */
 const _feedTimers = new Map();
+
+/** @type {Map<string, number>} Last successful poll timestamp per feed id.
+ *  Keys are feed ids (capped at MAX_ACTIVE_FEEDS = 1000 in practice), but we
+ *  use LruMap so retired feeds age out instead of lingering after removal. */
+const _lastPollTime = new LruMap(MAX_ACTIVE_FEEDS + 100);
 
 /** @type {number} DTUs created in the current hour window */
 let _dtuCountThisHour = 0;
@@ -152,7 +160,7 @@ export function purgeBySource(nameOrId) {
       tx(ids);
     }
   } catch (err) { logger.warn?.("[feed-manager] purgeBySource db delete failed", { error: err?.message }); }
-  logger.info?.("[feed-manager] purgeBySource", { source: key, removed });
+  logger.info?.("feed-manager", "purgeBySource", { source: key, removed });
   return { ok: true, removed, denied: key };
 }
 
@@ -160,14 +168,28 @@ export function purgeBySource(nameOrId) {
 // UTILITY FUNCTIONS
 // ══════════════════════════════════════════════════════════════════════════════
 
-function safeFetch(url, opts = {}) {
+// Async on purpose so callers can `await safeFetch(...)` and get a single
+// Response|null (the eager `.then(() => scheduledFetch(...))` flattens the
+// dynamic-import Promise into a plain fetch result).
+async function safeFetch(url, opts = {}) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), opts.timeout || FETCH_TIMEOUT);
-  return fetch(url, {
-    ...opts,
-    signal: ac.signal,
-    headers: { "User-Agent": DEFAULT_USER_AGENT, ...(opts.headers || {}) },
-  }).finally(() => clearTimeout(t));
+  // Route through the shared scheduler so the 57 feed timers at startup
+  // can't stampede the event loop. The scheduler enforces per-domain (4)
+  // and global (16) caps, plus in-flight dedupe and a 60s circuit breaker
+  // on origins that fail 3x in a row.
+  // Imported lazily so feed-manager doesn't pull the whole emergent module
+  // graph during boot (entity-web-exploration imports prompt-registry).
+  const { scheduledFetch } = await import("../emergent/entity-web-exploration.js");
+  try {
+    return await scheduledFetch(url, {
+      ...opts,
+      signal: ac.signal,
+      headers: { "User-Agent": DEFAULT_USER_AGENT, ...(opts.headers || {}) },
+    });
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function contentHash(str) {
@@ -204,17 +226,14 @@ function trimDedup() {
 }
 
 function isDuplicate(item) {
-  const hashes = [
-    item.sourceUrl ? urlHash(item.sourceUrl) : null,
-    item.title ? titleHash(item.title) : null,
-    item.content ? contentHash(item.content) : null,
-  ].filter(Boolean);
+  // Use richer dedup key (URL + canonical title + first 100 body chars)
+  const dedupKey = getDedupKey(item);
+  const hash = hashDedupKey(dedupKey);
 
-  for (const h of hashes) {
-    if (_seenHashes.has(h)) return true;
-  }
+  if (_seenHashes.has(hash)) return true;
+
   // Mark as seen
-  for (const h of hashes) _seenHashes.add(h);
+  _seenHashes.add(hash);
   trimDedup();
   return false;
 }
@@ -626,7 +645,7 @@ function initHealth(feedId) {
  * Convert a parsed feed item into a DTU and commit it.
  * @param {object} item - Parsed feed item
  * @param {object} feedSource - Feed source config
- * @returns {Promise<{ok: boolean, dtuId?: string}>}
+ * @returns {Promise<{ok: boolean, dtuId?: string, reason?: string}>}
  */
 async function commitFeedDTU(item, feedSource) {
   if (!canCreateDTU()) return { ok: false, error: "hourly_limit" };
@@ -660,6 +679,7 @@ async function commitFeedDTU(item, feedSource) {
       assertions: [],
       evidence: item.sourceUrl ? [{ type: "url", value: item.sourceUrl, label: feedSource.name || feedSource.id }] : [],
     },
+    content: item.content || item.summary || item.title || "", // For quality gate body check
     meta: {
       feedId: feedSource.id,
       lensId: feedSource.lensId || feedSource.domain,
@@ -669,11 +689,27 @@ async function commitFeedDTU(item, feedSource) {
       sourceName: feedSource.name || feedSource.id,
       publishedAt: item.publishedAt || now,
       source: attribution, // Also stored in meta for backward compat
+      externalUrl: item.sourceUrl || "", // For quality gate source check
     },
     createdAt: now,
     updatedAt: now,
     epistemologicalStance: "reported",
   };
+
+  // Quality gate: check coherence before commit
+  const gateResult = checkQualityGate(dtu);
+  if (!gateResult.ok) {
+    // Log the rejection for analysis
+    logRejectedDTU({
+      db: _deps?.db,
+      dtu,
+      feedId: feedSource.id,
+      feedSource,
+      reason: gateResult.reason,
+      dedupKey: getDedupKey(item),
+    });
+    return { ok: false, error: gateResult.reason, details: gateResult.details };
+  }
 
   // Commit through the injected pipeline
   try {
@@ -708,8 +744,37 @@ async function commitFeedDTU(item, feedSource) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function tickFeed(feedId) {
+  // Sprint 60+ — idle gate. RSS polling is a per-feed HTTP fetch + parse
+  // + dedup + DTU mint. With no users, the feeds will pile up duplicates
+  // that nobody is reading. Skip the work; resume when users return.
+  if (!shouldRunHeavyMaintenance()) return { ok: true, skipped: "idle_no_users" };
   const feedSource = _feedSources.get(feedId);
   if (!feedSource || !feedSource.enabled) return;
+
+  // Per-feed poll interval enforcement
+  const pollIntervalMs = feedSource.pollIntervalMs || feedSource.interval || 600000; // default 10min
+  const lastPoll = _lastPollTime.get(feedId) || 0;
+  const timeSinceLastPoll = Date.now() - lastPoll;
+
+  // Skip if within half the poll interval of the last poll
+  if (lastPoll > 0 && timeSinceLastPoll < pollIntervalMs / 2) {
+    logger.debug?.("[feed-manager] Skipping feed tick (too soon since last poll)", {
+      feedId,
+      pollIntervalMs,
+      timeSinceLastPoll,
+    });
+    return;
+  }
+
+  // Warn if overdue
+  if (lastPoll > 0 && timeSinceLastPoll > pollIntervalMs * 4) {
+    logger.warn?.("feed-manager", "Feed tick overdue", {
+      feedId,
+      pollIntervalMs,
+      timeSinceLastPoll,
+      overdueBy: timeSinceLastPoll - (pollIntervalMs * 4),
+    });
+  }
 
   // Check system load before fetching
   if (_deps?.checkLoad && !_deps.checkLoad()) {
@@ -721,6 +786,9 @@ async function tickFeed(feedId) {
   if (errors.length > 0 && items.length === 0) return;
 
   let created = 0;
+  let rejected = 0;
+  let deduped = 0;
+
   for (const item of items.slice(0, 10)) { // max 10 items per feed per tick
     const result = await commitFeedDTU(item, feedSource);
     if (result.ok) {
@@ -758,11 +826,24 @@ async function tickFeed(feedId) {
           });
         } catch (_e) { /* bridge is optional */ }
       }
+    } else if (result.error === "duplicate") {
+      deduped++;
+    } else {
+      rejected++; // quality gate or other rejections
     }
   }
 
-  if (created > 0) {
-    logger.info?.("[feed-manager] Feed tick", { feedId, itemsFetched: items.length, dtusCreated: created });
+  // Record successful poll time after processing
+  _lastPollTime.set(feedId, Date.now());
+
+  if (created > 0 || rejected > 0 || deduped > 0) {
+    logger.info?.("feed-manager", "Feed tick", {
+      feedId,
+      itemsFetched: items.length,
+      dtusCreated: created,
+      rejected,
+      deduped,
+    });
   }
 }
 
@@ -863,7 +944,7 @@ export function initFeedManager(deps = {}) {
   } catch (e) {
     logger.warn?.("[feed-manager] Failed to rebuild dedup set:", e?.message);
   }
-  logger.info?.("[feed-manager] Initialized with deps:", Object.keys(deps).filter(k => !!deps[k]).join(", "));
+  logger.info?.("feed-manager", "Initialized with deps", { deps: Object.keys(deps).filter(k => !!deps[k]) });
 }
 
 /**
@@ -1077,7 +1158,7 @@ export function startFeedManager() {
   for (const feed of _feedSources.values()) {
     if (feed.enabled) startFeedTimer(feed);
   }
-  logger.info?.("[feed-manager] Started", { feedCount: _feedSources.size, active: [..._feedSources.values()].filter(f => f.enabled).length });
+  logger.info?.("feed-manager", "Started", { feedCount: _feedSources.size, active: [..._feedSources.values()].filter(f => f.enabled).length });
 }
 
 /**
@@ -1088,7 +1169,7 @@ export function stopFeedManager() {
   for (const feedId of _feedTimers.keys()) {
     stopFeedTimer(feedId);
   }
-  logger.info?.("[feed-manager] Stopped");
+  logger.info?.("feed-manager", "Stopped");
 }
 
 /**
