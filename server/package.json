@@ -108,7 +108,8 @@
   },
   "overrides": {
     "protobufjs": "^7.5.5",
-    "sharp": "^0.35.0"
+    "sharp": "^0.35.0",
+    "adm-zip": "^0.6.0"
   },
   "engines": {
     "node": ">=22.0.0"
