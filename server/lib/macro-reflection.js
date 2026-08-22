@@ -251,7 +251,18 @@ async function extractRoutes(serverJsSrc, routesFiles) {
   for (const f of routesFiles) {
     const base = path.basename(f, '.js');
     const mount = mountMap[base] || `/${base}`;
-    const src = await fs.promises.readFile(f, 'utf8');
+    let src;
+    try {
+      src = await fs.promises.readFile(f, 'utf8');
+    } catch (e) {
+      // A file listed by the directory walk that fails to actually read
+      // (a broken symlink, a permissions issue, a race with a concurrent
+      // delete) must not crash the whole reflection pass — this is a
+      // best-effort macro/route catalog for LLM tool-calling, not a
+      // correctness-critical boot step. Skip just this file.
+      console.warn('[macro-reflection] skipping unreadable file ' + f + ': ' + (e && e.message ? e.message : e));
+      continue;
+    }
     for (const m of src.matchAll(/\b(router|app)\.(get|post|put|delete|patch|all)\(\s*["'`](\/[^"'`]*)["'`]/g)) {
       const method = m[2].toUpperCase();
       const p = m[3];
@@ -310,7 +321,18 @@ export async function reflectMacros(options = {}) {
   // 1. Walk domain files for register(...)
   const domainFiles = await walkJs(DOMAINS_DIR);
   for (const f of domainFiles) {
-    const src = await fs.promises.readFile(f, 'utf8');
+    let src;
+    try {
+      src = await fs.promises.readFile(f, 'utf8');
+    } catch (e) {
+      // A file listed by the directory walk that fails to actually read
+      // (a broken symlink, a permissions issue, a race with a concurrent
+      // delete) must not crash the whole reflection pass — this is a
+      // best-effort macro/route catalog for LLM tool-calling, not a
+      // correctness-critical boot step. Skip just this file.
+      console.warn('[macro-reflection] skipping unreadable file ' + f + ': ' + (e && e.message ? e.message : e));
+      continue;
+    }
     const macros = extractMacros(src, f);
     for (const m of macros) {
       if (!MACRO_REGISTRY.has(m.domain)) MACRO_REGISTRY.set(m.domain, new Map());
@@ -325,7 +347,18 @@ export async function reflectMacros(options = {}) {
   // 2. Walk lib files for register(...) + exports (optional)
   const libFiles = await walkJs(LIB_DIR);
   for (const f of libFiles) {
-    const src = await fs.promises.readFile(f, 'utf8');
+    let src;
+    try {
+      src = await fs.promises.readFile(f, 'utf8');
+    } catch (e) {
+      // A file listed by the directory walk that fails to actually read
+      // (a broken symlink, a permissions issue, a race with a concurrent
+      // delete) must not crash the whole reflection pass — this is a
+      // best-effort macro/route catalog for LLM tool-calling, not a
+      // correctness-critical boot step. Skip just this file.
+      console.warn('[macro-reflection] skipping unreadable file ' + f + ': ' + (e && e.message ? e.message : e));
+      continue;
+    }
 
     // register() in lib files (e.g., token-budget-assembler, csl-router)
     const macros = extractMacros(src, f);
