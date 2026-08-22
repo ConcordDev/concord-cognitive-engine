@@ -99,7 +99,7 @@ export function GuardedButton({
       style={{
         position: 'relative',
         opacity: guard.loading ? 0.7 : 1,
-        cursor: guard.loading ? 'wait' : (rest.cursor ?? 'pointer'),
+        cursor: guard.loading ? 'wait' : (rest.style?.cursor ?? 'pointer'),
         ...rest.style,
       }}
     >

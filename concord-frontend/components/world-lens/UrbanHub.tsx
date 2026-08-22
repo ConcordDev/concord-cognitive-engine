@@ -389,7 +389,7 @@ export function UrbanHub() {
       />
       <ambientLight intensity={0.45} color="#aab0c0" />
       {/* Soft hemisphere fill */}
-      <hemisphereLight skyColor="#8a9bb5" groundColor="#3a3530" intensity={0.35} />
+      <hemisphereLight color="#8a9bb5" groundColor="#3a3530" intensity={0.35} />
     </group>
   );
 }
