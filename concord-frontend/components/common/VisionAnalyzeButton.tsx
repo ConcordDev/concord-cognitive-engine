@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Eye, Loader2, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { useVisionAnalysis } from '@/lib/hooks/use-vision-analysis';
 
 interface Props {
@@ -40,7 +41,7 @@ export function VisionAnalyzeButton({ domain, prompt, onResult, className, viaMa
         disabled={isAnalyzing}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition min-h-[36px]"
       >
-        {isAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+        {isAnalyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SvgIcon name="eye" size={14} />}
         {isAnalyzing ? 'Analyzing...' : 'Analyze with Vision'}
       </button>
       {preview && result && (

@@ -611,7 +611,7 @@ export default function DailyLensPage() {
             <div className="flex items-center gap-3">
               {MOODS.map((emoji, idx) => (
                 <button key={idx} onClick={() => setSelectedMood(idx)}
-                  className={`text-2xl p-2 rounded-xl transition-all ${selectedMood === idx ? 'bg-neon-cyan/20 ring-2 ring-neon-cyan scale-110' : 'hover:bg-white/10 opacity-60 hover:opacity-100'}`}>
+                  className={`text-2xl p-2 rounded-xl transition-all ${selectedMood === idx ? 'bg-neon-cyan/20 ring-2 ring-neon-cyan scale-110 drop-shadow-[0_0_10px_rgba(34,211,238,0.65)]' : 'hover:bg-white/10 opacity-60 hover:opacity-100'}`}>
                   {emoji}
                 </button>
               ))}

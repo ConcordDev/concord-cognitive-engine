@@ -44,7 +44,11 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     messages: messages.map(m => ({ role: m.role, content: m.content })),
     options: {
       temperature,
-      num_predict: config.maxTokens,
+      // Callers (e.g. chat-agent.js's runAgentLoop) pass a per-call
+      // opts.maxTokens expecting it to actually apply — this used to always
+      // read the brain's static BRAIN_CONFIG default instead, silently
+      // discarding any caller override.
+      num_predict: opts.maxTokens ?? config.maxTokens,
       // Without num_ctx Ollama uses its small default context and silently
       // truncates long prompts — send the brain's configured window, capped
       // by CONCORD_NUM_CTX_CAP for KV-cache VRAM control.

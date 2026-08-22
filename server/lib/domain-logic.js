@@ -706,19 +706,21 @@ DOMAIN_RULES.set("healthcare", {
 });
 
 // === Trades ===
+// This rule was authored for a generic "project/estimate/work-order/
+// inspection/invoice/certification" trade-ops shape that was never
+// reconciled against the real frontend (`app/lenses/trades/page.tsx`, a
+// genuine ServiceTitan/Jobber-parity dispatch board) — the same class of
+// stale-vocabulary bug found and fixed for `services`/`security`
+// (audit/LENS_DESIGN_UPGRADE_PLAN.md #214/#211). The real page's own
+// `ArtifactType` union is `Job | Estimate | MaterialsList | Permit |
+// Equipment | Client` and its real `Status` union is `quoted | approved |
+// in_progress | inspection | completed | invoiced | paid` — every real
+// create/status-update from the UI failed `validateArtifact` against the
+// old vocabulary (audit doc #240).
 DOMAIN_RULES.set("trades", {
-  types: ["project", "estimate", "work-order", "inspection", "invoice", "certification"],
-  validStatuses: ["draft", "quoted", "approved", "in-progress", "inspection", "completed", "archived"],
-  transitions: {
-    draft: ["quoted", "archived"],
-    quoted: ["approved", "draft", "archived"],
-    approved: ["in-progress", "quoted"],
-    "in-progress": ["inspection", "approved"],
-    inspection: ["completed", "in-progress"],
-    completed: ["archived"],
-    archived: [],
-  },
-  requiredFields: { project: ["title", "tradeType"], estimate: ["total"], "work-order": ["title"] },
+  types: ["Job", "Estimate", "MaterialsList", "Permit", "Equipment", "Client"],
+  validStatuses: ["quoted", "approved", "in_progress", "inspection", "completed", "invoiced", "paid"],
+  requiredFields: { Job: ["title"], Estimate: ["title"], MaterialsList: ["title"], Permit: ["title"], Equipment: ["title"], Client: ["title"] },
   computedFields: (type, data) => {
     const items = data.lineItems || [];
     data.lineItemCount = items.length;

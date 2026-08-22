@@ -420,6 +420,18 @@ export default function LockLensPage() {
             )}
           </button>
         </div>
+        {runAudit.isError && (
+          <div className="mb-3 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+            {(() => {
+              const err = runAudit.error as { response?: { data?: { error?: string } }; message?: string } | undefined;
+              const reason = err?.response?.data?.error || err?.message;
+              if (reason === 'sovereign_only') {
+                return 'Run Audit requires the sovereign role — your account does not currently hold it, regardless of any displayed title.';
+              }
+              return `Audit request failed${reason ? `: ${reason}` : ''}.`;
+            })()}
+          </div>
+        )}
         {historyLoading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="w-5 h-5 animate-spin text-gray-400" />

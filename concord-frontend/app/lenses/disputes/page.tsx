@@ -16,6 +16,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { LawStackFeed } from '@/components/disputes/LawStackFeed';
 import { CaseWorkbench } from '@/components/disputes/CaseWorkbench';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -948,7 +949,7 @@ export default function DisputesPage() {
             className={activeTab === 'queue' ? ds.tabActive('neon-purple') : ds.tabInactive}
             onClick={() => { setActiveTab('queue'); setStatusFilter('all'); }}
           >
-            <Gavel size={14} />
+            <SvgIcon name="gavel" size={14} />
             Admin Queue
             {stats.escalated > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-orange-500/20 text-orange-400">

@@ -633,6 +633,18 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   let lastModel = "ollama";
   let finalAnswer = "";
   let turnsTaken = 0;
+  // Set true only when the loop exhausts every turn while the brain is
+  // STILL issuing tool calls (never reached the `calls.length === 0` break
+  // below). Without the forced wrap-up turn added after the loop, `finalAnswer`
+  // stays whatever `visibleAnswer` was on that last turn — and per this
+  // file's own TOOL_SCHEMA_BLOCK instructions ("After the tool call
+  // marker(s), STOP... Do not continue the response in the same turn"), that
+  // text is DELIBERATELY just a short lead-in stub ("Let me check that...").
+  // A compound, multi-step JARVIS-style request (search, then compute, then
+  // mint a DTU, then export...) can genuinely need more than AGENT_MAX_TURNS
+  // round trips, and users were seeing that stub as the ENTIRE reply — a
+  // real, reproducible source of ConKay "not completing its sentences."
+  let ranOutOfTurnsWithPendingCalls = false;
 
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsTaken++;
@@ -769,6 +781,33 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     messages.push({ role: "assistant", content: r.text });
     messages.push({ role: "user", content: formatToolResults(results) });
     finalAnswer = visibleAnswer; // last visible body, in case we exit on max turns
+    if (turn === maxTurns - 1) ranOutOfTurnsWithPendingCalls = true;
+  }
+
+  // Force one last synthesis-only turn instead of leaving the user with a
+  // stub lead-in sentence — see the flag's own comment above. This is a
+  // real extra brain call, only made in this one genuinely-rare case (a
+  // request that needed more tool round trips than maxTurns allows), and it
+  // reuses the exact same message history (including every real tool
+  // result already gathered) so the answer is grounded in what actually
+  // happened, not a fresh guess.
+  if (ranOutOfTurnsWithPendingCalls) {
+    try {
+      const wrapUp = await brain({
+        db, userId,
+        slot: opts.slot || "conscious",
+        messages: [
+          ...messages,
+          { role: "user", content: "Give your final answer now, in full, based on everything above. Do not call any more tools — just answer." },
+        ],
+        opts: { temperature: 0.4, maxTokens: opts.maxTokens || 2048 },
+      });
+      if (wrapUp?.ok && wrapUp.text) {
+        finalAnswer = stripToolCalls(wrapUp.text);
+        lastProvider = wrapUp.provider ?? lastProvider;
+        lastModel = wrapUp.model ?? lastModel;
+      }
+    } catch { /* keep the stub answer as a last resort — never throw here */ }
   }
 
   return {

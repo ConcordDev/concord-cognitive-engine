@@ -797,6 +797,18 @@ export default function AffectLensPage() {
               </h2>
               <div className="flex justify-center">
                 <svg viewBox="0 0 200 200" className="w-full max-w-xs">
+                  {/* Emissive glow — matches the platform's "emissive accent"
+                      visual language (dome-barrier, refusal-field) instead of
+                      a flat generic radar-chart-library look. */}
+                  <defs>
+                    <filter id="affect-radar-glow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
                   {/* Background rings */}
                   {[0.25, 0.5, 0.75, 1].map((r) => (
                     <polygon
@@ -833,8 +845,9 @@ export default function AffectLensPage() {
                     animate={{ opacity: 1 }}
                     points={radarPoints(dimValues, 80)}
                     fill="rgba(236, 72, 153, 0.15)"
-                    stroke="rgba(236, 72, 153, 0.8)"
+                    stroke="rgba(236, 72, 153, 0.9)"
                     strokeWidth="1.5"
+                    filter="url(#affect-radar-glow)"
                   />
                   {/* Data points */}
                   {dimValues.map((dim, i) => {
@@ -857,6 +870,7 @@ export default function AffectLensPage() {
                         }
                         stroke="white"
                         strokeWidth="0.5"
+                        filter="url(#affect-radar-glow)"
                       />
                     );
                   })}

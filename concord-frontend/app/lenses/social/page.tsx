@@ -183,8 +183,15 @@ export default function SocialHubPage() {
 
           {/* MAIN COLUMN */}
           <main className="min-w-0 space-y-4">
-            {/* Phase 10d — top-of-feed composer (post + 24h story modes) */}
-            <QuickPostComposer currentUserId={currentUserId} />
+            {/* Phase 10d — top-of-feed composer (post + 24h story modes).
+                Hidden on the Feed tab specifically: FeedView below mounts
+                its own richer FeedComposer (media + polls + quotes), and
+                having both visible at once read as two unrelated,
+                unlabeled post boxes with no shared feed between them —
+                see audit/LENS_DESIGN_UPGRADE_PLAN.md #218. Still shown on
+                every other tab (Following/For You/etc.) since those don't
+                have their own composer. */}
+            {activeTab !== 'feed' && <QuickPostComposer currentUserId={currentUserId} />}
 
             {/* Tab nav */}
             <nav className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto" role="tablist">

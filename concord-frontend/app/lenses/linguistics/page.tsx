@@ -36,6 +36,7 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { IpaBreakdown } from '@/components/linguistics/IpaBreakdown';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -601,6 +602,11 @@ export default function LinguisticsLensPage() {
                     placeholder="Example sentences, comma-separated..."
                     className="input-lattice"
                   />
+                  {formIpa.trim() && (
+                    <div className="col-span-2">
+                      <IpaBreakdown ipa={formIpa} />
+                    </div>
+                  )}
                 </div>
               )}
               {currentType === 'Grammar' && (
@@ -732,7 +738,7 @@ export default function LinguisticsLensPage() {
                   {selected.data.ipa && (
                     <div>
                       <h3 className="text-xs font-medium text-gray-400 mb-1">IPA Transcription</h3>
-                      <p className="text-sm font-mono text-neon-cyan">{selected.data.ipa}</p>
+                      <IpaBreakdown ipa={selected.data.ipa} />
                     </div>
                   )}
                   {selected.data.morphemes && selected.data.morphemes.length > 0 && (

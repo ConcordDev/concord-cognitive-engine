@@ -7038,7 +7038,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp"];  // "/mcp" added Sprint 54 for local-first MCP server bypass
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -7778,7 +7778,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -16453,6 +16453,14 @@ function makeCtx(req=null) {
       orgId: req.user.orgId || "default",
       role: req.user.role || "member",
       scopes: Array.isArray(req.user.scopes) ? req.user.scopes : ["read", "write"],
+      // Real display name, from the same AuthDB.getUser row already read
+      // above — zero extra DB round trips. Additive only (no existing
+      // reader touches ctx.actor.username), so macros that want an honest
+      // creator label instead of a hardcoded "Anonymous" fallback now can.
+      // Found missing via vote.js's poll-create, which always fell back to
+      // "Anonymous" regardless of who created the poll (audit/
+      // LENS_DESIGN_UPGRADE_PLAN.md #251).
+      username: req.user.username || null,
       // Private/High Power Mode (migration 397) — carried here so
       // ctx.actor.brainMode is available to every macro/handler for free,
       // with zero extra DB round trips (AuthDB.getUser already reads it).
@@ -27480,11 +27488,18 @@ register("shield", "scan", async (ctx, input) => {
 
 register("shield", "status", (ctx, input) => {
   const userId = input.userId || ctx?.actor?.userId || "anonymous";
-  const score = computeSecurityScore(userId, STATE);
+  // computeSecurityScore returns { score, grade, breakdown } — sending the
+  // whole object as `securityScore` renders as the literal string
+  // "[object Object]" wherever the frontend does String(securityScore) or
+  // interpolates it directly (found live on the `sentinel` lens's
+  // "SECURITY SCORE" stat tile — audit/LENS_DESIGN_UPGRADE_PLAN.md #213).
+  const scoreResult = computeSecurityScore(userId, STATE);
   const metrics = getShieldMetrics();
   return {
     ok: true,
-    securityScore: score,
+    securityScore: scoreResult.score,
+    securityGrade: scoreResult.grade,
+    securityScoreBreakdown: scoreResult.breakdown,
     shieldStatus: {
       initialized: metrics.initialized,
       tools: metrics.tools,
@@ -43051,6 +43066,34 @@ register("lens", "run", async (ctx, input={}) => {
   // Domain-specific action handlers can be registered via lens.registerAction
   const handler = LENS_ACTIONS.get(`${artifact.domain}.${action}`);
   if (!handler) {
+    // Featured-Actions dispatch bug (audit/LENS_DESIGN_UPGRADE_PLAN.md
+    // cross-cutting note, #102/#109/etc): LensVerticalHero.tsx/AutoActionStrip.tsx
+    // discover actions from BOTH the artifact-scoped LENS_ACTIONS registry and
+    // the plain-macro MACROS registry (GET /api/lens-actions/:domain merges
+    // both), but always dispatch through this artifact-scoped lens.run macro.
+    // A genuinely MACROS-only action (e.g. foundry.validate, registered via
+    // register() not registerLensAction) was never in LENS_ACTIONS, so it fell
+    // straight to the AI-guess fallback below — the button never reached the
+    // REAL, deterministic macro logic at all, just an LLM's guess at what the
+    // action might do (disclosed as `source: "utility-brain"`, so not a
+    // fabrication, but silently wrong: the real compute never ran). Try the
+    // real macro first via the same runMacro() every other caller uses —
+    // only fall through to the AI guess if MACROS genuinely has no entry
+    // either.
+    if (MACROS.get(artifact.domain)?.has(action)) {
+      try {
+        // Call runMacro() directly rather than through ctx.macro.run — that
+        // wrapper is only attached by makeCtx(req) for HTTP-originated ctx
+        // objects; lens.run can also be invoked with a bare actor ctx (other
+        // macros, tests), where ctx.macro would be undefined.
+        const macroResult = await runMacro(artifact.domain, action, { ...artifact.data, ...params }, ctx);
+        _lensEmitDTU(ctx, artifact.domain, action, artifact.type, artifact, { actionResult: macroResult, source: "macro-fallback" });
+        const pipelineResults = _runLensPipelines(ctx, artifact.domain, action, artifact, macroResult);
+        return { ok: true, result: macroResult, pipelines: pipelineResults.length > 0 ? pipelineResults : undefined };
+      } catch (e) {
+        return { ok: false, error: String(e?.message || e) };
+      }
+    }
     // AI fallback (last resort): unregistered actions route to utility brain.
     // This should fire rarely now that aliases + common actions cover most cases.
     structuredLog("debug", "lens_action_ai_fallback", { domain: artifact.domain, action, note: "Register a real handler to avoid utility brain load" });
@@ -58040,11 +58083,13 @@ app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {
 app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {
   try {
     const houses = db.prepare(`
-      SELECT id, user_id, name, building_id, visibility, allow_live_visits,
-             last_decorated_at
-      FROM player_houses
-      WHERE world_id = ? AND visibility = 'public'
-      ORDER BY last_decorated_at DESC
+      SELECT ph.id, ph.user_id, ph.name, ph.building_id, ph.visibility, ph.allow_live_visits,
+             ph.last_decorated_at, wb.building_type,
+             (SELECT COUNT(*) FROM building_rooms br WHERE br.building_id = ph.building_id) AS room_count
+      FROM player_houses ph
+      LEFT JOIN world_buildings wb ON wb.id = ph.building_id
+      WHERE ph.world_id = ? AND ph.visibility = 'public'
+      ORDER BY ph.last_decorated_at DESC
       LIMIT 100
     `).all(req.params.worldId);
     res.json({ ok: true, houses });

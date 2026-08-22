@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
 import { motion } from 'framer-motion';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import {
   Coins, Check, Zap, Crown,
   ArrowRight, Sparkles, ShieldCheck, TrendingUp,
@@ -638,7 +639,7 @@ export default function BillingPage() {
                   )}
 
                   <div className="flex items-center gap-3 mb-4">
-                    <Coins className="w-8 h-8 text-neon-cyan" />
+                    <SvgIcon name="coin" size={32} className="text-neon-cyan" />
                     <div>
                       <p className="text-2xl font-bold text-white">{pkg.tokens.toLocaleString()}</p>
                       <p className="text-sm text-gray-400">tokens</p>

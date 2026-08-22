@@ -25,7 +25,43 @@ export type IconName =
   // UI / nav
   | 'menu' | 'settings' | 'search' | 'close' | 'arrow-right' | 'arrow-left' | 'plus' | 'check'
   // Lens categories
-  | 'brain' | 'pulse' | 'orbit' | 'network' | 'spark';
+  | 'brain' | 'pulse' | 'orbit' | 'network' | 'spark'
+  // Business / professional domains
+  | 'ledger' | 'invoice' | 'bank'
+  // Progression / tiers
+  | 'medal' | 'medal-star'
+  // Systems / agents
+  | 'agent-node'
+  // Diplomacy / governance
+  | 'alliance-network'
+  // Security / privacy
+  | 'cipher-lock'
+  // Builder / dev tools
+  | 'blueprint' | 'low-poly-cube'
+  // Creative
+  | 'artist-palette'
+  // Trades / vehicles
+  | 'car-silhouette'
+  // Marketplace
+  | 'bounty-target'
+  // Food / hospitality
+  | 'chef-hat'
+  // Environment
+  | 'desert-dune'
+  // Legal / governance
+  | 'scales-of-justice' | 'gavel'
+  // Trades — electrical
+  | 'circuit-panel'
+  // Trades — HVAC
+  | 'hvac-duct'
+  // Events
+  | 'event-ticket'
+  // Data / files
+  | 'export-package'
+  // ── Credentials ─────────────────────────────────────────────────────
+  | 'credential-badge'
+  // ── Concordia vehicles ──────────────────────────────────────────────
+  | 'cart-vehicle' | 'boat-hull' | 'canal-taxi';
 
 /** Body of each <svg> — caller wraps with viewBox + namespace. */
 export const ICON_PATHS: Record<IconName, string> = {
@@ -94,4 +130,53 @@ export const ICON_PATHS: Record<IconName, string> = {
   orbit: `<ellipse cx="12" cy="12" rx="9" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="9" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.4" transform="rotate(60 12 12)"/><circle cx="12" cy="12" r="2" fill="currentColor"/>`,
   network: `<circle cx="6" cy="6" r="2" fill="currentColor" opacity="0.3"/><circle cx="18" cy="6" r="2" fill="currentColor" opacity="0.3"/><circle cx="6" cy="18" r="2" fill="currentColor" opacity="0.3"/><circle cx="18" cy="18" r="2" fill="currentColor" opacity="0.3"/><circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.5"/><path d="M6 6l6 6M18 6l-6 6M6 18l6-6M18 18l-6-6" stroke="currentColor" stroke-width="1.3"/>`,
   spark: `<path d="M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M19 5l-4 4M9 15l-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  // ── Business / professional domains ──────────────────────────────
+  ledger: `<path d="M4 4h13a3 3 0 013 3v13a3 3 0 01-3-3H4V4z" fill="currentColor" opacity="0.12"/><path d="M4 4h13a3 3 0 013 3v13a3 3 0 01-3-3H4V4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
+  invoice: `<path d="M6 2h9l3 3v17H6V2z" fill="currentColor" opacity="0.12"/><path d="M6 2h9l3 3v17H6V2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M15 2v3h3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M9 11h6M9 14h6M9 17h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
+  bank: `<path d="M12 2l9 5H3l9-5z" fill="currentColor" opacity="0.15"/><path d="M12 2l9 5H3l9-5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M4 9v10M8 9v10M12 9v10M16 9v10M20 9v10M2 21h20" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>`,
+  // ── Progression / tiers ───────────────────────────────────────────
+  medal: `<path d="M8 3l2 6M16 3l-2 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="15" r="6" fill="currentColor" opacity="0.18"/><circle cx="12" cy="15" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M12 12v6M9 15h6" stroke="currentColor" stroke-width="1.1" opacity="0.7"/>`,
+  'medal-star': `<path d="M7 3l2.5 6.5M17 3l-2.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="12" cy="15" r="6.5" fill="currentColor" opacity="0.2"/><circle cx="12" cy="15" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M12 11.5l1 2.2 2.4.3-1.8 1.6.5 2.4-2.1-1.3-2.1 1.3.5-2.4-1.8-1.6 2.4-.3 1-2.2z" fill="currentColor"/>`,
+  // ── Systems / agents ───────────────────────────────────────────────
+  'agent-node': `<rect x="7" y="4" width="10" height="9" rx="2" fill="currentColor" opacity="0.15"/><rect x="7" y="4" width="10" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="9.5" cy="8.5" r="1" fill="currentColor"/><circle cx="14.5" cy="8.5" r="1" fill="currentColor"/><path d="M12 1v3M9 13v2M15 13v2M6 15h12M6 15v5M18 15v5M6 20h4M14 20h4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`,
+  // ── Diplomacy / governance ──────────────────────────────────────────
+  'alliance-network': `<circle cx="6" cy="6" r="2.6" fill="currentColor" opacity="0.2"/><circle cx="6" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="18" cy="6" r="2.6" fill="currentColor" opacity="0.2"/><circle cx="18" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="18" r="2.6" fill="currentColor" opacity="0.2"/><circle cx="12" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8.3 7.3L15.7 7.3M7.3 8.3L10.7 15.7M16.7 8.3L13.3 15.7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity="0.7"/>`,
+  // ── Security / privacy ────────────────────────────────────────────
+  'cipher-lock': `<rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor" opacity="0.15"/><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 11V7a4 4 0 018 0v4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 15.5h.01M12 15.5h.01M15 15.5h.01M9 18h.01M12 18h.01M15 18h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
+  // ── Builder / dev tools ────────────────────────────────────────────
+  blueprint: `<rect x="3" y="3" width="18" height="18" rx="1" fill="currentColor" opacity="0.06"/><path d="M3 8h18M3 13h18M8 3v18M14 3v18" stroke="currentColor" stroke-width="0.8" opacity="0.35"/><path d="M3 3h4M3 3v4M21 3h-4M21 3v4M3 21h4M3 21v-4M21 21h-4M21 21v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9.5" y="9.5" width="5" height="5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1.5 1.5"/>`,
+  'low-poly-cube': `<path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" fill="currentColor" opacity="0.1"/><path d="M12 2v9M12 11l8-4.5M12 11l-8-4.5M12 11v11" stroke="currentColor" stroke-width="1.2"/><path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>`,
+  // ── Creative ────────────────────────────────────────────────────────
+  'artist-palette': `<path d="M12 3C6.5 3 2 6.8 2 11.5c0 3 2.2 4.5 4.5 4.5.8 0 1.5-.5 1.5-1.3 0-.5-.2-.8-.5-1.2-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H12c4.4 0 8-2.7 8-6C20 3.5 16.5 3 12 3z" fill="currentColor" opacity="0.15"/><path d="M12 3C6.5 3 2 6.8 2 11.5c0 3 2.2 4.5 4.5 4.5.8 0 1.5-.5 1.5-1.3 0-.5-.2-.8-.5-1.2-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H12c4.4 0 8-2.7 8-6C20 3.5 16.5 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="7" cy="9" r="1.1" fill="currentColor"/><circle cx="10.5" cy="6.5" r="1.1" fill="currentColor"/><circle cx="15" cy="7" r="1.1" fill="currentColor"/><circle cx="17" cy="10.5" r="1.1" fill="currentColor"/>`,
+  // ── Trades / vehicles ───────────────────────────────────────────────
+  'car-silhouette': `<path d="M4 16v-2.5l2-4.5c.4-.9 1.3-1.5 2.3-1.5h7.4c1 0 1.9.6 2.3 1.5l2 4.5V16" fill="currentColor" opacity="0.15"/><path d="M4 16v-2.5l2-4.5c.4-.9 1.3-1.5 2.3-1.5h7.4c1 0 1.9.6 2.3 1.5l2 4.5V16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4 16h16M4 16v2a1 1 0 001 1h1a1 1 0 001-1v-2M17 16v2a1 1 0 001 1h1a1 1 0 001-1v-2M6 10.5h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7.5" cy="16" r="1.3" fill="currentColor"/><circle cx="16.5" cy="16" r="1.3" fill="currentColor"/>`,
+  // ── Marketplace ─────────────────────────────────────────────────────
+  'bounty-target': `<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="5.5" fill="currentColor" opacity="0.12"/><circle cx="12" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`,
+  // ── Food / hospitality ──────────────────────────────────────────────
+  'chef-hat': `<path d="M7 11c-2 0-3.5-1.6-3.5-3.5S5 4 7 4c.3-1.7 1.8-3 3.6-3 1.3 0 2.5.7 3.1 1.8.5-.4 1.1-.6 1.8-.6 1.7 0 3 1.3 3 3 0 .3 0 .6-.1.9 1.5.4 2.6 1.8 2.6 3.4 0 2-1.6 3.5-3.5 3.5H7z" fill="currentColor" opacity="0.15"/><path d="M7 11c-2 0-3.5-1.6-3.5-3.5S5 4 7 4c.3-1.7 1.8-3 3.6-3 1.3 0 2.5.7 3.1 1.8.5-.4 1.1-.6 1.8-.6 1.7 0 3 1.3 3 3 0 .3 0 .6-.1.9 1.5.4 2.6 1.8 2.6 3.4 0 2-1.6 3.5-3.5 3.5H7z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.5 11v7.5c0 .8.7 1.5 1.5 1.5h8c.8 0 1.5-.7 1.5-1.5V11" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6.5 15h11" stroke="currentColor" stroke-width="1.2"/>`,
+  // ── Environment ─────────────────────────────────────────────────────
+  'desert-dune': `<circle cx="18" cy="6" r="3" fill="currentColor" opacity="0.3"/><path d="M2 17c2-3 5-4 7-2 2-2.5 5-3 7-.5 1.5-1.5 3.5-1.5 5 .5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2 20c2-2 5-3 7-1.5 2-2 5-2.5 7-.5 1.5-1 3.5-1 5 .3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>`,
+  // ── Legal / governance ──────────────────────────────────────────────
+  'scales-of-justice': `<path d="M12 2v18M8 21h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 6l8-2 8 2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 6L1.5 11a3 3 0 005 0L4 6z" fill="currentColor" opacity="0.15"/><path d="M4 6L1.5 11a3 3 0 005 0L4 6z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M20 6l-2.5 5a3 3 0 005 0L20 6z" fill="currentColor" opacity="0.15"/><path d="M20 6l-2.5 5a3 3 0 005 0L20 6z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>`,
+  gavel: `<path d="M14 3l6 6-2 2-6-6 2-2z" fill="currentColor" opacity="0.15"/><path d="M14 3l6 6-2 2-6-6 2-2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M11 6l6 6-6.5 6.5-6-6L11 6z" fill="currentColor" opacity="0.12"/><path d="M11 6l6 6-6.5 6.5-6-6L11 6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M2 20l4.5-4.5M2 22h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`,
+  // ── Trades — electrical ─────────────────────────────────────────────
+  'circuit-panel': `<rect x="4" y="3" width="16" height="18" rx="1.5" fill="currentColor" opacity="0.1"/><rect x="4" y="3" width="16" height="18" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7h3M8 11h3M8 15h3M13 7h3M13 11h3M13 15h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="19" r="1" fill="currentColor"/>`,
+  'hvac-duct': `<rect x="2" y="6" width="9" height="6" rx="1" fill="currentColor" opacity="0.12"/><rect x="2" y="6" width="9" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M11 9h4a3 3 0 0 1 3 3v1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="16" y="13" width="6" height="6" rx="1" fill="currentColor" opacity="0.12"/><rect x="16" y="13" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4 8v4M6.5 8v4" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/><path d="M18 15v4" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`,
+  // ── Events ──────────────────────────────────────────────────────────
+  'event-ticket': `<path d="M3 8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 000-4V8z" fill="currentColor" opacity="0.14"/><path d="M3 8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 000 4v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 000-4V8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M14 6.5v11" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6 1.6"/>`,
+  // ── Data / files ────────────────────────────────────────────────────
+  'export-package': `<path d="M12 2l8 4v6c0 5-3.4 8-8 10-4.6-2-8-5-8-10V6l8-4z" fill="currentColor" opacity="0.12"/><path d="M12 2l8 4v6c0 5-3.4 8-8 10-4.6-2-8-5-8-10V6l8-4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  // A verified-credential seal: circular medallion + checkmark + a ribbon
+  // tail beneath it (the classic "certificate/award" silhouette), distinct
+  // from `export-package`'s pentagon-shield shape.
+  'credential-badge': `<path d="M8 15.5L6 22l6-3 6 3-2-6.5" fill="currentColor" opacity="0.12"/><path d="M8 15.5L6 22l6-3 6 3-2-6.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="12" cy="10" r="7.5" fill="currentColor" opacity="0.14"/><circle cx="12" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 10.2l2.3 2.3 4.7-4.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`,
+  // Concordia's three world-vehicle archetypes — distinct real silhouettes
+  // (garage lens), not a repurposed generic car/boat icon.
+  // A boxy open-air golf-cart-shape: flat deck, small cab frame, big wheels.
+  'cart-vehicle': `<path d="M3 15h13l2-5h-3l-1 5" fill="currentColor" opacity="0.12"/><path d="M3 15h13l2-5h-3l-1 5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M13 10V6a1 1 0 011-1h2a1 1 0 011 1v1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M3 10h10" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="17" r="1.8" fill="currentColor"/><circle cx="15" cy="17" r="1.8" fill="currentColor"/>`,
+  // A simple dinghy hull — curved bottom, flat gunwale line, small mast.
+  'boat-hull': `<path d="M2 14l2.5 4a2 2 0 001.7 1h11.6a2 2 0 001.7-1l2.5-4H2z" fill="currentColor" opacity="0.14"/><path d="M2 14l2.5 4a2 2 0 001.7 1h11.6a2 2 0 001.7-1l2.5-4H2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M12 14V4M12 6l4 2-4 2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M6 14V11M18 14V11" stroke="currentColor" stroke-width="1.1"/>`,
+  // A longer, flat-bottomed passenger ferry with a cabin roofline + windows —
+  // visually distinct from the open dinghy above.
+  'canal-taxi': `<path d="M1 15l1.5 3a2 2 0 001.8 1.2h15.4a2 2 0 001.8-1.2l1.5-3H1z" fill="currentColor" opacity="0.12"/><path d="M1 15l1.5 3a2 2 0 001.8 1.2h15.4a2 2 0 001.8-1.2l1.5-3H1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5 15V9a1 1 0 011-1h12a1 1 0 011 1v6" fill="currentColor" opacity="0.1"/><path d="M5 15V9a1 1 0 011-1h12a1 1 0 011 1v6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 11h2M14 11h2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>`,
 };

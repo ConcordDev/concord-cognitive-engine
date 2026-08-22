@@ -100,6 +100,19 @@ export interface LensManifest {
 
   /** Backend table FK target for multi-step sessions (e.g. 'war_campaigns', 'reasoning_sessions'). */
   sessionTable?: string;
+
+  /**
+   * Bespoke domain icon (a name from `components/icons/icon-paths.ts`'s
+   * `IconName` registry). `LensVerticalHero` — the shared, headless header
+   * ~38 "light vertical" lenses mount with no per-lens authoring — reads
+   * this to render a real domain icon next to the title instead of no icon
+   * at all (the generic-icon gap the design-upgrade pass repeatedly flagged
+   * for these lenses). Optional and additive: absent means the header
+   * renders exactly as before. Deliberately typed as a bare `string` (not
+   * `IconName`) so this file doesn't import from components/ — the
+   * component-side lookup degrades to no-render on an unknown name.
+   */
+  icon?: string;
 }
 
 // ---- Lens Manifests ----
@@ -1131,6 +1144,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['create_room', 'post_anonymous', 'verify_provenance', 'rotate_identity', 'export_sanitized', 'moderate'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    icon: 'cipher-lock',
     emptyState: {
       headline: "Speak without an identity.",
       caption: "Anonymous rooms with provable provenance \u2014 masked identities, no PII in the open.",
@@ -2038,7 +2052,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['project', 'material', 'contractor', 'inspection'],
     macros: { list: 'lens.home-improvement.list', get: 'lens.home-improvement.get', create: 'lens.home-improvement.create', update: 'lens.home-improvement.update', delete: 'lens.home-improvement.delete', run: 'lens.home-improvement.run', export: 'lens.home-improvement.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['costEstimate', 'permitCheck', 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'],
+    // Remapped from the manifest's original ['costEstimate', 'permitCheck',
+    // 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'] \u2014
+    // only permitCheck matched a registered home-improvement.* action; the
+    // other 5 threw unknown_macro on every click (audit/
+    // LENS_DESIGN_UPGRADE_PLAN.md #120). Remapped by real intent against
+    // server/domains/homeimprovement.js's actual registered handlers:
+    // projectEstimate (cost estimate), gantt (timeline), pro-list (contractor
+    // compare \u2014 returns lowestQuote/avgRating per pro), gallery-add
+    // (literal beforeImage/afterImage fields), shopping-list (closest real
+    // capability to a materials calculator; no dedicated calculator handler
+    // exists yet \u2014 a genuine remaining gap, not a wrong mapping).
+    actions: ['projectEstimate', 'permitCheck', 'pro-list', 'gantt', 'shopping-list', 'gallery-add'],
     category: 'lifestyle',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -2048,9 +2073,9 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: "costEstimate + materialsCalc give you a real number before you commit." },
+        { caption: "projectEstimate + shopping-list give you a real number before you commit." },
         { caption: "permitCheck looks up local requirements." },
-        { caption: "beforeAfter pairs photos + DTUs to document the change." },
+        { caption: "gallery-add pairs before/after photos + DTUs to document the change." },
       ],
     },
   },
@@ -2134,7 +2159,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['project', 'material', 'tool', 'technique'],
     macros: { list: 'lens.diy.list', get: 'lens.diy.get', create: 'lens.diy.create', update: 'lens.diy.update', delete: 'lens.diy.delete', run: 'lens.diy.run', export: 'lens.diy.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['materialsList', 'costEstimate', 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'],
+    // Remapped from the manifest's original ['materialsList', 'costEstimate',
+    // 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'] \u2014
+    // none matched a registered diy.* action, so every one of these 6
+    // buttons threw unknown_macro (audit/LENS_DESIGN_UPGRADE_PLAN.md #70).
+    // Remapped by intent using this entry's own firstRunGuide copy as
+    // ground truth against server/domains/diy.js's real registered
+    // handlers: bom-rollup (materials list), estimateProject (cost
+    // estimate), cutList ("stepByStep walks the project from cut list to
+    // finish"), toolCheck (tool suggestion), safetyCheck (difficulty/safety
+    // assess), buildTimeEstimate (time estimate).
+    actions: ['bom-rollup', 'estimateProject', 'cutList', 'toolCheck', 'safetyCheck', 'buildTimeEstimate'],
     category: 'lifestyle',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -2144,9 +2179,9 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: "stepByStep walks the project from cut list to finish." },
-        { caption: "toolSuggestion checks what you have vs. what the project needs." },
-        { caption: "difficultyAssess flags steps that are above your skill or unsafe." },
+        { caption: "cutList walks the project from cut list to finish." },
+        { caption: "toolCheck checks what you have vs. what the project needs." },
+        { caption: "safetyCheck flags steps that are above your skill or unsafe." },
       ],
     },
   },
@@ -2846,6 +2881,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    icon: 'desert-dune',
     emptyState: {
       headline: "Desert ecology.",
       caption: "Species, habitats, climate, resources, adaptations \u2014 REAL_FREE data from open ecology feeds.",
@@ -4660,7 +4696,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['template', 'section', 'generated_app', 'validation_report'],
     macros: { list: 'lens.forge.list', get: 'lens.forge.get', create: 'lens.forge.create', run: 'lens.forge.run', export: 'lens.forge.export' },
     exports: ['ts', 'zip', 'dockerfile'],
-    actions: ['list_templates', 'list_sections', 'validate', 'generate', 'export_app', 'check_avoidance', 'repair_log'],
+    // Was ['list_templates','list_sections','validate','generate','export_app',
+    // 'check_avoidance','repair_log'] — only validate/generate matched a real
+    // macro. The real register("forge",...) macros are list/sections/
+    // validate/generate; export_app/check_avoidance/repair_log have no
+    // backing macro at all (check-avoidance/export exist only as bespoke
+    // /api/forge/* REST routes this manifest-driven Featured Actions strip
+    // never calls). Re-applied 2026-08-21 — a prior fix (doc-cited commit
+    // ea9b3575e) doesn't exist in this repo's history, same "lost fix from a
+    // wiped prior pod" pattern as elsewhere in audit/LENS_DESIGN_UPGRADE_PLAN.md.
+    actions: ['list', 'sections', 'validate', 'generate'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
     emptyState: {

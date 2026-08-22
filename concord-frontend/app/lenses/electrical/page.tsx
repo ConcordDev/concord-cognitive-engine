@@ -21,6 +21,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { cn } from '@/lib/utils';
 import {
   Zap,
@@ -611,7 +612,7 @@ export default function ElectricalLensPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
-          <Zap className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+          <SvgIcon name="circuit-panel" size={48} className="text-gray-600 mx-auto mb-3" />
           <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
           <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
             <Plus className="w-4 h-4" /> Create First

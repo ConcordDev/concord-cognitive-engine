@@ -26,6 +26,7 @@ import {
   Layers, TrendingUp, Trash2,
   Gauge, Route, Radio, Timer, Loader2, AlertTriangle,
 } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -458,7 +459,7 @@ export default function AgentsLensPage() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Bot className="w-7 h-7 text-neon-cyan" />
+              <SvgIcon name="agent-node" size={28} className="text-neon-cyan" />
               <div>
                 <h1 className="text-xl font-bold text-white">Agent Control Center</h1>
                 <p className="text-xs text-gray-400">Create, orchestrate, and monitor autonomous agents</p>

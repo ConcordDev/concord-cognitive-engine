@@ -31,7 +31,22 @@ import { startSSE } from "../lib/sse.js";
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
-    const { message = "", history = [], maxTurns, slot } = req.body || {};
+    // `persona` — an OPTIONAL client-supplied system-prompt addendum. Added
+    // for ConKay: its free-form chat path (ConKayOverlay.tsx#chatWithBrain)
+    // routes through this same agent loop every other caller (e.g.
+    // LensAgentPanel.tsx's generic per-lens agent) uses, but was never
+    // sending its own persona (components/conkay/conkay-persona.ts's
+    // CONKAY_PERSONA_PROMPT) — so every ConKay conversation was actually
+    // running as the generic, personality-less "Agent Mode" identity, not
+    // Kay. Threaded straight into runAgentLoop's existing opts.extraSystemBlock
+    // hook (already used by agent-marathon.js for the same purpose), so a
+    // caller that doesn't send it (every other caller, unchanged) behaves
+    // byte-identically to before. Length-capped defensively since this rides
+    // straight into a system-role LLM message.
+    const { message = "", history = [], maxTurns, slot, persona } = req.body || {};
+    const extraSystemBlock = typeof persona === "string" && persona.trim()
+      ? `\n\n${persona.trim().slice(0, 4000)}`
+      : undefined;
     const userId = req.user?.id || req.auth?.userId;
     if (!message) return res.status(400).json({ ok: false, error: "missing_message" });
     if (!userId) return res.status(401).json({ ok: false, error: "no_actor" });
@@ -55,7 +70,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
         runMacro,
         lensActions,
         history,
-        opts: { maxTurns, slot },
+        opts: { maxTurns, slot, extraSystemBlock },
         // Real-time bridge — fires as each turn/tool call actually
         // completes inside the loop, not after the whole thing finishes.
         onEvent: (type, payload) => {

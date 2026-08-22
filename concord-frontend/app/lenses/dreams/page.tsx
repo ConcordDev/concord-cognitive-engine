@@ -77,7 +77,18 @@ export default function DreamsPage() {
       <FirstRunTour lensId="dreams" />
       <DepthBadge lensId="dreams" size="sm" className="ml-2" />
       <div className="p-6 max-w-3xl mx-auto">
-        <header className="mb-6">
+        <header
+          className="mb-6 rounded-xl border border-zinc-800/60 p-4 -mx-1"
+          style={{
+            backgroundImage:
+              'radial-gradient(1px 1px at 15% 30%, rgba(196,181,253,0.7) 0, transparent 60%),' +
+              'radial-gradient(1px 1px at 40% 70%, rgba(196,181,253,0.5) 0, transparent 60%),' +
+              'radial-gradient(1.5px 1.5px at 70% 20%, rgba(196,181,253,0.6) 0, transparent 60%),' +
+              'radial-gradient(1px 1px at 85% 55%, rgba(196,181,253,0.5) 0, transparent 60%),' +
+              'radial-gradient(1px 1px at 55% 85%, rgba(196,181,253,0.4) 0, transparent 60%),' +
+              'linear-gradient(180deg, rgba(88,28,135,0.12), transparent)',
+          }}
+        >
           <h1 className="text-2xl font-bold text-zinc-100">Dreams</h1>
           <p className="mt-1 text-sm text-zinc-400">
             Each is a deterministic prose record of one night&apos;s substrate state. Read it, interpret it, tag it, and publish to sell on the marketplace — royalty cascade pays you on every purchase. <strong>Currency: CC.</strong>

@@ -63,6 +63,25 @@ const LIGHT_OVERRIDES = new Set([
   "emergent.schema",
   "emergent.patterns",
   "emergent.reputation",
+  // `bridge.lensScope` (emergent/index.js) is a trivial synchronous
+  // permission check called on EVERY generic `lens.create` (the path
+  // ~all lenses' create-modal use) — not a heavy computation. Routing it
+  // to the worker pool means it throws `worker_no_snapshot: STATE not
+  // yet synced` whenever a call lands between the pool's ~2-minute
+  // snapshot syncs, which `lens.create`'s own catch collapses into a
+  // generic `scope_denied` — a fake permissions error masking a worker-
+  // infrastructure hiccup. Confirmed live across the `science`/
+  // `security`/`services`/`studio` create-modal investigations (all hit
+  // this exact path) and the `animation` lens's own visible "worker no
+  // snapshot" toast. Run it inline like the other trivial checks above.
+  "emergent.bridge.lensScope",
+  // Same rationale as `bridge.lensScope` above — `bridge.lensValidate`
+  // (called from `paper.validate`'s empirical-gates check) is an equally
+  // trivial synchronous check; routing it to the worker pool risks the
+  // same `worker_no_snapshot` timeout, silently degrading empirical
+  // claim-checking instead of a hang, but there's no reason to accept
+  // even that degradation for a check this cheap.
+  "emergent.bridge.lensValidate",
 ]);
 
 const workers = [];

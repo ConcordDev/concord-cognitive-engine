@@ -40,7 +40,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Car, Ship, Sailboat, Plus, RefreshCw, MapPinned, Loader2 } from 'lucide-react';
+import { Car, Plus, RefreshCw, MapPinned, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { lensRun } from '@/lib/api/client';
 import { useMacroDispatchFeedback } from '@/hooks/useMacroDispatchFeedback';
@@ -54,6 +54,7 @@ import { SkeletonTableRows } from '@/components/ui/Skeleton';
 import { StatusDot } from '@/components/ui/StatusDot';
 import { VehicleInspectorPanel } from '@/components/garage/VehicleInspectorPanel';
 import { cn } from '@/lib/utils';
+import { Icon as SvgIcon, type IconName } from '@/components/icons/Icon';
 
 interface Vehicle {
   id: string;
@@ -86,10 +87,13 @@ const VEHICLE_KINDS = ['cart', 'boat', 'canal_taxi'] as const;
 // only offers the two archetypes that don't.
 const SPAWNABLE_KINDS = ['cart', 'boat'] as const;
 
-const KIND_ICON: Record<string, typeof Car> = {
-  cart: Car,
-  boat: Sailboat,
-  canal_taxi: Ship,
+// Real per-kind bespoke silhouettes (components/icons/icon-paths.ts) — not
+// the generic lucide car/boat/ship glyphs, per the design pass's own note
+// that cart/boat/canal_taxi deserve their own shapes.
+const KIND_ICON_NAME: Record<string, IconName> = {
+  cart: 'cart-vehicle',
+  boat: 'boat-hull',
+  canal_taxi: 'canal-taxi',
 };
 
 type FleetTab = 'world' | 'mine';
@@ -182,10 +186,10 @@ export default function GarageLensPage() {
       header: 'Kind',
       sortable: true,
       accessor: (v) => {
-        const Icon = KIND_ICON[v.kind] ?? Car;
+        const iconName = KIND_ICON_NAME[v.kind];
         return (
           <span className="inline-flex items-center gap-1.5 capitalize">
-            <Icon className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />
+            {iconName ? <SvgIcon name={iconName} size={14} className="text-gray-400" /> : <Car className="h-3.5 w-3.5 text-gray-400" aria-hidden="true" />}
             {v.kind.replace('_', ' ')}
           </span>
         );

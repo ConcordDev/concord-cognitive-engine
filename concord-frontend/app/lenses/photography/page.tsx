@@ -382,6 +382,19 @@ export default function PhotographyPage() {
       <div className="px-4 mt-3">
         <PhotographyLightroomSection />
       </div>
+      {/* The panel above (Lightroom-shape catalog) and the workbench below
+          are two distinct real surfaces stacked with no visual separation —
+          flagged in audit/LENS_DESIGN_UPGRADE_PLAN.md #183 as reading like an
+          accidental duplicate mount. Full dedup is deferred (needs care: the
+          workbench below owns its own useLensData create/update/favorite
+          state), so this divider makes the boundary intentional-looking
+          rather than buggy-looking until that follow-up lands. */}
+      <div className="px-4">
+        <div className="flex items-center gap-3 py-2">
+          <span className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">Shared workbench</span>
+          <div className="flex-1 h-px bg-zinc-800" />
+        </div>
+      </div>
     <div data-lens-theme="photography" className="min-h-screen">
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Header */}

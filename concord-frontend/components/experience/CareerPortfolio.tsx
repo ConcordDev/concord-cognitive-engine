@@ -47,6 +47,7 @@ import {
   ShieldCheck, Briefcase, GraduationCap, Camera, CheckCircle2, XCircle,
   Globe, Lock, Users,
 } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 
 const inputCls = 'w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white focus:border-neon-cyan focus:outline-none';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -209,7 +210,7 @@ export function CareerPortfolio() {
 
       {view === 'mine' && !portfolio && (
         <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-900/40 p-6 text-center space-y-2">
-          <Briefcase className="w-6 h-6 mx-auto text-gray-500" />
+          <SvgIcon name="credential-badge" size={56} className="mx-auto text-neon-cyan/70" />
           <p className="text-sm text-white">Build a verifiable portfolio</p>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">Skills, experience, and education — endorsed by others and validated against real evidence, not a resume you just typed once.</p>
           <button onClick={doCreate} disabled={creating} className="btn-neon cyan text-xs inline-flex items-center gap-1 disabled:opacity-40">

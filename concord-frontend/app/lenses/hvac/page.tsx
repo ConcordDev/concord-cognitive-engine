@@ -41,6 +41,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { LensPageShell } from '@/components/lens/LensPageShell';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 
 type ModeTab =
   | 'jobs'
@@ -647,7 +648,7 @@ export default function HVACLensPage() {
       domain="hvac"
       title="HVAC"
       description="Jobs, estimates, codes, materials, CRM, invoicing, inspections, and certifications"
-      headerIcon={<Thermometer className="w-6 h-6" />}
+      headerIcon={<SvgIcon name="hvac-duct" size={24} />}
       isLoading={isLoading}
       isError={isError}
       error={error}

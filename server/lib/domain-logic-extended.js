@@ -1371,13 +1371,24 @@ EXTENDED_DOMAIN_RULES.set("security", {
 });
 
 // === Services ===
+// This rule was authored for a generic support-ticket shape (ticket/sla/
+// catalog/request/feedback) while the real frontend page
+// (app/lenses/services/page.tsx — a genuine Vagaro-style appointment-
+// booking business) sends Appointment/Client/ServiceItem/StaffMember/
+// Transaction/Product — two independently-authored vocabularies that were
+// never reconciled, so every "New Client"/"New Appointment" etc. create
+// hit `validation_failed` ("Invalid type ... for domain services"), read
+// by the page as a silent no-op (see the use-lens-data.ts throw-on-
+// rejected-write fix — before that fix this failed completely silently).
+// `validStatuses` is the union of every value the page's own
+// getStatusesForTab() can produce per tab, so whichever status a tab's
+// dropdown sends is always valid.
 EXTENDED_DOMAIN_RULES.set("services", {
-  types: ["ticket", "sla", "catalog", "request", "feedback"],
-  validStatuses: ["draft", "open", "in-progress", "resolved", "closed", "archived"],
-  transitions: { draft: ["open", "archived"], open: ["in-progress", "archived"], "in-progress": ["resolved", "open"], resolved: ["closed", "in-progress"], closed: ["archived"], archived: [] },
-  requiredFields: { ticket: ["title"] },
-  computedFields: (type, data) => { data.responseTime = data.responseTime || null; return data; },
-  scoring: (type, data) => Math.round(((data.responseTime || 0) > 0 ? 0.5 : 0.2) * 100) / 100,
+  types: ["Appointment", "Client", "ServiceItem", "StaffMember", "Transaction", "Product"],
+  validStatuses: ["booked", "confirmed", "in_progress", "completed", "no_show", "cancelled", "active", "inactive"],
+  requiredFields: { Appointment: ["title"], Client: ["title"], ServiceItem: ["title"], StaffMember: ["title"], Transaction: ["title"], Product: ["title"] },
+  computedFields: (type, data) => data,
+  scoring: (type, data) => Math.round(((data && Object.keys(data).length > 0) ? 0.5 : 0.2) * 100) / 100,
 });
 
 // === SRS (Spaced Repetition) ===
@@ -1401,6 +1412,15 @@ EXTENDED_DOMAIN_RULES.set("thread", {
 });
 
 // === Trades ===
+// NOTE: this "trades" entry is dead for the real /lenses/trades page — the
+// merge in server.js (`if (!DOMAIN_RULES.has(k)) DOMAIN_RULES.set(k, v)`)
+// only applies an EXTENDED entry when no native `DOMAIN_RULES` entry already
+// exists, and `lib/domain-logic.js` already registers its own native
+// "trades" rule (a THIRD, independently-authored vocabulary) that always
+// wins. The real fix for the frontend's actual Job/Estimate/MaterialsList/
+// Permit/Equipment/Client vocabulary lives on that native rule instead — see
+// audit/LENS_DESIGN_UPGRADE_PLAN.md #240 and `domain-logic.js`'s own comment
+// at its "trades" entry. Left this entry as-is (harmless, unreachable).
 EXTENDED_DOMAIN_RULES.set("trades", {
   types: ["job", "estimate", "material-list", "invoice", "photo-doc"],
   validStatuses: ["draft", "quoted", "scheduled", "in-progress", "completed", "invoiced", "archived"],
