@@ -14,8 +14,9 @@
 //   - google      → v1beta/models/{model}:generateContent
 //   - groq        → /openai/v1/chat/completions (OpenAI-compatible) — PLATFORM-ONLY today
 //   - mistral     → /v1/chat/completions (OpenAI-compatible) — PLATFORM-ONLY today
+//   - openrouter  → /api/v1/chat/completions (OpenAI-compatible) — PLATFORM-ONLY today
 //
-// groq/mistral exist here so server/lib/platform-providers.js (the
+// groq/mistral/openrouter exist here so server/lib/platform-providers.js (the
 // operator-funded High Power Mode path) can dispatch to them through the
 // same providerChat() used by BYO. They are deliberately NOT added to
 // BYO_PROVIDERS.list below — a user's own BYO key setup (byo-keys.js#setKey)
@@ -52,6 +53,12 @@ const DEFAULT_MODELS = Object.freeze({
   // one of the three platform providers with a specialized code model in
   // its free catalog, matched to the slot that benefits from it.
   mistral:   { conscious: "mistral-large-latest", subconscious: "mistral-large-latest", utility: "mistral-small-latest", repair: "codestral-latest", vision: "pixtral-large-latest" },
+  // OpenRouter — free-tier model aliases (":free" suffix), first-priority
+  // provider in the Free Cloud Fleet order (server/lib/free-cloud-router.js).
+  // Matched 1:1 against that file's DEFAULT_MODELS.openrouter table so the
+  // two don't drift; that file only PICKS the provider, this file is what
+  // actually calls it.
+  openrouter: { conscious: "meta-llama/llama-3.3-70b-instruct:free", subconscious: "qwen/qwen-2.5-72b-instruct:free", utility: "meta-llama/llama-3.1-8b-instruct:free", repair: "qwen/qwen-2.5-coder-32b-instruct:free", vision: "llama-3.2-90b-vision-instruct:free" },
 });
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -253,6 +260,53 @@ async function googleChat({ apiKey, modelId, messages, opts = {} }) {
   }
 }
 
+// ── OpenRouter (OpenAI-compatible, adds attribution headers) ──────
+
+async function openrouterChat({ apiKey, modelId, messages, opts = {} }) {
+  const body = {
+    model: modelId,
+    messages: messages.map(m => ({ role: m.role, content: m.content })),
+    temperature: opts.temperature ?? 0.7,
+    max_tokens: opts.maxTokens ?? 2048,
+    stream: false,
+  };
+  if (opts.tools?.length) body.tools = opts.tools;
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        // OpenRouter attribution headers — not auth, just identifies the
+        // calling app for their leaderboards/rate-limit dashboards.
+        "HTTP-Referer": "https://concord-os.org",
+        "X-Title": "Concord Cognitive Engine",
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => "");
+      return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: `openrouter_${res.status}: ${err.slice(0, 200)}` };
+    }
+    const j = await res.json();
+    const msg = j.choices?.[0]?.message || {};
+    return {
+      ok: true,
+      text: msg.content || "",
+      toolCalls: (msg.tool_calls || []).map((tc, i) => ({
+        id: tc.id || `tc_${Date.now()}_${i}`,
+        name: tc.function?.name || "",
+        args: tryParse(tc.function?.arguments) || {},
+      })),
+      tokensIn: j.usage?.prompt_tokens || 0,
+      tokensOut: j.usage?.completion_tokens || 0,
+    };
+  } catch (err) {
+    return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };
+  }
+}
+
 function tryParse(s) {
   if (typeof s !== "string") return s;
   try { return JSON.parse(s); } catch { return null; }
@@ -267,6 +321,7 @@ const ADAPTERS = {
   google:    googleChat,
   groq:      groqChat,
   mistral:   mistralChat,
+  openrouter: openrouterChat,
 };
 
 /**
