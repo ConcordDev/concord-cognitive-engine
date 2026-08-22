@@ -2290,6 +2290,45 @@ async function tryLoadDotenv() {
 }
 await tryLoadDotenv();
 
+// ---- shell-env loader (Free Cloud Fleet tokens) ----
+// Loads /tmp/llm-env.sh if present, parses `export KEY=value` and sets
+// them into process.env ONLY if not already set (mirror of dotenv's
+// "do not override existing env" behavior).
+// Operator: this is the central wiring for Free Cloud Fleet providers
+// (cerebras, openrouter, mistral, gemini, groq, etc.) so individual
+// provider files can rely on `process.env.X` being populated.
+const SHELL_ENV = { loaded: false, path: null, tokens: 0, error: null };
+async function tryLoadShellEnv() {
+  const shellEnvPath = process.env.SHELL_ENV_PATH || "/tmp/llm-env.sh";
+  try {
+    if (!fs.existsSync(shellEnvPath)) {
+      SHELL_ENV.error = "shell_env_file_missing";
+      return;
+    }
+    const raw = fs.readFileSync(shellEnvPath, "utf8");
+    let count = 0;
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      // Match: export KEY=value  /  export KEY="value"  /  KEY=value
+      const m = trimmed.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*["']?([^"']*)["']?\s*$/);
+      if (!m) continue;
+      const [, key, value] = m;
+      // Only set if not already in process.env (mirror dotenv safe behavior)
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+      count += 1;
+    }
+    SHELL_ENV.loaded = true;
+    SHELL_ENV.path = shellEnvPath;
+    SHELL_ENV.tokens = count;
+  } catch (e) {
+    SHELL_ENV.error = String(e?.message || e);
+  }
+}
+await tryLoadShellEnv();
+
 // ============================================================================
 // PRODUCTION INFRASTRUCTURE
 // ============================================================================

@@ -211,7 +211,16 @@ export function LensVerticalHero({
       <header className="px-4 py-3 border-b border-zinc-800/60">
         <div className="flex items-baseline gap-2 flex-wrap">
           {manifest?.icon && (
-            <SvgIcon name={manifest.icon as IconName} size={20} className="text-zinc-300 self-center" />
+            manifest.accentColor ? (
+              <span
+                className="flex items-center justify-center self-center rounded-lg p-1.5"
+                style={{ backgroundColor: `${manifest.accentColor}1a`, border: `1px solid ${manifest.accentColor}40` }}
+              >
+                <SvgIcon name={manifest.icon as IconName} size={17} style={{ color: manifest.accentColor }} />
+              </span>
+            ) : (
+              <SvgIcon name={manifest.icon as IconName} size={20} className="text-zinc-300 self-center" />
+            )
           )}
           <h2 className="text-lg font-bold text-zinc-100">
             {manifest?.label || prettyLabel(lensId)}

@@ -37,7 +37,7 @@ export default function CreativeWritingPage() {
       <div data-lens-theme="creative-writing" className="min-h-screen px-4 sm:px-6 pt-3 pb-8 space-y-5 max-w-7xl mx-auto">
         <header className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <BookOpen className="w-6 h-6 text-amber-400" />
+            <BookOpen className="w-6 h-6 text-pink-500" />
             <div>
               <h1 className="text-2xl font-bold text-zinc-100">Creative Writing</h1>
               <p className="text-xs text-zinc-400">Manuscript studio, research and workshop for long-form writing</p>

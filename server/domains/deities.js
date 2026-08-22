@@ -92,6 +92,12 @@ export default function registerDeitiesActions(registerLensAction) {
       pilgrim_count: d.pilgrimCount,
       pilgrimCount: d.pilgrimCount,
       originPeer: d.originPeer || null,
+      // Real tone axes (warmth/refusal/mystery, each clamped 0..1 at
+      // creation/update) — was previously only returned from the
+      // single-deity fetch path, not the list/search card summaries the
+      // frontend renders, so the per-axis sigil (T1) had no data to draw
+      // from without this.
+      toneVector: d.toneVector,
     };
   }
 

@@ -52,7 +52,7 @@ const RecipeAuthorPanel = dynamic(
   { ssr: false }
 );
 const ActiveEffectsBar = dynamic(
-  () => import('@/components/concordia/HUD/ActiveEffectsBar'),
+  () => import('@/components/concordia/hud/ActiveEffectsBar'),
   { ssr: false }
 );
 const ProgressionPanel = dynamic(

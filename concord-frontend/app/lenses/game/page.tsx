@@ -871,8 +871,8 @@ export default function GameLensPage() {
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-neon-purple/20 flex items-center justify-center">
-            <Swords className="w-6 h-6 text-neon-purple" />
+          <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+            <Swords className="w-6 h-6 text-amber-500" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">Game Lens</h1>

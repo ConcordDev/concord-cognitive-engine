@@ -987,7 +987,7 @@ export default function MusicLensPage() {
 
                 {/* Hero */}
                 <div className="bg-gradient-to-r from-neon-cyan/10 via-neon-purple/10 to-neon-pink/10 rounded-2xl p-8 border border-white/5">
-                  <h1 className="text-3xl font-bold mb-2">Music Lens</h1>
+                  <h1 className="text-3xl font-bold mb-2 text-pink-400">Music Lens</h1>
                   <p className="text-gray-400 max-w-2xl">
                     Post your music for free. Background play. Real artist profiles. Listeners
                     purchase your artifacts and get remix rights. You keep 90%+. No ads. No

@@ -113,6 +113,36 @@ export interface LensManifest {
    * component-side lookup degrades to no-render on an unknown name.
    */
   icon?: string;
+
+  /**
+   * Per-lens header accent — a hex color `LensVerticalHero` applies to the
+   * domain icon (and its containing chip) instead of the flat generic
+   * `text-zinc-300` every "light vertical" lens got by default. Optional
+   * and additive: absent means the header renders exactly as before.
+   *
+   * Only set for lenses in one of four named families/groups that the
+   * design-upgrade pass flagged as needing internal differentiation
+   * (docs/FEATURE_BUILD_WALK_STATUS.md's "systemic/family-wide design
+   * decisions" item) — this is ONE shared convention applied once, not a
+   * per-lens ad-hoc color pick:
+   *   - Legal & Governance (formal/adjudicative): legal, law, disputes,
+   *     ethics, audit, privacy -> indigo `#6366f1`
+   *   - Reasoning & Verification (epistemic/analytical, deliberately a
+   *     distinct-but-adjacent hue from Legal & Governance since `ethics`
+   *     sits conceptually between the two): debate, grounding, inference
+   *     -> teal `#14b8a6`
+   *   - Creative Studio (matches the Studio destination group): fractal,
+   *     art, music, creative, creative-writing, artistry, game-design
+   *     -> pink `#ec4899` (reuses the existing `neon-pink` token rather
+   *     than introducing a new hex)
+   *   - `game` alone (cross-cutting meta-progression identity, distinct
+   *     from the Creative Studio family it visually sits near) -> amber
+   *     `#f59e0b`, the conventional "achievement/XP/reward" hue
+   * None of these reuse `neon-blue` (`#00d4ff`), since that's already the
+   * platform's primary-action button color — a family accent using the
+   * same hue as "click me" would read as a false affordance.
+   */
+  accentColor?: string;
 }
 
 // ---- Lens Manifests ----
@@ -490,6 +520,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
 
   {
     domain: 'music',
+    accentColor: '#ec4899',
     label: 'Music',
     artifacts: ['track', 'playlist', 'artist', 'album', 'stem', 'project'],
     macros: { list: 'lens.music.list', get: 'lens.music.get', create: 'lens.music.create', update: 'lens.music.update', delete: 'lens.music.delete', run: 'lens.music.run', export: 'lens.music.export' },
@@ -556,6 +587,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'art',
+    accentColor: '#ec4899',
     label: 'Art',
     artifacts: ['artwork', 'collection', 'style', 'gallery', 'exhibition'],
     macros: { list: 'lens.art.list', get: 'lens.art.get', create: 'lens.art.create', update: 'lens.art.update', delete: 'lens.art.delete', run: 'lens.art.run', export: 'lens.art.export' },
@@ -600,6 +632,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'fractal',
+    accentColor: '#ec4899',
     label: 'Fractal',
     artifacts: ['structure', 'parameter_set', 'render', 'animation', 'exploration_session'],
     macros: { list: 'lens.fractal.list', get: 'lens.fractal.get', create: 'lens.fractal.create', update: 'lens.fractal.update', delete: 'lens.fractal.delete', run: 'lens.fractal.run', export: 'lens.fractal.export' },
@@ -959,6 +992,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'law',
+    accentColor: '#6366f1',
     label: 'Law',
     artifacts: ['case', 'clause', 'draft', 'precedent', 'compliance_check'],
     macros: { list: 'lens.law.list', get: 'lens.law.get', create: 'lens.law.create', update: 'lens.law.update', delete: 'lens.law.delete', run: 'lens.law.run', export: 'lens.law.export' },
@@ -1022,6 +1056,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // rest of the 19 macros need real structured input and are surfaced
     // through the actual Decision Toolkit forms, not a blind trigger bar.
     domain: 'ethics',
+    accentColor: '#6366f1',
     label: 'Ethics',
     artifacts: ['multi_framework_analysis', 'stakeholder_map', 'decision_matrix', 'bias_checklist', 'review', 'case'],
     macros: { list: 'ethics.listMultiFramework', get: 'ethics.searchCases', create: 'ethics.multiFrameworkDilemma', delete: 'ethics.deleteCase', run: 'ethics.frameworkAnalysis' },
@@ -1187,6 +1222,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'game',
+    accentColor: '#f59e0b',
     label: 'Game',
     artifacts: ['achievement', 'quest', 'skill', 'profile', 'game_state', 'reward_event'],
     macros: { list: 'lens.game.list', get: 'lens.game.get', create: 'lens.game.create', update: 'lens.game.update', delete: 'lens.game.delete', run: 'lens.game.run', export: 'lens.game.export' },
@@ -1635,6 +1671,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === LEGAL ===
   {
     domain: 'legal',
+    accentColor: '#6366f1',
     label: 'Legal',
     artifacts: ['Case', 'Contract', 'ComplianceItem', 'Filing', 'IPAsset', 'BriefBundle'],
     macros: { list: 'lens.legal.list', get: 'lens.legal.get', create: 'lens.legal.create', update: 'lens.legal.update', delete: 'lens.legal.delete', run: 'lens.legal.run', export: 'lens.legal.export' },
@@ -1731,6 +1768,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === CREATIVE PRODUCTION ===
   {
     domain: 'creative',
+    accentColor: '#ec4899',
     label: 'Creative Production',
     artifacts: ['Project', 'Shoot', 'Asset', 'Episode', 'Collection', 'ClientProof', 'DeliverablePackage'],
     macros: { list: 'lens.creative.list', get: 'lens.creative.get', create: 'lens.creative.create', update: 'lens.creative.update', delete: 'lens.creative.delete', run: 'lens.creative.run', export: 'lens.creative.export' },
@@ -2189,6 +2227,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === DEBATE (Lens 76) ===
   {
     domain: 'debate',
+    accentColor: '#14b8a6',
     label: 'Debate',
     artifacts: ['debate', 'argument', 'rebuttal', 'verdict'],
     macros: { list: 'lens.debate.list', get: 'lens.debate.get', create: 'lens.debate.create', update: 'lens.debate.update', delete: 'lens.debate.delete', run: 'lens.debate.run', export: 'lens.debate.export' },
@@ -2411,6 +2450,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'artistry',
+    accentColor: '#ec4899',
     label: 'Artistry',
     artifacts: ['artwork', 'gallery', 'exhibit', 'collection', 'medium'],
     macros: { list: 'lens.artistry.list', get: 'lens.artistry.get', create: 'lens.artistry.create', update: 'lens.artistry.update', delete: 'lens.artistry.delete', run: 'lens.artistry.run', export: 'lens.artistry.export' },
@@ -2499,6 +2539,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'audit',
+    accentColor: '#6366f1',
     label: 'Audit',
     artifacts: ['finding', 'control', 'evidence', 'report', 'risk'],
     macros: { list: 'lens.audit.list', get: 'lens.audit.get', create: 'lens.audit.create', update: 'lens.audit.update', delete: 'lens.audit.delete', run: 'lens.audit.run', export: 'lens.audit.export' },
@@ -2741,6 +2782,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'creative-writing',
+    accentColor: '#ec4899',
     label: 'Creative Writing',
     artifacts: ['story', 'character', 'plot', 'draft', 'revision'],
     macros: { list: 'lens.creative-writing.list', get: 'lens.creative-writing.get', create: 'lens.creative-writing.create', update: 'lens.creative-writing.update', delete: 'lens.creative-writing.delete', run: 'lens.creative-writing.run', export: 'lens.creative-writing.export' },
@@ -2897,6 +2939,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'disputes',
+    accentColor: '#6366f1',
     label: 'Disputes',
     artifacts: ['case', 'claim', 'resolution', 'mediation', 'ruling'],
     macros: { list: 'lens.disputes.list', get: 'lens.disputes.get', create: 'lens.disputes.create', update: 'lens.disputes.update', delete: 'lens.disputes.delete', run: 'lens.disputes.run', export: 'lens.disputes.export' },
@@ -3148,6 +3191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'game-design',
+    accentColor: '#ec4899',
     label: 'Game Design',
     artifacts: ['mechanic', 'level', 'balance', 'playtest', 'asset'],
     macros: { list: 'lens.game-design.list', get: 'lens.game-design.get', create: 'lens.game-design.create', update: 'lens.game-design.update', delete: 'lens.game-design.delete', run: 'lens.game-design.run', export: 'lens.game-design.export' },
@@ -3214,6 +3258,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'grounding',
+    accentColor: '#14b8a6',
     label: 'Grounding',
     artifacts: ['fact', 'source', 'verification', 'context', 'claim'],
     macros: { list: 'lens.grounding.list', get: 'lens.grounding.get', create: 'lens.grounding.create', update: 'lens.grounding.update', delete: 'lens.grounding.delete', run: 'lens.grounding.run', export: 'lens.grounding.export' },
@@ -3346,6 +3391,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'inference',
+    accentColor: '#14b8a6',
     label: 'Inference',
     artifacts: ['model', 'prompt', 'response', 'context', 'evaluation'],
     macros: { list: 'lens.inference.list', get: 'lens.inference.get', create: 'lens.inference.create', update: 'lens.inference.update', delete: 'lens.inference.delete', run: 'lens.inference.run', export: 'lens.inference.export' },
@@ -3962,6 +4008,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'privacy',
+    accentColor: '#6366f1',
     label: 'Privacy',
     artifacts: ['policy', 'consent', 'request', 'audit', 'regulation'],
     macros: { list: 'lens.privacy.list', get: 'lens.privacy.get', create: 'lens.privacy.create', update: 'lens.privacy.update', delete: 'lens.privacy.delete', run: 'lens.privacy.run', export: 'lens.privacy.export' },

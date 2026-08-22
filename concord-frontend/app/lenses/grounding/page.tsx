@@ -74,7 +74,7 @@ export default function GroundingLensPage() {
       <div data-lens-theme="grounding" className="p-6 space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl" aria-hidden="true">🌍</span>
+            <span className="flex h-9 w-9 items-center justify-center rounded bg-teal-500/15 border border-teal-500/30 text-xl" aria-hidden="true">🌍</span>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-white">Grounding</h1>

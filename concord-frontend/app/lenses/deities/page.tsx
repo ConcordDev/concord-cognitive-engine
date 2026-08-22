@@ -23,6 +23,7 @@ import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { PantheonExplorer } from '@/components/deities/PantheonExplorer';
 import { DeityDetailPanel } from '@/components/deities/DeityDetailPanel';
 import { MyDevotionPanel } from '@/components/deities/MyDevotionPanel';
+import { DeitySigil, type ToneVector } from '@/components/deities/DeitySigil';
 
 interface Deity {
   id: string;
@@ -32,6 +33,7 @@ interface Deity {
   created_at: number;
   pilgrim_count: number;
   originPeer?: string | null;
+  toneVector?: ToneVector;
 }
 
 type ToneAxis = '' | 'warmth' | 'refusal' | 'mystery';
@@ -273,6 +275,9 @@ export default function DeitiesPage() {
                         born {new Date(d.created_at * 1000).toLocaleDateString()}
                         {d.originPeer ? ` · federated ⇄ ${d.originPeer}` : ''}
                       </p>
+                      <div className="mt-2">
+                        <DeitySigil toneVector={d.toneVector} />
+                      </div>
                     </button>
                     <div className="mt-3 flex gap-2">
                       <button

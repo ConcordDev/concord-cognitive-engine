@@ -553,8 +553,8 @@ export default function PrivacySharingPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-neon-blue/20 border border-neon-blue/30">
-            <Shield className="w-6 h-6 text-neon-blue" />
+          <div className="p-2 rounded-xl bg-indigo-500/20 border border-indigo-500/30">
+            <Shield className="w-6 h-6 text-indigo-500" />
           </div>
           <div>
             <h1 className={ds.heading1}>Privacy & Sharing</h1>

@@ -475,17 +475,51 @@ export default function registerLandscapingActions(registerLensAction) {
     const imageB64 = params.imageB64;
     const imageUrl = lsClean(params.imageUrl, 2000);
     if (!imageB64 && !imageUrl) return { ok: false, error: "imageB64 or imageUrl required" };
+    // Strict-JSON request (same pattern as cooking.js's recipe-photo
+    // transcription) so the frontend can render a real designed card
+    // (species/type/health badges) instead of dumping raw LLM prose.
+    // `identification` (free text) is still always returned for back-compat
+    // and as an honest fallback when the model doesn't comply with the
+    // JSON shape — never fabricated, never silently dropped.
     const prompt = "You are a botanist. Identify the plant species in this image. " +
-      "Reply with: the most likely common name, the scientific name if known, " +
-      "the plant type (tree/shrub/perennial/annual/grass), and any visible health " +
-      "issues (disease, pest damage, nutrient deficiency, none). Be concise.";
+      "Reply as strict JSON only, no prose, with this exact shape: " +
+      '{"commonName":"","scientificName":"","plantType":"tree|shrub|perennial|annual|grass|succulent|vine|other",' +
+      '"healthStatus":"healthy|disease|pest_damage|nutrient_deficiency|unknown","healthNotes":""}. ' +
+      "Use empty string for commonName/scientificName/healthNotes if not confidently determinable. " +
+      "healthNotes should describe any visible issue, or be empty when healthStatus is \"healthy\".";
     try {
       const r = imageUrl ? await callVisionUrl(imageUrl, prompt) : await callVision(imageB64, prompt);
       if (!r || r.ok === false) {
         return { ok: false, error: (r && r.error) || "vision unavailable" };
       }
-      const text = r.result?.description || r.result?.text || r.text || r.description || "";
-      return { ok: true, result: { identification: text, source: "vision-brain" } };
+      // Bug fix: callVision/callVisionUrl return { ok, content, source,
+      // model } (verified against lib/vision-inference.js and every other
+      // consumer — cooking.js, healthcare.js, research.js, etc. all read
+      // `.content`). This macro previously read r.result?.description /
+      // r.text / r.description, none of which exist on the real shape, so
+      // `identification` was silently always "" despite ok:true — a
+      // phantom-success bug, not a feature.
+      const rawText = r.content || "";
+      let structured = null;
+      const jsonMatch = /\{[\s\S]*\}/.exec(rawText);
+      try {
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+        const PLANT_TYPES = new Set(["tree", "shrub", "perennial", "annual", "grass", "succulent", "vine", "other"]);
+        const HEALTH_STATUSES = new Set(["healthy", "disease", "pest_damage", "nutrient_deficiency", "unknown"]);
+        structured = {
+          commonName: String(parsed.commonName || "").trim() || null,
+          scientificName: String(parsed.scientificName || "").trim() || null,
+          plantType: PLANT_TYPES.has(parsed.plantType) ? parsed.plantType : null,
+          healthStatus: HEALTH_STATUSES.has(parsed.healthStatus) ? parsed.healthStatus : null,
+          healthNotes: String(parsed.healthNotes || "").trim() || null,
+        };
+      } catch {
+        // Model didn't comply with strict JSON — `identification` (raw
+        // text) below is still real and shown; `structured: null` tells
+        // the frontend to render the honest prose fallback, not a blank
+        // or fabricated card.
+      }
+      return { ok: true, result: { identification: rawText, structured, source: "vision-brain" } };
     } catch (e) {
       return { ok: false, error: `vision failed: ${e instanceof Error ? e.message : String(e)}` };
     }

@@ -76,6 +76,20 @@ describe("logistics.route-optimize (real OSRM routing)", () => {
     assert.equal(r.result.stops.length, 4);
     assert.ok(r.result.totalDistanceMi > 0);
     assert.ok(r.result.fuelCostUsd > 0);
+    // Coords are resolved during geocoding for the distance matrix anyway —
+    // exposing them lets the frontend draw a real route line instead of
+    // re-geocoding. Every returned stop must carry the SAME coords passed
+    // in (matched by address, since stops get reordered by the optimizer).
+    const suppliedByAddress = new Map(
+      ["A", "B", "C", "D"].map((addr, i) => [addr, [{ lat: 37.7, lng: -122.4 }, { lat: 37.71, lng: -122.41 }, { lat: 37.72, lng: -122.42 }, { lat: 37.73, lng: -122.43 }][i]]),
+    );
+    for (const stop of r.result.stops) {
+      assert.equal(typeof stop.lat, "number");
+      assert.equal(typeof stop.lng, "number");
+      const expected = suppliedByAddress.get(stop.address);
+      assert.equal(stop.lat, expected.lat);
+      assert.equal(stop.lng, expected.lng);
+    }
   });
   it("EV is cheaper to operate than truck on the same OSRM matrix", async () => {
     globalThis.fetch = async () => ({

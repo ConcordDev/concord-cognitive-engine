@@ -19,14 +19,22 @@ export interface MapViewProps {
   center?: [number, number];
   zoom?: number;
   markers?: MapMarker[];
+  /** Ordered waypoints to connect with a real route line (e.g. an optimized
+   * stop sequence) — separate from `markers` so callers can show both the
+   * pins and the path between them without duplicating point data. */
+  route?: Array<{ lat: number; lng: number }>;
   className?: string;
   onMarkerClick?: (marker: MapMarker) => void;
 }
+
+const ROUTE_SOURCE_ID = 'concord-route-line';
+const ROUTE_LAYER_ID = 'concord-route-line-layer';
 
 export default function MapView({
   center = [20, 0],
   zoom = 2,
   markers = [],
+  route = [],
   className = '',
   onMarkerClick,
 }: MapViewProps) {
@@ -84,18 +92,68 @@ export default function MapView({
         markersRef.current.push(marker);
       });
 
-      // Recenter: single marker → zoom to it; multiple → fit bounds; none → leave seed view.
-      if (markers.length === 1) {
-        map.easeTo({ center: toLngLat([markers[0].lat, markers[0].lng]), zoom: 10, duration: 300 });
-      } else if (markers.length > 1) {
-        const b = boundsFromLatLngs(markers.map((m) => [m.lat, m.lng] as [number, number]));
+      // Recenter over markers + route points combined, so a route with no
+      // separate markers (or vice versa) still frames correctly.
+      const framePoints = [
+        ...markers.map((m) => [m.lat, m.lng] as [number, number]),
+        ...route.map((r) => [r.lat, r.lng] as [number, number]),
+      ];
+      if (framePoints.length === 1) {
+        map.easeTo({ center: toLngLat(framePoints[0]), zoom: 10, duration: 300 });
+      } else if (framePoints.length > 1) {
+        const b = boundsFromLatLngs(framePoints);
         if (b) map.fitBounds(b, { padding: 40, duration: 300, maxZoom: 12 });
       }
     };
 
     if (map.isStyleLoaded()) apply();
     else map.once('load', apply);
-  }, [markers]);
+  }, [markers, route]);
+
+  // Draw (or clear) the real route line separately from markers — a
+  // GeoJSON LineString source/layer rather than per-marker DOM elements,
+  // since a route is a path, not a set of independent points.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const apply = () => {
+      const existing = map.getSource(ROUTE_SOURCE_ID) as maplibregl.GeoJSONSource | undefined;
+
+      // A GeoJSON LineString needs 2+ positions — if the route shrank below
+      // that (or is empty), tear the layer/source down rather than feed it
+      // an invalid geometry.
+      if (route.length < 2) {
+        if (map.getLayer(ROUTE_LAYER_ID)) map.removeLayer(ROUTE_LAYER_ID);
+        if (existing) map.removeSource(ROUTE_SOURCE_ID);
+        return;
+      }
+
+      const lineString = {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: route.map((r) => toLngLat([r.lat, r.lng])),
+        },
+      };
+      if (existing) {
+        existing.setData(lineString);
+      } else {
+        map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data: lineString });
+        map.addLayer({
+          id: ROUTE_LAYER_ID,
+          type: 'line',
+          source: ROUTE_SOURCE_ID,
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#22d3ee', 'line-width': 3, 'line-opacity': 0.85, 'line-dasharray': [2, 1] },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+  }, [route]);
 
   return (
     <div className={`rounded-lg overflow-hidden border border-white/10 ${className}`} style={{ minHeight: 320 }}>

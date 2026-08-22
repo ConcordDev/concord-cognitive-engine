@@ -130,6 +130,61 @@ describe("landscaping — plant identification", () => {
     assert.equal(r.ok, false);
     assert.equal(typeof r.error, "string");
   });
+
+  it("parses a real strict-JSON vision response into structured fields (regression: was reading nonexistent r.result.description, always empty)", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        message: {
+          content: JSON.stringify({
+            commonName: "Lavender",
+            scientificName: "Lavandula angustifolia",
+            plantType: "perennial",
+            healthStatus: "healthy",
+            healthNotes: "",
+          }),
+        },
+      }),
+    });
+    const r = await call("identify-plant", ctxA, { imageB64: "AAA" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.source, "vision-brain");
+    assert.ok(r.result.identification.includes("Lavandula angustifolia"), "raw text is still returned for back-compat");
+    assert.deepEqual(r.result.structured, {
+      commonName: "Lavender",
+      scientificName: "Lavandula angustifolia",
+      plantType: "perennial",
+      healthStatus: "healthy",
+      healthNotes: null,
+    });
+  });
+
+  it("degrades honestly to structured:null (never fabricated fields) when the model replies with prose instead of JSON", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ message: { content: "This looks like a rose bush, quite healthy." } }),
+    });
+    const r = await call("identify-plant", ctxA, { imageB64: "AAA" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.identification, "This looks like a rose bush, quite healthy.");
+    assert.equal(r.result.structured, null);
+  });
+
+  it("rejects an unrecognized plantType/healthStatus enum value rather than passing it through unvalidated", async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({
+        message: {
+          content: JSON.stringify({ commonName: "Mystery plant", plantType: "not-a-real-type", healthStatus: "also-fake" }),
+        },
+      }),
+    });
+    const r = await call("identify-plant", ctxA, { imageB64: "AAA" });
+    assert.equal(r.ok, true);
+    assert.equal(r.result.structured.plantType, null);
+    assert.equal(r.result.structured.healthStatus, null);
+    assert.equal(r.result.structured.commonName, "Mystery plant");
+  });
 });
 
 // ─── Feature 4 — plant-care reminders ───────────────────────────────

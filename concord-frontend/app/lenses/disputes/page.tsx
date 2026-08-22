@@ -728,7 +728,7 @@ export default function DisputesPage() {
       {/* Header */}
       <div className={ds.sectionHeader}>
         <div className="flex items-center gap-3">
-          <Shield size={24} className="text-neon-blue" />
+          <Shield size={24} className="text-indigo-500" />
           <div>
             <h1 className={ds.heading1}>Dispute Resolution</h1>
             <p className={ds.textMuted}>Transaction disputes and resolution management</p>

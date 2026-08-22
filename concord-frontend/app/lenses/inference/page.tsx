@@ -302,7 +302,7 @@ export default function InferenceLensPage() {
     <div data-lens-theme="inference" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <GitMerge className="w-7 h-7 text-neon-blue" />
+          <GitMerge className="w-7 h-7 text-teal-500" />
           <div>
             <h1 className="text-xl font-bold">Inference Lens</h1>
             <p className="text-sm text-gray-400">

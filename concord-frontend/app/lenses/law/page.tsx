@@ -230,8 +230,8 @@ export default function LawLensPage() {
       <div data-lens-theme="law" className="min-h-full p-4 md:p-6 space-y-4">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-neon-purple/15 border border-neon-purple/30 flex items-center justify-center">
-              <Scale className="w-5 h-5 text-neon-purple" />
+            <div className="w-9 h-9 rounded bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center">
+              <Scale className="w-5 h-5 text-indigo-500" />
             </div>
             <div>
               <div className="flex items-center gap-2">

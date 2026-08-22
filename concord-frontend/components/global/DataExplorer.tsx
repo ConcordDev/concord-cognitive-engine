@@ -20,11 +20,11 @@ import {
   Search, Contact, Loader2, AlertTriangle, Bookmark, Trash2, Link2, Play, Copy,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { ChartKit, MapView } from '@/components/viz';
-import type { MapMarker } from '@/components/viz';
+import { ChartKit } from '@/components/viz';
 import { cn } from '@/lib/utils';
 import { IndicatorPicker } from './IndicatorPicker';
 import { CountryPicker } from './CountryPicker';
+import { ChoroplethMap } from './ChoroplethMap';
 
 type Mode = 'choropleth' | 'timeseries' | 'compare' | 'scatter' | 'catalog' | 'profile';
 
@@ -235,18 +235,9 @@ export function DataExplorer() {
   }, [shareLink]);
 
   // --- derived render data ---
-  const choroMarkers = useMemo<MapMarker[]>(() => {
-    if (!choropleth) return [];
-    return choropleth.countries
-      .filter((c) => c.lat != null && c.lon != null)
-      .map((c) => ({
-        id: c.code,
-        lat: c.lat as number,
-        lon: c.lon as number,
-        label: `${c.name} · ${fmt(c.value, choropleth.indicator)}`,
-        value: c.intensity,
-      }));
-  }, [choropleth]);
+  // (choropleth marker derivation removed — ChoroplethMap renders real
+  // country polygons directly from choropleth.countries now, not centroid
+  // point markers standing in for a choropleth.)
 
   const tsChartData = useMemo(() => {
     if (!timeseries) return [];
@@ -369,7 +360,14 @@ export function DataExplorer() {
             <h3 className="text-sm font-semibold text-white">{choropleth.indicatorName}</h3>
             <span className="text-xs text-zinc-400">{choropleth.countryCount} countries · {choropleth.source}</span>
           </div>
-          <MapView markers={choroMarkers} height={340} />
+          <ChoroplethMap
+            countries={choropleth.countries}
+            min={choropleth.min}
+            max={choropleth.max}
+            indicatorLabel={choropleth.indicatorName}
+            fmt={(v) => fmt(v, choropleth.indicator)}
+            height={340}
+          />
           <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>low · {fmt(choropleth.min, choropleth.indicator)}</span>
             <div className="mx-3 h-2 flex-1 rounded-full bg-gradient-to-r from-[rgb(30,200,220)] to-[rgb(255,80,60)]" />
