@@ -20,8 +20,14 @@
  *      (`worker.terminate()`) the host can invoke at any time, even mid
  *      synchronous busy-loop — proven in this file's test suite.
  *
- *   2. Node's experimental permission model (`--experimental-permission`,
- *      granted with ZERO `--allow-*` flags) on that worker's `execArgv` —
+ *   2. Node's permission model (`--permission`, graduated out of
+ *      experimental status as of the Node version this now targets — the
+ *      old `--experimental-permission` flag name is a hard error
+ *      ("bad option") on current Node, which would have silently disabled
+ *      this entire isolation layer had the worker's spawn failure not
+ *      surfaced as a load error instead; see PLUGIN_SANDBOX test suite for
+ *      the regression pin — granted with ZERO `--allow-*` flags) on that
+ *      worker's `execArgv` —
  *      blocks `fs` (read + write), `child_process`, native addons, WASI,
  *      and spawning further nested workers, at the runtime/binding layer,
  *      not by pattern-matching source text.
@@ -89,7 +95,10 @@ export const PLUGIN_SANDBOX_DEFAULT_RESOURCE_LIMITS = Object.freeze({
 // covered by Node's permission model as of this Node version, but the vm
 // context below never exposes `require`/`fetch`/etc at all, so it is
 // unreachable regardless (structural absence, not a permission decision).
-const WORKER_EXEC_ARGV = Object.freeze(["--experimental-permission", "--experimental-vm-modules", "--no-warnings"]);
+// `--permission` (not `--experimental-permission`, which is now a hard
+// "bad option" error on this Node version — the permission model
+// graduated out of experimental status).
+const WORKER_EXEC_ARGV = Object.freeze(["--permission", "--experimental-vm-modules", "--no-warnings"]);
 
 // ── Worker bootstrap (runs INSIDE the worker thread) ────────────────────
 //

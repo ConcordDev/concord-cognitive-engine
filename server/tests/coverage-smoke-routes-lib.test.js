@@ -30,7 +30,7 @@ import { registerHandleLeakGuard } from "./lib/handle-leak-guard.js";
 // See tests/lib/handle-leak-guard.js for the full root-cause writeup.
 registerHandleLeakGuard();
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = import.meta.dirname; // fileURLToPath-equivalent, real Node builtin — .pathname does NOT decode percent-encoding (e.g. spaces -> %20), which broke every test in this file on any checkout path containing a space
 const ROUTES_DIR = join(HERE, "..", "routes");
 
 // Wave-9 lib files: top 13 by exported function count, no existing test.

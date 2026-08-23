@@ -98,7 +98,7 @@
     "@types/node": "^26.1.2",
     "eslint": "^10.8.0",
     "globals": "^17.8.0",
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.3"
   },
   "optionalDependencies": {
     "@huggingface/transformers": "^4.2.0",

@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = import.meta.dirname; // fileURLToPath-equivalent, real Node builtin — .pathname does NOT decode percent-encoding (e.g. spaces -> %20), which broke every test in this file on any checkout path containing a space
 
 test("right-to-export (GDPR Article 15) — exportUserCorpus exists", () => {
   const path = join(HERE, "..", "lib", "dtu-portability.js");

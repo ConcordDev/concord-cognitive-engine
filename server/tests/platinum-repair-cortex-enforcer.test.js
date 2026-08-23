@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = import.meta.dirname; // fileURLToPath-equivalent, real Node builtin — .pathname does NOT decode percent-encoding (e.g. spaces -> %20), which broke every test in this file on any checkout path containing a space
 const REPO_ROOT = join(HERE, "..", "..");
 const RUNNER = join(REPO_ROOT, "scripts", "repair-cortex-platinum-runner.sh");
 const WORKFLOW = join(REPO_ROOT, ".github", "workflows", "repair-cortex.yml");
