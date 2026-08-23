@@ -84,6 +84,7 @@
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
     "stripe": "^22.4.0",
+    "typescript": "^5.9.3",
     "undici": "7.29.0",
     "uuid": "^14.0.1",
     "web-push": "^3.6.7",
@@ -98,8 +99,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
     "eslint": "^10.8.0",
-    "globals": "^17.8.0",
-    "typescript": "^5.9.3"
+    "globals": "^17.8.0"
   },
   "optionalDependencies": {
     "@huggingface/transformers": "^4.2.0",
