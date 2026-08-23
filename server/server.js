@@ -12,6 +12,7 @@
  */
 
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
+import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -29,6 +30,19 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true }); } catch
 try { fs.mkdirSync(path.join(DATA_DIR, 'snapshots'), { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'artifacts'), { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { /* intentional */ }
+
+// Best-effort CPU self-pin, as early in boot as possible — see
+// lib/cpu-self-pin.js's header for the real production bug this closes
+// (2026-08-23: a live pod had its 5 Ollama brain processes correctly
+// core-pinned by scripts/runpod-cognition.sh, but Node itself was never
+// pinned, free to be scheduled onto the same busy cores). Runs every boot
+// automatically, unlike scripts/pin-processes.sh's external/manual
+// invocation, which does not survive a restart. console.log, not
+// structuredLog — this runs before that's defined.
+try {
+  const _pin = selfPinAwayFromOllama();
+  console.log("[cpu-self-pin]", JSON.stringify(_pin));
+} catch (_e) { /* best-effort, never block boot */ }
 /**
  * Concord v2 — Macro‑Max Monolith (Single File)
  * - Macro-first architecture: nearly all logic is macros.
