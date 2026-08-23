@@ -60,6 +60,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@sentry/node": "^10.69.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "acorn": "^8.16.0",
     "adm-zip": "^0.6.0",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^13.0.3",

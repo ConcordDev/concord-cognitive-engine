@@ -157,3 +157,23 @@ logs/
 # session (see .env.runpod's history for why this pattern exists — a real
 # Cloudflare tunnel token once got hand-appended to the tracked file).
 *.secrets.local
+
+# Defense-in-depth: none of these exist in the tree today, but any key/cert/
+# credential file dropped in during deploy or debugging (SSH private keys,
+# TLS certs, cloud service-account JSON, keystores) must never be committable
+# by accident. k8s/secrets.yaml is the deliberate exception — its values are
+# base64 "CHANGE_ME_..." placeholders, not real secrets, so it stays tracked.
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.p12
+*.pfx
+*.keystore
+*.jks
+credentials.json
+*-serviceaccount*.json
+*service-account*.json
+gcloud-*.json
+.aws/credentials
