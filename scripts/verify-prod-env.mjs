@@ -57,7 +57,11 @@ try {
     ? path.join(ROOT, ".env")
     : null;
   if (envFile) {
-    const result = dotenv.config({ path: envFile });
+    // quiet:true — dotenv 17.x prints a promotional "tip" line to stdout on
+    // every load by default, which corrupts this script's --json output for
+    // any consumer parsing it (this script is meant to be a clean JSON/exit-code
+    // gate for deploy pipelines, not an interactive CLI).
+    const result = dotenv.config({ path: envFile, quiet: true });
     dotenvLoad.loaded = !result?.error;
     dotenvLoad.path = envFile;
   } else {

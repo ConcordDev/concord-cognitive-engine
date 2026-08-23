@@ -310,7 +310,7 @@ test("scene:request round-trips through the real exportScene + real db", async (
     // A world with no world_buildings rows is an honest empty scene, not a
     // fabricated one — exportScene(db, worldId) returns ok:true, count:0.
     assert.equal(frame.data.ok, true);
-    assert.equal(frame.data.format, "concord-scene/v1");
+    assert.equal(frame.data.format, "concord-scene/v2");
     assert.equal(frame.data.count, 0);
     assert.deepEqual(frame.data.nodes, []);
   } finally { ws.close(); }

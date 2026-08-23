@@ -64,6 +64,18 @@ function writeSyntheticTest(name, source) {
   return filePath;
 }
 
+/**
+ * Force the TAP reporter explicitly rather than relying on `node --test`'s
+ * default output format. On older Node versions the default reporter was
+ * TAP whenever stdout wasn't a TTY; current Node (verified on v24.11.1)
+ * defaults to the human-readable "spec" reporter (`✔`/`✖`/`ℹ` lines)
+ * regardless of TTY-ness, which silently broke every `assertReportsPass`/
+ * `assertReportsFailure` regex below (they look for `^ok \d+`/`^not ok \d+`).
+ * Pinning the reporter makes this meta-test's anchor format stable across
+ * Node versions instead of riding an undocumented default.
+ */
+const TAP_REPORTER_FLAGS = ["--test-reporter=tap", "--test-reporter-destination=stdout"];
+
 /** Spawn a CHILD `node --test [...flags] <file>`, argv only (no shell). */
 function spawnNodeTest(flags, filePath) {
   // node:test sets NODE_TEST_CONTEXT=child-v8 in its own process env, and
@@ -78,7 +90,7 @@ function spawnNodeTest(flags, filePath) {
   // child is a genuinely independent `node --test` invocation.
   const childEnv = { ...process.env };
   delete childEnv.NODE_TEST_CONTEXT;
-  return spawnSync(process.execPath, ["--test", ...flags, filePath], {
+  return spawnSync(process.execPath, ["--test", ...TAP_REPORTER_FLAGS, ...flags, filePath], {
     encoding: "utf8",
     timeout: 30_000,
     env: childEnv,

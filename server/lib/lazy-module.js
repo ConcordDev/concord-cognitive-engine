@@ -34,7 +34,14 @@
 //   const forgettingLazy = lazy(forgettingMod, "forgetting", { initOpts: { STATE } });
 //   register("forgetting", "run", (_ctx, input) => forgettingLazy.runForgettingCycle(input?.force));
 
-const initDone = new WeakMap();
+// Map, not WeakMap: keyed by the module's string `name` (see ensureInited()
+// below), and WeakMap keys must be objects — `initDone.set(name, ...)` threw
+// "Invalid value used as weak map key" on every first real access to any
+// lazily-wrapped ghost-fleet module (attention_alloc, etc.), unguarded by any
+// try/catch, so it propagated all the way out as macro_uncaught_throw. A Map
+// is also what getLazyInitReport() below actually needs, since (unlike a
+// WeakMap) it can be iterated for the diagnostic report.
+const initDone = new Map();
 
 /**
  * Wrap a module so its `init(opts)` is deferred until first method access.
@@ -110,8 +117,7 @@ export function lazy(mod, name, opts = {}) {
  * Returns [{ name, initializedAt }] for any module that has been touched.
  */
 export function getLazyInitReport() {
-  const out = [];
-  // WeakMap doesn't support iteration, so we rely on a parallel Map for
-  // reporting. Modules that get initialized populate both.
-  return out;
+  return Array.from(initDone.entries())
+    .map(([name, initializedAt]) => ({ name, initializedAt }))
+    .sort((a, b) => a.initializedAt - b.initializedAt);
 }

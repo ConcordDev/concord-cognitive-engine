@@ -90,6 +90,11 @@ const REVIEWED = {
   "domains/foundry.js": 1,
   "domains/garage.js": 2,
   "domains/goddess.js": 2,
+  // domains/hermes-memory.js (2) — both interpolate a fixed literal SQL
+  // fragment `"AND memory_kind = ?"` (or "") chosen by a boolean gate;
+  // memory_kind itself is allowlist-checked (MEMORY_KINDS.has(...)) before
+  // the gate runs and bound via `?` regardless. No user string reaches SQL text.
+  "domains/hermes-memory.js": 2,
   "domains/literary.js": 2,
   "domains/profile.js": 2,
   "domains/repair.js": 1,
@@ -112,6 +117,10 @@ const REVIEWED = {
   "economy/withdrawals.js": 1,
   "emergent/agent-drift-watch-cycle.js": 1,
   "emergent/environment-sensor.js": 2,
+  // emergent/forgetting-engine.js (1) — `placeholders` is
+  // liveIds.map(() => "(?, ?, ?, ?, NULL, 0)").join(", "), a repeat-count
+  // string with zero embedded data; every value is bound via the params array.
+  "emergent/forgetting-engine.js": 1,
   "emergent/nemesis-cycle.js": 1,
   "guidance.js": 5,
   "lib/account-lifecycle.js": 1,
@@ -136,6 +145,18 @@ const REVIEWED = {
   "lib/cross-lens-discovery.js": 2,
   "lib/detectors/dtu-lineage-detector.js": 4,
   "lib/detectors/predictive-growth-detector.js": 1,
+  // lib/dila-recall.js (1) — `kinds` = config.skipMemoryKinds.map(() =>
+  // '?').join(',') — placeholder-count string only; the actual kind values
+  // are spread into .all(...config.skipMemoryKinds) and bound normally.
+  "lib/dila-recall.js": 1,
+  // lib/dtu-operations-log.js (2) — getOperationsLog's `where` is assembled
+  // only from a fixed set of hardcoded "<col> = ?" fragments gated by
+  // presence checks (never user string content becomes SQL text); `limit`
+  // is Math.max(1, Math.min(1000, ...)) — always a finite number or NaN,
+  // never a string, so it cannot inject text even unbound. tombstone
+  // OperationalDTUs' `placeholders` is the same fixed-count IN-clause
+  // idiom as forgetting-engine.js above, over a module constant array.
+  "lib/dtu-operations-log.js": 2,
   "lib/dtu-portability.js": 1,
   "lib/dtu-protection.js": 4,
   "lib/dx/severity-evo.js": 1,
@@ -156,6 +177,10 @@ const REVIEWED = {
   "lib/literary-vec.js": 1,
   "lib/long-horizon-planner.js": 1,
   "lib/macro-billing.js": 1,
+  // lib/mcp-tools.js (1) — dhtpCompress's `placeholders` is the same
+  // fixed-count IN-clause idiom, over boundRefs (dtuRefs capped at 33);
+  // values bound via .all(...boundRefs).
+  "lib/mcp-tools.js": 1,
   "lib/mentorship.js": 2,
   "lib/mount-gear.js": 2,
   "lib/news-story-composer.js": 1,

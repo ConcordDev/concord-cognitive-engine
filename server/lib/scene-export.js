@@ -55,7 +55,12 @@ import { listDistricts, pointInPolygon, polygonArea } from "./districts.js";
 import { buildingPurposeForType, landingPadsForWorld } from "./building-purpose.js";
 import { scatterVegetationForWorld } from "./vegetation-scatter.js";
 
-export const SCENE_FORMAT = "concord-scene/v1";
+// v2: exportScene() below unconditionally routes its result through
+// scene-asset-enricher.js#enrichScene (per-client hints, asset URLs,
+// portals, unity assets), which stamps its own output `format:
+// 'concord-scene/v2'` — this constant must agree with that real,
+// always-on behavior rather than describe the pre-enrichment shape.
+export const SCENE_FORMAT = "concord-scene/v2";
 
 /** Hub world that owns the Unburned Court + Ring of Doors tableau. */
 export const HUB_WORLD_ID = "concordia-hub";

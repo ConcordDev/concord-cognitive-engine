@@ -161,7 +161,13 @@ export default function registerLegalActions(registerLensAction) {
     // .toISOString() throws RangeError inside addDays — reject before computing.
     if (Number.isNaN(base.getTime())) return { ok: true, result: { error: 'Invalid filing date' } };
     const jurisdiction = artifact.data?.jurisdiction || params.jurisdiction || 'default';
-    const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r.toISOString().split('T')[0]; };
+    // UTC-based arithmetic: a plain "YYYY-MM-DD" filingDate parses as UTC
+    // midnight (per the Date spec), and the result is formatted back via
+    // .toISOString() (also UTC). Using local getDate()/setDate() in between
+    // silently shifts the calendar day by the local UTC offset whenever
+    // local midnight of that UTC instant falls on the previous calendar
+    // day (any negative-UTC-offset timezone) — off-by-one-day deadlines.
+    const addDays = (d, n) => { const r = new Date(d); r.setUTCDate(r.getUTCDate() + n); return r.toISOString().split('T')[0]; };
 
     const rules = {
       federal: { responseDays: 21, discoveryDays: 180, motionDays: 14, trialDays: 365, extensionDays: 30 },

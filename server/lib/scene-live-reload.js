@@ -5,7 +5,7 @@
 // exportScene for that world and push a `scene:reload` frame into the
 // world's room. Godot clients already treat a full scene payload as
 // idempotent (`world/scene_bootstrap.gd#apply_scene` clears + rebuilds),
-// so the honest move is to ship the same concord-scene/v1 snapshot the
+// so the honest move is to ship the same concord-scene/v2 snapshot the
 // existing `scene:request` → `scene:data` path produces, not invent a
 // parallel delta protocol.
 //

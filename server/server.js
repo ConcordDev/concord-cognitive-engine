@@ -2265,7 +2265,12 @@ async function tryLoadDotenv() {
   const preDotenvSnapshot = { ...process.env };
   try {
     const dotenv = await import("dotenv");
-    const result = envPath ? dotenv.config({ path: envPath }) : dotenv.config();
+    // quiet:true — dotenv 17.x prints a promotional "tip" line to stdout on every
+    // load by default (one of the rotated tips names an unrelated third-party
+    // product); suppressed so production logs stay to signal we actually emit.
+    const result = envPath
+      ? dotenv.config({ path: envPath, quiet: true })
+      : dotenv.config({ quiet: true });
     DOTENV.loaded = !result?.error;
     DOTENV.path = envPath || "(default)";
     DOTENV.error = result?.error ? String(result.error) : null;
@@ -6223,7 +6228,16 @@ const AuthDB = {
 
   getUserCount() {
     if (db) {
-      const stmt = db.prepare("SELECT COUNT(*) as count FROM users WHERE is_active = 1");
+      // Excludes the seeded Hermes/Dila system row (migrations/400_hermes_dila.js,
+      // id='hermes', is_active=1) — she's an internal agent account, not a human
+      // operator, and always exists on a fresh DB from the first migration run
+      // onward. Counting her here broke two "is this a brand new install?"
+      // bootstrap checks that key off getUserCount()===0: routes/auth.js's
+      // organic first-registered-user-becomes-owner promotion, and this file's
+      // own default-ADMIN_PASSWORD-admin seed just below — both silently never
+      // fired on any install created since migration 400 landed, because the
+      // count was already 1 before the human's first real registration.
+      const stmt = db.prepare("SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND id != 'hermes'");
       return stmt.get().count;
     }
     return AUTH.users.size;
@@ -35132,7 +35146,13 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
-  const workerPath = new URL("./workers/cognitive-worker.js", import.meta.url).pathname;
+  // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
+  // .pathname does NOT decode percent-encoding, so on a checkout path
+  // containing a space (encoded "%20" in the URL), the Worker constructor's
+  // own string->URL conversion re-escaped that literal "%" into "%25",
+  // producing "%2520" and a hard ERR_MODULE_NOT_FOUND on every spawn attempt
+  // — the same class of bug fixed across 14 test files' path derivation.
+  const workerPath = path.join(import.meta.dirname, "workers", "cognitive-worker.js");
   cognitiveWorker = new Worker(workerPath);
   // Test hygiene: unref under NODE_ENV=test so it doesn't keep the node:test
   // process alive after a suite finishes (see workers/macro-pool.js). The
@@ -80424,7 +80444,11 @@ structuredLog("info", "artistry_init", { detail: "All phases (1-10) initialized 
 // ledger logic is touched or duplicated — mounting a route doesn't clone
 // its body, just adds a second address for the same code.
 function mountArtistryNamespaceAlias(targetApp, fromPrefix, toPrefix) {
-  const stack = targetApp?._router?.stack;
+  // Express 5 renamed `app._router` to `app.router` (the old name is gone
+  // entirely, not deprecated-but-present) — this previously always read
+  // `undefined` here and silently early-returned 0 mounted routes on every
+  // boot. `_router` is kept as a fallback for Express 4 compatibility.
+  const stack = targetApp?.router?.stack || targetApp?._router?.stack;
   if (!Array.isArray(stack)) {
     structuredLog("warn", "artistry_alias_init", { detail: "router stack unavailable — /api/creative-commerce alias mount skipped" });
     return 0;

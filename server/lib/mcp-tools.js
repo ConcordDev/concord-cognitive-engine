@@ -1512,8 +1512,13 @@ async function dhtpCompress(db, args = {}) {
     const workingSet = [];
     if (db && dtuRefs.length > 0) {
       try {
-        const placeholders = dtuRefs.map(() => "?").join(",");
-        const rows = db.prepare(`SELECT id, title, tier, metadata_json, updated_at FROM dtus WHERE id IN (${placeholders})`).all(...dtuRefs.slice(0, 33));
+        const boundRefs = dtuRefs.slice(0, 33);
+        // placeholders must match boundRefs' length, not the full (unbounded)
+        // dtuRefs — passing more than 33 refs previously generated MORE "?"
+        // placeholders than bound arguments, which better-sqlite3 throws on
+        // ("wrong number of parameter bindings") instead of silently truncating.
+        const placeholders = boundRefs.map(() => "?").join(",");
+        const rows = db.prepare(`SELECT id, title, tier, metadata_json, updated_at FROM dtus WHERE id IN (${placeholders})`).all(...boundRefs);
         for (const r of rows) {
           workingSet.push({
             id: r.id,

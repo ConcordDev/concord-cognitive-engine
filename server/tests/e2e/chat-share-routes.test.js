@@ -215,10 +215,16 @@ describe('E2E — chat public share viewer (/api/chat/share/:token)', { timeout:
     assert.equal(shareRes.body?.result?.url, `/share/chat/${shareToken}`);
   });
 
-  after(function() {
-    const stopped = stopServer(serverProc);
+  after(async function() {
+    // Await the server's real exit BEFORE removing its data dir — rmSync
+    // previously ran synchronously right after kicking off the (unawaited)
+    // stopServer() promise, racing the still-alive server process, which was
+    // still writing SQLite -wal/-shm files into dataDir. rmSync's recursive
+    // directory walk would then throw ENOTEMPTY when a file reappeared
+    // between its readdir and unlink calls. force:true only suppresses a
+    // MISSING path (ENOENT), not this "still being written to" race.
+    await stopServer(serverProc);
     rmSync(dataDir, { recursive: true, force: true });
-    return stopped;
   });
 
   it('GET /api/chat/share/:token — valid token, no auth headers/cookies, returns the exact thread', async function () {

@@ -271,9 +271,13 @@ export default function registerCognitiveReplayActions(registerLensAction) {
       const cutoff = Date.now() - sinceDays * DAY_MS;
       const events = collectEvents(userId).filter((e) => e.ts && e.ts >= cutoff);
 
-      // Calendar: one cell per day in the window.
-      const startDay = new Date(cutoff);
-      startDay.setHours(0, 0, 0, 0);
+      // Calendar: one cell per day in the window. Anchored to UTC midnight
+      // (not local .setHours(0,0,0,0)) so this agrees with dayKey()'s
+      // UTC-based .toISOString().slice(0,10) bucketing below — a local-midnight
+      // anchor silently drops "today" from the calendar entirely whenever the
+      // local calendar day still lags the UTC calendar day (e.g. any evening
+      // hour in a negative-UTC-offset timezone).
+      const startDay = new Date(new Date(cutoff).toISOString().slice(0, 10) + "T00:00:00.000Z");
       const days = [];
       const byDay = {};
       for (const e of events) {

@@ -179,10 +179,16 @@ describe('E2E — spectate public viewer (/api/spectate/*)', { timeout: 120000 }
     serverProc = await spawnServer(port, dataDir, { AUTH_MODE: 'hybrid' }, 90000);
   });
 
-  after(function() {
-    const stopped = stopServer(serverProc);
+  after(async function() {
+    // Await the server's real exit BEFORE removing its data dir — rmSync
+    // previously ran synchronously right after kicking off the (unawaited)
+    // stopServer() promise, racing the still-alive server process, which was
+    // still writing SQLite -wal/-shm files into dataDir. rmSync's recursive
+    // directory walk would then throw ENOTEMPTY when a file reappeared
+    // between its readdir and unlink calls. force:true only suppresses a
+    // MISSING path (ENOENT), not this "still being written to" race.
+    await stopServer(serverProc);
     rmSync(dataDir, { recursive: true, force: true });
-    return stopped;
   });
 
   let sessionToken;

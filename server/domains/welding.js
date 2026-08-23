@@ -207,7 +207,15 @@ export default function registerWeldingActions(registerLensAction) {
       const jobs = wList(s, "jobs", wActor(ctx)).filter((j) => j.status !== "cancelled");
       const days = [];
       const range = Math.min(60, Math.max(7, Math.round(wNum(params.rangeDays)) || 30));
-      const start = new Date(); start.setHours(0, 0, 0, 0);
+      // UTC-anchored (not local .setHours(0,0,0,0)): `key` below is already a
+      // UTC date string, and job.scheduledDate is a plain "YYYY-MM-DD" string
+      // that parses as UTC midnight — anchoring `start` to local midnight
+      // instead mismatched the two, and the onDay bounds below used to call
+      // local .setHours(0,0,0,0) on a UTC-parsed date, which silently shifts
+      // the bound to the PREVIOUS calendar day in any negative-UTC-offset
+      // timezone, dropping same-day jobs off their own calendar cell.
+      const start = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+      const utcDayStart = (ts) => { const d0 = new Date(ts); return Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate()); };
       for (let i = 0; i < range; i++) {
         const d = new Date(start.getTime() + i * DAY_MS);
         const key = d.toISOString().slice(0, 10);
@@ -216,7 +224,7 @@ export default function registerWeldingActions(registerLensAction) {
           const st = Date.parse(j.scheduledDate);
           if (Number.isNaN(st)) return false;
           const end = st + (j.durationDays - 1) * DAY_MS;
-          return d.getTime() >= new Date(j.scheduledDate).setHours(0, 0, 0, 0) && d.getTime() <= new Date(end).setHours(0, 0, 0, 0);
+          return d.getTime() >= utcDayStart(st) && d.getTime() <= utcDayStart(end);
         }).map((j) => ({ id: j.id, title: j.title, client: j.client, status: j.status, crew: j.crew }));
         days.push({ date: key, jobs: onDay });
       }
