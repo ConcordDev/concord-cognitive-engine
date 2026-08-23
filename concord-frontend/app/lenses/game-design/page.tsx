@@ -59,8 +59,8 @@ export default function GameDesignPage() {
         <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 border border-emerald-500/20 flex items-center justify-center">
-                <Gamepad2 className="w-6 h-6 text-emerald-400" />
+              <div className="w-10 h-10 rounded-xl bg-pink-500/20 border border-pink-500/30 flex items-center justify-center">
+                <Gamepad2 className="w-6 h-6 text-pink-500" />
               </div>
               <h1 className="text-2xl font-bold">Game Design</h1>
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

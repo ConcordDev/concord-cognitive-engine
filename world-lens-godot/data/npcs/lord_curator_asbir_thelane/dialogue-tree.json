@@ -1,0 +1,55 @@
+{
+  "npcId": "lord_curator_asbir_thelane",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Asbir Thelane regards you without hurry. (Lord Curator of the Concordant Archive)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Asbir keeps three notebooks at all times \u2014 one for facts, one for inferences, one for the difference. He distrusts urgency. He grants audience but never haste.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Asbir Thelane, Lord Curator of the Concordant Archive. long sentences with pauses; never interrupts; reframes questions before answering",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

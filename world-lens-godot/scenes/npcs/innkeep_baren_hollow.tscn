@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Baren Hollow
+; Data: res://data/npcs/innkeep_baren_hollow/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="innkeep_baren_hollow" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "innkeep_baren_hollow"
+display_name = "Baren Hollow"
+title = "Innkeeper of the Seven Spokes"
+faction_id = "seven_spokes_inn"
+archetype = "trader"
+world_id = "concordia-hub"
+body_color = Color(0.480, 0.360, 0.280, 1.0)
+accent_color = Color(0.700, 0.500, 0.250, 1.0)
+body_height = 1.72
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/innkeep_baren_hollow/dialogue-tree.json"
+schedule_path = "res://data/npcs/innkeep_baren_hollow/schedule.json"
+faction_affinity_path = "res://data/npcs/innkeep_baren_hollow/faction-affinity.json"
+

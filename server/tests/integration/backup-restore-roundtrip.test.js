@@ -17,8 +17,8 @@
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { execSync } from "node:child_process";
-import { mkdtempSync, rmSync, existsSync, readdirSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -43,14 +43,20 @@ after(() => {
   try { rmSync(WORK_DIR, { recursive: true, force: true }); } catch (_) { /* intentional */ }
 });
 
-function runScript(scriptName, extraArgs = "") {
+function runScript(scriptName, extraArgs = []) {
   const env = {
     ...process.env,
     DATA_DIR,
     DB_PATH,
   };
-  return execSync(
-    `bash ${path.join(SCRIPTS_DIR, scriptName)} ${extraArgs}`.trim(),
+  // execFileSync (argv array, no shell) rather than a string-interpolated
+  // execSync command — this repo's checkout path can legitimately contain
+  // spaces (macOS dev checkouts under e.g. "concord vs code/"), and an
+  // unquoted `bash ${path}` string breaks with "No such file or directory"
+  // the moment SCRIPTS_DIR has a space in it.
+  return execFileSync(
+    "bash",
+    [path.join(SCRIPTS_DIR, scriptName), ...extraArgs],
     { env, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] },
   );
 }
@@ -88,7 +94,7 @@ function rowCount(table) {
 describe("backup.sh → restore.sh round-trip", () => {
   it("backup produces a compressed snapshot in BACKUP_DIR", () => {
     // Set up: ensure DB dir exists, seed it.
-    execSync(`mkdir -p "${path.dirname(DB_PATH)}"`);
+    mkdirSync(path.dirname(DB_PATH), { recursive: true });
     seedDb();
     assert.equal(rowCount("economy_ledger"), 5);
     assert.equal(rowCount("dtus"), 3);
@@ -104,7 +110,8 @@ describe("backup.sh → restore.sh round-trip", () => {
 
   it("restore from latest backup produces a DB whose row counts match the original", () => {
     // Drop the live DB (simulating data loss)
-    execSync(`rm -f "${DB_PATH}" "${DB_PATH}.pre-restore"`);
+    rmSync(DB_PATH, { force: true });
+    rmSync(`${DB_PATH}.pre-restore`, { force: true });
     assert.ok(!existsSync(DB_PATH));
 
     // Restore latest

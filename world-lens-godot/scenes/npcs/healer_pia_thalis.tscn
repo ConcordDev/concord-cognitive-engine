@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Pia Thalis
+; Data: res://data/npcs/healer_pia_thalis/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="healer_pia_thalis" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "healer_pia_thalis"
+display_name = "Pia Thalis"
+title = "Chief Healer of the Concordant Infirmary"
+faction_id = "infirmary_thalis"
+archetype = "healer"
+world_id = "concordia-hub"
+body_color = Color(0.550, 0.580, 0.550, 1.0)
+accent_color = Color(0.400, 0.650, 0.500, 1.0)
+body_height = 1.70
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/healer_pia_thalis/dialogue-tree.json"
+schedule_path = "res://data/npcs/healer_pia_thalis/schedule.json"
+faction_affinity_path = "res://data/npcs/healer_pia_thalis/faction-affinity.json"
+

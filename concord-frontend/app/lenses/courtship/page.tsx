@@ -40,7 +40,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { Heart, Crown, Baby, Loader2, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { useUIStore } from '@/store/ui';
+import { api } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { HeartEventModal, type HeartEventScene } from '@/components/courtship/HeartEventModal';
 import { ConfirmDissolveModal } from '@/components/courtship/ConfirmDissolveModal';
@@ -189,15 +191,12 @@ export default function CourtshipLensPage() {
   const act = useCallback(async (path: string, body: Record<string, unknown>) => {
     setPending(true);
     try {
-      const r = await fetch(path, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
+      const j = await api.post(path, body).then(r => r.data).catch((e) => {
+        const data = e?.response?.data;
+        return data ?? { ok: false, reason: e instanceof Error ? e.message : 'request_failed' };
       });
-      const j = await r.json().catch(() => ({ ok: false }));
-      if (!r.ok || j?.ok === false) {
-        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : `Action failed (${r.status}).`);
+      if (j?.ok === false) {
+        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : 'Action failed.');
         addToast({ type: 'error', message: 'Action failed' });
       }
       await refresh();
@@ -214,15 +213,10 @@ export default function CourtshipLensPage() {
   const interact = useCallback(async (c: Courtship, sentiment: number) => {
     setPending(true);
     try {
-      const r = await fetch('/api/courtship/interact', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment }),
-      });
-      const j = await r.json().catch(() => ({ ok: false }));
-      if (!r.ok || j?.ok === false) {
-        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : `Action failed (${r.status}).`);
+      const r = await api.post('/api/courtship/interact', { partnerKind: c.partner_kind, partnerId: c.partner_id, sentiment });
+      const j = r.data;
+      if (j?.ok === false) {
+        setErrorMsg(j?.reason ? `Action failed: ${j.reason}` : 'Action failed.');
         addToast({ type: 'error', message: 'Action failed' });
       } else if (j?.heartEvent) {
         setHeartEvent({
@@ -418,8 +412,8 @@ export default function CourtshipLensPage() {
             )}
 
             <section className="space-y-2" aria-labelledby="courtships-heading">
-              <h2 id="courtships-heading" className="text-sm font-semibold text-pink-300">
-                Active courtships ({courtships.length})
+              <h2 id="courtships-heading" className="flex items-center gap-1 text-sm font-semibold text-pink-300">
+                <SvgIcon name="heart" size={14} className="text-pink-300" /> Active courtships ({courtships.length})
               </h2>
               {courtships.length === 0 ? (
                 <p data-testid="courtship-empty" className="text-xs text-zinc-500">

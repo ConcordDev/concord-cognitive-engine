@@ -45,6 +45,11 @@ import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.
 let _persistDb = null;
 export function configureRepairPersistence(db) { _persistDb = db || null; }
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
+// Sprint 32 — Route repair audit trail through dtu_operations_log instead of
+// STATE.dtus. The old behavior wrote every repair event as a DTU, polluting
+// the knowledge substrate with operational noise. Now: a dedicated table
+// (migration 402) holds these events OUT of the DTU universe.
+import { recordOperation as _recordOp } from "../lib/dtu-operations-log.js";
 
 const execAsync = promisify(execCb);
 
@@ -414,43 +419,43 @@ export function getErrorAccumulator() {
 const _repairDTUs = [];
 const REPAIR_DTU_CAP = 500;
 
-function logRepairDTU(phase, action, details) {
+export function logRepairDTU(phase, action, details) {
   try {
-    const dtuId = uid("dtu_repair");
     const now = nowISO();
+    const dtuId = uid("dtu_repair");
 
-    const dtu = {
-      id: dtuId,
-      type: "knowledge",
-      title: `Repair Cortex: ${action}`,
-      human: { summary: `[${phase}] ${action}: ${JSON.stringify(details).slice(0, 200)}` },
-      machine: {
-        kind: "repair_log",
+    // Sprint 32 — Redirect audit trail to dtu_operations_log instead of
+    // STATE.dtus. Repair events are operational telemetry, not knowledge.
+    // The local _repairDTUs array is kept for the in-memory dashboard.
+    let opLogEntry = null;
+    try {
+      opLogEntry = _recordOp(_persistDb, {
+        subsystem: "repair_cortex",
         phase,
         action,
-        ...details,
-        timestamp: now,
-      },
-      source: "repair_cortex",
-      authority: { model: "repair_cortex", score: 0.8 },
-      tier: "local",
-      scope: "local",
-      tags: ["repair_cortex", phase, action],
-      classification: "repair",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Store in STATE if available
-    const S = _getSTATE();
-    // Duck-type: S.dtus is a write-through store (has .set()) once wired,
-    // not a literal Map.
-    if (S && typeof S.dtus?.set === "function") {
-      S.dtus.set(dtuId, dtu);
+        details: { ...(details || {}), dtudId: dtuId },
+      });
+    } catch (_oplogErr) {
+      // Operations log table might not exist yet (pre-migration). Fall back
+      // silently — the rest of this function keeps working.
     }
 
+    // Keep a lightweight local copy for the in-memory dashboard. The old
+    // full DTU payload (with human summary, machine kind, authority, etc.)
+    // is gone — those were never used by any downstream reader, only by
+    // the search index that we explicitly want to free up.
+    const lite = {
+      id: dtuId,
+      action,
+      phase,
+      details,
+      timestamp: now,
+      oplogId: opLogEntry?.id || null,
+      count: opLogEntry?.count || 1,
+    };
+
     // Keep local reference
-    _repairDTUs.push(dtu);
+    _repairDTUs.push(lite);
     if (_repairDTUs.length > REPAIR_DTU_CAP) {
       _repairDTUs.splice(0, _repairDTUs.length - REPAIR_DTU_CAP);
     }
@@ -466,11 +471,12 @@ function logRepairDTU(phase, action, details) {
       if (typeof globalThis.realtimeEmit === "function") {
         globalThis.realtimeEmit("repair:dtu_logged", {
           dtuId, phase, action, timestamp: now,
+          oplogId: opLogEntry?.id || null,
         });
       }
     } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 
-    return dtu;
+    return lite;
   } catch {
     return null;
   }

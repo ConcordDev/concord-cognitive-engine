@@ -12,6 +12,7 @@ import {
   Car, Loader2, Plus, Trash2, Fuel, Wrench, Receipt, Route, FileText,
   AlertTriangle, Gauge, Bell, Pencil,
 } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -248,7 +249,10 @@ export function GarageSection() {
               <button onClick={() => refreshVehicles()} className="text-sky-300 underline">Retry</button>
             </li>
           ) : vehicles.length === 0 ? (
-            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No vehicles yet. <button onClick={addVehicle} className="text-sky-300 underline">Add your first vehicle</button></li>
+            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">
+              <SvgIcon name="car-silhouette" size={40} className="mx-auto mb-2 not-italic text-gray-600" />
+              No vehicles yet. <button onClick={addVehicle} className="text-sky-300 underline">Add your first vehicle</button>
+            </li>
           ) : vehicles.map(v => (
             <li key={v.id} onClick={() => setActiveId(v.id)} className={cn('group px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-white/[0.04]', activeId === v.id && 'bg-sky-500/10 border-l-2 border-sky-400')}>
               <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-400')} />

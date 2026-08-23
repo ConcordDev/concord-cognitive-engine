@@ -126,7 +126,7 @@ export default function AuditLensPage() {
     <div data-lens-theme="audit" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🔍</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded bg-indigo-500/15 border border-indigo-500/30 text-xl">🔍</span>
           <div>
             <h1 className="text-xl font-bold">Audit Lens</h1>
             <p className="text-sm text-gray-400">

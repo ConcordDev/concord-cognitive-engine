@@ -271,15 +271,20 @@ describe('E2E — Universal Move System Pillar 2/3 through the real combat/attac
     authHeaders = { Authorization: 'Bearer ' + reg.body.token };
   });
 
-  after(function () {
-    const done = stopServer(serverProc);
-  // Remove the spawned server's data dir. Each of these e2e tests boots a
-  // REAL server against a fresh mkdtemp dir, which migrates a full ~118MB
-  // SQLite DB. Without this the dir survives the run, so a full suite
-  // stranded ~800MB in /tmp and eventually filled the disk mid-run.
-  // force:true so a missing dir can never fail teardown.
-  rmSync(dataDir, { recursive: true, force: true });
-    return done;
+  after(async function () {
+    // Await the server's real exit BEFORE removing its data dir — rmSync
+    // previously ran synchronously right after kicking off the (unawaited)
+    // stopServer() promise, racing the still-alive server process, which was
+    // still writing SQLite -wal/-shm files into dataDir. rmSync's recursive
+    // directory walk would then throw ENOTEMPTY when a file reappeared
+    // between its readdir and unlink calls. force:true only suppresses a
+    // MISSING path (ENOENT), not this "still being written to" race.
+    await stopServer(serverProc);
+    // Remove the spawned server's data dir. Each of these e2e tests boots a
+    // REAL server against a fresh mkdtemp dir, which migrates a full ~118MB
+    // SQLite DB. Without this the dir survives the run, so a full suite
+    // stranded ~800MB in /tmp and eventually filled the disk mid-run.
+    rmSync(dataDir, { recursive: true, force: true });
   });
 
   /** Fetch a real, live NPC id in a real content-seeded world via the real

@@ -134,6 +134,16 @@ describe("deity.list / deity.search (pantheon filter bar)", () => {
     const byPilgrims = call("search", ctxAuthor, { minPilgrims: 1 });
     assert.equal(byPilgrims.result.count, 1);
   });
+
+  it("list/search card summaries include the real toneVector (regression: was only on the single-deity detail fetch, so the per-axis sigil had no data)", () => {
+    composeVeyra(ctxAuthor, {
+      name: "Frostheart", toneVector: { warmth: 0.05, refusal: 0.9, mystery: 0.5 },
+    });
+    const r = call("list", ctxAuthor, { limit: 50 });
+    assert.equal(r.result.deities[0].toneVector.warmth, 0.05);
+    assert.equal(r.result.deities[0].toneVector.refusal, 0.9);
+    assert.equal(r.result.deities[0].toneVector.mystery, 0.5);
+  });
 });
 
 // ── PILGRIMAGE → logs + returns real progress (devotion accrual) ─────────────

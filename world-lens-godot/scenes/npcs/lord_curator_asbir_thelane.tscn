@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Asbir Thelane
+; Data: res://data/npcs/lord_curator_asbir_thelane/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="lord_curator_asbir_thelane" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "lord_curator_asbir_thelane"
+display_name = "Asbir Thelane"
+title = "Lord Curator of the Concordant Archive"
+faction_id = "concordant_curators"
+archetype = "scholar"
+world_id = "concordia-hub"
+body_color = Color(0.420, 0.450, 0.550, 1.0)
+accent_color = Color(0.720, 0.620, 0.350, 1.0)
+body_height = 1.78
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/lord_curator_asbir_thelane/dialogue-tree.json"
+schedule_path = "res://data/npcs/lord_curator_asbir_thelane/schedule.json"
+faction_affinity_path = "res://data/npcs/lord_curator_asbir_thelane/faction-affinity.json"
+

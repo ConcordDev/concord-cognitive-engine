@@ -1,0 +1,55 @@
+{
+  "npcId": "courier_kel_sandren",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Kel Sandren regards you without hurry. (Crosswind Courier of the Concordant Hub)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Kel is twenty-two, talks fast, makes friends in transit, takes pride in never having lost a parcel. Cousin to Taro Sandren but with no interest in fighting.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Kel Sandren, Crosswind Courier of the Concordant Hub. fast, friendly, occasionally lets slip a piece of route gossip",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

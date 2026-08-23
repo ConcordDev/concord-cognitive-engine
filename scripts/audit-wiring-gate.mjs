@@ -42,6 +42,7 @@ const CALLER_ALLOWLIST = new Map([
   ["proposePlayerScheme", "player-driven macro surface"],
   ["seedDefaultGlyphLibrary", "content-seeder dynamic import"],
   ["resolveWithin", "generic safe-path.js security primitive matched by the resolve* naming heuristic despite not being a gameplay system; unit-tested directly by tests/whiteboard-blueprint-path-traversal.test.js, not yet called from a production call site (domains/whiteboard.js uses its sibling isWithinRoot + isSafePathSegment instead)"],
+  ["resolveConcurrent", "p2p-vector-clock.js's scalar (single-mutable-value) CRDT conflict resolver, matched by the resolve* naming heuristic despite not being a gameplay system. The module's other CRDT half, resolveMembership (room-membership OR-Set), IS wired into p2p-dtu-signalling.js; resolveConcurrent was written for completeness (the standard vector-clock pairing is set-CRDT + scalar-LWW) for a 'single mutable value with one owner, e.g. a signalling slot' shape that doesn't exist yet in p2p-dtu-signalling.js's current design (every offer is independently keyed by a fresh randomUUID, so there is no real conflict for it to resolve today). Wiring it would mean inventing that not-yet-existing feature just to satisfy this gate, which is backwards — it stays intentionally unwired until a real scalar-ownership conflict shows up in the P2P signalling design."],
 ]);
 
 // Files to skip (definitions that are pure libraries of compose-helpers).

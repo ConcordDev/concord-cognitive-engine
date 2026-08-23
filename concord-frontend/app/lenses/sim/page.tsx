@@ -20,7 +20,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Play, Sliders, Clock, Plus, Trash2, Copy, Download,
-  Upload, BarChart3, GitCompare, Library, ChevronRight, ChevronDown, Github,
+  Upload, BarChart3, GitCompare, Library, ChevronRight, ChevronDown, Code2 as Github,
   GripVertical, Settings, FlaskConical, TrendingUp, Activity,
   AlertTriangle, CheckCircle2,
   Layers, FileJson, FileSpreadsheet, Save, FolderOpen, X,

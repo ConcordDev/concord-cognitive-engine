@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Ren Solare
+; Data: res://data/npcs/captain_ren_solare/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="captain_ren_solare" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "captain_ren_solare"
+display_name = "Ren Solare"
+title = "Captain of the Concordant Watch"
+faction_id = "concordant_watch"
+archetype = "guard"
+world_id = "concordia-hub"
+body_color = Color(0.300, 0.320, 0.380, 1.0)
+accent_color = Color(0.550, 0.480, 0.280, 1.0)
+body_height = 1.85
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/captain_ren_solare/dialogue-tree.json"
+schedule_path = "res://data/npcs/captain_ren_solare/schedule.json"
+faction_affinity_path = "res://data/npcs/captain_ren_solare/faction-affinity.json"
+

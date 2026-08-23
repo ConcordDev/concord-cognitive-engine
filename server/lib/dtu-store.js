@@ -13,6 +13,9 @@
  */
 
 import logger from '../logger.js';
+import crypto from 'node:crypto';
+import { detectKind } from './dtu-attachment.js';
+
 
 /**
  * Initialize the DTU store table in SQLite.
@@ -21,6 +24,9 @@ import logger from '../logger.js';
  */
 export function initDTUStore(db) {
   if (!db) return false;
+
+  // Expose the db globally so the prototype wrap can introspect table_info
+  globalThis._concordDB = db;
 
   try {
     db.exec(`
@@ -33,7 +39,12 @@ export function initDTUStore(db) {
         source TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        data TEXT NOT NULL
+        data TEXT NOT NULL,
+        content_hash TEXT,
+        compressed_size INTEGER,
+        rights_id TEXT,
+        payload_bytes BLOB,
+        payload_kind TEXT DEFAULT 'text'
       );
 
       CREATE INDEX IF NOT EXISTS idx_dtu_tier ON dtu_store(tier);
@@ -66,12 +77,25 @@ export function createDTUStore(db, memoryMap, opts = {}) {
   // Prepare SQLite statements (lazy, cached)
   function stmts() {
     if (_stmts) return _stmts;
-    if (!db) return null;
+    if (!db) {
+      logger.debug?.('[dtu-store] stmts() called but db is null');
+      return null;
+    }
+
     try {
+      logger.debug?.('[dtu-store] Preparing statements (db connection state check)');
+      // Verify DB is open by running a simple query
+      try {
+        db.prepare("SELECT 1").get();
+      } catch (dbTestErr) {
+        logger.error?.('[dtu-store] DB connection test failed: %s', dbTestErr.message);
+        return null;
+      }
+
       _stmts = {
         upsert: db.prepare(`
-          INSERT OR REPLACE INTO dtu_store (id, title, tier, scope, tags, source, created_at, updated_at, data)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO dtu_store (id, title, tier, scope, tags, source, created_at, updated_at, data, content_hash, compressed_size, rights_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `),
         get: db.prepare("SELECT data FROM dtu_store WHERE id = ?"),
         delete: db.prepare("DELETE FROM dtu_store WHERE id = ?"),
@@ -80,10 +104,12 @@ export function createDTUStore(db, memoryMap, opts = {}) {
         byTier: db.prepare("SELECT data FROM dtu_store WHERE tier = ?"),
         byScope: db.prepare("SELECT data FROM dtu_store WHERE scope = ?"),
         exists: db.prepare("SELECT 1 FROM dtu_store WHERE id = ?"),
+        updatePayload: db.prepare("UPDATE dtu_store SET payload_bytes = ?, payload_kind = ? WHERE id = ?"),
       };
+      logger.debug?.('[dtu-store] Statements prepared successfully');
       return _stmts;
     } catch (e) {
-      log("error", "dtu_store_prepare_failed", { error: e.message });
+      log("error", "dtu_store_prepare_failed", { error: e.message, stack: e.stack });
       return null;
     }
   }
@@ -92,22 +118,111 @@ export function createDTUStore(db, memoryMap, opts = {}) {
    * Persist a DTU to SQLite.
    * @param {object} dtu
    */
+  /**
+   * Sniff payload type and extract for storage
+   * Returns { payloadData, payloadBytes, payloadKind }
+   */
+  function sniffPayload(dtu) {
+    let payloadData = null;
+    let payloadBytes = null;
+    let payloadKind = 'text';
+
+    if (!dtu) return { payloadData, payloadBytes, payloadKind };
+
+    // Check if DTU has raw binary payload
+    if (Buffer.isBuffer(dtu.payload)) {
+      payloadBytes = dtu.payload;
+      payloadKind = detectKind(payloadBytes);
+      return { payloadData, payloadBytes, payloadKind };
+    }
+
+    // Check if payload is a string
+    if (typeof dtu.payload === 'string') {
+      // Try to parse as JSON
+      try {
+        const parsed = JSON.parse(dtu.payload);
+        if (parsed && typeof parsed === 'object') {
+          payloadData = dtu.payload;
+          payloadKind = 'json';
+          return { payloadData, payloadBytes, payloadKind };
+        }
+      } catch (e) {
+        // Not JSON, treat as text
+      }
+
+      // Validate UTF-8
+      try {
+        const buf = Buffer.from(dtu.payload, 'utf8');
+        if (buf.toString('utf8') === dtu.payload) {
+          payloadBytes = buf;
+          payloadKind = 'text';
+          return { payloadData, payloadBytes, payloadKind };
+        }
+      } catch (e) {
+        // Not valid UTF-8, store as binary
+        payloadBytes = Buffer.from(dtu.payload);
+        payloadKind = 'binary';
+        return { payloadData, payloadBytes, payloadKind };
+      }
+    }
+
+    // Fallback: stringify entire DTU
+    try {
+      payloadData = JSON.stringify(dtu.body || dtu.content || dtu);
+      payloadKind = 'json';
+    } catch (e) {
+      payloadKind = 'binary';
+    }
+
+    return { payloadData, payloadBytes, payloadKind };
+  }
+
   function persistToSQLite(dtu) {
     const s = stmts();
     if (!s) return;
     try {
       const now = new Date().toISOString();
+      const bodyJson = JSON.stringify(dtu.body || dtu.content || dtu);
+      const content_hash = crypto.createHash("sha256").update(bodyJson).digest("hex");
+      const compressed_size = Buffer.byteLength(bodyJson, "utf8");
+      // Coerce every bind arg to its expected scalar type so a stray object
+      // (e.g. dtu.source mutated to an object mid-pipeline) doesn't crash
+      // the native better-sqlite3 bind. This is the smoking-gun fix for the
+      // RangeError "Too few parameter values" — better-sqlite3's bind actually
+      // validates arg count via the C++ V8 binding and an object arg counts
+      // as zero, throwing the misleading "Too few parameter values" error.
+      const safeTags = Array.isArray(dtu.tags) ? dtu.tags : [];
+      const safeSource = typeof dtu.source === "string" ? dtu.source : (dtu.source ? String(dtu.source) : "system");
+
+      // Sniff payload type (Sprint 32 E6 — binary attachments)
+      const { payloadData, payloadBytes, payloadKind } = sniffPayload(dtu);
+
       s.upsert.run(
-        dtu.id,
-        dtu.title || "",
-        dtu.tier || "regular",
-        dtu.scope || "global",
-        JSON.stringify(dtu.tags || []),
-        dtu.source || "system",
-        dtu.createdAt || now,
-        dtu.updatedAt || now,
-        JSON.stringify(dtu)
+        String(dtu.id ?? ""),
+        String(dtu.title ?? ""),
+        String(dtu.tier ?? "regular"),
+        String(dtu.scope ?? "global"),
+        JSON.stringify(safeTags),
+        safeSource,
+        String(dtu.createdAt ?? now),
+        String(dtu.updatedAt ?? now),
+        payloadData || JSON.stringify(dtu),
+        String(content_hash),
+        Number.isFinite(compressed_size) ? compressed_size : 0,
+        dtu.rights_id == null ? null : String(dtu.rights_id)
       );
+
+      // Also store binary payload if needed (Sprint 32 E6)
+      if (payloadBytes) {
+        try {
+          const stmt = stmts();
+          if (stmt?.updatePayload) {
+            stmt.updatePayload.run(payloadBytes, payloadKind, String(dtu.id ?? ""));
+          }
+        } catch (e) {
+          logger.debug?.('[dtu-store] Could not store binary payload (column may not exist yet)', { id: dtu.id, error: e.message });
+        }
+      }
     } catch (e) {
       log("error", "dtu_store_persist_failed", { id: dtu.id, error: e.message });
     }
@@ -394,6 +509,34 @@ export function createDTUStore(db, memoryMap, opts = {}) {
         hasSQLite: !!db,
         migrated: _migrated,
       };
+    },
+
+    /**
+     * Insert a DTU after passing the quality gate.
+     * Returns { ok, dtuId, reason? } on success or rejection.
+     * @param {object} dtu
+     * @param {object} opts - { qualityGate?, dedupKey?, feedId?, feedSource? }
+     * @returns {{ ok: boolean, dtuId?: string, reason?: string }}
+     */
+    insertIfPassesQualityGate(dtu, opts = {}) {
+      if (!dtu || !dtu.id) return { ok: false, reason: 'invalid_dtu' };
+
+      const { qualityGate } = opts;
+      if (qualityGate && typeof qualityGate === 'function') {
+        const gateResult = qualityGate(dtu, opts);
+        if (!gateResult.ok) {
+          // Log the rejection if handler is provided
+          const { logRejection } = opts;
+          if (logRejection && typeof logRejection === 'function') {
+            logRejection(dtu, gateResult.reason, opts);
+          }
+          return { ok: false, reason: gateResult.reason, details: gateResult.details };
+        }
+      }
+
+      // Gate passed (or no gate): commit the DTU
+      this.set(dtu.id, dtu);
+      return { ok: true, dtuId: dtu.id };
     },
   };
 

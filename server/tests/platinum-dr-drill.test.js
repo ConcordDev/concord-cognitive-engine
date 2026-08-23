@@ -37,7 +37,7 @@ import { readdirSync, existsSync, unlinkSync, mkdtempSync, rmSync } from "node:f
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-const HERE = new URL(".", import.meta.url).pathname;
+const HERE = import.meta.dirname; // fileURLToPath-equivalent, real Node builtin — .pathname does NOT decode percent-encoding (e.g. spaces -> %20), which broke every test in this file on any checkout path containing a space
 const MIGRATIONS_DIR = join(HERE, "..", "migrations");
 
 function listMigrations() {

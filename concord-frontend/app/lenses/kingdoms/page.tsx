@@ -23,6 +23,7 @@ import { HistoryExplorer } from '@/components/kingdoms/HistoryExplorer';
 import { RealmActionPanel } from '@/components/kingdoms/RealmActionPanel';
 import { WarCampaignSession } from '@/components/kingdoms/WarCampaignSession';
 import { DynastyRealmManager } from '@/components/kingdoms/DynastyRealmManager';
+import { RegionPolygonEditor } from '@/components/kingdoms/RegionPolygonEditor';
 import { MobileTabBar } from '@/components/mobile/MobileTabBar';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PipingProvider } from '@/components/panel-polish';
@@ -162,7 +163,12 @@ export default function KingdomsPage() {
           />
         )}
         {view === 'detail' && detail && <KingdomDetail detail={detail} decreeKinds={decreeKinds} onRefresh={() => activeId && fetchDetail(activeId)} />}
-        {view === 'create' && <KingdomCreate onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }} />}
+        {view === 'create' && (
+          <KingdomCreate
+            existingKingdoms={kingdoms}
+            onCreated={(id) => { setActiveId(id); setView('detail'); fetchList(); }}
+          />
+        )}
         {/* Phase 5 — open war-campaign / decree sessions belonging to this lens. */}
         <SessionRail lensId="kingdoms" className="mt-6" hideWhenEmpty />
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -463,24 +469,35 @@ function KingdomDetail({
   );
 }
 
-function KingdomCreate({ onCreated }: { onCreated: (id: string) => void }) {
+function KingdomCreate({ onCreated, existingKingdoms }: { onCreated: (id: string) => void; existingKingdoms: Kingdom[] }) {
   const [name, setName] = useState('');
   const [worldId, setWorldId] = useState('concordia-hub');
+  const [mode, setMode] = useState<'visual' | 'advanced'>('visual');
+  const [points, setPoints] = useState<number[][]>([]);
   const [polygon, setPolygon] = useState('[[0,0],[100,0],[100,100],[0,100]]');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const regionsInWorld = existingKingdoms
+    .filter((k) => k.world_id === worldId && Array.isArray(k.region_polygon) && k.region_polygon.length >= 3)
+    .map((k) => ({ id: k.id, name: k.name, region_polygon: k.region_polygon }));
 
   const submit = async () => {
     setSubmitting(true);
     setError(null);
     try {
       let regionPolygon: number[][];
-      try {
-        regionPolygon = JSON.parse(polygon);
-        if (!Array.isArray(regionPolygon) || regionPolygon.length < 3) throw new Error('need 3+ vertices');
-      } catch (e) {
-        setError(`polygon JSON invalid: ${e instanceof Error ? e.message : String(e)}`);
-        return;
+      if (mode === 'visual') {
+        if (points.length < 3) { setError('place at least 3 vertices'); return; }
+        regionPolygon = points;
+      } else {
+        try {
+          regionPolygon = JSON.parse(polygon);
+          if (!Array.isArray(regionPolygon) || regionPolygon.length < 3) throw new Error('need 3+ vertices');
+        } catch (e) {
+          setError(`polygon JSON invalid: ${e instanceof Error ? e.message : String(e)}`);
+          return;
+        }
       }
       const r = await fetch('/api/kingdoms', {
         method: 'POST',
@@ -516,16 +533,31 @@ function KingdomCreate({ onCreated }: { onCreated: (id: string) => void }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-slate-400">Region polygon (JSON [[x,z], …])</label>
-          <DraftedTextarea
-            lensId="kingdoms"
-            draftKey="newKingdomPolygon"
-            initial=""
-            onValueChange={setPolygon}
-            rows={4}
-            className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
-          />
-          <p className="mt-1 text-[10px] text-slate-400">v1 — paste polygon coords directly. Visual editor in v1.1.</p>
+          <div className="mb-1 flex items-center justify-between">
+            <label className="block text-[11px] uppercase tracking-wider text-slate-400">Region polygon</label>
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === 'visual' ? 'advanced' : 'visual'))}
+              className="text-[10px] text-slate-500 hover:text-slate-300"
+            >
+              {mode === 'visual' ? 'Advanced: raw JSON' : '← Back to visual editor'}
+            </button>
+          </div>
+          {mode === 'visual' ? (
+            <RegionPolygonEditor value={points} onChange={setPoints} existingRegions={regionsInWorld} />
+          ) : (
+            <>
+              <DraftedTextarea
+                lensId="kingdoms"
+                draftKey="newKingdomPolygon"
+                initial=""
+                onValueChange={setPolygon}
+                rows={4}
+                className="w-full rounded bg-slate-800 px-2 py-1 font-mono text-xs"
+              />
+              <p className="mt-1 text-[10px] text-slate-400">Raw [[x,z], …] pairs, 3+ vertices.</p>
+            </>
+          )}
         </div>
         {error && <div className="rounded bg-rose-950/40 px-2 py-1 text-sm text-rose-300">{error}</div>}
         <button

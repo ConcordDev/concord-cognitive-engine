@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Kel Sandren
+; Data: res://data/npcs/courier_kel_sandren/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="courier_kel_sandren" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "courier_kel_sandren"
+display_name = "Kel Sandren"
+title = "Crosswind Courier of the Concordant Hub"
+faction_id = "crosswind_couriers"
+archetype = "trader"
+world_id = "concordia-hub"
+body_color = Color(0.480, 0.360, 0.280, 1.0)
+accent_color = Color(0.700, 0.500, 0.250, 1.0)
+body_height = 1.72
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/courier_kel_sandren/dialogue-tree.json"
+schedule_path = "res://data/npcs/courier_kel_sandren/schedule.json"
+faction_affinity_path = "res://data/npcs/courier_kel_sandren/faction-affinity.json"
+

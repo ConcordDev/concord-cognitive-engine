@@ -231,11 +231,11 @@ export default function registerOperationRoutes(app, {
       // eslint-disable-next-line no-restricted-syntax
       const userId = req.user?.id || req.body?.userId || "anon"; // safe: target-identifier
 
-      // Security audit 2026-07-30: tier used to be read straight off
-      // req.body.tier. TIERS.SOVEREIGN bypasses the ingest queue for
-      // immediate processing, waives the domain blocklist, and lifts the
-      // per-day page cap to Infinity (emergent/ingest-engine.js) — any
-      // caller (auth'd or not, since userId itself falls back to an
+      // Security audit 2026-07-30: tier used to be read straight off the
+      // request body's `tier` field. TIERS.SOVEREIGN bypasses the ingest
+      // queue for immediate processing, waives the domain blocklist, and
+      // lifts the per-day page cap to Infinity (emergent/ingest-engine.js)
+      // — any caller (auth'd or not, since userId itself falls back to an
       // anonymous default above) could self-declare "sovereign" and get
       // all three. Tier must come from the real user record, never the
       // request body. There is no paid/researcher subscription concept
@@ -355,6 +355,132 @@ export default function registerOperationRoutes(app, {
       if (!mod?.addToBlocklist) return res.status(501).json({ ok: false, error: "Block not available" });
       mod.addToBlocklist(domain);
       return res.json({ ok: true, blocked: domain });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
+  // Ingest quality log — track rejected DTUs for analysis
+  app.get("/api/admin/ingest/quality", requireRole("owner", "admin", "founder"), asyncHandler(async (req, res) => {
+    try {
+      const db = STATE.db || req.app?.locals?.db;
+      if (!db) {
+        return res.status(501).json({ ok: false, error: "Database not available" });
+      }
+
+      const limit = Math.min(Math.max(1, parseInt(req.query.limit || 100)), 1000);
+      const sinceMs = parseInt(req.query.sinceMs || 0);
+      const sinceTs = sinceMs > 0 ? Date.now() - sinceMs : 0;
+      const feedId = req.query.feed ? String(req.query.feed).trim() : null;
+      const reason = req.query.reason ? String(req.query.reason).trim() : null;
+
+      // Build query
+      let sql = "SELECT * FROM ingest_quality_log WHERE 1=1";
+      const params = [];
+
+      if (sinceTs > 0) {
+        sql += " AND ts >= ?";
+        params.push(sinceTs);
+      }
+      if (feedId) {
+        sql += " AND feed_id = ?";
+        params.push(feedId);
+      }
+      if (reason) {
+        sql += " AND reject_reason = ?";
+        params.push(reason);
+      }
+
+      sql += " ORDER BY ts DESC LIMIT ?";
+      params.push(limit);
+
+      const stmt = db.prepare(sql);
+      const rows = stmt.all(...params);
+
+      // Count by reason
+      let reasonCounts = {};
+      const countSql = "SELECT reject_reason, COUNT(*) as cnt FROM ingest_quality_log WHERE 1=1";
+      const countParams = [];
+
+      if (sinceTs > 0) {
+        sql += " AND ts >= ?";
+        countParams.push(sinceTs);
+      }
+
+      const countStmt = db.prepare(countSql + " GROUP BY reject_reason");
+      const counts = countStmt.all();
+      for (const { reject_reason, cnt } of counts) {
+        reasonCounts[reject_reason] = cnt;
+      }
+
+      return res.json({
+        ok: true,
+        rows: rows || [],
+        reasonCounts,
+        limit,
+        sinceMs,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
+
+  // Compression audit — track tier promotion attempts and quality scores
+  app.get("/api/admin/compression/audit", requireRole("owner", "admin", "founder"), asyncHandler(async (req, res) => {
+    try {
+      const db = STATE.db || req.app?.locals?.db;
+      if (!db) {
+        return res.status(501).json({ ok: false, error: "Database not available" });
+      }
+
+      const limit = Math.min(Math.max(1, parseInt(req.query.limit || 100)), 1000);
+      const sinceMs = parseInt(req.query.sinceMs || 0);
+      const sinceTs = sinceMs > 0 ? Date.now() - sinceMs : 0;
+      const megaId = req.query.mega ? String(req.query.mega).trim() : null;
+      const passOnly = req.query.pass === 'true' ? 1 : (req.query.pass === 'false' ? 0 : null);
+
+      // Build query
+      let sql = "SELECT * FROM compression_audit WHERE 1=1";
+      const params = [];
+
+      if (sinceTs > 0) {
+        sql += " AND ts >= ?";
+        params.push(sinceTs);
+      }
+      if (megaId) {
+        sql += " AND target_mega_id = ?";
+        params.push(megaId);
+      }
+      if (passOnly !== null) {
+        sql += " AND pass = ?";
+        params.push(passOnly);
+      }
+
+      sql += " ORDER BY ts DESC LIMIT ?";
+      params.push(limit);
+
+      const stmt = db.prepare(sql);
+      const rows = stmt.all(...params);
+
+      // Count by pass/fail
+      const countStmt = db.prepare("SELECT pass, COUNT(*) as cnt FROM compression_audit GROUP BY pass");
+      const counts = countStmt.all();
+      let passCounts = { passed: 0, failed: 0 };
+      for (const { pass, cnt } of counts) {
+        if (pass) {
+          passCounts.passed = cnt;
+        } else {
+          passCounts.failed = cnt;
+        }
+      }
+
+      return res.json({
+        ok: true,
+        rows: rows || [],
+        passCounts,
+        limit,
+        sinceMs,
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e?.message || e) });
     }
@@ -948,6 +1074,185 @@ export default function registerOperationRoutes(app, {
             : "disabled",
         },
       });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  // ── Sprint 32 E6 — Binary Attachments Endpoints ────────────────────────
+
+  // POST /api/dtus/:id/attach — Upload file attachment
+  app.post('/api/dtus/:id/attach', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const ctx = makeCtx(req);
+      const { db } = ctx;
+      if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
+
+      // Check authorization
+      const dtu = db.prepare('SELECT id FROM dtu_store WHERE id = ?').get(id);
+      if (!dtu) return res.status(404).json({ ok: false, error: 'dtu_not_found' });
+
+      const { putAttachment } = await import('../lib/dtu-attachment.js');
+
+      // Get file from multipart (simplified: expect single file in req.files or buffer in body)
+      if (!req.file) {
+        return res.status(400).json({ ok: false, error: 'no_file' });
+      }
+
+      const result = await putAttachment(db, {
+        dtu_id: id,
+        filename: req.file.originalname,
+        bytes: req.file.buffer,
+        source: 'upload',
+      });
+
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  // GET /api/dtus/:id/attachments — List attachments metadata
+  app.get('/api/dtus/:id/attachments', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const ctx = makeCtx(req);
+      const { db } = ctx;
+      if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
+
+      const { listAttachments } = await import('../lib/dtu-attachment.js');
+      const attachments = await listAttachments(db, id);
+
+      res.json({ ok: true, attachments, count: attachments.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  // GET /api/dtus/:id/attachment/:sha256 — Stream attachment bytes
+  app.get('/api/dtus/:id/attachment/:sha256', async (req, res) => {
+    try {
+      const { id, sha256 } = req.params;
+      const ctx = makeCtx(req);
+      const { db } = ctx;
+      if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
+
+      const { getAttachment, kindToMime } = await import('../lib/dtu-attachment.js');
+      const attachment = await getAttachment(db, { dtu_id: id, sha256 });
+
+      res.setHeader('Content-Type', attachment.mime || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename || 'attachment'}"`);
+      res.send(attachment.bytes);
+    } catch (e) {
+      res.status(404).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  // GET /api/dtus/:id/export.dtu — Export DTU + attachments as .dtu archive
+  app.get('/api/dtus/:id/export.dtu', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const ctx = makeCtx(req);
+      const { db } = ctx;
+      if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
+
+      const dtu = db.prepare('SELECT * FROM dtu_store WHERE id = ?').get(id);
+      if (!dtu) return res.status(404).json({ ok: false, error: 'dtu_not_found' });
+
+      const { packDtu } = await import('../lib/dtu-archive-v2.js');
+      const { listAttachments } = await import('../lib/dtu-attachment.js');
+
+      // Get attachments
+      const attachments = await listAttachments(db, id);
+      const attachmentDetails = attachments.map((att) => {
+        const row = db.prepare('SELECT * FROM dtu_attachments WHERE dtu_id = ? AND sha256 = ?').get(id, att.sha256);
+        return row;
+      });
+
+      // Parse DTU payload
+      let payload = dtu.payload_bytes || dtu.data;
+      const dtuObj = typeof dtu.data === 'string' ? JSON.parse(dtu.data) : dtu;
+
+      const archive = await packDtu({
+        dtu: dtuObj,
+        payload,
+        attachments: attachmentDetails,
+      });
+
+      // Record in dtu_archives for audit
+      try {
+        const now = Date.now();
+        const archiveSha = require('crypto').createHash('sha256').update(archive).digest('hex');
+        db.prepare(`
+          INSERT OR REPLACE INTO dtu_archives (dtu_id, archive_sha256, archive_size, attachment_count, payload_kind, packed_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(id, archiveSha, archive.length, attachmentDetails.length, dtu.payload_kind || 'text', now);
+      } catch (e) {
+        // Ignore archive audit error
+      }
+
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${id}.dtu"`);
+      res.send(archive);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  });
+
+  // POST /api/dtus/import.dtu — Import a .dtu archive
+  app.post('/api/dtus/import.dtu', async (req, res) => {
+    try {
+      const ctx = makeCtx(req);
+      const { db } = ctx;
+      if (!db) return res.status(500).json({ ok: false, error: 'db_unavailable' });
+
+      if (!req.file) {
+        return res.status(400).json({ ok: false, error: 'no_file' });
+      }
+
+      const { unpackDtu } = await import('../lib/dtu-archive-v2.js');
+      const { putAttachment } = await import('../lib/dtu-attachment.js');
+
+      const unpacked = await unpackDtu(req.file.buffer);
+
+      // Validate signature
+      if (!unpacked.signature.manifest_sha256 || !unpacked.signature.payload_sha256) {
+        return res.status(400).json({ ok: false, error: 'invalid_signature' });
+      }
+
+      // Store the DTU
+      const dtuId = unpacked.dtu.id || `imported_${Date.now()}`;
+      db.prepare(`
+        INSERT OR REPLACE INTO dtu_store (id, title, tier, scope, tags, source, created_at, updated_at, data, payload_bytes, payload_kind)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        dtuId,
+        unpacked.dtu.title,
+        unpacked.dtu.tier || 'regular',
+        unpacked.dtu.scope || 'global',
+        JSON.stringify(unpacked.dtu.tags || []),
+        unpacked.dtu.source ? JSON.stringify(unpacked.dtu.source) : 'import.dtu',
+        unpacked.dtu.created_at || new Date().toISOString(),
+        unpacked.dtu.updated_at || new Date().toISOString(),
+        JSON.stringify(unpacked.dtu),
+        unpacked.payload,
+        unpacked.dtu.payload_kind || 'text'
+      );
+
+      // Restore attachments
+      for (const att of unpacked.attachments || []) {
+        if (att.bytes) {
+          await putAttachment(db, {
+            dtu_id: dtuId,
+            filename: att.filename,
+            bytes: att.bytes,
+            source: 'import.dtu',
+          });
+        }
+      }
+
+      res.json({ ok: true, dtuId, attachmentCount: (unpacked.attachments || []).length });
     } catch (e) {
       res.status(500).json({ ok: false, error: String(e?.message || e) });
     }

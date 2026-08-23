@@ -8,6 +8,7 @@ import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -506,7 +507,10 @@ export default function AppMakerLens() {
             </button>
           </div>
         ) : apps.length === 0 ? (
-          <p className="text-sm text-gray-400">No apps yet. Create your first one above.</p>
+          <div className="text-center py-6">
+            <SvgIcon name="blueprint" size={56} className="mx-auto mb-3 text-gray-600" />
+            <p className="text-sm text-gray-400">No apps yet. Create your first one above.</p>
+          </div>
         ) : (() => {
           const visible = apps.filter((a) => {
             const q = appSearch.trim().toLowerCase();

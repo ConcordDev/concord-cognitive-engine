@@ -248,7 +248,16 @@ export function DilemmaPanel() {
             <textarea value={dilemma} onChange={(e) => setDilemma(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-purple-400/40 resize-none" placeholder="The trolley diverts onto five people you don't know vs. one you love..." />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Premises (one per line)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold block">Premises (one per line)</label>
+              <button
+                type="button"
+                onClick={() => { setPremisesText('All humans are mortal.\nSocrates is a human.'); setConclusion('Socrates is mortal.'); }}
+                className="text-[10px] text-purple-400 hover:text-purple-300"
+              >
+                Try example
+              </button>
+            </div>
             <textarea value={premisesText} onChange={(e) => setPremisesText(e.target.value)} rows={3} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white focus:outline-none focus:ring-2 focus:ring-purple-400/40 resize-none font-mono" placeholder="All humans are mortal.&#10;Socrates is a human." />
           </div>
           <div>

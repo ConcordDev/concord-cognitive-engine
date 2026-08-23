@@ -22,6 +22,8 @@ import { DevToolingPulse } from "@/components/dx-platform/DevToolingPulse";
 import { DxWorkbench } from "@/components/dx-platform/DxWorkbench";
 import { SeverityWeightsPanel } from "@/components/dx-platform/SeverityWeightsPanel";
 import { ShadowsPanel } from "@/components/dx-platform/ShadowsPanel";
+import { IdeWindowChrome } from "@/components/dx-platform/IdeWindowChrome";
+import { JsonSyntaxBlock } from "@/components/dx-platform/JsonSyntaxBlock";
 
 interface OnboardingProgress {
   installed?: { vscode?: boolean; jetbrains?: boolean };
@@ -73,6 +75,25 @@ export default function DxPlatformPage() {
             sign in once via your browser, and the rest is automatic.
           </p>
         </header>
+
+        {/* Real IDE-chrome visual identity — this product IS an editor
+            extension, so its landing page should read as one. The JSON
+            snippet is a real, hand-written example of the exact shape
+            dx.weighted_findings returns (server/lib/dx/severity-evo.js),
+            explicitly labeled as illustrative, not live/personalized data. */}
+        <IdeWindowChrome title="Concord DX — VS Code" tabs={[{ label: 'detector-output.json', active: true }, { label: 'settings.json' }]}>
+          <JsonSyntaxBlock
+            value={{
+              id: 'no-unused-vars:src/api/client.ts:42',
+              category: 'code-quality',
+              severity: 'high',
+              _baseSeverity: 'medium',
+              _codebaseWeight: 1.6,
+              message: 'Unused import "legacyFetch" — dead since the fetch-wrapper migration',
+            }}
+            caption="Example detector finding — shape matches what streams to your editor via dx.weighted_findings. Not live data."
+          />
+        </IdeWindowChrome>
 
         {/* Step-by-step onboarding */}
         <section aria-labelledby="onboarding-heading" className="space-y-3">

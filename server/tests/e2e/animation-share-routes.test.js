@@ -282,15 +282,20 @@ describe('E2E — animation public share viewer (/api/animation/share/:token)', 
     assert.ok(typeof noDownloadToken === 'string' && noDownloadToken.length > 0);
   });
 
-  after(function() {
-    const stopped = stopServer(serverProc);
+  after(async function() {
+    // Await the server's real exit BEFORE removing its data dir — rmSync
+    // previously ran synchronously right after kicking off the (unawaited)
+    // stopServer() promise, racing the still-alive server process, which was
+    // still writing SQLite -wal/-shm files into dataDir. rmSync's recursive
+    // directory walk would then throw ENOTEMPTY when a file reappeared
+    // between its readdir and unlink calls. force:true only suppresses a
+    // MISSING path (ENOENT), not this "still being written to" race.
+    await stopServer(serverProc);
     // Remove the spawned server's data dir. Each of these e2e tests boots a
     // REAL server against a fresh mkdtemp dir that migrates a full ~118MB
     // SQLite DB. Without this the dir outlives the run, so one full suite
     // stranded ~800MB in /tmp and twice filled the disk mid-run.
-    // force:true so a missing dir can never fail teardown.
     rmSync(dataDir, { recursive: true, force: true });
-    return stopped;
   });
 
   // ── (a) a valid token views the EXACT animation it was issued for, with

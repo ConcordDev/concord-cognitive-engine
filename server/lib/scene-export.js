@@ -1,3 +1,4 @@
+import { enrichScene } from "./scene-asset-enricher.js";
 // server/lib/scene-export.js
 //
 // Engine Bridge (#29) — serializes the REAL world geometry (world_buildings:
@@ -54,9 +55,202 @@ import { listDistricts, pointInPolygon, polygonArea } from "./districts.js";
 import { buildingPurposeForType, landingPadsForWorld } from "./building-purpose.js";
 import { scatterVegetationForWorld } from "./vegetation-scatter.js";
 
-export const SCENE_FORMAT = "concord-scene/v1";
+// v2: exportScene() below unconditionally routes its result through
+// scene-asset-enricher.js#enrichScene (per-client hints, asset URLs,
+// portals, unity assets), which stamps its own output `format:
+// 'concord-scene/v2'` — this constant must agree with that real,
+// always-on behavior rather than describe the pre-enrichment shape.
+export const SCENE_FORMAT = "concord-scene/v2";
+
+/** Hub world that owns the Unburned Court + Ring of Doors tableau. */
+export const HUB_WORLD_ID = "concordia-hub";
+
+/**
+ * Godot client scene path for the authored Three Pillars / Ring of Doors hub
+ * level (world-lens-godot/scenes/concordia-hub.tscn). Surfaced on exportScene
+ * so a Godot client can load()/instance() it without the server fabricating
+ * mesh bytes — the .tscn is the source of truth.
+ */
+export const HUB_SCENE_PATH = "res://scenes/concordia-hub.tscn";
+
+/**
+ * Child tableau path (also shipped under server/godot/scenes/ for non-client
+ * tooling). The hub level instances this as a child; exportScene names it so
+ * consumers that only want the triangle can load it directly.
+ */
+export const THREE_PILLARS_SCENE_PATH = "res://scenes/concordia-three-pillars.tscn";
+
+/**
+ * The eight Concord Link gates on the Ring of Doors (LORE_BIBLE section 4).
+ * Order is stable and clockwise starting at +Z (north), matching the hub
+ * .tscn embassy placeholders. Sere is intentionally absent — extra-canonical.
+ */
+export const RING_OF_DOORS_WORLD_IDS = Object.freeze([
+  "fantasy",
+  "cyber",
+  "crime",
+  "superhero",
+  "tunya",
+  "concord-link-frontier",
+  "lattice-crucible",
+  "sovereign-ruins",
+]);
 
 const round = (v) => Math.round((Number(v) || 0) * 1000) / 1000;
+
+/**
+ * Author the Unburned Court + Ring of Doors + Three Pillars as concord-scene/v1
+ * nodes for concordia-hub. Pure function of worldId — no DB, never fabricates
+ * nodes for any other world (returns []). Canon layout (LORE_BIBLE section 1):
+ *   - Unburned Court ring on XZ, radius 5.2
+ *   - Three Pillars equilateral triangle inside the ring
+ *   - Eight embassy placeholders on a wider Ring of Doors (radius 14)
+ * Ground is a marker only — the hub ground refuses violence; clients MUST NOT
+ * put combat colliders on it (see concordia-hub.tscn).
+ */
+export function hubTableauNodes(worldId) {
+  if (worldId !== HUB_WORLD_ID) return [];
+
+  const nodes = [];
+
+  // Court ground — visual/marker only. extras.noCombatCollider is the contract
+  // the Godot hub scene honors (StaticBody omitted on this mesh).
+  nodes.push({
+    id: "hub:unburned-court-ground",
+    type: "unburned_court_ground",
+    name: "Unburned Court",
+    material: "living_soil",
+    transform: {
+      translation: [0, -0.04, 0],
+      rotationY: 0,
+      scale: [16, 0.08, 16],
+    },
+    extras: {
+      state: "standing",
+      floors: 1,
+      health: 1,
+      purpose: "The ground that is Concordia — refuses violence",
+      noCombatCollider: true,
+      hubFeature: "unburned_court",
+    },
+  });
+
+  nodes.push({
+    id: "hub:unburned-court-ring",
+    type: "unburned_court_ring",
+    name: "Unburned Court Ring",
+    material: "gold_bronze",
+    transform: {
+      translation: [0, 0.01, 0],
+      rotationY: 0,
+      scale: [10.4, 0.04, 10.4],
+    },
+    extras: {
+      state: "standing",
+      floors: 1,
+      health: 1,
+      purpose: "Ring marking the Unburned Court",
+      noCombatCollider: true,
+      hubFeature: "unburned_court_ring",
+      radius: 5.2,
+    },
+  });
+
+  // Three Pillars — positions match server/godot/scenes/concordia-three-pillars.tscn
+  // and LORE_BIBLE section 1. rotationY aims each figure per Godot -Z look convention.
+  const pillars = [
+    {
+      id: "hub:pillar-concordia",
+      godId: "concordia",
+      name: "Concordia — First Breath",
+      material: "warm_brown",
+      translation: [0, 0, 2.887],
+      rotationY: Math.PI / 2,
+      title: "The First Breath",
+      temperament: "warm_reckless_abundant",
+    },
+    {
+      id: "hub:pillar-concord",
+      godId: "concord",
+      name: "Concord — First Law",
+      material: "cold_blue",
+      translation: [-2.5, 0, -1.443],
+      rotationY: Math.PI / 6,
+      title: "The First Law",
+      temperament: "cold_analytical_obsessive",
+    },
+    {
+      id: "hub:pillar-sovereign",
+      godId: "the_sovereign",
+      name: "The Sovereign — First Refusal",
+      material: "void_dark",
+      translation: [2.5, 0, -1.443],
+      rotationY: -Math.PI / 2,
+      title: "The First Refusal",
+      temperament: "asshole_with_one_soft_spot",
+    },
+  ];
+
+  for (const p of pillars) {
+    nodes.push({
+      id: p.id,
+      type: "three_pillars_figure",
+      name: p.name,
+      material: p.material,
+      transform: {
+        translation: [round(p.translation[0]), round(p.translation[1]), round(p.translation[2])],
+        rotationY: round(p.rotationY),
+        scale: [0.7, 1.8, 0.7],
+      },
+      extras: {
+        state: "standing",
+        floors: 1,
+        health: 1,
+        purpose: p.title,
+        hubFeature: "three_pillars",
+        godId: p.godId,
+        title: p.title,
+        temperament: p.temperament,
+        noCombatCollider: true,
+        scenePath: THREE_PILLARS_SCENE_PATH,
+      },
+    });
+  }
+
+  // Ring of Doors — eight embassy placeholders, clockwise from +Z (north).
+  const ringRadius = 14;
+  for (let i = 0; i < RING_OF_DOORS_WORLD_IDS.length; i++) {
+    const world = RING_OF_DOORS_WORLD_IDS[i];
+    const angle = (i / RING_OF_DOORS_WORLD_IDS.length) * Math.PI * 2;
+    // +Z north at i=0; clockwise in XZ (x = sin, z = cos)
+    const x = Math.sin(angle) * ringRadius;
+    const z = Math.cos(angle) * ringRadius;
+    // Face inward toward court center: yaw so -Z points toward origin.
+    const rotationY = Math.atan2(-x, -z);
+    nodes.push({
+      id: `hub:embassy-${world}`,
+      type: "ring_of_doors_embassy",
+      name: `Embassy — ${world}`,
+      material: "gate_stone",
+      transform: {
+        translation: [round(x), 0, round(z)],
+        rotationY: round(rotationY),
+        scale: [3, 4, 2],
+      },
+      extras: {
+        state: "standing",
+        floors: 1,
+        health: 1,
+        purpose: `Ring of Doors embassy gate for ${world}`,
+        hubFeature: "ring_of_doors",
+        targetWorldId: world,
+        noCombatCollider: true,
+      },
+    });
+  }
+
+  return nodes;
+}
 
 /**
  * Export a world's buildings as a scene graph.
@@ -109,7 +303,7 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     };
   });
 
-  const bounds = nodes.length
+  let bounds = nodes.length
     ? { min: [round(minX), 0, round(minZ)], max: [round(maxX), round(maxY), round(maxZ)] }
     : null;
 
@@ -195,7 +389,70 @@ export function exportScene(db, worldId, { includeCollapsed = false } = {}) {
     vegetation = [];
   }
 
-  return { ok: true, format: SCENE_FORMAT, worldId, nodes, bounds, count: nodes.length, districts, plaza, landingPads, vegetation };
+  // Additive (audit v4 proposal #3) — Unburned Court / Three Pillars / Ring of
+  // Doors tableau for concordia-hub only. Concatenated onto building nodes so
+  // existing consumers keep working; empty for every other world.
+  let hubNodes = [];
+  try {
+    hubNodes = hubTableauNodes(worldId);
+  } catch {
+    hubNodes = [];
+  }
+  if (hubNodes.length) {
+    nodes.push(...hubNodes);
+    // Expand bounds to include hub tableau if buildings alone were empty/narrow.
+    let minX = bounds ? bounds.min[0] : Infinity;
+    let maxX = bounds ? bounds.max[0] : -Infinity;
+    let minZ = bounds ? bounds.min[2] : Infinity;
+    let maxZ = bounds ? bounds.max[2] : -Infinity;
+    let maxY = bounds ? bounds.max[1] : 0;
+    for (const n of hubNodes) {
+      const t = n.transform?.translation || [0, 0, 0];
+      const s = n.transform?.scale || [1, 1, 1];
+      const x = Number(t[0]) || 0, y = Number(t[1]) || 0, z = Number(t[2]) || 0;
+      const w = Number(s[0]) || 1, h = Number(s[1]) || 1, d = Number(s[2]) || 1;
+      if (x - w / 2 < minX) minX = x - w / 2;
+      if (x + w / 2 > maxX) maxX = x + w / 2;
+      if (z - d / 2 < minZ) minZ = z - d / 2;
+      if (z + d / 2 > maxZ) maxZ = z + d / 2;
+      if (y + h > maxY) maxY = y + h;
+    }
+    bounds = {
+      min: [round(minX), 0, round(minZ)],
+      max: [round(maxX), round(maxY), round(maxZ)],
+    };
+  }
+
+  const result = {
+    ok: true,
+    format: SCENE_FORMAT,
+    worldId,
+    nodes,
+    bounds,
+    count: nodes.length,
+    districts,
+    plaza,
+    landingPads,
+    vegetation,
+  };
+
+  // Godot scenePath hint — only for the hub, where an authored .tscn exists.
+  // Clients that understand it can instance the real tableau; others ignore.
+  if (worldId === HUB_WORLD_ID) {
+    result.scenePath = HUB_SCENE_PATH;
+    result.tableauScenePath = THREE_PILLARS_SCENE_PATH;
+  }
+
+  // Hybrid client enrichment: combat styles, asset URLs, soundscape, etc.
+  // This adds 3-client descriptor (Three.js + Godot + Unity) to every scene
+  // export. Wrapped in try/catch so a missing/wrong module doesn't break
+  // existing scene export behavior.
+  try {
+    const enriched = enrichScene(result, worldId);
+    return enriched;
+  } catch {
+    return result;
+  }
 }
 
 /** Cheap stats without building the whole node list. */
@@ -210,4 +467,13 @@ export function sceneStats(db, worldId) {
   }
 }
 
-export default { exportScene, sceneStats, SCENE_FORMAT };
+export default {
+  exportScene,
+  sceneStats,
+  SCENE_FORMAT,
+  HUB_WORLD_ID,
+  HUB_SCENE_PATH,
+  THREE_PILLARS_SCENE_PATH,
+  RING_OF_DOORS_WORLD_IDS,
+  hubTableauNodes,
+};

@@ -1,0 +1,12 @@
+{
+  "npc_id": "lord_curator_asbir_thelane",
+  "primary_faction": "concordant_curators",
+  "default": 0.0,
+  "affinities": {
+    "concordant_curators": 0.9,
+    "concordant_watch": 0.4,
+    "bazaar_consortium": 0.2,
+    "refusal_keep": 0.3
+  },
+  "notes": {}
+}

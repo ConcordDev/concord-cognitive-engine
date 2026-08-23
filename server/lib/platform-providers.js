@@ -38,7 +38,7 @@
 // tradeoff — it only routes; the disclosure is enforced at the UI/consent
 // layer, not here.
 import { providerChat, BYO_PROVIDERS } from "./byo-providers.js";
-import { consumePlatformToken, recordPlatformSpendEstimate } from "./platform-providers-budget.js";
+import { consumePlatformToken, recordPlatformSpendEstimate, setExternalCooldown } from "./platform-providers-budget.js";
 
 const VALID_SLOTS = ["conscious", "subconscious", "utility", "repair", "vision"];
 
@@ -126,6 +126,23 @@ export async function platformProviderChat({ slot, messages, opts = {} }) {
   }
 
   const r = await providerChat({ provider, apiKey, slot, modelId: null, messages, opts });
+
+  // Upstream 429 / 402 / 503 with Retry-After — record the cooldown so the
+  // NEXT call to this (provider, slot) fails fast through
+  // consumePlatformToken() instead of consuming a bucket token only to be
+  // rejected again. The provider's quota is the source of truth on its own
+  // limits; the token bucket below us is just a local pre-filter.
+  //
+  // We only have the error string as a signal (provider adapters encode
+  // status into the string, see server/lib/byo-providers.js). Parse it for
+  // "<providerName>_429" (Groq/Mistral/anthropic/openai/google all use this
+  // shape). We can't see the original Retry-After header without touching
+  // every adapter, so we default to a 30s cooldown that's long enough to
+  // let the provider's window reset but short enough to recover quickly.
+  if (!r.ok && typeof r.error === "string" && /_(429|402|503):/i.test(r.error)) {
+    const RETRY_AFTER_FALLBACK_MS = 30_000;
+    setExternalCooldown(provider, slot, Date.now() + RETRY_AFTER_FALLBACK_MS);
+  }
 
   // Visibility-only spend estimate — never gates, admin diagnostic only.
   // No verified per-token $ figures for these three providers were

@@ -1,4 +1,5 @@
 // server/lib/godot-gateway.js
+import { encodeFrame, decodeFrame, isBinaryFrame, encodeMove, decodeMove } from './binary-protocol.js';
 //
 // Godot Integration Phase 1 — raw-WebSocket gateway for a native Godot 4 world
 // client. This is a SELF-CONTAINED module: it imports nothing from server.js and
@@ -7,11 +8,8 @@
 // stub deps and mounted into the monolith later without touching this file.
 //
 // ── Honest-by-construction notes ────────────────────────────────────────────
-//  * `ws` is imported below. It is currently present at server/node_modules/ws
-//    (v8.21.0) only as a TRANSITIVE dependency (pulled in via engine.io). This
-//    module uses it, but does NOT install it. INTEGRATION TODO: the orchestrator
-//    MUST declare `ws` in server/package.json "dependencies" before this module
-//    is mounted, or a future `npm prune`/dedupe could remove it. See
+//  * `ws` is imported below. It is pinned in server/package.json dependencies
+//    (`"ws": "^8.21.2"`) — no longer a bare transitive. See
 //    docs/GODOT_INTEGRATION.md.
 //  * This module is DEAD CODE until mounted in server.js — nothing here runs at
 //    boot on its own. Mounting is a later integration step (by design).
@@ -92,21 +90,38 @@ export function mountGodotGateway(httpServer, deps = {}) {
   // Monotonic outbound sequence, mirrors server.js's _eventSeqCounter.
   let gatewaySeq = 0;
 
-  // ── Outbound envelope ─────────────────────────────────────────────────────
+  
+/**
+ * Detect binary-encoded move payload (has playerId, x, y, z, seq, ts at top level)
+ */
+function isBinaryMovePayload(p) {
+  return p && typeof p === 'object' && typeof p.playerId === 'string'
+    && typeof p.x === 'number' && typeof p.y === 'number' && typeof p.z === 'number'
+    && typeof p.seq === 'number';
+}
+
+// ── Outbound envelope ─────────────────────────────────────────────────────
   // Every frame: { evt, data: { ...payload, ts, _seq, _evt } }. Reserved fields
   // mirror event-shapes.js RESERVED (ts/_seq/_rid/_evt); _rid omitted in Phase 1.
-  function send(ws, evt, payload = {}) {
+  function send(ws, evt, payload = {}, opts = {}) {
     if (!ws || ws.readyState !== ws.OPEN) return false;
-    let frame;
     try {
-      frame = JSON.stringify({
+      // Binary fast-path: when caller opts in (player:move) or client has
+      // signaled binary support (ws._concordBinary = true), encode frame
+      // without touching JSON.stringify on the 30Hz hot path.
+      if (opts.binary || ws._concordBinary) {
+        const buf = encodeFrame(opts.binary || 'evt', {
+          evt,
+          data: { ...payload, ts: new Date().toISOString(), _seq: ++gatewaySeq, _evt: evt },
+        });
+        ws.send(buf, { binary: true });
+        return true;
+      }
+      // JSON fallback for clients not yet on binary
+      const frame = JSON.stringify({
         evt,
         data: { ...payload, ts: new Date().toISOString(), _seq: ++gatewaySeq, _evt: evt },
       });
-    } catch {
-      return false;
-    }
-    try {
       ws.send(frame);
       return true;
     } catch {
@@ -193,8 +208,9 @@ export function mountGodotGateway(httpServer, deps = {}) {
     }
 
     if (apiKey) {
-      // apiKey auth only if the integration wired the injected verifier.
-      // INTEGRATION TODO: pass verifyApiKeyPair (AuthDB.getAllApiKeys + verifyApiKey).
+      // apiKey auth only if the integration wired the injected verifier
+      // (server.js mounts verifyApiKeyPair = AuthDB.getAllApiKeys + verifyApiKey).
+      // Without it (standalone unit tests), return an honest unavailable reason.
       if (typeof verifyApiKeyPair !== "function") {
         return { ok: false, reason: "api_key_auth_unavailable" };
       }
@@ -249,7 +265,20 @@ export function mountGodotGateway(httpServer, deps = {}) {
 
     let msg;
     try {
-      msg = JSON.parse(raw.toString());
+      // Binary fast-path: if the first byte isn't '{' treat as length-prefixed binary frame
+      const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+      if (isBinaryFrame(buf)) {
+        const decoded = decodeFrame(buf);
+        if (!decoded) {
+          send(client.ws, "error", { reason: "malformed_binary" });
+          return;
+        }
+        msg = decoded.payload;
+        // Mark client as binary-capable for future sends (saves JSON.stringify on hot path)
+        client.ws._concordBinary = true;
+      } else {
+        msg = JSON.parse(buf.toString());
+      }
     } catch {
       send(client.ws, "error", { reason: "malformed_json" });
       return; // survive
@@ -257,6 +286,12 @@ export function mountGodotGateway(httpServer, deps = {}) {
     if (!msg || typeof msg !== "object") {
       send(client.ws, "error", { reason: "malformed_json" });
       return;
+    }
+
+    // For binary move packets, decoded.payload IS the move struct (no evt/data wrapper)
+    if (isBinaryMovePayload(msg)) {
+      client.ws._lastBinaryMove = msg;
+      msg = { evt: "player:move", data: msg };
     }
 
     const evt = typeof msg.evt === "string" ? msg.evt : null;

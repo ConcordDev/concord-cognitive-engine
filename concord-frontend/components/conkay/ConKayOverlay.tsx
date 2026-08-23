@@ -31,7 +31,7 @@ import { detectArtifact } from '@/lib/conkay/artifact-kinds';
 import { isMutatingMacro } from '@/lib/conkay/mutating-macros';
 import { ConKayActionConfirm } from './ConKayActionConfirm';
 import { ConKayCockpit } from './ConKayCockpit';
-import { CONKAY_SIGNATURE_GREETING, type ConKayState } from './conkay-persona';
+import { CONKAY_SIGNATURE_GREETING, CONKAY_PERSONA_PROMPT, type ConKayState } from './conkay-persona';
 import { getLensById } from '@/lib/lens-registry';
 import { lensRun } from '@/lib/api/client';
 import type { CapabilityVerdict } from '@/components/common/CapabilityBadge';
@@ -755,7 +755,11 @@ export function ConKayOverlay() {
       const res = await fetch(`${base}/api/chat-agent/stream`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history }),
+        // `persona` — server threads this into runAgentLoop's
+        // opts.extraSystemBlock (see routes/chat-agent-stream.js). Without
+        // it this call ran as the generic, personality-less "Agent Mode"
+        // identity shared with LensAgentPanel.tsx's per-lens agent — not Kay.
+        body: JSON.stringify({ message: text, history, persona: CONKAY_PERSONA_PROMPT }),
       });
       const reader = res.body?.getReader();
       if (!res.ok || !reader) {

@@ -12,7 +12,8 @@ import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensNav } from '@/hooks/useLensNav';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import { Landmark, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calculator, ChevronDown, ChevronRight } from 'lucide-react';
+import { Icon } from '@/components/icons/Icon';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
@@ -95,7 +96,7 @@ export default function AccountingLensPage() {
         {/* Header */}
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
-            <Landmark className="w-7 h-7 text-green-400" />
+            <Icon name="ledger" size={28} className="text-green-400" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className={ds.heading1}>Accounting &amp; Finance</h1>

@@ -92,6 +92,12 @@ export const ALLOWLIST = [
     reason:
       "nav delay: 900ms hold before a skill-driven navigation so the spoken/render beat is seen before the page changes (not work animation)",
   },
+  {
+    file: "concord-frontend/components/conkay/useConkayContextBudget.ts",
+    snippet: "timer = setInterval(fetchOnce, intervalMs);",
+    reason:
+      "real-data poll, not animation: re-fetches the actual /api/chat/context-budget/:sessionId endpoint on an adaptive cadence (5s over-threshold, 30s otherwise); the rendered badge is pure derived state from that real payload, and the hook self-reports 'unreachable' on any fetch failure rather than faking a value — no progress/percentage is animated on this clock.",
+  },
 ];
 
 // ---------------------------------------------------------------------------

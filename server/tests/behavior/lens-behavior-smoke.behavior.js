@@ -35,6 +35,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { isFallthroughMasking } from "../../lib/macro-contract.js";
+import { registerServerCleanExit } from "../lib/server-clean-exit.js";
 
 // Top-level await — Node ESM supports it. Importing the server triggers
 // every register() / registerLensAction() call so MACROS is fully populated
@@ -42,6 +43,15 @@ import { isFallthroughMasking } from "../../lib/macro-contract.js";
 const mod = await import("../../server.js");
 const { __TEST__ } = mod;
 if (!__TEST__) throw new Error("server.js did not export __TEST__");
+
+// This file boots the real server.js directly (same shape as the 13 other
+// registerServerCleanExit callers) but, uniquely among them, had no after()
+// teardown at all — so the ref'd governor heartbeat interval + pooled
+// worker threads kept the process alive forever after every test had
+// already passed, hanging `npm run test:behavior` indefinitely with no
+// failure ever reported. See server-clean-exit.js's doc comment for the
+// full root-cause history of this exact hang shape.
+registerServerCleanExit(() => __TEST__);
 
 const { MACROS, runMacro, makeInternalCtx } = __TEST__;
 if (!(MACROS instanceof Map)) throw new Error("__TEST__.MACROS must be a Map");

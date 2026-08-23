@@ -1,13 +1,14 @@
 # Godot World-Lens Integration
 
-**Status: Phase 3 — bidirectional, mounted, auth-complete.** The gateway is
-mounted in `server/server.js` (`mountGodotGateway(server, ...)`, gated on
-`if (server)`, right after `tryInitWebSockets`), mirrors `realtimeEmit` /
-`emitToWorld` outbound into Godot rooms, dispatches inbound `player:move` /
-`player:mode` frames through the same server-authoritative logic the
-socket.io path uses, and accepts both bearer-token and real API-key auth. See
-[Integration TODO](#integration-todo) for what's done vs. still open (rate
-limiting per-client tuning, `combat:attack` dispatch).
+**Status: Phase 4 — bidirectional, mounted, auth-complete, combat wired.** The
+gateway is mounted in `server/server.js` (`mountGodotGateway(server, ...)`,
+gated on `if (server)`, right after `tryInitWebSockets`), mirrors `realtimeEmit`
+/ `emitToWorld` outbound into Godot rooms (including the ~100ms `city:positions`
+aggregate from `city-presence.js`), dispatches inbound `player:move` /
+`player:mode` / `combat:attack` / `combat:dodge` through the same
+server-authoritative logic the socket.io path uses, applies a move-specific
+~30Hz (33ms) cadence gate matching the browser path, and accepts both
+bearer-token and real API-key auth. See [Integration TODO](#integration-todo).
 
 ---
 
@@ -146,29 +147,38 @@ cityPresence's real anti-cheat ran, not a stub), and a `player:mode` round
 trip (legitimate `sprint` acks; an unowned `mount:*` claim nacks
 `not_mounted`).
 
-Server → client `city:positions` snapshots (~100Hz aggregate, ~100ms cadence)
-consumed by `snapshot_buffer.gd` remain **NOT built** — the gateway mirrors
-individual `realtimeEmit`/`emitToWorld` events, not a dedicated aggregate
-snapshot stream.
+Server → client `city:positions` snapshots (~10Hz aggregate, ~100ms cadence)
+are already produced by `city-presence.js#startPresenceBroadcast` and mirrored
+into Godot `world:<id>` rooms via `realtimeEmit` → `_godotGatewayEmitter`.
+`snapshot_buffer.gd` (RENDER_DELAY_MS=120) consumes them — no second
+interpolation clock, no dedicated Godot-only aggregate stream.
 
 ### Per-client rate limiting
 
-Built in Phase 1 as a generic per-client token bucket (`rateLimitPerSec`/
-`rateLimitBurst`, keyed by `userId` once authenticated) gating `handleMessage`
-for every event including `player:move`/`player:mode` — this is coarser than
-the socket.io path's dedicated ~30Hz (33ms) `player:move`-specific gate, which
-is a real (small) behavior difference: a Godot client's move-frame cadence is
-capped by the generic 20/sec-sustained bucket rather than a move-specific
-30Hz one. See Honest caveats.
+Two layers, matching the socket.io path:
+
+1. **Generic token bucket** (Phase 1) — `rateLimitPerSec`/`rateLimitBurst`
+   (default 20/s sustained, burst 30), keyed by `userId` once authenticated,
+   gates every inbound frame in `handleMessage` (auth/room/scene/unknown).
+2. **`player:move`-specific ~30Hz gate** (audit v4 proposal #2) —
+   `lib/godot-move-rate.js` (`GODOT_MOVE_MIN_INTERVAL_MS = 33`), applied inside
+   `_onGodotClientMessage` **before** `applyPlayerMove`. Silent drop on excess,
+   same as the browser path's `_moveRateState`. Unit-tested in
+   `tests/godot-move-rate.test.js`.
 
 ## Files
 
 | File | Role |
 |---|---|
 | `server/lib/godot-gateway.js` | The gateway module (DI, `noServer` WS, auth, rooms, scene passthrough, heartbeat, envelope). Exports `mountGodotGateway` + `createGatewayEmitter`. |
-| `server/tests/godot-gateway.test.js` | 13 standalone contract tests (bare http server + stub deps + `ws` client). |
+| `server/tests/godot-gateway.test.js` | Standalone contract tests (bare http server + stub deps + `ws` client). |
+| `server/lib/godot-move-rate.js` | `player:move` ~30Hz (33ms) cadence gate for the Godot path. |
+| `server/tests/godot-move-rate.test.js` | Unit tests for the move-rate gate (injectable clock). |
 | `world-lens-godot/project.godot` | Godot 4.4 project config (forward+ renderer, `boot.tscn` main scene). |
 | `world-lens-godot/scenes/boot.tscn` | Minimal text-format boot scene → `world/boot.gd`. |
+| `world-lens-godot/scenes/concordia-hub.tscn` | Hub level: Ring of Doors + eight embassy placeholders + Unburned Court; instances three-pillars. No combat colliders on hub ground. |
+| `world-lens-godot/scenes/concordia-three-pillars.tscn` | Three Pillars tableau (LORE_BIBLE §1). Also under `server/godot/scenes/`. |
+| `server/lib/scene-export.js` | `exportScene` adds hub tableau nodes + `scenePath` for `concordia-hub`. |
 | `world-lens-godot/world/boot.gd` | Thin entry point: wires GatewayClient signals, requests a scene. |
 | `world-lens-godot/net/gateway_client.gd` | `WebSocketPeer` poll loop, backoff reconnect, pure-static envelope codec. |
 | `world-lens-godot/net/snapshot_buffer.gd` | Pure `RefCounted` interpolation buffer (sample at now−120ms, shortest-arc heading lerp). |
@@ -195,12 +205,9 @@ capped by the generic 20/sec-sustained bucket rather than a move-specific
 
 ## Integration TODO
 
-1. **Declare `ws` in `server/package.json` dependencies.** — **still open.** It is
-   currently present at `server/node_modules/ws` (v8.21.0) only as a
-   **transitive** dependency (via engine.io). The gateway imports it directly; a
-   future `npm prune`/dedupe could remove it. Add `"ws": "^8.21.0"` explicitly.
-   (Noted in a code comment at the top of `godot-gateway.js`.) Not touched by
-   this unit — out of scope, flagged again so it doesn't get lost.
+1. **Declare `ws` in `server/package.json` dependencies.** — **DONE.** Pinned as
+   `"ws": "^8.21.2"` in `server/package.json` dependencies (matches the installed
+   transitive). Gateway import is now an honest direct dependency.
 2. **Mount in `server.js`** — **DONE.** Mounted after the TDZ-safe point (`server`
    itself created, `app` ~27554, `LENS_ACTIONS` ~36537 both long since declared),
    right after `tryInitWebSockets(server)`. Gated on `if (server)` — a
@@ -209,17 +216,18 @@ capped by the generic 20/sec-sustained bucket rather than a move-specific
 3. **Mirror `realtimeEmit` into Godot rooms** — **DONE**, via
    `createGatewayEmitter(godotGatewayHandle)` assigned to `_godotGatewayEmitter`
    at the mount site.
-4. **Per-client rate limiting** — **DONE** (generic token bucket, built in Phase
-   1 and live now that the gateway is mounted). **Not yet tuned** to mirror the
-   socket.io path's move-specific ~30Hz gate — see the rate-limiting section
-   above and Honest caveats.
+4. **Per-client rate limiting** — **DONE** (generic token bucket + move-specific
+   ~30Hz gate). Generic bucket gates all inbound frames; `lib/godot-move-rate.js`
+   (`GODOT_MOVE_MIN_INTERVAL_MS = 33`) gates `player:move` inside
+   `_onGodotClientMessage` before `applyPlayerMove`, matching the socket.io
+   path's `_moveRateState`. Covered by `tests/godot-move-rate.test.js`.
 5. **API-key auth path wiring** — **DONE.** `_godotVerifyApiKeyPair` (defined in
    `server.js` just above the mount block) is injected as `verifyApiKeyPair`;
    see the API-key auth section above.
-6. **Inbound dispatch wiring** (this unit, 2026-07-23) — **DONE for
-   `player:move`/`player:mode`.** `_onGodotClientMessage` is injected as
-   `onClientMessage`; see the Inbound dispatch section above.
-   **`combat:attack` is NOT wired** — see Honest caveats.
+6. **Inbound dispatch wiring** — **DONE for `player:move`/`player:mode`/
+   `combat:attack`/`combat:dodge`.** `_onGodotClientMessage` is injected as
+   `onClientMessage` and routes combat through the same `cityPresence.applyAttack`
+   / combat-limits primitives the socket.io path uses.
 7. **Cookie auth is intentionally NOT wired** — the Godot client is a native
    process, not a browser; it authenticates with a bearer token or API key.
    Unchanged, by design.
@@ -270,31 +278,21 @@ capped by the generic 20/sec-sustained bucket rather than a move-specific
 
 ## Honest caveats
 
-- `ws` is still transitive-only (package.json declaration, item 1 above, is
-  still open).
 - `_rid` is reserved but never populated on this path.
 - The Godot project has never been opened in a real editor or renderer — validation
   is parse-and-lint-only. See `world-lens-godot/VISUAL_QA.md`.
-- **`combat:attack` has no gateway-side dispatch.** A Godot client sending it
-  gets an honest `error {reason:"unsupported_evt", evt:"combat:attack"}` — never
-  a fabricated hit result. The socket.io `combat:attack` handler
-  (`server.js`, the `_attackCd`/`_newAttackCooldownState` region) was left
-  untouched by this unit (a separate unit's committed code, out of scope here);
-  wiring it would follow the exact same shared-core-extraction pattern used for
-  `player:move`/`player:mode` in a future unit.
-- **Godot-path rate limiting is coarser than the socket.io path's.** The
-  socket.io handler gates `player:move` specifically at ~30Hz (33ms) per
-  socket; the gateway's generic per-client token bucket (default 20/sec
-  sustained, burst 30) covers ALL inbound events for a client, not a
-  `player:move`-specific cadence. Functionally safe (still can't flood), but
-  not byte-identical throughput tuning — a future pass could special-case
-  `player:move` inside `_onGodotClientMessage` with its own 33ms gate to match
-  exactly.
+- Godot combat dispatch reuses `applyAttack` / combat-limits / glyph-spell-cap
+  but does **not** reproduce every socket.io presentation layer (per-action
+  attack cooldown state machine, stealth-backstab perception gate, refusal-field
+  / Mass-Raid friendly-fire, companion-assist XP). Those are flagged in
+  `_dispatchGodotCombatAttack`'s header rather than silently omitted.
 - The two shared-core functions (`applyPlayerMove`/`applyPlayerMode` in
   `server.js`) re-validate `userId`/`data` internally even though the socket.io
   wrapper already validated them before calling — intentional defense-in-depth
   so the functions are also safe to call directly from the gateway path, which
   has no equivalent pre-check.
+- `ws` is pinned in `server/package.json` (`"ws": "^8.21.2"`) — no longer
+  transitive-only.
 
 ## One-command bare-metal boot (`scripts/launch-godot-client.sh`)
 

@@ -1,0 +1,166 @@
+[gd_scene load_steps=12 format=3 uid="uid://b8cybr0hub001"]
+
+[ext_resource type="PackedScene" uid="uid://b8cybr0server" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/column.glb" id="1_col"]
+[ext_resource type="PackedScene" uid="uid://b8cybr0wall" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall.glb" id="2_wall"]
+[ext_resource type="PackedScene" uid="uid://b8cybr0floor" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/floor.glb" id="3_floor"]
+[ext_resource type="PackedScene" uid="uid://b8cybr0bricks" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/bricks.glb" id="4_bricks"]
+[ext_resource type="PackedScene" uid="uid://b8cybr0corner" path="res://models/kenney/basic_scene/sample/Mini Arena/Models/GLB format/wall-corner.glb" id="5_corner"]
+
+[sub_resource type="ProceduralSkyMaterial" id="CyberSky"]
+sky_top_color = Color(0.05, 0.05, 0.10, 1)
+sky_horizon_color = Color(0.15, 0.10, 0.25, 1)
+ground_horizon_color = Color(0.08, 0.05, 0.15, 1)
+ground_bottom_color = Color(0.02, 0.02, 0.05, 1)
+sun_angle_max = 30.0
+sun_curve = 0.10
+
+[sub_resource type="Sky" id="CyberSky2"]
+sky_material = SubResource("CyberSky")
+
+[sub_resource type="Environment" id="CyberEnv"]
+background_mode = 2
+sky = SubResource("CyberSky2")
+ambient_light_source = 3
+ambient_light_color = Color(0.4, 0.3, 0.6, 1)
+ambient_light_energy = 0.4
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 1.2
+glow_strength = 1.5
+fog_enabled = true
+fog_light_color = Color(0.20, 0.10, 0.40, 1)
+fog_density = 0.012
+
+[sub_resource type="StandardMaterial3D" id="CyberMat"]
+albedo_color = Color(0.10, 0.10, 0.15, 1)
+emission_enabled = true
+emission = Color(0.20, 0.40, 0.80, 1)
+emission_energy_multiplier = 0.5
+metallic = 0.8
+roughness = 0.3
+
+[node name="CyberPlaza" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("CyberEnv")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.7, -0.5, 0.5, 0, 0.71, 0.71, -0.71, -0.5, 0.5, 0, 25, 0)
+light_color = Color(0.6, 0.5, 0.9, 1)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.7, 0.7, 0, -0.7, 0.7, 15, 12, 15)
+current = true
+
+; Cyber plaza: 6 server-tower columns in a hex pattern
+[node name="ServerTowers" type="Node3D" parent="."]
+
+[node name="TowerN" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -6)
+
+[node name="TowerNE" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(0.5, 0, -0.866, 0, 1, 0, 0.866, 0, 0.5, 5.2, 0, -3)
+
+[node name="TowerSE" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(-0.5, 0, -0.866, 0, 1, 0, 0.866, 0, -0.5, 5.2, 0, 3)
+
+[node name="TowerS" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 6)
+
+[node name="TowerSW" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(-0.5, 0, 0.866, 0, 1, 0, -0.866, 0, -0.5, -5.2, 0, 3)
+
+[node name="TowerNW" parent="ServerTowers" instance=ExtResource("1_col")]
+transform = Transform3D(0.5, 0, 0.866, 0, 1, 0, -0.866, 0, 0.5, -5.2, 0, -3)
+
+; 4 outer walls
+[node name="Walls" type="Node3D" parent="."]
+
+[node name="WallN" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="WallE" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 10, 0, 0)
+
+[node name="WallS" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, 10)
+
+[node name="WallW" parent="Walls" instance=ExtResource("2_wall")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -10, 0, 0)
+
+; 4 corner walls
+[node name="CornerNE" parent="Walls" instance=ExtResource("5_corner")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 8, 0, -8)
+
+[node name="CornerSE" parent="Walls" instance=ExtResource("5_corner")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8, 0, 8)
+
+[node name="CornerSW" parent="Walls" instance=ExtResource("5_corner")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -8, 0, 8)
+
+[node name="CornerNW" parent="Walls" instance=ExtResource("5_corner")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, -8, 0, -8)
+
+; 6 brick stacks scattered (server debris)
+[node name="Debris" type="Node3D" parent="."]
+
+[node name="Bricks1" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(0.7, 0, -0.7, 0, 1, 0, 0.7, 0, 0.7, 4, 0, -4)
+
+[node name="Bricks2" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(-0.7, 0, 0.7, 0, 1, 0, -0.7, 0, -0.7, -4, 0, 4)
+
+[node name="Bricks3" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 2)
+
+[node name="Bricks4" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(0.5, 0, -0.866, 0, 1, 0, 0.866, 0, 0.5, -6, 0, -2)
+
+[node name="Bricks5" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(-0.5, 0, 0.866, 0, 1, 0, -0.866, 0, -0.5, 2, 0, -6)
+
+[node name="Bricks6" parent="Debris" instance=ExtResource("4_bricks")]
+transform = Transform3D(0.5, 0, 0.866, 0, 1, 0, -0.866, 0, 0.5, -2, 0, 6)
+
+; Floor tiles (8 around center)
+[node name="Floor" type="Node3D" parent="."]
+
+[node name="Floor1" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Floor2" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, 3, 0, 0)
+
+[node name="Floor3" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0, 3)
+
+[node name="Floor4" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(-0.707, 0, -0.707, 0, 1, 0, 0.707, 0, -0.707, -3, 0, 0)
+
+[node name="Floor5" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(-1, 0, -8.74e-08, 0, 1, 0, 8.74e-08, 0, -1, 0, 0, -3)
+
+[node name="Floor6" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(-0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 3, 0, 0)
+
+[node name="Floor7" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0, 0, 3)
+
+[node name="Floor8" parent="Floor" instance=ExtResource("3_floor")]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, -3, 0, 0)
+
+; Hub portal back to concordia-hub (cyan/blue)
+[node name="HubPortal" type="Node3D" parent="."]
+
+[node name="PortalArchL" type="MeshInstance3D" parent="HubPortal"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 1.5, 0)
+
+[node name="PortalArchR" type="MeshInstance3D" parent="HubPortal"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2, 1.5, 0)
+
+; Ground plane
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.01, 0)
+mesh = SubResource("CyberMat")

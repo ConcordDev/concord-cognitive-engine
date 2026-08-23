@@ -34,6 +34,7 @@ import { PactCard } from '@/components/death-insurance/PactCard';
 import { BeneficiaryPactCard } from '@/components/death-insurance/BeneficiaryPactCard';
 import { PactNotifications } from '@/components/death-insurance/PactNotifications';
 import { PayoutHistory } from '@/components/death-insurance/PayoutHistory';
+import { InheritanceGraph } from '@/components/death-insurance/InheritanceGraph';
 import type { Pact, Payout, PactNotification } from '@/components/death-insurance/types';
 
 interface ListResult {
@@ -157,6 +158,8 @@ export default function DeathInsurancePage() {
         <div className="mb-6">
           <PactNotifications notifications={notifications} unreadHigh={unreadHigh} />
         </div>
+
+        {!loading && <InheritanceGraph written={written} beneficiaryOf={beneficiaryOf} />}
 
         <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-zinc-300">
           Pacts You Wrote

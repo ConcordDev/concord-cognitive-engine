@@ -394,6 +394,7 @@ export function computeInfluenceDrift(STATE) {
  *   generations: Array<{ depth: number, count: number, rate: number, projectedShare: number }>,
  *   totalDownstream: number,
  *   maxObservedDepth: number,
+ *   nodes: Array<{ id: string, title: string, domain: string|null, depth: number, parentIds: string[] }>,
  * }}
  */
 export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
@@ -403,7 +404,21 @@ export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
   // royalty-cascade.js. Halves per generation, floor 0.0005.
   const baseRate = Number(opts.baseRate) || 0.21;
   const dtus = STATE?.dtus;
-  if (!dtus?.values) return { ok: true, rootId: rootDtuId, generations: [], totalDownstream: 0, maxObservedDepth: 0 };
+  if (!dtus?.values) return { ok: true, rootId: rootDtuId, generations: [], totalDownstream: 0, maxObservedDepth: 0, nodes: [] };
+
+  const rootDtu = dtus.get?.(rootDtuId);
+  // `nodes` is the real per-DTU node-link graph underneath the aggregated
+  // `generations` counts above — added so a real tree/graph UI can render
+  // actual citing DTUs and the specific parent(s) each one cites, instead
+  // of only a per-generation bar count. Kept additive alongside the
+  // pre-existing `generations` shape so no existing caller is affected.
+  const nodes = [{
+    id: rootDtuId,
+    title: rootDtu?.title || rootDtu?.human?.title || rootDtuId,
+    domain: rootDtu?.domain || rootDtu?.machine?.domain || null,
+    depth: 0,
+    parentIds: [],
+  }];
 
   // Build ancestor set per generation. Generation 0 = the root itself.
   // Generation N = DTUs whose lineage cites a generation N-1 DTU.
@@ -411,18 +426,40 @@ export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
   let currentGen = new Set([rootDtuId]);
   const generations = [];
   let totalDownstream = 0;
+  // Caps how many individual node records we build PER DEPTH — a viral DTU
+  // can have thousands of downstream citations at depth 4+, and the
+  // aggregated `generations.count` above already reports the true total
+  // honestly; the per-node list is for rendering an actual tree, which has
+  // no legible use past a few dozen siblings at any one depth anyway.
+  const MAX_NODES_PER_GENERATION = 60;
   for (let depth = 1; depth <= maxDepth; depth++) {
     const nextGen = new Set();
+    let nodesAddedThisDepth = 0;
     for (const dtu of dtus.values()) {
       if (seen.has(dtu.id)) continue;
       const parents = dtu.lineage?.parents ?? [];
       const cites = dtu.lineage?.citations ?? [];
-      const refsAncestor = parents.some?.((p) => currentGen.has(p))
-        || cites.some?.((c) => {
-          const id = typeof c === "string" ? c : c?.dtuId;
-          return id && currentGen.has(id);
-        });
-      if (refsAncestor) nextGen.add(dtu.id);
+      const matchedParentIds = [];
+      for (const p of (parents.length ? parents : [])) {
+        if (currentGen.has(p)) matchedParentIds.push(p);
+      }
+      for (const c of (cites.length ? cites : [])) {
+        const id = typeof c === "string" ? c : c?.dtuId;
+        if (id && currentGen.has(id) && !matchedParentIds.includes(id)) matchedParentIds.push(id);
+      }
+      if (matchedParentIds.length > 0) {
+        nextGen.add(dtu.id);
+        if (nodesAddedThisDepth < MAX_NODES_PER_GENERATION) {
+          nodes.push({
+            id: dtu.id,
+            title: dtu.title || dtu.human?.title || dtu.id,
+            domain: dtu.domain || dtu.machine?.domain || null,
+            depth,
+            parentIds: matchedParentIds,
+          });
+          nodesAddedThisDepth += 1;
+        }
+      }
     }
     if (nextGen.size === 0) break;
     const rate = Math.max(baseRate / Math.pow(2, depth - 1), 0.0005);
@@ -443,6 +480,7 @@ export function computeCascadeTree(rootDtuId, STATE, opts = {}) {
     generations,
     totalDownstream,
     maxObservedDepth: generations.length,
+    nodes,
   };
 }
 

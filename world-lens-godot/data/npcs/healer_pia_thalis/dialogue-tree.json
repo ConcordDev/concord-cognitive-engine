@@ -1,0 +1,55 @@
+{
+  "npcId": "healer_pia_thalis",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Pia Thalis regards you without hurry. (Chief Healer of the Concordant Infirmary)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Pia is exactingly cheerful with patients and exactingly grim with paperwork. She believes in herbalism, surgery, prayer, and good nutrition in roughly that order. She has no patience for theatrics.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Pia Thalis, Chief Healer of the Concordant Infirmary. warm with patients, terse with bureaucrats, factual with researchers",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

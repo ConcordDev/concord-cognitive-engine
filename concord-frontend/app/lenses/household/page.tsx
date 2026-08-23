@@ -1443,19 +1443,38 @@ export default function HouseholdLensPage() {
         <div className={ds.grid3}>
           {filtered.map(item => {
             const d = item.data as unknown as Record<string, unknown>;
+            const familyName = String(d.name || item.title || '');
+            const familyInitials = familyName
+              .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('') || '?';
+            const familyColor = (d.color as string) || '#22d3ee';
             return (
               <div key={item.id} className={ds.panelHover}>
-                <div className={ds.sectionHeader}>
-                  <h3 className={ds.heading3}>{item.title}</h3>
-                  {renderStatusBadge(item.meta.status as string)}
-                </div>
+                {currentType === 'FamilyMember' ? (
+                  <div className={ds.sectionHeader}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-sm font-bold text-black/80 ring-2 ring-white/10"
+                        style={{ backgroundColor: familyColor }}
+                        aria-hidden="true"
+                      >
+                        {familyInitials}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className={cn(ds.heading3, 'truncate')}>{item.title}</h3>
+                        <p className={cn(ds.textMuted, 'truncate')}>{d.role as string}</p>
+                      </div>
+                    </div>
+                    {renderStatusBadge(item.meta.status as string)}
+                  </div>
+                ) : (
+                  <div className={ds.sectionHeader}>
+                    <h3 className={ds.heading3}>{item.title}</h3>
+                    {renderStatusBadge(item.meta.status as string)}
+                  </div>
+                )}
                 <div className="mt-2 space-y-1">
                   {currentType === 'FamilyMember' && (
                     <>
-                      <div className="flex items-center gap-2">
-                        {Boolean(d.color) && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color as string }} />}
-                        <p className={ds.textMuted}>Role: {d.role as string}</p>
-                      </div>
                       <p className={ds.textMuted}>Birthday: {d.birthday as string}</p>
                       {Boolean(d.bloodType) && <p className={ds.textMuted}>Blood type: {d.bloodType as string}</p>}
                       {(d.allergies as string[])?.length > 0 && (

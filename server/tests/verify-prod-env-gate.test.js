@@ -35,11 +35,39 @@ function run(envOverrides, args = ["--json"]) {
   // process's full env) so real ambient CI/dev secrets can't leak into the
   // scenario and make a test flaky or falsely pass/fail. PATH + a few
   // Node-internal vars are needed for the child process itself to run.
+  //
+  // The script itself also side-loads a REAL .env file off disk (SERVER_DIR/.env
+  // or ROOT/.env, per its own dotenv-fallback logic) — that's real, intended
+  // production behavior, not something this test's env object controls. dotenv's
+  // populate() only sets a key when it is NOT already an own-property of
+  // process.env (regardless of value), so every key the script checks must be
+  // explicitly pre-declared here (blank by default) to block a developer's real
+  // local ./.env from leaking a live secret into a scenario that expects that
+  // key to read as unset/blank. Individual tests override specific keys below.
   const baseEnv = {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
     NODE_ENV: "development",
     DATA_DIR: dataDir,
+    ADMIN_PASSWORD: "",
+    ALLOWED_ORIGINS: "",
+    AUTH_ENABLED: "",
+    AUTH_MODE: "",
+    BACKEND_URL: "",
+    CONCORD_CONNECTOR_TOKEN_KEY: "",
+    DB_PATH: "",
+    GOOGLE_CLIENT_ID: "",
+    GOOGLE_CLIENT_SECRET: "",
+    JWT_SECRET: "",
+    MAX_OLD_SPACE_SIZE: "",
+    NEXT_PUBLIC_API_URL: "",
+    NEXT_PUBLIC_SENTRY_DSN: "",
+    NEXT_PUBLIC_SOCKET_URL: "",
+    PORT: "",
+    SENTRY_DSN: "",
+    SESSION_SECRET: "",
+    STRIPE_SECRET_KEY: "",
+    STRIPE_WEBHOOK_SECRET: "",
   };
   const env = { ...baseEnv, ...envOverrides };
   let code = 0;

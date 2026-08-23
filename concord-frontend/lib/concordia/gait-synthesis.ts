@@ -258,6 +258,105 @@ export function synthesizeIdle(
 }
 
 /**
+ * Jump / fall / land — the Three.js half of the Godot airborne split.
+ *
+ * animation_state_machine.gd documents that JUMP/FALL/LAND had no Three.js
+ * clip equivalent: airborne motion here was a continuous Y-offset, never a
+ * discrete pose. These synthesizers close that gap so AvatarSystem3D can
+ * apply a real body pose for the three airborne states the state machine
+ * now selects. Pure + total; no mixer, no keyframes.
+ *
+ *   jump  — knees tuck, arms lift, slight backward lean (ascent)
+ *   fall  — legs extend toward the ground, arms out for balance (descent)
+ *   land  — compressive crouch that eases out over LAND_HOLD_MS
+ *
+ * `amp` (0–1) scales the pose so a short hop doesn't read as a full leap.
+ * For land, pass remaining-hold fraction (1 at touchdown → 0 at hold end).
+ */
+function _zeroPose(): GaitPose {
+  const z = () => new THREE.Euler(0, 0, 0);
+  return {
+    hips: z(), hipOffset: new THREE.Vector3(0, 0, 0),
+    spine: z(), chest: z(), neck: z(),
+    leftUpperLeg: z(), leftLowerLeg: z(), leftFoot: z(),
+    rightUpperLeg: z(), rightLowerLeg: z(), rightFoot: z(),
+    leftUpperArm: z(), leftForearm: z(),
+    rightUpperArm: z(), rightForearm: z(),
+  };
+}
+
+export function synthesizeJump(amp = 1): GaitPose {
+  const a = Math.max(0, Math.min(1.4, amp));
+  const pose = _zeroPose();
+  // Knees tuck, thighs lift; arms rise for the takeoff reach.
+  pose.leftUpperLeg  = new THREE.Euler(-0.55 * a, 0, 0);
+  pose.rightUpperLeg = new THREE.Euler(-0.50 * a, 0, 0);
+  pose.leftLowerLeg  = new THREE.Euler( 0.95 * a, 0, 0);
+  pose.rightLowerLeg = new THREE.Euler( 0.90 * a, 0, 0);
+  pose.leftFoot      = new THREE.Euler(-0.20 * a, 0, 0);
+  pose.rightFoot     = new THREE.Euler(-0.18 * a, 0, 0);
+  pose.leftUpperArm  = new THREE.Euler(-0.70 * a, 0,  0.15 * a);
+  pose.rightUpperArm = new THREE.Euler(-0.65 * a, 0, -0.15 * a);
+  pose.leftForearm   = new THREE.Euler(-0.25 * a, 0, 0);
+  pose.rightForearm  = new THREE.Euler(-0.22 * a, 0, 0);
+  pose.spine         = new THREE.Euler(-0.12 * a, 0, 0);
+  pose.chest         = new THREE.Euler(-0.08 * a, 0, 0);
+  pose.hips          = new THREE.Euler(-0.06 * a, 0, 0);
+  pose.hipOffset     = new THREE.Vector3(0, 0.04 * a, 0);
+  return pose;
+}
+
+export function synthesizeFall(amp = 1): GaitPose {
+  const a = Math.max(0, Math.min(1.4, amp));
+  const pose = _zeroPose();
+  // Legs reach for the ground; arms out for balance; slight forward lean.
+  pose.leftUpperLeg  = new THREE.Euler( 0.25 * a, 0, -0.08 * a);
+  pose.rightUpperLeg = new THREE.Euler( 0.20 * a, 0,  0.08 * a);
+  pose.leftLowerLeg  = new THREE.Euler( 0.35 * a, 0, 0);
+  pose.rightLowerLeg = new THREE.Euler( 0.30 * a, 0, 0);
+  pose.leftFoot      = new THREE.Euler( 0.15 * a, 0, 0);
+  pose.rightFoot     = new THREE.Euler( 0.12 * a, 0, 0);
+  pose.leftUpperArm  = new THREE.Euler(-0.35 * a, 0,  0.55 * a);
+  pose.rightUpperArm = new THREE.Euler(-0.30 * a, 0, -0.55 * a);
+  pose.leftForearm   = new THREE.Euler(-0.15 * a, 0, 0);
+  pose.rightForearm  = new THREE.Euler(-0.12 * a, 0, 0);
+  pose.spine         = new THREE.Euler( 0.10 * a, 0, 0);
+  pose.chest         = new THREE.Euler( 0.06 * a, 0, 0);
+  pose.hips          = new THREE.Euler( 0.04 * a, 0, 0);
+  pose.hipOffset     = new THREE.Vector3(0, -0.02 * a, 0);
+  return pose;
+}
+
+/** Map a locomotion state to its procedural pose, or null for idle/walk/run. */
+export function poseForLocomotionState(state: string, amp = 1): GaitPose | null {
+  if (state === 'jump') return synthesizeJump(amp);
+  if (state === 'fall') return synthesizeFall(amp);
+  if (state === 'land') return synthesizeLand(amp);
+  return null;
+}
+
+export function synthesizeLand(amp = 1): GaitPose {
+  const a = Math.max(0, Math.min(1.4, amp));
+  const pose = _zeroPose();
+  // Compressive crouch: hips drop, knees fold, spine rounds, arms brace.
+  pose.leftUpperLeg  = new THREE.Euler(-0.70 * a, 0, 0);
+  pose.rightUpperLeg = new THREE.Euler(-0.68 * a, 0, 0);
+  pose.leftLowerLeg  = new THREE.Euler( 1.15 * a, 0, 0);
+  pose.rightLowerLeg = new THREE.Euler( 1.12 * a, 0, 0);
+  pose.leftFoot      = new THREE.Euler( 0.20 * a, 0, 0);
+  pose.rightFoot     = new THREE.Euler( 0.18 * a, 0, 0);
+  pose.leftUpperArm  = new THREE.Euler( 0.35 * a, 0,  0.20 * a);
+  pose.rightUpperArm = new THREE.Euler( 0.32 * a, 0, -0.20 * a);
+  pose.leftForearm   = new THREE.Euler(-0.40 * a, 0, 0);
+  pose.rightForearm  = new THREE.Euler(-0.38 * a, 0, 0);
+  pose.spine         = new THREE.Euler( 0.28 * a, 0, 0);
+  pose.chest         = new THREE.Euler( 0.18 * a, 0, 0);
+  pose.hips          = new THREE.Euler( 0.12 * a, 0, 0);
+  pose.hipOffset     = new THREE.Vector3(0, -0.10 * a, 0);
+  return pose;
+}
+
+/**
  * Track 1 — additive breathing over ALL states. Returns the chest bone's
  * scale.y for this frame: a subtle rise/fall that rides on top of whatever pose
  * (walk, run, combat-idle, true idle) the gait/idle synthesis already applied,

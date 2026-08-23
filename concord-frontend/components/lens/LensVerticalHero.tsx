@@ -30,10 +30,11 @@ import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { api } from '@/lib/api/client';
 import { getLensManifest } from '@/lib/lenses/manifest';
+import { Icon as SvgIcon, type IconName } from '@/components/icons/Icon';
 import { cn } from '@/lib/utils';
 import {
   Layers, Zap, Activity, Database, Loader2, AlertTriangle, Check,
-  Sparkles, BarChart3, Calculator,
+  Sparkles, BarChart3, Calculator, Braces,
 } from 'lucide-react';
 
 interface ActionMeta {
@@ -209,6 +210,18 @@ export function LensVerticalHero({
     >
       <header className="px-4 py-3 border-b border-zinc-800/60">
         <div className="flex items-baseline gap-2 flex-wrap">
+          {manifest?.icon && (
+            manifest.accentColor ? (
+              <span
+                className="flex items-center justify-center self-center rounded-lg p-1.5"
+                style={{ backgroundColor: `${manifest.accentColor}1a`, border: `1px solid ${manifest.accentColor}40` }}
+              >
+                <SvgIcon name={manifest.icon as IconName} size={17} style={{ color: manifest.accentColor }} />
+              </span>
+            ) : (
+              <SvgIcon name={manifest.icon as IconName} size={20} className="text-zinc-300 self-center" />
+            )
+          )}
           <h2 className="text-lg font-bold text-zinc-100">
             {manifest?.label || prettyLabel(lensId)}
           </h2>
@@ -280,7 +293,7 @@ export function LensVerticalHero({
                       bg,
                     )}
                   >
-                    {'{}'}
+                    <Braces className="w-3 h-3" />
                   </button>
                 </div>
               );

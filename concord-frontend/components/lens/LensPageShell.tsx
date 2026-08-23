@@ -54,6 +54,15 @@ interface LensPageShellProps {
   description?: string;
   /** Icon element rendered in the header */
   headerIcon?: ReactNode;
+  /**
+   * Header icon tint override — every caller of this shell gets the same
+   * `text-neon-cyan` by default, which is exactly the "no family
+   * differentiation" gap the design-upgrade pass flagged. Pass a Tailwind
+   * text-color class (e.g. `text-indigo-500`) for lenses in one of the
+   * four named accent families; absent means byte-identical behavior to
+   * before.
+   */
+  headerIconColor?: string;
 
   /** Data loading states */
   isLoading?: boolean;
@@ -87,6 +96,7 @@ export function LensPageShell({
   title,
   description,
   headerIcon,
+  headerIconColor,
   isLoading = false,
   isError = false,
   error,
@@ -142,7 +152,7 @@ export function LensPageShell({
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {headerIcon && <div className="text-neon-cyan">{headerIcon}</div>}
+          {headerIcon && <div className={headerIconColor || 'text-neon-cyan'}>{headerIcon}</div>}
           <div>
             <h1 className="text-xl font-bold">{title}</h1>
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />

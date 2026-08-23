@@ -52,6 +52,17 @@ before(async () => {
   // by one of the many HTTP-route/macro entry points before a tick ever
   // runs, none of which this direct-unit-test setup goes through.
   T.ensureQueues();
+  // Disable autonomous goal proposals for this file's tick()s. processGoalHeartbeat
+  // step 1 rolls a 10% chance per call to auto-generate + (step 3) auto-activate
+  // its own goals whenever STATE.goals.active has spare capacity under
+  // maxActiveGoals — a real, by-design autonomous side effect of the very
+  // function under test. Left enabled, ~12 tick() calls across this file's 5
+  // tests had a real (non-negligible, observed in CI) chance of an
+  // autonomously-activated goal consuming a slot before the last test's own
+  // makeActiveGoal() call, failing it with "Max active goals reached" — a
+  // test-isolation gap, not a bug in the progress-delta math this file pins.
+  T.ensureGoalSystem();
+  T.STATE.goals.config.autoProposalEnabled = false;
 });
 
 function assertClose(actual, expected, msg, eps = 1e-6) {

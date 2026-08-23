@@ -49,6 +49,7 @@ import { Briefcase, RefreshCw, Hammer, AlertTriangle, Loader2, Check, X, ArrowLe
 import { useUIStore } from '@/store/ui';
 import { EmployerBrowser } from '@/components/careers/EmployerBrowser';
 import { ReputationGate, type ReputationInfo } from '@/components/careers/ReputationGate';
+import { CareerLadderPath } from '@/components/careers/CareerLadderPath';
 
 interface Track { id: string; category: string; activity: string; branch: string[] }
 interface WorkResult { ok: boolean; trackId?: string; tier?: number; performanceScore?: number; wage?: number; xp?: number; paid?: boolean; reason?: string }
@@ -253,6 +254,8 @@ export default function CareersLens() {
             ) : ladder.length === 0 ? (
               <p className="text-gray-500 text-xs">No ladder data for this track.</p>
             ) : (
+              <>
+              <CareerLadderPath ladder={ladder} skill={skill} gatedTiers={reputation?.gatedTiers ?? []} />
               <ol className="space-y-1 text-xs">
                 {ladder.map((t) => {
                   const gated = !!reputation && reputation.gatedTiers.includes(t.tier);
@@ -270,6 +273,7 @@ export default function CareersLens() {
                   );
                 })}
               </ol>
+              </>
             )}
           </section>
 

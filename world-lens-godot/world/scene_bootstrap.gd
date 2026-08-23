@@ -534,7 +534,15 @@ func _spawn_node(node: Dictionary) -> void:
 	add_child(mi)
 	_spawned.append(mi)
 
-	if enable_collision:
+	# Audit v4 #3 / LORE_BIBLE: hub ground + pillars + embassies refuse violence.
+	# exportScene marks those nodes extras.noCombatCollider=true; honor it even
+	# when enable_collision is on so we never put a combat collider on the hub
+	# ground that IS Concordia.
+	var extras_any = node.get("extras", {})
+	var no_combat := false
+	if typeof(extras_any) == TYPE_DICTIONARY:
+		no_combat = bool(extras_any.get("noCombatCollider", false))
+	if enable_collision and not no_combat:
 		# A separate sibling, not a reparenting of `mi` -- see enable_collision's
 		# own doc comment for why `mi`'s transform must stay untouched. Same
 		# unit-box-mesh-plus-scaled-transform shape `mi` already uses (BoxShape3D

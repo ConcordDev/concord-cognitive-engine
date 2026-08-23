@@ -168,7 +168,15 @@ export function updateCuriosity(entity) {
  * Update learning accumulators. Learning NEVER decays — only accumulates.
  */
 export function updateLearning(entity, experience) {
-  entity.knowledge.totalExplorations++;
+  // Sprint 32 (E4) — defensive: lazy-init domainExposure if missing so a
+  // malformed entity (created mid-race, or loaded from a stale snapshot)
+  // doesn't throw 60+ times in a heartbeat tick and trigger feed-manager
+  // load-shedding.
+  if (!entity || !entity.knowledge) return;
+  if (!entity.knowledge.domainExposure || typeof entity.knowledge.domainExposure !== "object") {
+    entity.knowledge.domainExposure = {};
+  }
+  entity.knowledge.totalExplorations = (entity.knowledge.totalExplorations || 0) + 1;
 
   if (experience.domain) {
     entity.knowledge.domainExposure[experience.domain] =
@@ -325,7 +333,8 @@ function getAllLenses() {
 }
 
 function getStrongestDomain(entity) {
-  const exposure = entity.knowledge.domainExposure;
+  if (!entity || !entity.knowledge) return null;
+  const exposure = entity.knowledge.domainExposure || {};
   let best = null;
   let bestCount = -1;
   for (const [domain, count] of Object.entries(exposure)) {
@@ -346,6 +355,7 @@ function getWeakestExploredDomain(entity) {
  * Decide what the entity should do next based on its homeostasis.
  */
 export function decideBehavior(entity) {
+  if (!entity || !entity.homeostasis || !entity.knowledge) return { action: "explore", lens: null };
   const h = entity.homeostasis;
   const k = entity.knowledge;
 
@@ -500,7 +510,7 @@ export function getGrowthDashboardData() {
   const profiles = getAllGrowthProfiles();
   return {
     totalEntities: profiles.length,
-    entities: profiles.map((e) => ({
+    entities: profiles.filter(e => e && e.homeostasis && e.knowledge && e.organs).map((e) => ({
       id: e.id,
       species: e.species,
       age: e.age,

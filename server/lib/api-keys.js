@@ -274,6 +274,81 @@ export function checkScope(keyRecord, domain) {
   return keyRecord.scopes.includes(domain);
 }
 
+// ── Persistence bridge ───────────────────────────────────────────────────────
+
+/**
+ * Load all active keys from the SQLite api_keys table into the in-memory
+ * KEY_STORE / HASH_INDEX. Call this on backend boot so durable csk_ keys
+ * survive pm2 restarts (the in-memory Maps are otherwise empty after a
+ * restart, and `validateKey` would 401 every previously-issued token
+ * even though its row is sitting in the DB).
+ *
+ * Idempotent: safe to call multiple times. Existing in-memory entries
+ * for the same keyId are refreshed in place; HASH_INDEX stale entries
+ * (where the DB row is gone or `is_active=0`) are pruned.
+ *
+ * @param {import("better-sqlite3").Database} db
+ * @returns {{ loaded: number, skipped: number, pruned: number }}
+ */
+export function loadKeysFromDb(db) {
+  if (!db || typeof db.prepare !== "function") {
+    return { loaded: 0, skipped: 0, pruned: 0 };
+  }
+  let loaded = 0;
+  let skipped = 0;
+  let pruned = 0;
+  try {
+    const rows = db
+      .prepare(
+        "SELECT id, user_id, name, key_hash, key_prefix, scopes, created_at, last_used_at, is_active, status FROM api_keys WHERE is_active = 1"
+      )
+      .all();
+    const seenIds = new Set();
+    for (const row of rows) {
+      seenIds.add(row.id);
+      if (!row.key_hash) {
+        skipped++;
+        continue;
+      }
+      let parsedScopes = [];
+      try {
+        parsedScopes = row.scopes ? JSON.parse(row.scopes) : [];
+      } catch {
+        parsedScopes = [];
+      }
+      const record = {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        hash: row.key_hash,
+        prefix: row.key_prefix,
+        scopes: Array.isArray(parsedScopes) ? parsedScopes : [],
+        rateLimit: { requestsPerMinute: 60, requestsPerDay: 10000 },
+        createdAt: row.created_at,
+        lastUsed: row.last_used_at,
+        usageCount: 0,
+        revoked: row.status === "revoked" || row.is_active === 0,
+        revokedAt: null,
+      };
+      KEY_STORE.set(row.id, record);
+      HASH_INDEX.set(row.key_hash, row.id);
+      loaded++;
+    }
+    // Prune HASH_INDEX entries for keys that no longer exist or are inactive
+    for (const [hash, keyId] of HASH_INDEX.entries()) {
+      if (!seenIds.has(keyId)) {
+        HASH_INDEX.delete(hash);
+        pruned++;
+      }
+    }
+  } catch (err) {
+    // If the table doesn't exist yet (early boot) or the schema is
+    // mid-migration, return what we have so far rather than throwing.
+    return { loaded, skipped, pruned, error: String(err?.message || err) };
+  }
+  return { loaded, skipped, pruned };
+}
+
 // ── Test helpers (not for production use) ───────────────────────────────────
 
 /** @internal Clear all keys — for testing only */

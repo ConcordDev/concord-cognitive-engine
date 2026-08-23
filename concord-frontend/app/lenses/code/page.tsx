@@ -50,7 +50,7 @@ import { LensContextPanel } from '@/components/lens/LensContextPanel';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import {
   Play, FileCode, Terminal, FolderTree, Plus, X,
-  ChevronRight, ChevronDown, File, Folder, FolderOpen, Github,
+  ChevronRight, ChevronDown, File, Folder, FolderOpen, Code2 as Github,
   Sparkles, RefreshCw, Copy,
   Download, Zap, Waves, SlidersHorizontal,
   Loader2, BookOpen,

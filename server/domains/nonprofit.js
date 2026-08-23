@@ -16,8 +16,13 @@ export default function registerNonprofitActions(registerLensAction) {
     const givingHistory = artifact.data?.givingHistory || [];
     const currentYear = params.year || new Date().getFullYear();
     const priorYear = currentYear - 1;
-    const currentDonors = new Set(givingHistory.filter(g => new Date(g.date).getFullYear() === currentYear).map(g => g.donorId || g.name));
-    const priorDonors = new Set(givingHistory.filter(g => new Date(g.date).getFullYear() === priorYear).map(g => g.donorId || g.name));
+    // getUTCFullYear (not local getFullYear): g.date is a plain "YYYY-MM-DD"
+    // string, which parses as UTC midnight — reading it back with the local
+    // getter misclassifies any donor whose local timezone falls behind UTC
+    // (e.g. Jan 1 UTC midnight reads as Dec 31 local in the Americas),
+    // silently moving them into the wrong year's bucket.
+    const currentDonors = new Set(givingHistory.filter(g => new Date(g.date).getUTCFullYear() === currentYear).map(g => g.donorId || g.name));
+    const priorDonors = new Set(givingHistory.filter(g => new Date(g.date).getUTCFullYear() === priorYear).map(g => g.donorId || g.name));
     const retained = [...priorDonors].filter(d => currentDonors.has(d)).length;
     const rate = priorDonors.size > 0 ? Math.round((retained / priorDonors.size) * 100) : 0;
     return { ok: true, result: { retentionRate: rate, retained, priorTotal: priorDonors.size, currentTotal: currentDonors.size, period: `${priorYear}-${currentYear}` } };

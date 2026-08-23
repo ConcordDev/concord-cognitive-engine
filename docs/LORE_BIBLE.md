@@ -7,7 +7,7 @@ lore (`server/lib/refusal-field.js` etc.) disagree with this file, **this file
 wins** — open a PR to reconcile them, don't fork the canon. New worlds, NPCs,
 factions, and quests must stay inside the frame defined here.
 
-Last canon revision: 2026-05 — the Three Pillars rewritten as a **love
+Last canon revision: 2026-08-14 — added §5 Eight Refusals + the Ninth (codex lockstep); prior 2026-05 — the Three Pillars rewritten as a **love
 triangle** (creation order Sovereign → Concordia → Concord; Concord, not the
 Sovereign, is the maker of the Concord Link; Refusal belongs to the Sovereign
 alone; Concord is the First *Law*, not the First *Refusal*). Shipped beats
@@ -139,11 +139,21 @@ genre is a different test of the one idea.
 | **cyber** | cognitive (uploaded minds) | can a distributed consciousness be a benevolent dictator |
 | **crime** | informational | who controls truth in the underworld |
 | **superhero** | biological (emergence) | does substrate-granted power liberate or control |
-| **fantasy** | supernatural/political | **Concordia's vacation world** — her unbounded life-magic, NOT Refusal (see §5.1); constraint by mutual deterrence (the Three Refusals) |
-| **sovereign-ruins** | the Refusal algebra itself | constraint gone TOTAL (the Cascade) — see §5 |
+| **fantasy** | supernatural/political | **Concordia's vacation world** — her unbounded life-magic, NOT Refusal (see §6.1); constraint by mutual deterrence (the Three Refusals) |
+| **sovereign-ruins** | the Refusal algebra itself | constraint gone TOTAL (the Cascade) — see §6 |
 | **lattice-crucible** | observation/contradiction (drift) | is observation itself an act |
 | **concord-link-frontier** | logistics/trust (the Handshake Protocol) | human institutions vs. autonomous systems |
 | **concordia-hub** | the neutral ground | soft power only; where the gods live |
+
+**Sere (`content/world/sere/`) is extra-canonical satire, not a tenth Concordia
+world.** It has no row above on purpose: no Ring-of-Doors embassy, no spine
+answer that authors should extend, no weld into the triangle or the Eight
+Refusals. Meta marks it `fiction: "satire"` (extraction patterns, Tally House,
+Tessera). Treat it as parallel parody that ends where Tunya's arks leave — do
+not add a gate for it, do not seat it at the Unburned Court, do not resolve
+canon questions inside it. If a future pass promotes Sere onto the spine, it
+must earn a §4 substrate row and an embassy in the same change; until then it
+is explicitly **out**.
 
 ### The meta-antagonist: consolidation vs. distributed agency
 The setting's central conflict is **emergent across files** (canonize it here so
@@ -174,7 +184,74 @@ it can't be lost):
 
 ---
 
-## 5. The deepest lore↔mechanics weld: Sovereign Ruins → the Refusal cap
+## 5. The Eight Refusals + the Ninth
+
+**Load-bearing cosmology.** The Concord Link does not connect eight arbitrary
+realities. It connects the eight places where a single **Refusal** — a *no*
+said against a law the world insisted was final — became a whole way of being,
+and where the cost of that *no* became the world's wound. The Verdant Veil
+keepers on Tunya codified the Eight twelve years after the Founding Compact;
+what they took a generation longer to see is that each Refusal had already
+built itself a world.
+
+Refusal itself originates in the Sovereign (§1, §3). The Eight are not his
+doctrine — they are eight peoples who learned to do, at the scale of a world,
+the thing he does by existing. Concord catalogs them as errors. Concordia
+grieves them as proof of life. Neither owns them.
+
+Canonical index — keep in lockstep with `content/codex/eight-refusals.json`
+(and DTU ids `codex_eight_refusals_index` / `codex_eight_refusals_the_ninth`):
+
+| # | Refusal | World | The *no* (short) | The cost |
+|---|---|---|---|---|
+| 1 | **of Death** | `sovereign-ruins` | We will not allow our ending to be final. | Nothing can finish dying; the ruins are still ongoing. |
+| 2 | **of Harvest** | `tunya` | We will not be reaped. | Must refuse to harvest fully, or become what it fled. Spine's birthplace — only world that *knows* it is a Refusal. |
+| 3 | **of Hostility** | `fantasy` | I will not become the thing destroying me. | Loses ground continuously; restraint looks like defeat. |
+| 4 | **of Consequence** | `crime` | What we do will not catch up to us. | Nothing lands, so nothing heals. |
+| 5 | **of Numbers** | `cyber` | I will not be counted / summed into one mind. | Eventually you refuse to count yourself. |
+| 6 | **of the Dome** | `concord-link-frontier` | We will not be enclosed. | No dome means no shelter; freedom and exposure are one breath. |
+| 7 | **of the Win** | `superhero` | I will not take the final victory. | Permanent stalemate; every sunrise is the same sunrise. |
+| 8 | **of Completion** (secret) | `lattice-crucible` | *[taught only to the keeper of the second hour]* | A system that refuses to close can never rest. |
+
+**Fantasy nuance (do not flatten):** §6.1 still holds — fantasy is Concordia's
+vacation world and does **not** run on Sovereign-algebra Refusal as a system
+mechanic. Its row above is Thorne Blackroot's *lived* refusal of hostility (and
+the realm's public "Three Refusals" of mutual deterrence), not a Cascade-style
+field. Life-magic stays primary; Refusal stays rare in gameplay and prose.
+
+**Sere is not a row.** Extra-canonical satire (§4). No ninth-world Refusal, no
+gate, no Unburned Court seat.
+
+### The Ninth — *The Refusal That Is the Hub*
+
+There is no ninth *world-Refusal* to teach. Lyra Silentchant will not name one.
+The Ninth is not spoken — it is **stood upon**.
+
+- **Name:** The Refusal That Is the Hub
+- **World:** `concordia-hub`
+- **The *no*:** *I refuse to let my own refusal win.*
+- **What it is:** Each of the Eight, held alone, becomes its own tyranny (refuse
+  death → cannot bury; refuse consequence → cannot heal; refuse the win → cannot
+  stop). The hub is the ground where all eight are held at once and **none is
+  allowed to complete.** To walk there is to perform the Ninth with your feet.
+- **Why violence fails here:** Concordia poured herself into the soil
+  (`hub_the_heart_claimed`). The ground does not host a ward against violence —
+  **the ground *is* her**, and she refuses it. Soft power only; no combat colliders
+  on hub ground; no combat lore that "breaks" the rule.
+- **Codex pointer:** `content/codex/eight-refusals.json` → `the_ninth`; DTU
+  `codex_eight_refusals_the_ninth`.
+
+Authoring rules that fall out of this section:
+
+1. New cross-world travel copy should read as moving from one *no* to the next,
+   not as genre tourism.
+2. Do not resolve the Eighth's secret text in player-facing prose.
+3. Do not put "Concord admits he loves her" in any NPC mouth (§1). Founding Day
+   readings may *show* the triangle; they may not name his feeling for him.
+4. Hub scenes may demonstrate the Ninth (a drawn blade that will not land, a
+   duel that becomes a conversation) but must not explain it as a buff/debuff.
+
+## 6. The deepest lore↔mechanics weld: Sovereign Ruins → the Refusal cap
 
 **Sovereign Ruins is the in-fiction origin of the game's Refusal-Field
 mechanic.** An apprentice glyph-reader, **Vela**, discovered the six-fold
@@ -190,7 +267,7 @@ gating, hard cap at 9). **The mechanic has a myth; the myth has a mechanic.**
 Vela still holds a strength-9 dome-collapse field. Preserve this weld in any
 refusal-field changes.
 
-### 5.1 Fantasy = Concordia's vacation world (why it's the "black sheep")
+### 6.1 Fantasy = Concordia's vacation world (why it's the "black sheep")
 
 Fantasy ("The Sundering") is the one world that does **not** run on the Refusal
 spine — and that is now **canon-intentional, not a gap.** It is **Concordia's
@@ -212,7 +289,7 @@ Other welds to respect:
 
 ---
 
-## 6. Coherence status + prioritized lore gaps
+## 7. Coherence status + prioritized lore gaps
 
 Deep read (2026-05) across all 9 worlds: **~8.5/10 coherence, no load-bearing
 contradictions.** Density is intentionally uneven: **tunya (deepest) > cyber >
@@ -245,12 +322,12 @@ sovereign-ruins ≈ fantasy ≈ lattice > superhero ≈ frontier (leanest).**
    Great Houses + why the Obsidian Crown stays weak.
 
 5. ~~Decide fantasy's relationship to the spine.~~ **ANSWERED (2026-05): fantasy
-   is Concordia's vacation world — see §5.1.** Its standing-apart from the Refusal
+   is Concordia's vacation world — see §6.1.** Its standing-apart from the Refusal
    metaphysics is now canon-intentional, not a gap.
 
 ---
 
-## 7. Authoring rules (stay inside the frame)
+## 8. Authoring rules (stay inside the frame)
 
 - The three gods are **people in a love triangle**, not principles. Petty,
   proud, longing. Don't flatten them back into Logic/Life/Will abstractions.

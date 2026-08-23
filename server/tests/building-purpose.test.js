@@ -151,8 +151,11 @@ describe("building-purpose — scene-export wiring (additive)", () => {
     const s = exportScene(db, "concordia-hub");
     assert.equal(s.ok, true);
     assert.equal(s.format, SCENE_FORMAT);
-    assert.equal(s.count, 3);
-    assert.ok(Array.isArray(s.nodes) && s.nodes.length === 3);
+    // 3 seeded buildings (b1/b2/b4; b3 is in a different world) + 13 real,
+    // always-on hub tableau nodes (lib/scene-export.js#hubTableauNodes,
+    // additive for worldId===concordia-hub specifically).
+    assert.equal(s.count, 16);
+    assert.ok(Array.isArray(s.nodes) && s.nodes.length === 16);
     assert.ok(s.bounds);
   });
 

@@ -55,6 +55,13 @@ const SERVER_JS = path.join(
  *
  *   /api/auth/login, /api/auth/register, /api/auth/csrf-token
  *       — must be reachable before a session exists.
+ *   /api/auth/refresh
+ *       — cookie-authenticated via the httpOnly refresh token, not a JWT/
+ *         session header; SameSite=lax already blocks a cross-site POST from
+ *         forging the refresh, and it must work before a CSRF cookie exists
+ *         (see the matching justification at this array's own declaration
+ *         in server.js). Pre-existing, already-justified entry — this
+ *         ratchet's EXPECTED list simply hadn't been synced to it.
  *   /health, /ready
  *       — liveness/readiness probes; no writes behind them.
  *   /metrics
@@ -82,6 +89,7 @@ const EXPECTED = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/csrf-token",
+  "/api/auth/refresh",
   "/health",
   "/ready",
   "/metrics",

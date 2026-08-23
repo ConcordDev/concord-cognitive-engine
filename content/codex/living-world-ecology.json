@@ -1,0 +1,62 @@
+{
+  "codex_name": "The Living World — First Adaptation",
+  "codex_description": "Why life in Concordia's worlds does not obey the shape an environment demands. Concord catalogs. Concordia overflows. Between them, creatures bend — and the bend is the myth that makes breeding, hybridization, and the water→steam→brine cascade mean something. Every steam-drake is a sentence the substrate wrote when law and life refused to agree.",
+  "the_three_pillars_on_ecology": {
+    "concord": "Believes a creature is a finished entry. When it changes, the entry was wrong. He rewrites the slate and calls the rewrite proof that the first slate was necessary.",
+    "concordia": "Believes a creature is a question still being asked. Adaptation is not error — it is life answering a place that tried to finish the sentence early.",
+    "the_sovereign": "Does not breed beasts. He notices when a living thing refuses the shape the room insisted on — and is briefly, privately amused."
+  },
+  "entries": [
+    {
+      "id": "first_adaptation",
+      "name": "The First Adaptation",
+      "world_id": null,
+      "the_no": "We will not die into the shape you assigned.",
+      "incarnation": "When Concord tried to fix his laws onto Concordia's creatures, they did not break — they bent. A thing born to cold water, carried into heat, did not die: it became a third thing, the old self folded living inside the new. Concordia laughed. This was her answer to his cataloging — life that refuses the shape an environment demands and adapts into something it did not have a name for.",
+      "the_cost": "Nothing stays pure. Every hybrid carries a recessive debt. The steam-thing remembers drowning; the brine-thing remembers boiling. Lineage is a ledger of refusals, not a pedigree of obedience.",
+      "thread": "Shipped primordial beat `lore_first_adaptation` in content/world/lore.json. Mechanics weld: server/lib/creature-breed-alchemy.js (water×fire-in-heat → steam; steam×water-in-wet → brine)."
+    },
+    {
+      "id": "substrate_bend",
+      "name": "Substrate Bend",
+      "world_id": null,
+      "the_no": "Biology will not obey the substrate; the substrate will bend biology.",
+      "incarnation": "Adaptation is not evolution-as-optimization. It is the agency/refusal/constraint spine written in flesh: Concordia's reckless life pressing against Concord's bounds until a third form appears. The environment does not select a winner — it argues, and the argument leaves a body.",
+      "the_cost": "Catalogs lag. Concord's bestiaries are always one generation behind the yard. Rangers learn to track what the slate has not named yet.",
+      "thread": "Pairs with the Living World taxonomy + adaptation engine. Player-facing surface: first-adaptation quest chain; hub beat hub_first_adaptation_yard."
+    },
+    {
+      "id": "steam_cascade",
+      "name": "The Steam Cascade",
+      "world_id": "fantasy",
+      "the_no": "Water and fire will not cancel — they will name a third.",
+      "incarnation": "A water-bred crossed with a fire-bred under a hot sun does not blend. It reacts. Steam is born — fire dominant, water recessive — carrying drowned ancestry as a seed for the next wet place it finds. Steam crossed again with water in a wet biome becomes brine. Heat and stone make magma; water and lightning make storm. The cascade is chemistry wearing a pulse.",
+      "the_cost": "Breeders who chase purity lose the cascade. Breeders who chase only the third thing forget the parents were already refusals. Fantasy's mana-drakes and the hub's yard stock are the same argument in different weather.",
+      "thread": "Mechanical lockstep with VARIANT_RULES in creature-breed-alchemy.js. Steam-drake is not a skin — it is the First Adaptation repeating in a hot birth."
+    },
+    {
+      "id": "recessive_memory",
+      "name": "Recessive Memory",
+      "world_id": null,
+      "the_no": "What the body stops showing, the blood still knows.",
+      "incarnation": "Every hybrid keeps a latent affinity. Move the steam-thing to wet ground and the drowned parent re-expresses. Concord calls this instability. Concordia calls it honesty. Husbandry in the hub is the art of choosing which grandparent the yard will meet next season.",
+      "the_cost": "No stable bloodline is ever finished. The yard that pretends otherwise sells lies with papers.",
+      "thread": "Genotype stamping in creature-crossbreeding.js — recessive carried, re-expressible under env shift."
+    },
+    {
+      "id": "concord_catalogue_lag",
+      "name": "The Catalogue Lag",
+      "world_id": "concordia-hub",
+      "the_no": "The slate will not arrive before the creature.",
+      "incarnation": "Concord records each new form. He has never once predicted the next. In the hub, Ranger Kiren Owl tracks prints the catalogue has no glyph for; Stablemaster Orin Rede knows which foals will steam before the Curators finish the name. The lag is not incompetence — it is the triangle's ecology: law forever half a step behind life.",
+      "the_cost": "Embassies pay for early names. Wrong names start trade wars over livestock that has already become something else.",
+      "thread": "Playable via first_adaptation quest chain (Kiren + Orin). Hub lore: hub_first_adaptation_yard."
+    }
+  ],
+  "mechanics_weld": {
+    "breed_alchemy": "server/lib/creature-breed-alchemy.js",
+    "crossbreeding": "server/lib/creature-crossbreeding.js",
+    "cascade": ["water+fire@hot→steam", "steam+water@wet→brine", "steam+fire@hot→magma", "fire+earth@dry→magma", "water|wind+lightning→storm"],
+    "spine": "Adaptation = life expressing agency/refusal/constraint — substrate bends biology; biology does not merely obey substrate."
+  }
+}

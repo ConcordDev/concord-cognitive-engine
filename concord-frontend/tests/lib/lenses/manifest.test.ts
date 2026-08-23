@@ -225,3 +225,54 @@ describe('getLensesMissingMacro', () => {
     expect(Array.isArray(missingExport)).toBe(true);
   });
 });
+
+// Family-accent assignment (feature-build follow-up pass, closing out the
+// "systemic/family-wide design decisions" backlog item). One shared
+// convention applied once across four named families/groups — pins the
+// exact assignment so a future edit can't silently drop a lens from its
+// family or duplicate a hue across families by accident.
+describe('accentColor family assignment', () => {
+  const LEGAL = '#6366f1';
+  const REASONING = '#14b8a6';
+  const STUDIO = '#ec4899';
+  const GAME = '#f59e0b';
+
+  const expected: Record<string, string> = {
+    legal: LEGAL, law: LEGAL, disputes: LEGAL, ethics: LEGAL, audit: LEGAL, privacy: LEGAL,
+    debate: REASONING, grounding: REASONING, inference: REASONING,
+    fractal: STUDIO, art: STUDIO, music: STUDIO, creative: STUDIO, 'creative-writing': STUDIO, artistry: STUDIO, 'game-design': STUDIO,
+    game: GAME,
+  };
+
+  it('assigns the exact expected hue to every lens in the four named families', () => {
+    for (const [domain, color] of Object.entries(expected)) {
+      const m = getLensManifest(domain);
+      expect(m, `manifest for '${domain}' should exist`).toBeTruthy();
+      expect(m!.accentColor, `'${domain}' should be accented ${color}`).toBe(color);
+    }
+  });
+
+  it('never reuses neon-blue (the primary CTA color) as a family accent', () => {
+    for (const color of Object.values(expected)) {
+      expect(color.toLowerCase()).not.toBe('#00d4ff');
+    }
+  });
+
+  it('does not silently spread accentColor onto unrelated lenses outside the four families', () => {
+    const accented = LENS_MANIFESTS.filter((m) => m.accentColor).map((m) => m.domain);
+    const unexpected = accented.filter((d) => !(d in expected));
+    expect(unexpected).toEqual([]);
+  });
+
+  it('each family uses exactly one hue internally (no per-lens drift within a family)', () => {
+    const families: Record<string, string[]> = {
+      legal: ['legal', 'law', 'disputes', 'ethics', 'audit', 'privacy'],
+      reasoning: ['debate', 'grounding', 'inference'],
+      studio: ['fractal', 'art', 'music', 'creative', 'creative-writing', 'artistry', 'game-design'],
+    };
+    for (const members of Object.values(families)) {
+      const hues = new Set(members.map((d) => getLensManifest(d)?.accentColor));
+      expect(hues.size).toBe(1);
+    }
+  });
+});

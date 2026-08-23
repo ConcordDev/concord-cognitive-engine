@@ -6,7 +6,7 @@ import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
 import { startSSE } from "../lib/sse.js";
 import { buildWorkingContext } from '../lib/chat/working-context.js';
-import { needsWindowCompression, compressRollingWindow } from '../lib/conversation-memory.js';
+import { needsWindowCompression, compressRollingWindow, WINDOW_THRESHOLD, COMPRESSION_BATCH } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
 import { assertSessionAccessible } from '../lib/session-access.js';
 export default function registerChatRoutes(app, {
@@ -322,6 +322,56 @@ export default function registerChatRoutes(app, {
   });
 
   // ── DTU Context Pipeline Endpoints ─────────────────────────────────────
+
+  // GET /api/chat/context-budget/:sessionId — returns the session's
+  // working-context budget (current message count vs the rolling-window
+  // threshold). Powers the ConKay HUD's "X turns · Y% full · say
+  // 'compress'" affordance + the proactive compression suggestion when
+  // the budget crosses the threshold. Returns only the deterministic,
+  // already-public-by-design state (message count, threshold, batch
+  // size, format flags); never the message bodies.
+  //
+  // Why this exists: chat.js:124-128 fires `compressRollingWindow`
+  // automatically when the budget crosses the threshold, but the user
+  // has no visibility into that. ConKay surfaces the same number as an
+  // honest HUD chip so a user can compress on demand before the
+  // auto-trigger kicks in (and can verify the auto-trigger actually
+  // happened by comparing badge readings).
+  app.get("/api/chat/context-budget/:sessionId", asyncHandler(async (req, res) => {
+    try {
+      const sessionId = String(req.params.sessionId || "default");
+      const sess = STATE.sessions?.get?.(sessionId);
+      // Same owner/participant gate as /api/chat/context above.
+      if (sess && !assertSessionAccessible(sess, req.user?.id)) {
+        return res.status(403).json({ ok: false, error: "session_forbidden" });
+      }
+      const messageCount = sess?.messages ? sess.messages.length : 0;
+      const threshold = WINDOW_THRESHOLD;
+      const batchSize = COMPRESSION_BATCH;
+      const atOrOverThreshold = messageCount >= threshold;
+      // usagePct is the honest 0-100 fill, capped at 100 so a wildly
+      // over-budget session doesn't read 240%. The threshold matters
+      // because that's when the auto-trigger fires (and the user is
+      // told to ask for compression proactively).
+      const usagePct = Math.min(100, Math.round((messageCount / threshold) * 100));
+      // turnsUntilAuto is the number of NEW user messages until the
+      // auto-compression fires (zero or negative when already at
+      // threshold). Negative is honest — "we're already over."
+      const turnsUntilAuto = threshold - messageCount;
+      return res.json({
+        ok: true,
+        sessionId,
+        messageCount,
+        threshold,
+        batchSize,
+        usagePct,
+        atOrOverThreshold,
+        turnsUntilAuto,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    }
+  }));
 
   // GET /api/chat/context — returns assembled working set for debugging
   app.get("/api/chat/context", asyncHandler(async (req, res) => {

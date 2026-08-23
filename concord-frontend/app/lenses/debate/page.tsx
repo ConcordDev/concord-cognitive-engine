@@ -19,6 +19,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import {
   Scale, Plus, Search, Users, MessageSquare,
   ThumbsUp, ThumbsDown, Zap, Send, Timer, Trophy, TrendingUp, Loader2, Trash2,
@@ -572,7 +573,7 @@ export default function DebateLensPage() {
     <div data-lens-theme="debate" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Scale className="w-6 h-6 text-neon-purple" />
+          <SvgIcon name="scales-of-justice" size={24} className="text-teal-500" />
           <div>
             <h1 className="text-xl font-bold">Debate Lens</h1>
             <p className="text-sm text-gray-400">Structured debates & argumentation</p>

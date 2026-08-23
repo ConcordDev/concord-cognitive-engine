@@ -104,7 +104,7 @@ export default function LegalLensPage() {
         {/* Header */}
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
-            <Scale className="w-7 h-7 text-amber-400" />
+            <Scale className="w-7 h-7 text-indigo-500" />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className={ds.heading1}>Legal Practice Management</h1>

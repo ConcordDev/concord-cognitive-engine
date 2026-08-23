@@ -1,4 +1,5 @@
 'use client';
+import * as THREE from 'three';
 
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import {

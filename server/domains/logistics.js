@@ -699,6 +699,11 @@ export default function registerLogisticsActions(registerLensAction) {
       return {
         order: i + 1,
         address: stops[stopIdx],
+        // Real coords the geocoding/OSRM step above already resolved — not a
+        // new lookup. Exposed so the frontend can render an actual route
+        // line instead of just the address list.
+        lat: coords[stopIdx].lat,
+        lng: coords[stopIdx].lng,
         arrivalTime: `${String(Math.floor(nowMin / 60) % 24).padStart(2, "0")}:${String(Math.round(nowMin % 60)).padStart(2, "0")}`,
         durationMin: drive + dwell,
         distanceMi: dist,

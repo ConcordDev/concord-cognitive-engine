@@ -12,6 +12,7 @@
  */
 
 import { Lock, Sparkles, Star, Zap } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/utils';
 import { resolveAchievementIcon } from './icon-map';
@@ -70,6 +71,12 @@ export function AchievementCard({ achievement: a, earned, earnedAt, highlighted,
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-slate-400">
+            <SvgIcon
+              name={a.rarity === 'legendary' ? 'medal-star' : 'medal'}
+              size={11}
+              className={earned ? iconTone : 'text-slate-600'}
+              ariaLabel={`${a.rarity} tier`}
+            />
             <span>{a.rarity}</span>
             <span aria-hidden="true">·</span>
             <span>{a.category}</span>

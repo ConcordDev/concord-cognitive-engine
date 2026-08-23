@@ -466,9 +466,16 @@ export default function registerFeedActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
     const map = s.polls.get(userId) || new Map();
+    // Tiebreak on Map insertion order (index), not just createdAt: two polls
+    // created within the same millisecond (easily reproducible — any two
+    // synchronous poll-create calls in the same request burst) tie on
+    // createdAt, and a stable sort then preserves original array order for
+    // the tie — i.e. the OLDER poll stays first, inverting "newest first"
+    // for same-millisecond creates.
     const polls = Array.from(map.values())
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .map(p => pollView(p, userId));
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => (new Date(b.p.createdAt).getTime() - new Date(a.p.createdAt).getTime()) || (b.i - a.i))
+      .map(({ p }) => pollView(p, userId));
     return { ok: true, result: { polls } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
@@ -497,9 +504,13 @@ export default function registerFeedActions(registerLensAction) {
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = feedActor(ctx);
     const map = s.folders.get(userId) || new Map();
+    // Insertion-order tiebreak — same reasoning as poll-list above: two
+    // folders created in the same millisecond must not invert to
+    // oldest-first under a stable sort's tie-preserving behavior.
     const folders = Array.from(map.values())
-      .map(f => ({ ...f, itemCount: f.items.length }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .map((f, i) => ({ f: { ...f, itemCount: f.items.length }, i }))
+      .sort((a, b) => (new Date(b.f.createdAt).getTime() - new Date(a.f.createdAt).getTime()) || (b.i - a.i))
+      .map(({ f }) => f);
     return { ok: true, result: { folders } };
   });
 

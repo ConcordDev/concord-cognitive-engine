@@ -15,7 +15,7 @@ import {
   LayoutDashboard as MTabDash, CalendarDays as MTabCal, MapPin as MTabPin,
   Truck as MTabTruck, Users as MTabUsers, PiggyBank as MTabBudget,
 } from 'lucide-react';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, type ComponentType } from 'react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
@@ -75,6 +75,13 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
+
+/** Adapts the bespoke SvgIcon (name-prop API) to the lucide-icon-component
+ *  shape (`className`-prop, no `name`) this file's tab/type tables expect. */
+function EventTicketIcon({ className }: { className?: string }) {
+  return <SvgIcon name="event-ticket" size={16} className={className} />;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -141,7 +148,7 @@ const VENDOR_CATEGORIES: { id: VendorCategory; label: string; icon: typeof Calen
   { id: 'security', label: 'Security', icon: Shield },
 ];
 
-const MODE_TABS: { id: ModeTab; label: string; icon: typeof CalendarDays }[] = [
+const MODE_TABS: { id: ModeTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'events', label: 'Events', icon: CalendarDays },
   { id: 'venues', label: 'Venues', icon: Building2 },
@@ -149,7 +156,7 @@ const MODE_TABS: { id: ModeTab; label: string; icon: typeof CalendarDays }[] = [
   { id: 'guests', label: 'Guests', icon: ClipboardList },
   { id: 'runofshow', label: 'Run of Show', icon: ListChecks },
   { id: 'budget', label: 'Budget', icon: DollarSign },
-  { id: 'tickets', label: 'Tickets', icon: Ticket },
+  { id: 'tickets', label: 'Tickets', icon: EventTicketIcon },
 ];
 
 const _BUDGET_CATEGORIES = [

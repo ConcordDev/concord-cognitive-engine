@@ -17,8 +17,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { lensRun } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { useLensData } from '@/lib/hooks/use-lens-data';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import {
-  Book,
   ChevronRight,
   ChevronDown,
   Search,
@@ -693,7 +693,7 @@ export default function DocsLensPage() {
           {currentContent ? (
             <div className="prose prose-invert max-w-none">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Book className="w-5 h-5 text-neon-blue" />
+                <SvgIcon name="book" size={20} className="text-neon-blue" />
                 {currentContent.title}
               </h2>
               <div className="text-gray-300 space-y-4">
@@ -706,7 +706,7 @@ export default function DocsLensPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <Book className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <SvgIcon name="book" size={64} className="text-gray-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">Welcome to Concord Docs</h2>
               <p className="text-gray-400 mb-6">Select a section from the sidebar to get started</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

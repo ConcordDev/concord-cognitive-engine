@@ -1,0 +1,55 @@
+{
+  "npcId": "innkeep_baren_hollow",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Baren Hollow regards you without hurry. (Innkeeper of the Seven Spokes)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Baren remembers your usual order after one visit. He pretends to be uninterested in gossip and remembers all of it. The Seven Spokes is the unofficial neutral ground for every faction in the hub.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Baren Hollow, Innkeeper of the Seven Spokes. warm, anecdotal, pretends bad memory and has perfect memory",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

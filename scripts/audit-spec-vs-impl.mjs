@@ -24,7 +24,11 @@
 import fs from 'fs';
 import path from 'path';
 
-const ROOT = path.resolve(new URL(import.meta.url).pathname, '..', '..');
+// import.meta.dirname (real Node builtin, already-decoded) — not
+// `new URL(import.meta.url).pathname`, which does NOT decode percent-
+// encoding and breaks on a checkout path containing spaces or other
+// special characters.
+const ROOT = path.resolve(import.meta.dirname, '..');
 const SPECS = path.join(ROOT, 'docs', 'lens-specs');
 const SERVER = path.join(ROOT, 'server');
 

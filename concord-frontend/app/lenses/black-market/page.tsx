@@ -13,14 +13,13 @@
 // Empty state: handled inline when data is empty (Sprint 17 invariant).
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { api } from '@/lib/api/client';
+import axios from 'axios';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
@@ -142,12 +141,9 @@ export default function BlackMarketPage() {
     setPurchasing(listing.id);
     setError(null);
     try {
-      const res = await fetch(`/api/black-market/${encodeURIComponent(listing.id)}/purchase`, {
-        method: 'POST',
-        credentials: 'same-origin',
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
+      const res = await api.post(`/api/black-market/${encodeURIComponent(listing.id)}/purchase`);
+      const json = res.data;
+      if (!json.ok) {
         if (json.reason === 'insufficient_sparks') {
           setError(`Need ${json.price} sparks; you have ${json.have}.`);
         } else {
@@ -158,7 +154,17 @@ export default function BlackMarketPage() {
       setRevealed(json.message);
       await reload();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error.');
+      // A logical failure (insufficient_sparks etc.) can arrive as a non-2xx
+      // with the same JSON shape in the body — axios throws for that instead
+      // of resolving, so pull the reason out of the error response too.
+      const json = axios.isAxiosError(e) ? e.response?.data : null;
+      if (json?.reason === 'insufficient_sparks') {
+        setError(`Need ${json.price} sparks; you have ${json.have}.`);
+      } else if (json?.reason || json?.error) {
+        setError(json.reason || json.error);
+      } else {
+        setError(e instanceof Error ? e.message : 'Network error.');
+      }
     } finally {
       setPurchasing(null);
     }
@@ -234,7 +240,13 @@ export default function BlackMarketPage() {
         )}
 
         {revealed && (
-          <section className="mb-6 rounded border border-emerald-500/40 bg-emerald-950/30 p-3">
+          <motion.section
+            key={revealed.payload}
+            initial={{ opacity: 0, filter: 'blur(6px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            className="mb-6 rounded border border-emerald-500/40 bg-emerald-950/30 p-3"
+          >
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold text-emerald-200">Revealed</h2>
               <button onClick={() => setRevealed(null)} className="text-xs text-slate-400 hover:text-slate-200" aria-label="Dismiss">
@@ -244,8 +256,15 @@ export default function BlackMarketPage() {
             <p className="mb-1 text-[10px] uppercase tracking-wider text-emerald-400/80">
               {revealed.source_world} → {revealed.dest_world} · {revealed.encryption_level} encryption
             </p>
-            <p className="whitespace-pre-wrap text-sm text-slate-100">{revealed.payload}</p>
-          </section>
+            <motion.p
+              initial={{ clipPath: 'inset(0 100% 0 0)' }}
+              animate={{ clipPath: 'inset(0 0% 0 0)' }}
+              transition={{ duration: 0.5, delay: 0.1, ease: 'easeInOut' }}
+              className="whitespace-pre-wrap text-sm text-slate-100"
+            >
+              {revealed.payload}
+            </motion.p>
+          </motion.section>
         )}
 
         <section>
@@ -337,10 +356,6 @@ export default function BlackMarketPage() {
         <UndergroundExchange />
       </section>
     </main>
-
-          <RecentMineCard domain="black-market" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="black-market" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="black-market" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

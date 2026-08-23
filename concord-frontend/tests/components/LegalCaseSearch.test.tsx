@@ -187,17 +187,21 @@ describe('LegalCaseSearch', () => {
       expect(screen.getByRole('button', { name: /Citing opinions/i })).toHaveAttribute('aria-expanded', 'false');
     });
 
-    it('shows a loading state, then the real populated citation list', async () => {
+    it('shows a loading state, then the real populated citation network diagram (both directions)', async () => {
       await renderWithOneHit();
-      let resolveFetch: (v: unknown) => void = () => {};
-      runDomain.mockReturnValueOnce(new Promise((res) => { resolveFetch = res; }));
+      let resolveCitedBy: (v: unknown) => void = () => {};
+      let resolveCites: (v: unknown) => void = () => {};
+      // The panel fetches BOTH directions on open — citedBy first, then
+      // cites (mount-order in the component's useEffect).
+      runDomain.mockReturnValueOnce(new Promise((res) => { resolveCitedBy = res; }));
+      runDomain.mockReturnValueOnce(new Promise((res) => { resolveCites = res; }));
 
       fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
-      // "Loading citing opinions" is an aria-label on the skeleton container,
+      // "Loading citation network" is an aria-label on the skeleton container,
       // not rendered text — query it via its accessible name.
-      await waitFor(() => expect(screen.getByLabelText(/Loading citing opinions/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByLabelText(/Loading citation network/i)).toBeInTheDocument());
 
-      resolveFetch({ data: { ok: true, result: { ok: true, result: {
+      resolveCitedBy({ data: { ok: true, result: { ok: true, result: {
         opinionId: MOCK_HIT.id, direction: 'citedBy',
         citations: [
           { id: 1, citingOpinionId: 10008139, citingOpinionUrl: 'https://www.courtlistener.com/api/rest/v4/opinions/10008139/', citedOpinionId: MOCK_HIT.id, citedOpinionUrl: null, otherOpinionId: 10008139, depth: 4 },
@@ -205,29 +209,43 @@ describe('LegalCaseSearch', () => {
         ],
         count: 2, totalHits: 2, authenticatedWithToken: false, source: 'courtlistener',
       } } } });
+      resolveCites({ data: { ok: true, result: { ok: true, result: {
+        opinionId: MOCK_HIT.id, direction: 'cites',
+        citations: [
+          { id: 3, citingOpinionId: MOCK_HIT.id, citingOpinionUrl: null, citedOpinionId: 500001, citedOpinionUrl: 'https://www.courtlistener.com/api/rest/v4/opinions/500001/', otherOpinionId: 500001, depth: 2 },
+        ],
+        count: 1, totalHits: 1, authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
 
-      await waitFor(() => expect(screen.queryByLabelText(/Loading citing opinions/i)).not.toBeInTheDocument());
-      expect(screen.getByText(/Opinion #10008139/)).toBeInTheDocument();
-      expect(screen.getByText(/cited 4×/)).toBeInTheDocument();
-      expect(screen.getByText(/Opinion #9000001/)).toBeInTheDocument();
-      expect(screen.getByText(/cited 1×/)).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByLabelText(/Loading citation network/i)).not.toBeInTheDocument());
+      // citedBy-side nodes (right column, "who cites this opinion")
+      expect(screen.getByText('Opinion #10008139')).toBeInTheDocument();
+      expect(screen.getByText('×4')).toBeInTheDocument();
+      expect(screen.getByText('Opinion #9000001')).toBeInTheDocument();
+      expect(screen.getByText('×1')).toBeInTheDocument();
+      // cites-side node (left column, "what this opinion cites")
+      expect(screen.getByText('Opinion #500001')).toBeInTheDocument();
+      expect(screen.getByText('×2')).toBeInTheDocument();
 
-      // Verifies the exact macro call shape.
-      const lastCall = runDomain.mock.calls[runDomain.mock.calls.length - 1];
-      expect(lastCall[0]).toBe('law');
-      expect(lastCall[1]).toBe('citation-graph');
-      expect((lastCall[2] as { input?: { opinionId?: number; direction?: string } }).input?.opinionId).toBe(MOCK_HIT.id);
-      expect((lastCall[2] as { input?: { opinionId?: number; direction?: string } }).input?.direction).toBe('citedBy');
+      // Verifies both macro calls fired with the right direction.
+      const calls = runDomain.mock.calls.slice(-2) as Array<[string, string, { input?: { opinionId?: number; direction?: string } }]>;
+      expect(calls[0][0]).toBe('law');
+      expect(calls[0][1]).toBe('citation-graph');
+      expect(calls[0][2].input?.opinionId).toBe(MOCK_HIT.id);
+      expect(calls[0][2].input?.direction).toBe('citedBy');
+      expect(calls[1][2].input?.direction).toBe('cites');
     });
 
-    it('shows an honest empty state when CourtListener has zero citing opinions', async () => {
+    it('shows an honest empty state when CourtListener has zero citations in both directions', async () => {
       await renderWithOneHit();
-      runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, result: {
-        opinionId: MOCK_HIT.id, direction: 'citedBy', citations: [], count: 0, totalHits: 0,
+      const emptyResult = (direction: string) => ({ data: { ok: true, result: { ok: true, result: {
+        opinionId: MOCK_HIT.id, direction, citations: [], count: 0, totalHits: 0,
         authenticatedWithToken: false, source: 'courtlistener',
       } } } });
+      runDomain.mockResolvedValueOnce(emptyResult('citedBy'));
+      runDomain.mockResolvedValueOnce(emptyResult('cites'));
       fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
-      await waitFor(() => expect(screen.getByText(/No opinions on CourtListener currently cite this one/i)).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByText(/No citation links found on CourtListener/i)).toBeInTheDocument());
     });
 
     it('shows an honest error state on a failed lookup — never a fabricated empty/zero result', async () => {
@@ -235,9 +253,13 @@ describe('LegalCaseSearch', () => {
       runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: false,
         error: 'courtlistener rate limit — set COURTLISTENER_API_TOKEN env',
       } } });
+      runDomain.mockResolvedValueOnce({ data: { ok: true, result: { ok: true, result: {
+        opinionId: MOCK_HIT.id, direction: 'cites', citations: [], count: 0, totalHits: 0,
+        authenticatedWithToken: false, source: 'courtlistener',
+      } } } });
       fireEvent.click(screen.getByRole('button', { name: /Citing opinions/i }));
       await waitFor(() => expect(screen.getByText(/COURTLISTENER_API_TOKEN/i)).toBeInTheDocument());
-      expect(screen.queryByText(/No opinions on CourtListener currently cite this one/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/No citation links found on CourtListener/i)).not.toBeInTheDocument();
     });
   });
 

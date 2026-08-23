@@ -399,15 +399,10 @@ function WithdrawalSection({
     }
     setWithdrawing(true);
     try {
-      const res = await fetch('/api/economy/withdraw', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ amount }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || body?.ok === false) {
-        setWithdrawError(body?.error ?? `Request failed (${res.status}).`);
+      const res = await api.post('/api/economy/withdraw', { amount });
+      const body = res.data;
+      if (body?.ok === false) {
+        setWithdrawError(body?.error ?? 'Request failed.');
       } else {
         setWithdrawAmount('');
         onDone();
@@ -911,18 +906,13 @@ function ProfileTab({
   async function save() {
     setSaving(true); setErr(null); setSavedAt(null);
     try {
-      const r = await fetch('/api/social/profile', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          displayName, bio, avatar, website, isPublic,
-          specialization: specs.split(',').map((s) => s.trim()).filter(Boolean),
-        }),
+      const r = await api.post('/api/social/profile', {
+        displayName, bio, avatar, website, isPublic,
+        specialization: specs.split(',').map((s) => s.trim()).filter(Boolean),
       });
-      const body = await r.json().catch(() => null);
-      if (!r.ok || body?.ok === false) {
-        setErr(body?.error ?? `Save failed (${r.status})`);
+      const body = r.data;
+      if (body?.ok === false) {
+        setErr(body?.error ?? 'Save failed.');
         return;
       }
       // Best-effort broadcast announcement.
@@ -1065,13 +1055,12 @@ function FollowersTab({ profile }: { profile: SocialProfile | null }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   async function unfollow(targetId: string) {
-    await fetch('/api/social/unfollow', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ followedId: targetId }),
-    });
-    refresh();
+    try {
+      await api.post('/api/social/unfollow', { followedId: targetId });
+      refresh();
+    } catch (e) {
+      console.error('[creator] unfollow failed:', e);
+    }
   }
 
   if (!profile) {
@@ -1149,9 +1138,18 @@ interface CascadeGeneration {
   projectedShare: number;
 }
 
+interface CascadeNode {
+  id: string;
+  title: string;
+  domain: string | null;
+  depth: number;
+  parentIds: string[];
+}
+
 interface CascadeResponse {
   ok: boolean;
   rootId: string;
+  nodes?: CascadeNode[];
   generations: CascadeGeneration[];
   totalDownstream: number;
   maxObservedDepth: number;
@@ -1159,6 +1157,119 @@ interface CascadeResponse {
 
 interface CascadePanelProps {
   topCited: { id: string; title: string; domain: string; citationsReceived: number }[];
+}
+
+// Real inline-SVG lineage tree — the actual node-link graph underneath the
+// per-generation bar summary. Each node is a real DTU (`computeCascadeTree`'s
+// `nodes` field, server/lib/creator-dashboard.js); each edge is a real cited
+// parent relationship, not a decorative connector. Positions are computed
+// once per render from the node list — root centered at the top, each
+// generation laid out as its own row, columns centered under their parent
+// row so the tree reads top-down like a real lineage/family tree.
+const LINEAGE_ROW_HEIGHT = 64;
+const LINEAGE_COL_WIDTH = 92;
+const LINEAGE_PAD = 26;
+const LINEAGE_DEPTH_COLORS = ['#fbbf24', '#f59e0b', '#fb923c', '#f472b6', '#c084fc', '#818cf8', '#38bdf8'];
+
+function lineageColorFor(depth: number): string {
+  return LINEAGE_DEPTH_COLORS[Math.min(depth, LINEAGE_DEPTH_COLORS.length - 1)];
+}
+
+function LineageTree({ nodes }: { nodes: CascadeNode[] }) {
+  const byDepth = useMemo(() => {
+    const m = new Map<number, CascadeNode[]>();
+    for (const n of nodes) {
+      const arr = m.get(n.depth) ?? [];
+      arr.push(n);
+      m.set(n.depth, arr);
+    }
+    return m;
+  }, [nodes]);
+
+  const depths = useMemo(() => Array.from(byDepth.keys()).sort((a, b) => a - b), [byDepth]);
+  const maxCols = useMemo(
+    () => Math.max(1, ...depths.map((d) => byDepth.get(d)?.length ?? 0)),
+    [byDepth, depths],
+  );
+
+  const pos = useMemo(() => {
+    const m = new Map<string, { x: number; y: number }>();
+    for (const d of depths) {
+      const row = byDepth.get(d) ?? [];
+      const rowWidth = row.length * LINEAGE_COL_WIDTH;
+      const offsetX = Math.max(0, (maxCols * LINEAGE_COL_WIDTH - rowWidth) / 2);
+      row.forEach((n, i) => {
+        m.set(n.id, {
+          x: LINEAGE_PAD + offsetX + i * LINEAGE_COL_WIDTH + LINEAGE_COL_WIDTH / 2,
+          y: LINEAGE_PAD + d * LINEAGE_ROW_HEIGHT,
+        });
+      });
+    }
+    return m;
+  }, [byDepth, depths, maxCols]);
+
+  const width = LINEAGE_PAD * 2 + maxCols * LINEAGE_COL_WIDTH;
+  const height = LINEAGE_PAD * 2 + Math.max(0, depths.length - 1) * LINEAGE_ROW_HEIGHT + 36;
+
+  return (
+    <div className="mt-3 overflow-x-auto rounded-lg border border-white/5 bg-black/20 py-3">
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className="block mx-auto"
+        role="img"
+        aria-label="Royalty cascade lineage tree"
+      >
+        {/* Edges first, so node circles draw on top of the lines. */}
+        {nodes.flatMap((n) =>
+          n.parentIds.map((pid) => {
+            const a = pos.get(pid);
+            const b = pos.get(n.id);
+            if (!a || !b) return null;
+            const midY = (a.y + b.y) / 2;
+            return (
+              <path
+                key={`${pid}->${n.id}`}
+                d={`M ${a.x} ${a.y + 10} C ${a.x} ${midY}, ${b.x} ${midY}, ${b.x} ${b.y - 10}`}
+                fill="none"
+                stroke={lineageColorFor(n.depth)}
+                strokeOpacity={0.35}
+                strokeWidth={1.5}
+              />
+            );
+          }),
+        )}
+        {nodes.map((n) => {
+          const p = pos.get(n.id);
+          if (!p) return null;
+          const isRoot = n.depth === 0;
+          const r = isRoot ? 9 : 6;
+          const label = n.title || n.id;
+          return (
+            <g key={n.id} transform={`translate(${p.x}, ${p.y})`}>
+              <title>{`${label}${n.domain ? ` · ${n.domain}` : ''} (gen ${n.depth})`}</title>
+              <circle
+                r={r}
+                fill={lineageColorFor(n.depth)}
+                fillOpacity={isRoot ? 0.9 : 0.6}
+                stroke={isRoot ? '#fef3c7' : 'transparent'}
+                strokeWidth={isRoot ? 2 : 0}
+              />
+              <text
+                y={r + 12}
+                textAnchor="middle"
+                className="fill-gray-300"
+                style={{ fontSize: 9, fontFamily: 'monospace' }}
+              >
+                {label.length > 12 ? `${label.slice(0, 12)}…` : label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 function CascadePanel({ topCited }: CascadePanelProps) {
@@ -1243,30 +1354,49 @@ function CascadePanel({ topCited }: CascadePanelProps) {
               {' '}× sale
             </span>
           </div>
-          <ol className="space-y-1.5 mt-3">
-            {tree.generations.map((g) => {
-              const widthPct = Math.round((g.count / maxCount) * 100);
-              return (
-                <li key={g.depth} className="flex items-center gap-3 text-xs">
-                  <span className="w-12 shrink-0 text-amber-400 font-mono">gen {g.depth}</span>
-                  <div className="flex-1 h-5 bg-black/40 rounded overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-amber-500/60 to-amber-300/40 flex items-center px-2"
-                      style={{ width: `${widthPct}%` }}
-                    >
-                      <span className="text-[10px] font-mono text-black/70">{g.count}</span>
+          {tree.nodes && tree.nodes.length > 0 ? (
+            <LineageTree nodes={tree.nodes} />
+          ) : (
+            // Fallback for a server that hasn't shipped `nodes` yet — the
+            // original per-generation bar view, unchanged.
+            <ol className="space-y-1.5 mt-3">
+              {tree.generations.map((g) => {
+                const widthPct = Math.round((g.count / maxCount) * 100);
+                return (
+                  <li key={g.depth} className="flex items-center gap-3 text-xs">
+                    <span className="w-12 shrink-0 text-amber-400 font-mono">gen {g.depth}</span>
+                    <div className="flex-1 h-5 bg-black/40 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500/60 to-amber-300/40 flex items-center px-2"
+                        style={{ width: `${widthPct}%` }}
+                      >
+                        <span className="text-[10px] font-mono text-black/70">{g.count}</span>
+                      </div>
                     </div>
-                  </div>
-                  <span className="w-20 shrink-0 text-right text-amber-300 font-mono">
-                    {(g.rate * 100).toFixed(2)}%
-                  </span>
-                  <span className="w-24 shrink-0 text-right text-emerald-300 font-mono">
-                    +{g.projectedShare.toFixed(2)}× sale
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
+                    <span className="w-20 shrink-0 text-right text-amber-300 font-mono">
+                      {(g.rate * 100).toFixed(2)}%
+                    </span>
+                    <span className="w-24 shrink-0 text-right text-emerald-300 font-mono">
+                      +{g.projectedShare.toFixed(2)}× sale
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {/* Rate/share legend — real per-generation math, kept as a compact
+              reference strip beneath the tree so nothing the bar view used
+              to show is lost. */}
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-gray-400 border-t border-white/5 pt-2">
+            {tree.generations.map((g) => (
+              <span key={g.depth}>
+                <span className="text-amber-400/80 font-mono">gen {g.depth}</span>{' '}
+                <span className="text-gray-300 font-mono">{g.count}</span> ×{' '}
+                <span className="text-amber-300 font-mono">{(g.rate * 100).toFixed(2)}%</span> ={' '}
+                <span className="text-emerald-300 font-mono">+{g.projectedShare.toFixed(2)}×</span>
+              </span>
+            ))}
+          </div>
           <p className="text-[10px] text-gray-400 mt-2">
             Projected share = count × generational-rate. Royalties halve per generation
             (initial 21%) with a 0.05% floor — so a 4-deep cascade with 10 / 25 / 60 / 140

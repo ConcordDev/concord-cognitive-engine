@@ -80,6 +80,7 @@ function stateRoot() {
   if (!s.platformProviders) {
     s.platformProviders = {
       buckets: new Map(), // "provider:slot" -> { maxPerMinute, tokens, lastRefillMs }
+      externalCooldownUntil: new Map(), // "provider:slot" -> epoch-ms; set when upstream returned 429 + Retry-After
       dailySpendUsd: 0,
       dailySpendResetAt: 0,
     };
@@ -122,6 +123,22 @@ export function consumePlatformToken(provider, slot, nowMs = Date.now()) {
   if (!VALID_PROVIDERS.has(provider) || !VALID_SLOTS.has(slot)) {
     return { allowed: false, reason: "invalid_provider_or_slot" };
   }
+  const root = stateRoot();
+  if (!root) return { allowed: false, reason: "state_unavailable" };
+
+  // External cooldown (set when upstream returned 429 + Retry-After) gates
+  // BEFORE the token-bucket check, because a 429 from the real provider
+  // overrides anything we calculated offline — the provider is the source
+  // of truth on its own quota, not us.
+  const cooldownUntil = root.externalCooldownUntil.get(`${provider}:${slot}`);
+  if (Number.isFinite(cooldownUntil) && cooldownUntil > nowMs) {
+    return {
+      allowed: false,
+      reason: "upstream_throttled",
+      retryAfterMs: cooldownUntil - nowMs,
+    };
+  }
+
   const bucket = bucketFor(provider, slot);
   if (!bucket) return { allowed: false, reason: "state_unavailable" };
 
@@ -133,6 +150,29 @@ export function consumePlatformToken(provider, slot, nowMs = Date.now()) {
   const refillPerMs = bucket.maxPerMinute / RATE_LIMIT_WINDOW_MS;
   const retryAfterMs = Math.max(1, Math.ceil((1 - bucket.tokens) / refillPerMs));
   return { allowed: false, reason: "platform_budget_exhausted", retryAfterMs, maxPerMinute: bucket.maxPerMinute };
+}
+
+/**
+ * Mark a (provider, slot) as throttled by the upstream until `untilMs`.
+ * Called from platform-providers.js when the upstream returns 429 (or any
+ * 4xx that carries `Retry-After`). The token-bucket gate in
+ * consumePlatformToken() consults this first, so subsequent calls fail fast
+ * for the duration instead of consuming a bucket token only to be rejected
+ * by the real provider again.
+ *
+ * @param {string} provider
+ * @param {string} slot
+ * @param {number} untilMs  epoch-ms; pass a value in the past to clear.
+ */
+export function setExternalCooldown(provider, slot, untilMs) {
+  const root = stateRoot();
+  if (!root) return;
+  const key = `${provider}:${slot}`;
+  if (!Number.isFinite(untilMs) || untilMs <= Date.now()) {
+    root.externalCooldownUntil.delete(key);
+    return;
+  }
+  root.externalCooldownUntil.set(key, untilMs);
 }
 
 /** Read-only status for every (provider, slot) bucket that has been touched. Does not consume a token. */

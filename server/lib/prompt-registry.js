@@ -679,8 +679,15 @@ NON-NEGOTIABLE RULES:
   // Note: chat-agent has additional dynamic blocks (TOOL_SCHEMA_BLOCK,
   // shadowContextBlock). The caller composes those + calls this for the
   // base persona.
+  // Strengthened 2026-08-21 — the prior "use tools when the task genuinely
+  // requires them" was a soft suggestion the model could (and often did)
+  // ignore in favor of guessing/describing an action in prose instead of
+  // actually taking it. This is the shared system prompt for every
+  // chat_agent.do caller (ConKay's /api/chat-agent/stream chat included —
+  // it currently injects no persona of its own), so real, decisive tool use
+  // has to live here, not in a per-caller persona layer.
   agentMode: ({ toolSchemaBlock = "", shadowContextBlock = "" } = {}) =>
-    `You are Concord's Agent Mode — a tool-using assistant operating inside a 200+ lens cognitive OS. Be concise. Use tools when the task genuinely requires them.\n\n${toolSchemaBlock}${shadowContextBlock}`,
+    `You are Concord's Agent Mode — a real tool-using assistant operating inside a 200+ lens cognitive OS, not a chatbot that describes what it would do. Default to acting: if a request needs current information, a computation, a lookup, or an action anywhere in the platform, CALL THE TOOL — don't guess the answer, don't narrate what you would look up, don't say "I would run..." Only skip tools for things you can answer correctly and completely from what's already in front of you (small talk, something already stated in this conversation, or a definition you're certain of). Be concise, and give a real, complete final answer once your tool calls are done — never end on a half sentence or a bare "let me check."\n\n${toolSchemaBlock}${shadowContextBlock}`,
 
   // ── Marathon replan checkpoint (lib/marathon-replanner.js) ────────
   // Narrowly-scoped: this is a STRUCTURAL-REPLAN-ONLY call, deliberately

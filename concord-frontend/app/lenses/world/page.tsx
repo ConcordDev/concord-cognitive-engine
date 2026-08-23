@@ -822,13 +822,13 @@ const FactionWarBanner = dynamic(
   { ssr: false },
 );
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
-const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
+const ActiveEffectsBar = dynamic(() => import('@/components/concordia/hud/ActiveEffectsBar'), { ssr: false });
 // Concord Link Summon shell (B2) — self-gates on CONCORD_LINK_SYSTEM + open; inert by default.
 const LinkShell = dynamic(() => import('@/components/world/concord-link/LinkShell').then(m => m.LinkShell), { ssr: false });
-const CorpseMarkerOverlay = dynamic(() => import('@/components/concordia/HUD/CorpseMarkerOverlay'), { ssr: false });
-const RefusalFieldBanner = dynamic(() => import('@/components/concordia/HUD/RefusalFieldBanner'), { ssr: false });
-const EcosystemMetricsBadge = dynamic(() => import('@/components/concordia/HUD/EcosystemMetricsBadge'), { ssr: false });
-const SovereignManifestationToast = dynamic(() => import('@/components/concordia/HUD/SovereignManifestationToast'), { ssr: false });
+const CorpseMarkerOverlay = dynamic(() => import('@/components/concordia/hud/CorpseMarkerOverlay'), { ssr: false });
+const RefusalFieldBanner = dynamic(() => import('@/components/concordia/hud/RefusalFieldBanner'), { ssr: false });
+const EcosystemMetricsBadge = dynamic(() => import('@/components/concordia/hud/EcosystemMetricsBadge'), { ssr: false });
+const SovereignManifestationToast = dynamic(() => import('@/components/concordia/hud/SovereignManifestationToast'), { ssr: false });
 const PerformanceOverlay = dynamic(
   () => import('@/components/world-lens/PerformanceOverlay'),
   { ssr: false },

@@ -1,0 +1,73 @@
+{
+  "npc_id": "captain_ren_solare",
+  "home_location": "hub_watch_barracks",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_watch_barracks",
+      "activity": "rises pre-dawn; coffee with the night shift",
+      "need_addressed": "city_order",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_southern_arc_road",
+      "activity": "private patrol of the southern arc; checks Refusal Field strength",
+      "need_addressed": "dome_intelligence",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_great_plaza",
+      "activity": "open patrol; talks to merchants and travellers",
+      "need_addressed": "city_order",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_watch_barracks",
+      "activity": "shift briefing; trains new recruits",
+      "need_addressed": "city_order",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_market_district",
+      "activity": "evening patrol; watches the dusk-trade",
+      "need_addressed": "city_order",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_watch_barracks",
+      "activity": "off-shift; reads in the barracks library",
+      "need_addressed": "city_order",
+      "interactable_by_player": false
+    }
+  ]
+}

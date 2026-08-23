@@ -11,6 +11,8 @@
  * @see ../README.md for architecture overview
  */
 
+import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
+
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
 //   1. DATA_DIR env var (explicit override)
@@ -58,6 +60,8 @@ import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
+import * as presenceIdle from "./lib/presence-idle.js";
+import { markActivity as _markActivity } from "./lib/presence-idle.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 // Wave-4 gap-closure (privacy row) — shared recorder also used by the
 // `privacy.recordAccess` macro (server/domains/privacy.js); see the call
@@ -1775,11 +1779,12 @@ import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
-import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
+import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
 import { brainChat as byoBrainChat, getOverride as byoGetOverride, getBrainMode as byoGetBrainMode, resolveDispatchTarget as byoResolveDispatchTarget } from "./lib/byo-router.js";
+import { prepareContext } from "./lib/context-orchestrator.js";
 import { platformProviderChat, platformProviderConfigured } from "./lib/platform-providers.js";
 // Brain self-training: log every brain call + consult the active model
 // from brain_active_models so daily-refresh swaps actually take effect.
@@ -1861,6 +1866,7 @@ const infrastructureConfig = _require("./config/infrastructure.cjs");
 // ---- Route modules (ESM) ----
 import registerSystemRoutes from "./routes/system.js";
 import createAuthRouter from "./routes/auth.js";
+import { registerBrainModeRoutes } from "./routes/brain-mode.js";
 import createPersonalLockerRouter from "./routes/personal-locker.js";
 import registerChatRoutes from "./routes/chat.js";
 import registerDomainRoutes from "./routes/domain.js";
@@ -1907,6 +1913,11 @@ import { routeMessage as chatRouterRoute, buildLensChain, emitResonanceSignal, s
 // import — server.js already has an unrelated local `classifyIntent`
 // (greeting/identity/status/command/question classifier, ~line 3413).
 import { classifyIntent as classifyChatEngineIntent } from "./lib/chat/intent-router.js";
+// Sprint 33 Phase 5 (cc-sonnet) — CSL pre-dispatch tool gate. Wired into
+// chat.respond's embedded tool-call loop below (see _executeToolCall,
+// ~line 26290); see server/lib/csl-router.js for the gate contract and
+// docs/SPRINT-33-SPECS.md "Worker: cc-sonnet" Task 4 for the design.
+import { createCslToolGate } from "./lib/csl-router.js";
 import { initializeManifests, getManifestStats, registerUserLens, registerEmergentLens } from "./lib/lens-manifest.js";
 import { DOMAIN_RULES, validateArtifact, computeFields, getValidTransitions, scoreArtifact, getDomainSchema } from "./lib/domain-logic.js";
 import { EXTENDED_DOMAIN_RULES } from "./lib/domain-logic-extended.js";
@@ -1993,6 +2004,7 @@ import {
   runGuardianCheck,
   runProphet,
   observe,
+  logRepairDTU,
   getErrorAccumulator,
   startRepairLoop,
   stopRepairLoop,
@@ -2056,6 +2068,7 @@ import { selectGlobalSynthesisCandidates } from "./emergent/scope-separation.js"
 import { isSummaryDue, compressConversation, getSessionSummary, getSummaryText } from "./lib/conversation-summarizer.js";
 import { runContextHarvest, harvestEntityState, formatEntityStateBlock } from "./lib/chat-context-pipeline.js";
 import { assembleWithTokenBudget, computeBudgetBreakdown } from "./lib/token-budget-assembler.js";
+import { applyDHTP as applyDHTPfn, getDHTPStats as getDHTPStatsFn } from "./lib/dhtp.js";
 import { createInputDTU, createOutputDTU, isConsolidationDue, consolidationCheck, isAcceleratedPromotionDue, acceleratedChatPromotion, forgeFromMessage } from "./lib/conversation-enrichment.js";
 import { runParallelBrains, recordParallelMetrics } from "./lib/chat-parallel-brains.js";
 
@@ -2187,6 +2200,17 @@ try { rateLimit = (await importWithRetry("express-rate-limit")).default; } catch
   if (_isProduction) _securityLoadErrors.push(`express-rate-limit: ${e.message}`);
   else logger.warn('server', 'express-rate-limit failed to load', { error: e?.message, stack: e?.stack });
 }
+// Sprint 32 (E5) — Express-rate-limit v8+ validates `keyGenerator` strings and
+// throws if `req.ip` is referenced directly without wrapping in `ipKeyGenerator`.
+// Our keyGenerators use raw req.ip (lines 8798, 8820, 8855 + the per-user sliding
+// window at 8926). This was hidden until pm2 reloaded the code; the fix is to
+// pass IP through `ipKeyGenerator(req.ip)` so IPv6 clients don't bypass limits.
+try {
+  const _rateLimitMod = await import("express-rate-limit");
+  globalThis._ipKeyGenerator = _rateLimitMod.ipKeyGenerator || ((ip) => ip);
+} catch (_e) {
+  globalThis._ipKeyGenerator = (ip) => ip;
+}
 try { helmet = (await importWithRetry("helmet")).default; } catch (e) {
   if (_isProduction) _securityLoadErrors.push(`helmet: ${e.message}`);
   else logger.warn('server', 'helmet failed to load', { error: e?.message, stack: e?.stack });
@@ -2241,7 +2265,12 @@ async function tryLoadDotenv() {
   const preDotenvSnapshot = { ...process.env };
   try {
     const dotenv = await import("dotenv");
-    const result = envPath ? dotenv.config({ path: envPath }) : dotenv.config();
+    // quiet:true — dotenv 17.x prints a promotional "tip" line to stdout on every
+    // load by default (one of the rotated tips names an unrelated third-party
+    // product); suppressed so production logs stay to signal we actually emit.
+    const result = envPath
+      ? dotenv.config({ path: envPath, quiet: true })
+      : dotenv.config({ quiet: true });
     DOTENV.loaded = !result?.error;
     DOTENV.path = envPath || "(default)";
     DOTENV.error = result?.error ? String(result.error) : null;
@@ -2265,6 +2294,45 @@ async function tryLoadDotenv() {
   }
 }
 await tryLoadDotenv();
+
+// ---- shell-env loader (Free Cloud Fleet tokens) ----
+// Loads /tmp/llm-env.sh if present, parses `export KEY=value` and sets
+// them into process.env ONLY if not already set (mirror of dotenv's
+// "do not override existing env" behavior).
+// Operator: this is the central wiring for Free Cloud Fleet providers
+// (cerebras, openrouter, mistral, gemini, groq, etc.) so individual
+// provider files can rely on `process.env.X` being populated.
+const SHELL_ENV = { loaded: false, path: null, tokens: 0, error: null };
+async function tryLoadShellEnv() {
+  const shellEnvPath = process.env.SHELL_ENV_PATH || "/tmp/llm-env.sh";
+  try {
+    if (!fs.existsSync(shellEnvPath)) {
+      SHELL_ENV.error = "shell_env_file_missing";
+      return;
+    }
+    const raw = fs.readFileSync(shellEnvPath, "utf8");
+    let count = 0;
+    for (const line of raw.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      // Match: export KEY=value  /  export KEY="value"  /  KEY=value
+      const m = trimmed.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*["']?([^"']*)["']?\s*$/);
+      if (!m) continue;
+      const [, key, value] = m;
+      // Only set if not already in process.env (mirror dotenv safe behavior)
+      if (process.env[key] === undefined) {
+        process.env[key] = value;
+      }
+      count += 1;
+    }
+    SHELL_ENV.loaded = true;
+    SHELL_ENV.path = shellEnvPath;
+    SHELL_ENV.tokens = count;
+  } catch (e) {
+    SHELL_ENV.error = String(e?.message || e);
+  }
+}
+await tryLoadShellEnv();
 
 // ============================================================================
 // PRODUCTION INFRASTRUCTURE
@@ -2424,16 +2492,30 @@ function detectContentInjection(text) {
   for (const pat of _INJECTION_PATTERNS) {
     if (pat.test(text)) matched.push(pat.source.slice(0, 40));
   }
-  // Also run the full injection defense module if available
+  // Also run the full injection defense module if available. NOTE: injection-defense.js
+  // returns `findings` (not `detections`) — the previous code mapped the wrong field
+  // and silently dropped the actual pattern matches, leaving the structuredLog line
+  // carrying an empty patterns array. That hid the real signal in 94+ false-positive
+  // dtu_injection_detected warnings (2026-08-12). Fixed to include the actual findings
+  // types so the operator can see what's matching.
   try {
     const injDef = globalThis._injectionDefenseModule;
     if (injDef?.scanContent) {
       const fullScan = injDef.scanContent(globalThis._concordSTATE || {}, text);
+      const findings = fullScan?.findings || [];
       if (fullScan?.threatLevel && fullScan.threatLevel !== "NONE") {
-        return { injected: true, patterns: [...matched, ...(fullScan.detections || []).map(d => d.type)] };
+        return {
+          injected: true,
+          patterns: [
+            ...matched,
+            ...findings.map(f => `${f.type}:${f.severity ?? "?"}`),
+          ],
+          threatLevel: fullScan.threatLevel,
+          firstFinding: findings[0]?.message || null,
+        };
       }
     }
-  } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
+  } catch (e) { logger.debug('server', 'silent catch', { error: e?.message }); }
   return { injected: matched.length > 0, patterns: matched };
 }
 
@@ -3154,6 +3236,18 @@ function releaseMutex() {
 
 // ---- config ----
 const PORT = Number(process.env.PORT || 5050);
+import { startupFdGuard, startFdMonitor } from "./lib/fd-guard.js";
+import { getFactionRepBuffer, flushAllBuffers } from "./lib/batch-commit-buffer.js";
+
+// FD-limit guard: runs at module load. Detects under-provisioned
+// process (default ulimit 1024 will exhaust with ~500 users).
+startupFdGuard();
+startFdMonitor();
+
+// Pre-initialize the faction rep batch buffer so it's hot when the first
+// combat action arrives. Coalesces 2500ms of writes into a single DB op.
+getFactionRepBuffer();
+
 const VERSION = "1.0.0";
 const NODE_ENV = process.env.NODE_ENV || "development";
 // Read-only replica role (horizontal read scale-out). When set, this process:
@@ -5857,10 +5951,94 @@ if (db && !READ_REPLICA) {
     structuredLog("warn", "runtime_tables_ensure_failed", { error: e?.message });
   }
 
+  // Validate dtu_store schema before using it (Sprint 32 E6 — binary attachments)
+  try {
+    const columns = db.prepare("PRAGMA table_info(dtu_store)").all();
+    const columnNames = columns.map(c => c.name);
+    const requiredColumns = ['id', 'title', 'tier', 'scope', 'tags', 'source', 'created_at', 'updated_at', 'data'];
+    const missingColumns = requiredColumns.filter(col => !columnNames.includes(col));
+    if (missingColumns.length > 0) {
+      structuredLog("error", "dtu_store_schema_invalid", { missingColumns, availableColumns: columnNames });
+      if (NODE_ENV === "production") {
+        process.exit(1);
+      }
+    } else {
+      structuredLog("debug", "dtu_store_schema_valid", { columnCount: columnNames.length });
+    }
+  } catch (e) {
+    structuredLog("warn", "dtu_store_schema_check_failed", { error: e?.message });
+  }
+
   // Make db available to systems that read STATE.db directly (e.g. the
   // refusal-field persistence layer). Modules that already capture `db`
   // via closure are unaffected.
   STATE.db = db;
+
+  // Sprint 32 — load durable csk_ API keys from the api_keys table into
+  // the in-memory HASH_INDEX so previously-issued tokens survive pm2
+  // restarts. Without this, validateKey() would 401 every csk_ key the
+  // moment the backend restarts (the lib/api-keys.js Maps are otherwise
+  // process-local and empty after a fresh boot). The founder + Dila both
+  // authenticate via csk_ keys, so this loader is what makes Dila
+  // permanently usable across restarts.
+  try {
+    const { loadKeysFromDb } = await import("./lib/api-keys.js");
+    const result = loadKeysFromDb(db);
+    structuredLog("info", "api_keys_loaded_from_db", result);
+  } catch (e) {
+    structuredLog("warn", "api_keys_load_failed", { error: String(e?.message || e) });
+  }
+
+  // Ingest quality log prune — keep last 50k rows, 30d retention
+  try {
+    const { pruneQualityLog } = await import("./lib/ingest-quality.js");
+    const pruneResult = pruneQualityLog(db);
+    if (pruneResult.pruned > 0) {
+      structuredLog("info", "ingest_quality_log_pruned", pruneResult);
+    }
+  } catch (e) {
+    structuredLog("debug", "ingest_quality_log_prune_skipped", { error: e?.message });
+  }
+
+  // Compression audit prune — keep last 50k rows, 30d retention
+  try {
+    const { pruneCompressionAudit } = await import("./lib/compression-quality.js");
+    const pruneResult = pruneCompressionAudit(db);
+    if (pruneResult.pruned > 0) {
+      structuredLog("info", "compression_audit_pruned", pruneResult);
+    }
+  } catch (e) {
+    structuredLog("debug", "compression_audit_prune_skipped", { error: e?.message });
+  }
+
+  // Sprint 32 E5 — backfill e5-large-v2 embeddings (fire-and-forget)
+  try {
+    const { backfillE5Embeddings } = await import("./lib/embed-backfill.js");
+    // Fire backfill in background, don't await
+    backfillE5Embeddings({ db, embed: (await import("./embeddings.js")).embed, STATE })
+      .then(result => {
+        if (result.ok) {
+          structuredLog("info", "embed_backfill_complete", result);
+        } else {
+          structuredLog("warn", "embed_backfill_failed", result);
+        }
+      })
+      .catch(err => {
+        structuredLog("warn", "embed_backfill_error", { error: String(err?.message || err) });
+      });
+  } catch (e) {
+    structuredLog("debug", "embed_backfill_skipped", { error: e?.message });
+  }
+
+  // Sprint 32 E6 — initialize attachment store (fire-and-forget)
+  try {
+    // No backfill needed for attachments — they're on-demand via API
+    // Just verify tables exist after migration
+    db.prepare("SELECT 1 FROM dtu_attachments LIMIT 1").get();
+    structuredLog("debug", "attachment_store_ready");
+  } catch (e) {
+    structuredLog("debug", "attachment_store_init", { error: e?.message, note: "tables may not exist yet (migration 406 pending)" });
+  }
 
   // Hand the db reference to oracle-brain so its callUtilityBrain can
   // consult brain_active_models for the daily-refreshed Utility tag and
@@ -6050,7 +6228,16 @@ const AuthDB = {
 
   getUserCount() {
     if (db) {
-      const stmt = db.prepare("SELECT COUNT(*) as count FROM users WHERE is_active = 1");
+      // Excludes the seeded Hermes/Dila system row (migrations/400_hermes_dila.js,
+      // id='hermes', is_active=1) — she's an internal agent account, not a human
+      // operator, and always exists on a fresh DB from the first migration run
+      // onward. Counting her here broke two "is this a brand new install?"
+      // bootstrap checks that key off getUserCount()===0: routes/auth.js's
+      // organic first-registered-user-becomes-owner promotion, and this file's
+      // own default-ADMIN_PASSWORD-admin seed just below — both silently never
+      // fired on any install created since migration 400 landed, because the
+      // count was already 1 before the human's first real registration.
+      const stmt = db.prepare("SELECT COUNT(*) as count FROM users WHERE is_active = 1 AND id != 'hermes'");
       return stmt.get().count;
     }
     return AUTH.users.size;
@@ -6904,7 +7091,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook"];
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -7038,6 +7225,11 @@ function authMiddleware(req, res, next) {
           req.user = user;
           req.authMethod = cookieToken ? "cookie" : "jwt";
           if (decoded.jti) _SESSION_ACTIVITY.touch(decoded.jti);
+          // Sprint 60+ — mark this request as real-user activity so
+          // idle-aware subsystems (broadcasts, NPC ticks, consolidation)
+          // know to wake up. Wrapped in a guard because ConCORD_PUBLIC
+          // boot mode does have a valid req.user set even with no users.
+          try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
         }
       }
     } catch (_e) { /* non-fatal — we're in public mode */ }
@@ -7356,6 +7548,30 @@ function authMiddleware(req, res, next) {
   const _hasAuthHeader = !!(req.headers.authorization || req.headers["x-api-key"] ||
                             req.cookies?.concord_auth || req.cookies?.concord_refresh);
   if (req.method === "GET" && !_isSovereignRoute && !_hasAuthHeader && publicReadPaths.some(p => req.path.startsWith(p))) return next();
+  // MCP bypass (Sprint 54, 2026-08-13): local-first MCP server for cloud workers.
+  // When CONCORD_MCP_PUBLIC=1, both GET /mcp/tools and POST /mcp/call bypass auth.
+  // When AUTH_MODE=public (local-first dev), the public mode already handles this.
+  // In all cases we synthesize req.user so downstream requireAuth() calls pass.
+  // Auth-scoping fix (2026-08-14): only take this free bypass when the caller
+  // sent NO credentials at all (mirrors the public-read GET bypass just above
+  // via the same _hasAuthHeader check) — previously this ran unconditionally
+  // BEFORE the real JWT/API-key pipeline ever got a chance to execute, so a
+  // caller presenting a genuine, valid Authorization header still got the
+  // synthetic founder/wildcard-scope identity instead of their own, and
+  // real auth was structurally unreachable on every /mcp path. A caller who
+  // does send credentials now falls through to the normal auth pipeline
+  // below, which resolves their real req.user (or rejects an invalid one) —
+  // this is what lets reflect_invoke/reflect_rescan's real-auth requirement
+  // (see MCP_TOOLS_REQUIRE_REAL_AUTH near the /mcp/call route) actually be
+  // satisfiable by a real user instead of being unconditionally 403'd.
+  const _MCP_PUBLIC = process.env.CONCORD_MCP_PUBLIC === "1" || AUTH_MODE === "public";
+  if (_MCP_PUBLIC && req.path.startsWith("/mcp") && !_hasAuthHeader) {
+    if (!req.user) {
+      req.user = { id: "mcp-anonymous", role: "founder", email: "mcp@localhost", scopes: ["*"] };
+      req.authMethod = "mcp-bypass";
+    }
+    return next();
+  }
   // Gate 1 POST bypass (security audit 2026-07-30, replaces the removed
   // blanket "/api/chat" alwaysPublic entry above): the two genuinely
   // anonymous-guest chat entry points, gated by !_hasAuthHeader exactly
@@ -7516,10 +7732,18 @@ function authMiddleware(req, res, next) {
   }
 
   // 2. Try API key if enabled by AUTH_MODE (keys are stored hashed)
-  // Optimization: hash the incoming key once and do O(1) lookup instead of O(n) iteration
-  if (AUTH_USES_APIKEY && apiKey) {
+  // Optimization: hash the incoming key once and do O(1) lookup instead of O(n) iteration.
+  // Sprint 32 — accept csk_ keys from the Authorization: Bearer header as
+  // well as the legacy x-api-key header. The two paths are now equivalent:
+  // a founder or Dila authenticating via `Authorization: Bearer csk_...`
+  // is no longer silently demoted to "anonymous" because the JWT path
+  // above rejects csk_ tokens (verifyToken is JWT-only).
+  let _bearerKey = "";
+  if (authHeader.startsWith("Bearer csk_")) _bearerKey = authHeader.slice(7);
+  if (AUTH_USES_APIKEY && (apiKey || _bearerKey)) {
+    const _cskToCheck = apiKey || _bearerKey;
     let keyData = null;
-    const incomingHash = hashApiKey(apiKey);
+    const incomingHash = hashApiKey(_cskToCheck);
     const allKeys = AuthDB.getAllApiKeys();
     for (const key of allKeys) {
       if (key.keyHash && key.keyHash === incomingHash) {
@@ -7607,7 +7831,7 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -8415,7 +8639,13 @@ function metricsMiddleware(req, res, next) {
 }
 
 // Update gauges periodically (30s — no need to update faster, these are scraped on demand)
+// Sprint 60+ — idle gate. Prometheus gauges are scraped on-demand by ops;
+// when no users are present, defer them too. Saves one synchronous
+// STATE.dtus.values() + world_npcs SQL query every 30 seconds.
 _unrefInTest(setInterval(() => {
+  // Sprint 60+ — lag probe
+  try { presenceIdle.markLagProbe("density_gauges"); } catch (_e) { /* observed: presenceIdle not initialized yet — defensive guard */ }
+  if (!presenceIdle.shouldRunHeavyMaintenance()) return;
   // Report real DTU count (excluding shadow/repair/system DTUs) to Prometheus
   if (METRICS.gauges.dtuCount) {
     const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
@@ -8756,9 +8986,10 @@ if (rateLimit) {
     legacyHeaders: false,
     // ---- Compound Rate Key (Tier 2: Rate Limit Hardening) ----
     // Keys on IP + username/email to prevent distributed attacks on a single account
+    // Sprint 32 (E5) — wrap req.ip in ipKeyGenerator for IPv6 safety
     keyGenerator: (req) => {
       const identity = req.body?.username || req.body?.email || "";
-      return `${req.ip}:${identity}`;
+      return `${globalThis._ipKeyGenerator?.(req.ip) || req.ip}:${identity}`;
     },
     // Integration/smoke/e2e CI jobs set CONCORD_RATE_LIMIT_BYPASS=1 — a
     // single suite legitimately does many register/login calls (real-creds
@@ -8780,7 +9011,7 @@ if (rateLimit) {
     message: { ok: false, error: "Upload rate limit exceeded. Max 10 bulk uploads per 15 minutes.", retryAfter: 900 },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.user?.username || req.ip
+    keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
   });
 }
 
@@ -8815,7 +9046,7 @@ if (rateLimit) {
     // call with no scraping value, so it gets the same exemption as health
     // probes rather than counting toward the anon-scraping deterrent.
     skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token",
-    keyGenerator: (req) => req.ip,
+    keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
     legacyHeaders: false,
@@ -10297,6 +10528,23 @@ async function tryInitWebSockets(server) {
           }
         } catch { /* refusal-field unavailable — continue normally */ }
       }
+
+      // Great Refusal — hub ground is Concordia's neutral zone. Same gate the
+      // creature-kill HTTP route already uses (lib/concordia/neutral-zone.js).
+      // Without an authored exemption, no PvP attack lands on concordia-hub.
+      try {
+        const { checkHostilityAllowed } = await import("./lib/concordia/neutral-zone.js");
+        const _nzWorld = cityPresence.getPlayerWorld?.(userId)
+          ?? cityPresence.getUserPosition?.(userId)?.worldId
+          ?? "concordia-hub";
+        const hostility = checkHostilityAllowed(STATE, _nzWorld, userId);
+        if (!hostility.allowed) {
+          socket.emit("combat:attack:ack", {
+            ok: true, refused: true, reason: hostility.reason || "neutral_zone_concordia", damage: 0,
+          });
+          return;
+        }
+      } catch { /* neutral-zone unavailable — continue normally */ }
 
       // G3 — server-authoritative damage ceiling on the socket PvP path. The
       // HTTP NPC route validates computed damage via _validateDamageCap, but
@@ -12098,6 +12346,110 @@ try {
   });
 } catch (e) {
   structuredLog("warn", "post_load_optimization_failed", { error: String(e?.message || e) });
+}
+
+// Sprint 32 (E5) — lazy module init helper. Defers each module's
+// `init({ STATE })` (the expensive part of ghost-fleet init — forgetting
+// scans 22k DTUs, attention scans state, etc.) until FIRST method access
+// at runtime, not at boot. The import + register calls still happen at
+// boot (so the macro registry is wired), but the heavy work defers.
+import { lazy as _lazyModule } from "./lib/lazy-module.js";
+
+// ── Sprint 32 — cold DTU archive boot sweep + rolling sweep ─────────────
+// Cold, unprotected DTUs older than CONCORD_DTU_ARCHIVE_AGE_MS (default
+// 7 days) are moved from `dtu_store` (hot table, hydrated into the
+// in-memory `STATE.dtus` Map) to `dtu_store_archive` (cold table, not
+// hydrated). Forgetting protects IMPORTANT knowledge via retention
+// scoring; this hook protects MEMORY by sweeping rows that the rest of
+// the system has stopped touching. See server/lib/dtu-archive.js for the
+// full design + the rolling sweep that runs every 30 minutes
+// thereafter. Runs after post_load_memory_optimization so the in-memory
+// Map is already trimmed; runs before state_fields_initialized so the
+// hot Map size is the number the rest of boot sees.
+{
+  try {
+    import("./lib/dtu-archive.js").then(async (mod) => {
+      try {
+        const bootResult = await mod.runBootArchiveSweep({ db, STATE });
+        structuredLog("info", "dtu_archive_boot_sweep", {
+          archived: bootResult.archived,
+          inMemoryPruned: bootResult.inMemoryPruned ?? 0,
+          remaining: bootResult.remaining,
+          skipped: bootResult.skipped === true,
+          reason: bootResult.reason,
+        });
+        mod.installRollingArchiveSweep({ db, STATE });
+      } catch (e) {
+        // Never fatal: a failed archive sweep must not take down boot.
+        structuredLog("warn", "dtu_archive_boot_sweep_failed", { error: String(e?.message || e) });
+      }
+    });
+  } catch (e) {
+    structuredLog("warn", "dtu_archive_import_failed", { error: String(e?.message || e) });
+  }
+}
+
+// ── Sprint 32 — system-status DTU redirect (E1) ──────────────────────
+// Repair cortex (and any other operational-log producer) was writing every
+// event as a DTU, polluting the knowledge substrate with telemetry. Now:
+//   1. Migration 402 creates `dtu_operations_log` for the events
+//   2. lib/dtu-operations-log.js exposes `recordOperation`/`getOperationsLog`
+//   3. This block: (a) tombstones the existing operational DTUs in
+//      dtu_store so they stop appearing in user-facing queries
+//      (b) installs a daily prune on dtu_operations_log so it doesn't
+//      grow unbounded
+//
+// Add new operational-only DTU sources to
+// `KNOWN_OPERATIONAL_DTU_SOURCES` in lib/dtu-operations-log.js — they're
+// tombstoned at boot and excluded from the substrate going forward.
+{
+  try {
+    import("./lib/dtu-operations-log.js").then(async (mod) => {
+      try {
+        const opsResult = mod.tombstoneOperationalDTUs(db);
+        if (opsResult.tombstoned > 0) {
+          structuredLog("info", "dtu_operations_log_boot_redirect", {
+            scanned: opsResult.scanned,
+            tombstoned: opsResult.tombstoned,
+            sources: mod.KNOWN_OPERATIONAL_DTU_SOURCES,
+          });
+        } else {
+          structuredLog("info", "dtu_operations_log_boot_redirect_clean", {
+            sources: mod.KNOWN_OPERATIONAL_DTU_SOURCES,
+          });
+        }
+
+        // Install a daily prune on dtu_operations_log (30-day retention, 50k cap).
+        // First run after 1h to let the boot settle.
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const ONE_DAY_MS = 24 * ONE_HOUR_MS;
+        setTimeout(() => {
+          const dailyPrune = () => {
+            try {
+              const pruned = mod.pruneOperationsLog(db);
+              if (pruned.deletedByAge || pruned.deletedByCap) {
+                structuredLog("info", "dtu_operations_log_pruned", pruned);
+              }
+            } catch (e) {
+              structuredLog("warn", "dtu_operations_log_prune_failed", {
+                error: String(e?.message || e),
+              });
+            }
+          };
+          dailyPrune();
+          const t = setInterval(dailyPrune, ONE_DAY_MS);
+          if (t.unref) t.unref();
+        }, ONE_HOUR_MS);
+      } catch (e) {
+        // Never fatal: a failed redirect must not take down boot.
+        structuredLog("warn", "dtu_operations_log_boot_redirect_failed", {
+          error: String(e?.message || e),
+        });
+      }
+    });
+  } catch (e) {
+    structuredLog("warn", "dtu_operations_log_import_failed", { error: String(e?.message || e) });
+  }
 }
 
 // Final boot normalization (ensures env-driven defaults win)
@@ -16154,6 +16506,14 @@ function makeCtx(req=null) {
       orgId: req.user.orgId || "default",
       role: req.user.role || "member",
       scopes: Array.isArray(req.user.scopes) ? req.user.scopes : ["read", "write"],
+      // Real display name, from the same AuthDB.getUser row already read
+      // above — zero extra DB round trips. Additive only (no existing
+      // reader touches ctx.actor.username), so macros that want an honest
+      // creator label instead of a hardcoded "Anonymous" fallback now can.
+      // Found missing via vote.js's poll-create, which always fell back to
+      // "Anonymous" regardless of who created the poll (audit/
+      // LENS_DESIGN_UPGRADE_PLAN.md #251).
+      username: req.user.username || null,
       // Private/High Power Mode (migration 397) — carried here so
       // ctx.actor.brainMode is available to every macro/handler for free,
       // with zero extra DB round trips (AuthDB.getUser already reads it).
@@ -17032,11 +17392,10 @@ function upsertDTU(dtu, { broadcast = true, federate = false } = {}) {
       // concordia:combat-engaged/calm (DET-C batch 3, world/page.tsx) and
       // the sibling shadow_vault/quality:approved split below.
       const dtuBroadcastPayload = {
-        id: dtu.id,
+        dtuId: dtu.id,
         title: dtu.title,
         tier: dtu.tier,
         tags: dtu.tags,
-        updatedAt: dtu.updatedAt
       };
       if (isNew) {
         realtimeEmit("dtu:created", dtuBroadcastPayload);
@@ -18216,7 +18575,14 @@ function initLLMPipeline() {
 // Every Ollama call path sends this. CONCORD_NUM_CTX_CAP bounds KV-cache
 // VRAM growth (KV scales with num_ctx).
 function _ollamaNumCtx(brainName = "conscious") {
-  const win = BRAIN_CONFIG[brainName]?.contextWindow || 8192;
+  // Use adaptive brain config when available (with dynamic scaling)
+  let brainCfg;
+  try {
+    brainCfg = getActiveBrainConfig()[brainName];
+  } catch {
+    brainCfg = BRAIN_CONFIG[brainName];
+  }
+  const win = brainCfg?.contextWindow || 8192;
   return Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), win);
 }
 
@@ -18720,6 +19086,15 @@ if (!_brainsDisabled) {
   // Then preload/warm all models for instant first response
   setTimeout(async () => {
     await initFiveBrains();
+    // Sprint 60+ — defer brain preload when idle. Each model warmup takes
+    // 2-5s of CPU and triggers the event-loop spike detector. With no users
+    // present, we don't need preloaded LLMs — first request will warm on
+    // demand. CONCORD_PRELOAD_ON_BOOT=1 to opt back in.
+    if (!presenceIdle.shouldRunHeavyMaintenance() &&
+        process.env.CONCORD_PRELOAD_ON_BOOT !== "1") {
+      structuredLog("info", "brain_preload_skipped_idle", {});
+      return;
+    }
     try {
       const preloadResult = await preloadBrains(structuredLog);
       structuredLog("info", "brain_preload_complete", preloadResult);
@@ -18794,7 +19169,16 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
   GHOST_FLEET_STATUS,
 });
 
-const _ghostFleetYield = () => new Promise(r => { setTimeout(r, 2000); }); // 2s gap between modules
+function _ghostFleetYield() {
+  // Sprint 32 (E5) — reduced from 2000ms to 10ms per module. The original
+  // 2-second gap was load-bearing only because boot is 8+ minutes total —
+  // it wasn't a per-module correctness concern. Dropping it from 2000ms to
+  // 10ms saves ~56 seconds across 28 modules and is enough for setImmediate
+  // breathing room. Env override `CONCORD_GHOST_FLEET_YIELD_MS` lets the
+  // operator dial it back if a specific module needs more.
+  const ms = parseInt(process.env.CONCORD_GHOST_FLEET_YIELD_MS || "10", 10);
+  return new Promise((r) => { setTimeout(r, ms); });
+}
 
 // ADMIN GATE (ops lens substrate tabs): `attention_alloc`, `repair_network`,
 // `physical`, and `explore` are the operator-only "Substrate Ops" surface
@@ -19558,16 +19942,31 @@ async function initGhostFleet() {
     const forgetting = await import("./emergent/forgetting-engine.js");
     GHOST_FLEET_STATUS.modules["forgetting-engine"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("forgetting", "status", () => forgetting.getStatus());
-    register("forgetting", "candidates", () => forgetting.getCandidates());
-    register("forgetting", "run", () => forgetting.runForgettingCycle(false));
-    register("forgetting", "protect", (_ctx, input = {}) => forgetting.protectDTU(input.dtuId));
-    register("forgetting", "unprotect", (_ctx, input = {}) => forgetting.unprotectDTU(input.dtuId));
-    register("forgetting", "threshold", (_ctx, input = {}) => forgetting.setThreshold(input.value));
-    register("forgetting", "history", (_ctx, input = {}) => forgetting.getHistory(input.limit));
-
-    forgetting.init({ STATE });
-    structuredLog("info", "ghost_fleet_module_loaded", { name: "forgetting-engine", macros: 7, interval: "6h" });
+    // Sprint 32 (E5) — wrap the imported namespace in a lazy proxy BEFORE
+    // any macros register. The proxy triggers forgetting.init({ STATE })
+    // on first property access. Macros that read `_forgetting.runForgettingCycle`
+    // etc. trigger init() on first call, then go straight to the real method.
+    // Set `CONCORD_LAZY_INIT=0` to run eagerly at boot (debug timing).
+    const _forgetting = _lazyModule(forgetting, "forgetting-engine", { initOpts: { STATE } });
+    register("forgetting", "status", () => _forgetting.getStatus());
+    register("forgetting", "candidates", () => _forgetting.getCandidates());
+    register("forgetting", "run", () => _forgetting.runForgettingCycle(false));
+    register("forgetting", "protect", (_ctx, input = {}) => _forgetting.protectDTU(input.dtuId));
+    register("forgetting", "unprotect", (_ctx, input = {}) => _forgetting.unprotectDTU(input.dtuId));
+    register("forgetting", "threshold", (_ctx, input = {}) => _forgetting.setThreshold(input.value));
+    register("forgetting", "history", (_ctx, input = {}) => _forgetting.getHistory(input.limit));
+    // Sprint 32 — log the ACTUAL configured interval + cap (was hardcoded
+    // "6h" string here regardless of FORGETTING_INTERVAL_MS /
+    // MAX_FORGET_PER_CYCLE env overrides, which made it look like the
+    // dashboard was lying about forgetting firing on schedule).
+    const _forgettingIntervalLabel = `${Math.round((parseInt(process.env.FORGETTING_INTERVAL_MS || "1800000", 10)) / 60000)}min`;
+    const _forgettingCap = parseInt(process.env.MAX_FORGET_PER_CYCLE || "500", 10);
+    structuredLog("info", "ghost_fleet_module_loaded", {
+      name: "forgetting-engine",
+      macros: 7,
+      interval: _forgettingIntervalLabel,
+      maxPerCycle: _forgettingCap,
+    });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["forgetting-engine"] = { loaded: false, error: err.message };
     structuredLog("warn", "ghost_fleet_module_failed", { name: "forgetting-engine", error: err.message });
@@ -19578,19 +19977,20 @@ async function initGhostFleet() {
   try {
     const attention = await import("./emergent/attention-allocator.js");
     GHOST_FLEET_STATUS.modules["attention-allocator"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern: see `forgetting-engine` block above.
+    const _attention = _lazyModule(attention, "attention-allocator", { initOpts: { STATE } });
 
     // ADMIN GATE: same operator-only surface as `physical` above — the
     // civilization-wide LLM attention budget is shared system state (a
     // regular user calling `focus`/`budget` could force-focus up to 90% of
     // compute onto one domain or resize the whole budget for every user).
-    register("attention_alloc", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.getStatus(); });
-    register("attention_alloc", "run", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.runAttentionCycle(); });
-    register("attention_alloc", "focus", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.setFocusOverride(input.domain, input.weight, input.minutes); });
-    register("attention_alloc", "unfocus", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.clearFocusOverride(); });
-    register("attention_alloc", "history", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.getAllocationHistory(); });
-    register("attention_alloc", "budget", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return attention.setBudget(input.total); });
+    register("attention_alloc", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.getStatus(); });
+    register("attention_alloc", "run", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.runAttentionCycle(); });
+    register("attention_alloc", "focus", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.setFocusOverride(input.domain, input.weight, input.minutes); });
+    register("attention_alloc", "unfocus", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.clearFocusOverride(); });
+    register("attention_alloc", "history", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.getAllocationHistory(); });
+    register("attention_alloc", "budget", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _attention.setBudget(input.total); });
 
-    attention.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "attention-allocator", macros: 6, interval: "5min" });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["attention-allocator"] = { loaded: false, error: err.message };
@@ -19602,16 +20002,17 @@ async function initGhostFleet() {
   try {
     const repairNet = await import("./emergent/repair-network.js");
     GHOST_FLEET_STATUS.modules["repair-network"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern
+    const _repairNet = _lazyModule(repairNet, "repair-network", { initOpts: { STATE } });
 
     // ADMIN GATE: same operator-only surface — `disconnect` tears down the
     // shared distributed repair network for everyone, so this must not be
     // reachable by a regular authenticated user.
-    register("repair_network", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.getStatus(); });
-    register("repair_network", "push", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.pushFixes(); });
-    register("repair_network", "pull", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.pullFixes(); });
-    register("repair_network", "disconnect", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return repairNet.disconnect(); });
+    register("repair_network", "status", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _repairNet.getStatus(); });
+    register("repair_network", "push", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _repairNet.pushFixes(); });
+    register("repair_network", "pull", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _repairNet.pullFixes(); });
+    register("repair_network", "disconnect", (ctx) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _repairNet.disconnect(); });
 
-    repairNet.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "repair-network", macros: 4, enabled: process.env.REPAIR_NETWORK_ENABLED === "true" });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["repair-network"] = { loaded: false, error: err.message };
@@ -19623,18 +20024,19 @@ async function initGhostFleet() {
   try {
     const appMaker = await import("./emergent/app-maker.js");
     GHOST_FLEET_STATUS.modules["app-maker"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern
+    const _appMaker = _lazyModule(appMaker, "app-maker", { initOpts: { STATE } });
 
-    register("apps", "list", (_ctx, input = {}) => appMaker.listApps(input));
-    register("apps", "get", (_ctx, input = {}) => appMaker.getApp(input.id));
-    register("apps", "create", (_ctx, input = {}) => appMaker.createApp(input));
-    register("apps", "update", (_ctx, input = {}) => appMaker.updateApp(input.id, input.updates));
-    register("apps", "delete", (_ctx, input = {}) => appMaker.deleteApp(input.id));
-    register("apps", "validate", (_ctx, input = {}) => appMaker.validateApp(input));
-    register("apps", "promote", (_ctx, input = {}) => appMaker.promoteApp(input.id));
-    register("apps", "demote", (_ctx, input = {}) => appMaker.demoteApp(input.id));
-    register("apps", "metrics", () => appMaker.getAppMetrics());
+    register("apps", "list", (_ctx, input = {}) => _appMaker.listApps(input));
+    register("apps", "get", (_ctx, input = {}) => _appMaker.getApp(input.id));
+    register("apps", "create", (_ctx, input = {}) => _appMaker.createApp(input));
+    register("apps", "update", (_ctx, input = {}) => _appMaker.updateApp(input.id, input.updates));
+    register("apps", "delete", (_ctx, input = {}) => _appMaker.deleteApp(input.id));
+    register("apps", "validate", (_ctx, input = {}) => _appMaker.validateApp(input));
+    register("apps", "promote", (_ctx, input = {}) => _appMaker.promoteApp(input.id));
+    register("apps", "demote", (_ctx, input = {}) => _appMaker.demoteApp(input.id));
+    register("apps", "metrics", () => _appMaker.getAppMetrics());
 
-    appMaker.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "app-maker", macros: 9 });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["app-maker"] = { loaded: false, error: err.message };
@@ -19646,15 +20048,16 @@ async function initGhostFleet() {
   try {
     const promotion = await import("./emergent/promotion-pipeline.js");
     GHOST_FLEET_STATUS.modules["promotion-pipeline"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern
+    const _promotion = _lazyModule(promotion, "promotion-pipeline", { initOpts: { STATE } });
 
-    register("promotion", "request", (_ctx, input = {}) => promotion.requestPromotion(input.itemId, input.itemType, input.requesterId));
-    register("promotion", "approve", (_ctx, input = {}) => promotion.approvePromotion(input.id, input.approverId));
-    register("promotion", "reject", (_ctx, input = {}) => promotion.rejectPromotion(input.id, input.reason, input.rejecterId));
-    register("promotion", "queue", () => promotion.getQueue());
-    register("promotion", "history", (_ctx, input = {}) => promotion.getPromotionHistory(input.limit));
-    register("promotion", "get", (_ctx, input = {}) => promotion.getProposal(input.id));
+    register("promotion", "request", (_ctx, input = {}) => _promotion.requestPromotion(input.itemId, input.itemType, input.requesterId));
+    register("promotion", "approve", (_ctx, input = {}) => _promotion.approvePromotion(input.id, input.approverId));
+    register("promotion", "reject", (_ctx, input = {}) => _promotion.rejectPromotion(input.id, input.reason, input.rejecterId));
+    register("promotion", "queue", () => _promotion.getQueue());
+    register("promotion", "history", (_ctx, input = {}) => _promotion.getPromotionHistory(input.limit));
+    register("promotion", "get", (_ctx, input = {}) => _promotion.getProposal(input.id));
 
-    promotion.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "promotion-pipeline", macros: 6 });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["promotion-pipeline"] = { loaded: false, error: err.message };
@@ -19666,13 +20069,14 @@ async function initGhostFleet() {
   try {
     const reality = await import("./emergent/reality-explorer.js");
     GHOST_FLEET_STATUS.modules["reality-explorer"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern
+    const _reality = _lazyModule(reality, "reality-explorer", { initOpts: { STATE } });
 
     // ADMIN GATE: same operator-only surface (ops lens's "Explorations" tab).
-    register("explore", "run", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.exploreAdjacent(input.constraints || {}, input.domain); });
-    register("explore", "history", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.getExplorationHistory(input.limit); });
-    register("explore", "save", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return reality.saveExploration(input.id); });
+    register("explore", "run", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _reality.exploreAdjacent(input.constraints || {}, input.domain); });
+    register("explore", "history", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _reality.getExplorationHistory(input.limit); });
+    register("explore", "save", (ctx, input = {}) => { const denied = requireOpsSubstrateAdminRole(ctx); if (denied) return denied; return _reality.saveExploration(input.id); });
 
-    reality.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "reality-explorer", macros: 3 });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["reality-explorer"] = { loaded: false, error: err.message };
@@ -19680,18 +20084,19 @@ async function initGhostFleet() {
   }
   await _ghostFleetYield();
 
-  // 25. Dream Capture Pipeline
+  // 25. Dream Capture
   try {
     const dreamCapture = await import("./emergent/dream-capture.js");
     GHOST_FLEET_STATUS.modules["dream-capture"] = { loaded: true, loadedAt: new Date().toISOString() };
+    // Sprint 32 (E5) — lazy-init pattern
+    const _dreamCapture = _lazyModule(dreamCapture, "dream-capture", { initOpts: { STATE } });
 
-    register("dream", "capture", (_ctx, input = {}) => dreamCapture.captureDream(input));
-    register("dream", "history", (_ctx, input = {}) => dreamCapture.getDreamHistory(input.limit));
-    register("dream", "convergences", () => dreamCapture.getConvergences());
-    register("dream", "queue", () => dreamCapture.getDreamQueue());
-    register("dream", "count", () => ({ dreams: dreamCapture.countDreams(), convergences: dreamCapture.countConvergences() }));
+    register("dream", "capture", (_ctx, input = {}) => _dreamCapture.captureDream(input));
+    register("dream", "history", (_ctx, input = {}) => _dreamCapture.getDreamHistory(input.limit));
+    register("dream", "convergences", () => _dreamCapture.getConvergences());
+    register("dream", "queue", () => _dreamCapture.getDreamQueue());
+    register("dream", "count", () => ({ dreams: _dreamCapture.countDreams(), convergences: _dreamCapture.countConvergences() }));
 
-    dreamCapture.init({ STATE });
     structuredLog("info", "ghost_fleet_module_loaded", { name: "dream-capture", macros: 5 });
   } catch (err) {
     GHOST_FLEET_STATUS.modules["dream-capture"] = { loaded: false, error: err.message };
@@ -21089,9 +21494,24 @@ async function consciousLensCall(action, domain, data) {
  * Entity exploration via utility brain.
  * Born entities use the utility brain to interact with lenses autonomously.
  */
+// Sprint 32 (E4) — dedup guard for entity-related warnings. Without this,
+// a heartbeat tick iterating over malformed entities logs the same warning
+// 60+ times in 30s, contributing to feed-manager load-shedding and event
+// loop lag spikes. One log per (category, key) tuple per process lifetime.
+const _entityGuardLogged = new Set();
+
 async function entityExploreLens(entity, lens) {
+  // Sprint 32 (E4) — bail early if entity is missing/empty so a malformed
+  // growth profile doesn't trigger 30s of catch-spawned logs.
+  if (!entity || !entity.id) {
+    if (!_entityGuardLogged.has(`explore-no-entity:${lens}`)) {
+      _entityGuardLogged.add(`explore-no-entity:${lens}`);
+      structuredLog("warn", "entity_explore_skipped_no_entity", { lens, hasEntity: !!entity });
+    }
+    return { ok: false, reason: "no_entity" };
+  }
   const lensData = await buildBrainContext(lens, lens, 5);
-  const entityId = entity?.id || "unknown";
+  const entityId = entity.id;
   const species = entity?.species || null;
 
   // Use utility brain prompt builder with entity context
@@ -21140,8 +21560,26 @@ async function entityExploreLens(entity, lens) {
  * Output goes through quality gate before rendering.
  */
 async function entityProduceLensArtifact(entity, lens) {
-  const entityId = entity?.id || "unknown";
-  const exposure = entity.knowledge?.domainExposure?.[lens] || 0;
+  // Sprint 32 (E4) — defensive: bail early if entity or its knowledge graph
+  // is missing rather than throwing 60+ times in a heartbeat cycle. The
+  // "silent catch" in the caller was hiding the real signal; this guard
+  // surfaces it once per (entity, lens) pair via a single warn log.
+  if (!entity || !entity.id) {
+    if (!_entityGuardLogged.has(`produce-no-entity:${lens}`)) {
+      _entityGuardLogged.add(`produce-no-entity:${lens}`);
+      structuredLog("warn", "entity_produce_skipped_no_entity", { lens, hasEntity: !!entity });
+    }
+    return { ok: false, reason: "no_entity" };
+  }
+  const entityId = entity.id;
+  if (!entity.knowledge || typeof entity.knowledge !== "object") {
+    if (!_entityGuardLogged.has(`produce-no-knowledge:${entityId}`)) {
+      _entityGuardLogged.add(`produce-no-knowledge:${entityId}`);
+      structuredLog("warn", "entity_produce_skipped_no_knowledge", { entityId, lens });
+    }
+    return { ok: false, reason: "no_knowledge" };
+  }
+  const exposure = entity.knowledge.domainExposure?.[lens] || 0;
   const organName = mapLensToDomainOrgan(lens);
   const organMaturity = organName && entity.organs?.[organName] ? entity.organs[organName].maturity : 0;
 
@@ -23416,7 +23854,7 @@ async function pipelineCommitDTU(ctx, dtu, opts={}) {
 
     // Broadcast DTU birth so LiveDTUFeed, ActivityFeed, and lens views see pipeline-committed DTUs
     realtimeEmit("dtu:created", {
-      id: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
+      dtuId: dtu.id, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
     });
     // v2.0 Workstream 6c: realtime fast-path for public timeline posts so
     // they appear instantly in other players' feeds (and so the
@@ -23644,6 +24082,16 @@ register("dtu", "create", async (ctx, input) => {
     // Own DTUs and system DTUs: no restriction
     if (!parentDtu.ownerId || parentDtu.ownerId === _creatorId || parentDtu.ownerId === "anon" || parentDtu.ownerId === "system" || parentDtu.ownerId === "founder") continue;
     if (parentDtu.creatorType === "system") continue;
+    // Sprint 32 (E4) — autogen/governor/system actors deriving from prior
+    // autogen/governor/system outputs don't need a usage license. The
+    // lineage trail is fully internal (heartbeat → heartbeat). Only
+    // user-to-user derivation needs the consent check; system-internal
+    // derivation should not spam dtu_lineage_consent_denied 84x/boot.
+    // We detect "system internal" two ways: (a) the creator is a known
+    // system actor; (b) the parent DTU's source starts with "system.".
+    const _systemActorIds = new Set(["governor", "autogen", "heartbeat", "system", "founder", "oracle", "narrative_bridge", "repair_cortex"]);
+    const _parentIsSystemSource = typeof parentDtu.source === "string" && parentDtu.source.startsWith("system.");
+    if (_systemActorIds.has(_creatorId) && (_systemActorIds.has(parentDtu.ownerId) || _parentIsSystemSource)) continue;
 
     // (1) Public / published / global scope → implied citation license.
     //     Council-approved global promotion sets scope="global" AND
@@ -23706,12 +24154,34 @@ register("dtu", "create", async (ctx, input) => {
   // ---- Injection Detection (Category 1: Adversarial) ----
   const injScan = detectContentInjection(rawText + " " + title);
   if (injScan.injected) {
-    structuredLog("warn", "dtu_injection_detected", {
-      patterns: injScan.patterns,
-      source,
-      userId: ctx?.actor?.id,
-      titlePrefix: title.slice(0, 50),
-    });
+    // Dedupe: only log the first detection per (firstPattern, source, hour-of-day)
+    // so a synthetic DTU stream (e.g. system.dream nightly pattern extraction)
+    // doesn't produce 94 identical warnings. The first occurrence is logged
+    // with full context; subsequent ones collapse to a counter.
+    const _injKey = `inj:${(injScan.patterns[0] || "unknown")}:${source}:${new Date().toISOString().slice(0, 13)}`;
+    if (!globalThis._injDedup) globalThis._injDedup = new Map();
+    const _injStats = globalThis._injDedup.get(_injKey) || { count: 0, firstLogged: null };
+    _injStats.count++;
+    if (!_injStats.firstLogged) {
+      _injStats.firstLogged = {
+        patterns: injScan.patterns,
+        threatLevel: injScan.threatLevel || null,
+        firstFinding: injScan.firstFinding || null,
+        source,
+        titlePrefix: title.slice(0, 50),
+        contentPrefix: rawText.slice(0, 80),
+        suppressedCount: 0,
+      };
+      structuredLog("warn", "dtu_injection_detected", _injStats.firstLogged);
+    } else {
+      _injStats.firstLogged.suppressedCount = _injStats.count - 1;
+    }
+    globalThis._injDedup.set(_injKey, _injStats);
+    if (globalThis._injDedup.size > 5000) {
+      // Bound the map so a long-running process doesn't grow unbounded.
+      const firstKey = globalThis._injDedup.keys().next().value;
+      globalThis._injDedup.delete(firstKey);
+    }
     // Tag for quarantine review rather than hard-block (reduces false positives)
     if (!tags.includes("quarantine:injection-review")) tags.push("quarantine:injection-review");
   }
@@ -24614,6 +25084,46 @@ register("dtu", "gapPromote", async (ctx, input) => {
     };
 
     if (!dryRun) {
+      // Sprint 32 E3 — compression quality gate: ensure mega is an upgrade, not a downgrade
+      let compressionScore = null;
+      let compressionReasons = [];
+      try {
+        const { scoreCompression, logCompressionAttempt } = await import("./lib/compression-quality.js");
+        const qualityResult = scoreCompression({ mega, children: members, STATE });
+        compressionScore = qualityResult.score;
+        compressionReasons = qualityResult.reasons;
+
+        if (!qualityResult.pass) {
+          // Quality gate failed — log and skip this promotion
+          logCompressionAttempt({
+            db: STATE.db,
+            mega,
+            children: members,
+            passed: false,
+            score: compressionScore,
+            reasons: compressionReasons,
+          });
+          logger.warn?.("[compression] Mega compression rejected by quality gate", {
+            title: mega.title.slice(0, 50),
+            score: compressionScore,
+            reasons: compressionReasons,
+          });
+          continue;
+        }
+
+        // Gate passed — log success
+        logCompressionAttempt({
+          db: STATE.db,
+          mega,
+          children: members,
+          passed: true,
+          score: compressionScore,
+          reasons: compressionReasons,
+        });
+      } catch (err) {
+        logger.debug?.("[compression] Quality gate check failed, proceeding with fallback", { error: err?.message });
+      }
+
       const r = await pipelineCommitDTU(ctx, mega, { op: "gap_promotion" });
       if (!r?.ok) continue;
       for (const m of members) {
@@ -24879,6 +25389,21 @@ function _persistDeterministicTurn(replyContent, replyMeta = {}) {
   } catch { /* never block chat on persistence failure */ }
 }
 
+  // Sprint 47 fix: classifyIntent(prompt) used to run at line ~25431 (further
+  // down this same function, in the LLM-path tail), but this DTU-enrichment
+  // block ran first and read `intentInfo` before that `const` executed — a
+  // TDZ ReferenceError ("Cannot access 'intentInfo' before initialization"),
+  // silently swallowed by this block's own try/catch (already flagged, not
+  // fixed, in docs/SPRINT-33-CSL-ROUTER-STATUS.md's "Known pre-existing
+  // issue" section). Effect: createInputDTU() never ran successfully for any
+  // chat turn — every call threw before its own body could execute. Hoisted
+  // here since classifyIntent is pure/sync (only reads `prompt`, no I/O) —
+  // moving it earlier changes nothing about when it resolves, only makes the
+  // value available to this block too. The line-25431 declaration is removed
+  // as now-redundant, not duplicated (a second `const intentInfo` in the same
+  // scope would be a redeclaration error).
+  const intentInfo = classifyIntent(prompt);
+
   // ===== DTU ENRICHMENT: Input DTU + Summary Compression =====
   // Create input DTU from user message (fire-and-forget)
   try {
@@ -25060,7 +25585,10 @@ if (_isWeatherQuery(prompt)) {
   }
 }
 
-const intentInfo = classifyIntent(prompt);
+  // Sprint 47: intentInfo is now computed earlier (see the DTU-enrichment
+  // block above) — this used to be its only declaration, but that meant
+  // every reference to it above this line (createInputDTU's enrichment
+  // fields) was a TDZ ReferenceError. Not re-declared here.
 
   // ── Chat Router: classify action type + resolve lens chain ──────────
   let _chatRoute = null;
@@ -25571,7 +26099,20 @@ try {
 // Refine session anchors using DTU match confidence (works offline + online)
 try {
   const topicTitle = (micro && micro.length) ? micro[0].title : null;
-  _updateAnchorsFromTurn({ promptText: prompt, bestScoreHint: bestScore, wantsStructured, topicTitle });
+  // Sprint 47 fix: this used to forward `wantsStructured` — a `const` not
+  // declared until line ~26010, further down this same function (it depends
+  // on `frame`, itself computed even later from `hasStrongEvidence`/`micro`/
+  // `bestScore`/`mode`/`localSettings` — hoisting that whole chain up here
+  // would be a much larger, riskier restructure than this fix needs). Reading
+  // it here was a TDZ ReferenceError ("Cannot access 'wantsStructured' before
+  // initialization"), silently swallowed by this try/catch (already flagged,
+  // not fixed, in docs/SPRINT-33-CSL-ROUTER-STATUS.md's "Known pre-existing
+  // issue" section — verified live: _updateAnchorsFromTurn never completed a
+  // single call before this fix). `_updateAnchorsFromTurn`'s own signature
+  // already defaults `wantsStructured = false` for exactly this "not known
+  // yet" case, so simply not forwarding it is the correct minimal fix, not a
+  // behavior compromise.
+  _updateAnchorsFromTurn({ promptText: prompt, bestScoreHint: bestScore, topicTitle });
 } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
 const hasStrongEvidence = micro.length >= 2 && bestScore >= 0.12;
@@ -25802,8 +26343,37 @@ let localReply = formatCrispResponse({
     } catch { /* mood coloring optional */ }
     const _baseSystem = _composed.system + _moodColor;
 
+    // DHTP — apply preset compression (Sprint 60+)
+    // If a preset matches the prompt, substitute the full system prompt
+    // with a compact template + DTU hash refs (33-50x compression).
+    let _dhtpApplied = null;
+    let _effectiveBaseSystem = _baseSystem;  // may be replaced by DHTP
+    try {
+      const _dhtpResult = applyDHTPfn({
+        prompt,
+        workingSetDtus: _pipelineHarvest?.consolidatedWorkingSet || _enrichedFocus || [],
+        baseSystemPrompt: _baseSystem,
+      });
+      if (_dhtpResult.compressed && _dhtpResult.systemPrompt) {
+        _dhtpApplied = _dhtpResult;
+        // Substitute: use compressed prompt + append original mood/entity blocks
+        _effectiveBaseSystem = _dhtpResult.systemPrompt;
+        ctx.log("dhtp_applied", "Preset compression applied", {
+          sessionId,
+          presetId: _dhtpResult.presetId,
+          originalChars: _dhtpResult.originalChars,
+          compressedChars: _dhtpResult.compressedChars,
+          ratio: _dhtpResult.ratio,
+          maxResponseTokens: _dhtpResult.maxResponseTokens,
+        });
+      }
+    } catch (_dhtpErr) {
+      // DHTP is enhancement-only; fall through to default
+      logger.debug('server', 'dhtp_silent_catch', { error: String(_dhtpErr?.message || _dhtpErr) });
+    }
+
     _pipelineBudget = assembleWithTokenBudget({
-      systemPromptBase: _baseSystem,
+      systemPromptBase: _effectiveBaseSystem,
       entityStateBlock: _entityBlock,
       conversationSummary: _convSummary,
       userMessage: prompt,
@@ -25837,6 +26407,33 @@ let localReply = formatCrispResponse({
   const _toolFlags = _c3sessionFlags(ctx);
   // Auto-enable tools for chat sessions (no explicit opt-in needed)
   const _toolsAvailable = Boolean(STATE.__chicken3?.toolsEnabled !== false);
+
+  // Sprint 33 Phase 5 (cc-sonnet) — CSL pre-dispatch tool gate for THIS
+  // macro's own embedded tool-call loop (_executeToolCall below). One fresh
+  // gate per chat.respond invocation (never module-scoped — see
+  // csl-router.js's doc comment on why), bound to this call's sessionId +
+  // actor. Soft-imports csl-core.js so this handler never hard-fails when it
+  // hasn't landed yet — docs/SPRINT-33-SPECS.md "Worker: cc-sonnet" Task 4.
+  let _cslRunCsl = null;
+  try {
+    const _cslCoreMod = await import("./lib/csl-core.js");
+    if (_cslCoreMod?.ConcordSoSRuntime) {
+      const _CslRuntimeCtor = _cslCoreMod.ConcordSoSRuntime;
+      _cslRunCsl = async (turnText, cslOpts) => {
+        const rt = new _CslRuntimeCtor({ db: ctx?.db, runMacro, lensActions: LENS_ACTIONS });
+        return rt.executeTurn({
+          userId: cslOpts?.userId, sessionId: cslOpts?.sessionId, turnText,
+          domainHint: cslOpts?.domainHint, macroHint: cslOpts?.macroHint,
+        });
+      };
+    }
+  } catch { /* csl-core.js not landed yet — gate degrades to pass-through */ }
+  const _cslToolGate = createCslToolGate({
+    runCsl: _cslRunCsl,
+    sessionId,
+    userId: ctx?.actor?.userId,
+    clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
+  });
 
   // Tool descriptions injected into the system prompt when tools are enabled
   const _toolSystemPrompt = _toolsAvailable ? `
@@ -26005,10 +26602,34 @@ Rules for tool use:
   };
 
   // Execute all parsed tool calls (sequentially to avoid blast radius)
+  //
+  // Sprint 33 Phase 5 (cc-sonnet) — CSL pre-dispatch gate lives HERE, one
+  // level above _executeToolCall, rather than inside its switch (call.tool)
+  // (server.js:26311). _cslToolGate(call) is already a no-op (zero CSL
+  // invocation) for any tool outside MACRO_DISPATCH_TOOLS, so calling it
+  // unconditionally for every call is equivalent to — and simpler than —
+  // guarding the call with a duplicate Set membership check here. This keeps
+  // _executeToolCall's ~20 tool cases completely untouched (docs/SPRINT-33-SPECS.md
+  // "Worker: cc-sonnet" Do-NOT-touch clause) while still blocking dispatch
+  // before it happens on a CSL rejection, and gives a single point to attach
+  // cslRouted/proofArtifact onto every result (Task 6) without editing any
+  // individual case.
   const _executeToolCalls = async (calls) => {
     const results = [];
     for (const call of calls.slice(0, 5)) { // cap at 5 tool calls per turn
-      const result = await _executeToolCall(call);
+      let _gate = null;
+      try { _gate = await _cslToolGate(call); } catch { _gate = { ok: true }; } // gate contract never throws, but never trust that from a caller
+      let result;
+      if (_gate && _gate.ok === false) {
+        result = { tool: call.tool, ok: false, error: _gate.reason || "csl_rejected" };
+      } else {
+        result = await _executeToolCall(call);
+      }
+      if (_gate) {
+        result.cslRouted = !!_gate.cslRouted;
+        if (_gate.proofArtifact) result.proofArtifact = _gate.proofArtifact;
+        if (_gate.cslError) result.cslError = _gate.cslError;
+      }
       results.push(result);
       ctx.log("chat_tools", "Tool executed", { tool: call.tool, ok: result.ok, error: result.error || null });
     }
@@ -26036,9 +26657,17 @@ Rules for tool use:
       0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
       0.1, 0.9
     );
-    const _llmMaxTokens = Math.round(
+    // DHTP-aware max tokens: preset specifies what it needs
+    // If preset matched, use its maxResponseTokens (it knows the task)
+    // Otherwise fall back to affect-modulated default
+    // No DHTP preset result is computed in this code path (confirmed via eslint
+    // scope analysis — `_dhtpApplied` above lives in a sibling scope, not this
+    // one), so this always falls through to the affect-modulated default below.
+    const _presetMaxTokens = 0;
+    const _affectMaxTokens = Math.round(
       700 * (0.6 + 0.8 * (_affStyle.verbosity ?? 0.5))
     );
+    const _llmMaxTokens = Math.max(_presetMaxTokens, _affectMaxTokens);
     // Inject affect-aware behavioral guidance into system prompt
     const _affectGuidance = _aff.policy ? [
       _affStyle.warmth > 0.6 ? "Be warm and encouraging." : _affStyle.warmth < 0.3 ? "Be direct and precise." : "",
@@ -26052,10 +26681,20 @@ Rules for tool use:
     const _grcSystemPrompt = GRC_MODULE
       ? getGRCSystemPrompt({ dtus: _dtuTitles, mode })
       : "";
-    // Use fused context from quality pipeline if available; otherwise fall back to enriched focus (all tiers)
-    const dtuContext = (_fusedContext && _fusedContext.fusedContext)
-      ? _fusedContext.fusedContext
-      : _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
+    // Prefer the DTU Context Pipeline's token-budgeted output (_pipelineBudget,
+    // built above via assembleWithTokenBudget — the real prioritized,
+    // budget-capped compression pass over the four-source harvest). Until this
+    // fix, _pipelineBudget was computed and logged (tokenEstimate/
+    // truncatedCount/budgetUtilization) but its actual assembled
+    // dtuContextBlock was discarded — the LLM never saw it. Fall back to the
+    // quality pipeline's fused context, then to an uncapped raw per-DTU CRETI
+    // dump as a last resort (unchanged prior behavior for when the pipeline
+    // hasn't produced anything, e.g. an empty working set or a caught error).
+    const dtuContext = (_pipelineBudget && _pipelineBudget.dtuContextBlock)
+      ? _pipelineBudget.dtuContextBlock
+      : (_fusedContext && _fusedContext.fusedContext)
+        ? _fusedContext.fusedContext
+        : _enrichedFocus.map(d => `TITLE: ${d.title}\nTIER: ${d.tier}\nTAGS: ${(d.tags||[]).join(", ")}\nCRETI:\n${buildCretiText(d)}\n---`).join("\n");
     const _pipelineMeta = (_qualityPipelineResult && _fusedContext)
       ? `\n[Pipeline: ${_fusedContext.meta.patternsApplied.join("+")} | intent=${_qualityPipelineResult.queryIntent}]`
       : "";
@@ -26559,6 +27198,32 @@ Rules for tool use:
     });
   } catch (_e) { /* never block chat on persistence failure */ }
 
+  // ===== PARALLEL BRAINS: subconscious "unsaid" analysis + repair consistency check =====
+  // chat-parallel-brains.js was imported (top of file) but runParallelBrains/
+  // recordParallelMetrics had zero call sites anywhere — genuinely dead
+  // despite the import, found during a Sprint 60 dead-wire audit. Wired here
+  // as fire-and-forget, not awaited: the module's own header is explicit
+  // that its output "does NOT go directly to the user... feeds back as
+  // metadata... influencing the NEXT response" (subconscious) and flags
+  // consistency issues for future reference (repair) — neither is meant to
+  // gate or alter THIS response, and both are real network calls to Ollama
+  // brains (BRAIN_CONFIG.subconscious/.repair timeouts), so awaiting them
+  // would add real latency the module's own design explicitly avoids.
+  // consciousCall resolves immediately with the already-finalized
+  // finalReply/llmUsed — runParallelBrains does NOT re-invoke the conscious
+  // brain here, it only orchestrates the subconscious+repair side calls
+  // against the real, already-computed reply.
+  try {
+    runParallelBrains({
+      consciousCall: async () => ({ ok: llmUsed, content: finalReply }),
+      userMessage: prompt,
+      conversationSummary: _pipelineHarvest?.conversationSummary || "",
+      entityStateBlock: _entityBlock,
+      STATE,
+      sessionId,
+    }).then(recordParallelMetrics).catch(() => { /* best-effort, never blocks chat */ });
+  } catch { /* best-effort, never blocks chat */ }
+
   return {
     ok: true, reply: finalReply, sessionId, mode, llmUsed, semanticUsed,
     toolCalls: _toolCallsExecuted.length > 0 ? _toolCallsExecuted.map(t => ({
@@ -26569,6 +27234,12 @@ Rules for tool use:
       url: t.url,
       title: t.title,
       error: t.error,
+      // Sprint 33 Task 6 — CSL routing decision, surfaced for the frontend
+      // CslRouteBadge (docs/SPRINT-33-SPECS.md "Worker: oc-frontend"). Only
+      // present when truthy so a pre-Sprint-33 client sees byte-identical
+      // shape (back-compat, per the frontend audit's requirement).
+      ...(t.cslRouted ? { cslRouted: true } : {}),
+      ...(t.proofArtifact ? { proofArtifact: t.proofArtifact } : {}),
     })) : undefined,
     toolsAvailable: _toolsAvailable || undefined,
     computed: _computedSurface,
@@ -26870,11 +27541,18 @@ register("shield", "scan", async (ctx, input) => {
 
 register("shield", "status", (ctx, input) => {
   const userId = input.userId || ctx?.actor?.userId || "anonymous";
-  const score = computeSecurityScore(userId, STATE);
+  // computeSecurityScore returns { score, grade, breakdown } — sending the
+  // whole object as `securityScore` renders as the literal string
+  // "[object Object]" wherever the frontend does String(securityScore) or
+  // interpolates it directly (found live on the `sentinel` lens's
+  // "SECURITY SCORE" stat tile — audit/LENS_DESIGN_UPGRADE_PLAN.md #213).
+  const scoreResult = computeSecurityScore(userId, STATE);
   const metrics = getShieldMetrics();
   return {
     ok: true,
-    securityScore: score,
+    securityScore: scoreResult.score,
+    securityGrade: scoreResult.grade,
+    securityScoreBreakdown: scoreResult.breakdown,
     shieldStatus: {
       initialized: metrics.initialized,
       tools: metrics.tools,
@@ -28514,6 +29192,7 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 // after that `server` binding + `tryInitWebSockets(server)` — see ~line 65605.
 import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
 import { exportScene } from "./lib/scene-export.js";
+import { makeGodotMoveRateGate } from "./lib/godot-move-rate.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
   frequency: 12,
@@ -28576,6 +29255,12 @@ registerDiscoveryMacros(register);
 // dtu_props — DTUs as tangible interactive world props (list/interact).
 import registerDtuPropsMacros from "./domains/dtu-props.js";
 registerDtuPropsMacros(register);
+// hermes_memory — Dila's auditable memory substrate (migration 400).
+// Seven actions: write/read/search/list/recall/compress/delete. All
+// gated to actor.role === 'sovereign' inside the handler. Operator
+// audit-visible by default; founder + Dila are the only callers.
+import registerHermesMemoryMacros from "./domains/hermes-memory.js";
+registerHermesMemoryMacros(register);
 // reason.verify — claim verification (citation-resolution floor + council judge).
 import registerReasonMacros from "./domains/reason.js";
 registerReasonMacros(register);
@@ -29053,6 +29738,32 @@ registerHeartbeat("corpus-ingest-cycle", {
         STATE,
       });
       return await runCorpusIngestCycle({ db: STATE.db, bridgeEvent });
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  },
+});
+
+registerHeartbeat("ingest-quality-prune", {
+  frequency: 1440, // ~6h
+  scope: "global",
+  handler: async (STATE) => {
+    try {
+      const { pruneQualityLog } = await import("./lib/ingest-quality.js");
+      return pruneQualityLog(STATE.db);
+    } catch (e) {
+      return { ok: false, error: String(e?.message || e) };
+    }
+  },
+});
+
+registerHeartbeat("compression-audit-prune", {
+  frequency: 1440, // ~6h
+  scope: "global",
+  handler: async (STATE) => {
+    try {
+      const { pruneCompressionAudit } = await import("./lib/compression-quality.js");
+      return pruneCompressionAudit(STATE.db);
     } catch (e) {
       return { ok: false, error: String(e?.message || e) };
     }
@@ -33454,6 +34165,7 @@ registerSystemRoutes(app, {
   auditLog, AUDIT_LOG,
   computeSubstrateStats,
   getDbStatus: () => ({ pgPool: !!pgPool, redisClient: !!redisClient }),
+  getLLMReady: () => LLM_READY,
 });
 
 // ---- Audit Log Endpoints (extracted to routes/audit.js) ----
@@ -33509,6 +34221,10 @@ app.use("/api/auth", createAuthRouter({
   setLockerKey,
   clearLockerKey,
 }));
+
+// ---- Brain Mode (High Power Mode toggle + per-user FCFS quota) ----
+registerBrainModeRoutes(app, { db, requireAuth });
+
 
 // Personal DTU Locker
 app.use("/api/personal-locker", createPersonalLockerRouter({
@@ -34430,7 +35146,13 @@ async function mergeCognitiveResults(results) {
 
 // ── Cognitive Worker: lifecycle ──────────────────────────────────────────────
 function spawnCognitiveWorker() {
-  const workerPath = new URL("./workers/cognitive-worker.js", import.meta.url).pathname;
+  // import.meta.dirname (already-decoded), not `new URL(...).pathname` —
+  // .pathname does NOT decode percent-encoding, so on a checkout path
+  // containing a space (encoded "%20" in the URL), the Worker constructor's
+  // own string->URL conversion re-escaped that literal "%" into "%25",
+  // producing "%2520" and a hard ERR_MODULE_NOT_FOUND on every spawn attempt
+  // — the same class of bug fixed across 14 test files' path derivation.
+  const workerPath = path.join(import.meta.dirname, "workers", "cognitive-worker.js");
   cognitiveWorker = new Worker(workerPath);
   // Test hygiene: unref under NODE_ENV=test so it doesn't keep the node:test
   // process alive after a suite finishes (see workers/macro-pool.js). The
@@ -35520,6 +36242,13 @@ import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-br
 import { initDiseaseCatalog, listActiveDiseases as listActiveUserDiseases, listCatalog as listDiseaseCatalog, listEndemicTo as listDiseasesEndemicTo, contractDisease, tickDiseases } from "./lib/disease-engine.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
+
+// Sprint 60 dead-wire fixes (operator mandate): wire brain modules
+import { selectBrain as _selectBrain, markBrainAvailable as _markBrainAvailable, markBrainUnavailable as _markBrainUnavailable } from "./lib/inference/router.js";
+import { probeGpu as _probeGpu, resolveProfile as _resolveProfile, applyProfile as _applyBrainProfile } from "./lib/brain-profiles.js";
+import { decideDeliberation as _decideDeliberation, collideAgents as _collideAgents } from "./lib/agent-brain-loop.js";
+import { analyzeUnsaid as _analyzeUnsaid, checkEntityConsistency as _checkEntityConsistency, runParallelBrains as _runParallelBrains } from "./lib/chat-parallel-brains.js";
+import { emitOutcomeSignal as _emitOutcomeSignal } from "./lib/brain-training/outcome-signals.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
 import { startAtrophyCycle } from "./lib/skill-atrophy.js";
 import { startCrisisWatch } from "./lib/world-crisis.js";
@@ -35783,6 +36512,52 @@ function _pluginGalleryAuthorReputation(authorId) {
     return handler(ctx, virtualArtifact, { targetUserId: authorId });
   } catch { return null; }
 }
+
+// ===== MCP (Model Context Protocol) Server Endpoints =====
+// See server/lib/mcp-tools.js for tool implementations.
+// These endpoints let external tools (Claude Code etc.) query the DTU store
+// via a minimal MCP-shaped HTTP API.
+import { MCP_TOOLS, callMCPTool } from "./lib/mcp-tools.js";
+
+app.get("/mcp/tools", (_req, res) => {
+  res.json({ ok: true, tools: MCP_TOOLS });
+});
+
+// reflect_invoke/reflect_rescan are the one part of the MCP tool surface
+// that's a documented FUTURE code-execution vector — macro-reflection.js's
+// callReflectedTool doc comment says invocation is inert today ("Currently
+// serves as a discovery interface... Future work: hook into the live macro
+// dispatcher to actually call these"), but reflect_rescan already does real
+// work now (a full server/domains + server/lib + server/routes tree walk,
+// up to maxTools:20000 — a resource-exhaustion vector on an unauthenticated
+// caller). The blanket CONCORD_MCP_PUBLIC/AUTH_MODE=public bypass above
+// synthesizes a founder/wildcard-scope req.user for every /mcp path — that
+// bypass is an accepted, intentional local-first tradeoff for the other 28
+// tools (dtu_*/csl_*/brain_*/vault_*/etc., all real-but-scoped operations),
+// but it must not silently cover whatever reflect_invoke becomes once the
+// "hook into the live macro dispatcher" future work lands — at that point
+// this would otherwise be an unauthenticated RCE-shaped surface over every
+// reflected macro/export/route in the codebase. Require a REAL resolved
+// user (req.authMethod !== "mcp-bypass") for these two tools specifically,
+// regardless of the general MCP bypass.
+const MCP_TOOLS_REQUIRE_REAL_AUTH = new Set(["reflect_invoke", "reflect_rescan"]);
+
+app.post("/mcp/call", express.json({ limit: "1mb" }), asyncHandler(async (req, res) => {
+  const { tool, args } = req.body || {};
+  if (!tool || typeof tool !== "string") {
+    return res.status(400).json({ ok: false, error: "tool (string) is required" });
+  }
+  if (MCP_TOOLS_REQUIRE_REAL_AUTH.has(tool) && (!req.user || req.authMethod === "mcp-bypass")) {
+    return res.status(403).json({ ok: false, error: "forbidden", reason: "this tool requires real authentication; the CONCORD_MCP_PUBLIC/AUTH_MODE=public bypass does not cover it" });
+  }
+  try {
+    const result = await callMCPTool(db, tool, args || {}, globalThis.STATE || null);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+}));
+// ===== END MCP ENDPOINTS =====
 
 app.get("/api/plugins/gallery", (req, res) => {
   const trustedOnly = req.query.trustedOnly === "true";
@@ -37719,7 +38494,20 @@ async function governorTick(reason="heartbeat") {
     try { METRICS?.counters?.heartbeatSkipped?.inc(); } catch { /* metrics best-effort */ }
     return { ok: false, reason: "tick_already_running" };
   }
+  // Sprint 60+ — idle gate on governor heartbeat. autogen/dream/evolution/synth
+  // plus jobs/queue/ingest all do real CPU work (macros, embeddings,
+  // cluster detection). With no users, there's no one to notice the result.
+  // Skipping the tick saves 1-3s of event-loop work every 15 seconds. On the
+  // first request after idle, the next tick will catch up.
+  if (reason !== "boot" && !presenceIdle.shouldRunHeavyMaintenance()) {
+    return { ok: true, skipped: "idle_no_users" };
+  }
   _governorTickRunning = true;
+  // Sprint 32 - reset per-tick NPC quest generation budget so the
+  // NPC_QUEST_TICK_LIMIT cap in npc-simulator.js resets to 0 every
+  // heartbeat cycle. Without this reset the cap accumulates across
+  // ticks and eventually starves all quest emergence forever.
+  try { const nsMod = await import("./lib/npc-simulator.js"); nsMod.resetNpcQuestTickCounter?.(); } catch (_e) { /* best-effort */ }
   // Heartbeat liveness: bump the counter so Prometheus can detect a frozen
   // tick loop via `rate(concord_heartbeat_ticks_total[1m]) == 0` for 60s+.
   try { METRICS?.counters?.heartbeatTicks?.inc(); } catch { /* metrics best-effort */ }
@@ -38225,6 +39013,13 @@ async function governorTick(reason="heartbeat") {
       // is the most likely heartbeat-overrun culprit at scale.
       if (_tick % TICK_FREQUENCIES.CONSOLIDATION === 0 && _tick > 0) {
         await runHeartbeatModule("consolidation", async () => {
+          // Sprint 60+ — idle gate. Consolidation = cluster detection + MEGA
+          // formation across 6000+ DTUs. Pure maintenance. With no real users,
+          // there's no one to read those DTUs soon. Skip the heavy work;
+          // next tick after users return will catch up.
+          if (!presenceIdle.shouldRunHeavyMaintenance()) {
+            return { ok: true, skipped: "idle_no_users" };
+          }
           const ctx = _governorCtx();
           // Phase 1: Cluster detection for MEGA formation
           try {
@@ -38235,8 +39030,32 @@ async function governorTick(reason="heartbeat") {
             }, ctx);
 
             // Phase 2: Create MEGAs from qualifying clusters
+            // Sprint 32 — hard cap per-tick work + cooperative yield to the
+            // event loop between clusters. Pre-fix, a 100+ cluster run was
+            // blocking the event loop for 100+ seconds (heartbeat_block_slow
+            // module=consolidation ms=109043). Now we process at most N
+            // clusters per tick and yield with setImmediate(0) so HTTP
+            // requests (and other heartbeat modules) get scheduled in.
+            // Unprocessed clusters spill to the next consolidation tick
+            // (no data loss — just a slower drain).
+            const CONSO_YIELD_MS = 50;
+            const CONSO_BUDGET_MS = 4000;
+            const _consoStart = Date.now();
             if (clusterResult?.clusters?.length > 0) {
+              let _consoDone = 0;
               for (const cluster of clusterResult.clusters.slice(0, CONSOLIDATION.MEGA_MAX_PER_CYCLE)) {
+                // Yield to the event loop between clusters so /api/* and
+                // the rest of the heartbeat get CPU time.
+                await new Promise((r) => { setImmediate(r); });
+                if (Date.now() - _consoStart > CONSO_BUDGET_MS) {
+                  structuredLog("info", "consolidation_defer_remaining", {
+                    done: _consoDone,
+                    remaining: clusterResult.clusters.length - _consoDone,
+                    budgetMs: CONSO_BUDGET_MS,
+                  });
+                  break;
+                }
+                _consoDone++;
                 try {
                   const mega = await runMacro("dtu", "gapPromote", {
                     ids: (cluster.members || cluster.dtus || []).map(d => d.id || d),
@@ -38575,7 +39394,17 @@ async function governorTick(reason="heartbeat") {
               structuredLog("warn", "quest_emergence_no_npc_source", { reason: "city-presence missing getAllNPCsForEmergence export" });
             }
             const npcList = cityPresence?.getAllNPCsForEmergence?.() ?? [];
-            for (const npc of npcList.slice(0, 5)) {
+            // Sprint 32 - cap at 1 NPC per heartbeat + parallelize via
+            // Promise.allSettled. Pre-fix: serial loop processed 5 NPCs,
+            // each blocking on a 5-30s Ollama inference, so the heartbeat
+            // tick took 25-150s (heartbeat_block_slow module=... ms=109043).
+            // Pre-fix also hit event_loop_lag_spike maxMs=17515 because
+            // the 100+ second tick blocked every HTTP request. With 1 NPC
+            // per tick at most 1 LLM call per heartbeat (60s) - never
+            // exceeds the heartbeat window. Skipped NPCs roll into next
+            // tick via npcList rotation.
+            const npcBatch = npcList.slice(0, 1);
+            await Promise.allSettled(npcBatch.map(async (npc) => {
               const newQuests = await questEmergence.detectQuestOpportunities(npc, db, _selectBrainForNpc).catch(() => []);
               // Realtime-push each new quest to every player currently present
               // in the NPC's world. The quest log already fetches via HTTP on
@@ -38605,7 +39434,7 @@ async function governorTick(reason="heartbeat") {
                   }
                 }
               }
-            }
+            }));
           } catch (_e) { /* non-fatal */ }
         }
       }
@@ -42089,7 +42918,7 @@ function _lensEmitDTU(ctx, domain, action, artifactType, artifact, extra={}) {
     });
     // Broadcast DTU birth so LiveDTUFeed and ActivityFeed see lens-generated DTUs
     realtimeEmit("dtu:created", {
-      id: dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags, updatedAt: dtu.updatedAt,
+      dtuId, title: dtu.title, tier: dtu.tier, tags: dtu.tags,
     });
     // Separate event so ActivityFeed can distinguish lens-generated DTUs from user-created ones
     realtimeEmit("lens:dtu_generated", {
@@ -42296,6 +43125,34 @@ register("lens", "run", async (ctx, input={}) => {
   // Domain-specific action handlers can be registered via lens.registerAction
   const handler = LENS_ACTIONS.get(`${artifact.domain}.${action}`);
   if (!handler) {
+    // Featured-Actions dispatch bug (audit/LENS_DESIGN_UPGRADE_PLAN.md
+    // cross-cutting note, #102/#109/etc): LensVerticalHero.tsx/AutoActionStrip.tsx
+    // discover actions from BOTH the artifact-scoped LENS_ACTIONS registry and
+    // the plain-macro MACROS registry (GET /api/lens-actions/:domain merges
+    // both), but always dispatch through this artifact-scoped lens.run macro.
+    // A genuinely MACROS-only action (e.g. foundry.validate, registered via
+    // register() not registerLensAction) was never in LENS_ACTIONS, so it fell
+    // straight to the AI-guess fallback below — the button never reached the
+    // REAL, deterministic macro logic at all, just an LLM's guess at what the
+    // action might do (disclosed as `source: "utility-brain"`, so not a
+    // fabrication, but silently wrong: the real compute never ran). Try the
+    // real macro first via the same runMacro() every other caller uses —
+    // only fall through to the AI guess if MACROS genuinely has no entry
+    // either.
+    if (MACROS.get(artifact.domain)?.has(action)) {
+      try {
+        // Call runMacro() directly rather than through ctx.macro.run — that
+        // wrapper is only attached by makeCtx(req) for HTTP-originated ctx
+        // objects; lens.run can also be invoked with a bare actor ctx (other
+        // macros, tests), where ctx.macro would be undefined.
+        const macroResult = await runMacro(artifact.domain, action, { ...artifact.data, ...params }, ctx);
+        _lensEmitDTU(ctx, artifact.domain, action, artifact.type, artifact, { actionResult: macroResult, source: "macro-fallback" });
+        const pipelineResults = _runLensPipelines(ctx, artifact.domain, action, artifact, macroResult);
+        return { ok: true, result: macroResult, pipelines: pipelineResults.length > 0 ? pipelineResults : undefined };
+      } catch (e) {
+        return { ok: false, error: String(e?.message || e) };
+      }
+    }
     // AI fallback (last resort): unregistered actions route to utility brain.
     // This should fire rarely now that aliases + common actions cover most cases.
     structuredLog("debug", "lens_action_ai_fallback", { domain: artifact.domain, action, note: "Register a real handler to avoid utility brain load" });
@@ -43446,14 +44303,12 @@ try {
     }),
   });
   structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
-  // Reachability self-check: every advertised tool must resolve to a real macro
-  // OR lens-action, or it dies with "macro not found" on first call (the
-  // concord.math regression). Surface it loudly at boot instead.
-  try {
-    const _canResolve = (domain, name) => LENS_ACTIONS.has(`${domain}.${name}`) || !!(MACROS.get(domain)?.get(name));
-    const _deadTools = unreachableTools(_canResolve);
-    if (_deadTools.length) structuredLog("warn", "mcp_tools_unreachable", { tools: _deadTools, hint: "tool (domain,macro) not in MACROS or LENS_ACTIONS — it will throw on call" });
-  } catch { /* never block boot on the self-check */ }
+  // NOTE: the reachability self-check below fires AFTER `domainModules.forEach`
+  // (~line 45717) so the LENS_ACTIONS registry is fully populated. An earlier
+  // position (inside this try-block, ~line 43455) fired before domain modules
+  // registered their lens-actions and emitted a false-positive
+  // `mcp_tools_unreachable` warn even though every advertised tool was
+  // actually reachable.
 } catch (mcpErr) {
   structuredLog("warn", "mcp_server_mount_failed", { error: String(mcpErr?.message || mcpErr) });
 }
@@ -45715,6 +46570,19 @@ registerLensAction("game", "balance", (ctx, artifact, params) => {
 // Load all super-lens domain action modules
 const { default: domainModules } = await import('./domains/index.js');
 domainModules.forEach(mod => mod(registerLensAction));
+
+// MCP reachability self-check (was previously inside the mountMcpServer
+// try-block above, where it fired BEFORE this forEach populated LENS_ACTIONS
+// and falsely reported every advertised tool as unreachable). Now that every
+// domain module has registered, run the actual reachability check: every
+// advertised tool must resolve to a real macro OR lens-action, or it dies
+// with "macro not found" on first call (the concord.math regression).
+// Surface it loudly at boot instead.
+try {
+  const _canResolve = (domain, name) => LENS_ACTIONS.has(`${domain}.${name}`) || !!(MACROS.get(domain)?.get(name));
+  const _deadTools = unreachableTools(_canResolve);
+  if (_deadTools.length) structuredLog("warn", "mcp_tools_unreachable", { tools: _deadTools, hint: "tool (domain,macro) not in MACROS or LENS_ACTIONS — it will throw on call" });
+} catch { /* never block boot on the self-check */ }
 
 // ── Universal Action Registrar ──────────────────────────────────────────────
 // Gives EVERY lens domain three AI-powered actions (analyze, generate, suggest)
@@ -50538,10 +51406,22 @@ function initChatSocketHandlers(io) {
             enabled: LLM_READY,
             chat: async (opts) => {
               const _socketChatStartMs = Date.now();
-              const _messages = [
+              let _messages = [
                 ...(opts.system ? [{ role: 'system', content: opts.system }] : []),
                 ...(opts.messages || [])
               ];
+              try {
+                const contextResult = await prepareContext({
+                  db,
+                  userId: _rlKey,
+                  messages: _messages,
+                  intent: 'chat',
+                  brainName: 'conscious'
+                });
+                _messages = contextResult.messages;
+              } catch (err) {
+                console.warn('[context-orchestrator] failed, using raw messages:', err.message);
+              }
               const br = await byoBrainChat({
                 db, userId: _rlKey, slot: "conscious",
                 messages: _messages,
@@ -51812,6 +52692,15 @@ app.get("/api/system/health", (_req, res) => {
     const sessions = STATE.sessions?.size || 0;
     const brainStatus = typeof getBrainStatus === "function" ? getBrainStatus() : {};
     const uptime = process.uptime();
+    // Outbound fetch scheduler stats (entity-web-exploration + feed-manager).
+    // Surfaces the concurrency cap, in-flight count, circuit-breaker openings,
+    // and timeout/error tallies — logwatch can scan for "droppedByCircuit > 0"
+    // or "queued > 0" to alert before they starve user HTTP traffic.
+    let fetchScheduler = null;
+    try {
+      const { getSchedulerStats } = require("./emergent/entity-web-exploration.js");
+      fetchScheduler = getSchedulerStats();
+    } catch { /* module not loaded yet — leave null */ }
 
     return res.json({
       ok: true,
@@ -51825,6 +52714,7 @@ app.get("/api/system/health", (_req, res) => {
         postgres: { connected: !!pgPool, status: pgPool ? 'connected' : 'in-memory-fallback' },
         redis: { connected: !!redisClient, status: redisClient ? 'connected' : 'in-memory-fallback' },
         saveFailures: STATE._saveFailures || 0,
+        fetchScheduler,
         growth: {
           dtusLast24h: dtus.filter(d => {
             const ts = d.createdAt;
@@ -51836,6 +52726,73 @@ app.get("/api/system/health", (_req, res) => {
           }).length,
         },
       },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Adaptive system monitoring endpoint
+app.get("/api/system/adaptive-status", (_req, res) => {
+  try {
+    const status = getSystemStatus();
+    const config = getActiveBrainConfig();
+    const brainHealth = typeof getBrainStatus === "function" ? getBrainStatus() : {};
+
+    return res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      adaptiveScaling: process.env.CONCORD_ADAPTIVE_BRAIN_SCALING !== 'false',
+      system: {
+        stressScore: status.stressScore,
+        levels: status.levels,
+        recommendations: status.recommendations
+      },
+      brains: Object.entries(config).reduce((acc, [name, cfg]) => {
+        acc[name] = {
+          active: cfg.active !== undefined ? cfg.active : true,
+          priority: cfg.priority,
+          contextWindow: cfg.contextWindow,
+          maxConcurrent: cfg.maxConcurrent,
+          timeout: cfg.timeout,
+          enabled: brainHealth[name]?.enabled || false,
+          lastChecked: brainHealth[name]?.lastChecked || null
+        };
+        return acc;
+      }, {}),
+      memory: {
+        rss: process.memoryUsage().rss,
+        heap: process.memoryUsage().heapUsed,
+        heapPeak: process.memoryUsage().heapTotal
+      },
+      loadAverage: require('os').loadavg(),
+      cpuCount: require('os').cpus().length
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+// dtu_store). These are operational telemetry (repair cortex events, etc.)
+// and live in their own table so they don't pollute the DTU knowledge
+// substrate. Public endpoint so the operator dashboard can surface them.
+//
+// Filters: ?subsystem=repair_cortex&severity=error&sinceMs=1700000000000&limit=200
+app.get("/api/system/operations-log", async (_req, res) => {
+  try {
+    // ES-module dynamic import — server.js uses ESM, not CommonJS.
+    const { getOperationsLog } = await import("./lib/dtu-operations-log.js");
+    const filters = {};
+    if (_req.query.subsystem) filters.subsystem = String(_req.query.subsystem);
+    if (_req.query.action) filters.action = String(_req.query.action);
+    if (_req.query.severity) filters.severity = String(_req.query.severity);
+    if (_req.query.sinceMs) filters.sinceMs = Number(_req.query.sinceMs);
+    if (_req.query.limit) filters.limit = Number(_req.query.limit);
+    const rows = getOperationsLog(db, filters);
+    return res.json({
+      ok: true,
+      count: rows.length,
+      filters,
+      entries: rows,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -54217,6 +55174,11 @@ async function pollFeeds() {
   // blows its budget). Tests don't assert on live feed contents.
   if (String(process.env.NODE_ENV).toLowerCase() === "test") return;
   if (!STATE.feeds || STATE.feeds.size === 0) return;
+  // Sprint 60+ — idle gate. Same logic as feed-manager.tickFeed: with no
+  // authenticated users, RSS polling produces work no one reads.
+  if (!presenceIdle.shouldRunHeavyMaintenance()) {
+    return { ok: true, skipped: "idle_no_users" };
+  }
   const now = Date.now();
 
   for (const [feedId, feed] of STATE.feeds) {
@@ -54233,20 +55195,83 @@ async function pollFeeds() {
         headers: { "User-Agent": "Concord-Cognitive-Engine/1.0 (Feed Ingestion)" },
       });
       if (!response.ok) {
-        structuredLog("warn", "feed_fetch_http_error", { feedId, url: feed.url, status: response.status });
+        // Sprint 32 — track consecutive failures and auto-disable after 5
+        // persistent failures. Without this, a broken feed (e.g. rsshub.app
+        // returning 403 for a blocked path) generates one feed_fetch_http_error
+        // every pollIntervalMs (864 lines for one feed in 30 days) and never
+        // stops. The threshold is per-feed and reset on any successful fetch.
+        feed._consecutiveFailures = (feed._consecutiveFailures || 0) + 1;
+        feed._lastErrorAt = nowISO();
+        feed._lastErrorStatus = response.status;
+        if (feed._consecutiveFailures >= 5) {
+          feed.active = false;
+          feed.autoDisabledAt = nowISO();
+          feed.autoDisableReason = `Auto-disabled after ${feed._consecutiveFailures} consecutive HTTP ${response.status} responses`;
+          structuredLog("warn", "feed_auto_disabled", {
+            feedId, url: feed.url, status: response.status,
+            consecutiveFailures: feed._consecutiveFailures,
+          });
+        } else {
+          structuredLog("warn", "feed_fetch_http_error", {
+            feedId, url: feed.url, status: response.status,
+            consecutiveFailures: feed._consecutiveFailures,
+            willAutoDisableAt: 5,
+          });
+        }
         continue;
+      }
+      // Successful fetch — reset the consecutive failure counter.
+      if (feed._consecutiveFailures) {
+        structuredLog("info", "feed_recovered", {
+          feedId, url: feed.url, previousFailures: feed._consecutiveFailures,
+        });
+        feed._consecutiveFailures = 0;
       }
 
       const xml = await response.text();
       const items = parseRSSItems(xml);
 
-      // Track seen items to avoid duplicates
+      // Sprint 32 — durable dedup. Pre-fix the in-memory `feed._itemsSeen`
+      // Set was lost on every pm2 restart, so each restart re-ingested
+      // every arXiv/BBC/etc paper as a fresh DTU. With ~50 items per feed
+      // and ~13 restarts in 16 hours, arXiv alone produced 15,935 DTUs (63%
+      // of the day's growth). Now we ask SQLite first: "do you already
+      // have a DTU whose data carries this link?" — answered by a single
+      // indexed LIKE on a freshly-extracted link string. The in-memory
+      // Set is still kept for hot-path dedup within a single boot (avoids
+      // a DB roundtrip per item on a feed with 50 items), but the DB is
+      // now the source of truth across restarts.
       if (!feed._itemsSeen) feed._itemsSeen = new Set();
 
       let ingested = 0;
+      let duplicatesSkipped = 0;
       for (const item of items) {
         const itemKey = item.link || item.title;
-        if (!itemKey || feed._itemsSeen.has(itemKey)) continue;
+        if (!itemKey) continue;
+
+        // Fast path: in-memory dedup (no DB hit when we've already seen
+        // this within the current boot).
+        if (feed._itemsSeen.has(itemKey)) {
+          duplicatesSkipped++;
+          continue;
+        }
+
+        // Slow path: ask the DB. This is the line that fixes the 13x
+        // re-ingestion — every prior DTU whose data contained this link
+        // is a duplicate, regardless of how many times the process has
+        // restarted.
+        if (db && item.link) {
+          try {
+            const seen = db.prepare(
+              "SELECT 1 FROM dtu_store WHERE source = ? AND data LIKE ? LIMIT 1"
+            ).get(`feed:${feed.url}`, `%${item.link}%`);
+            if (seen) {
+              feed._itemsSeen.add(itemKey);
+              duplicatesSkipped++;
+              continue;
+            }
+          } catch (_e) { /* DB unreachable — fall through and try to ingest */ }
+        }
 
         // Extract domain from feed URL for tagging
         let feedDomain = feed.domain || "news";
@@ -54314,9 +55339,15 @@ async function pollFeeds() {
       feed.lastFetchedAt = nowISO();
       feed.itemCount = (feed.itemCount || 0) + ingested;
 
-      if (ingested > 0) {
-        structuredLog("info", "feed_poll_ingested", { feedId, url: feed.url, ingested, totalItems: items.length });
-        saveStateDebounced();
+      if (ingested > 0 || duplicatesSkipped > 0) {
+        structuredLog("info", "feed_poll_ingested", {
+          feedId,
+          url: feed.url,
+          ingested,
+          duplicatesSkipped,
+          totalItems: items.length,
+        });
+        if (ingested > 0) saveStateDebounced();
       }
     } catch (e) {
       structuredLog("debug", "feed_poll_error", { feedId, url: feed.url, error: String(e?.message || e) });
@@ -57111,11 +58142,13 @@ app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {
 app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {
   try {
     const houses = db.prepare(`
-      SELECT id, user_id, name, building_id, visibility, allow_live_visits,
-             last_decorated_at
-      FROM player_houses
-      WHERE world_id = ? AND visibility = 'public'
-      ORDER BY last_decorated_at DESC
+      SELECT ph.id, ph.user_id, ph.name, ph.building_id, ph.visibility, ph.allow_live_visits,
+             ph.last_decorated_at, wb.building_type,
+             (SELECT COUNT(*) FROM building_rooms br WHERE br.building_id = ph.building_id) AS room_count
+      FROM player_houses ph
+      LEFT JOIN world_buildings wb ON wb.id = ph.building_id
+      WHERE ph.world_id = ? AND ph.visibility = 'public'
+      ORDER BY ph.last_decorated_at DESC
       LIMIT 100
     `).all(req.params.worldId);
     res.json({ ok: true, houses });
@@ -59885,6 +60918,25 @@ try {
   // repair_knowledge so they survive a restart (guarded; no-op if the table is absent).
   try { configureRepairPersistence(db); } catch { /* persistence optional */ }
   startGuardian();
+  // Phase 5 fix (Sprint 60): wire detector-bridge.js's configureBridge() so
+  // the detector-sweep hook (~line 880, "feed delta into repair-cortex
+  // bridge") actually reaches pain/avoidance learning + the DTU audit
+  // trail. The bridge dynamically imports itself at each sweep and calls
+  // ingestDetectorDelta(), but ingestDetectorDelta only calls its internal
+  // _observeFn/_logDtuFn if configureBridge() was ever called with real
+  // callbacks — and nothing did that. reflex-cortex.js's dispatchRepair()
+  // has a stale comment claiming "Bridge already configured at boot" next
+  // to an empty conditional body that configures nothing; this is the
+  // actual boot-time call that comment assumed already existed. Without
+  // it, every detector finding still enqueued a fix task correctly, but
+  // high/critical findings never fed pain-and-avoidance learning and the
+  // per-sweep summary was never logged to dtu_operations_log
+  // (subsystem='repair_cortex') — silent no-ops via the try/catch-guarded
+  // `if (_observeFn)` / `if (_logDtuFn)` checks in detector-bridge.js.
+  try {
+    const { configureBridge } = await import("./emergent/repair-cortex/detector-bridge.js");
+    configureBridge({ observe, logDtu: logRepairDTU });
+  } catch (_e) { /* bridge wiring optional — detector-bridge falls back to enqueue-only */ }
   structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon + Guardian initialized" });
 } catch (e) {
   console.warn("[Concord] Repair Cortex failed to initialize:", e.message);
@@ -61782,13 +62834,29 @@ if (shardingEnabled() && !READ_REPLICA) {
 // Tracks RSS (not just heap) every 30s. Native memory (mmap, ArrayBuffers,
 // worker V8 isolates) is the primary bloat source — heap alone misses it.
 {
-  const MEM_WARN_MB  = 2048;  // 2GB — start trimming caches
-  const MEM_CRIT_MB  = 3072;  // 3GB — pause background tasks
+  // Sprint 32 - tightened thresholds. Pre-fix: MEM_WARN_MB=2048 fired
+  // `memory_warning` repeatedly but trimEmbeddingCache(25_000) was a no-op
+  // because the live cache was only 16k entries (cache.target > cache.size
+  // means no eviction). RSS kept climbing past the 2GB threshold and the
+  // event loop wedged with 10-27s lag spikes from forgetting/heartbeat
+  // workloads running on top of the bloated heap. New target: trim to
+  // 8k embeddings (half of typical steady-state count) and warn at 1.5GB
+  // (was 2GB), so we shed cache before the loop jams. CONCORD_MEM_WARN_MB
+  // and CONCORD_MEM_EMBED_TARGET override hooks for tuning without a
+  // rebuild.
+  // Sprint 60+ — thresholds were tuned for 2GB pods and triggered spurious
+  // GC at 2GB on much-larger pods (e.g. 515GB RunPod with 2.5GB RSS = 0.5%
+  // utilization, but the 2GB crit trigger forced a global.gc() every 30s,
+  // producing 1-3s event-loop lag spikes with zero free-memory need).
+  // Default to 8GB warn / 12GB crit; CONCORD_* env vars override.
+  const MEM_WARN_MB   = Number(process.env.CONCORD_MEM_WARN_MB)  || 8192;   // 8GB
+  const MEM_CRIT_MB   = Number(process.env.CONCORD_MEM_CRIT_MB)  || 12288;  // 12GB
+  const EMBED_TARGET  = Number(process.env.CONCORD_MEM_EMBED_TARGET) || 8000;
   let _backgroundPaused = false;
 
   function trimCaches() {
     // 1. Trim embedding cache (biggest native memory consumer — Float32Arrays)
-    const embedTrim = trimEmbeddingCache(25_000); // Keep only 25k vectors
+    const embedTrim = trimEmbeddingCache(EMBED_TARGET);
     // 2. Trim session history
     if (STATE.sessions?.size > 200) {
       const sessionKeys = Array.from(STATE.sessions.keys());
@@ -61799,7 +62867,14 @@ if (shardingEnabled() && !READ_REPLICA) {
     if (STATE.logs?.length > 200) STATE.logs.splice(0, STATE.logs.length - 200);
     // 4. Force GC if exposed
     if (global.gc) global.gc();
-    return { embedBefore: embedTrim.before, embedAfter: embedTrim.after };
+    // Only run forced GC if trimming actually freed something — otherwise
+    // global.gc() is a stop-the-world pause for nothing on every 30s tick.
+    const freedSomething = embedTrim.before > embedTrim.after
+      || (STATE.sessions?.size > 200);
+    if (freedSomething && global.gc) {
+      try { global.gc(); } catch (_e) { /* GC optional */ }
+    }
+    return { embedBefore: embedTrim.before, embedAfter: embedTrim.after, gcRan: freedSomething };
   }
 
   function pauseBackgroundTasks() {
@@ -61818,6 +62893,12 @@ if (shardingEnabled() && !READ_REPLICA) {
   globalThis.__memoryPaused = () => _backgroundPaused;
 
   const memMonitorId = setInterval(() => {
+    // Sprint 60+ — idle gate on memory monitor. The monitor itself is cheap,
+    // but its sibling function trimCaches (which calls global.gc()) was the
+    // biggest single source of event-loop spikes: every 30s a stop-the-world
+    // GC pause even when nothing needed freeing. With no users there is also
+    // no one to notice a delayed warning, so skip the whole tick.
+    if (!presenceIdle.shouldRunHeavyMaintenance()) return;
     const mem = process.memoryUsage();
     const rssMB = Math.round(mem.rss / 1024 / 1024);
     const heapMB = Math.round(mem.heapUsed / 1024 / 1024);
@@ -62429,7 +63510,7 @@ const _repairReportLimiter = rateLimit ? rateLimit({
   message: { received: false, error: "rate_limited" },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
 }) : ((req, res, next) => next());
 app.post("/api/admin/repair/report", _repairReportLimiter, asyncHandler(async (req, res) => {
   const raw = req.body || {};
@@ -68493,7 +69574,20 @@ const server = SHOULD_LISTEN ? app.listen(PORT, () => {
 if (server) {
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
-  // server.requestTimeout intentionally left at Node's default (5 min).
+  // Sprint 32 — request timeout was Node's 5min default, which meant
+  // users sat waiting through a full consolidation cycle (100+ seconds)
+  // before getting any response. Cap at 25s so the worst case is a fast
+  // 503 instead of a 5min freeze; the rest of the time the request
+  // either completes well within this window or the heartbeat
+  // starvation shows up as a clean timeout the client can retry.
+  // 25s also stays above Node's keepAliveTimeout (65s? no, 25<65 — this
+  // is the request timeout, not the keepalive, so 25s is independent
+  // and refers to total time from request headers received to response
+  // headers sent).
+  server.requestTimeout = 25_000;
+  // Same logic for headers: be aggressive about bad clients so a
+  // stalled sender can't hold a worker indefinitely.
+  server.headersTimeout = 66_000;
   // A previous iteration (PR #380) set it to 75 s as a backstop for
   // "stuck" handlers, but that turned out to manufacture the very symptom
   // it was supposed to prevent: when a slow SQLite heartbeat blocks the
@@ -68523,20 +69617,33 @@ try {
   const { monitorEventLoopDelay } = await import("node:perf_hooks");
   const histogram = monitorEventLoopDelay({ resolution: 50 });
   histogram.enable();
-  // Threshold = 1 s. Anything above that is a noticeable hitch from a
-  // user's POV (a 1 s pause in API response is "is the site frozen?").
-  const LAG_THRESHOLD_NS = 1_000 * 1e6;
+  // Sprint 60+ — Threshold raised from 1s to 3s via CONCORD_LAG_THRESHOLD_MS.
+  // Pre-fix threshold fired spuriously on internal background work
+  // (DB queries, JSON stringify of large objects, ollama model loads
+  // via shared GPU) that doesn't affect user-facing request latency.
+  // With 5/5 brains warm and most subsystems idle-gated, the only
+  // remaining spikes are predictable 1-2s sync bursts from periodic
+  // background tasks. Bumping to 3s lets through only real freezes.
+  const LAG_THRESHOLD_NS = (Number(process.env.CONCORD_LAG_THRESHOLD_MS) || 3000) * 1e6;
   // Sample every 30 s. Heartbeat tick is every 15 s, so two windows
   // means each tick has a fresh window to be observed in.
   setInterval(() => {
     try {
+      // Sprint 60+ — lag probe self-attribute
+      try { presenceIdle.markLagProbe("lag_detector"); } catch (_e) { /* observed: presenceIdle not initialized yet — defensive guard */ }
       const maxNs = histogram.max;
       if (Number.isFinite(maxNs) && maxNs > LAG_THRESHOLD_NS) {
+        // Sprint 60+ — capture which subsystem was running. globalThis
+        // __lastLagProbeName is set by registerLagProbe callers.
+        const culprit = (globalThis.__lastLagProbeName && (Date.now() - (globalThis.__lastLagProbeTs || 0) < 30_000))
+          ? globalThis.__lastLagProbeName
+          : "unknown";
         structuredLog("warn", "event_loop_lag_spike", {
           maxMs: Math.round(maxNs / 1e6),
           meanMs: Math.round(histogram.mean / 1e6),
           p99Ms: Math.round(histogram.percentile(99) / 1e6),
           windowSeconds: 30,
+          culprit,
         });
       }
       histogram.reset();
@@ -68768,6 +69875,25 @@ async function _dispatchGodotCombatAttack(userId, data) {
     return { ok: false, error: "rate_limited" };
   }
 
+  // Great Refusal — hub ground is Concordia's neutral zone. Same gate the
+  // socket.io combat:attack path and creature-kill HTTP route use, so a
+  // Godot client can't get a laxer hostility path than a browser one.
+  try {
+    const { checkHostilityAllowed } = await import("./lib/concordia/neutral-zone.js");
+    const _nzWorld = cityPresence.getPlayerWorld?.(userId)
+      ?? cityPresence.getUserPosition?.(userId)?.worldId
+      ?? "concordia-hub";
+    const hostility = checkHostilityAllowed(STATE, _nzWorld, userId);
+    if (!hostility.allowed) {
+      return {
+        ok: true,
+        refused: true,
+        reason: hostility.reason || "neutral_zone_concordia",
+        damage: 0,
+      };
+    }
+  } catch { /* neutral-zone unavailable — continue normally */ }
+
   // Glyph-spell damage authority (mirrors the socket.io path's identical
   // block) — owner-scoped lookup; best-effort, never blocks the attack.
   let spellMaxDamage = 0;
@@ -68975,10 +70101,23 @@ async function _dispatchGodotCombatDodge(userId, data) {
   return result;
 }
 
+// Godot path player:move cadence gate — mirrors the socket.io handler's
+// per-socket ~30Hz (33ms) cap (see tryInitWebSockets → socket.on("player:move")).
+// Keyed by userId (one Godot connection per user in practice). Silent drop on
+// excess, same as the browser path — never a nack flood. The generic gateway
+// token bucket (20/s sustained) still covers auth/room/scene/unknown; this is
+// the move-specific gate docs/GODOT_INTEGRATION.md called out as the remaining
+// throughput-tuning gap (audit v4 proposal #2). Implementation lives in
+// lib/godot-move-rate.js so the contract is unit-testable without a live WS.
+const _godotMoveRateGate = makeGodotMoveRateGate();
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   switch (evt) {
     case "player:move": {
+      // ~30Hz cap — byte-identical intent to socket.io's `_moveRateState`.
+      // Must run BEFORE applyPlayerMove so a flood never touches presence.
+      if (!_godotMoveRateGate.tryAccept(userId)) return; // silent drop
       const result = applyPlayerMove(userId, data);
       if (result.drop) return;
       if (result.nack) {
@@ -79305,7 +80444,11 @@ structuredLog("info", "artistry_init", { detail: "All phases (1-10) initialized 
 // ledger logic is touched or duplicated — mounting a route doesn't clone
 // its body, just adds a second address for the same code.
 function mountArtistryNamespaceAlias(targetApp, fromPrefix, toPrefix) {
-  const stack = targetApp?._router?.stack;
+  // Express 5 renamed `app._router` to `app.router` (the old name is gone
+  // entirely, not deprecated-but-present) — this previously always read
+  // `undefined` here and silently early-returned 0 mounted routes on every
+  // boot. `_router` is kept as a fallback for Express 4 compatibility.
+  const stack = targetApp?.router?.stack || targetApp?._router?.stack;
   if (!Array.isArray(stack)) {
     structuredLog("warn", "artistry_alias_init", { detail: "router stack unavailable — /api/creative-commerce alias mount skipped" });
     return 0;
@@ -83587,3 +84730,4 @@ export const __TEST__ = Object.freeze({
   getEthosEnforcementSnapshot,
   ETHOS_ENFORCEMENT_HISTORY_CAP,
 });
+// Test commit

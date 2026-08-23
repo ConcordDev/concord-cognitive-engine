@@ -68,7 +68,38 @@ export async function preloadBrains(structuredLog = () => {}) {
       }
     } catch (err) {
       failed.push(epName);
-      structuredLog("warn", "brain_preload_error", { brain: epName, model: config.model, error: err.message });
+      structuredLog("warn", "brain_preload_error", { brain: epName, model: config.model, error: err.message, attempt: 1 });
+      // Sprint 60+ — retry with backoff. Conscious (14B) often times out during
+      // boot when ollama is also busy loading other models. Two retries, 5s + 15s.
+      for (const backoff of [5000, 15000]) {
+        await new Promise(r => setTimeout(r, backoff));
+        try {
+          const retryRes = await fetch(`${epUrl}/api/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: config.model,
+              prompt: "ping",
+              stream: false,
+              options: { num_predict: 1 },
+            }),
+            signal: AbortSignal.timeout(60000),
+          });
+          if (retryRes.ok) {
+            loaded.push(epName);
+            // Move out of failed list
+            const idx = failed.indexOf(epName);
+            if (idx >= 0) failed.splice(idx, 1);
+            structuredLog("info", "brain_preloaded_retry", { brain: epName, model: config.model, afterMs: backoff });
+            break;
+          }
+        } catch (retryErr) {
+          structuredLog("warn", "brain_preload_retry_error", { brain: epName, model: config.model, error: retryErr.message, afterMs: backoff });
+        }
+      }
+      if (failed.includes(epName)) {
+        structuredLog("error", "brain_preload_gave_up", { brain: epName, model: config.model });
+      }
     }
     }
   }

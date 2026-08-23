@@ -52,6 +52,7 @@ import {
 import { apiHelpers } from '@/lib/api/client';
 import { SaveAsDtuButton } from '@/components/dtu/SaveAsDtuButton';
 import { Skeleton } from '@/components/ui';
+import { CitationNetworkDiagram } from '@/components/legal/CitationNetworkDiagram';
 
 interface SearchHit {
   id: number;
@@ -487,7 +488,9 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
             <ChevronDown className={`h-2.5 w-2.5 transition-transform ${citingOpen ? 'rotate-180' : ''}`} />
           </button>
           <AnimatePresence initial={false}>
-            {citingOpen && <CitingOpinionsPanel opinionId={hit.id} />}
+            {citingOpen && (
+              <CitingOpinionsPanel opinionId={hit.id} caseName={hit.caseName} absoluteUrl={hit.absoluteUrl} />
+            )}
           </AnimatePresence>
         </div>
 
@@ -545,22 +548,51 @@ function CaseResultCard({ hit, query, clipped, onToggleClip }: {
   );
 }
 
-// CitingOpinionsPanel — real "who cites this opinion" via the
-// `law.citation-graph` macro (CourtListener's `opinions-cited` viewset).
+// CitingOpinionsPanel — real citation-network diagram via the
+// `law.citation-graph` macro (CourtListener's `opinions-cited` viewset),
+// fetched in BOTH directions: what this opinion cites (real authority it
+// relies on) and what cites this opinion (real influence it has had).
 // Mounts only while its parent card's disclosure is open; fetches once on
 // mount. Renders one of four honest states: loading / error / empty /
 // populated — never a fabricated count or placeholder row while the real
-// call is in flight or has failed.
-function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
-  const citingQuery = useMutation({
+// call is in flight or has failed. Rendered as a real in/out SVG diagram
+// (CitationNetworkDiagram) rather than a flat list, matching the same
+// in/out node-graph pattern used elsewhere in the app (e.g. the
+// death-insurance InheritanceGraph).
+function CitingOpinionsPanel({
+  opinionId,
+  caseName,
+  absoluteUrl,
+}: {
+  opinionId: number;
+  caseName: string;
+  absoluteUrl: string | null;
+}) {
+  const citedByQuery = useMutation({
     mutationFn: async () =>
       callMacro<CitationGraphResult>('citation-graph', { opinionId, direction: 'citedBy', limit: 20 }),
   });
-  const { mutate } = citingQuery;
-  // Fetch exactly once when the panel mounts (i.e. when the disclosure is
-  // first opened). Re-opening after a close remounts and re-fetches — no
-  // stale citation list is cached across a real navigation.
-  useEffect(() => { mutate(); }, [mutate]);
+  const citesQuery = useMutation({
+    mutationFn: async () =>
+      callMacro<CitationGraphResult>('citation-graph', { opinionId, direction: 'cites', limit: 20 }),
+  });
+  const { mutate: fetchCitedBy } = citedByQuery;
+  const { mutate: fetchCites } = citesQuery;
+  // Fetch both directions exactly once when the panel mounts (i.e. when the
+  // disclosure is first opened). Re-opening after a close remounts and
+  // re-fetches — no stale citation list is cached across a real navigation.
+  useEffect(() => { fetchCitedBy(); fetchCites(); }, [fetchCitedBy, fetchCites]);
+
+  const pending = citedByQuery.isPending || citesQuery.isPending;
+  // Surface either failure honestly rather than only the first-checked one.
+  const failure = (!citedByQuery.isPending && citedByQuery.data && !citedByQuery.data.ok && citedByQuery.data.error)
+    || (!citesQuery.isPending && citesQuery.data && !citesQuery.data.ok && citesQuery.data.error)
+    || null;
+  const citedByResult = citedByQuery.data?.ok ? citedByQuery.data.result : null;
+  const citesResult = citesQuery.data?.ok ? citesQuery.data.result : null;
+  const bothEmpty = !pending && !failure
+    && (citedByResult?.citations.length ?? 0) === 0
+    && (citesResult?.citations.length ?? 0) === 0;
 
   return (
     <motion.div
@@ -574,55 +606,42 @@ function CitingOpinionsPanel({ opinionId }: { opinionId: number }) {
         className="mt-1.5 rounded-md border border-lattice-border bg-lattice-void/60 p-2"
         aria-label="Citing opinions"
       >
-        {citingQuery.isPending && (
-          <div className="space-y-1 py-0.5" aria-label="Loading citing opinions" aria-busy="true">
+        {pending && (
+          <div className="space-y-1 py-0.5" aria-label="Loading citation network" aria-busy="true">
             <Skeleton variant="line" width="70%" height="0.7rem" />
             <Skeleton variant="line" width="50%" height="0.7rem" />
           </div>
         )}
 
-        {!citingQuery.isPending && citingQuery.data && !citingQuery.data.ok && (
-          <div className="py-1 text-[11px] text-red-300">
-            {citingQuery.data.error || 'Citation lookup failed'}
+        {!pending && failure && (
+          <div className="py-1 text-[11px] text-red-300">{failure}</div>
+        )}
+
+        {!pending && !failure && bothEmpty && (
+          <div className="py-1 text-[11px] text-gray-500">
+            No citation links found on CourtListener for this opinion (neither cites nor cited by).
           </div>
         )}
 
-        {!citingQuery.isPending && citingQuery.data?.ok && citingQuery.data.result && (
-          citingQuery.data.result.citations.length === 0 ? (
-            <div className="py-1 text-[11px] text-gray-500">
-              No opinions on CourtListener currently cite this one.
-            </div>
-          ) : (
-            <ul className="space-y-1">
-              {citingQuery.data.result.citations.map((c, i) => (
-                <li key={c.id ?? `${c.otherOpinionId}-${i}`} className="flex items-center justify-between gap-2 text-[11px]">
-                  <span className="text-gray-300 font-mono tabular-nums">
-                    Opinion #{c.otherOpinionId ?? '?'}
-                    {c.depth != null && (
-                      <span className="ml-1.5 text-gray-500">· cited {c.depth}×</span>
-                    )}
-                  </span>
-                  {c.citingOpinionUrl && (
-                    <a
-                      href={c.citingOpinionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-500 transition-colors hover:bg-lattice-elevated hover:text-cyan-300"
-                      title="Open citing opinion on CourtListener"
-                      aria-label="Open citing opinion"
-                    >
-                      <ExternalLink className="h-2.5 w-2.5" />
-                    </a>
-                  )}
-                </li>
-              ))}
-              {citingQuery.data.result.totalHits > citingQuery.data.result.citations.length && (
-                <li className="pt-0.5 text-[10px] text-gray-600">
-                  {citingQuery.data.result.totalHits.toLocaleString()} total citing opinions on CourtListener — showing first {citingQuery.data.result.citations.length}.
-                </li>
-              )}
-            </ul>
-          )
+        {!pending && !failure && !bothEmpty && (
+          <CitationNetworkDiagram
+            centerLabel={caseName || `Opinion #${opinionId}`}
+            centerUrl={absoluteUrl}
+            // The backend edge carries direction-specific citingOpinionUrl/
+            // citedOpinionUrl fields (raw CourtListener resource URLs, not
+            // nested case-name objects — see the citation-graph macro's own
+            // header comment). Map each to the "other opinion" URL the
+            // diagram actually needs, per which side of the edge is "us"
+            // for that direction.
+            cites={(citesResult?.citations ?? []).map((c) => ({
+              id: c.id, otherOpinionId: c.otherOpinionId, depth: c.depth, otherOpinionUrl: c.citedOpinionUrl,
+            }))}
+            citedBy={(citedByResult?.citations ?? []).map((c) => ({
+              id: c.id, otherOpinionId: c.otherOpinionId, depth: c.depth, otherOpinionUrl: c.citingOpinionUrl,
+            }))}
+            citesTotalHits={citesResult?.totalHits ?? 0}
+            citedByTotalHits={citedByResult?.totalHits ?? 0}
+          />
         )}
       </div>
     </motion.div>

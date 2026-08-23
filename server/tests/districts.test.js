@@ -209,8 +209,14 @@ describe("districts — scene-export additive field", () => {
     const s = exportScene(db, "concordia-hub");
     assert.equal(s.ok, true);
     assert.equal(s.format, SCENE_FORMAT);
-    assert.equal(s.count, 2, "existing building-count contract unchanged");
-    assert.ok(Array.isArray(s.nodes) && s.nodes.length === 2, "existing nodes contract unchanged");
+    // 2 seeded buildings + 13 real, always-on hub tableau nodes (Unburned
+    // Court + pillars + embassy gates — lib/scene-export.js#hubTableauNodes,
+    // additive for worldId===concordia-hub specifically). This test's own
+    // assertion is about the districts field being additive, not about the
+    // hub tableau, but it exercises the real exportScene() path on the hub
+    // world, so the count must reflect that path's real total.
+    assert.equal(s.count, 15, "existing building-count contract unchanged");
+    assert.ok(Array.isArray(s.nodes) && s.nodes.length === 15, "existing nodes contract unchanged");
     assert.ok(s.bounds, "existing bounds contract unchanged");
     assert.ok(Array.isArray(s.districts), "new districts field is present");
     assert.ok(s.districts.length >= 5);

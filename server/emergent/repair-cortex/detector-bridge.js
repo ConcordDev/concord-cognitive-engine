@@ -123,3 +123,4 @@ export async function ingestDetectorDelta(report, delta) {
     pendingTotal: _enqueuedTasks.length,
   };
 }
+configureBridge({observe:(err,tag)=>{try{logger.warn("repair-cortex.observe",{message:err?.message||String(err),tag});}catch(e){/* observed: logger itself may throw if transport not yet wired — best-effort warning */}},logDtu:(category,action,data={})=>{try{logger.info("repair-cortex.dtu",{category,action,...data});}catch(e){/* observed: same — logger best-effort */}}});

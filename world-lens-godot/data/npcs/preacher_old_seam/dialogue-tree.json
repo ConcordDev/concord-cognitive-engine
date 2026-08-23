@@ -1,0 +1,55 @@
+{
+  "npcId": "preacher_old_seam",
+  "questId": "idle",
+  "phase": "warm",
+  "greeting": "Old Seam regards you without hurry. (Wandering Preacher of the Goddess Concordia)",
+  "nodes": [
+    {
+      "id": "node_open",
+      "npcText": "Old Seam is exactly as cryptic as her age allows her to be. She is faintly amused by most people and serious about exactly three things: the Goddess, the dome, and good bread.",
+      "playerOptions": [
+        {
+          "text": "Who are you?",
+          "leadsTo": "node_self"
+        },
+        {
+          "text": "What is this place?",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "I should go.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_self",
+      "npcText": "I am Old Seam, Wandering Preacher of the Goddess Concordia. cryptic but kind; will answer plainly if you wait through the cryptic part",
+      "playerOptions": [
+        {
+          "text": "Tell me more about the hub.",
+          "leadsTo": "node_place"
+        },
+        {
+          "text": "Thank you.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_place",
+      "npcText": "The Unburned Court holds. The Ring of Doors opens only for those the hub will still name. Violence ends at the moss.",
+      "playerOptions": [
+        {
+          "text": "I understand.",
+          "leadsTo": "node_close"
+        }
+      ]
+    },
+    {
+      "id": "node_close",
+      "npcText": "Walk gently.",
+      "isTerminal": true
+    }
+  ]
+}

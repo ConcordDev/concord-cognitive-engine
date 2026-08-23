@@ -13,6 +13,11 @@ import logger from "../logger.js";
 import { maxFootSpeedFor, agilityLevelFor, awardSprintXp } from "./movement/foot-speed.js";
 import { speedScaledRadius } from "./movement/interest-management.js";
 import { sanitizeVector, clampToWorldBounds } from "./math-safety.js";
+import {
+  shouldRunHeavyMaintenance,
+  registerIdleGate,
+  markLagProbe,
+} from "./presence-idle.js";
 
 // Speedster S3 — last observed speed per user, for the speed-scaled interest
 // radius. Set on each validated move; read by getNearbyUsers when CONCORD_SPEED_AOI.
@@ -1334,8 +1339,23 @@ export function broadcastPositions(cityId, realtimeEmit) {
 export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
   // Stamina regen runs at 1/sec (every 10th broadcast tick)
   let staminaRegenCounter = 0;
+
+  // Sprint 60+ — dynamic idle gating. When no real users are present
+  // (no auth activity in 5 min, no session traffic in 2 min), skip the
+  // 100ms broadcast and the 30s flush — both chew event-loop cycles for
+  // nothing. Presence broadcasts ARE the user's avatar's UI feedback;
+  // if no one is connected, there's no one to broadcast TO. Flushes of
+  // zero dirty positions are pure DB round-trip overhead.
+  //
+  // The timer still ticks so a user reappearing instantly resumes work
+  // — there's no startup cost on activation.
+  registerIdleGate("city_presence_broadcast", () => shouldRunHeavyMaintenance());
+
   // Collect distinct cityIds on each tick
   const timer = setInterval(() => {
+    // Sprint 60+ — lag probe attribution
+    try { markLagProbe("city_presence_broadcast"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
+    if (!shouldRunHeavyMaintenance()) return;
     const cities = new Set();
     for (const [, pos] of _userPositions) {
       cities.add(pos.cityId);
@@ -1354,6 +1374,13 @@ export function startPresenceBroadcast(realtimeEmit, intervalMs = 100) {
   // Periodic flush of dirty positions to SQLite — survives restart.
   if (!_flushTimer && _db) {
     _flushTimer = setInterval(() => {
+      // Sprint 60+ — lag probe attribution. Mark this subsystem as
+      // "just ran" so the lag detector can attribute spikes to it.
+      try { markLagProbe("city_presence_flush"); } catch (_e) { /* observed: markLagProbe is module-level, defensive guard for early-init races */ }
+      // Idle gate — skip flush entirely when no users present. flushDirtyPositions
+      // already early-exits on empty _userPositions, but skipping the timer body
+      // also avoids the bookkeeping overhead.
+      if (!shouldRunHeavyMaintenance()) return;
       try {
         flushDirtyPositions();
       } catch (err) {
@@ -1585,6 +1612,7 @@ export function startNpcLoop(realtimeEmit, tickMs = 1000) {
   _npcSpawnTimer.unref?.();
 
   logger.info?.("city-presence", `NPC loop started (${tickMs}ms tick)`);
+  registerIdleGate("city_presence_npc_tick", () => shouldRunHeavyMaintenance());
   return () => {
     if (_npcSpawnTimer) {
       clearInterval(_npcSpawnTimer);

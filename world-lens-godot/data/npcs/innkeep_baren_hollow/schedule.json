@@ -1,0 +1,73 @@
+{
+  "npc_id": "innkeep_baren_hollow",
+  "home_location": "hub_seven_spokes_loft",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_seven_spokes_loft",
+      "activity": "sleeps",
+      "need_addressed": "inn_running",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_seven_spokes_kitchen",
+      "activity": "opens kitchen; brews coffee",
+      "need_addressed": "inn_running",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_seven_spokes_common_room",
+      "activity": "serves breakfast trade",
+      "need_addressed": "inn_running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_seven_spokes_common_room",
+      "activity": "midday trade; bookkeeping in slow moments",
+      "need_addressed": "inn_running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_seven_spokes_common_room",
+      "activity": "evening rush",
+      "need_addressed": "inn_running",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_seven_spokes_cellar_room",
+      "activity": "the private room is open if needed",
+      "need_addressed": "inn_running",
+      "interactable_by_player": false
+    }
+  ]
+}

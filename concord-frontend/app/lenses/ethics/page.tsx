@@ -62,6 +62,7 @@ export default function EthicsLensPage() {
         title="Ethics"
         description="Multi-framework decision analysis, stakeholder equity, bias auditing, and a peer-reviewed case library"
         headerIcon={<Scale className="w-6 h-6" />}
+        headerIconColor="text-indigo-500"
       >
 
         <DecisionToolkit activeTab={activeTab} onTabChange={setActiveTab} />

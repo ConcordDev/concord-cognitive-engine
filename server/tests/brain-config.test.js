@@ -64,7 +64,16 @@ describe("BRAIN_CONFIG", () => {
     });
 
     it("has largest context window", () => {
-      assert.ok(c.contextWindow >= 16384);
+      // Relative claim (matches the test's own title), not a hardcoded
+      // absolute floor: lib/brain-config.js's conscious contextWindow was
+      // deliberately capped at 8192 (2026-08-15, see the inline comment
+      // there) to protect the shared A40's ~48GB VRAM budget across 7
+      // Ollama containers — a real, dated operational trade-off, not a
+      // regression. 16384 predates that cap and no longer describes any
+      // brain's real value; what must stay true is that conscious is still
+      // the largest of the four cognitive brains.
+      const others = ["subconscious", "utility", "repair"].map((n) => BRAIN_CONFIG[n].contextWindow);
+      assert.ok(c.contextWindow >= Math.max(...others), `conscious (${c.contextWindow}) must be >= the other brains (${others})`);
     });
 
     it("has largest maxTokens for full output", () => {

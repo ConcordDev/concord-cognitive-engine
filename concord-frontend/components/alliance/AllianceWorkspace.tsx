@@ -8,6 +8,7 @@ import {
   XCircle, Loader2, Crown, Shield, UserPlus, Bell, ChevronRight, CornerDownRight,
   ThumbsUp, Paperclip, Vote, Search, MessageCircle, ArrowLeft, Globe2,
 } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { lensRun } from '@/lib/api/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -552,7 +553,7 @@ export function AllianceWorkspace() {
             />
           ) : !selAllianceData ? (
             <div className="panel p-8 text-center text-gray-400">
-              <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <SvgIcon name="alliance-network" size={40} className="mx-auto mb-3 opacity-40" />
               <p>Select an alliance to open its workspace</p>
             </div>
           ) : (

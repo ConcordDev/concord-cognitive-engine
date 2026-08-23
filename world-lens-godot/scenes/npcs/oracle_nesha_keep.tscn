@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3]
+
+; Authored hub NPC — Nesha Keep
+; Data: res://data/npcs/oracle_nesha_keep/
+
+[ext_resource type="Script" path="res://scripts/npcs/npc_controller.gd" id="1_ctrl"]
+
+[node name="oracle_nesha_keep" type="Node3D"]
+script = ExtResource("1_ctrl")
+npc_id = "oracle_nesha_keep"
+display_name = "Nesha Keep"
+title = "Oracle of the Refusal Field"
+faction_id = "refusal_keep"
+archetype = "mystic"
+world_id = "concordia-hub"
+body_color = Color(0.350, 0.280, 0.450, 1.0)
+accent_color = Color(0.550, 0.400, 0.700, 1.0)
+body_height = 1.76
+default_segment = "morning"
+idle_bob = true
+dialogue_path = "res://data/npcs/oracle_nesha_keep/dialogue-tree.json"
+schedule_path = "res://data/npcs/oracle_nesha_keep/schedule.json"
+faction_affinity_path = "res://data/npcs/oracle_nesha_keep/faction-affinity.json"
+

@@ -39,6 +39,24 @@ interface UnifyResult {
   stepCount: number;
 }
 
+// Real shape from `inference.syllogism` (server.js#syllogisticReason) — a
+// successful derivation carries `conclusion` + `derivation.{majorPremise,
+// minorPremise,conclusion,rule,confidence}`; a failure carries `error` and
+// optionally the raw `derivations` the engine actually had (never fabricated).
+interface SyllogismResult {
+  ok: boolean;
+  conclusion?: string;
+  error?: string;
+  derivations?: string[];
+  derivation?: {
+    majorPremise: string;
+    minorPremise: string;
+    conclusion: string;
+    rule: string;
+    confidence: number;
+  };
+}
+
 interface InferenceHistoryEntry {
   id?: string;
   type: string;
@@ -284,7 +302,7 @@ export default function InferenceLensPage() {
     <div data-lens-theme="inference" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <GitMerge className="w-7 h-7 text-neon-blue" />
+          <GitMerge className="w-7 h-7 text-teal-500" />
           <div>
             <h1 className="text-xl font-bold">Inference Lens</h1>
             <p className="text-sm text-gray-400">
@@ -551,7 +569,52 @@ export default function InferenceLensPage() {
             </div>
           )}
 
-          {results && tab === 'unify' && (results as UnifyResult).term1 !== undefined ? (() => {
+          {results && tab === 'syllogism' ? (() => {
+            const d = results as SyllogismResult;
+            if (d.ok && d.derivation) {
+              return (
+                <div className="space-y-3" data-testid="syllogism-diagram">
+                  <div className="lens-card border-l-2 border-neon-purple/60">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Major premise</p>
+                    <p className="text-sm text-white">{d.derivation.majorPremise}</p>
+                  </div>
+                  <div className="flex items-center justify-center text-gray-500">
+                    <span className="text-lg">+</span>
+                  </div>
+                  <div className="lens-card border-l-2 border-neon-purple/60">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Minor premise</p>
+                    <p className="text-sm text-white">{d.derivation.minorPremise}</p>
+                  </div>
+                  <div className="flex items-center justify-center text-gray-500">
+                    <span className="text-lg">↓</span>
+                  </div>
+                  <div className="lens-card border-l-2 border-neon-green/60 bg-neon-green/5">
+                    <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">∴ Conclusion</p>
+                    <p className="text-sm font-semibold text-neon-green">{d.derivation.conclusion}</p>
+                  </div>
+                  <p className="text-[10px] text-gray-400 pt-1">
+                    {d.derivation.rule} · confidence {(d.derivation.confidence * 100).toFixed(0)}%
+                  </p>
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-2" data-testid="syllogism-error">
+                <div className="lens-card border-l-2 border-red-400/60 bg-red-400/5">
+                  <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">Could not derive a conclusion</p>
+                  <p className="text-sm text-red-300">{d.error}</p>
+                </div>
+                {Array.isArray(d.derivations) && d.derivations.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">What the engine actually knows so far:</p>
+                    <ul className="text-xs font-mono text-gray-300 space-y-0.5">
+                      {d.derivations.map((line, i) => <li key={i}>{line}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })() : results && tab === 'unify' && (results as UnifyResult).term1 !== undefined ? (() => {
             const d = results as UnifyResult;
             return (
               <div className="space-y-3">

@@ -1,0 +1,73 @@
+{
+  "npc_id": "oracle_nesha_keep",
+  "home_location": "hub_refusal_keep_quarters",
+  "default_behavior": "idle",
+  "blocks": [
+    {
+      "phase": "Dominus",
+      "phase_hours": [
+        1,
+        4
+      ],
+      "location": "hub_refusal_keep_quarters",
+      "activity": "wakes in the dark; greets the field's pre-dawn silence",
+      "need_addressed": "field_attendance",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Stratus",
+      "phase_hours": [
+        5,
+        8
+      ],
+      "location": "hub_dome_perimeter",
+      "activity": "morning dome walk; checks each of the seven anchors",
+      "need_addressed": "field_attendance",
+      "interactable_by_player": false
+    },
+    {
+      "phase": "Freeus",
+      "phase_hours": [
+        9,
+        12
+      ],
+      "location": "hub_refusal_keep_main_hall",
+      "activity": "receives petitioners seeking field-readings",
+      "need_addressed": "field_attendance",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Quartus",
+      "phase_hours": [
+        13,
+        16
+      ],
+      "location": "hub_glyph_altar",
+      "activity": "glyph practice; composes; teaches advanced students",
+      "need_addressed": "glyph_practice",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Penanus",
+      "phase_hours": [
+        17,
+        20
+      ],
+      "location": "hub_refusal_keep_main_hall",
+      "activity": "evening audience; offers tea and prophecy in equal measure",
+      "need_addressed": "field_attendance",
+      "interactable_by_player": true
+    },
+    {
+      "phase": "Solnus",
+      "phase_hours": [
+        21,
+        24
+      ],
+      "location": "hub_refusal_keep_quarters",
+      "activity": "meditates; sleeps under glyph-light",
+      "need_addressed": "glyph_practice",
+      "interactable_by_player": false
+    }
+  ]
+}

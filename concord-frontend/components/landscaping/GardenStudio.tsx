@@ -739,8 +739,30 @@ function PhotoOverlay() {
 }
 
 // ─── Feature 3 — Plant identification from photo ────────────────────
+interface PlantIdStructured {
+  commonName: string | null;
+  scientificName: string | null;
+  plantType: string | null;
+  healthStatus: 'healthy' | 'disease' | 'pest_damage' | 'nutrient_deficiency' | 'unknown' | null;
+  healthNotes: string | null;
+}
+
+const HEALTH_STATUS_STYLE: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
+  healthy: { icon: CheckCircle2, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', label: 'Healthy' },
+  disease: { icon: ShieldAlert, color: 'text-red-400 bg-red-500/10 border-red-500/20', label: 'Disease' },
+  pest_damage: { icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', label: 'Pest damage' },
+  nutrient_deficiency: { icon: AlertTriangle, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', label: 'Nutrient deficiency' },
+  unknown: { icon: ScanSearch, color: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20', label: 'Unclear from photo' },
+};
+
+const PLANT_TYPE_LABEL: Record<string, string> = {
+  tree: 'Tree', shrub: 'Shrub', perennial: 'Perennial', annual: 'Annual',
+  grass: 'Grass', succulent: 'Succulent', vine: 'Vine', other: 'Other',
+};
+
 function PlantIdentify() {
   const [identification, setIdentification] = useState<string | null>(null);
+  const [structured, setStructured] = useState<PlantIdStructured | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -755,16 +777,24 @@ function PlantIdentify() {
       setBusy(true);
       setErr(null);
       setIdentification(null);
+      setStructured(null);
       const b64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-      const r = await lensRun<{ identification: string }>('landscaping', 'identify-plant', {
-        imageB64: b64,
-      });
+      const r = await lensRun<{ identification: string; structured: PlantIdStructured | null }>(
+        'landscaping',
+        'identify-plant',
+        { imageB64: b64 },
+      );
       setBusy(false);
-      if (r.data.ok && r.data.result) setIdentification(r.data.result.identification);
-      else setErr(r.data.error || 'identification failed');
+      if (r.data.ok && r.data.result) {
+        setIdentification(r.data.result.identification);
+        setStructured(r.data.result.structured);
+      } else setErr(r.data.error || 'identification failed');
     };
     reader.readAsDataURL(file);
   };
+
+  const health = structured?.healthStatus ? HEALTH_STATUS_STYLE[structured.healthStatus] : null;
+  const HealthIcon = health?.icon;
 
   return (
     <div className="space-y-3">
@@ -788,13 +818,48 @@ function PlantIdentify() {
         Vision brain identifies species, plant type, and visible health issues.
       </p>
       {preview && (
-        <div className="relative h-48 w-48 overflow-hidden rounded-lg border border-zinc-800">
-          <Image src={preview} alt="Plant" fill className="object-cover" unoptimized />
+        <div className="flex gap-3">
+          <div className="relative h-48 w-48 shrink-0 overflow-hidden rounded-lg border border-zinc-800">
+            <Image src={preview} alt="Plant" fill className="object-cover" unoptimized />
+          </div>
+          {busy && (
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500">
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Analyzing…
+            </div>
+          )}
+          {!busy && structured && (
+            <div className={cardCls + ' flex-1 space-y-2'}>
+              <div>
+                <p className="text-base font-semibold text-zinc-100">
+                  {structured.commonName || 'Unidentified species'}
+                </p>
+                {structured.scientificName && (
+                  <p className="text-xs italic text-zinc-400">{structured.scientificName}</p>
+                )}
+              </div>
+              {structured.plantType && (
+                <span className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-300">
+                  <Sprout className="h-3 w-3" /> {PLANT_TYPE_LABEL[structured.plantType] || structured.plantType}
+                </span>
+              )}
+              {health && HealthIcon && (
+                <div className={`flex items-start gap-1.5 rounded border px-2 py-1 text-xs ${health.color}`}>
+                  <HealthIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">{health.label}</p>
+                    {structured.healthNotes && <p className="text-[11px] opacity-90">{structured.healthNotes}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
-      {identification && (
+      {!busy && !structured && identification && (
         <div className={cardCls}>
-          <p className="mb-1 text-[10px] uppercase tracking-wider text-emerald-400">Identification</p>
+          <p className="mb-1 text-[10px] uppercase tracking-wider text-amber-400">
+            Identification (raw — model reply wasn&apos;t structured)
+          </p>
           <p className="whitespace-pre-wrap text-sm text-zinc-200">{identification}</p>
         </div>
       )}

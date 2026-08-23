@@ -29,13 +29,15 @@
  * ── Where this is WEAKER than `plugin-sandbox.js`, stated plainly ──
  *
  *   1. NO Node permission-model layer. `plugin-sandbox.js`'s second defense
- *      layer runs its worker with `--experimental-permission` and zero
- *      `--allow-*` flags, blocking `fs`/`child_process`/native-addons at
- *      the Node binding layer regardless of what the sandboxed code tries.
- *      Pyodide's own Node loader is STRUCTURALLY INCOMPATIBLE with that
- *      flag — it calls `process.binding(...)` internally during setup,
- *      which `--experimental-permission` blocks unconditionally with NO
- *      `--allow-*` combination that fixes it (tried `--allow-fs-read=*`,
+ *      layer runs its worker with `--permission` (the flag graduated out
+ *      of experimental status; the old `--experimental-permission` name
+ *      is now a hard "bad option" error) and zero `--allow-*` flags,
+ *      blocking `fs`/`child_process`/native-addons at the Node binding
+ *      layer regardless of what the sandboxed code tries. Pyodide's own
+ *      Node loader is STRUCTURALLY INCOMPATIBLE with that flag — it calls
+ *      `process.binding(...)` internally during setup, which the
+ *      permission model blocks unconditionally with NO `--allow-*`
+ *      combination that fixes it (tried `--allow-fs-read=*`,
  *      `--allow-wasi`, `--allow-addons` together — still `Error:
  *      process.binding`). So this sandbox runs its Worker WITHOUT that
  *      layer. The practical safety this file relies on instead is

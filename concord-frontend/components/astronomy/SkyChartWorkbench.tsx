@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { SkyDome3D } from './SkyDome3D';
 
 // ─── Shared observer-location shape ───────────────────────────────────
 interface Observer { latitude: number; longitude: number }
@@ -261,6 +262,7 @@ function SkyChartPanel({ observer }: { observer: Observer }) {
   const [error, setError] = useState<string | null>(null);
   const [showLines, setShowLines] = useState(true);
   const [whenIso, setWhenIso] = useState(''); // empty = now
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -297,12 +299,33 @@ function SkyChartPanel({ observer }: { observer: Observer }) {
           <input type="checkbox" checked={showLines} onChange={(e) => setShowLines(e.target.checked)} />
           Constellation lines
         </label>
+        <div className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-950 p-0.5 text-xs" role="radiogroup" aria-label="Sky chart view mode">
+          {(['2d', '3d'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={viewMode === m}
+              onClick={() => setViewMode(m)}
+              className={cn(
+                'rounded-md px-2 py-1 uppercase tracking-wide',
+                viewMode === m ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-zinc-200',
+              )}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
         <span className="text-[11px] text-zinc-400">
           {data.sun.isDaytime ? 'Daytime' : 'Night'} · {data.visibleCount} stars up · sidereal {data.siderealTimeDeg.toFixed(1)}°
         </span>
       </div>
 
-      <SkyDome data={data} showLines={showLines} />
+      {viewMode === '2d' ? (
+        <SkyDome data={data} showLines={showLines} />
+      ) : (
+        <SkyDome3D data={data} showLines={showLines} />
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <Tile label="Sun alt" value={`${data.sun.altitude.toFixed(1)}°`} />

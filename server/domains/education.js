@@ -1267,8 +1267,16 @@ Constraints:
     const userId = eduActor(ctx);
     const points = ensureEduBucket(s, "energyPoints", userId);
     const totalPoints = points.reduce((sum, p) => sum + p.amount, 0);
-    // Streak: count consecutive days with at least one activity
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    // Streak: count consecutive days with at least one activity.
+    // Anchored to UTC midnight (not local .setHours(0,0,0,0)) so this
+    // matches the UTC-based date bucketing used everywhere else this
+    // function compares dates (activity timestamps are sliced via
+    // .toISOString().slice(0,10), which is always UTC). Mixing a
+    // local-midnight anchor with UTC date-string comparisons silently
+    // undercounts every streak for any user in a negative-UTC-offset
+    // timezone during the hours where the local calendar day still
+    // lags one day behind the UTC calendar day.
+    const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
     const day = 86400000;
     const datesWithActivity = new Set(points.map(p => new Date(p.timestamp).toISOString().slice(0, 10)));
     let streak = 0;
@@ -1516,7 +1524,10 @@ Constraints:
     const today = new Date().toISOString().slice(0, 10);
     const pointsToday = points.filter(p => p.timestamp.startsWith(today)).reduce((sum, p) => sum + p.amount, 0);
     const datesWithActivity = new Set(points.map(p => new Date(p.timestamp).toISOString().slice(0, 10)));
-    const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+    // UTC-anchored (see the matching comment in the gamification-status
+    // handler above) — must agree with `today` a few lines up, which is
+    // already UTC-based via .toISOString().slice(0,10).
+    const todayDate = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
     let streak = 0;
     for (let d = 0; d < 365; d++) {
       const check = new Date(todayDate.getTime() - d * 86400000).toISOString().slice(0, 10);
@@ -2010,7 +2021,10 @@ Constraints:
     })).sort((a, b) => b.avgMastery - a.avgMastery);
 
     // Day-by-day activity for the last 30 days (real point timestamps).
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    // UTC-anchored — see the matching comment on gamification-status's
+    // identical pattern above; the `date` values below come from
+    // .toISOString().slice(0,10), so the anchor must be UTC too.
+    const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
     const dayMs = 86400000;
     const activity = [];
     for (let d = 29; d >= 0; d--) {

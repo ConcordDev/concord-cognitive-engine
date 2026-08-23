@@ -5,11 +5,27 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Trash2, FolderTree } from 'lucide-react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/ui';
 
 interface Category { id: string; name: string; description: string | null; topicCount: number }
+
+// Category names are free-form and user-created (not a fixed enum), so a
+// per-name icon set isn't feasible or honest — every category previously
+// rendered the exact same static folder icon with zero differentiation.
+// This gives each one a distinct, stable identity instead: a hue derived
+// deterministically from its own name (same category always gets the same
+// color across sessions/reloads) plus its real initial(s).
+function categoryHue(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return hash % 360;
+}
+function categoryInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return (words.slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
+}
 
 export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -77,7 +93,13 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
         <ul className="space-y-1.5">
           {categories.map((c) => (
             <li key={c.id} className="flex items-center gap-3 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-              <FolderTree className="w-4 h-4 text-orange-400 shrink-0" />
+              <span
+                className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-black/80"
+                style={{ backgroundColor: `hsl(${categoryHue(c.name)}, 65%, 60%)` }}
+                aria-hidden="true"
+              >
+                {categoryInitials(c.name)}
+              </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-100">{c.name}</p>
                 {c.description && <p className="text-[10px] text-zinc-400">{c.description}</p>}

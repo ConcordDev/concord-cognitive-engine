@@ -1,0 +1,11 @@
+{
+  "npc_id": "courier_kel_sandren",
+  "primary_faction": "crosswind_couriers",
+  "default": 0.0,
+  "affinities": {
+    "crosswind_couriers": 0.9,
+    "bazaar_consortium": 0.55,
+    "verge_rangers": 0.3
+  },
+  "notes": {}
+}

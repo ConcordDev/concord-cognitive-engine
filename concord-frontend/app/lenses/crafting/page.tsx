@@ -45,13 +45,14 @@ import {
   X, Coins, ShieldCheck, Package, Beaker, Sword, Wand2, BookOpen,
   ChevronRight, ChevronDown, AlertCircle, ArrowUpCircle, Award, RefreshCw, Star, Wrench,
 } from 'lucide-react';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 
 const RecipeAuthorPanel = dynamic(
   () => import('@/components/concordia/recipes/RecipeAuthorPanel'),
   { ssr: false }
 );
 const ActiveEffectsBar = dynamic(
-  () => import('@/components/concordia/HUD/ActiveEffectsBar'),
+  () => import('@/components/concordia/hud/ActiveEffectsBar'),
   { ssr: false }
 );
 const ProgressionPanel = dynamic(
@@ -240,7 +241,7 @@ export default function CraftingPage() {
         <header className="flex items-start justify-between gap-3 mb-5 flex-wrap">
           <div>
             <div className="flex items-center gap-3">
-              <Hammer className="w-7 h-7 text-amber-400" />
+              <SvgIcon name="hammer" size={28} className="text-amber-400" />
               <h1 className="text-2xl font-bold">Crafting</h1>
             </div>
             <p className="text-xs text-white/40 mt-1">
@@ -274,8 +275,8 @@ export default function CraftingPage() {
 
         {/* Tabs */}
         <nav className="flex gap-2 mt-5 mb-5 border-b border-white/10 pb-3 overflow-x-auto">
-          <TabButton current={tab} value="mine"   label="My Recipes"          onClick={() => setTab('mine')}   icon={<Hammer className="w-3.5 h-3.5" />} />
-          <TabButton current={tab} value="forge"  label="Forge"               onClick={() => setTab('forge')}  icon={<Beaker className="w-3.5 h-3.5" />} />
+          <TabButton current={tab} value="mine"   label="My Recipes"          onClick={() => setTab('mine')}   icon={<SvgIcon name="hammer" size={14} />} />
+          <TabButton current={tab} value="forge"  label="Forge"               onClick={() => setTab('forge')}  icon={<SvgIcon name="potion" size={14} />} />
           <TabButton current={tab} value="browse" label="Browse Marketplace"  onClick={() => setTab('browse')} icon={<ShoppingBag className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="skills" label="Skills"              onClick={() => setTab('skills')} icon={<Award className="w-3.5 h-3.5" />} />
           <TabButton current={tab} value="workbench" label="Workbench"        onClick={() => setTab('workbench')} icon={<Wrench className="w-3.5 h-3.5" />} />

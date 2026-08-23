@@ -141,7 +141,15 @@ describe("household.shared family calendar", () => {
   });
   it("calendar-upcoming-reminders surfaces events inside the reminder window", () => {
     const soon = new Date(Date.now() + 20 * 60000);
-    const date = soon.toISOString().slice(0, 10);
+    // Local date (not soon.toISOString()'s UTC date) — the domain parses
+    // `${date}T${time}:00` with no timezone suffix, which Date treats as
+    // LOCAL time (a deliberate, reasonable choice: household reminders are
+    // wall-clock, "6pm pickup" means 6pm wherever the household is). Pairing
+    // a UTC date with a local time-of-day only produces the intended real
+    // moment when the local and UTC calendar dates happen to agree, which
+    // isn't true for part of every day in any negative-UTC-offset timezone.
+    const pad = (n) => String(n).padStart(2, "0");
+    const date = `${soon.getFullYear()}-${pad(soon.getMonth() + 1)}-${pad(soon.getDate())}`;
     const time = soon.toTimeString().slice(0, 5);
     call("calendar-event-create", ctxA, { title: "Pickup", date, time, reminderMinutes: 30 });
     const r = call("calendar-upcoming-reminders", ctxA, {});

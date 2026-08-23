@@ -27,8 +27,8 @@
     "bar_cost": 8,
     "difficulty": 5,
     "prerequisites": ["dtu_swordsmanship_v1"],
-    "description": "A turning parry that converts an aggressor's force into a refusal made physical.",
-    "lore": "From The Refusal That Is the Hub — the Sovereign's discipline of saying no with the body. Low damage, but it staggers and it cannot be baited. The Refusal Keep teaches it only to those who have proven they will not misuse it.",
+    "description": "A turning parry that converts an aggressor's force into a refusal made physical — the Sovereign's first act, worn as a guard.",
+    "lore": "The Sovereign made himself by refusing not to exist; Refusal is his alone, never Concord's. The Day Concordia Almost Left, he used the Refusal Field for the first time — death made impossible so she could not go — a confession dressed as possession, and the birth of the mechanic. After the Cascade in the Sovereign Ruins (Vela's six-fold algebra freezing a city), Concordia's Founding Compact capped every Refusal at strength 9 and forced expiry unless re-recorded within 7 days. This ward is that myth in the hands: low damage, staggers, cannot be baited. The Refusal Keep teaches it only to those who will not chase the Cascade's mistake.",
     "combo_followups": [
       { "id": "dtu_lattice_arc_v1", "name": "Sundered Lattice Arc" }
     ]

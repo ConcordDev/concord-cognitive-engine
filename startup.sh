@@ -12,6 +12,25 @@
 
 set -euo pipefail
 
+# ── Raise process file descriptor limits BEFORE anything else ──────────────────
+# Default ulimit on most Linux distros is 1024 — enough for ~500 user sockets +
+# internal pipes. Below ~2000 fds the kernel starts refusing new socket() calls
+# with EMFILE, dropping the Cloudflare tunnel instantly under load spike.
+# This is idempotent — Docker already gives 524288 here, but make it explicit
+# so a fresh machine without Docker limits inherits a safe default.
+TARGET_FDS="${CONCORD_FD_LIMIT:-65535}"
+if [ "$(uname -s)" = "Linux" ]; then
+  CURRENT_HARD=$(ulimit -Hn 2>/dev/null || echo 0)
+  TARGET=$TARGET_FDS
+  if [ "$CURRENT_HARD" != "unlimited" ] && [ "$CURRENT_HARD" -lt "$TARGET" ] 2>/dev/null; then
+    TARGET=$CURRENT_HARD
+  fi
+  ulimit -n $TARGET 2>/dev/null || true
+  ACTUAL=$(ulimit -n 2>/dev/null || echo "?")
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] ulimit: raised open files to $ACTUAL (target $TARGET_FDS)" | tee -a ./logs/startup.log || true
+fi
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -100,16 +119,23 @@ fi
 # ── Recovery mode ─────────────────────────────────────────────────────────────
 if [ "${1:-}" = "--recover" ]; then
   log "Recovery mode: restoring from latest backup..."
-  BACKUP_DIR="./server/data/backups"
-  if [ -d "$BACKUP_DIR" ]; then
-    LATEST=$(ls -t "$BACKUP_DIR"/*.json 2>/dev/null | head -1)
-    if [ -n "$LATEST" ]; then
-      cp "$LATEST" "./server/data/concord_state.json"
-      log "Restored from: $LATEST"
-    else
-      log "No backups found in $BACKUP_DIR"
-    fi
+  # The modern DB lives at DB_PATH (e.g. /opt/concord-db/concord.db) with state
+  # in the state_snapshots SQLite table — the old ./server/data/concord_state.json
+  # restore below was dead in production (that JSON is a fallback the server no
+  # longer writes). Delegate to the real restore path instead.
+  if [ -f "${DB_PATH:-$DATA_DIR/concord.db}" ]; then
+    log "WARNING: A database already exists at ${DB_PATH:-$DATA_DIR/concord.db}."
+    log "  --recover overwrites it with the latest backup. If you meant to inspect"
+    log "  without clobbering, stop now (Ctrl-C) or move the current DB aside."
+    log "  Proceeding in 5 seconds..."
+    sleep 5
   fi
+  # PM2 is left alone during recovery: db-restore.sh would otherwise stop the
+  # stack and blindly `pm2 start all` from the OLD dump on success — startup.sh
+  # owns PM2 lifecycle and re-starts with the correct runpod env below.
+  DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" CONCORD_RESTORE_SKIP_PM2=1 \
+    bash "$SCRIPT_DIR/scripts/db-restore.sh" \
+    || { log "Restore failed — see scripts/db-restore.sh output above."; exit 1; }
 fi
 
 # ── Dev mode ──────────────────────────────────────────────────────────────────
@@ -287,6 +313,28 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
     bash "$SCRIPT_DIR/scripts/runpod-cognition.sh" || log "WARNING: runpod-cognition.sh exited non-zero — check its output above; brains may be partially up."
   else
     log "WARNING: scripts/runpod-cognition.sh not found — brains must be started separately (or Ollama managed some other way)."
+  fi
+
+  # ── Fresh-pod bootstrap restore (data durability on pod reclaim) ──────────
+  # A pod reclaim wipes the EPHEMERAL container disk, but backups live on the
+  # PERSISTENT volume (CONCORD_BACKUP_DIR, e.g. /workspace/concord/backups).
+  # If the live DB is missing AND a volume backup exists, restore the latest
+  # BEFORE starting the backend — otherwise the server boots against an empty
+  # DB and the user's data sits in a volume tar.gz doing nothing. Only fires
+  # when DB_PATH doesn't exist, so a healthy boot is never touched.
+  BOOTSTRAP_DB="${DB_PATH:-${DATA_DIR:-$SCRIPT_DIR/data}/concord.db}"
+  if [ ! -f "$BOOTSTRAP_DB" ] && [ -n "${CONCORD_BACKUP_DIR:-}" ] && [ -d "$CONCORD_BACKUP_DIR" ]; then
+    if ls "$CONCORD_BACKUP_DIR"/concord-backup-*.tar.gz "$CONCORD_BACKUP_DIR"/concord-*.db.gz "$CONCORD_BACKUP_DIR"/concord-*.db >/dev/null 2>&1; then
+      log "Fresh-pod bootstrap: no DB at $BOOTSTRAP_DB but volume backups exist — restoring latest..."
+      DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="$CONCORD_BACKUP_DIR" CONCORD_RESTORE_SKIP_PM2=1 \
+        bash "$SCRIPT_DIR/scripts/db-restore.sh" \
+        && log "Bootstrap restore complete." \
+        || log "WARNING: bootstrap restore failed (see above) — backend will start against an empty DB."
+    else
+      log "No DB at $BOOTSTRAP_DB and no volume backups found — starting fresh (first boot?)."
+    fi
+  elif [ ! -f "$BOOTSTRAP_DB" ]; then
+    log "No DB at $BOOTSTRAP_DB and CONCORD_BACKUP_DIR unset/absent — starting fresh."
   fi
 
   # Start or restart with RunPod env

@@ -18,6 +18,7 @@ import { providerChat, BYO_PROVIDERS } from "./byo-providers.js";
 import { decryptKey } from "./byo-crypto.js";
 import { consumeRateLimitToken } from "./byo-rate-limit.js";
 import { platformProviderChat, platformProviderConfigured } from "./platform-providers.js";
+import { freeCloudProviderChat } from "./free-cloud-router-extended.js";
 
 /**
  * Look up an override row for a (user, slot).
@@ -184,8 +185,15 @@ export async function brainChat({ db, userId, slot, messages, opts = {}, brainMo
   if (platformProviderConfigured(slot)) {
     const pg = await platformProviderChat({ slot, messages, opts });
     if (pg.ok) return pg;
-    // Platform provider failed/exhausted budget — fall through to Ollama
-    // below, same "never block the user" contract as the BYO branch above.
+    // Platform provider failed/exhausted budget — try free cloud routers next
+    // (openrouter/cerebras/groq/gemini/mistral/cloudflare with FCFS daily quota)
+    const fc = await freeCloudProviderChat({ db, userId, slot, messages, opts });
+    if (fc.ok) return fc;
+    // Free cloud also exhausted — fall through to Ollama
+  } else {
+    // No platform provider configured for this slot — try free cloud as primary fallback
+    const fc = await freeCloudProviderChat({ db, userId, slot, messages, opts });
+    if (fc.ok) return fc;
   }
 
   // 3) Default path — concord-os.org-hosted Ollama brain.

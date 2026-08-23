@@ -100,6 +100,49 @@ export interface LensManifest {
 
   /** Backend table FK target for multi-step sessions (e.g. 'war_campaigns', 'reasoning_sessions'). */
   sessionTable?: string;
+
+  /**
+   * Bespoke domain icon (a name from `components/icons/icon-paths.ts`'s
+   * `IconName` registry). `LensVerticalHero` — the shared, headless header
+   * ~38 "light vertical" lenses mount with no per-lens authoring — reads
+   * this to render a real domain icon next to the title instead of no icon
+   * at all (the generic-icon gap the design-upgrade pass repeatedly flagged
+   * for these lenses). Optional and additive: absent means the header
+   * renders exactly as before. Deliberately typed as a bare `string` (not
+   * `IconName`) so this file doesn't import from components/ — the
+   * component-side lookup degrades to no-render on an unknown name.
+   */
+  icon?: string;
+
+  /**
+   * Per-lens header accent — a hex color `LensVerticalHero` applies to the
+   * domain icon (and its containing chip) instead of the flat generic
+   * `text-zinc-300` every "light vertical" lens got by default. Optional
+   * and additive: absent means the header renders exactly as before.
+   *
+   * Only set for lenses in one of four named families/groups that the
+   * design-upgrade pass flagged as needing internal differentiation
+   * (docs/FEATURE_BUILD_WALK_STATUS.md's "systemic/family-wide design
+   * decisions" item) — this is ONE shared convention applied once, not a
+   * per-lens ad-hoc color pick:
+   *   - Legal & Governance (formal/adjudicative): legal, law, disputes,
+   *     ethics, audit, privacy -> indigo `#6366f1`
+   *   - Reasoning & Verification (epistemic/analytical, deliberately a
+   *     distinct-but-adjacent hue from Legal & Governance since `ethics`
+   *     sits conceptually between the two): debate, grounding, inference
+   *     -> teal `#14b8a6`
+   *   - Creative Studio (matches the Studio destination group): fractal,
+   *     art, music, creative, creative-writing, artistry, game-design
+   *     -> pink `#ec4899` (reuses the existing `neon-pink` token rather
+   *     than introducing a new hex)
+   *   - `game` alone (cross-cutting meta-progression identity, distinct
+   *     from the Creative Studio family it visually sits near) -> amber
+   *     `#f59e0b`, the conventional "achievement/XP/reward" hue
+   * None of these reuse `neon-blue` (`#00d4ff`), since that's already the
+   * platform's primary-action button color — a family accent using the
+   * same hue as "click me" would read as a false affordance.
+   */
+  accentColor?: string;
 }
 
 // ---- Lens Manifests ----
@@ -477,6 +520,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
 
   {
     domain: 'music',
+    accentColor: '#ec4899',
     label: 'Music',
     artifacts: ['track', 'playlist', 'artist', 'album', 'stem', 'project'],
     macros: { list: 'lens.music.list', get: 'lens.music.get', create: 'lens.music.create', update: 'lens.music.update', delete: 'lens.music.delete', run: 'lens.music.run', export: 'lens.music.export' },
@@ -543,6 +587,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'art',
+    accentColor: '#ec4899',
     label: 'Art',
     artifacts: ['artwork', 'collection', 'style', 'gallery', 'exhibition'],
     macros: { list: 'lens.art.list', get: 'lens.art.get', create: 'lens.art.create', update: 'lens.art.update', delete: 'lens.art.delete', run: 'lens.art.run', export: 'lens.art.export' },
@@ -587,6 +632,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'fractal',
+    accentColor: '#ec4899',
     label: 'Fractal',
     artifacts: ['structure', 'parameter_set', 'render', 'animation', 'exploration_session'],
     macros: { list: 'lens.fractal.list', get: 'lens.fractal.get', create: 'lens.fractal.create', update: 'lens.fractal.update', delete: 'lens.fractal.delete', run: 'lens.fractal.run', export: 'lens.fractal.export' },
@@ -946,6 +992,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'law',
+    accentColor: '#6366f1',
     label: 'Law',
     artifacts: ['case', 'clause', 'draft', 'precedent', 'compliance_check'],
     macros: { list: 'lens.law.list', get: 'lens.law.get', create: 'lens.law.create', update: 'lens.law.update', delete: 'lens.law.delete', run: 'lens.law.run', export: 'lens.law.export' },
@@ -1009,6 +1056,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     // rest of the 19 macros need real structured input and are surfaced
     // through the actual Decision Toolkit forms, not a blind trigger bar.
     domain: 'ethics',
+    accentColor: '#6366f1',
     label: 'Ethics',
     artifacts: ['multi_framework_analysis', 'stakeholder_map', 'decision_matrix', 'bias_checklist', 'review', 'case'],
     macros: { list: 'ethics.listMultiFramework', get: 'ethics.searchCases', create: 'ethics.multiFrameworkDilemma', delete: 'ethics.deleteCase', run: 'ethics.frameworkAnalysis' },
@@ -1131,6 +1179,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['create_room', 'post_anonymous', 'verify_provenance', 'rotate_identity', 'export_sanitized', 'moderate'],
     category: 'social',
     dataTier: 'REAL_LIVE',
+    icon: 'cipher-lock',
     emptyState: {
       headline: "Speak without an identity.",
       caption: "Anonymous rooms with provable provenance \u2014 masked identities, no PII in the open.",
@@ -1173,6 +1222,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'game',
+    accentColor: '#f59e0b',
     label: 'Game',
     artifacts: ['achievement', 'quest', 'skill', 'profile', 'game_state', 'reward_event'],
     macros: { list: 'lens.game.list', get: 'lens.game.get', create: 'lens.game.create', update: 'lens.game.update', delete: 'lens.game.delete', run: 'lens.game.run', export: 'lens.game.export' },
@@ -1621,6 +1671,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === LEGAL ===
   {
     domain: 'legal',
+    accentColor: '#6366f1',
     label: 'Legal',
     artifacts: ['Case', 'Contract', 'ComplianceItem', 'Filing', 'IPAsset', 'BriefBundle'],
     macros: { list: 'lens.legal.list', get: 'lens.legal.get', create: 'lens.legal.create', update: 'lens.legal.update', delete: 'lens.legal.delete', run: 'lens.legal.run', export: 'lens.legal.export' },
@@ -1717,6 +1768,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === CREATIVE PRODUCTION ===
   {
     domain: 'creative',
+    accentColor: '#ec4899',
     label: 'Creative Production',
     artifacts: ['Project', 'Shoot', 'Asset', 'Episode', 'Collection', 'ClientProof', 'DeliverablePackage'],
     macros: { list: 'lens.creative.list', get: 'lens.creative.get', create: 'lens.creative.create', update: 'lens.creative.update', delete: 'lens.creative.delete', run: 'lens.creative.run', export: 'lens.creative.export' },
@@ -2038,7 +2090,18 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['project', 'material', 'contractor', 'inspection'],
     macros: { list: 'lens.home-improvement.list', get: 'lens.home-improvement.get', create: 'lens.home-improvement.create', update: 'lens.home-improvement.update', delete: 'lens.home-improvement.delete', run: 'lens.home-improvement.run', export: 'lens.home-improvement.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['costEstimate', 'permitCheck', 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'],
+    // Remapped from the manifest's original ['costEstimate', 'permitCheck',
+    // 'contractorCompare', 'timeline', 'materialsCalc', 'beforeAfter'] \u2014
+    // only permitCheck matched a registered home-improvement.* action; the
+    // other 5 threw unknown_macro on every click (audit/
+    // LENS_DESIGN_UPGRADE_PLAN.md #120). Remapped by real intent against
+    // server/domains/homeimprovement.js's actual registered handlers:
+    // projectEstimate (cost estimate), gantt (timeline), pro-list (contractor
+    // compare \u2014 returns lowestQuote/avgRating per pro), gallery-add
+    // (literal beforeImage/afterImage fields), shopping-list (closest real
+    // capability to a materials calculator; no dedicated calculator handler
+    // exists yet \u2014 a genuine remaining gap, not a wrong mapping).
+    actions: ['projectEstimate', 'permitCheck', 'pro-list', 'gantt', 'shopping-list', 'gallery-add'],
     category: 'lifestyle',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -2048,9 +2111,9 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: "costEstimate + materialsCalc give you a real number before you commit." },
+        { caption: "projectEstimate + shopping-list give you a real number before you commit." },
         { caption: "permitCheck looks up local requirements." },
-        { caption: "beforeAfter pairs photos + DTUs to document the change." },
+        { caption: "gallery-add pairs before/after photos + DTUs to document the change." },
       ],
     },
   },
@@ -2134,7 +2197,17 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['project', 'material', 'tool', 'technique'],
     macros: { list: 'lens.diy.list', get: 'lens.diy.get', create: 'lens.diy.create', update: 'lens.diy.update', delete: 'lens.diy.delete', run: 'lens.diy.run', export: 'lens.diy.export' },
     exports: ['json', 'csv', 'pdf'],
-    actions: ['materialsList', 'costEstimate', 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'],
+    // Remapped from the manifest's original ['materialsList', 'costEstimate',
+    // 'stepByStep', 'toolSuggestion', 'difficultyAssess', 'timeEstimate'] \u2014
+    // none matched a registered diy.* action, so every one of these 6
+    // buttons threw unknown_macro (audit/LENS_DESIGN_UPGRADE_PLAN.md #70).
+    // Remapped by intent using this entry's own firstRunGuide copy as
+    // ground truth against server/domains/diy.js's real registered
+    // handlers: bom-rollup (materials list), estimateProject (cost
+    // estimate), cutList ("stepByStep walks the project from cut list to
+    // finish"), toolCheck (tool suggestion), safetyCheck (difficulty/safety
+    // assess), buildTimeEstimate (time estimate).
+    actions: ['bom-rollup', 'estimateProject', 'cutList', 'toolCheck', 'safetyCheck', 'buildTimeEstimate'],
     category: 'lifestyle',
     dataTier: 'SIM_GRADE_A',
     emptyState: {
@@ -2144,9 +2217,9 @@ export const LENS_MANIFESTS: LensManifest[] = [
     },
     firstRunGuide: {
       steps: [
-        { caption: "stepByStep walks the project from cut list to finish." },
-        { caption: "toolSuggestion checks what you have vs. what the project needs." },
-        { caption: "difficultyAssess flags steps that are above your skill or unsafe." },
+        { caption: "cutList walks the project from cut list to finish." },
+        { caption: "toolCheck checks what you have vs. what the project needs." },
+        { caption: "safetyCheck flags steps that are above your skill or unsafe." },
       ],
     },
   },
@@ -2154,6 +2227,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   // === DEBATE (Lens 76) ===
   {
     domain: 'debate',
+    accentColor: '#14b8a6',
     label: 'Debate',
     artifacts: ['debate', 'argument', 'rebuttal', 'verdict'],
     macros: { list: 'lens.debate.list', get: 'lens.debate.get', create: 'lens.debate.create', update: 'lens.debate.update', delete: 'lens.debate.delete', run: 'lens.debate.run', export: 'lens.debate.export' },
@@ -2376,6 +2450,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'artistry',
+    accentColor: '#ec4899',
     label: 'Artistry',
     artifacts: ['artwork', 'gallery', 'exhibit', 'collection', 'medium'],
     macros: { list: 'lens.artistry.list', get: 'lens.artistry.get', create: 'lens.artistry.create', update: 'lens.artistry.update', delete: 'lens.artistry.delete', run: 'lens.artistry.run', export: 'lens.artistry.export' },
@@ -2464,6 +2539,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'audit',
+    accentColor: '#6366f1',
     label: 'Audit',
     artifacts: ['finding', 'control', 'evidence', 'report', 'risk'],
     macros: { list: 'lens.audit.list', get: 'lens.audit.get', create: 'lens.audit.create', update: 'lens.audit.update', delete: 'lens.audit.delete', run: 'lens.audit.run', export: 'lens.audit.export' },
@@ -2706,6 +2782,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'creative-writing',
+    accentColor: '#ec4899',
     label: 'Creative Writing',
     artifacts: ['story', 'character', 'plot', 'draft', 'revision'],
     macros: { list: 'lens.creative-writing.list', get: 'lens.creative-writing.get', create: 'lens.creative-writing.create', update: 'lens.creative-writing.update', delete: 'lens.creative-writing.delete', run: 'lens.creative-writing.run', export: 'lens.creative-writing.export' },
@@ -2846,6 +2923,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'knowledge',
     dataTier: 'REAL_FREE',
+    icon: 'desert-dune',
     emptyState: {
       headline: "Desert ecology.",
       caption: "Species, habitats, climate, resources, adaptations \u2014 REAL_FREE data from open ecology feeds.",
@@ -2861,6 +2939,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'disputes',
+    accentColor: '#6366f1',
     label: 'Disputes',
     artifacts: ['case', 'claim', 'resolution', 'mediation', 'ruling'],
     macros: { list: 'lens.disputes.list', get: 'lens.disputes.get', create: 'lens.disputes.create', update: 'lens.disputes.update', delete: 'lens.disputes.delete', run: 'lens.disputes.run', export: 'lens.disputes.export' },
@@ -3112,6 +3191,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'game-design',
+    accentColor: '#ec4899',
     label: 'Game Design',
     artifacts: ['mechanic', 'level', 'balance', 'playtest', 'asset'],
     macros: { list: 'lens.game-design.list', get: 'lens.game-design.get', create: 'lens.game-design.create', update: 'lens.game-design.update', delete: 'lens.game-design.delete', run: 'lens.game-design.run', export: 'lens.game-design.export' },
@@ -3178,6 +3258,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'grounding',
+    accentColor: '#14b8a6',
     label: 'Grounding',
     artifacts: ['fact', 'source', 'verification', 'context', 'claim'],
     macros: { list: 'lens.grounding.list', get: 'lens.grounding.get', create: 'lens.grounding.create', update: 'lens.grounding.update', delete: 'lens.grounding.delete', run: 'lens.grounding.run', export: 'lens.grounding.export' },
@@ -3310,6 +3391,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'inference',
+    accentColor: '#14b8a6',
     label: 'Inference',
     artifacts: ['model', 'prompt', 'response', 'context', 'evaluation'],
     macros: { list: 'lens.inference.list', get: 'lens.inference.get', create: 'lens.inference.create', update: 'lens.inference.update', delete: 'lens.inference.delete', run: 'lens.inference.run', export: 'lens.inference.export' },
@@ -3926,6 +4008,7 @@ export const LENS_MANIFESTS: LensManifest[] = [
   },
   {
     domain: 'privacy',
+    accentColor: '#6366f1',
     label: 'Privacy',
     artifacts: ['policy', 'consent', 'request', 'audit', 'regulation'],
     macros: { list: 'lens.privacy.list', get: 'lens.privacy.get', create: 'lens.privacy.create', update: 'lens.privacy.update', delete: 'lens.privacy.delete', run: 'lens.privacy.run', export: 'lens.privacy.export' },
@@ -4660,7 +4743,16 @@ export const LENS_MANIFESTS: LensManifest[] = [
     artifacts: ['template', 'section', 'generated_app', 'validation_report'],
     macros: { list: 'lens.forge.list', get: 'lens.forge.get', create: 'lens.forge.create', run: 'lens.forge.run', export: 'lens.forge.export' },
     exports: ['ts', 'zip', 'dockerfile'],
-    actions: ['list_templates', 'list_sections', 'validate', 'generate', 'export_app', 'check_avoidance', 'repair_log'],
+    // Was ['list_templates','list_sections','validate','generate','export_app',
+    // 'check_avoidance','repair_log'] — only validate/generate matched a real
+    // macro. The real register("forge",...) macros are list/sections/
+    // validate/generate; export_app/check_avoidance/repair_log have no
+    // backing macro at all (check-avoidance/export exist only as bespoke
+    // /api/forge/* REST routes this manifest-driven Featured Actions strip
+    // never calls). Re-applied 2026-08-21 — a prior fix (doc-cited commit
+    // ea9b3575e) doesn't exist in this repo's history, same "lost fix from a
+    // wiped prior pod" pattern as elsewhere in audit/LENS_DESIGN_UPGRADE_PLAN.md.
+    actions: ['list', 'sections', 'validate', 'generate'],
     category: 'creative',
     dataTier: 'REAL_LIVE',
     emptyState: {

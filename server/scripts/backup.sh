@@ -11,7 +11,7 @@ set -euo pipefail
 DATA_DIR="${DATA_DIR:-/data}"
 DB_PATH="${DB_PATH:-$DATA_DIR/db/concord.db}"
 ARTIFACTS_DIR="$DATA_DIR/artifacts"
-BACKUP_DIR="$DATA_DIR/backups"
+BACKUP_DIR="${CONCORD_BACKUP_DIR:-$DATA_DIR/backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 RETAIN_COUNT=7
 

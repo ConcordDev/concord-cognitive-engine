@@ -7,9 +7,10 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ARCaptureGallery } from './ARCaptureGallery';
 import {
-  Box, Plus, Trash2, Save, Play, Pause, RotateCcw, Zap, Image as ImageIcon,
+  Plus, Trash2, Save, Play, Pause, RotateCcw, Zap, Image as ImageIcon,
   Share2, Film, RefreshCw, Crosshair, Eye, Move3d, Camera,
 } from 'lucide-react';
 import {
@@ -626,7 +627,7 @@ export function SceneStudio() {
         {msg && <p className="text-xs text-neon-cyan">{msg}</p>}
         {scenes.length === 0 ? (
           <div className={cn(ds.panel, 'text-center py-12')}>
-            <Box className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <SvgIcon name="low-poly-cube" size={48} className="text-gray-600 mx-auto mb-3" />
             <p className={ds.textMuted}>No AR scenes yet — author one with the 3D editor.</p>
             <button onClick={createScene} className={cn(ds.btnPrimary, 'mt-3')}><Plus className="w-4 h-4" /> Create First Scene</button>
           </div>

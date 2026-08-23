@@ -210,7 +210,8 @@ export default function registerAnimationActions(registerLensAction) {
 
   registerLensAction("animation", "anim-list", (ctx, _a, _params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const animations = (s.projects.get(anAid(ctx)) || [])
+    const animations = [...(s.projects.get(anAid(ctx)) || [])]
+      .reverse()
       .map((a) => ({
         id: a.id, title: a.title, width: a.width, height: a.height, fps: a.fps,
         background: a.background, thumbnail: a.thumbnail,
@@ -693,7 +694,12 @@ export default function registerAnimationActions(registerLensAction) {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const projects = s.projects.get(anAid(ctx)) || [];
     const totalFrames = projects.reduce((n, a) => n + a.frames.length, 0);
-    const latest = [...projects].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    // Reverse the insertion-ordered list first: when two projects share a
+    // millisecond-precision updatedAt (rapid back-to-back creates/edits),
+    // the stable sort below would otherwise keep insertion order (oldest-
+    // first) for the tie. Reversing makes the newest-inserted win ties —
+    // deterministic latest-first regardless of timestamp collisions.
+    const latest = [...projects].reverse().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
     return {
       ok: true,
       result: {

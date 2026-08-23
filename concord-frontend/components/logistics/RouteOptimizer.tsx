@@ -1,12 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Route, X, Loader2, MapPin, Clock, TrendingDown } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+
+const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
 
 export interface OptimizedStop {
   order: number;
   address: string;
+  /** Real coords resolved server-side during geocoding/OSRM routing — not
+   * re-geocoded client-side. */
+  lat?: number;
+  lng?: number;
   arrivalTime: string;
   durationMin: number;
   distanceMi: number;
@@ -119,6 +126,24 @@ export function RouteOptimizer() {
           )}
         </div>
       </div>
+      {result && (() => {
+        const located = result.stops.filter((s): s is OptimizedStop & { lat: number; lng: number } => s.lat != null && s.lng != null);
+        if (located.length < 2) return null;
+        return (
+          <div className="px-4 pb-4">
+            <MapView
+              markers={located.map((s) => ({
+                lat: s.lat,
+                lng: s.lng,
+                label: `${s.order}. ${s.address}`,
+                popup: `Arrive ${s.arrivalTime} · ${s.distanceMi.toFixed(1)} mi leg`,
+              }))}
+              route={located.map((s) => ({ lat: s.lat, lng: s.lng }))}
+              className="h-[320px]"
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }

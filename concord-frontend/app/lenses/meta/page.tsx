@@ -252,7 +252,7 @@ function copyToClipboard(text: string) {
 function OverviewTab() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-  const { data, isLoading } = useQuery<InventoryOverview>({
+  const { data, isLoading, isError, refetch } = useQuery<InventoryOverview>({
     queryKey: ['inventory-overview'],
     queryFn: () => api.get('/api/inventory').then((r) => r.data),
   });
@@ -275,7 +275,15 @@ function OverviewTab() {
     }
   }, [queryClient]);
 
-  if (isLoading || !data) return <LoadingSpinner message="Loading inventory overview..." />;
+  if (isLoading) return <LoadingSpinner message="Loading inventory overview..." />;
+  if (isError || !data) {
+    return (
+      <div className="text-center py-10 text-gray-400 text-sm border border-dashed border-red-500/20 rounded-lg space-y-2">
+        <p>Could not load the inventory overview.</p>
+        <button onClick={() => refetch()} className="text-neon-purple hover:underline text-xs">Retry</button>
+      </div>
+    );
+  }
 
   return (
     <motion.div {...tabContentVariants} transition={{ duration: 0.25 }} className="space-y-6">

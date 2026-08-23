@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, lensRun } from '@/lib/api/client';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
 import {
   Download, FileJson, FileText, Database, Check, Package,
   FileCode, FileSpreadsheet, Hash, ArrowDownToLine,
@@ -249,7 +250,7 @@ export default function ExportLensPage() {
       <DepthBadge lensId="export" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       <header className="flex items-center gap-3">
-        <Download className="w-7 h-7 text-neon-green" />
+        <SvgIcon name="export-package" size={28} className="text-neon-green" />
         <div>
           <h1 className="text-xl font-bold">Export Lens</h1>
           <p className="text-sm text-gray-400">
