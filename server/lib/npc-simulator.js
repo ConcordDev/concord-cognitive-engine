@@ -18,7 +18,7 @@ import {
 } from "./npc-behaviors.js";
 import { NavGrid } from "./nav-grid.js";
 import { getSpawnConfig, pickEnemyArchetype } from "./npc-archetypes.js";
-import { accumulateWealth, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFactionGear, updateUserGearCeiling, enforceGearCeiling } from "./npc-gear.js";
+import { wealthIncomeFor, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFactionGear, updateUserGearCeiling, enforceGearCeiling } from "./npc-gear.js";
 import { decayGrief, attemptCrossbreed } from "./npc-family.js";
 import { tickRecruitment } from "./npc-spawning.js";
 import { shouldAssist } from "./temperament-spread.js";
@@ -923,6 +923,11 @@ export class NPCAgent {
     this.currentActivity = this.state.currentActivity || null;
     this._db         = db;
     this._selectBrain = selectBrain;
+    // Queued wealth income, applied + reset to 0 by
+    // NPCSimulator#_flushPendingPersists — see that method and the
+    // tick()-site comment near wealthIncomeFor for why this is queued
+    // rather than written immediately.
+    this._pendingWealthIncome = 0;
   }
 
   /** Tick for conscious emergents — lighter, just updates goals from emergent AI */
@@ -1032,7 +1037,15 @@ export class NPCAgent {
     await this._maybeEvaluateCreations();
 
     // Wealth accumulation — earn income based on occupation each tick
-    try { accumulateWealth(this._db, this.id, this.archetype); } catch { /* non-fatal */ }
+    // Queued, not written immediately — folded into the SAME batched
+    // transaction _flushPendingPersists applies for _persistState below.
+    // Real production follow-up, 2026-08-23: a live CPU profile taken
+    // AFTER the _persistState batching fix landed showed this exact call
+    // (previously accumulateWealth(db, id, archetype), an immediate
+    // single-column UPDATE) as the next-hottest unbatched write in the
+    // same per-agent tick — same bug shape, just a different write this
+    // fix's original scope didn't cover.
+    try { this._pendingWealthIncome += wealthIncomeFor(this.archetype); } catch { /* non-fatal */ }
 
     // Gear upgrade evaluation — every ~20 ticks (random to stagger NPC upgrades)
     if (Math.random() < 0.05) {
@@ -1461,34 +1474,51 @@ export class NPCSimulator {
     this._flushPendingPersists();
   }
 
-  // Batches every agent's state/current_location write queued this tick
-  // into ONE transaction instead of each NPCAgent#_persistState() call
-  // committing its own separate write. Real production finding, 2026-08-23:
-  // a live CPU profile taken while investigating auth-request event-loop
-  // lag showed this simulator's per-tick work as ~38% of all CPU time in a
-  // 2-minute sample, with this exact write (and a structurally identical
-  // one-column UPDATE in npc-gear.js#accumulateWealth, NOT touched by this
-  // fix) among the single largest contributors — each individual
-  // better-sqlite3 call carries real per-statement overhead (WAL frame
-  // write + lock acquisition) even under the fast journal_mode=WAL +
-  // synchronous=NORMAL config this DB already runs, and that overhead is
-  // what N separate commits pay N times instead of once. better-sqlite3's
+  // Batches every agent's state/current_location/wealth_sparks write queued
+  // this tick into ONE transaction instead of each NPCAgent#_persistState()
+  // (and, as of this update, wealth-income) call committing its own
+  // separate write. Real production finding, 2026-08-23: a live CPU profile
+  // taken while investigating auth-request event-loop lag showed this
+  // simulator's per-tick work as ~38% of all CPU time in a 2-minute sample,
+  // with this write among the single largest contributors — each
+  // individual better-sqlite3 call carries real per-statement overhead
+  // (WAL frame write + lock acquisition) even under the fast
+  // journal_mode=WAL + synchronous=NORMAL config this DB already runs, and
+  // that overhead is what N separate commits pay N times instead of once.
+  // A FOLLOW-UP profile after the original fix landed showed
+  // npc-gear.js#wealthIncomeFor's caller (formerly accumulateWealth,
+  // called unconditionally from the same tick() as _persistState — see
+  // that call site) as the next-hottest unbatched write in this exact
+  // loop, so it's folded into this same statement/transaction rather than
+  // left as a second N-separate-commits cost. better-sqlite3's
   // db.transaction() is sync-only (can't wrap the agents' own async tick()
   // calls), so this flushes AFTER all of them resolve instead — an
   // architecturally different but behavior-preserving fix; see
   // NPCAgent#_persistState for the correctness argument (no code reads
-  // another agent's state/current_location mid-tick).
+  // another agent's state/current_location mid-tick). wealth_sparks IS
+  // read cross-agent elsewhere (npc-gear.js#leaderEnsuresFactionGear, the
+  // faction-leader wealth-transfer logic, called from
+  // _tickFactionCoordination) — and that DOES change timing here, worth
+  // being honest about rather than asserting no change: _tickFactionCoordination
+  // runs BEFORE this flush (see tick()'s call order), so previously (wealth
+  // written immediately inside each agent's own tick()) it saw THIS tick's
+  // freshly-accumulated wealth; now it sees the PRIOR tick's committed
+  // value, one tick stale. Accepted: ticks are 60s+ apart, per-tick income
+  // is 1-4 sparks, and the transfer logic already operates on a coarse,
+  // periodic cadence — a one-tick-stale read changes a wealth-transfer
+  // decision by at most one tick's income, not a correctness break.
   _flushPendingPersists() {
     const pending = this._agents.filter((a) => a._pendingPersist);
     if (pending.length === 0) return;
     try {
       const stmt = this._db.prepare(
-        "UPDATE world_npcs SET state = ?, current_location = ?, last_tick_at = unixepoch() WHERE id = ?"
+        "UPDATE world_npcs SET state = ?, current_location = ?, wealth_sparks = wealth_sparks + ?, last_tick_at = unixepoch() WHERE id = ?"
       );
       const flush = this._db.transaction((agents) => {
         for (const a of agents) {
-          stmt.run(a._pendingPersist.stateJson, a._pendingPersist.locationJson, a.id);
+          stmt.run(a._pendingPersist.stateJson, a._pendingPersist.locationJson, a._pendingWealthIncome || 0, a.id);
           a._pendingPersist = null;
+          a._pendingWealthIncome = 0;
         }
       });
       flush(pending);

@@ -58,10 +58,20 @@ const ACTIVE_PLAYER_WINDOW_MS  = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ── Wealth Accumulation ───────────────────────────────────────────────────────
 
+/** Pure: sparks earned this tick by occupation. No DB access. */
+export function wealthIncomeFor(occupation) {
+  return OCCUPATION_INCOME[occupation] ?? OCCUPATION_INCOME.default;
+}
+
+// Kept for any other caller (single real caller today is
+// lib/npc-simulator.js, which now queues wealthIncomeFor's result and
+// applies it inside NPCSimulator#_flushPendingPersists' batched
+// transaction instead of calling this directly — see that file). This
+// function's own contract (immediate write) is unchanged for anyone else
+// who calls it standalone.
 export function accumulateWealth(db, npcId, occupation) {
-  const income = OCCUPATION_INCOME[occupation] ?? OCCUPATION_INCOME.default;
   db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks + ? WHERE id = ?')
-    .run(income, npcId);
+    .run(wealthIncomeFor(occupation), npcId);
 }
 
 // ── Gear Initialisation ───────────────────────────────────────────────────────

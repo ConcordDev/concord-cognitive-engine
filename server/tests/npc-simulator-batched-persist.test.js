@@ -38,6 +38,7 @@ function setupDb() {
       current_location TEXT,
       spawn_location   TEXT,
       state            TEXT,
+      wealth_sparks    REAL DEFAULT 0,
       last_tick_at     INTEGER
     );
   `);
@@ -134,6 +135,34 @@ describe("NPCSimulator#_flushPendingPersists — batches queued writes into one 
 
     assert.equal(a1._pendingPersist, null, "pending flag must clear after flush");
     assert.equal(a2._pendingPersist, null);
+  });
+
+  it("applies queued wealth income in the SAME flush as state/location (folded together, 2026-08-23 follow-up)", () => {
+    const a1 = makeAgent(db, "w1", "npc-1");
+    db.prepare("UPDATE world_npcs SET wealth_sparks = 10 WHERE id = 'npc-1'").run();
+    a1._pendingWealthIncome = 4.0; // e.g. wealthIncomeFor('blacksmith')
+    a1._persistState();
+
+    sim._agents = [a1];
+    sim._flushPendingPersists();
+
+    const row = db.prepare("SELECT wealth_sparks FROM world_npcs WHERE id = 'npc-1'").get();
+    assert.equal(row.wealth_sparks, 14.0, "10 (existing) + 4.0 (queued income)");
+    assert.equal(a1._pendingWealthIncome, 0, "must reset to 0 after flush, not stay stale for the next tick");
+  });
+
+  it("an agent with a pending persist but zero queued wealth (e.g. a conscious emergent via tickConscious) does not change wealth_sparks", () => {
+    const a1 = makeAgent(db, "w1", "npc-1");
+    db.prepare("UPDATE world_npcs SET wealth_sparks = 7 WHERE id = 'npc-1'").run();
+    // a1._pendingWealthIncome stays at its constructor default (0) — no
+    // accumulateWealth-equivalent call this tick, matching tickConscious()'s
+    // real code path, which never queues wealth income.
+    a1._persistState();
+    sim._agents = [a1];
+    sim._flushPendingPersists();
+
+    const row = db.prepare("SELECT wealth_sparks FROM world_npcs WHERE id = 'npc-1'").get();
+    assert.equal(row.wealth_sparks, 7, "unchanged — a zero-income flush must not perturb existing wealth");
   });
 
   it("skips agents with no pending persist — a tick where an agent never called _persistState() leaves its row untouched", () => {
