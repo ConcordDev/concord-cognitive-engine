@@ -3,6 +3,10 @@
 
 import { readFileSync } from 'fs';
 import { performance } from 'perf_hooks';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 class SystemMonitor {
   constructor() {
@@ -100,10 +104,19 @@ class SystemMonitor {
 
   async readGPUMetrics() {
     try {
-      // Try NVIDIA SMI first
-      const { execSync } = await import('child_process');
-      const output = execSync('nvidia-smi --query-gpu=utilization.gpu,memory.total,memory.used --format=csv,noHeader,nounits', { timeout: 2000 });
-      const [util, total, used] = output.trim().split(',').map(Number);
+      // execFile (async, no shell), not execSync — this runs from a
+      // setInterval firing every 5s (startBackgroundMonitoring below);
+      // execSync blocks the ENTIRE event loop for however long nvidia-smi
+      // takes to spawn+run, every single time. Real production bug (found
+      // 2026-08-23 via a live CPU profile investigating auth-request lag):
+      // this alone accounted for ~3.3s of blocked main-thread time in a
+      // 2-minute sample window, unrelated to any actual game/request logic.
+      const { stdout } = await execFileAsync(
+        'nvidia-smi',
+        ['--query-gpu=utilization.gpu,memory.total,memory.used', '--format=csv,noHeader,nounits'],
+        { timeout: 2000 },
+      );
+      const [util, total, used] = stdout.trim().split(',').map(Number);
       return { utilization: util, memory: { total: total * 1024 * 1024, used: used * 1024 * 1024 } };
     } catch {
       return { utilization: 0, memory: { total: 0, used: 0 } };
