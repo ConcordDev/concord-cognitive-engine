@@ -1233,14 +1233,28 @@ Choose one action for this NPC. Return JSON only:
     } catch (_e) { /* non-fatal */ }
   }
 
+  // Computes this agent's row write and QUEUES it rather than writing
+  // immediately. NPCSimulator.tick() flushes every agent's queued write in
+  // ONE transaction at the very end of the world-tick (_flushPendingPersists
+  // below) — see that method's doc comment for the measured reason this
+  // exists. This method's external contract is unchanged: same fields
+  // computed from the same state, at the same point in tick()/tickConscious()/
+  // a post-conversation call; only the DB write itself moved from "happens
+  // synchronously right here" to "happens once, batched, after the whole
+  // world-tick's other work is done." Safe because nothing in this file (or
+  // npc-gear.js/npc-jobs.js/npc-relations.js, audited 2026-08-23) reads
+  // world_npcs.state/current_location for a DIFFERENT agent mid-tick — every
+  // cross-agent read in the hot path touches other columns (wealth_sparks,
+  // gear_level, archetype, criminal_rep, activity_resources, current_task).
   _persistState() {
     this.state.needs           = this.needs;
     this.state.goals           = this.goals;
     this.state.currentActivity = this.currentActivity;
 
-    this._db.prepare(
-      "UPDATE world_npcs SET state = ?, current_location = ?, last_tick_at = unixepoch() WHERE id = ?"
-    ).run(JSON.stringify(this.state), JSON.stringify(this.location), this.id);
+    this._pendingPersist = {
+      stateJson: JSON.stringify(this.state),
+      locationJson: JSON.stringify(this.location),
+    };
   }
 }
 
@@ -1439,6 +1453,46 @@ export class NPCSimulator {
         seedNPCOpinions(this._db, this.worldId);
       } catch { /* non-fatal */ }
     }
+
+    // Placed last, deliberately: this must run after EVERY call site that
+    // can queue a write via NPCAgent#_persistState() (the main per-agent
+    // tick() above, tickConscious(), and the conversation partner inside
+    // _tickNPCConversations() above) — see that method's own comment.
+    this._flushPendingPersists();
+  }
+
+  // Batches every agent's state/current_location write queued this tick
+  // into ONE transaction instead of each NPCAgent#_persistState() call
+  // committing its own separate write. Real production finding, 2026-08-23:
+  // a live CPU profile taken while investigating auth-request event-loop
+  // lag showed this simulator's per-tick work as ~38% of all CPU time in a
+  // 2-minute sample, with this exact write (and a structurally identical
+  // one-column UPDATE in npc-gear.js#accumulateWealth, NOT touched by this
+  // fix) among the single largest contributors — each individual
+  // better-sqlite3 call carries real per-statement overhead (WAL frame
+  // write + lock acquisition) even under the fast journal_mode=WAL +
+  // synchronous=NORMAL config this DB already runs, and that overhead is
+  // what N separate commits pay N times instead of once. better-sqlite3's
+  // db.transaction() is sync-only (can't wrap the agents' own async tick()
+  // calls), so this flushes AFTER all of them resolve instead — an
+  // architecturally different but behavior-preserving fix; see
+  // NPCAgent#_persistState for the correctness argument (no code reads
+  // another agent's state/current_location mid-tick).
+  _flushPendingPersists() {
+    const pending = this._agents.filter((a) => a._pendingPersist);
+    if (pending.length === 0) return;
+    try {
+      const stmt = this._db.prepare(
+        "UPDATE world_npcs SET state = ?, current_location = ?, last_tick_at = unixepoch() WHERE id = ?"
+      );
+      const flush = this._db.transaction((agents) => {
+        for (const a of agents) {
+          stmt.run(a._pendingPersist.stateJson, a._pendingPersist.locationJson, a.id);
+          a._pendingPersist = null;
+        }
+      });
+      flush(pending);
+    } catch (_e) { /* non-fatal — matches this file's existing try/catch convention */ }
   }
 
   _tickCrossbreeding() {
