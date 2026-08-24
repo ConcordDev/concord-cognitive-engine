@@ -9182,7 +9182,21 @@ if (rateLimit) {
     // exhaust it for everyone else behind that IP too. Same reasoning as
     // the csrf-token exemption just above: cheap, idempotent, no scraping
     // value, shouldn't compete with real user actions for the same bucket.
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token" || req.path === "/api/metrics/vitals" || req.path === "/api/client-error" || req.path === "/api/world/perf-telemetry",
+    //
+    // register/login/refresh (added 2026-08-24, same load test): these three
+    // already sit behind their OWN purpose-built limiter
+    // (`authRateLimiter` / `authRateLimitMiddleware`, 5 attempts per
+    // IP+identity per 15min) — a genuinely appropriate abuse defense that
+    // buckets per identity, not just per IP. Stacking the coarse 30rpm
+    // general-anonymous-IP cap on TOP of that double-gates them, and it's
+    // the general cap that loses first: 6 concurrent real signups sharing
+    // one IP (office/campus/CGNAT — exactly the launch-day shape) sum their
+    // page-load + auth traffic past 30/min and the SUBMIT itself 429s with
+    // ANON_RATE_LIMIT, even though the identity-scoped limiter would have
+    // allowed every one of them. Verified live: a 6-way concurrent
+    // real-browser registration test 429'd on POST /api/auth/register (and
+    // /api/auth/refresh) under this cap before this exemption was added.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token" || req.path === "/api/metrics/vitals" || req.path === "/api/client-error" || req.path === "/api/world/perf-telemetry" || req.path === "/api/auth/register" || req.path === "/api/auth/login" || req.path === "/api/auth/refresh",
     keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
