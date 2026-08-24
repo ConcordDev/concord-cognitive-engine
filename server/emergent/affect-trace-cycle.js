@@ -68,32 +68,42 @@ export function runAffectTraceCycle({ db, state } = {}) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
       `);
 
-      kept.forEach((c, idx) => {
-        const m = c.m;
-        const drive = m._dominantDrive || null;
-        const driveVal = drive && m._drives ? (Number(m._drives[drive]) || 0) : null;
-        // mint an affect_memory DTU for the top-K strongest (best-effort)
-        let dtuId = null;
-        if (idx < MINT_TOP_K) {
-          dtuId = mintAffectMemory(db, worldId, c, drive);
-          if (dtuId) minted++;
-        }
-        // Wave 7 / A6 plasticity — a strong felt peak drifts the creature's
-        // temperament (a frightened deer becomes warier over its life). The same
-        // peaks that become memory also edit personality. Bounded + guarded.
-        if (drive) driftCreatureTemperament(db, c.creatureId, drive, c.sal);
-        try {
-          insert.run(
-            `aff_${crypto.randomBytes(6).toString("hex")}`,
-            worldId, c.creatureId, m._species || null,
-            Number(m._affect.v) || 0, Number(m._affect.a) || 0,
-            drive, driveVal, Math.min(1, c.sal),
-            reasonFor(m), m._released || null,
-            Number(m.x) || null, Number(m.z) || null, dtuId,
-          );
-          flushed++;
-        } catch { /* per-row skip (table optional / shape mismatch) */ }
+      // Batched into one transaction — each kept creature does up to 3
+      // separate synchronous writes (temperament SELECT+UPDATE, the trace
+      // INSERT, and an occasional affect_memory DTU INSERT), unbatched
+      // across up to MAX_PER_WORLD creatures per world per tick. Same
+      // anti-pattern class found and fixed elsewhere this audit
+      // (npc-simulator.js / npc-knowledge-bridge.js et al.) — batching
+      // collapses N fsync round-trips into one commit per invocation.
+      const flushCreatures = db.transaction((keptList) => {
+        keptList.forEach((c, idx) => {
+          const m = c.m;
+          const drive = m._dominantDrive || null;
+          const driveVal = drive && m._drives ? (Number(m._drives[drive]) || 0) : null;
+          // mint an affect_memory DTU for the top-K strongest (best-effort)
+          let dtuId = null;
+          if (idx < MINT_TOP_K) {
+            dtuId = mintAffectMemory(db, worldId, c, drive);
+            if (dtuId) minted++;
+          }
+          // Wave 7 / A6 plasticity — a strong felt peak drifts the creature's
+          // temperament (a frightened deer becomes warier over its life). The same
+          // peaks that become memory also edit personality. Bounded + guarded.
+          if (drive) driftCreatureTemperament(db, c.creatureId, drive, c.sal);
+          try {
+            insert.run(
+              `aff_${crypto.randomBytes(6).toString("hex")}`,
+              worldId, c.creatureId, m._species || null,
+              Number(m._affect.v) || 0, Number(m._affect.a) || 0,
+              drive, driveVal, Math.min(1, c.sal),
+              reasonFor(m), m._released || null,
+              Number(m.x) || null, Number(m.z) || null, dtuId,
+            );
+            flushed++;
+          } catch { /* per-row skip (table optional / shape mismatch) */ }
+        });
       });
+      flushCreatures(kept);
     }
   } catch (err) {
     return { ok: true, reason: `error:${err?.message || "unknown"}`, flushed, minted };

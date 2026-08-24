@@ -60,43 +60,57 @@ export function runNpcKnowledgeBridge({ state, db }) {
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
-  for (const row of rows) {
-    try {
-      let tags = [];
-      try { tags = JSON.parse(row.tags_json || "[]"); } catch { /* malformed */ }
-      if (!Array.isArray(tags)) { lastSeenAt = row.created_at; continue; }
+  // Batched into one transaction — BATCH_LIMIT defaults to 1000 rows, and
+  // each row can fan out into several per-role inserts, so an unbatched
+  // loop here was up to ~1000+ separate synchronous fsync-round-trips to
+  // the single-writer SQLite file in ONE heartbeat tick (same anti-pattern
+  // found and fixed in npc-simulator.js / npc-travel-cycle.js /
+  // npc-vs-npc-combat-cycle.js / npc-ambition-cycle.js / concordia-cycles.js
+  // this same audit — see those files' history for the measured event-loop
+  // lag impact). Per-row/per-insert try/catch is preserved unchanged inside
+  // the transaction body, so a single bad row still can't abort the batch
+  // or roll back the rows that already succeeded — db.transaction() only
+  // sees a throw if one of these inner catches doesn't swallow it.
+  const flush = db.transaction((rowsToProcess) => {
+    for (const row of rowsToProcess) {
+      try {
+        let tags = [];
+        try { tags = JSON.parse(row.tags_json || "[]"); } catch { /* malformed */ }
+        if (!Array.isArray(tags)) { lastSeenAt = row.created_at; continue; }
 
-      const roles = tagsToRoles(tags);
-      if (roles.length === 0) { lastSeenAt = row.created_at; continue; }
+        const roles = tagsToRoles(tags);
+        if (roles.length === 0) { lastSeenAt = row.created_at; continue; }
 
-      let body = {};
-      try { body = JSON.parse(row.body_json || "{}"); } catch { /* malformed */ }
-      const summary = (body.content ?? row.title ?? "").toString().slice(0, SUMMARY_MAX_CHARS);
-      if (!summary.trim()) { lastSeenAt = row.created_at; continue; }
+        let body = {};
+        try { body = JSON.parse(row.body_json || "{}"); } catch { /* malformed */ }
+        const summary = (body.content ?? row.title ?? "").toString().slice(0, SUMMARY_MAX_CHARS);
+        if (!summary.trim()) { lastSeenAt = row.created_at; continue; }
 
-      const worldId = body.worldId ?? "concordia-hub";
-      const domain = tags.find((t) => t.startsWith("domain:"))?.slice(7) ?? null;
+        const worldId = body.worldId ?? "concordia-hub";
+        const domain = tags.find((t) => t.startsWith("domain:"))?.slice(7) ?? null;
 
-      for (const role of roles) {
-        const id = `nk_${role}_${row.id}`;
-        try {
-          const r = insert.run(id, worldId, role, row.id, summary, domain);
-          if (r.changes > 0) inserted++;
-        } catch (insertErr) {
-          // Surface per-row insert failures so a bad fixture or migration
-          // drift doesn't silently strand whole role/world combinations.
-          // The previous outer-only catch swallowed CHECK / UNIQUE / NOT
-          // NULL errors and returned ok:true, which made it look like the
-          // bridge was working when no NPCs were getting knowledge.
-          if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] insert failed", { id, role, err: insertErr?.message });
+        for (const role of roles) {
+          const id = `nk_${role}_${row.id}`;
+          try {
+            const r = insert.run(id, worldId, role, row.id, summary, domain);
+            if (r.changes > 0) inserted++;
+          } catch (insertErr) {
+            // Surface per-row insert failures so a bad fixture or migration
+            // drift doesn't silently strand whole role/world combinations.
+            // The previous outer-only catch swallowed CHECK / UNIQUE / NOT
+            // NULL errors and returned ok:true, which made it look like the
+            // bridge was working when no NPCs were getting knowledge.
+            if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] insert failed", { id, role, err: insertErr?.message });
+          }
         }
+        lastSeenAt = row.created_at;
+      } catch (rowErr) {
+        if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] row failed", { rowId: row?.id, err: rowErr?.message });
+        lastSeenAt = row.created_at || lastSeenAt;
       }
-      lastSeenAt = row.created_at;
-    } catch (rowErr) {
-      if (typeof console !== "undefined") console.warn("[npc-knowledge-bridge] row failed", { rowId: row?.id, err: rowErr?.message });
-      lastSeenAt = row.created_at || lastSeenAt;
     }
-  }
+  });
+  flush(rows);
 
   state._npcKnowledgeBridgeCursor = lastSeenAt;
   return { ok: true, inserted, scanned: rows.length };
