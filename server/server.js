@@ -7196,7 +7196,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -9169,7 +9169,20 @@ if (rateLimit) {
     // a real 429 while logged in. It's a cheap, idempotent cookie-issuance
     // call with no scraping value, so it gets the same exemption as health
     // probes rather than counting toward the anon-scraping deterrent.
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token",
+    //
+    // The 3 telemetry paths below (added 2026-08-24, found live during a
+    // real-browser load test): navigator.sendBeacon-reported Web Vitals /
+    // perf / client-error pings fire repeatedly per anonymous page load
+    // (lib/perf.ts) — observed live at 15-25 calls on a single /register
+    // page load alone. Counting each one toward the SAME 30rpm-per-IP
+    // budget real anonymous traffic (including registration itself) draws
+    // from meant a single visitor's own telemetry could exhaust their own
+    // budget before they ever submitted a form — and on a shared IP
+    // (corporate/campus NAT, mobile CGNAT), one visitor's telemetry could
+    // exhaust it for everyone else behind that IP too. Same reasoning as
+    // the csrf-token exemption just above: cheap, idempotent, no scraping
+    // value, shouldn't compete with real user actions for the same bucket.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token" || req.path === "/api/metrics/vitals" || req.path === "/api/client-error" || req.path === "/api/world/perf-telemetry",
     keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
