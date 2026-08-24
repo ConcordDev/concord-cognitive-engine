@@ -2471,6 +2471,16 @@ function generateRequestId() {
 function requestIdMiddleware(req, res, next) {
   req.id = req.headers["x-request-id"] || generateRequestId();
   res.setHeader("X-Request-ID", req.id);
+  // TEMP DIAG (2026-08-24, remove after signup-latency investigation):
+  // opt-in per-request trace point, gated on a header so it costs nothing on
+  // real traffic. Marks "server received it" AFTER body-parse/CORS/helmet but
+  // BEFORE the rate-limit/auth/CSRF pipeline and the route handler itself —
+  // the split point needed to separate network+proxy time from our own
+  // middleware-pipeline time from route-handler time.
+  if (req.headers["x-diag-trace"]) {
+    req._diagMwEntryEpoch = Date.now();
+    res.setHeader("X-Diag-Mw-Entry", String(req._diagMwEntryEpoch));
+  }
   next();
 }
 

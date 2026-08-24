@@ -143,6 +143,13 @@ export default function createAuthRouter({
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
+    // TEMP DIAG (2026-08-24, remove after signup-latency investigation): see
+    // requestIdMiddleware in server.js for the header gate + rationale. This
+    // mark is AFTER authRateLimitMiddleware + validate() — i.e. after the
+    // full pre-handler pipeline (bodyparse/CORS/helmet, general rate limiter,
+    // auth, CSRF, then this route's own rate-limit + schema validation) has
+    // run, and BEFORE any of this handler's own business logic.
+    const _diag = req.headers["x-diag-trace"] ? { handlerEntryEpoch: Date.now() } : null;
     const { username, email, password, dateOfBirth } = req.validated || req.body;
 
     // ── Age gate (18+) ──────────────────────────────────────────────
@@ -225,13 +232,16 @@ export default function createAuthRouter({
       return res.status(409).json({ ok: false, error: "Email taken" });
     }
 
+    if (_diag) _diag.preHashEpoch = Date.now();
     const userId = crypto.randomUUID();
     const userCount = AuthDB.getUserCount();
+    const _passwordHash = hashPassword(password);
+    if (_diag) _diag.postHashEpoch = Date.now();
     const user = {
       id: userId,
       username,
       email,
-      passwordHash: hashPassword(password),
+      passwordHash: _passwordHash,
       role: userCount === 0 ? "owner" : "member",
       scopes: userCount === 0 ? ["*"] : ["read", "write"],
       emailVerified: false,
@@ -246,6 +256,7 @@ export default function createAuthRouter({
     }
 
     AuthDB.createUser(user);
+    if (_diag) _diag.postDbEpoch = Date.now();
 
     // Grant starter inventory so the new user can immediately gather, craft,
     // and trade without spending the first 30 minutes empty-handed.
@@ -283,6 +294,11 @@ export default function createAuthRouter({
       userAgent: req.headers["user-agent"]
     });
 
+    if (_diag) {
+      _diag.responseSendEpoch = Date.now();
+      _diag.mwEntryEpoch = req._diagMwEntryEpoch || null;
+      logger.info("auth", "DIAG-TRACE register", { username, reqId: req.id, ..._diag });
+    }
     res.status(201).json({
       ok: true,
       user: { id: userId, username, email, role: user.role },
