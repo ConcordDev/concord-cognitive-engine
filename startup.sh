@@ -373,11 +373,20 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
         # disabled — if cloudflared died for any reason (network blip, a
         # Cloudflare-side issue, OOM), the tunnel stayed down and the site
         # was externally unreachable with no automatic recovery until the
-        # 5-minute health-check cron noticed and force-restarted it. Fixed by
-        # setting --autorestart directly on the one real start command.
+        # 5-minute health-check cron noticed and force-restarted it.
+        #
+        # Follow-up bug (found 2026-08-24 during a live outage recovery):
+        # the "fix" above added a bare `--autorestart` flag, but pm2's CLI
+        # has no such flag (verified live: `pm2 start --help` lists no
+        # restart-related option at all; only `--no-autorestart` exists to
+        # DISABLE the already-on-by-default behavior). Passing it made the
+        # whole `pm2 start` command fail outright with
+        # `error: unknown option '--autorestart'`, so the tunnel never
+        # started at all — a full step backward from the bug it was fixing.
+        # autorestart is pm2's default, so the fix is simply not passing
+        # any restart flag.
         pm2 start cloudflared \
           --name concord-tunnel \
-          --autorestart \
           --max-restarts 20 \
           -- tunnel --no-autoupdate run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
         pm2 save

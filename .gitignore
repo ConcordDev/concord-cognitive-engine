@@ -177,3 +177,11 @@ credentials.json
 *service-account*.json
 gcloud-*.json
 .aws/credentials
+.aider*
+
+# RunPod API credentials (used ad-hoc via curl during infra incidents —
+# never persisted to a tracked file, but ignored defensively in case a
+# future setup step writes a config/token file here).
+.runpod/
+runpod-api-key*
+.runpodctl*
