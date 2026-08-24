@@ -7101,14 +7101,32 @@ _unrefInTest(setInterval(() => {
   }
 }, 6 * 60 * 60 * 1000)); // every 6 hours
 
-function hashPassword(password) {
+// Async on purpose: bcryptjs is a pure-JS implementation, so its hashing work
+// runs on the main thread either way -- but the sync variants (hashSync/
+// compareSync) run it as one uninterrupted block, fully blocking Node's
+// single event loop for the whole ~400-460ms cost-12 hash (measured live,
+// 2026-08-24 concurrent-signup latency investigation). Under N concurrent
+// registrations that serializes into an N x ~430ms tail on the main thread
+// AND stalls every other request/socket/heartbeat in the process for that
+// whole window -- directly reproduced: 6 concurrent signups measured with
+// zero hash-phase overlap (each waited for the previous to fully finish),
+// and severe enough instances tripped the event-loop-lag load-shedder
+// (lagMs 1427 vs a 900ms threshold) into honest-but-avoidable 503s.
+// bcryptjs's async hash()/compare() do the identical computation but yield
+// to the event loop between internal rounds, so concurrent calls interleave
+// cooperatively instead of monopolizing the loop start-to-finish. Total CPU
+// time doesn't shrink, but no single request (or unrelated traffic sharing
+// the process) has to wait behind another's entire hash before the loop can
+// serve anything else. Same pattern already used correctly elsewhere in this
+// codebase -- see forge-template-generator.js's `await auth.hashPassword`.
+async function hashPassword(password) {
   if (!bcrypt) return null;
-  return bcrypt.hashSync(password, BCRYPT_ROUNDS);
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-function verifyPassword(password, hash) {
+async function verifyPassword(password, hash) {
   if (!bcrypt) return false;
-  return bcrypt.compareSync(password, hash);
+  return bcrypt.compare(password, hash);
 }
 
 function generateApiKey() {

@@ -92,7 +92,7 @@ export default function createPasswordResetRouter({ AuthDB, hashPassword, authRa
         return res.status(404).json({ ok: false, error: "User not found" });
       }
 
-      const passwordHash = hashPassword(newPassword);
+      const passwordHash = await hashPassword(newPassword);
 
       // Update via AuthDB if method exists, otherwise direct db update
       if (AuthDB.updatePassword) {

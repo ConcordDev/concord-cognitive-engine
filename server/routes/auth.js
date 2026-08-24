@@ -142,7 +142,7 @@ export default function createAuthRouter({
   _regIpCleanupInterval.unref();
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/register", authRateLimitMiddleware, validate("userRegister"), (req, res) => {
+  router.post("/register", authRateLimitMiddleware, validate("userRegister"), async (req, res) => {
     // TEMP DIAG (2026-08-24, remove after signup-latency investigation): see
     // requestIdMiddleware in server.js for the header gate + rationale. This
     // mark is AFTER authRateLimitMiddleware + validate() — i.e. after the
@@ -235,7 +235,7 @@ export default function createAuthRouter({
     if (_diag) _diag.preHashEpoch = Date.now();
     const userId = crypto.randomUUID();
     const userCount = AuthDB.getUserCount();
-    const _passwordHash = hashPassword(password);
+    const _passwordHash = await hashPassword(password);
     if (_diag) _diag.postHashEpoch = Date.now();
     const user = {
       id: userId,
@@ -311,7 +311,7 @@ export default function createAuthRouter({
   });
 
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/login", authRateLimitMiddleware, validate("userLogin"), (req, res) => {
+  router.post("/login", authRateLimitMiddleware, validate("userLogin"), async (req, res) => {
     // Defense-in-depth: per-IP AND per-account rate limiting so NAT
     // doesn't defeat the IP bucket and a botnet can't target one account.
     const ip = req.ip || req.connection.remoteAddress;
@@ -333,7 +333,7 @@ export default function createAuthRouter({
       user = AuthDB.getUserByEmail(email);
     }
 
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       // Audit failed login attempt
       auditLog("auth", "login_failed", {
         attemptedUser: username || email,
@@ -945,7 +945,7 @@ export default function createAuthRouter({
   });
 
   // Password change endpoint
-  router.post("/change-password", authRateLimitMiddleware, validate("changePassword"), (req, res) => {
+  router.post("/change-password", authRateLimitMiddleware, validate("changePassword"), async (req, res) => {
     if (!req.user) return res.status(401).json({ ok: false, error: "Not authenticated" });
 
     const { currentPassword, newPassword } = req.validated || req.body;
@@ -960,7 +960,7 @@ export default function createAuthRouter({
 
     // Verify current password
     const user = AuthDB.getUser(req.user.id);
-    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+    if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
       auditLog("auth", "password_change_failed", {
         userId: req.user.id,
         reason: "invalid_current_password",
@@ -971,11 +971,12 @@ export default function createAuthRouter({
     }
 
     // Update password in database
+    const _newHash = await hashPassword(newPassword);
     if (db) {
       const stmt = db.prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-      stmt.run(hashPassword(newPassword), req.user.id);
+      stmt.run(_newHash, req.user.id);
     } else {
-      user.passwordHash = hashPassword(newPassword);
+      user.passwordHash = _newHash;
       saveAuthData();
     }
 
@@ -1028,7 +1029,7 @@ export default function createAuthRouter({
   });
 
   // AUTH: public — auth here is the single-use reset token itself (verifyResetToken), not a session; protected by authRateLimitMiddleware.
-  router.post("/reset-password", authRateLimitMiddleware, (req, res) => {
+  router.post("/reset-password", authRateLimitMiddleware, async (req, res) => {
     const token = String(req.body?.token || "");
     const newPassword = String(req.body?.newPassword || "");
     if (!token) return res.status(400).json({ ok: false, error: "Reset token required" });
@@ -1041,10 +1042,11 @@ export default function createAuthRouter({
       // Same message for expired/unknown token and vanished user — no oracle.
       return res.status(400).json({ ok: false, error: "Invalid or expired reset link — request a new one" });
     }
+    const _resetHash = await hashPassword(newPassword);
     if (db) {
-      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hashPassword(newPassword), user.id);
+      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(_resetHash, user.id);
     } else {
-      user.passwordHash = hashPassword(newPassword);
+      user.passwordHash = _resetHash;
       saveAuthData();
     }
     consumeResetToken(token); // single-use — a leaked link dies on first redemption
