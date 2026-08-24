@@ -110,7 +110,19 @@ export default function createAuthRouter({
 
   // ── Bot Prevention: per-IP daily registration cap ──────────────────
   const _regIpDaily = new Map(); // ip → { count, day }
-  const MAX_REGISTRATIONS_PER_IP_PER_DAY = 3;
+  // Raised from a hardcoded 3 (2026-08-24, live growth-readiness pass): 3/IP/day
+  // is fine for a single bad actor but false-positives hard on any real launch-
+  // day traffic pattern — corporate/campus NAT and mobile-carrier CGNAT
+  // routinely put dozens to hundreds of distinct real people behind one public
+  // IP. At that cap, the 4th+ legitimate signup behind a shared IP silently
+  // 429s with a message ("try again tomorrow") that reads as a broken site,
+  // not a rate limit — exactly the kind of thing that would undermine a real
+  // "get to 1000 signups on day one" push. This cap is also NOT the only bot
+  // defense here — the honeypot field + 2-second minimum-fill-time checks
+  // above already catch naive scripted registration attempts independently
+  // of IP, so this layer can afford to be a coarser backstop rather than the
+  // primary defense. Env-overridable so it can be tuned without a redeploy.
+  const MAX_REGISTRATIONS_PER_IP_PER_DAY = Number(process.env.CONCORD_REG_CAP_PER_IP_PER_DAY) || 25;
   // CI / e2e jobs register many fresh test users from one runner IP and
   // would exhaust the daily cap mid-suite (the Phase Z playthrough's
   // beforeAll registers a user per run). CONCORD_RATE_LIMIT_BYPASS=1 is
