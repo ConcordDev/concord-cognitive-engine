@@ -3041,6 +3041,32 @@ async function gracefulShutdown(signal) {
 
   structuredLog("info", "shutdown_received", { signal });
 
+  // Root cause of the graceful-shutdown hang (found live 2026-08-24, via
+  // hrtime instrumentation on every other shutdown step — all of which
+  // completed in ~170ms combined, yet the process still took 19-27s wall
+  // clock to actually die): __governorTimer (the 15s setInterval driving
+  // governorTick — the tick that dispatches all ~168 registered heartbeat
+  // modules: NPC sim, economy, world events, etc.) was never cleared on
+  // shutdown. It kept firing during the drain/timeout waits below, and a
+  // single tick can run long enough to block the event loop for multiple
+  // seconds (the same event_loop_lag_spike pattern documented elsewhere in
+  // this file) — enough to push total shutdown time past pm2's
+  // kill_timeout (15s in ecosystem.config.cjs), so pm2 SIGKILLed the
+  // process before it could ever reach shutdown_complete. Stopping it
+  // FIRST, before anything else, so no further tick can start once
+  // shutdown begins (an already-in-flight tick still has to finish
+  // naturally — clearInterval only stops the NEXT one from being
+  // scheduled).
+  try {
+    if (typeof __governorTimer !== "undefined" && __governorTimer) {
+      clearInterval(__governorTimer);
+      __governorTimer = null;
+      structuredLog("info", "shutdown_governor_timer_cleared", {});
+    }
+  } catch (e) {
+    structuredLog("warn", "shutdown_governor_timer_clear_failed", { error: e.message });
+  }
+
   // Flush state to disk immediately — critical for OOM kills and SIGTERM
   try {
     clearTimeout(_saveTimer); // Cancel any pending debounced save
@@ -6155,24 +6181,20 @@ if (_DTU_STORE_READY) {
 }
 
 // Register database close on shutdown
-// KNOWN ISSUE (found live 2026-08-24, not yet root-caused): "shutdown_complete"
-// has never once appeared in the deployed logs, going back through every
-// restart on record — including restarts from hours before any same-day
-// code change. Every observed shutdown logs up through this callback's own
-// "shutdown_closing_database" line and then nothing else; pm2's kill_timeout
-// (15s) eventually SIGKILLs the process. Whatever's blocking sits at or
-// after this db.close() call — better-sqlite3's close() is normally a fast
-// synchronous handle release with no reason to hang, so this needs live
-// investigation (attach the inspector during an actual restart and see
-// exactly where the main thread is parked) rather than a guessed fix. Not
-// believed to risk data loss/corruption — WAL mode is specifically designed
-// to survive an unclean process kill — but it does mean every restart drops
-// in-flight requests instead of draining them, and any OTHER shutdown
-// callback registered after this one in the array never runs either.
+// (Root-caused 2026-08-24 — see gracefulShutdown's own comment on clearing
+// __governorTimer for the full story: this callback and db.close() itself
+// were never the problem, they complete in well under 100ms. The actual
+// hang was the 15s governor heartbeat timer never being stopped, so it kept
+// firing during the shutdown drain/timeout waits and blocked the event
+// loop long enough to blow past pm2's kill_timeout. Kept the ms timing
+// here — cheap, and it's exactly what proved db.close() wasn't the culprit.)
 if (db) {
   registerShutdownCallback(() => {
     structuredLog("info", "shutdown_closing_database", {});
+    const __t0 = process.hrtime.bigint();
     db.close();
+    const __ms = Number(process.hrtime.bigint() - __t0) / 1e6;
+    structuredLog("info", "shutdown_database_closed", { ms: __ms });
   });
 }
 
