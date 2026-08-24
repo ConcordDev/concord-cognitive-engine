@@ -70,6 +70,7 @@ import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 import { spawnSync } from "child_process";
+import { fileURLToPath as __serverFileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
@@ -3055,6 +3056,29 @@ async function gracefulShutdown(signal) {
     structuredLog("info", "shutdown_state_saved", {});
   } catch (e) {
     console.error("[Shutdown] State save failed:", e.message);
+  }
+
+  // Final DB backup on every graceful shutdown (2026-08-24 — local-disk DB
+  // migration). DB_PATH now lives on the container's ephemeral local disk
+  // (fast, no network-storage exposure on the write hot path); the ONLY
+  // copy on persistent storage is scripts/db-backup.sh's periodic snapshot
+  // into CONCORD_BACKUP_DIR. A planned restart/redeploy (pm2 restart,
+  // `startup.sh` re-run) is by far the most common shutdown reason, so
+  // taking one more snapshot here — on top of the periodic cron — closes
+  // the gap between "last cron backup" and "this restart" for the common
+  // case, leaving only a hard crash/force-kill exposed to the cron
+  // interval. Bounded timeout so a slow/degraded network volume write can
+  // never hang shutdown; best-effort, never blocks or fails the shutdown
+  // sequence.
+  try {
+    const backupScript = path.join(path.dirname(__serverFileURLToPath(import.meta.url)), "..", "scripts", "db-backup.sh");
+    if (fs.existsSync(backupScript)) {
+      const r = spawnSync("bash", [backupScript], { timeout: 20000, env: process.env, encoding: "utf-8" });
+      if (r.status === 0) structuredLog("info", "shutdown_backup_taken", {});
+      else structuredLog("warn", "shutdown_backup_failed", { status: r.status, error: r.stderr?.slice(0, 500) });
+    }
+  } catch (e) {
+    structuredLog("warn", "shutdown_backup_failed", { error: e.message });
   }
 
   // Clear all tracked interval timers
@@ -8974,7 +8998,7 @@ function _rateLimitKey(req) {
       if (decoded?.userId) return `u:${decoded.userId}`;
     }
   } catch { /* best-effort — never let key derivation break rate limiting */ }
-  return req.ip;
+  return _ipKeyGenerator(req.ip);
 }
 
 let rateLimiter = null;
