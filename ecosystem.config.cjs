@@ -275,7 +275,15 @@ module.exports = {
     {
       name: 'concord-frontend',
       script: 'node',
-      args: '.next/standalone/server.js',
+      // MUST be server-proxy.js, not .next/standalone/server.js. The vanilla
+      // Next.js standalone server has no knowledge of BACKEND_URL below and
+      // does not proxy /socket.io/* — a request to it 404s/redirects into
+      // Next's own routing (observed live 2026-08-24: redirected all the way
+      // to /login), breaking every WebSocket-dependent feature (chat,
+      // presence, live world/game sync) for every user. server-proxy.js
+      // exists specifically to replace this file — see its own header
+      // comment — but this line was never pointed at it.
+      args: 'server-proxy.js',
       cwd: `${__dirname}/concord-frontend`,
       instances: 1,
       exec_mode: 'fork',
