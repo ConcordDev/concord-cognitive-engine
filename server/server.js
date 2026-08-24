@@ -6155,6 +6155,20 @@ if (_DTU_STORE_READY) {
 }
 
 // Register database close on shutdown
+// KNOWN ISSUE (found live 2026-08-24, not yet root-caused): "shutdown_complete"
+// has never once appeared in the deployed logs, going back through every
+// restart on record — including restarts from hours before any same-day
+// code change. Every observed shutdown logs up through this callback's own
+// "shutdown_closing_database" line and then nothing else; pm2's kill_timeout
+// (15s) eventually SIGKILLs the process. Whatever's blocking sits at or
+// after this db.close() call — better-sqlite3's close() is normally a fast
+// synchronous handle release with no reason to hang, so this needs live
+// investigation (attach the inspector during an actual restart and see
+// exactly where the main thread is parked) rather than a guessed fix. Not
+// believed to risk data loss/corruption — WAL mode is specifically designed
+// to survive an unclean process kill — but it does mean every restart drops
+// in-flight requests instead of draining them, and any OTHER shutdown
+// callback registered after this one in the array never runs either.
 if (db) {
   registerShutdownCallback(() => {
     structuredLog("info", "shutdown_closing_database", {});
