@@ -132,7 +132,19 @@ const NowPlayingBar = dynamic(
 // mounting during onboarding; the onboarding pages' own hooks (useOnboarding,
 // the confirm-age redirect effect) still run identically either way, since
 // hooks execute regardless of which JSX branch AppShell returns.
-const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/', '/share/animation/', '/onboarding'];
+// /register + /login (2026-08-24, found live during a concurrent real-browser
+// load test): these are pre-auth pages — the visitor has no session yet, so
+// the full authenticated-app <Sidebar/> (links to all ~260 lenses) was
+// rendering there anyway and Next.js eagerly prefetches every visible Link,
+// firing dozens of `_rsc` GETs that each redirect through /login?from=... on
+// the unauthenticated request. Under concurrent load (several real signups
+// sharing one page-load burst) that prefetch storm measurably delayed the
+// actual register/login POST — up to several seconds before it even left
+// the browser, well past what reads as "the button works" to a real user.
+// Same fix, same reasoning as the /onboarding entry above: standalone here
+// stops that chrome (and its fetch/prefetch burst) from mounting at exactly
+// the moment the page has the least reason to show it.
+const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/', '/share/animation/', '/onboarding', '/register', '/login'];
 
 interface AppShellProps {
   children: React.ReactNode;
