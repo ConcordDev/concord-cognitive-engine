@@ -69,7 +69,7 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import { spawnSync } from "child_process";
+import { spawnSync, spawn } from "child_process";
 import { fileURLToPath as __serverFileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
@@ -3067,17 +3067,38 @@ async function gracefulShutdown(signal) {
   // taking one more snapshot here — on top of the periodic cron — closes
   // the gap between "last cron backup" and "this restart" for the common
   // case, leaving only a hard crash/force-kill exposed to the cron
-  // interval. Bounded timeout so a slow/degraded network volume write can
-  // never hang shutdown; best-effort, never blocks or fails the shutdown
-  // sequence.
+  // interval.
+  //
+  // MUST be async (spawn, not spawnSync) and MUST NOT be awaited here.
+  // Measured live: SHUTDOWN_DRAIN_MS (5s) + SHUTDOWN_TIMEOUT_MS (10s) below
+  // already summed to exactly pm2's kill_timeout (15s) before this backup
+  // step existed — a synchronous spawnSync here blocked in FRONT of both
+  // waits, so it always pushed the total past 15s and pm2 SIGKILLed the
+  // parent mid-backup on every single restart. The backup itself still
+  // completed (the spawned bash/gzip child outlives a SIGKILLed parent as
+  // an orphan), but the rest of graceful shutdown — closing the HTTP
+  // server, draining in-flight requests, shutdownCallbacks — never ran.
+  // Fix: fire the backup now without waiting, let it run CONCURRENTLY with
+  // the drain/timeout waits below (which were already going to occupy the
+  // full 15s regardless), and only check in on it right before exit.
+  let _shutdownBackupChild = null;
+  let _shutdownBackupDone = false;
   try {
     const backupScript = path.join(path.dirname(__serverFileURLToPath(import.meta.url)), "..", "scripts", "db-backup.sh");
     if (fs.existsSync(backupScript)) {
-      const r = spawnSync("bash", [backupScript], { timeout: 20000, env: process.env, encoding: "utf-8" });
-      if (r.status === 0) structuredLog("info", "shutdown_backup_taken", {});
-      else structuredLog("warn", "shutdown_backup_failed", { status: r.status, error: r.stderr?.slice(0, 500) });
+      _shutdownBackupChild = spawn("bash", [backupScript], { env: process.env, stdio: "ignore" });
+      _shutdownBackupChild.on("exit", (code) => {
+        _shutdownBackupDone = true;
+        if (code === 0) structuredLog("info", "shutdown_backup_taken", {});
+        else structuredLog("warn", "shutdown_backup_failed", { code });
+      });
+      _shutdownBackupChild.on("error", (e) => {
+        _shutdownBackupDone = true;
+        structuredLog("warn", "shutdown_backup_failed", { error: e.message });
+      });
     }
   } catch (e) {
+    _shutdownBackupDone = true;
     structuredLog("warn", "shutdown_backup_failed", { error: e.message });
   }
 
@@ -3120,6 +3141,16 @@ async function gracefulShutdown(signal) {
   // Give pending requests time to complete
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
   await new Promise(resolve => { setTimeout(resolve, timeout); });
+
+  // The backup fired earlier (non-blocking) has now had the full drain +
+  // timeout window above to finish concurrently. Log its outcome if known;
+  // if it's still running, it survives this process exiting (same
+  // orphan-completes-fine behavior verified live) — note that rather than
+  // extend shutdown further, since the whole point of firing it async was
+  // to not add to the already-tight kill_timeout budget.
+  if (_shutdownBackupChild && !_shutdownBackupDone) {
+    structuredLog("info", "shutdown_backup_still_running", { pid: _shutdownBackupChild.pid });
+  }
 
   structuredLog("info", "shutdown_complete", {});
   process.exit(0);
