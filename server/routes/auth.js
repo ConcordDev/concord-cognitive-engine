@@ -285,6 +285,7 @@ export default function createAuthRouter({
       const decoded = jwt.decode(refreshToken);
       if (decoded?.family) _REFRESH_FAMILIES.set(decoded.family, { userId, currentJti: decoded.jti, rotatedAt: Date.now() });
     } catch (_e) { logger.debug('auth', 'silent catch', { error: _e?.message }); }
+    if (_diag) _diag.postSessionEpoch = Date.now();
 
     // Audit log registration
     auditLog("auth", "register", {
@@ -297,7 +298,10 @@ export default function createAuthRouter({
     if (_diag) {
       _diag.responseSendEpoch = Date.now();
       _diag.mwEntryEpoch = req._diagMwEntryEpoch || null;
-      logger.info("auth", "DIAG-TRACE register", { username, reqId: req.id, ..._diag });
+      // Plain console.log (not logger.info): logger's console formatter only
+      // prints `meta` for a fixed placeholder-message allowlist, silently
+      // dropping it otherwise -- verified live, first trace line lost its data.
+      console.log(`[DIAG-TRACE] ${JSON.stringify({ username, reqId: req.id, ..._diag })}`);
     }
     res.status(201).json({
       ok: true,
