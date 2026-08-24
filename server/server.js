@@ -7692,6 +7692,15 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: Web Vitals telemetry (2026-08-24, found live during a
+  // real-browser load test — this is the actual gate that was blocking it;
+  // the WRITE_AUTH_PUBLIC_PATHS entry added earlier the same pass was Gate 3,
+  // which this Gate-1 401 never let the request reach). Same shape as the
+  // perf-telemetry/client-error bypasses immediately above: the handler
+  // (server.js's POST /api/metrics/vitals) never reads req.user, just pushes
+  // {name, value, kind} into an anonymous in-memory rolling window, so no
+  // identity-resolution discipline is needed here the way it was for /api/chat.
+  if (req.method === "POST" && req.path === "/api/metrics/vitals") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
