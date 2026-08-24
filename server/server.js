@@ -7936,7 +7936,17 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+// /api/metrics/vitals (added 2026-08-24, found live during a real-browser
+// load test) — the frontend reports Web Vitals via navigator.sendBeacon on
+// every page load, authenticated or not (lib/perf.ts), which is standard
+// practice for this kind of telemetry and was firing on the public register
+// page specifically. The route itself only accepts {name, value, kind} and
+// pushes into an in-memory rolling window (server.js's own handler has no
+// auth check) — this gate was the only thing blocking it. Anonymous
+// submissions were 401ing on every metric per page load, silently wasting
+// the same 30-req/min anonymous IP bucket real anonymous traffic (including
+// registration) also depends on.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();

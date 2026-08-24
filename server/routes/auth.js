@@ -646,11 +646,32 @@ export default function createAuthRouter({
 
   // ---- Refresh Token Endpoint (Tier 1: Auth Hardening) ----
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
-  router.post("/refresh", authRateLimitMiddleware, (req, res) => {
-    const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
-    if (!refreshCookie) {
+  // No-token-at-all short-circuits BEFORE authRateLimitMiddleware (2026-08-24,
+  // found live during a real-browser load test). authRateLimiter is keyed on
+  // IP + identity, and a refresh call carries no username/email — so identity
+  // is always blank, meaning EVERY anonymous visitor sharing an IP (any
+  // corporate/campus NAT, any mobile carrier CGNAT) shares one 5-per-15-min
+  // bucket for this route. The frontend's own background pollers legitimately
+  // attempt one refresh per fresh anonymous page load to check for an
+  // existing session — that's correct behavior, not abuse — but with no
+  // refresh cookie at all it was guaranteed to 401 and (skipSuccessfulRequests
+  // counts failures) burn one of the 5 slots anyway. A handful of ordinary
+  // anonymous visitors landing on any page from the same shared IP could
+  // exhaust the whole budget before any of them ever tried to log in or
+  // register — verified live: a fresh browser session with zero prior auth
+  // activity hit 429 "Too many authentication attempts" on THIS route within
+  // a few page loads. Skipping the limiter entirely for the "nothing to even
+  // attempt" case is both more correct (no credentials were tried, so it
+  // isn't a failed *attempt* in the sense the limiter exists to catch) and
+  // cheaper (skips the limiter's bookkeeping for what is, in practice, the
+  // single most common call this route ever receives).
+  router.post("/refresh", (req, res, next) => {
+    if (!req.cookies?.[REFRESH_TOKEN_COOKIE]) {
       return res.status(401).json({ ok: false, error: "No refresh token provided", code: "REFRESH_MISSING" });
     }
+    next();
+  }, authRateLimitMiddleware, (req, res) => {
+    const refreshCookie = req.cookies?.[REFRESH_TOKEN_COOKIE];
 
     const decoded = verifyToken(refreshCookie);
     if (!decoded || decoded.type !== "refresh") {
