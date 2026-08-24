@@ -191,3 +191,75 @@ describe("hasLineOfSight + updateNPCCombatAI FSM", () => {
     assert.equal(getState("npc3"), "alerted");
   });
 });
+
+// ── cachedPlayers (2026-08-23): NPCSimulator#tick fetches player positions
+// ONCE per world-tick and threads the same array into every agent's combat
+// check, instead of each agent re-querying world_visits/player_world_state
+// itself. See updateNPCCombatAI's doc comment for the full rationale.
+describe("updateNPCCombatAI — cachedPlayers parameter", () => {
+  beforeEach(() => _losCacheClear());
+
+  it("uses the provided cachedPlayers array instead of querying the DB — proven by a DB with NO world_visits table at all", () => {
+    const db = setupDb();
+    db.exec("DROP TABLE world_visits");
+    const worldId = "los-cached";
+    seedNpc(db, "npc-cached", worldId, 0, 0);
+
+    const npc = bandit("npc-cached", 0, 0);
+    // Would throw/return [] via _getPlayerPositions's own try/catch if this
+    // NPC fell through to a real query (world_visits doesn't exist) — passing
+    // cachedPlayers must bypass that path entirely and still acquire normally.
+    assert.doesNotThrow(() => updateNPCCombatAI(npc, worldId, db, [{ userId: "p1", x: 5, z: 0 }]));
+    assert.equal(getState("npc-cached"), "alerted", "must acquire using the cached player, never touching world_visits");
+  });
+
+  it("an empty cachedPlayers array means no players nearby — NPC stays idle even though a real player row exists in the DB", () => {
+    const db = setupDb();
+    const worldId = "los-cached-empty";
+    seedNpc(db, "npc-ignore-real", worldId, 0, 0);
+    seedPlayer(db, "p-real", worldId, 5, 0); // real row exists...
+
+    const npc = bandit("npc-ignore-real", 0, 0);
+    updateNPCCombatAI(npc, worldId, db, []); // ...but the cache says nobody's there
+    assert.equal(getState("npc-ignore-real"), "idle", "cachedPlayers is authoritative, not a hint layered on top of a real query");
+  });
+
+  it("omitting cachedPlayers (undefined) preserves the original fetch-it-yourself behavior", () => {
+    const db = setupDb();
+    const worldId = "los-no-cache";
+    seedNpc(db, "npc-fallback", worldId, 0, 0);
+    seedPlayer(db, "p-fallback", worldId, 5, 0);
+
+    const npc = bandit("npc-fallback", 0, 0);
+    updateNPCCombatAI(npc, worldId, db); // 3-arg call, exactly as every pre-existing caller does
+    assert.equal(getState("npc-fallback"), "alerted");
+  });
+
+  it("NPCSimulator#tick fetches player positions exactly ONCE per world-tick, not once per agent", async () => {
+    const { NPCSimulator, NPCAgent } = await import("../lib/npc-simulator.js");
+    const db = setupDb();
+    const worldId = "los-once-per-tick";
+    for (const id of ["npc-a", "npc-b", "npc-c"]) seedNpc(db, id, worldId, 0, 0);
+    seedPlayer(db, "p1", worldId, 500, 500); // far away — no combat state change needed, just counting the query
+
+    let playerQueryCount = 0;
+    const realPrepare = db.prepare.bind(db);
+    db.prepare = (sql) => {
+      if (sql.includes("FROM world_visits")) playerQueryCount++;
+      return realPrepare(sql);
+    };
+
+    const sim = new NPCSimulator(worldId, db, async () => ({ handle: { generate: async () => "" } }));
+    sim._agents = ["npc-a", "npc-b", "npc-c"].map((id) => {
+      const row = db.prepare("SELECT * FROM world_npcs WHERE id = ?").get(id);
+      const agent = new NPCAgent(row, worldId, db, async () => ({ handle: { generate: async () => "" } }));
+      agent.needs = { hunger: 0.1, rest: 1, social: 1, purpose: 1, safety: 1 }; // urgent -> deterministic action, no brain call
+      agent.archetype = "bandit";
+      return agent;
+    });
+
+    await sim.tick();
+
+    assert.equal(playerQueryCount, 1, `expected the world_visits query exactly once for 3 agents, got ${playerQueryCount}`);
+  });
+});

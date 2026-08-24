@@ -364,8 +364,16 @@ export function _combatStateFor(npcId) {
  * Core combat AI function — runs once per NPC per tick.
  * Accesses io lazily via globalThis._concordREALTIME.
  * Exported (additive) so the LOS test can drive the real FSM.
+ *
+ * @param {Array<{userId,x,z}>} [cachedPlayers] — optional pre-fetched
+ *   _getPlayerPositions(db, worldId) result. When omitted, fetches it
+ *   itself (unchanged behavior for every pre-existing caller). Callers that
+ *   invoke this per-NPC in a loop over one world/tick (NPCSimulator#tick)
+ *   should pass the same array for every NPC — the position list doesn't
+ *   change within one synchronous tick, so re-querying it per NPC is pure
+ *   redundant DB work. Real production finding, 2026-08-23.
  */
-export function updateNPCCombatAI(npc, worldId, db) {
+export function updateNPCCombatAI(npc, worldId, db, cachedPlayers) {
   // Graceful skip if NPC has no position
   if (!npc || !npc.location) return;
 
@@ -386,7 +394,7 @@ export function updateNPCCombatAI(npc, worldId, db) {
   const isWanted   = !!npcRow.is_wanted;
 
   // Get player positions + nearest player once (reused by flee logic + FSM below).
-  const players = _getPlayerPositions(db, worldId);
+  const players = cachedPlayers !== undefined ? cachedPlayers : _getPlayerPositions(db, worldId);
   let nearestPlayer = null;
   let nearestDist   = Infinity;
   for (const p of players) {
@@ -1017,14 +1025,18 @@ export class NPCAgent {
     } catch { /* non-fatal */ }
   }
 
-  async tick(dtMs = 3000) {
+  // cachedPlayers: optional, pre-fetched _getPlayerPositions(db, worldId)
+  // result for this whole world-tick — see NPCSimulator#tick's doc comment.
+  // Left undefined, updateNPCCombatAI falls back to fetching it itself
+  // (matches every pre-existing direct caller, e.g. tests/npc-combat-los.test.js).
+  async tick(dtMs = 3000, cachedPlayers = undefined) {
     this._updateNeeds();
     // Advance along active path first (position update each tick)
     this._tickPath(dtMs / 1000);
 
     // ── Combat AI (runs before action selection so combat can override movement) ──
     if (!this.isConscious && !this.isImmortal) {
-      try { updateNPCCombatAI(this, this.worldId, this._db); } catch { /* non-fatal */ }
+      try { updateNPCCombatAI(this, this.worldId, this._db, cachedPlayers); } catch { /* non-fatal */ }
     }
 
     // Only choose a new action if not currently walking AND not in active combat
@@ -1377,8 +1389,21 @@ export class NPCSimulator {
     const autonomousAgents = this._agents.filter(a => !a.isConscious);
     const consciousAgents  = this._agents.filter(a =>  a.isConscious);
 
+    // Fetch player positions ONCE for the whole world-tick, not once per
+    // NPC. Real production finding, 2026-08-23 (see
+    // #_flushPendingPersists's doc comment for the sibling write-side
+    // fix's full rationale): a live CPU profile showed updateNPCCombatAI's
+    // _getPlayerPositions call — a world_visits/player_world_state JOIN —
+    // as a real, meaningful cost, and it's called unconditionally by EVERY
+    // non-conscious, non-immortal agent's tick() every cycle, always
+    // returning the identical result within one synchronous world-tick
+    // (players don't move between one agent's combat check and the next).
+    // Threaded through as an argument rather than cached on `this` so a
+    // stale value can never survive past the tick that fetched it.
+    const cachedPlayers = _getPlayerPositions(this._db, this.worldId);
+
     // Autonomous NPCs: needs-based tick + faction coordination
-    await Promise.allSettled(autonomousAgents.map(a => a.tick()));
+    await Promise.allSettled(autonomousAgents.map(a => a.tick(3000, cachedPlayers)));
     await Promise.allSettled(autonomousAgents.map(a => a._maybeGenerateQuests()));
 
     // Faction coordination: enemy NPCs strategize together + leader gear enforcement
