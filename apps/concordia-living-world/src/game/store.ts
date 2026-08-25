@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { WorldId } from "./content";
 import { OBJECTIVES } from "./content";
+import type { Quality } from "./quality";
 
 export type Phase = "title" | "play" | "pause" | "dialogue";
 
@@ -23,6 +24,7 @@ export type Overlay = {
   bargeCount: number;
   muted: boolean;
   shake: boolean;
+  quality: Quality;
   billboard: { text: string; until: number } | null;
   flowerWarn: boolean;
   heading: number;
@@ -45,6 +47,9 @@ export type Overlay = {
   km: string;
   plotLine: string;
   politics: string;
+  flash: number;
+  refusal: string;
+  lawText: string;
 };
 
 type Actions = {
@@ -85,6 +90,7 @@ function createOverlay() {
     bargeCount: 0,
     muted: false,
     shake: true,
+    quality: "medium",
     billboard: null,
     flowerWarn: false,
     heading: Math.PI / 2,
@@ -100,7 +106,7 @@ function createOverlay() {
     beastName: null,
     arts: [
       { key: "LMB", name: "Palm" },
-      { key: "RMB", name: "Shoulder" },
+      { key: "RMB", name: "Heavy" },
       { key: "G", name: "Flower-step" },
       { key: "1", name: "Lantern step" },
     ],
@@ -112,6 +118,9 @@ function createOverlay() {
     km: "",
     plotLine: "",
     politics: "",
+    flash: 0,
+    refusal: "You cannot own the heart.",
+    lawText: "No live steel in the Court",
     set: (p) => set(p),
     mark: (id) => {
       const done = { ...get().done, [id]: true };
@@ -129,7 +138,7 @@ function createOverlay() {
   }));
 }
 
-const STORE_REV = 7;
+const STORE_REV = 8;
 const root = globalThis as typeof globalThis & {
   __concordiaOverlay?: ReturnType<typeof createOverlay>;
   __concordiaOverlayRev?: number;

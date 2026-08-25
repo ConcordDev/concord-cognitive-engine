@@ -1,5 +1,5 @@
 import { NPCS, SPAWN, THEMES, type WorldId } from "./content";
-import { freshCombatant, type Combatant } from "./combat";
+import { freshCombatant, type Combatant, type Stagger } from "./combat";
 import { createJuice, type Juice } from "./juice";
 import { beastDef } from "./creatures";
 import { makeKernel, type Kernel } from "./kernel";
@@ -10,6 +10,8 @@ import { rollQuest, type LiveQuest } from "./quests";
 import { brainFor, type NpcBrain } from "./npc-life";
 import { awayPolitics } from "./politics";
 import { applyEvent, rollEvent } from "./events";
+import { freshMotion, type Gait, type Motion } from "./locomotion";
+import { emptyImpacts, type Impact } from "./feel";
 
 export type Pose = "idle" | "walk" | "windup" | "strike" | "dodge" | "hurt" | "down";
 
@@ -40,6 +42,14 @@ export type Actor = {
   traits?: EvoTraits;
   packId?: string;
   scale?: number;
+  vx?: number;
+  vz?: number;
+  act?: string;
+  stagger?: Stagger;
+  staggerUntil?: number;
+  struckAt?: number;
+  hitDirX?: number;
+  hitDirZ?: number;
 };
 
 export type Sim = {
@@ -50,6 +60,8 @@ export type Sim = {
   speed: number;
   camYaw: number;
   camPitch: number;
+  motion: Motion;
+  gait: Gait;
   actors: Actor[];
   juice: Juice;
   foot: number;
@@ -66,6 +78,11 @@ export type Sim = {
   birthCd: number;
   wildSeen: Set<string>;
   wildCd: number;
+  impacts: Impact[];
+  playerStagger: Stagger | null;
+  playerStaggerUntil: number;
+  playerHitDirX: number;
+  playerHitDirZ: number;
 };
 
 export function spawnActors(world: WorldId, slice?: WorldSlice | null): Actor[] {
@@ -93,6 +110,9 @@ export function spawnActors(world: WorldId, slice?: WorldSlice | null): Actor[] 
     flyH: 0,
     reviveAt: 0,
     morale: 1,
+    vx: 0,
+    vz: 0,
+    act: "idle",
     brain: "need" in n && n.need ? brainFor(world, n as WorldNpc, i) : { homeX: n.x, homeZ: n.z, jobX: n.x, jobZ: n.z, need: "purpose" as const, faction: n.title ?? "court", trust: 0.4, fear: 0 },
   }));
   const beasts: Actor[] = kit.beasts
@@ -124,6 +144,8 @@ export function spawnActors(world: WorldId, slice?: WorldSlice | null): Actor[] 
         reviveAt: 0,
         morale: 1,
         scale: d.scale,
+        vx: 0,
+        vz: 0,
       };
     });
   const births = slice?.births ?? 0;
@@ -158,6 +180,8 @@ export function spawnActors(world: WorldId, slice?: WorldSlice | null): Actor[] 
       evoName: spec.name,
       traits: spec.traits,
       scale: d.scale * spec.scale,
+      vx: 0,
+      vz: 0,
     });
   }
   return [...npcs, ...beasts];
@@ -200,7 +224,9 @@ export function makeSim(world: WorldId): Sim {
     yaw: start.yaw,
     speed: 0,
     camYaw: start.yaw,
-    camPitch: -0.28,
+    camPitch: 0.04,
+    motion: freshMotion(),
+    gait: "idle",
     actors: spawnActors(world, slice),
     juice: createJuice(),
     foot: 0,
@@ -217,6 +243,11 @@ export function makeSim(world: WorldId): Sim {
     birthCd: 22,
     wildSeen: new Set(),
     wildCd: 4,
+    impacts: emptyImpacts(),
+    playerStagger: null,
+    playerStaggerUntil: 0,
+    playerHitDirX: 0,
+    playerHitDirZ: 1,
   };
 }
 

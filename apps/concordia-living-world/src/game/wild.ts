@@ -5,8 +5,8 @@ import { REALM_FAUNA, PLAZA_RADIUS, REALM_RADIUS } from "./realms";
 import { mulberry32, pick, xmur3 } from "./rng";
 import type { BeastKind } from "./worlds";
 
-export const WILD_CAP = 14;
-export const WILD_RANGE = 210;
+export const WILD_CAP = 24;
+export const WILD_RANGE = 260;
 
 export type WildSpec = {
   id: string;
@@ -36,16 +36,16 @@ export function streamWild(
   const fauna = REALM_FAUNA[world];
   if (!fauna.length) return [];
   const r = Math.hypot(px, pz);
-  if (r < PLAZA_RADIUS + 36) return [];
+  if (r < PLAZA_RADIUS + 8) return [];
   if (r > REALM_RADIUS - 80) return [];
   if (liveWild >= WILD_CAP) return [];
-  const gx = Math.floor(px / 90);
-  const gz = Math.floor(pz / 90);
+  const gx = Math.floor(px / 70);
+  const gz = Math.floor(pz / 70);
   const key = `${world}:${gx}:${gz}`;
-  if (seen.has(key) && ecology < 0.85) return [];
+  if (seen.has(key) && ecology < 0.55) return [];
   seen.add(key);
   const rng = mulberry32(xmur3(`${key}:${day}`)());
-  if (rng() > 0.72 + ecology * 0.15) return [];
+  if (rng() > 0.92 + ecology * 0.08) return [];
   const kind = pick(rng, fauna);
   const n = packSize(kind);
   const pack = `pack-${key}`;

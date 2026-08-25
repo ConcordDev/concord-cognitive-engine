@@ -2,4 +2,27 @@
 
 Browser prototype of the nine-world hub (combat, creatures, quests, politics, persistence).
 
-Not wired into `concord-frontend` / Godot. Snapshot of the Aug 2026 Grok Build pass.
+This folder is the **canonical snapshot** of the Aug 2026 Grok Build passes on branch `grok/concordia-living-world` ([PR #944](https://github.com/ConcordDev/concord-cognitive-engine/pull/944)).
+
+Not wired into `concord-frontend` / Godot.
+
+## Passes on this branch
+
+1. Living-world kernel — eight doors, ecology, politics, quests, persistence
+2. Playable AAA slice — Mixamo Soldier, Kenney/fauna/ruin GLBs, rigged figures, camera-from-behind, Unity Mac handoff
+
+## Layout
+
+| Path | What |
+|---|---|
+| `src/game/` | Sim, combat, lore, locomotion, Mixamo clips |
+| `src/components/concordia/` | R3F world, HUD, rigged figures, Kenney field |
+| `public/models/` | Soldier / Kenney / fauna / ruins GLBs |
+| `unity-client/` | Unity 6 skeleton + `ConcordClient.cs` |
+| `HANDOFF.MAC.md` | Mac Unity kitchen instructions |
+| `CONCORDIA_AAA_GAP_REPORT.md` | Remaining AAA gaps |
+| `REALISM_GAP_REPORT.md` | Realism / art gaps |
+
+## Play
+
+This snapshot is source + assets. The runnable Grok Build app that produced it lives at `https://github.com/ConcordDev/concordia` (Vite + R3F). Do not rewrite the sim in Unity from scratch — see `HANDOFF.MAC.md`.

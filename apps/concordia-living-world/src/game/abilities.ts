@@ -38,5 +38,6 @@ export const ABILITY_HELP = [
   { key: "G", label: "World art" },
   { key: "1", label: "Weather art" },
   { key: "F", label: "Parry" },
-  { key: "Space", label: "Dodge" },
+  { key: "Space", label: "Jump" },
+  { key: "X", label: "Dodge" },
 ] as const;
