@@ -1,6 +1,6 @@
 import type { WorldId } from "./content";
 import type { Collider } from "./layout";
-import { settlementsOf } from "./realms";
+import { settlementsOf, REALM_FAUNA } from "./realms";
 
 export type { WorldId };
 
@@ -97,10 +97,20 @@ const NO_COLLIDE = new Set([
   "bone",
   "rain",
   "fern",
+  "grave",
+  "arch",
+  "gate",
 ]);
 
 function collidersFrom(points: { x: number; z: number; kind?: string }[], r: number): Collider[] {
-  return points.filter((p) => !NO_COLLIDE.has(p.kind ?? "")).map((p) => ({ x: p.x, z: p.z, r }));
+  return points
+    .filter((p) => !NO_COLLIDE.has(p.kind ?? ""))
+    .map((p) => {
+      const kind = p.kind ?? "";
+      const rad =
+        kind === "pillar" || kind === "statue" ? 1.15 : kind === "hut" || kind === "keep" ? 2.2 : kind === "wall" ? 0.7 : r;
+      return { x: p.x, z: p.z, r: rad };
+    });
 }
 
 const PROP_TABLE: Record<WorldId, string[]> = {
@@ -123,12 +133,13 @@ function scatter(
 ) {
   const kinds = PROP_TABLE[id];
   const out: { kind: string; x: number; z: number; rot: number; s: number }[] = [];
-  for (let i = 0; i < 26; i++) {
+  const n = id === "concordia-hub" ? 8 : 56;
+  for (let i = 0; i < n; i++) {
     const a = i * 2.399 + 0.41;
-    const r = 4.4 + (i % 8) * 2.6;
+    const r = 6 + (i % 14) * 6.5;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
-    if (Math.hypot(x - spawn.x, z - spawn.z) < 3.6) continue;
+    if (Math.hypot(x - spawn.x, z - spawn.z) < 3.2) continue;
     if (Math.hypot(x - portal.x, z - portal.z) < 3.3) continue;
     if (r > bound - 3) continue;
     out.push({
@@ -136,8 +147,64 @@ function scatter(
       x,
       z,
       rot: a,
-      s: 0.72 + (i % 5) * 0.1,
+      s: 0.78 + (i % 5) * 0.12,
     });
+  }
+  for (const s of settlementsOf(id)) {
+    out.push({ kind: s.kind === "keep" || s.kind === "spire" ? "tower" : "hut", x: s.x, z: s.z, rot: 0.2, s: 1.4 });
+    out.push({ kind: "fire", x: s.x + 3.2, z: s.z + 1.4, rot: 0, s: 1 });
+    out.push({ kind: "banner", x: s.x - 2.4, z: s.z + 2, rot: 0.4, s: 1 });
+  }
+  return out;
+}
+
+const FLY: Set<BeastKind> = new Set(["dragon", "griffin", "harpy", "drone", "sentinel", "wyrm", "drift"]);
+
+function patrols(id: WorldId): WorldBeast[] {
+  if (id === "concordia-hub") return [];
+  const fauna = REALM_FAUNA[id];
+  if (!fauna.length) return [];
+  const out: WorldBeast[] = [];
+  const rings = [11, 18, 28, 42];
+  let n = 0;
+  for (const r of rings) {
+    const count = r <= 18 ? 5 : 7;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + r * 0.07;
+      const kind = fauna[n % fauna.length]!;
+      out.push({
+        id: `${id}-pat-${n}`,
+        kind,
+        name: kind,
+        x: Math.cos(a) * r,
+        z: Math.sin(a) * r,
+        hostile: true,
+        fly: FLY.has(kind),
+      });
+      n++;
+    }
+  }
+  for (const s of settlementsOf(id)) {
+    const kind = fauna[n % fauna.length]!;
+    out.push({
+      id: `${s.id}-guard-a`,
+      kind,
+      name: kind,
+      x: s.x + 5,
+      z: s.z + 2,
+      hostile: true,
+      fly: FLY.has(kind),
+    });
+    out.push({
+      id: `${s.id}-guard-b`,
+      kind: fauna[(n + 1) % fauna.length]!,
+      name: fauna[(n + 1) % fauna.length]!,
+      x: s.x - 4,
+      z: s.z - 3,
+      hostile: true,
+      fly: false,
+    });
+    n += 2;
   }
   return out;
 }
@@ -152,9 +219,9 @@ const STYLES: Record<WorldId, FightingStyle> = {
     specialKey: "G",
     power: "A guest's dash. The Court still prefers open hands.",
     powerKey: "1",
-    massMul: 0.85,
-    speedMul: 1,
-    poiseMul: 1.1,
+    massMul: 1.35,
+    speedMul: 1.08,
+    poiseMul: 1.25,
   },
   "sovereign-ruins": {
     id: "keepers",
@@ -272,6 +339,16 @@ function kit(
     landmarks.map((l) => ({ x: l.x, z: l.z, kind: l.kind })),
     0.62,
   );
+  const archCols: Collider[] = [];
+  for (const l of landmarks) {
+    if (l.kind !== "arch" && l.kind !== "gate") continue;
+    const rot = l.rot ?? 0;
+    const span = (l.kind === "gate" ? 1.85 : 1.2) * (l.s ?? 1);
+    const lx = Math.cos(rot);
+    const lz = -Math.sin(rot);
+    archCols.push({ x: l.x + lx * span, z: l.z + lz * span, r: 0.4 });
+    archCols.push({ x: l.x - lx * span, z: l.z - lz * span, r: 0.4 });
+  }
   const wallCols: Collider[] = [];
   for (const l of landmarks) {
     if (l.kind !== "wall") continue;
@@ -286,9 +363,10 @@ function kit(
   }
   return {
     ...partial,
+    beasts: [...partial.beasts, ...patrols(partial.id)],
     landmarks,
     style: STYLES[partial.id],
-    colliders: [...fromLand, ...wallCols, ...extra, ...settlementsOf(partial.id).flatMap((s) => [
+    colliders: [...fromLand, ...archCols, ...wallCols, ...extra, ...settlementsOf(partial.id).flatMap((s) => [
       { x: s.x, z: s.z, r: 2.5 },
       { x: s.x + 4.2, z: s.z + 1.2, r: 1.7 },
       { x: s.x - 3.6, z: s.z - 1.4, r: 1.5 },
@@ -388,6 +466,12 @@ export const WORLD_KITS: Record<WorldId, WorldKit> = {
       { kind: "banner", x: -2, z: 5 },
       { kind: "grave", x: -5, z: 8 },
       { kind: "grave", x: 5, z: 8 },
+      ...Array.from({ length: 36 }, (_, i) => {
+        const a = i * 2.399 + 0.61;
+        const r = 36 + (i % 8) * 22;
+        const kinds = ["arch", "pillar", "statue", "rubble", "column", "grave"] as const;
+        return { kind: kinds[i % kinds.length]!, x: Math.cos(a) * r, z: Math.sin(a) * r, rot: a + Math.PI / 2, s: 0.9 + (i % 4) * 0.12 };
+      }),
     ],
   }),
 

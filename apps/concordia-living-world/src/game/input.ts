@@ -13,6 +13,7 @@ export type InputState = {
   pause: boolean;
   special: boolean;
   power: boolean;
+  jump: boolean;
 };
 
 export function createInput(): InputState {
@@ -31,6 +32,7 @@ export function createInput(): InputState {
     pause: false,
     special: false,
     power: false,
+    jump: false,
   };
 }
 
@@ -48,20 +50,33 @@ function codeOf(e: KeyboardEvent): string {
   if (k === "q") return "KeyQ";
   if (k === "r") return "KeyR";
   if (k === "c") return "KeyC";
+  if (k === "v") return "KeyV";
   if (k === " ") return "Space";
   if (k === "Escape") return "Escape";
   if (k === "Shift") return "ShiftLeft";
+  if (k === "Control") return "ControlLeft";
   return e.key;
 }
 
+function isHudTarget(t: EventTarget | null) {
+  const el = t as HTMLElement | null;
+  if (!el || typeof el.closest !== "function") return false;
+  return Boolean(el.closest("button, a, input, label, select, textarea, [data-hud-ui]"));
+}
+
 export function bindInput(input: InputState, el: HTMLElement) {
+  let downAt = 0;
+  let downX = 0;
+  let downY = 0;
+  let downBtn = -1;
   const down = (e: KeyboardEvent) => {
     const code = codeOf(e);
     input.keys.add(code);
     if (e.repeat) return;
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code)) e.preventDefault();
     if (code === "KeyE" || code === "Enter") input.interact = true;
-    if (code === "Space") input.dodge = true;
+    if (code === "Space" || code === "KeyV") input.jump = true;
+    if (code === "KeyX" || code === "KeyZ") input.dodge = true;
     if (code === "KeyF") input.parry = true;
     if (code === "KeyG") input.special = true;
     if (code === "Digit1" || code === "Numpad1") input.power = true;
@@ -75,10 +90,30 @@ export function bindInput(input: InputState, el: HTMLElement) {
     input.keys.delete(codeOf(e));
   };
   const md = (e: PointerEvent) => {
-    const t = e.target as HTMLElement | null;
-    if (t?.closest("button, a, input, label")) return;
-    if (e.button === 0) input.attack = true;
-    if (e.button === 2) input.heavy = true;
+    if (isHudTarget(e.target)) return;
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    downAt = performance.now();
+    downX = e.clientX;
+    downY = e.clientY;
+    downBtn = e.button;
+    if (document.pointerLockElement) {
+      if (e.button === 0) input.attack = true;
+      if (e.button === 2) input.heavy = true;
+    } else if (tag === "CANVAS") {
+      /* click-drag look; short click becomes attack on pointerup */
+    }
+  };
+  const mu = (e: PointerEvent) => {
+    if (isHudTarget(e.target)) return;
+    if (document.pointerLockElement) return;
+    if (downBtn < 0) return;
+    const dt = performance.now() - downAt;
+    const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+    if (dt < 220 && dist < 8) {
+      if (downBtn === 0) input.attack = true;
+      if (downBtn === 2) input.heavy = true;
+    }
+    downBtn = -1;
   };
   const blur = () => {
     if (document.visibilityState === "hidden") input.keys.clear();
@@ -87,6 +122,7 @@ export function bindInput(input: InputState, el: HTMLElement) {
   window.addEventListener("keyup", up, true);
   document.addEventListener("visibilitychange", blur);
   el.addEventListener("pointerdown", md);
+  el.addEventListener("pointerup", mu);
   const ctx = (e: Event) => e.preventDefault();
   el.addEventListener("contextmenu", ctx);
 
@@ -95,6 +131,7 @@ export function bindInput(input: InputState, el: HTMLElement) {
     window.removeEventListener("keyup", up, true);
     document.removeEventListener("visibilitychange", blur);
     el.removeEventListener("pointerdown", md);
+    el.removeEventListener("pointerup", mu);
     el.removeEventListener("contextmenu", ctx);
   };
 }
@@ -109,8 +146,37 @@ export function consume(input: InputState) {
   input.pause = false;
   input.special = false;
   input.power = false;
+  input.jump = false;
   input.lookX = 0;
   input.lookY = 0;
+}
+
+export type InputBuffer = {
+  attack: number;
+  heavy: number;
+  dodge: number;
+  parry: number;
+  jump: number;
+};
+
+export function createBuffer(): InputBuffer {
+  return { attack: -1e9, heavy: -1e9, dodge: -1e9, parry: -1e9, jump: -1e9 };
+}
+
+export function latchBuffer(input: InputState, buf: InputBuffer, now: number) {
+  if (input.attack) buf.attack = now;
+  if (input.heavy) buf.heavy = now;
+  if (input.dodge) buf.dodge = now;
+  if (input.parry) buf.parry = now;
+  if (input.jump) buf.jump = now;
+}
+
+export function takeBuffered(buf: InputBuffer, key: keyof InputBuffer, now: number, win = 120) {
+  if (now - buf[key] <= win) {
+    buf[key] = -1e9;
+    return true;
+  }
+  return false;
 }
 
 export function moveAxes(input: InputState): { x: number; y: number } {

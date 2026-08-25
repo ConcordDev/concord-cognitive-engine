@@ -90,8 +90,34 @@ function noise(dur: number, vol: number, hp = 400, lp = 1800) {
   src.stop(now() + dur);
 }
 
-export function sfxFoot(rate = 1) {
+export function sfxFoot(rate = 1, kind: "stone" | "ash" | "dirt" | "grass" | "metal" | "mud" = "dirt") {
+  if (kind === "ash") {
+    noise(0.09, 0.1 * rate, 70, 420);
+    return;
+  }
+  if (kind === "metal") {
+    noise(0.05, 0.08 * rate, 600, 2800);
+    tone(180 * rate, 0.04, "square", 0.03);
+    return;
+  }
+  if (kind === "mud") {
+    noise(0.11, 0.14 * rate, 60, 380);
+    return;
+  }
+  if (kind === "stone") {
+    noise(0.06, 0.13 * rate, 180, 900);
+    return;
+  }
+  if (kind === "grass") {
+    noise(0.05, 0.08 * rate, 250, 1100);
+    return;
+  }
   noise(0.07, 0.12 * rate, 120, 700);
+}
+
+export function sfxLand(heavy: boolean) {
+  noise(heavy ? 0.16 : 0.09, heavy ? 0.22 : 0.12, 80, 500);
+  tone(heavy ? 70 : 110, 0.08, "sine", heavy ? 0.06 : 0.035);
 }
 
 export function sfxSwing(heavy: boolean) {
@@ -143,6 +169,20 @@ export function sfxWin() {
 export function sfxHurt() {
   tone(80, 0.18, "sawtooth", 0.1);
   noise(0.12, 0.18, 100, 600);
+}
+
+export function sfxStagger(kind: "flinch" | "rocked" | "knockdown" | "graze") {
+  if (kind === "knockdown") {
+    noise(0.22, 0.32, 60, 500);
+    tone(55, 0.2, "sine", 0.12);
+    return;
+  }
+  if (kind === "rocked") {
+    noise(0.14, 0.22, 90, 700);
+    tone(70, 0.12, "sawtooth", 0.08);
+    return;
+  }
+  noise(0.08, 0.14, 140, 900);
 }
 
 export function tickAmbient(dt: number) {

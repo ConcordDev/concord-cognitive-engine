@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "com.unity.modules.animation": "1.0.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.ui": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.ugui": "2.0.0",
+    "com.unity.render-pipelines.universal": "17.3.0",
+    "com.unity.cloud.gltfast": "6.10.1"
+  }
+}
