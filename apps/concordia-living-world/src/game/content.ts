@@ -112,7 +112,7 @@ export const RING_RADIUS = 20;
 export const COURT_RADIUS = 11;
 export const WALL_RADIUS = 48;
 export const ARENA = { x: 0, z: 32, r: 8 };
-export const SPAWN = { x: 26, z: 0, yaw: Math.PI / 2 };
+export const SPAWN = { x: 15.5, z: 0, yaw: Math.PI / 2 };
 
 export const NPCS: NpcDef[] = [
   {
@@ -369,16 +369,16 @@ export type Theme = {
 export const THEMES: Record<WorldId, Theme> = {
   "concordia-hub": {
     id: "concordia-hub",
-    skyTop: "#7aa8d0",
-    skyHorizon: "#f3e3b8",
-    fog: "#e0d0a8",
-    ground: "#8f7f52",
-    sun: "#ffe8a8",
-    ambient: "#fff4dc",
-    building: "#d8cbb0",
-    building2: "#b7a88a",
+    skyTop: "#4a94c8",
+    skyHorizon: "#c5def0",
+    fog: "#c8dce8",
+    ground: "#6e7a40",
+    sun: "#fff4d2",
+    ambient: "#e8f0f8",
+    building: "#8a5a48",
+    building2: "#6a4a38",
     lamp: "#ffd890",
-    fogFar: 160,
+    fogFar: 280,
     saturation: 1,
     style: "stone",
   },

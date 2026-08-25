@@ -24,6 +24,10 @@ export function GameRoot() {
     return bindInput(inputRef.current, el);
   }, [mounted]);
 
+  useEffect(() => {
+    if (phase !== "play") document.exitPointerLock?.();
+  }, [phase]);
+
   const play = () => {
     unlockAudio();
     startDrone();
@@ -31,23 +35,21 @@ export function GameRoot() {
     useOverlay.getState().set({
       phase: "play",
       toast: {
-        text: "The Lamplighter is on the eastern path. Eight doors wait. Each world has its own law, its own creatures, its own art.",
+        text: "Click the world to look. WASD walks. The Lamplighter is on the eastern path.",
       },
     });
     window.setTimeout(() => {
       const t = useOverlay.getState().toast;
-      if (t?.text.startsWith("The Lamplighter is on the eastern")) {
+      if (t?.text.startsWith("Click the world")) {
         useOverlay.getState().set({ toast: null });
       }
     }, 5600);
-    const wrap = wrapRef.current;
-    wrap?.focus();
-    wrap?.querySelector("canvas")?.requestPointerLock?.();
+    wrapRef.current?.focus();
   };
 
   const resume = () => {
     useOverlay.getState().set({ phase: "play" });
-    wrapRef.current?.querySelector("canvas")?.requestPointerLock?.();
+    wrapRef.current?.focus();
   };
 
   const barge = (id: string) => {
@@ -61,48 +63,70 @@ export function GameRoot() {
     window.setTimeout(() => useOverlay.getState().set({ toast: null }), 4200);
   };
 
+  const pause = () => {
+    document.exitPointerLock?.();
+    useOverlay.getState().set({ phase: "pause" });
+  };
+
   return (
     <div
       ref={wrapRef}
       data-phase={phase}
       data-mounted={mounted ? "1" : "0"}
       tabIndex={0}
-      className="relative h-full w-full overflow-hidden bg-ink outline-none"
+      className="relative h-full w-full isolate overflow-hidden bg-ink outline-none"
     >
-      {mounted ? <GameCanvas input={inputRef.current} simRef={simRef} phase={phase} /> : null}
-      {phase === "title" ? <TitleOverlay onPlay={play} loading={!mounted} /> : null}
-      {phase === "play" ? (
-        <PlayHUD onPause={() => useOverlay.getState().set({ phase: "pause" })} onBarge={barge} />
+      {mounted ? (
+        <div
+          className="absolute inset-0 z-0"
+          style={{ pointerEvents: phase === "play" ? "auto" : "none" }}
+        >
+          <GameCanvas input={inputRef.current} simRef={simRef} phase={phase} />
+        </div>
       ) : null}
-      {phase === "dialogue" ? <DialogueOverlay /> : null}
-      {phase === "pause" ? <PauseOverlay onResume={resume} /> : null}
-      {phase === "play" ? (
-        <TouchPad
-          onJoy={(x, y) => {
-            inputRef.current.joyX = x;
-            inputRef.current.joyY = y;
-          }}
-          onLook={(x, y) => {
-            inputRef.current.lookX = x;
-            inputRef.current.lookY = y;
-          }}
-          onAttack={() => {
-            inputRef.current.attack = true;
-          }}
-          onDodge={() => {
-            inputRef.current.dodge = true;
-          }}
-          onInteract={() => {
-            inputRef.current.interact = true;
-          }}
-          onSpecial={() => {
-            inputRef.current.special = true;
-          }}
-          onPower={() => {
-            inputRef.current.power = true;
-          }}
-        />
-      ) : null}
+      <div
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 42%, transparent 48%, rgba(8,6,4,0.38) 100%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-0 z-30 isolate"
+        style={{ transform: "translateZ(0)" }}
+      >
+        {phase === "title" ? <TitleOverlay onPlay={play} loading={!mounted} /> : null}
+        {phase === "play" ? <PlayHUD onPause={pause} onBarge={barge} /> : null}
+        {phase === "dialogue" ? <DialogueOverlay /> : null}
+        {phase === "pause" ? <PauseOverlay onResume={resume} /> : null}
+        {phase === "play" ? (
+          <TouchPad
+            onJoy={(x, y) => {
+              inputRef.current.joyX = x;
+              inputRef.current.joyY = y;
+            }}
+            onLook={(x, y) => {
+              inputRef.current.lookX = x;
+              inputRef.current.lookY = y;
+            }}
+            onAttack={() => {
+              inputRef.current.attack = true;
+            }}
+            onDodge={() => {
+              inputRef.current.dodge = true;
+            }}
+            onInteract={() => {
+              inputRef.current.interact = true;
+            }}
+            onSpecial={() => {
+              inputRef.current.special = true;
+            }}
+            onPower={() => {
+              inputRef.current.power = true;
+            }}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

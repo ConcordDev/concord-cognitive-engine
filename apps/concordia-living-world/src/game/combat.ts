@@ -149,17 +149,21 @@ export function canAct(c: Combatant, now: number): boolean {
 }
 
 export function beginAttack(c: Combatant, kind: AttackKind, now: number): boolean {
-  if (!canAct(c, now)) return false;
+  if (now < c.stunUntil) return false;
+  if (c.attackKind && now < c.windupUntil) return false;
+  if (c.attackKind && now < c.activeUntil) return false;
+  const chained = Boolean(c.attackKind === "light" && kind === "light" && now >= c.activeUntil && now < c.recoverUntil);
   const k = attackKinematics(kind);
   if (c.stamina < k.staminaCost) return false;
   c.stamina -= k.staminaCost;
   c.attackKind = kind;
   c.hyperarmor = k.hyperarmor;
-  const start = kind === "heavy" ? HEAVY_STARTUP_MS : LIGHT_STARTUP_MS;
-  const active = kind === "heavy" ? HEAVY_ACTIVE_MS : LIGHT_ACTIVE_MS;
+  const start = chained ? 70 : kind === "heavy" ? HEAVY_STARTUP_MS : LIGHT_STARTUP_MS;
+  const active = kind === "heavy" ? HEAVY_ACTIVE_MS : chained ? 70 : LIGHT_ACTIVE_MS;
+  const recover = kind === "heavy" ? HEAVY_RECOVERY_MS : chained ? 160 : LIGHT_RECOVERY_MS;
   c.windupUntil = now + start;
   c.activeUntil = now + start + active;
-  c.recoverUntil = now + start + active + (kind === "heavy" ? HEAVY_RECOVERY_MS : LIGHT_RECOVERY_MS);
+  c.recoverUntil = now + start + active + recover;
   return true;
 }
 
@@ -199,7 +203,7 @@ export function applyHit(
   attacker: Combatant,
   defender: Combatant,
   now: number,
-  opts: { flanked?: boolean; parried?: boolean },
+  opts: { flanked?: boolean; parried?: boolean; midStride?: boolean; massMul?: number; poiseMul?: number },
 ): {
   landed: boolean;
   iframed: boolean;
@@ -210,7 +214,7 @@ export function applyHit(
 } | null {
   if (!attacker.attackKind) return null;
   if (now < attacker.windupUntil || now > attacker.activeUntil) return null;
-  let momentum = momentumOf(attacker.attackKind);
+  let momentum = momentumOf(attacker.attackKind) * (opts.massMul ?? 1);
   if (opts.flanked) momentum *= 1.28;
   if (opts.parried) momentum *= parryMomentumMul(true);
 
@@ -244,9 +248,9 @@ export function applyHit(
   }
 
   const poise = stancePoise({
-    base: defender.poise,
+    base: defender.poise * (opts.poiseMul ?? 1),
     blocking: false,
-    midStride: false,
+    midStride: opts.midStride ?? false,
     stamina: defender.stamina,
   });
   const stagger = resolvePoiseStagger(momentum, poise);

@@ -11,6 +11,12 @@ declare global {
       setKeys?: (codes: string[]) => void;
       setSteer?: (v: number) => void;
       setPos?: (x: number, z: number) => void;
+      attack?: () => void;
+      jump?: () => void;
+      getHop?: () => number;
+      getAttack?: () => string | null;
+      setCamYaw?: (yaw: number) => void;
+      freeze?: () => void;
     };
   }
 }

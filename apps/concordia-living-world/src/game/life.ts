@@ -22,7 +22,7 @@ export function floraKind(world: WorldId, x: number, z: number): FloraKind | nul
   if (Math.hypot(x, z) < PLAZA_RADIUS + 4) return null;
   const h = hash2(Math.floor(x / 14), Math.floor(z / 14), world.length + 3);
   if (world === "cyber") return h > 0.72 ? "spire" : h > 0.45 ? "rock" : null;
-  if (world === "sovereign-ruins") return h > 0.78 ? "bone" : h > 0.5 ? "rock" : h > 0.32 ? "tree" : null;
+  if (world === "sovereign-ruins") return h > 0.78 ? "bone" : h > 0.5 ? "rock" : h > 0.32 ? "tree" : h > 0.14 ? "grass" : null;
   if (world === "crime") return h > 0.7 ? "rock" : h > 0.55 ? "spire" : null;
   if (world === "lattice-crucible") return h > 0.62 ? "spire" : h > 0.4 ? "rock" : null;
   if (h > 0.58) return "tree";

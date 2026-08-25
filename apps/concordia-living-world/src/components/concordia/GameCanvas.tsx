@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   ARENA,
@@ -20,9 +20,10 @@ import {
   tickVitals,
   freshCombatant,
 } from "@/game/combat";
-import { consume, moveAxes, type InputState } from "@/game/input";
-import { HUB_LAYOUT, resolveCollision } from "@/game/layout";
-import { addHitstop, addTrauma, shakeOffset, tickJuice } from "@/game/juice";
+import { consume, moveAxes, createBuffer, latchBuffer, takeBuffered, type InputState } from "@/game/input";
+import { ATTACK_BUFFER_MS, lungeToward, pickMagnetTarget, pickStrikeTargets } from "@/game/melee-feel";
+import { HUB_LAYOUT, resolveBoxes, resolveCollision } from "@/game/layout";
+import { addTrauma, shakeOffset, tickJuice } from "@/game/juice";
 import {
   sfxDodge,
   sfxFlower,
@@ -30,32 +31,44 @@ import {
   sfxHit,
   sfxHurt,
   sfxIframe,
+  sfxLand,
   sfxParry,
   sfxScheme,
+  sfxStagger,
   sfxSwing,
   sfxWin,
   tickAmbient,
 } from "@/game/audio";
+import { applyImpulse, dodgeImpulse, groundKind, stepLocomotion } from "@/game/locomotion";
+import { visualYaw } from "@/game/humanoid";
+import { chaseCamera } from "@/game/camera-rig";
+import { qualityOpts } from "@/game/quality";
 import { useOverlay, type Phase } from "@/game/store";
-import { makeSim, type Sim } from "@/game/sim";
+import { makeSim, type Pose, type Sim } from "@/game/sim";
+import { Atmosphere } from "./Atmosphere";
 import { HubWorld } from "./HubWorld";
-import { Figure, type Pose } from "./Figures";
 import { WorldScene } from "./WorldScene";
+import { ActorMesh } from "./RiggedFigure";
+import { Figure } from "./Figures";
 import { BeastMesh } from "./Beasts";
 import { worldKit, settlementNpcs } from "@/game/worlds";
 import { beastDef } from "@/game/creatures";
 import { trySpecial, tryPower, hudArts } from "@/game/abilities";
 import { remember, tickKernel } from "@/game/kernel";
 import { heightAt } from "@/game/life";
-import { nearestSettlement, onRoad } from "@/game/realms";
+import { nearestSettlement } from "@/game/realms";
 import { writeSlice } from "@/game/persist";
 import { autonomyTarget } from "@/game/npc-life";
 import { birthCreature } from "@/game/evo";
 import { finishQuest } from "@/game/quests";
+import { enterCopy, isSignatureKill, nearestStone } from "@/game/lore-play";
+import { bible } from "@/game/bible";
 import { streamWild, cullWildIds } from "@/game/wild";
 import { tickEvents } from "@/game/events";
 import { politicsLine, tickPolitics } from "@/game/politics";
 import { completeCrossOnTravel, markVisitedWorld, plotLine } from "@/game/cross";
+import { presentHit } from "@/game/feel";
+import { ImpactFx } from "./ImpactFx";
 
 function dist2(ax: number, az: number, bx: number, bz: number) {
   return Math.hypot(ax - bx, az - bz);
@@ -74,15 +87,19 @@ function persistSim(sim: Sim) {
 }
 
 function snapCamera(camera: THREE.Camera, sim: Sim) {
-  const camDist = 7.4;
+  const camDist = 4.05;
+  const shoulder = 0.78;
   const cfwdX = -Math.sin(sim.camYaw);
   const cfwdZ = -Math.cos(sim.camYaw);
+  const rx = Math.cos(sim.camYaw);
+  const rz = -Math.sin(sim.camYaw);
+  const gy = heightAt(sim.worldId, sim.player.x, sim.player.z);
   camera.position.set(
-    sim.player.x - cfwdX * camDist,
-    2.4 - sim.camPitch * 4,
-    sim.player.z - cfwdZ * camDist,
+    sim.player.x - cfwdX * camDist + rx * shoulder,
+    1.7 + gy - sim.camPitch * 2.55,
+    sim.player.z - cfwdZ * camDist + rz * shoulder,
   );
-  camera.lookAt(sim.player.x, 1.35, sim.player.z);
+  camera.lookAt(sim.player.x + rx * 0.12, 1.48 + gy, sim.player.z + rz * 0.12);
 }
 
 function SimLoop({
@@ -102,16 +119,32 @@ function SimLoop({
   const titleYaw = useRef(0.35);
   const camBoot = useRef(false);
   const lastWorld = useRef(overlay.getState().worldId);
+  const buf = useRef(createBuffer());
 
   useEffect(() => {
     const el = gl.domElement;
     const onMove = (e: MouseEvent) => {
-      if (document.pointerLockElement !== el) return;
-      lookAccum.current.x += e.movementX;
-      lookAccum.current.y += e.movementY;
+      if (document.pointerLockElement === el || e.buttons) {
+        lookAccum.current.x += e.movementX;
+        lookAccum.current.y += e.movementY;
+      }
+    };
+    const onDown = (e: PointerEvent) => {
+      if (overlay.getState().phase !== "play") return;
+      if (e.button === 0 && document.pointerLockElement !== el) {
+        try {
+          el.requestPointerLock();
+        } catch {
+          /* iframe may deny lock; click-drag still looks */
+        }
+      }
     };
     window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
+    el.addEventListener("pointerdown", onDown);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      el.removeEventListener("pointerdown", onDown);
+    };
   }, [gl]);
 
   useFrame((_, rawDt) => {
@@ -119,6 +152,8 @@ function SimLoop({
     const sim = simRef.current;
     const st = overlay.getState();
     const livePhase = phase;
+    if (!sim.impacts) sim.impacts = [];
+    if (sim.playerStaggerUntil == null) sim.playerStaggerUntil = 0;
     tickJuice(sim.juice, dt, reduced || !st.shake);
     tickAmbient(dt);
     sim.t += dt;
@@ -135,6 +170,32 @@ function SimLoop({
       return;
     }
     if (livePhase === "pause" || livePhase === "dialogue") {
+      window.__controlsTest = {
+        getYaw: () => sim.yaw,
+        getSpeed: () => sim.speed,
+        getPos: () => ({ x: sim.player.x, z: sim.player.z }),
+        getCamYaw: () => sim.camYaw,
+        getKeys: () => [...input.keys],
+        setKeys: (codes: string[]) => {
+          input.keys.clear();
+          for (const c of codes) input.keys.add(c);
+        },
+        setSteer: (v: number) => {
+          input.joyX = -v;
+        },
+        setPos: (x: number, z: number) => {
+          sim.player.x = x;
+          sim.player.z = z;
+        },
+        attack: () => {
+          input.attack = true;
+        },
+        jump: () => {
+          input.jump = true;
+        },
+        getHop: () => sim.motion?.hop ?? 0,
+        getAttack: () => sim.player.attackKind,
+      };
       consume(input);
       return;
     }
@@ -145,7 +206,7 @@ function SimLoop({
       snapCamera(camera, sim);
     }
 
-    sim.now += dt * 1000 * (sim.juice.timeScale === 0 ? 0 : 1);
+    sim.now += dt * 1000;
     const now = sim.now;
     const frozen = sim.juice.timeScale === 0;
 
@@ -165,57 +226,102 @@ function SimLoop({
     const fz = -Math.cos(sim.camYaw);
     const rx = Math.cos(sim.camYaw);
     const rz = -Math.sin(sim.camYaw);
+    if (!sim.motion) sim.motion = { vx: 0, vz: 0, hop: 0, vy: 0, grounded: true, gait: "idle", coyote: 0, landUntil: 0, dodgeT: 0 };
+
+    latchBuffer(input, buf.current, now);
 
     if (!frozen) {
       const kit = worldKit(st.worldId);
       tickVitals(sim.player, dt, now);
-      const moving = Math.hypot(axes.x, axes.y) > 0.12 && canAct(sim.player, now);
       const sprint = input.keys.has("ShiftLeft") || input.keys.has("ShiftRight");
-      const wind = kit.weather === "wind" || st.worldId === "concord-link-frontier" ? 1.12 : 1;
-      const road = st.worldId !== "concordia-hub" && onRoad(st.worldId, sim.player.x, sim.player.z) ? 1.38 : 1;
-      const spd = (sprint ? 7.2 : 4.6) * kit.style.speedMul * wind * road * (sim.player.hp < 25 ? 0.85 : 1);
-      if (moving) {
-        const mx = fx * axes.y + rx * axes.x;
-        const mz = fz * axes.y + rz * axes.x;
-        const mag = Math.hypot(mx, mz) || 1;
-        sim.player.x += (mx / mag) * spd * dt;
-        sim.player.z += (mz / mag) * spd * dt;
-        sim.yaw = Math.atan2(-mx / mag, -mz / mag);
-        sim.speed = spd;
-        sim.foot += dt * spd;
-        if (sim.foot > 0.42) {
-          sim.foot = 0;
-          sfxFoot(sprint ? 1.1 : 0.85);
-        }
-      } else {
-        sim.speed = 0;
-      }
+      const crouch = input.keys.has("ControlLeft") || input.keys.has("ControlRight");
       const colliders = st.worldId === "concordia-hub" ? HUB_LAYOUT.colliders : kit.colliders;
-      const resolved = resolveCollision(sim.player.x, sim.player.z, 0.42, colliders, kit.bound);
-      sim.player.x = resolved.x;
-      sim.player.z = resolved.z;
+
+      if (input.lockon) {
+        if (sim.lockId) sim.lockId = null;
+        else {
+          let best: { id: string; d: number } | null = null;
+          for (const a of sim.actors) {
+            if (!a.alive || !a.hostile) continue;
+            const d = dist2(sim.player.x, sim.player.z, a.body.x, a.body.z);
+            if (d < 18 && (!best || d < best.d)) best = { id: a.id, d };
+          }
+          sim.lockId = best?.id ?? null;
+        }
+      }
+      const lockActor = sim.lockId ? sim.actors.find((a) => a.id === sim.lockId && a.alive) : null;
+      if (sim.lockId && !lockActor) sim.lockId = null;
+      const lockYaw = lockActor
+        ? Math.atan2(-(lockActor.body.x - sim.player.x), -(lockActor.body.z - sim.player.z))
+        : null;
+
+      if (takeBuffered(buf.current, "dodge", now) && beginDodge(sim.player, now, false)) {
+        dodgeImpulse(sim.motion, sim.camYaw, axes);
+        sfxDodge();
+        sim.juice.punch = Math.min(1, sim.juice.punch + 0.22);
+      }
+
+      const loc = stepLocomotion({
+        body: sim.player,
+        motion: sim.motion,
+        yaw: sim.yaw,
+        dt,
+        now,
+        axes,
+        camYaw: sim.camYaw,
+        sprint,
+        crouch,
+        jump: takeBuffered(buf.current, "jump", now),
+        lockYaw,
+        speedMul: kit.style.speedMul,
+        massMul: kit.style.massMul,
+        world: st.worldId,
+        weather: sim.kernel.weather,
+        colliders,
+        boxes: st.worldId === "concordia-hub" ? HUB_LAYOUT.buildings : undefined,
+        bound: kit.bound,
+        attacking: !!sim.player.attackKind && now < sim.player.recoverUntil,
+        dodging: now < sim.player.iframeUntil,
+      });
+      sim.yaw = loc.yaw;
+      sim.speed = loc.speed;
+      sim.gait = sim.motion.gait;
       sim.player.facing = sim.yaw;
+      if (loc.landed) {
+        sfxLand(sim.motion.vy < -8);
+        sim.juice.punch = Math.min(1, sim.juice.punch + 0.28);
+        addTrauma(sim.juice, 0.08);
+        const gy = heightAt(st.worldId, sim.player.x, sim.player.z);
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2;
+          sim.impacts.push({
+            x: sim.player.x,
+            y: gy + 0.12,
+            z: sim.player.z,
+            dx: Math.cos(a),
+            dz: Math.sin(a),
+            mag: 0.45,
+            born: now,
+            life: 380,
+            hot: false,
+          });
+        }
+      }
+      if (sim.motion.grounded && loc.speed > 0.45) {
+        sim.foot += dt * loc.speed;
+        const stride = sim.gait === "sprint" ? 0.34 : sim.gait === "walk" || sim.gait === "crouch" ? 0.52 : 0.42;
+        if (sim.foot > stride) {
+          sim.foot = 0;
+          sfxFoot(sprint ? 1.1 : 0.85, groundKind(st.worldId, sim.kernel.weather));
+        }
+      }
 
       if (st.worldId === "tunya") {
         const grove = dist2(sim.player.x, sim.player.z, 0, 0) < 6 && !sim.player.attackKind;
         if (grove) sim.player.poise = Math.min(12, sim.player.poise + dt * 3.5);
       }
-      if (st.worldId === "concord-link-frontier") {
-        sim.player.x += Math.sin(sim.t * 0.4) * 0.35 * dt;
-      }
 
-      if (input.dodge && beginDodge(sim.player, now, false)) {
-        const dx = fx * Math.max(axes.y, 0.35) + rx * axes.x;
-        const dz = fz * Math.max(axes.y, 0.35) + rz * axes.x;
-        const m = Math.hypot(dx, dz) || 1;
-        sim.player.x += (dx / m) * 2.1;
-        sim.player.z += (dz / m) * 2.1;
-        const after = resolveCollision(sim.player.x, sim.player.z, 0.42, colliders, kit.bound);
-        sim.player.x = after.x;
-        sim.player.z = after.z;
-        sfxDodge();
-      }
-      if (input.parry) beginParry(sim.player, now);
+      if (takeBuffered(buf.current, "parry", now)) beginParry(sim.player, now);
       if (input.special) {
         if (trySpecial(sim.player, kit.style, now)) {
           sfxSwing(true);
@@ -267,9 +373,11 @@ function SimLoop({
             const m = Math.hypot(dx, dz) || 1;
             sim.player.x += (dx / m) * 3.2;
             sim.player.z += (dz / m) * 3.2;
-            const after = resolveCollision(sim.player.x, sim.player.z, 0.42, colliders, kit.bound);
-            sim.player.x = after.x;
-            sim.player.z = after.z;
+            const after = resolveCollision(sim.player.x, sim.player.z, 0.48, colliders, kit.bound);
+            const boxed =
+              st.worldId === "concordia-hub" ? resolveBoxes(after.x, after.z, 0.48, HUB_LAYOUT.buildings) : after;
+            sim.player.x = boxed.x;
+            sim.player.z = boxed.z;
           }
           if (sid === "veil") {
             sim.kernel.hostility = Math.max(0, sim.kernel.hostility - 4);
@@ -326,14 +434,32 @@ function SimLoop({
             addTrauma(sim.juice, 0.35);
           }
         }
-      } else if (input.heavy) {
-        if (beginAttack(sim.player, "heavy", now)) sfxSwing(true);
-      } else if (input.attack) {
-        if (beginAttack(sim.player, "light", now)) sfxSwing(false);
       }
 
       const inHub = st.worldId === "concordia-hub";
       const inArena = dist2(sim.player.x, sim.player.z, ARENA.x, ARENA.z) < ARENA.r + 0.6;
+
+      if (takeBuffered(buf.current, "heavy", now, ATTACK_BUFFER_MS)) {
+        if (beginAttack(sim.player, "heavy", now)) {
+          sfxSwing(true);
+          const mag = pickMagnetTarget(sim.player.x, sim.player.z, sim.yaw, sim.actors, sim.lockId);
+          if (mag && (!inHub || inArena)) {
+            sim.yaw = lungeToward(sim.motion, sim.player.x, sim.player.z, mag);
+            sim.player.facing = sim.yaw;
+            sim.lockId = mag.id;
+          }
+        }
+      } else if (takeBuffered(buf.current, "attack", now, ATTACK_BUFFER_MS)) {
+        if (beginAttack(sim.player, "light", now)) {
+          sfxSwing(false);
+          const mag = pickMagnetTarget(sim.player.x, sim.player.z, sim.yaw, sim.actors, sim.lockId);
+          if (mag && (!inHub || inArena)) {
+            sim.yaw = lungeToward(sim.motion, sim.player.x, sim.player.z, mag);
+            sim.player.facing = sim.yaw;
+            sim.lockId = mag.id;
+          }
+        }
+      }
 
       if (inHub && sim.player.attackKind && !inArena && now < sim.player.activeUntil && now >= sim.player.windupUntil) {
         sim.player.attackKind = null;
@@ -366,6 +492,13 @@ function SimLoop({
           continue;
         }
         tickVitals(a.body, dt, now);
+        if (a.vx || a.vz) {
+          a.body.x += (a.vx ?? 0) * dt;
+          a.body.z += (a.vz ?? 0) * dt;
+          const damp = Math.exp(-6.2 * dt);
+          a.vx = (a.vx ?? 0) * damp;
+          a.vz = (a.vz ?? 0) * damp;
+        }
         if (!a.hostile) {
           const ox = Math.sin(sim.t * 0.35 + a.homeX) * a.wander;
           const oz = Math.cos(sim.t * 0.28 + a.homeZ) * a.wander * 0.7;
@@ -375,9 +508,17 @@ function SimLoop({
             const tgt = autonomyTarget(a.brain, st.worldId, sim.kernel.hour, sim.kernel.factionHeat);
             tx = tgt.x + ox * 0.25;
             tz = tgt.z + oz * 0.25;
+            a.act = tgt.act;
+            if (tgt.act === "sleep" || tgt.act === "hide") {
+              tx = tgt.x;
+              tz = tgt.z;
+            }
           }
           a.body.x = THREE.MathUtils.damp(a.body.x, tx, 1.6, dt);
           a.body.z = THREE.MathUtils.damp(a.body.z, tz, 1.6, dt);
+          const mdx = tx - a.body.x;
+          const mdz = tz - a.body.z;
+          if (Math.hypot(mdx, mdz) > 0.2) a.yaw = Math.atan2(-mdx, -mdz);
           a.pose = Math.hypot(a.body.x - tx, a.body.z - tz) > 0.55 ? "walk" : "idle";
           continue;
         }
@@ -430,8 +571,9 @@ function SimLoop({
             const flank = def?.role === "flanker";
             const side = flank ? 0.7 : 0;
             const m = d || 1;
-            a.body.x += (dx / m) * spdA * dt + (-dz / m) * side * spdA * dt;
-            a.body.z += (dz / m) * spdA * dt + (dx / m) * side * spdA * dt;
+            const heavy = 1 / Math.max(0.7, def?.mass ?? 1);
+            a.body.x += (dx / m) * spdA * dt * heavy + (-dz / m) * side * spdA * dt;
+            a.body.z += (dz / m) * spdA * dt * heavy + (dx / m) * side * spdA * dt;
             a.pose = "walk";
           }
           if (now > a.aiCd && d < reach + 0.4 && canAct(a.body, now)) {
@@ -452,20 +594,58 @@ function SimLoop({
           if (a.body.attackKind && now >= a.body.windupUntil && now <= a.body.activeUntil && d < reach) {
             const parried = now < sim.player.parryUntil && a.telegraph === "thrust";
             const dodging = now < sim.player.iframeUntil;
-            const res = applyHit(a.body, sim.player, now, { parried, flanked: false });
+            const res = applyHit(a.body, sim.player, now, {
+              parried,
+              flanked: false,
+              midStride: sim.speed > 3.2,
+              massMul: 0.55 + 0.2 * Math.min(def?.mass ?? 1, 1.5),
+              poiseMul: kit.style.poiseMul,
+            });
             if (res) {
               if (res.iframed || dodging) sfxIframe();
               else if (res.parried) {
                 sfxParry();
-                addTrauma(sim.juice, 0.2);
+                presentHit({
+                  juice: sim.juice,
+                  impacts: sim.impacts,
+                  now,
+                  x: sim.player.x,
+                  y: 1.2 + heightAt(st.worldId, sim.player.x, sim.player.z),
+                  z: sim.player.z,
+                  dirX: -Math.sin(a.yaw),
+                  dirZ: -Math.cos(a.yaw),
+                  stagger: res.stagger,
+                  trauma: 0.16,
+                  hitPauseMs: 40,
+                  landed: false,
+                  parried: true,
+                  iframed: false,
+                });
               } else if (res.landed) {
                 sfxHurt();
-                addTrauma(sim.juice, res.feel.trauma);
-                addHitstop(sim.juice, res.feel.hitPauseMs);
-                sim.juice.flash = 1;
+                if (res.stagger !== "graze") sfxStagger(res.stagger);
+                sim.playerStagger = res.stagger;
+                sim.playerStaggerUntil = now + (res.stagger === "knockdown" ? 900 : res.stagger === "rocked" ? 520 : 220);
+                sim.playerHitDirX = -Math.sin(a.yaw);
+                sim.playerHitDirZ = -Math.cos(a.yaw);
+                presentHit({
+                  juice: sim.juice,
+                  impacts: sim.impacts,
+                  now,
+                  x: sim.player.x,
+                  y: 1.15 + heightAt(st.worldId, sim.player.x, sim.player.z),
+                  z: sim.player.z,
+                  dirX: sim.playerHitDirX,
+                  dirZ: sim.playerHitDirZ,
+                  stagger: res.stagger,
+                  trauma: res.feel.trauma,
+                  hitPauseMs: res.feel.hitPauseMs,
+                  landed: true,
+                  parried: false,
+                  iframed: false,
+                });
                 const kb = res.feel.knockback;
-                sim.player.x -= Math.sin(a.yaw) * kb * 0.12;
-                sim.player.z -= Math.cos(a.yaw) * kb * 0.12;
+                applyImpulse(sim.motion, -Math.sin(a.yaw) * kb * 2.15, -Math.cos(a.yaw) * kb * 2.15);
               }
               a.body.activeUntil = now - 1;
             }
@@ -485,7 +665,7 @@ function SimLoop({
             });
             sim.kernel.ecology = Math.max(0.12, sim.kernel.ecology - 0.08);
             sim.kernel.factionHeat = Math.min(1, sim.kernel.factionHeat + 0.12);
-          } else if (now < a.body.stunUntil) a.pose = "hurt";
+          } else if (now < a.body.stunUntil) a.pose = a.stagger === "knockdown" ? "down" : "hurt";
           else if (a.body.attackKind && now < a.body.windupUntil) a.pose = "windup";
           else if (a.body.attackKind && now < a.body.activeUntil) a.pose = "strike";
         } else {
@@ -493,14 +673,18 @@ function SimLoop({
         }
       }
 
-      const lockReach = 2.6;
-      const lock = sim.actors.find(
-        (a) => a.alive && a.hostile && dist2(sim.player.x, sim.player.z, a.body.x, a.body.z) < lockReach + (a.species === "dragon" ? 1.2 : 0),
-      );
-      if (sim.player.attackKind && now >= sim.player.windupUntil && now <= sim.player.activeUntil && lock) {
-        const res = applyHit(sim.player, lock.body, now, { parried: false, flanked: false });
-        if (res && now - sim.lastHitAt > 90) {
-          sim.lastHitAt = now;
+      const marks = pickStrikeTargets(sim.player.x, sim.player.z, sim.yaw, sim.actors, sim.lockId);
+      if (sim.player.attackKind && now >= sim.player.windupUntil && now <= sim.player.activeUntil) {
+        for (const lock of marks) {
+          if (lock.struckAt === sim.player.windupUntil) continue;
+          const res = applyHit(sim.player, lock.body, now, {
+            parried: false,
+            flanked: false,
+            midStride: sim.speed > 3.2,
+            massMul: kit.style.massMul * (sim.player.attackKind === "heavy" ? 1.22 : 1.08),
+          });
+          if (!res) continue;
+          lock.struckAt = sim.player.windupUntil;
           if (res.iframed) sfxIframe();
           else if (res.landed) {
             sim.kernel.hostility += 1.1;
@@ -516,15 +700,39 @@ function SimLoop({
               overlay.getState().set({ billboard: { text: "pending", until: now + 500 } });
             } else {
               sfxHit(res.momentum);
-              addTrauma(sim.juice, res.feel.trauma * 0.7);
-              addHitstop(sim.juice, res.feel.hitPauseMs * 0.7);
+              if (res.stagger !== "graze") sfxStagger(res.stagger);
+              lock.stagger = res.stagger;
+              lock.staggerUntil = now + (res.stagger === "knockdown" ? 900 : res.stagger === "rocked" ? 520 : 220);
+              lock.hitDirX = -Math.sin(sim.yaw);
+              lock.hitDirZ = -Math.cos(sim.yaw);
+              lock.pose = res.stagger === "knockdown" ? "down" : "hurt";
+              presentHit({
+                juice: sim.juice,
+                impacts: sim.impacts,
+                now,
+                x: (sim.player.x + lock.body.x) * 0.5,
+                y: 1.15 + heightAt(st.worldId, lock.body.x, lock.body.z),
+                z: (sim.player.z + lock.body.z) * 0.5,
+                dirX: lock.hitDirX,
+                dirZ: lock.hitDirZ,
+                stagger: res.stagger,
+                trauma: res.feel.trauma * 0.7,
+                hitPauseMs: res.feel.hitPauseMs * 0.7,
+                landed: true,
+                parried: false,
+                iframed: false,
+              });
               overlay.getState().set({
                 billboard: { text: `${res.feel.damage}`, until: now + 600 },
               });
             }
             const kb = res.feel.knockback;
-            lock.body.x -= Math.sin(sim.yaw) * kb * 0.15;
-            lock.body.z -= Math.cos(sim.yaw) * kb * 0.15;
+            const mass = (lock.species ? beastDef(lock.species)?.mass : 1) ?? 1;
+            lock.vx = (lock.vx ?? 0) - Math.sin(sim.yaw) * kb * (2.4 / mass);
+            lock.vz = (lock.vz ?? 0) - Math.cos(sim.yaw) * kb * (2.4 / mass);
+            if (lock.pose !== "down" && now < (lock.staggerUntil ?? 0)) {
+              lock.pose = res.stagger === "knockdown" ? "down" : "hurt";
+            }
             if (kit.style.id === "dawn" && lock.body.hp <= 1) {
               lock.body.hp = 1;
             }
@@ -535,11 +743,13 @@ function SimLoop({
               overlay.getState().pushFeed(`A ${lock.evoName ?? lock.species ?? "fighter"} falls in ${kit.title}.`);
               sim.kernel.ecology = Math.max(0.1, sim.kernel.ecology - 0.06);
               if (sim.quest?.kind === "hunt" && !sim.quest.done) {
+                if (isSignatureKill(st.worldId, lock.species)) {
+                  overlay.getState().pushFeed(`The ${bible(st.worldId).signatureCreature} was the point of this door.`);
+                }
                 sim.quest = finishQuest(sim.quest, sim.kernel, sim.slice, st.worldId, (s) => overlay.getState().pushFeed(s));
               }
             }
           }
-          sim.player.activeUntil = now - 1;
         }
       }
 
@@ -600,6 +810,9 @@ function SimLoop({
                 gatesWalked: sim.visited.size,
                 worldId: g.worldId,
                 feed: [rumor ?? `The Link opens on ${g.name}. ${g.theNo}`, ...st.feed].slice(0, 8),
+                toast: { text: enterCopy(g.worldId) },
+                refusal: bible(g.worldId).refusal,
+                lawText: bible(g.worldId).laws[0]?.text ?? "",
               });
               overlay.getState().mark("gate");
               consume(input);
@@ -642,6 +855,16 @@ function SimLoop({
           if (speaker?.brain) speaker.brain.trust = Math.min(1, speaker.brain.trust + 0.12);
           if (sim.quest?.kind === "talk" && sim.quest.targetId === nearNpc && !sim.quest.done) {
             sim.quest = finishQuest(sim.quest, sim.kernel, sim.slice, st.worldId, (s) => overlay.getState().pushFeed(s));
+          }
+        }
+        const stone = nearestStone(st.worldId, sim.player.x, sim.player.z);
+        if (stone) {
+          if (!prompt) prompt = `Read · ${stone.s.title}`;
+          if (input.interact) {
+            overlay.getState().set({ toast: { text: stone.s.text } });
+            overlay.getState().pushFeed(stone.s.text);
+            window.setTimeout(() => overlay.getState().set({ toast: null }), 4200);
+            consume(input);
           }
         }
         const poi = nearestSettlement(st.worldId, sim.player.x, sim.player.z);
@@ -755,7 +978,7 @@ function SimLoop({
 
       sim.wildCd -= dt;
       if (!inHub && sim.wildCd <= 0) {
-        sim.wildCd = 5.5;
+        sim.wildCd = 2.2;
         const liveWild = sim.actors.filter((a) => a.id.startsWith("wild-") && a.alive).length;
         const spawned = streamWild(
           st.worldId,
@@ -842,6 +1065,9 @@ function SimLoop({
         km: inHub ? "" : `${(Math.hypot(sim.player.x, sim.player.z) / 1000).toFixed(2)} km from the door`,
         plotLine: plotLine(),
         politics: politicsLine(st.worldId, sim.slice.owners, sim.kernel.factionHeat),
+        flash: sim.juice.flash,
+        refusal: bible(st.worldId).refusal,
+        lawText: bible(st.worldId).laws[0]?.text ?? "",
       });
 
       if (sim.player.hp <= 0) {
@@ -849,6 +1075,14 @@ function SimLoop({
         sim.player.stamina = 100;
         sim.player.x = kit.spawn.x;
         sim.player.z = kit.spawn.z;
+        if (sim.motion) {
+          sim.motion.vx = 0;
+          sim.motion.vz = 0;
+          sim.motion.vy = 0;
+          sim.motion.hop = 0;
+          sim.motion.grounded = true;
+        }
+        sim.speed = 0;
         overlay.getState().set({
           toast: { text: inHub ? "The ground caught you. Guests do not die in the Court." : "The world remembered you. Stand. The Refusal holds." },
         });
@@ -859,20 +1093,28 @@ function SimLoop({
     if (input.pause) overlay.getState().set({ phase: "pause" });
 
     const shake = shakeOffset(sim.juice, sim.t, st.shake && !reduced);
-    const camDist = 7.4 + sim.juice.punch * 0.4;
-    const px = sim.player.x;
-    const pz = sim.player.z;
-    const groundY = heightAt(st.worldId, px, pz);
-    const lookY = 1.35 + groundY;
-    const cfwdX = -Math.sin(sim.camYaw);
-    const cfwdZ = -Math.cos(sim.camYaw);
-    const desiredX = px - cfwdX * camDist + shake.x;
-    const desiredY = 2.4 + groundY - sim.camPitch * 4 + shake.y;
-    const desiredZ = pz - cfwdZ * camDist;
-    camera.position.x = THREE.MathUtils.damp(camera.position.x, desiredX, 8, dt);
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, desiredY, 8, dt);
-    camera.position.z = THREE.MathUtils.damp(camera.position.z, desiredZ, 8, dt);
-    camera.lookAt(px, lookY, pz);
+    const sprinting = (input.keys.has("ShiftLeft") || input.keys.has("ShiftRight")) && sim.speed > 4.2;
+    const lockA = sim.lockId ? sim.actors.find((a) => a.id === sim.lockId && a.alive) : null;
+    const fighting = sim.actors.some(
+      (a) => a.hostile && a.alive && dist2(sim.player.x, sim.player.z, a.body.x, a.body.z) < 10,
+    );
+    chaseCamera({
+      px: sim.player.x,
+      pz: sim.player.z,
+      hop: sim.motion?.hop ?? 0,
+      camYaw: sim.camYaw,
+      camPitch: sim.camPitch,
+      motion: sim.motion,
+      world: st.worldId,
+      dt,
+      punch: sim.juice.punch,
+      shake,
+      sprinting,
+      locked: lockA ? { x: lockA.body.x, z: lockA.body.z } : null,
+      cam: camera,
+      colliders: st.worldId === "concordia-hub" ? HUB_LAYOUT.colliders : worldKit(st.worldId).colliders,
+      inCombat: fighting,
+    });
 
     window.__controlsTest = {
       getYaw: () => sim.yaw,
@@ -891,6 +1133,17 @@ function SimLoop({
         sim.player.x = x;
         sim.player.z = z;
       },
+      attack: () => {
+        input.attack = true;
+      },
+      getAttack: () => sim.player.attackKind,
+      setCamYaw: (yaw: number) => {
+        sim.camYaw = yaw;
+        sim.yaw = yaw;
+      },
+      freeze: () => {
+        sim.juice.hitstop = 20;
+      },
     };
 
     consume(input);
@@ -901,10 +1154,12 @@ function SimLoop({
 
 function playerPose(sim: Sim): Pose {
   const n = sim.now;
-  if (n < sim.player.stunUntil) return "hurt";
+  if (n < sim.playerStaggerUntil && sim.playerStagger === "knockdown") return "down";
+  if (n < sim.player.stunUntil || n < sim.playerStaggerUntil) return "hurt";
   if (sim.player.attackKind && n < sim.player.windupUntil) return "windup";
   if (sim.player.attackKind && n < sim.player.activeUntil) return "strike";
   if (n < sim.player.iframeUntil) return "dodge";
+  if (sim.gait === "air" || sim.gait === "land") return sim.speed > 0.4 ? "walk" : "idle";
   if (sim.speed > 0.4) return "walk";
   return "idle";
 }
@@ -923,7 +1178,7 @@ function TrackedFigure({
   const actor0 = id === "player" ? null : sim0.actors.find((a) => a.id === id);
   const meta =
     id === "player"
-      ? { color: "#d8c8a4", accent: "#5e6b3a", height: 1.76, lantern: false, x: sim0.player.x, z: sim0.player.z, yaw: sim0.yaw, kind: "npc" as const, species: undefined as undefined, flyH: 0, scale: 1, traits: undefined }
+      ? { color: "#d8c8a4", accent: "#5e6b3a", height: 1.82, lantern: false, x: sim0.player.x, z: sim0.player.z, yaw: sim0.yaw, kind: "npc" as const, species: undefined as undefined, flyH: 0, scale: 1, traits: undefined, hostile: true }
       : actor0
         ? {
             color: actor0.color,
@@ -938,6 +1193,7 @@ function TrackedFigure({
             flyH: actor0.flyH,
             scale: actor0.scale,
             traits: actor0.traits,
+            hostile: actor0.hostile,
           }
         : null;
 
@@ -946,9 +1202,29 @@ function TrackedFigure({
     const g = ref.current;
     if (!g) return;
     if (id === "player") {
-      const gy = heightAt(sim.worldId, sim.player.x, sim.player.z);
+      const gy = heightAt(sim.worldId, sim.player.x, sim.player.z) + (sim.motion?.hop ?? 0);
       g.position.set(sim.player.x, gy, sim.player.z);
-      g.rotation.y = sim.yaw;
+      const heading = sim.speed < 0.35 && !sim.lockId ? sim.camYaw : sim.yaw;
+      g.rotation.y = visualYaw(heading);
+      g.userData.speed = sim.speed;
+      const cad =
+        sim.gait === "sprint" ? 2.65 : sim.gait === "jog" ? 2.15 : sim.gait === "walk" || sim.gait === "crouch" ? 1.55 : 0;
+      g.userData.gait = sim.gait ?? sim.motion?.gait ?? "idle";
+      g.userData.hop = sim.motion?.hop ?? 0;
+      g.userData.grounded = sim.motion?.grounded ?? true;
+      g.userData.foot = cad ? sim.t * cad : 0;
+      g.userData.worldId = sim.worldId;
+      g.userData.stagger = sim.now < sim.playerStaggerUntil ? sim.playerStagger : null;
+      g.userData.hitDirX = sim.playerHitDirX;
+      g.userData.hitDirZ = sim.playerHitDirZ;
+      g.userData.act = "idle";
+      g.userData.now = sim.now;
+      g.userData.attackKind = sim.player.attackKind;
+      g.userData.windupUntil = sim.player.windupUntil;
+      g.userData.activeUntil = sim.player.activeUntil;
+      g.userData.recoverUntil = sim.player.recoverUntil;
+      g.userData.lookYaw = Math.atan2(Math.sin(sim.camYaw - heading), Math.cos(sim.camYaw - heading));
+      g.userData.hitstop = sim.juice.hitstop;
       const p = playerPose(sim);
       if (p !== poseRef.current) {
         poseRef.current = p;
@@ -964,7 +1240,22 @@ function TrackedFigure({
     g.visible = true;
     const gy = heightAt(sim.worldId, a.body.x, a.body.z);
     g.position.set(a.body.x, gy + a.flyH, a.body.z);
-    g.rotation.y = a.yaw;
+    g.rotation.y = visualYaw(a.yaw);
+    const moving = a.pose === "walk";
+    g.userData.speed = moving ? 2.4 : 0;
+    g.userData.gait = moving ? "walk" : a.act === "hide" || a.act === "sleep" ? "crouch" : "idle";
+    g.userData.foot = sim.t * (moving ? 2.2 : 0);
+    g.userData.worldId = sim.worldId;
+    g.userData.act = a.act ?? "idle";
+    g.userData.stagger = sim.now < (a.staggerUntil ?? 0) ? a.stagger : null;
+    g.userData.hitDirX = a.hitDirX ?? 0;
+    g.userData.hitDirZ = a.hitDirZ ?? 1;
+    g.userData.now = sim.now;
+    g.userData.attackKind = a.body.attackKind;
+    g.userData.windupUntil = a.body.windupUntil;
+    g.userData.activeUntil = a.body.activeUntil;
+    g.userData.recoverUntil = a.body.recoverUntil;
+    g.userData.lookYaw = 0;
     if (a.pose !== poseRef.current) {
       poseRef.current = a.pose;
       setPose(a.pose);
@@ -973,7 +1264,7 @@ function TrackedFigure({
 
   if (!meta) return null;
   return (
-    <group ref={ref} position={[meta.x, 0, meta.z]} rotation={[0, meta.yaw, 0]}>
+    <group ref={ref} position={[meta.x, 0, meta.z]}>
       {meta.kind === "beast" && meta.species ? (
         <BeastMesh
           kind={meta.species}
@@ -984,8 +1275,26 @@ function TrackedFigure({
           scale={meta.scale}
           traits={meta.traits}
         />
+      ) : id === "player" ? (
+        <ActorMesh
+          color={meta.color}
+          accent={meta.accent}
+          height={meta.height}
+          pose={pose}
+          lantern={meta.lantern}
+          live
+          outfit="street"
+        />
       ) : (
-        <Figure color={meta.color} accent={meta.accent} height={meta.height} pose={pose} lantern={meta.lantern} />
+        <Figure
+          color={meta.color}
+          accent={meta.accent}
+          height={meta.height}
+          pose={pose}
+          lantern={meta.lantern}
+          live
+          outfit="robe"
+        />
       )}
     </group>
   );
@@ -1022,30 +1331,52 @@ export function GameCanvas({
     [],
   );
   const pulse = useOverlay((s) => s.flowerWarn);
+  const quality = useOverlay((s) => s.quality);
+  const q = qualityOpts(quality);
 
   return (
     <Canvas
-      shadows
-      dpr={[1, 1.75]}
-      camera={{ position: [7.4, 5.6, 2.2], fov: 54, near: 0.2, far: 1400 }}
-      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-      style={{ width: "100%", height: "100%", touchAction: "none", background: theme.skyHorizon }}
-      onCreated={({ camera }) => {
-        camera.lookAt(14, 2.6, 12);
+      shadows={q.shadows ? "soft" : false}
+      dpr={q.dpr}
+      camera={{ position: [4.2, 1.8, 1.4], fov: 56, near: 0.12, far: q.far }}
+      gl={{
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance",
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.0,
+        outputColorSpace: THREE.SRGBColorSpace,
+        preserveDrawingBuffer: true,
       }}
-      onPointerDown={(e) => {
-        if (phase !== "play") return;
-        const el = e.currentTarget as unknown as HTMLCanvasElement;
-        if (el.requestPointerLock && e.button === 2) el.requestPointerLock();
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        touchAction: "none",
+        background: theme.skyHorizon,
+        zIndex: 0,
+      }}
+      onCreated={({ camera, gl }) => {
+        camera.lookAt(2.2, 1.4, 0.4);
+        gl.toneMapping = THREE.ACESFilmicToneMapping;
+        gl.toneMappingExposure = 1.0;
+        gl.shadowMap.type = THREE.PCFSoftShadowMap;
       }}
     >
       <color attach="background" args={[theme.skyHorizon]} />
+      <Atmosphere theme={theme} simRef={simRef} />
       {worldId === "concordia-hub" ? (
         <HubWorld theme={theme} pulse={pulse ? 2 : 0.2} />
       ) : (
-        <WorldScene worldId={worldId} theme={theme} pulse={pulse ? 2 : simRef.current.t} weather={weather} simRef={simRef} />
+        <Suspense fallback={null}>
+          <WorldScene worldId={worldId} theme={theme} pulse={pulse ? 2 : simRef.current.t} weather={weather} simRef={simRef} />
+        </Suspense>
       )}
-      <LiveActors simRef={simRef} />
+      <Suspense fallback={null}>
+        {phase !== "title" ? <LiveActors simRef={simRef} /> : null}
+      </Suspense>
+      <ImpactFx simRef={simRef} />
       <SimLoop input={input} simRef={simRef} reduced={reduced} phase={phase} />
     </Canvas>
   );
