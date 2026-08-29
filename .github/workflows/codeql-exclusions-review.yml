@@ -102,7 +102,7 @@ jobs:
           steps.ledger.outputs.stale == 'true' ||
           github.event.inputs.force_open_issue == 'true' ||
           steps.drift.outputs.drift_test == 'MISSING'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const days = '${{ steps.ledger.outputs.days }}';
