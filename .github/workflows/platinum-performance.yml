@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -136,7 +136,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -212,7 +212,7 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::notice::tests/k6/smoke.js missing — skipping k6 smoke"
           fi
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: steps.k6_check.outputs.present == 'true'
         with: { node-version: '22' }
       - name: Start server
