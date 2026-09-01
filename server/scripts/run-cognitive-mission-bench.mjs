@@ -27,6 +27,7 @@ import {
   runFullPipelineBenchmark,
   runFullDgbBenchmark,
 } from "../lib/runtime/cognitive-mission-bench.js";
+import { runCognitiveEconomicsBench } from "../lib/runtime/cognitive-economics-bench.js";
 import { seedBenchDtuCorpus } from "../lib/runtime/cognitive-savings-ledger.js";
 
 function parseArgs(argv) {
@@ -36,6 +37,8 @@ function parseArgs(argv) {
     json: false,
     generalization: false,
     dgbFull: false,
+    economics: false,
+    economicsIterations: 10,
     pathExperiment: false,
     learningCurve: false,
     warmupIterations: 20,
@@ -47,6 +50,8 @@ function parseArgs(argv) {
     else if (argv[i] === "--json") opts.json = true;
     else if (argv[i] === "--generalization") opts.generalization = true;
     else if (argv[i] === "--dgb-full") opts.dgbFull = true;
+    else if (argv[i] === "--economics") opts.economics = true;
+    else if (argv[i] === "--economics-iterations" && argv[i + 1]) opts.economicsIterations = Number(argv[++i]);
     else if (argv[i] === "--learning-curve") opts.learningCurve = true;
     else if (argv[i] === "--path-experiment") opts.pathExperiment = true;
   }
@@ -283,6 +288,34 @@ function printGeneralization(dgb) {
   console.log(`${"=".repeat(72)}\n`);
 }
 
+function printEconomics(econ) {
+  console.log(`\n${"=".repeat(72)}`);
+  console.log("COGNITIVE ECONOMICS MULTIPLIER — A/B/C/D/E");
+  console.log(`${"=".repeat(72)}`);
+  console.log(`Run ID:     ${econ.runId}`);
+  console.log(`Result:     ${econ.ok ? "PASS" : "FAIL"}`);
+  console.log(`Model:      ${econ.pricing.model} (${econ.pricing.mode})`);
+  console.log(`Rates:      $${econ.pricing.inputPer1M}/1M in · $${econ.pricing.outputPer1M}/1M out`);
+  console.log(`\n${"Path".padEnd(6)} ${"Label".padEnd(18)} ${"$/success".padStart(10)} ${"vs Raw".padStart(8)} ${"Success".padStart(8)} ${"Quality".padStart(8)} ${"In tok".padStart(10)} ${"Latency".padStart(8)}`);
+  for (const row of econ.comparison) {
+    console.log(
+      `${row.pathId.padEnd(6)} ${(row.label || "").padEnd(18)} ${String(row.costPerSuccessfulMissionUsd?.toFixed(6) ?? "n/a").padStart(10)} ${row.savingsPctVsRaw != null ? `${row.savingsPctVsRaw.toFixed(1)}%`.padStart(8) : "n/a".padStart(8)} ${(row.successRate * 100).toFixed(0).padStart(7)}% ${row.avgQualityScore.toFixed(2).padStart(8)} ${String(row.billedInputTokens).padStart(10)} ${row.avgLatencyMs.toFixed(0).padStart(7)}ms`,
+    );
+  }
+  console.log(`\nCompile probes (single cognitive_probe invocation):`);
+  for (const p of econ.compileProbes) {
+    console.log(`  ${p.pathId}: world=${p.pipeline?.world} → dtu=${p.pipeline?.afterDtu} → dhtp=${p.pipeline?.dhtp} → model=${p.pipeline?.modelInput} ($${p.cost?.totalUsd?.toFixed(6) ?? 0})`);
+  }
+  console.log(`\nHeadline: ${econ.headline.verdict}`);
+  if (econ.headline.economicMultiplier) {
+    console.log(`  Economic multiplier (A→E): ${econ.headline.economicMultiplier.toFixed(1)}× cheaper per successful mission`);
+  } else if (econ.headline.savingsPctFullVsRaw != null) {
+    console.log(`  Savings vs raw (A→E): ${econ.headline.savingsPctFullVsRaw.toFixed(1)}% lower $/successful mission`);
+  }
+  if (econ.headline.caveat) console.log(`  Note: ${econ.headline.caveat}`);
+  console.log(`${"=".repeat(72)}\n`);
+}
+
 async function main() {
   const opts = parseArgs(process.argv);
   const db = setupDb();
@@ -295,6 +328,25 @@ async function main() {
       printPathExperiment(exp);
     }
     process.exit(exp.ok !== false ? 0 : 1);
+    return;
+  }
+
+  if (opts.economics) {
+    console.log(`Starting economics bench: ${opts.economicsIterations} missions/path × 5 paths...`);
+    const econ = await runCognitiveEconomicsBench({
+      db,
+      dispatchMCP: mockDispatch,
+      iterationsPerPath: opts.economicsIterations,
+      minCacheUses: opts.minCacheUses,
+    });
+    if (opts.json) {
+      const outPath = `cognitive-economics-${econ.runId}.json`;
+      writeFileSync(outPath, JSON.stringify(econ, null, 2));
+      console.log(`Wrote ${outPath}`);
+    } else {
+      printEconomics(econ);
+    }
+    process.exit(econ.ok ? 0 : 1);
     return;
   }
 

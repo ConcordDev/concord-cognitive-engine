@@ -5,6 +5,7 @@
 import { compactLedgerForContext } from "./execution-ledger.js";
 import { gatherObservationSnapshot } from "./continuous-observation.js";
 import { compileExecutiveCognition } from "./dhtp-compiler.js";
+import { getEconomicPathConfig } from "./cognitive-economics.js";
 
 export async function assembleExecutiveContext({
   db, mission, step, stepIndex, route, ledger, dispatchMCP, lessons = [],
@@ -59,8 +60,11 @@ export async function assembleExecutiveContext({
 
   let cognition = null;
   try {
+    const econPath = mission?.spawn_context?.econPath || process.env.COGNITIVE_ECON_PATH;
+    const pathCfg = econPath ? getEconomicPathConfig(econPath) : null;
     cognition = await compileExecutiveCognition({
       db, mission, step, stepIndex, route, ledger, lessons, context: base,
+      ...(pathCfg?.compile || {}),
     });
   } catch { /* optional pre-migration */ }
 

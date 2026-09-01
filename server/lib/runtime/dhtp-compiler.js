@@ -70,13 +70,30 @@ export async function compileExecutiveCognition({
   skipCache = false,
   skipDhtp = false,
   useRawJson = false,
+  skipDtuFilter = false,
 } = {}) {
   const goal = mission?.goal || mission?.title || step?.tool || "";
   let recallPack = null;
+  const useFullCorpus = skipDtuFilter || pathVariant === "dhtp_only";
   if (db) {
     try {
-      recallPack = loadRecallPack(db);
-      if (bumpRecall && recallPack?.ok) bumpRecallCounts(db, recallPack);
+      if (useFullCorpus) {
+        const corpus = countDtuCorpus(db);
+        recallPack = {
+          ok: true,
+          recent: corpus.rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            tier: r.tier,
+            memory_kind: r.memory_kind,
+            created_at: r.created_at,
+          })),
+          pinned: [],
+        };
+      } else {
+        recallPack = loadRecallPack(db);
+        if (bumpRecall && recallPack?.ok) bumpRecallCounts(db, recallPack);
+      }
     } catch { /* optional */ }
   }
 

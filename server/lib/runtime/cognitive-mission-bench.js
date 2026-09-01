@@ -461,6 +461,7 @@ export async function runCognitiveMissionIteration({
   goal,
   asDila = true,
   maxTicks = 12,
+  spawnContext,
 } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
 
@@ -471,6 +472,7 @@ export async function runCognitiveMissionIteration({
     asDila,
     goal: goal || undefined,
     userId: "cognitive_bench",
+    spawnContext: spawnContext || undefined,
   });
   if (!created.ok) return { ok: false, reason: created.reason, iteration };
 
