@@ -69,6 +69,7 @@ namespace Concordia.Editor
         [MenuItem("Concordia/Play Hub Now")]
         public static void PlayHubNow()
         {
+            AssetDatabase.ImportAsset("Assets/Concordia/Resources/Concordia/Canon/sere", ImportAssetOptions.ImportRecursive);
             const string hub = "Assets/Scenes/ConcordiaHub.unity";
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
             if (System.IO.File.Exists(hub)) EditorSceneManager.OpenScene(hub);

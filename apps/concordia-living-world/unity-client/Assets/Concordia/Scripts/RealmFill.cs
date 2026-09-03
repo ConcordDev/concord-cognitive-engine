@@ -455,7 +455,7 @@ namespace Concordia // keep-spawn-assign
                 var stem = kit[s % kit.Length];
                 float h = stem.Contains("skyscraper") ? 14f : stem.Contains("tent") ? 3.4f : 6.2f;
                 var go = FreePacks.Spawn(stem, hold, world, yaw + (s % 2 == 0 ? 0f : 180f), h, required: false);
-                if (go) BuildingInterior.Open(go, plans[s % plans.Length], world);
+                if (go && s < 2) BuildingInterior.Open(go, plans[s % plans.Length], world);
             }
 
             FreePacks.Spawn("road-straight", hold, hold.TransformPoint(new Vector3(0f, 0f, -10.5f)), yaw + 90f, 5.2f, false, false);

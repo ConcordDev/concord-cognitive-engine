@@ -237,6 +237,7 @@ namespace Concordia
     /// <summary>
     /// Every playable city is derived from authored countries + faction districts.
     /// Missing files stay empty — never invents a place.
+    /// Dedupes by id, then records the display name (case-insensitive ids were dropping Tunya).
     /// </summary>
     public static class CityAtlas
     {
