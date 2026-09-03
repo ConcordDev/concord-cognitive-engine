@@ -579,7 +579,7 @@ namespace Concordia
         {
             float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
             RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
-            var sun = UnityEngine.Object.FindFirstObjectByType<Light>();
+            var sun = UnityEngine.Object.FindAnyObjectByType<Light>();
             if (sun && sun.type == LightType.Directional)
                 sun.intensity = 0.35f + 0.9f * day;
         }
