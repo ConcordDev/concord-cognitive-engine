@@ -3,8 +3,11 @@
  * export-unity-web.mjs — Unity 6 WebGL → the same serving shape as Godot.
  *
  *   1. batchmode Concordia.Editor.ConcordiaWebExport.Export
- *   2. copy wasm/data/framework/loader into public/unity-client/
- *   3. leave index.html in .unity-web-staging/ for the nonce route
+ *   2. copy wasm/data/framework/loader into public/unity-client/ (committed)
+ *   3. full-bleed + decompressionFallback on index.html
+ *   4. copy index to public/unity-client/export-index.html (committed;
+ *      nonce-injected at request time) and leave a copy in
+ *      .unity-web-staging/ (gitignored)
  *
  * Honest: missing Unity, failed batchmode, or empty output → {ok:false}
  * and exit 1. Never copies a partial Build/ over a previous good export.
@@ -18,6 +21,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { applyUnityWebEmbed } from "./lib/unity-web-embed.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PROJECT =
@@ -29,6 +33,13 @@ const STAGING =
 const OUT_DIR =
   process.env.CONCORD_UNITY_OUT ||
   path.join(REPO_ROOT, "concord-frontend", "public", "unity-client");
+const COMMITTED_INDEX = path.join(
+  REPO_ROOT,
+  "concord-frontend",
+  "public",
+  "unity-client",
+  "export-index.html",
+);
 const UNITY_MAC =
   "/Applications/Unity/Hub/Editor/6000.5.9f1/Unity.app/Contents/MacOS/Unity";
 
@@ -102,6 +113,7 @@ if (!fs.existsSync(stagedIndex)) {
 // Unity names wasm/loader after the output folder. Staging is a dotfolder, so
 // files would be `.unity-web-staging.wasm.unityweb` which Next/nginx hide.
 undotBuildNames(STAGING);
+fs.writeFileSync(stagedIndex, applyUnityWebEmbed(fs.readFileSync(stagedIndex, "utf8")));
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const buildDir = path.join(STAGING, "Build");
@@ -115,11 +127,15 @@ for (const f of fs.readdirSync(STAGING)) {
   fs.cpSync(path.join(STAGING, f), path.join(OUT_DIR, f), { recursive: true });
 }
 
+fs.mkdirSync(path.dirname(COMMITTED_INDEX), { recursive: true });
+fs.copyFileSync(stagedIndex, COMMITTED_INDEX);
+
 log(JSON.stringify({
   ok: true,
   servedAt: "/unity-client/index.html",
   staticDir: OUT_DIR,
   stagedIndex,
+  committedIndex: COMMITTED_INDEX,
 }));
 
 function undotBuildNames(stagingDir) {

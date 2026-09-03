@@ -105,10 +105,11 @@ world-lens-godot/*.x86_64
 # script's header for why nothing else needed to change.
 concord-frontend/public/godot-client/
 
-# Unity WebGL export (scripts/export-unity-web.mjs / `npm run export:unity-web`).
-# Same serving shape as Godot: wasm/data/framework in public/, index.html staged
-# for nonce injection. Never committed.
-concord-frontend/public/unity-client/
+# Unity WebGL player IS committed (public/unity-client/) so /lenses/world
+# iframes Unity on deploy without a Unity Editor on the box (~17MB).
+# Staging remains local. DoNotShip folders from Unity's export never ship.
+concord-frontend/public/unity-client/**/*_DoNotShip*
+concord-frontend/public/unity-client/**/*_BackUpThisFolder_ButDontShipItWithYourGame*
 
 # AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
 # the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via

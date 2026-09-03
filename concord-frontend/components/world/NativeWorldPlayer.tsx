@@ -81,7 +81,7 @@ export default function NativeWorldPlayer({
         title="Concordia Unity"
         src={`/unity-client/index.html?${params.toString()}`}
         className="h-full w-full border-0 bg-black"
-        allow="fullscreen; gamepad; clipboard-read; clipboard-write; accelerometer; gyroscope"
+        allow="fullscreen; gamepad; clipboard-read; clipboard-write; accelerometer; gyroscope; pointer-lock"
       />
       <div
         className={`${ds.hudPill} pointer-events-none absolute left-3 top-3 px-2 py-0.5 text-[10px] uppercase tracking-widest text-amber-200/90`}

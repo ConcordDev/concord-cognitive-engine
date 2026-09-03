@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   injectNonce,
   injectUnityConfig,
   buildUnityConfig,
   resolveRequestOrigin,
+  applyUnityWebEmbed,
+  resolveUnityIndexPath,
 } from '../app/unity-client/index.html/route';
 import type { NextRequest } from 'next/server';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function makeRequest(headers: Record<string, string>, protocol = 'http:'): NextRequest {
   const map = new Map(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]));
@@ -66,5 +73,39 @@ describe('resolveRequestOrigin', () => {
   it('uses Host over nextUrl.origin', () => {
     const req = makeRequest({ host: '127.0.0.1:3010' });
     expect(resolveRequestOrigin(req)).toBe('http://127.0.0.1:3010');
+  });
+});
+
+describe('applyUnityWebEmbed', () => {
+  const stock =
+    '<html><head></head><body><canvas id="unity-canvas"></canvas><script>canvas.style.width = "960px";\n        canvas.style.height = "600px";\nvar config = { showBanner: unityShowBanner, };</script></body></html>';
+
+  it('full-bleeds the 960×600 desktop canvas and hides the Unity footer', () => {
+    const out = applyUnityWebEmbed(stock);
+    expect(out).toContain('id="concord-unity-fullbleed"');
+    expect(out).toContain('canvas.style.width = "100%"');
+    expect(out).toContain('canvas.style.height = "100%"');
+    expect(out).not.toContain('960px');
+    expect(out).toContain('decompressionFallback: true');
+  });
+
+  it('is idempotent', () => {
+    const once = applyUnityWebEmbed(stock);
+    const twice = applyUnityWebEmbed(once);
+    expect(twice.split('concord-unity-fullbleed').length).toBe(2);
+    expect(twice.split('decompressionFallback').length).toBe(2);
+  });
+});
+
+describe('committed Unity WebGL player', () => {
+  it('ships export-index + wasm so deploy is not a 404 fallback', () => {
+    const root = path.join(__dirname, '..');
+    const index = path.join(root, 'public', 'unity-client', 'export-index.html');
+    const wasm = path.join(root, 'public', 'unity-client', 'Build', 'concordia.wasm.unityweb');
+    expect(fs.existsSync(index), 'public/unity-client/export-index.html missing').toBe(true);
+    expect(fs.readFileSync(index, 'utf8')).toContain('concordia.loader.js');
+    expect(fs.existsSync(wasm), 'concordia.wasm.unityweb missing from public/').toBe(true);
+    expect(fs.statSync(wasm).size).toBeGreaterThan(1_000_000);
+    expect(resolveUnityIndexPath()).toBeTruthy();
   });
 });

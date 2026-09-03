@@ -14,10 +14,44 @@ import path from 'node:path';
 //    wss://live.concordos.ai. Query params win; missing gateway defaults to
 //    same-origin /unity-ws (ws/wss from the page origin).
 //
-// Staged file: concord-frontend/.unity-web-staging/index.html
-// Static bytes: public/unity-client/* (wasm/data/framework — not index.html)
+// Index sources (first hit wins):
+//   1. .unity-web-staging/index.html — local re-export, gitignored
+//   2. public/unity-client/export-index.html — committed copy so CI/deploy
+//      and Next standalone (startup.sh copies public/) serve HTML without
+//      a Unity Editor on the box. Not named index.html: that URL is this
+//      route (CSP nonce). Static bytes: public/unity-client/Build/* etc.
 
 const STAGED_INDEX = path.join(process.cwd(), '.unity-web-staging', 'index.html');
+const COMMITTED_INDEX = path.join(process.cwd(), 'public', 'unity-client', 'export-index.html');
+
+export function resolveUnityIndexPath(): string | null {
+  if (fs.existsSync(STAGED_INDEX)) return STAGED_INDEX;
+  if (fs.existsSync(COMMITTED_INDEX)) return COMMITTED_INDEX;
+  return null;
+}
+
+/** Full-bleed iframe + gzip fallback. Idempotent. */
+export function applyUnityWebEmbed(html: string): string {
+  let out = html;
+  if (!out.includes('id="concord-unity-fullbleed"')) {
+    const style =
+      '<style id="concord-unity-fullbleed">' +
+      'html,body,#unity-container,#unity-canvas{width:100%!important;height:100%!important;margin:0;padding:0;overflow:hidden;background:#000}' +
+      '#unity-container.unity-desktop{left:0;top:0;transform:none;width:100%;height:100%}' +
+      '#unity-footer{display:none!important}' +
+      '</style>';
+    out = /<\/head>/i.test(out) ? out.replace(/<\/head>/i, `${style}</head>`) : style + out;
+  }
+  if (!/\bdecompressionFallback\s*:/.test(out)) {
+    out = out.replace(
+      /showBanner:\s*unityShowBanner,/,
+      'showBanner: unityShowBanner,\n        decompressionFallback: true,',
+    );
+  }
+  out = out.replace(/canvas\.style\.width = "960px";/, 'canvas.style.width = "100%";');
+  out = out.replace(/canvas\.style\.height = "600px";/, 'canvas.style.height = "100%";');
+  return out;
+}
 
 export const UNITY_CONFIG_KEYS = [
   'CONCORD_GATEWAY_URL',
@@ -66,10 +100,8 @@ export function injectUnityConfig(html: string, config: { gatewayUrl: string; wo
 }
 
 export async function GET(request: NextRequest) {
-  let raw: string;
-  try {
-    raw = fs.readFileSync(STAGED_INDEX, 'utf8');
-  } catch {
+  const indexPath = resolveUnityIndexPath();
+  if (!indexPath) {
     return NextResponse.json(
       {
         ok: false,
@@ -80,6 +112,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const raw = applyUnityWebEmbed(fs.readFileSync(indexPath, 'utf8'));
   const nonce = request.headers.get('x-nonce') ?? '';
   const origin = resolveRequestOrigin(request);
   const config = buildUnityConfig(request.nextUrl.searchParams, origin);
@@ -91,6 +124,9 @@ export async function GET(request: NextRequest) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',
+      // Same-origin iframe from /lenses/world. Catch-all next.config DENY
+      // is excluded for /unity-client/; this is belt-and-braces.
+      'X-Frame-Options': 'SAMEORIGIN',
     },
   });
 }
