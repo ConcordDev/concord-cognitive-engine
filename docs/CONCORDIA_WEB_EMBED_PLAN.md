@@ -1,6 +1,6 @@
 # Concordia in the website — audit + plan (2026-09-03)
 
-**Status:** W1–W3 + W2 ingress + L1/L2 stubs landed. **W5 hub kit** is in git (`content/concordia-assets/hub/` → Unity `StreamingAssets/HubKit`). W4 export + hub scene/URP still need a licensed Unity batchmode.
+**Status:** W1–W5 + W4 exporter **ran on this Mac** (Unity Personal 6000.5.9f1 + WebGL module). Wasm is at `concord-frontend/public/unity-client/Build/concordia.wasm.unityweb` (~12MB, gitignored like Godot). License was never the gap.
 **Branch:** `cursor/concordia-unity-kernel-1b18` (PR #953).
 **Method:** audit → research → re-audit → execute. Numbers and blockers below were read from this tree, not remembered.
 
@@ -22,7 +22,7 @@ What is **not** alive is any native client presenting that kernel in the browser
 | **Vite `src/game/`** | Richest “feels alive” loop. **Zero network.** localStorage persist. Explicitly superseded. Do not ship it into the frontend. |
 | **Godot** | Parity native client. **Web export pipeline already exists** (`npm run export:web` → `/godot-client/`). **No world-lens iframe yet.** |
 
-**Unity cannot WebGL-export as-is.** Blockers are code, not vibes (see §2).
+**Unity WebGL export ran on this Mac 2026-09-03** (`npm run export:unity-web` exit 0). The P0 list below was the pre-export audit; items 1–2 and 5 are closed in code, 3–4 are generated at export time. Wasm stays gitignored.
 
 **The website already knows how to serve a WASM 3D client** (Godot). Unity should clone that path, not invent a second one.
 
@@ -128,7 +128,7 @@ Proven by reading `scripts/export-godot-web.mjs` + `app/godot-client/index.html/
 | **W1** | Serve/embed slot: `/unity-client/` route, middleware, gitignore, `NativeWorldPlayer` iframe, honest unbuilt state, keep Three.js as fallback | Can ship without a WASM |
 | **W2** | Ingress: nginx + cloudflared `/unity-ws` → :5050 | In-page WS would otherwise die at Next |
 | **W3** | WebGL `WebSocket` jslib; `ConcordClient` reads `window.CONCORD_UNITY_CONFIG` | Editor keeps `ClientWebSocket` |
-| **W4** | `export-unity-web.mjs` + Editor `ConcordiaWebExport.Export` (batchmode, no threads, decompression fallback) | Needs Unity license on the build box; **this agent cannot claim a .wasm until that run exits 0** |
+| **W4** | `npm run export:unity-web` on this Mac (Unity 6000.5.9f1 Personal + WebGL playback engine already installed) | Wasm is gitignored like Godot; **claim a .wasm only after the exporter exits 0** |
 | **W5** | Runtime meshes: committed Unburned Court **hub kit** (`content/concordia-assets/hub/` → `StreamingAssets/HubKit`, `FreePacks` + `HubKit.cs` glTFast load). Hub scene + URP still Editor-generated | Kit is in git; WebGL still needs W4 export |
 | **W6** | Click-to-capture pointer lock; pass JWT + gateway URL from the lens into the iframe query | Browser gesture |
 
@@ -166,7 +166,8 @@ Proven by reading `scripts/export-godot-web.mjs` + `app/godot-client/index.html/
 curl -sI https://<origin>/unity-client/index.html
 # 404 JSON { ok:false, reason:'unity_web_export_not_built' }
 
-# After W4 on a licensed Unity box:
+# This Mac already has Unity Personal + WebGL. Run the exporter:
 node scripts/export-unity-web.mjs
 # then the same URL is text/html with a CSP nonce, wasm at /unity-client/*.wasm
+# (public/unity-client/ is gitignored — same as Godot — so deploy boxes run this too)
 ```

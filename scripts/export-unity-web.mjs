@@ -20,9 +20,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PROJECT = path.join(REPO_ROOT, "apps", "concordia-living-world", "unity-client");
-const STAGING = path.join(REPO_ROOT, "concord-frontend", ".unity-web-staging");
-const OUT_DIR = path.join(REPO_ROOT, "concord-frontend", "public", "unity-client");
+const PROJECT =
+  process.env.CONCORD_UNITY_PROJECT ||
+  path.join(REPO_ROOT, "apps", "concordia-living-world", "unity-client");
+const STAGING =
+  process.env.CONCORD_UNITY_STAGING ||
+  path.join(REPO_ROOT, "concord-frontend", ".unity-web-staging");
+const OUT_DIR =
+  process.env.CONCORD_UNITY_OUT ||
+  path.join(REPO_ROOT, "concord-frontend", "public", "unity-client");
 const UNITY_MAC =
   "/Applications/Unity/Hub/Editor/6000.5.9f1/Unity.app/Contents/MacOS/Unity";
 
@@ -46,10 +52,13 @@ function findUnity() {
 const unity = findUnity();
 if (!unity) {
   fail("unity_editor_not_found", {
-    hint: "Install Unity 6000.5.9f1 or set UNITY_EDITOR to the editor binary",
+    hint: "This Mac's licensed editor is 6000.5.9f1; set UNITY_EDITOR if it moved",
     looked: UNITY_MAC,
   });
 }
+
+log(`editor ${unity}`);
+log(`project ${PROJECT}`);
 
 if (!fs.existsSync(path.join(PROJECT, "ProjectSettings", "ProjectVersion.txt"))) {
   fail("unity_project_missing", { project: PROJECT });
@@ -72,7 +81,7 @@ try {
       "-logFile",
       logFile,
     ],
-    { stdio: ["ignore", "inherit", "inherit"] },
+    { stdio: ["ignore", "inherit", "inherit"], env: { ...process.env, CONCORD_UNITY_STAGING: STAGING } },
   );
 } catch (e) {
   fail("unity_batchmode_failed", {
@@ -90,6 +99,10 @@ if (!fs.existsSync(stagedIndex)) {
   });
 }
 
+// Unity names wasm/loader after the output folder. Staging is a dotfolder, so
+// files would be `.unity-web-staging.wasm.unityweb` which Next/nginx hide.
+undotBuildNames(STAGING);
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
 const buildDir = path.join(STAGING, "Build");
 if (!fs.existsSync(buildDir)) {
@@ -98,6 +111,7 @@ if (!fs.existsSync(buildDir)) {
 
 for (const f of fs.readdirSync(STAGING)) {
   if (f === "index.html") continue;
+  if (f.endsWith("_DoNotShip") || f.endsWith("_BackUpThisFolder_ButDontShipItWithYourGame")) continue;
   fs.cpSync(path.join(STAGING, f), path.join(OUT_DIR, f), { recursive: true });
 }
 
@@ -107,3 +121,17 @@ log(JSON.stringify({
   staticDir: OUT_DIR,
   stagedIndex,
 }));
+
+function undotBuildNames(stagingDir) {
+  const dir = path.join(stagingDir, "Build");
+  if (!fs.existsSync(dir)) return;
+  for (const f of fs.readdirSync(dir)) {
+    if (!f.startsWith(".unity-web-staging.")) continue;
+    const dest = f.replace(/^\.unity-web-staging/, "concordia");
+    fs.renameSync(path.join(dir, f), path.join(dir, dest));
+  }
+  const index = path.join(stagingDir, "index.html");
+  if (!fs.existsSync(index)) return;
+  const html = fs.readFileSync(index, "utf8").replaceAll(".unity-web-staging.", "concordia.");
+  fs.writeFileSync(index, html);
+}

@@ -18,7 +18,15 @@ namespace Concordia.Editor
             ConcordiaMenu.BuildHubSceneSilent();
 
             var repoRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", ".."));
-            var staging = Path.Combine(repoRoot, "concord-frontend", ".unity-web-staging");
+            var staging = System.Environment.GetEnvironmentVariable("CONCORD_UNITY_STAGING");
+            if (string.IsNullOrEmpty(staging))
+                staging = Path.Combine(repoRoot, "concord-frontend", ".unity-web-staging");
+            if (Directory.Exists(staging)) Directory.Delete(staging, true);
+            Directory.CreateDirectory(staging);
+
+            // Last path component becomes the wasm/loader stem. Do not use a
+            // dotfile folder name — Next/nginx hide those and the page 404s.
+            var buildFolder = Path.Combine(staging, "concordia");
             if (Directory.Exists(staging)) Directory.Delete(staging, true);
             Directory.CreateDirectory(staging);
 

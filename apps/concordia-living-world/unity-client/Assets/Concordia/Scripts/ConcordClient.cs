@@ -131,7 +131,7 @@ namespace Concordia
 #endif
         }
 
-        public void OnWsOpen(string _)
+        public void OnWsOpen(string unused)
         {
             _jsOpen = true;
             _ = AfterOpen();
