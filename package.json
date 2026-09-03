@@ -34,7 +34,8 @@
     "lens:broken-calls": "node scripts/lens-broken-calls.mjs",
     "lens:unloaded": "node scripts/lens-unloaded-domains.mjs",
     "export:web": "node scripts/export-godot-web.mjs",
-    "export:unity-web": "node scripts/export-unity-web.mjs"
+    "export:unity-web": "node scripts/export-unity-web.mjs",
+    "sync:hub-kit": "node scripts/sync-concordia-hub-kit.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

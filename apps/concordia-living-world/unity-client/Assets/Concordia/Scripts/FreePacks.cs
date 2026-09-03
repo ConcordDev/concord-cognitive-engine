@@ -8,8 +8,9 @@ using UnityEditor;
 namespace Concordia
 {
     /// <summary>
-    /// Resolves Kenney CC0 + Get Started free packs by filename.
-    /// Play-mode in the editor is the intended path (AssetDatabase).
+    /// Resolves Kenney CC0 + KayKit hub-kit meshes by filename.
+    /// Editor: AssetDatabase (kitchen kenney-free) then the committed HubKit.
+    /// Player / WebGL: HubKit only (StreamingAssets + glTFast). Never Editor-only.
     /// </summary>
     public static class FreePacks
     {
@@ -44,10 +45,15 @@ namespace Concordia
 
         public static GameObject Mesh(string stem)
         {
+            if (string.IsNullOrEmpty(stem)) return null;
+            var key = HubKit.Alias(stem);
+            if (HubKit.TryGet(key, out var kit) && kit) return kit;
             Index();
 #if UNITY_EDITOR
-            if (_meshes != null && _meshes.TryGetValue(stem.ToLowerInvariant(), out var path))
+            if (_meshes != null && _meshes.TryGetValue(key, out var path))
                 return AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (_meshes != null && _meshes.TryGetValue(stem.ToLowerInvariant(), out var raw))
+                return AssetDatabase.LoadAssetAtPath<GameObject>(raw);
 #endif
             return null;
         }
@@ -69,6 +75,7 @@ namespace Concordia
             {
                 go = Object.Instantiate(prefab, parent);
                 go.name = stem;
+                go.SetActive(true);
             }
             else
             {

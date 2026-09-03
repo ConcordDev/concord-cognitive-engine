@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Concordia
@@ -15,7 +16,7 @@ namespace Concordia
         GuestNpc[] _npcs;
         float _probeAt;
 
-        void Start()
+        async void Start()
         {
             HubObjectives.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
@@ -63,6 +64,7 @@ namespace Concordia
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
             _world.player = _player;
+            await HubKit.EnsureLoaded();
             _world.Build(world);
             Grounding.Snap(cc);
             var py = pgo.transform.position.y;

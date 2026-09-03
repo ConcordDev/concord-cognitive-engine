@@ -1,6 +1,6 @@
 # Concordia in the website — audit + plan (2026-09-03)
 
-**Status:** W1–W3 + W2 ingress + L1/L2 stubs landed on this branch (honest 404 until W4 export). W4/W5 still need a licensed Unity batchmode + runtime meshes.
+**Status:** W1–W3 + W2 ingress + L1/L2 stubs landed. **W5 hub kit** is in git (`content/concordia-assets/hub/` → Unity `StreamingAssets/HubKit`). W4 export + hub scene/URP still need a licensed Unity batchmode.
 **Branch:** `cursor/concordia-unity-kernel-1b18` (PR #953).
 **Method:** audit → research → re-audit → execute. Numbers and blockers below were read from this tree, not remembered.
 
@@ -129,7 +129,7 @@ Proven by reading `scripts/export-godot-web.mjs` + `app/godot-client/index.html/
 | **W2** | Ingress: nginx + cloudflared `/unity-ws` → :5050 | In-page WS would otherwise die at Next |
 | **W3** | WebGL `WebSocket` jslib; `ConcordClient` reads `window.CONCORD_UNITY_CONFIG` | Editor keeps `ClientWebSocket` |
 | **W4** | `export-unity-web.mjs` + Editor `ConcordiaWebExport.Export` (batchmode, no threads, decompression fallback) | Needs Unity license on the build box; **this agent cannot claim a .wasm until that run exits 0** |
-| **W5** | Runtime meshes: `FreePacks` → `Resources`/Addressables; commit hub scene + URP assets; strip `ConcordiaShot` from player | Without this, WebGL is cubes |
+| **W5** | Runtime meshes: committed Unburned Court **hub kit** (`content/concordia-assets/hub/` → `StreamingAssets/HubKit`, `FreePacks` + `HubKit.cs` glTFast load). Hub scene + URP still Editor-generated | Kit is in git; WebGL still needs W4 export |
 | **W6** | Click-to-capture pointer lock; pass JWT + gateway URL from the lens into the iframe query | Browser gesture |
 
 ### Track L — Come to life (same kernel, any presenter)

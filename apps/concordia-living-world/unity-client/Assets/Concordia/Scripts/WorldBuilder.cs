@@ -164,6 +164,8 @@ namespace Concordia
             HubPlaza.Build(root);
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
+            FreePacks.Spawn("forge", root, new Vector3(-16f, 0f, 12f), 40f, 6.5f);
+            FreePacks.Spawn("tower", root, new Vector3(16f, 0f, 14f), -30f, 8f);
 
             var arena = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             arena.name = "Arena";
