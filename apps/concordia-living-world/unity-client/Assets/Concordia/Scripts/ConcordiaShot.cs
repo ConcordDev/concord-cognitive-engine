@@ -13,7 +13,8 @@ namespace Concordia
         public static IEnumerator Grab()
         {
             for (int i = 0; i < 50; i++) yield return null;
-            yield return new WaitForSeconds(0.25f);
+            if (CharacterCreator.IsOpen) CharacterCreator.SkipNow();
+            yield return new WaitForSeconds(0.35f);
             ForceGameView();
             DumpBind();
 
@@ -33,7 +34,7 @@ namespace Concordia
             CopyShot("/tmp/concordia-person-now.png", "Assets/Concordia/Shots/game-view-now.png");
             CopyShot("/tmp/concordia-person-now.png", "/tmp/concordia-play.png");
 
-            // 2) Plaza overview
+            // 2) Plaza overview — dirt court under the dome
             if (cam)
             {
                 cam.transform.position = new Vector3(0f, 16f, -30f);
@@ -44,6 +45,18 @@ namespace Concordia
             yield return new WaitForEndOfFrame();
             Capture("/tmp/concordia-play-plaza.png");
             CopyShot("/tmp/concordia-play-plaza.png", "Assets/Concordia/Shots/concordia-play-plaza.png");
+
+            // 2b) Founding Day stand — three pillars on the dirt
+            if (cam)
+            {
+                cam.transform.position = new Vector3(-4.2f, 2.4f, -11.5f);
+                cam.transform.LookAt(new Vector3(1.2f, 1.35f, 0.2f));
+                cam.fieldOfView = 42f;
+            }
+            yield return null;
+            yield return new WaitForEndOfFrame();
+            Capture("/tmp/concordia-play-pillars.png");
+            CopyShot("/tmp/concordia-play-pillars.png", "Assets/Concordia/Shots/concordia-play-pillars.png");
 
             // 3) Frontier (west)
             if (cam)

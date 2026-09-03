@@ -164,6 +164,13 @@ namespace Concordia
             }
         }
 
+        public static void SkipNow()
+        {
+            var all = FindObjectsByType<CharacterCreator>(FindObjectsInactive.Include);
+            foreach (var c in all)
+                if (c) c.Confirm();
+        }
+
         void Confirm()
         {
             if (string.IsNullOrWhiteSpace(_look.displayName)) _look.displayName = "Walker";

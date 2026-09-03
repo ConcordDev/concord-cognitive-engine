@@ -13,6 +13,16 @@ namespace Concordia.Editor
         static ConcordiaBoot()
         {
             EditorApplication.delayCall += KickOnce;
+            EditorApplication.update += WatchPlayRequest;
+        }
+
+        static void WatchPlayRequest()
+        {
+            const string flag = "/tmp/concordia-request-play";
+            if (!System.IO.File.Exists(flag)) return;
+            if (EditorApplication.isCompiling) return;
+            try { System.IO.File.Delete(flag); } catch { return; }
+            PlayHubNow();
         }
 
         static void KickOnce()
@@ -62,7 +72,23 @@ namespace Concordia.Editor
             const string hub = "Assets/Scenes/ConcordiaHub.unity";
             if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
             if (System.IO.File.Exists(hub)) EditorSceneManager.OpenScene(hub);
+            else ConcordiaMenu.BuildHubSceneSilent();
             EditorApplication.isPlaying = true;
+            Debug.Log("[Concordia] Play Hub Now");
+        }
+
+        /// <summary>CLI: Unity -executeMethod Concordia.Editor.ConcordiaBoot.PlayHubFromCli</summary>
+        public static void PlayHubFromCli()
+        {
+            EditorApplication.delayCall += () =>
+            {
+                if (EditorApplication.isCompiling)
+                {
+                    EditorApplication.delayCall += PlayHubFromCli;
+                    return;
+                }
+                PlayHubNow();
+            };
         }
 
         [MenuItem("Concordia/Reset Editor Layout (dock Game tab)")]
