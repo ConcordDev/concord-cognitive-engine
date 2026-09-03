@@ -101,6 +101,32 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(evo, /CityAtlas\.For\(WorldClock\.World\)/);
   });
 
+  it("a world is a kingdom: staple, regions, and an audit of authored layers", () => {
+    const book = src("WorldBook.cs");
+    assert.match(book, /class KingdomBook/);
+    assert.match(book, /WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR/);
+    assert.match(book, /Staple\(WorldId id\)/);
+    assert.match(book, /We will not be reaped|harvest/);
+    assert.match(book, /The Court is the city/);
+    assert.match(book, /not a ninth Refusal gate/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("the gate is a connection: cargo, carried kit, plots, and travelers persist", () => {
+    const book = src("WorldBook.cs");
+    const game = src("ConcordiaGame.cs");
+    assert.match(book, /class CrossRing/);
+    assert.match(book, /public static string Walk\(/);
+    assert.match(book, /AwayTick/);
+    assert.match(book, /plot-bill/);
+    assert.match(book, /plot-eighth/);
+    assert.match(book, /travelersCsv/);
+    assert.match(book, /The invoice followed you through a door/);
+    assert.match(game, /CrossRing\.Walk\(/);
+    assert.match(game, /CrossRing\.LivingLines/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
   it("cook is a station you walk to, and talk carries the last event as a rumor", () => {
     const gate = src("WorldGate.cs");
     const game = src("ConcordiaGame.cs");

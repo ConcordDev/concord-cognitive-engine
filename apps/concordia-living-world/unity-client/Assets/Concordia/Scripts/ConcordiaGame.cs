@@ -295,6 +295,8 @@ namespace Concordia
                         if (q != null) return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(q, world);
                     }
                 var line = npc.def.name + ": " + npc.def.line;
+                foreach (var extra in CrossRing.LivingLines(npc.def.id ?? npc.personId))
+                    line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
                 return line;
@@ -331,7 +333,10 @@ namespace Concordia
 
         public void Travel(WorldId next)
         {
+            var carried = _player != null ? _player.kitWeapon : null;
+            var from = world;
             WorldClock.Leave();
+            var crossed = CrossRing.Walk(from, next, carried);
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
@@ -356,9 +361,11 @@ namespace Concordia
             var steel = Canon.SteelLive(next, spawn)
                 ? "Live steel. Combat is allowed here."
                 : "Flower-law. Blades die as flowers except in the Arena.";
-            ConcordiaHUD.Announce(w.title, w.refusal);
+            ConcordiaHUD.Announce(w.title, string.IsNullOrEmpty(crossed) ? w.refusal : crossed);
             _player.Notice(w.law + " " + steel);
-            if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
+            if (!string.IsNullOrEmpty(crossed))
+                _player.Notice(crossed);
+            else if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
                 _player.Notice(WorldClock.LastEvent);
             var client = ConcordClient.Live;
             if (client && client.Connected)

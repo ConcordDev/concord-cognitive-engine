@@ -449,6 +449,7 @@ namespace Concordia
             Weather = Canon.Get(id).weather;
             ApplySky();
             NoteAct(Canon.Get(id).title + " kept its hours.");
+            KingdomBook.Dump();
         }
 
         public static void Leave()
@@ -469,7 +470,12 @@ namespace Concordia
                 lastEvent = LastEvent,
                 savedAt = Now(),
                 deadCsv = WorldMemory.DeadCsv(World),
-                births = WorldMemory.Births(World)
+                births = WorldMemory.Births(World),
+                stock = WorldMemory.Load(World).stock,
+                need = WorldMemory.Load(World).need,
+                staple = WorldMemory.Load(World).staple,
+                imports = WorldMemory.Load(World).imports,
+                population = WorldMemory.Load(World).population
             };
         }
 
@@ -711,7 +717,8 @@ namespace Concordia
                     + " prices=" + Prices.ToString("0.00") + " lod=" + real + "/" + bulk + "/" + virt
                     + " acts open=" + open + " patrol=" + patrol + " talk=" + talk
                     + " deliver=" + deliver + " inside=" + inside + " hunt=" + hunt
-                    + "\n" + Line() + "\n" + LastEvent + "\n");
+                    + "\n" + Line() + "\n" + KingdomBook.HudLine() + "\n" + LastEvent + "\n");
+                KingdomBook.Dump();
             }
             catch { }
         }
@@ -730,6 +737,11 @@ namespace Concordia
         public string lastEvent = "";
         public float savedAt;
         public string deadCsv = "";
+        public float stock = 1f;
+        public float need = 0.4f;
+        public string staple = "";
+        public string imports = "";
+        public int population;
     }
 
     [Serializable]
@@ -737,6 +749,9 @@ namespace Concordia
     {
         public int v = 1;
         public WorldSliceRec[] slices;
+        public string plotsCsv = "";
+        public string travelersCsv = "";
+        public string crossCsv = "";
     }
 
     /// <summary>
@@ -746,6 +761,7 @@ namespace Concordia
     public static class WorldMemory
     {
         static readonly Dictionary<WorldId, WorldSliceRec> Cache = new Dictionary<WorldId, WorldSliceRec>();
+        static LivingSaveRec FileCache;
 
         public static WorldSliceRec Load(WorldId id)
         {
@@ -759,6 +775,7 @@ namespace Concordia
             {
                 found = new WorldSliceRec { world = id.ToString(), hour = 7.2f, day = 1, ecology = 0.7f, prices = 1f };
             }
+            KingdomBook.Ensure(found, id);
             Cache[id] = found;
             return found;
         }
@@ -774,13 +791,26 @@ namespace Concordia
             map[id.ToString()] = slice;
             var list = new List<WorldSliceRec>();
             foreach (var kv in map) list.Add(kv.Value);
-            var rec = new LivingSaveRec { v = 1, slices = list.ToArray() };
+            var rec = All();
+            rec.v = 1;
+            rec.slices = list.ToArray();
+            FileCache = rec;
             try
             {
                 var path = Path.Combine(Application.persistentDataPath, "concordia-living-v1.json");
                 File.WriteAllText(path, JsonUtility.ToJson(rec, true));
             }
             catch { }
+        }
+
+        public static LivingSaveRec All()
+        {
+            if (FileCache != null) return FileCache;
+            FileCache = ReadFile() ?? new LivingSaveRec { v = 1 };
+            if (FileCache.plotsCsv == null) FileCache.plotsCsv = "";
+            if (FileCache.travelersCsv == null) FileCache.travelersCsv = "";
+            if (FileCache.crossCsv == null) FileCache.crossCsv = "";
+            return FileCache;
         }
 
         public static float AwayHours(WorldSliceRec slice)
@@ -808,7 +838,11 @@ namespace Concordia
                     slice.births += 1;
                 }
             }
-            slice.lastEvent = Canon.Get(id).title + ": Day " + slice.day + ". The world continued while you were away.";
+            KingdomBook.Ensure(slice, id);
+            CrossRing.AwayTick(slice, hours, id);
+            slice.lastEvent = string.IsNullOrEmpty(slice.lastEvent)
+                ? Canon.Get(id).title + ": Day " + slice.day + ". The world continued while you were away."
+                : slice.lastEvent;
         }
 
         public static void MarkDead(WorldId id, string name)
@@ -838,6 +872,13 @@ namespace Concordia
             Cache[id] = s;
         }
 
+        public static void Put(WorldId id, WorldSliceRec slice)
+        {
+            if (slice == null) return;
+            slice.world = id.ToString();
+            Cache[id] = slice;
+        }
+
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
         public static int Births(WorldId id) => Load(id).births;
 
@@ -850,6 +891,335 @@ namespace Concordia
                 return JsonUtility.FromJson<LivingSaveRec>(File.ReadAllText(path));
             }
             catch { return null; }
+        }
+    }
+
+    /// <summary>
+    /// A Concordia world is a kingdom, not a map. Identity is derived from
+    /// Canon + CityAtlas + factions + people — never invented.
+    /// Audit: WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR.
+    /// </summary>
+    public static class KingdomBook
+    {
+        public static string Staple(WorldId id) => id switch
+        {
+            WorldId.Hub => "lanterns",
+            WorldId.Ruins => "remnants",
+            WorldId.Tunya => "harvest",
+            WorldId.Fantasy => "ward",
+            WorldId.Crime => "invoices",
+            WorldId.Cyber => "census",
+            WorldId.Frontier => "road",
+            WorldId.Superhero => "mercy",
+            WorldId.Sere => "marks",
+            WorldId.Crucible => "drift",
+            _ => "lanterns"
+        };
+
+        public static void Ensure(WorldSliceRec slice, WorldId id)
+        {
+            if (slice == null) return;
+            if (string.IsNullOrEmpty(slice.staple)) slice.staple = Staple(id);
+            if (slice.stock <= 0.01f) slice.stock = 1f;
+            if (slice.need <= 0.01f) slice.need = id == WorldId.Hub ? 0.2f : 0.45f;
+            if (slice.population <= 0)
+            {
+                var people = WorldBook.People(id);
+                var cities = CityAtlas.For(id);
+                slice.population = people.Length + (id == WorldId.Hub ? Canon.HubGuests.Length : cities.Length * 2);
+            }
+        }
+
+        public static string HudLine()
+        {
+            var s = WorldMemory.Load(WorldClock.World);
+            var w = Canon.Get(WorldClock.World);
+            var cities = CityAtlas.For(WorldClock.World);
+            var seat = WorldClock.World == WorldId.Hub
+                ? "The Court is the city"
+                : cities.Length + " settlements";
+            return w.title + " · " + s.staple + " " + s.stock.ToString("0.0")
+                + " · need " + s.need.ToString("0.0") + " · " + seat;
+        }
+
+        public static void Dump()
+        {
+            try
+            {
+                File.WriteAllText("/tmp/concordia-kingdom.txt", Audit());
+            }
+            catch { }
+        }
+
+        public static string Audit()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR");
+            sb.AppendLine("derived from Canon + CityAtlas + WorldBook. Never invented.");
+            foreach (WorldId id in Enum.GetValues(typeof(WorldId)))
+            {
+                var w = Canon.Get(id);
+                var slice = WorldMemory.Load(id);
+                Ensure(slice, id);
+                var cities = CityAtlas.For(id);
+                var facs = WorldBook.Factions(id);
+                var people = WorldBook.People(id);
+                var lore = WorldBook.Lore(id);
+                var gate = GateName(id);
+                sb.AppendLine();
+                sb.AppendLine("WORLD " + w.title + " (" + id + ")");
+                sb.AppendLine("  identity  " + w.refusal);
+                sb.AppendLine("  rules     " + w.law);
+                sb.AppendLine("  weather   " + w.weather + " · fauna " + (w.fauna == null ? "none" : string.Join(",", w.fauna)));
+                sb.AppendLine("  gate      " + gate);
+                sb.AppendLine("  state     day " + slice.day + " hour " + slice.hour.ToString("0.0")
+                    + " ecology " + slice.ecology.ToString("0.00") + " prices " + slice.prices.ToString("0.00"));
+                sb.AppendLine("  KINGDOM   staple " + slice.staple + " stock " + slice.stock.ToString("0.00")
+                    + " need " + slice.need.ToString("0.00") + " pop " + slice.population
+                    + " factions " + facs.Length);
+                if (id == WorldId.Hub)
+                    sb.AppendLine("  REGION    The Unburned Court (the Court is the city; unpaved)");
+                else if (cities.Length == 0)
+                    sb.AppendLine("  REGION    no authored settlement seated");
+                else
+                {
+                    sb.AppendLine("  REGION    capital " + cities[0].name + " · wilderness outskirts · hold Kenney graph");
+                    foreach (var c in cities)
+                        sb.AppendLine("  SETTLEMENT  " + c.name + " fac=" + c.factionId);
+                }
+                sb.AppendLine("  ACTOR     authored people " + people.Length
+                    + " · lore beats " + (lore?.history == null ? 0 : lore.history.Length));
+                if (!string.IsNullOrEmpty(slice.imports))
+                    sb.AppendLine("  IMPORTS   " + slice.imports);
+                if (!string.IsNullOrEmpty(slice.lastEvent))
+                    sb.AppendLine("  EVENT     " + slice.lastEvent);
+            }
+            var all = WorldMemory.All();
+            sb.AppendLine();
+            sb.AppendLine("CROSS plots=" + (all.plotsCsv ?? "") + " travelers=" + (all.travelersCsv ?? ""));
+            return sb.ToString();
+        }
+
+        public static string GateName(WorldId id)
+        {
+            if (id == WorldId.Hub) return "The Ring (eight doors)";
+            if (id == WorldId.Sere) return "Court waystone — not a ninth Refusal gate";
+            foreach (var g in Canon.Gates)
+                if (g.world == id) return g.name + " · " + g.refusal;
+            return "no authored gate";
+        }
+    }
+
+    /// <summary>
+    /// Port of cross.ts + a local-economy pulse. The gate is a connection:
+    /// cargo, rumor, and travelers persist after the scene rebuilds.
+    /// Does not invent weaponsmiths or kingdoms — only authored titles and staples.
+    /// </summary>
+    public static class CrossRing
+    {
+        public static string Walk(WorldId from, WorldId to, string carried)
+        {
+            if (from == to) return null;
+            var fromSlice = WorldMemory.Load(from);
+            var toSlice = WorldMemory.Load(to);
+            KingdomBook.Ensure(fromSlice, from);
+            KingdomBook.Ensure(toSlice, to);
+
+            if (fromSlice.stock > 0.85f)
+            {
+                float ship = Mathf.Min(0.18f, fromSlice.stock - 0.7f);
+                fromSlice.stock -= ship;
+                toSlice.need = Mathf.Max(0.05f, toSlice.need - ship);
+                toSlice.stock = Mathf.Clamp(toSlice.stock + ship * 0.6f, 0.2f, 2.2f);
+                toSlice.prices = Mathf.Clamp(toSlice.prices * (1f - ship * 0.15f), 0.6f, 1.8f);
+                fromSlice.prices = Mathf.Clamp(fromSlice.prices * (1f + ship * 0.1f), 0.6f, 1.8f);
+                var cargo = fromSlice.staple + " from " + Canon.Get(from).title;
+                toSlice.imports = cargo;
+                toSlice.lastEvent = Canon.Get(to).title + " received " + cargo + " through the door.";
+                fromSlice.lastEvent = Canon.Get(from).title + " sent " + fromSlice.staple + " through the door.";
+            }
+
+            if (!string.IsNullOrEmpty(carried))
+            {
+                toSlice.factionHeat = Mathf.Clamp(toSlice.factionHeat + 0.08f, 0f, 1f);
+                toSlice.imports = (string.IsNullOrEmpty(toSlice.imports) ? "" : toSlice.imports + " · ")
+                    + carried + " from " + Canon.Get(from).title;
+                toSlice.lastEvent = Canon.Get(to).title + " noticed " + carried + " walked in from "
+                    + Canon.Get(from).title + ".";
+            }
+
+            AdvancePlot(from, to);
+            NudgeTraveler(from, to);
+            MarkCross("seen:" + from + ":" + to);
+            WorldMemory.Write(from, fromSlice);
+            WorldMemory.Write(to, toSlice);
+            WorldClock.LastEvent = toSlice.lastEvent;
+            return toSlice.lastEvent;
+        }
+
+        public static void AwayTick(WorldSliceRec slice, float hours, WorldId id)
+        {
+            if (slice == null || hours < 0.05f) return;
+            KingdomBook.Ensure(slice, id);
+            slice.stock = Mathf.Clamp(slice.stock + hours * 0.045f * (0.4f + slice.ecology), 0.2f, 2.2f);
+            slice.need = Mathf.Clamp(slice.need + hours * 0.03f - hours * 0.01f * slice.stock, 0.05f, 1.4f);
+            slice.population = Mathf.Max(1, slice.population + (slice.ecology > 0.6f ? 1 : 0) * Mathf.FloorToInt(hours / 8f));
+            if (hours >= 2f && slice.stock > 1.2f && id != WorldId.Hub)
+            {
+                var hub = WorldMemory.Load(WorldId.Hub);
+                KingdomBook.Ensure(hub, WorldId.Hub);
+                float ship = 0.12f;
+                slice.stock -= ship;
+                hub.stock = Mathf.Clamp(hub.stock + ship, 0.2f, 2.4f);
+                hub.imports = slice.staple + " from " + Canon.Get(id).title;
+                slice.lastEvent = Canon.Get(id).title + " sent " + slice.staple
+                    + " to the Ring while you were away.";
+                hub.lastEvent = "The Ring took in " + hub.imports + ".";
+                WorldMemory.Put(WorldId.Hub, hub);
+            }
+            if (hours >= 4f) AdvanceTravelers(hours);
+        }
+
+        public static string[] LivingLines(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return Array.Empty<string>();
+            var extra = new List<string>();
+            var bill = Plot("plot-bill");
+            if (bill > 0 && (npcId == "mama" || npcId == "jax"))
+                extra.Add(bill >= 2
+                    ? "The invoice followed you through a door. I said it would. My people are still split."
+                    : "Someone walked a delayed hit out of the yard. The Court will pretend it was etiquette.");
+            var uncounted = Plot("plot-uncounted");
+            if (uncounted > 0 && (npcId == "nyx" || npcId == "zero"))
+                extra.Add(uncounted >= 2
+                    ? "The Grid skipped four numbers after you left. I filed you as a guest who would not stay counted."
+                    : "Walk the Blackout Stack. Then come back. I want the census to fail in public.");
+            var curse = Plot("plot-curse");
+            if (curse > 0 && npcId == "thorne")
+                extra.Add(curse >= 2
+                    ? "The hostility you fed in the grove followed you home as a rumor. I am still not the dragon."
+                    : "If you meet the drake, do not finish it. That is the whole plot.");
+            var road = Plot("plot-road");
+            if (road > 0 && npcId == "lamplighter")
+                extra.Add(road >= 2
+                    ? "Frontier walkers still have no seat. Every road you walked is the argument. I am lighting it anyway."
+                    : "They will not get a ninth door. They will get a road. Walk it so the Ring has to notice.");
+            var eighth = Plot("plot-eighth");
+            if (eighth > 0 && npcId == "lyra")
+                extra.Add(eighth >= 2
+                    ? "You have seen the Second Hour and the grove that wrote the Refusals. I still will not teach a ninth."
+                    : "Iyatte says the Refusals were written in Tunya. I keep the door. Do not ask me to close it.");
+            var traveler = TravelerWhere(npcId);
+            if (!string.IsNullOrEmpty(traveler)) extra.Add(traveler);
+            return extra.ToArray();
+        }
+
+        public static int Plot(string id)
+        {
+            var csv = WorldMemory.All().plotsCsv ?? "";
+            foreach (var part in csv.Split(';'))
+            {
+                var kv = part.Split(':');
+                if (kv.Length >= 2 && kv[0].Trim() == id && int.TryParse(kv[1], out var n)) return n;
+            }
+            return 0;
+        }
+
+        static void AdvancePlot(WorldId from, WorldId to)
+        {
+            TryPlot("plot-eighth", from, to, WorldId.Crucible, WorldId.Tunya, WorldId.Hub);
+            TryPlot("plot-uncounted", from, to, WorldId.Cyber, WorldId.Hub);
+            TryPlot("plot-curse", from, to, WorldId.Fantasy, WorldId.Hub);
+            TryPlot("plot-road", from, to, WorldId.Frontier, WorldId.Hub);
+            TryPlot("plot-bill", from, to, WorldId.Crime, WorldId.Hub);
+        }
+
+        static void TryPlot(string id, WorldId from, WorldId to, params WorldId[] worlds)
+        {
+            bool a = false, b = false;
+            foreach (var w in worlds)
+            {
+                if (w == from) a = true;
+                if (w == to) b = true;
+            }
+            if (!a || !b) return;
+            var n = Mathf.Min(3, Plot(id) + 1);
+            SetCsv(ref WorldMemory.All().plotsCsv, id, n.ToString());
+            MarkCross(id);
+        }
+
+        static void NudgeTraveler(WorldId from, WorldId to)
+        {
+            var tag = TravelerTag(from) ?? TravelerTag(to);
+            if (string.IsNullOrEmpty(tag)) return;
+            SetCsv(ref WorldMemory.All().travelersCsv, tag, to + ":1");
+        }
+
+        static void AdvanceTravelers(float hours)
+        {
+            var all = WorldMemory.All();
+            if (string.IsNullOrEmpty(all.travelersCsv)) return;
+            var parts = new List<string>();
+            foreach (var part in all.travelersCsv.Split(';'))
+            {
+                if (string.IsNullOrWhiteSpace(part)) continue;
+                var kv = part.Split(':');
+                if (kv.Length < 2) { parts.Add(part); continue; }
+                int stage = 1;
+                if (kv.Length >= 3) int.TryParse(kv[kv.Length - 1], out stage);
+                if (hours >= 4f) stage = Mathf.Min(3, stage + 1);
+                parts.Add(kv[0] + ":" + kv[1] + ":" + stage);
+            }
+            all.travelersCsv = string.Join(";", parts);
+        }
+
+        static string TravelerTag(WorldId id) => id switch
+        {
+            WorldId.Crime => "mama",
+            WorldId.Cyber => "nyx",
+            WorldId.Fantasy => "thorne",
+            WorldId.Crucible => "lyra",
+            WorldId.Frontier => "lamplighter",
+            WorldId.Superhero => "elias",
+            WorldId.Ruins => "seraphine",
+            WorldId.Tunya => "vesper",
+            _ => null
+        };
+
+        static string TravelerWhere(string npcId)
+        {
+            var csv = WorldMemory.All().travelersCsv ?? "";
+            foreach (var part in csv.Split(';'))
+            {
+                var kv = part.Split(':');
+                if (kv.Length < 2 || kv[0].Trim() != npcId) continue;
+                var where = kv[1].Trim();
+                return npcId + " is walking a door toward " + where + ". The scene change did not end the errand.";
+            }
+            return null;
+        }
+
+        static void MarkCross(string key)
+        {
+            var all = WorldMemory.All();
+            var csv = all.crossCsv ?? "";
+            if (csv.Contains(key)) return;
+            all.crossCsv = string.IsNullOrEmpty(csv) ? key : csv + ";" + key;
+        }
+
+        static void SetCsv(ref string csv, string key, string value)
+        {
+            var map = new Dictionary<string, string>();
+            if (!string.IsNullOrEmpty(csv))
+                foreach (var part in csv.Split(';'))
+                {
+                    var kv = part.Split(new[] { ':' }, 2);
+                    if (kv.Length == 2) map[kv[0].Trim()] = kv[1].Trim();
+                }
+            map[key] = value;
+            var list = new List<string>();
+            foreach (var kv in map) list.Add(kv.Key + ":" + kv.Value);
+            csv = string.Join(";", list);
         }
     }
 }

@@ -95,7 +95,7 @@ namespace Concordia
             GUI.Label(new Rect(32, 54, 280, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon), _small);
-            GUI.Label(new Rect(32, 70, 520, 16), WorldClock.HudClock(), _small);
+            GUI.Label(new Rect(32, 70, 520, 16), WorldClock.HudClock() + "  ·  " + KingdomBook.HudLine(), _small);
             GUI.Label(new Rect(32, 86, 520, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : !string.IsNullOrEmpty(WorldClock.LastEvent) ? WorldClock.LastEvent

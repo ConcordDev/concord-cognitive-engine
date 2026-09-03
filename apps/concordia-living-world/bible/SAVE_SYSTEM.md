@@ -6,7 +6,7 @@
 
 ## LIVE
 
-Unity: `concordia_appearance.json` + PlayerPrefs. Unity also writes `concordia-living-v1.json` (hour, day, ecology, prices, dead ids, births, lastEvent) on gate leave. Returning advances away hours so the kingdom did not freeze. Authored world events rewrite `lastEvent` in the live clock. Browser persist.ts is the same shape, not yet the same file.
+Unity: `concordia_appearance.json` + PlayerPrefs. Unity also writes `concordia-living-v1.json` (hour, day, ecology, prices, dead ids, births, lastEvent, staple/stock/need/imports/population, plus plots/travelers/cross CSVs) on gate leave. Returning advances away hours — production, Ring shipments, traveler stages — so the kingdom did not freeze. Authored world events rewrite `lastEvent` in the live clock. Browser persist.ts is the same family, not yet the same file.
 
 ## TARGET
 
