@@ -1,0 +1,83 @@
+[
+  {
+    "id": "impossible_print_01_kiren",
+    "title": "Impossible Print — The Ranger's Story",
+    "description": "Ranger Kiren Owl has been tracking a creature whose print matches nothing in the fauna catalogue. He hasn't told the Watch. He'll tell you if you ask the right way.",
+    "giver_npc_id": "ranger_kiren_owl",
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "8m",
+    "objectives": [
+      { "id": "obj_print1_visit_verge", "type": "reach_location", "target": "hub_verge_outpost", "required_count": 1, "description": "Visit the Verge outpost during Kiren's hours." },
+      { "id": "obj_print1_observe_print", "type": "observe", "target": "impossible_print_evidence", "required_count": 1, "description": "Examine the print Kiren keeps in his journal." }
+    ],
+    "rewards": { "xp": 60, "skill_xp": { "tracking": 30 }, "items": ["notebook_with_print_sketch"] },
+    "breadcrumbs": [
+      { "id": "bc_print1_first_clue", "content": "Print mass: ~250kg. Stride length: 1.8m. No known fauna matches. The print appears in three places in three nights. Something is crossing.", "unlocks_after": "obj_print1_observe_print", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["impossible_print_02_orin"],
+    "prerequisites": [],
+    "tags": ["hub", "impossible_print", "tracking"]
+  },
+  {
+    "id": "impossible_print_02_orin",
+    "title": "Impossible Print — The Stablemaster's Pattern",
+    "description": "Orin Rede has been logging horses that come back from a particular Verge path exhausted past explanation. He thinks one rider has been borrowing them without name. The pattern overlaps Kiren's tracks.",
+    "giver_npc_id": "stablemaster_orin_rede",
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "8m",
+    "objectives": [
+      { "id": "obj_print2_visit_stables", "type": "reach_location", "target": "hub_stables", "required_count": 1, "description": "Visit Orin during morning round (Stratus phase)." },
+      { "id": "obj_print2_show_notebook", "type": "deliver", "target": "notebook_with_print_sketch", "required_count": 1, "description": "Show Kiren's sketch to Orin." }
+    ],
+    "rewards": { "xp": 80, "items": ["stable_log_extract"] },
+    "breadcrumbs": [
+      { "id": "bc_print2_horse_dates", "content": "The exhausted horses match Kiren's print dates. Three horses returned on three of Kiren's print nights. The rider is real.", "unlocks_after": "obj_print2_show_notebook", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["impossible_print_03_kel"],
+    "prerequisites": ["impossible_print_01_kiren"],
+    "tags": ["hub", "impossible_print", "investigation"]
+  },
+  {
+    "id": "impossible_print_03_kel",
+    "title": "Impossible Print — The Courier's Portal",
+    "description": "Crosswind Courier Kel Sandren has noticed one of the standing portals opening off-schedule. By minutes, then hours. Show Kel the print and the stable log.",
+    "giver_npc_id": "courier_kel_sandren",
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_print3_find_kel", "type": "reach_location", "target": "hub_portal_plaza", "required_count": 1, "description": "Find Kel at the portal plaza (Stratus or Penanus)." },
+      { "id": "obj_print3_show_evidence", "type": "deliver", "target": "stable_log_extract", "required_count": 1, "description": "Show Kel the stable log + print sketch." }
+    ],
+    "rewards": { "xp": 100, "skill_xp": { "instinct": 40 }, "items": ["portal_anomaly_log"] },
+    "breadcrumbs": [
+      { "id": "bc_print3_convergence", "content": "Same three nights. Same three locations. Same three observations. Three witnesses, one creature, one cross-world breach.", "unlocks_after": "obj_print3_show_evidence", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["impossible_print_04_synthesis"],
+    "prerequisites": ["impossible_print_02_orin"],
+    "tags": ["hub", "impossible_print", "portal"]
+  },
+  {
+    "id": "impossible_print_04_synthesis",
+    "title": "Impossible Print — The Three Witnesses Meet",
+    "description": "Bring Kiren, Orin, and Kel together. The synthesis triggers a procgen region spawn — the creature's territory, accessible now that the breach is mapped.",
+    "giver_npc_id": "courier_kel_sandren",
+    "difficulty": "intermediate",
+    "domain": "hub_side_arc",
+    "estimated_time": "20m",
+    "objectives": [
+      { "id": "obj_print4_arrange_meeting", "type": "deliver", "target": "meeting_summons", "required_count": 3, "description": "Deliver a meeting summons to all three (Kiren, Orin, Kel)." },
+      { "id": "obj_print4_attend_meeting", "type": "reach_location", "target": "hub_seven_spokes_cellar_room", "required_count": 1, "description": "Attend the private meeting at the Seven Spokes back room." },
+      { "id": "obj_print4_unlock_region", "type": "interact", "target": "procgen_breach_marker", "required_count": 1, "description": "Mark the convergence location; the procgen region spawns." }
+    ],
+    "rewards": { "xp": 250, "skill_xp": { "tracking": 80, "concordia_alignment": 30 }, "creates_combat_style_dtu": "impossible_print_hunter" },
+    "breadcrumbs": [
+      { "id": "bc_print4_region_open", "content": "A new region has opened in the Verge. The creature is somewhere in there. So is what it's been guarding.", "unlocks_after": "obj_print4_unlock_region", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["impossible_print_03_kel"],
+    "tags": ["hub", "impossible_print", "synthesis", "procgen"]
+  }
+]

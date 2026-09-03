@@ -1,0 +1,101 @@
+[
+  {
+    "id": "lattice_voss_01_drill",
+    "title": "The Drill Yard — Earn an Audience",
+    "description": "Voss Dren will speak privately if you drill with the cohort first. Bring a blade you trust.",
+    "giver_npc_id": "leader_voss_dren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_voss1_drill",
+        "type": "interact",
+        "target": "lattice_drill_yard",
+        "required_count": 1,
+        "description": "Drill with the cohort during morning hours."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_voss_02_pact"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "lattice-crucible",
+      "lattice_side"
+    ]
+  },
+  {
+    "id": "lattice_voss_02_pact",
+    "title": "The Lattice Circle — Hear the Pact",
+    "description": "Meet Voss at the lattice circle after dusk. He'll explain the cross-world pact with Calla Bren.",
+    "giver_npc_id": "leader_voss_dren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_voss2_visit",
+        "type": "reach_location",
+        "target": "lattice_circle",
+        "required_count": 1,
+        "description": "Meet Voss at the lattice circle after dusk."
+      },
+      {
+        "id": "obj_voss2_hear",
+        "type": "talk_to",
+        "target": "leader_voss_dren",
+        "required_count": 1,
+        "description": "Hear the pact."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_voss_03_calla"
+    ],
+    "prerequisites": [
+      "lattice_voss_01_drill"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_side"
+    ]
+  },
+  {
+    "id": "lattice_voss_03_calla",
+    "title": "The Ruins — Carry the Confirmation",
+    "description": "Voss wants you to carry confirmation to Calla Bren. The pact lives or dies on this exchange.",
+    "giver_npc_id": "leader_voss_dren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_voss3_carry",
+        "type": "deliver",
+        "target": "voss_confirmation_to_calla",
+        "required_count": 1,
+        "description": "Deliver to Calla in the ruins."
+      }
+    ],
+    "rewards": {
+      "xp": 600,
+      "items": [
+        "voss_pact_seal"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "lattice_voss_02_pact"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_side"
+    ]
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "id": "cyber_kira_01_tea",
+    "title": "The Runners' Den — Bring Hot Tea",
+    "description": "Kira Zane hasn't slept. She'll talk in exchange for hot tea. She means it.",
+    "giver_npc_id": "datadiver_kira_zane",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_kira1_buy",
+        "type": "interact",
+        "target": "neon_quarter_tea_stall",
+        "required_count": 1,
+        "description": "Buy a fresh cup of tea, hot."
+      },
+      {
+        "id": "obj_kira1_deliver",
+        "type": "deliver",
+        "target": "tea_to_kira",
+        "required_count": 1,
+        "description": "Deliver it to Kira in the runners' den."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "cyber_kira_02_map"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "cyber",
+      "cyber_side"
+    ]
+  },
+  {
+    "id": "cyber_kira_02_map",
+    "title": "The Runners' Den — The Packet Map",
+    "description": "Kira hands you the map of a packet flow that doesn't terminate. Don't show Oren. Don't show Silver. Use it.",
+    "giver_npc_id": "datadiver_kira_zane",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_kira2_receive",
+        "type": "interact",
+        "target": "kira_map_handoff",
+        "required_count": 1,
+        "description": "Receive the map."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_kira2",
+        "content": "The packet flow leaks into the hub. The terminal node is a hub workshop.",
+        "unlocks_after": "obj_kira2_receive",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "cyber_kira_03_trace"
+    ],
+    "prerequisites": [
+      "cyber_kira_01_tea"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_side"
+    ]
+  },
+  {
+    "id": "cyber_kira_03_trace",
+    "title": "The Runners' Den — Follow the Flow",
+    "description": "Follow the map. The terminal node is in the hub. Find it. Tell only Kira where it leads.",
+    "giver_npc_id": "datadiver_kira_zane",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_kira3_follow",
+        "type": "reach_location",
+        "target": "hub_focus_lattice_workshop",
+        "required_count": 1,
+        "description": "Reach the terminal node Kira's map points to."
+      },
+      {
+        "id": "obj_kira3_report",
+        "type": "talk_to",
+        "target": "datadiver_kira_zane",
+        "required_count": 1,
+        "description": "Return with the answer. Tell Kira only."
+      }
+    ],
+    "rewards": {
+      "xp": 500,
+      "skill_xp": {
+        "lattice_awareness": 80
+      },
+      "items": [
+        "kira_packet_map_complete"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "cyber_kira_02_map"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_side"
+    ]
+  }
+]

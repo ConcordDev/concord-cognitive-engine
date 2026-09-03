@@ -520,6 +520,7 @@ const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterL
 const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay'), { ssr: false });
 const WorldTintOverlay = dynamic(() => import('@/components/world/WorldTintOverlay'), { ssr: false });
 const SereFrameBanner = dynamic(() => import('@/components/world/SereFrameBanner'), { ssr: false });
+const ConcordiaPlayDoor = dynamic(() => import('@/components/world/ConcordiaPlayDoor'), { ssr: false });
 const CurtainDossier = dynamic(() => import('@/components/world/CurtainDossier'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
@@ -4967,7 +4968,7 @@ export default function WorldLensPage() {
               <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
             </div>
             <p className="text-[10px] text-gray-400">
-              Design, validate, and publish DTU-based creations in shared districts
+              OS world surface — DTUs, presence, stations. AAA play is the in-repo Unity client.
             </p>
           </div>
         </div>
@@ -5826,6 +5827,8 @@ export default function WorldLensPage() {
           <WorldTintOverlay />
           {/* One-time satire/fiction framing for fiction worlds (Sere). */}
           <SereFrameBanner worldId={currentWorldId} />
+          {/* Honest play door: this lens is not the AAA combat client. */}
+          <ConcordiaPlayDoor />
           {/* The Curtain dossier — secrets redacted until the player declassifies them (K). */}
           <CurtainDossier worldId={currentWorldId} />
           <QuestGuidanceHUD />

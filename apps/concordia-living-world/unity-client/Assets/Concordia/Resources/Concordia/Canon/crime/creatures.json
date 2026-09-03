@@ -1,0 +1,72 @@
+[
+  {
+    "id": "rage_junkie",
+    "name": "Rage Junkie",
+    "world_id": "crime",
+    "description": "Human addicted to a black-market rage drug. Pain-immune, frenzied, runs out the door before the door breaks.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Super strength, pain immunity, berserk state",
+    "emergent_ability_seeds": [
+      { "name": "adrenaline_overdrive", "verb": "adrenaline_overdrive", "effects": [{ "kind": "buff", "params": { "stat": "speed", "delta": 0.8, "durationMs": 4000 } }, { "kind": "buff", "params": { "stat": "damage", "delta": 0.5, "durationMs": 4000 } }], "trigger": "took_critical_hit" },
+      { "name": "pain_conversion", "verb": "pain_conversion", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.4, "durationMs": 5000 } }, { "kind": "heal", "params": { "amount": 6, "target": "self" } }], "trigger": "below_30_health" },
+      { "name": "blood_frenzy", "verb": "blood_frenzy", "effects": [{ "kind": "buff", "params": { "stat": "speed", "delta": 0.5, "durationMs": 6000 } }, { "kind": "channel", "params": { "tickEvents": [{ "kind": "damage", "params": { "amount": 4, "kind": "physical" } }], "ticks": 5, "intervalMs": 600 } }], "trigger": "killed_an_enemy" }
+    ]
+  },
+  {
+    "id": "scrap_golem",
+    "name": "Scrap Golem",
+    "world_id": "crime",
+    "description": "Junkyard construct welded from car panels, rebar, and engine blocks. Slow, immense, incredibly defensive.",
+    "topology_hint": "humanoid",
+    "size_band": "huge",
+    "starting_behavior": "Extremely heavy, slow, high defense",
+    "emergent_ability_seeds": [
+      { "name": "magnet_pull", "verb": "magnet_pull", "effects": [{ "kind": "displace", "params": { "force": 250, "direction": "toward", "distance": 8 } }], "trigger": "metal_target_nearby" },
+      { "name": "debris_storm", "verb": "debris_storm", "effects": [{ "kind": "damage", "params": { "amount": 12, "kind": "physical", "radius": 6 } }, { "kind": "terrain", "params": { "kind": "wall", "radius": 3, "durationMs": 4000 } }], "trigger": "surrounded" },
+      { "name": "self_repair", "verb": "self_repair", "effects": [{ "kind": "heal", "params": { "amount": 25, "target": "self" } }], "trigger": "near_scrap_pile" }
+    ]
+  },
+  {
+    "id": "night_crawler",
+    "name": "Night Crawler",
+    "world_id": "crime",
+    "description": "Person who lives in the sewers and dark alleys long enough that their senses warped. Pack-tactical, quiet.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Enhanced night vision, stealth, pack tactics",
+    "emergent_ability_seeds": [
+      { "name": "toxin_spit", "verb": "toxin_spit", "effects": [{ "kind": "damage", "params": { "amount": 8, "kind": "poison" } }, { "kind": "debuff", "params": { "stat": "speed", "delta": -0.4, "durationMs": 4000 } }], "trigger": "target_at_range" },
+      { "name": "wall_climb", "verb": "wall_climb", "effects": [{ "kind": "displace", "params": { "force": 120, "direction": "forward", "distance": 5 } }, { "kind": "buff", "params": { "stat": "stealth", "delta": 0.6, "durationMs": 3000 } }], "trigger": "near_wall" },
+      { "name": "echo_location", "verb": "echo_location", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.3, "durationMs": 4000 } }], "trigger": "in_darkness" }
+    ]
+  },
+  {
+    "id": "chrome_enforcer",
+    "name": "Chrome Enforcer",
+    "world_id": "crime",
+    "description": "Gang member with illegal cybernetic implants — speed, weaponry, and a combat AI assistant they bought black-market.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Enhanced speed, strength, and weaponry",
+    "emergent_ability_seeds": [
+      { "name": "overclock", "verb": "overclock", "effects": [{ "kind": "buff", "params": { "stat": "speed", "delta": 0.7, "durationMs": 3500 } }, { "kind": "debuff", "params": { "stat": "defense", "delta": -0.2, "durationMs": 3500 } }], "trigger": "target_in_range" },
+      { "name": "emp_discharge", "verb": "emp_discharge", "effects": [{ "kind": "stun", "params": { "durationMs": 1500 } }, { "kind": "damage", "params": { "amount": 8, "kind": "shock", "radius": 4 } }], "trigger": "below_40_health" },
+      { "name": "combat_ai_assist", "verb": "combat_ai_assist", "effects": [{ "kind": "buff", "params": { "stat": "damage", "delta": 0.4, "durationMs": 5000 } }], "trigger": "engaged_3_seconds" }
+    ]
+  },
+  {
+    "id": "ash_hound",
+    "name": "Ash Hound",
+    "world_id": "crime",
+    "description": "Mutated street dog that learned to feed on accelerant and chemical waste. Smells like a refinery fire and bites like one.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Fire resistance, pack hunters, toxic bite",
+    "emergent_ability_seeds": [
+      { "name": "molotov_breath", "verb": "molotov_breath", "effects": [{ "kind": "damage", "params": { "amount": 10, "kind": "fire", "radius": 3 } }, { "kind": "terrain", "params": { "kind": "fire", "radius": 3, "durationMs": 3000 } }], "trigger": "near_flammable" },
+      { "name": "chemical_trail", "verb": "chemical_trail", "effects": [{ "kind": "terrain", "params": { "kind": "fire", "radius": 1.5, "durationMs": 4000 } }], "trigger": "moving_fast" },
+      { "name": "explosive_charge", "verb": "explosive_charge", "effects": [{ "kind": "damage", "params": { "amount": 22, "kind": "fire", "radius": 3 } }, { "kind": "displace", "params": { "force": 200, "direction": "away", "distance": 5 } }], "trigger": "on_death" }
+    ]
+  }
+]

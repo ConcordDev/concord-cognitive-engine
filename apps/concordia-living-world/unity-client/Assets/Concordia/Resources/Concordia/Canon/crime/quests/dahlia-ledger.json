@@ -1,0 +1,135 @@
+[
+  {
+    "id": "crime_dahlia_01_meet",
+    "title": "The Defence Office — A Coffee Meeting",
+    "description": "Dahlia Kress wants to meet. She defended Silas Thorpe twice. She also defended a kid against Silas once. She wants to know which side you're on.",
+    "giver_npc_id": "lawyer_dahlia_kress",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_dahlia1_visit",
+        "type": "reach_location",
+        "target": "crime_lawyer_office",
+        "required_count": 1,
+        "description": "Visit Dahlia during her client hours."
+      },
+      {
+        "id": "obj_dahlia1_choose",
+        "type": "any_of",
+        "target": "dahlia_alignment",
+        "required_count": 1,
+        "description": "Tell Dahlia which side you stand on."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_dahlia1",
+        "content": "Dahlia has a copy of Silas's ledger filed under privileged work-product. She is ready to hand it over to the right person.",
+        "unlocks_after": "obj_dahlia1_choose",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "crime_dahlia_02_steal"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "crime",
+      "crime_high"
+    ]
+  },
+  {
+    "id": "crime_dahlia_02_steal",
+    "title": "The Defence Office — The Privileged Folder",
+    "description": "Dahlia will leave the office unlocked at sixth-bell. The folder is on the third shelf, second from the top. You take it. She did not give it to you.",
+    "giver_npc_id": "lawyer_dahlia_kress",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_dahlia2_enter",
+        "type": "stealth_traverse",
+        "target": "dahlia_office_after_hours",
+        "required_count": 1,
+        "description": "Enter the office at sixth-bell unobserved."
+      },
+      {
+        "id": "obj_dahlia2_take",
+        "type": "interact",
+        "target": "thorpe_ledger_copy",
+        "required_count": 1,
+        "description": "Take the ledger from the third shelf."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "crime_dahlia_03_destination"
+    ],
+    "prerequisites": [
+      "crime_dahlia_01_meet"
+    ],
+    "tags": [
+      "crime",
+      "crime_high"
+    ]
+  },
+  {
+    "id": "crime_dahlia_03_destination",
+    "title": "The Ledger — Where Does It Go?",
+    "description": "Three places it can go. Iniko's office (she said never bring it). Judge Haldane's chambers (she said the same). Bell at the corner (he'll sell it back to Silas). Choose.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_dahlia3_choose",
+        "type": "any_of",
+        "target": "ledger_destination",
+        "required_count": 1,
+        "description": "Decide where the ledger goes."
+      }
+    ],
+    "rewards": {
+      "xp": 700,
+      "items": [
+        "dahlia_ledger_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "crime_dahlia_02_steal"
+    ],
+    "tags": [
+      "crime",
+      "crime_high"
+    ],
+    "moral_branch": {
+      "description": "Where does the ledger land?",
+      "options": [
+        {
+          "id": "iniko",
+          "trigger": "obj_dahlia3_choose:iniko",
+          "consequence": "Iniko uses it covertly to bust the ring. She owes you. Watch reputation +0.5."
+        },
+        {
+          "id": "haldane",
+          "trigger": "obj_dahlia3_choose:haldane",
+          "consequence": "Judge Haldane indicts. Public win for the city. Civic reputation +0.7."
+        },
+        {
+          "id": "bell",
+          "trigger": "obj_dahlia3_choose:bell",
+          "consequence": "Bell sells it back to Silas. You receive 8000 sparks. Watch reputation -0.6."
+        }
+      ]
+    }
+  }
+]
