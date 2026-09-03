@@ -164,8 +164,6 @@ namespace Concordia
             HubPlaza.Build(root);
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
-            FreePacks.Spawn("forge", root, new Vector3(-16f, 0f, 12f), 40f, 6.5f);
-            FreePacks.Spawn("tower", root, new Vector3(16f, 0f, 14f), -30f, 8f);
 
             var arena = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             arena.name = "Arena";
@@ -185,10 +183,9 @@ namespace Concordia
             }
 
             DressGuests();
+            DressPillars();
             DressCrowd();
             DressLore();
-            DressRoads();
-            DressCityRing();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -231,7 +228,7 @@ namespace Concordia
             for (int i = 0; i < 4; i++)
             {
                 float a = i / 4f * Mathf.PI * 2f + 0.55f;
-                var p = new Vector3(Mathf.Cos(a) * 15.2f, 0f, Mathf.Sin(a) * 15.2f);
+                var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
                 HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.28f, new Vector3(1.4f, 0.22f, 0.45f),
                     HubLook.Lit(new Color(0.35f, 0.2f, 0.1f), 0.1f, 0.25f), "Bench" + i);
@@ -264,38 +261,58 @@ namespace Concordia
 
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
         {
-            var outPos = p + p.normalized * 8.5f;
+            var outDir = p.normalized;
+            var outPos = p + outDir * 8.5f;
+            var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
             string plan = "embassy";
             switch (gate.world)
             {
                 case WorldId.Ruins:
                     shell = FreePacks.Spawn("crypt-small", root, outPos, yaw, 5.5f);
+                    FreePacks.Spawn("statue_obelisk", root, outPos + side * 3.4f, yaw, 2.4f, required: false);
                     plan = "archive";
                     break;
                 case WorldId.Tunya:
                     shell = FreePacks.Spawn("tent_detailedOpen", root, outPos, yaw, 4.2f);
-                    FreePacks.Spawn("crops_wheatStageB", root, outPos + Vector3.right * 3.2f, yaw, 1.2f);
+                    FreePacks.Spawn("crops_wheatStageB", root, outPos + side * 3.2f, yaw, 1.2f);
+                    FreePacks.Spawn("crops_wheatStageB", root, outPos + side * 4.4f, yaw + 15f, 1.2f, required: false);
                     break;
                 case WorldId.Fantasy:
-                    shell = FreePacks.Spawn("building-small-b", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn("tree_oak", root, outPos + side * 2.8f, yaw, 9f, required: false);
+                    FreePacks.Spawn("tree_oak", root, outPos - side * 3.1f, yaw + 40f, 7.5f, required: false);
+                    shell = FreePacks.Spawn("tower", root, outPos, yaw, 7.2f, required: false);
                     break;
                 case WorldId.Crime:
-                    shell = FreePacks.Spawn("building-small-a", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn("cart", root, outPos, yaw + 20f, 2.2f);
+                    FreePacks.Spawn("crate", root, outPos + side * 2.2f, yaw, 0.9f);
+                    FreePacks.Spawn("barrel", root, outPos - side * 1.8f, yaw, 0.8f);
+                    FreePacks.Spawn("crate", root, outPos + outDir * 1.6f, 15f, 0.9f, required: false);
                     plan = "market";
                     break;
                 case WorldId.Cyber:
-                    shell = FreePacks.Spawn("building-small-c", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn("column", root, outPos + side * 2.4f, yaw, 3.2f);
+                    FreePacks.Spawn("column", root, outPos - side * 2.4f, yaw, 3.2f);
+                    HubLook.Lantern(root, outPos);
+                    shell = FreePacks.Spawn("tower", root, outPos + outDir * 1.2f, yaw, 6.4f, required: false);
                     break;
                 case WorldId.Frontier:
-                    shell = FreePacks.Spawn("tent_smallOpen", root, outPos, yaw, 4f);
-                    break;
+                    for (int i = 0; i < 5; i++)
+                    {
+                        var rp = p + outDir * (6f + i * 4.2f);
+                        FreePacks.Spawn("road-straight", root, rp, yaw + 90f, 5.5f, required: false, byHeight: false);
+                    }
+                    PlaceStone(outPos + side * 2.6f, "No embassy",
+                        "The frontier keeps no seat. The road is their door. To claim a fixed house here would be to accept a dome.");
+                    return;
                 case WorldId.Superhero:
-                    shell = FreePacks.Spawn("building-small-d", root, outPos, yaw, 7f);
+                    shell = FreePacks.Spawn("tower", root, outPos, yaw, 8.5f);
                     plan = "tower";
                     break;
                 case WorldId.Crucible:
-                    shell = FreePacks.Spawn("building-small-a", root, outPos, yaw, 6f);
+                    FreePacks.Spawn("rock_smallA", root, outPos + side * 2.1f, yaw, 1.2f, required: false);
+                    FreePacks.Spawn("rock_smallB", root, outPos - side * 1.6f, yaw, 1.0f, required: false);
+                    FreePacks.Spawn("statue_obelisk", root, outPos, yaw, 3.2f, required: false);
                     break;
             }
             if (shell) BuildingInterior.Open(shell, plan, outPos);
@@ -440,6 +457,63 @@ namespace Concordia
             }
         }
 
+        void DressPillars()
+        {
+            foreach (var n in Canon.Pillars)
+            {
+                var look = new Appearance
+                {
+                    displayName = n.name,
+                    height = Mathf.Clamp(n.height / 1.8f, 0.95f, 1.16f),
+                    width = 1f,
+                    shoulders = n.id == "sovereign" ? 1.18f : 1f,
+                    chest = 1f,
+                    hips = 1f,
+                    head = 1f,
+                    jaw = n.id == "sovereign" ? 1.12f : 1f
+                };
+                float yaw;
+                if (n.id == "concordia")
+                {
+                    look.skin = 0.34f;
+                    look.hairHue = 0.07f;
+                    look.hairSat = 0.55f;
+                    look.hairVal = 0.12f;
+                    look.outfit = 0;
+                    look.attitude = 3;
+                    look.hairStyle = 4;
+                    yaw = 0f;
+                }
+                else if (n.id == "concord")
+                {
+                    look.skin = 0.86f;
+                    look.hairHue = 0.58f;
+                    look.hairSat = 0.08f;
+                    look.hairVal = 0.22f;
+                    look.outfit = 1;
+                    look.attitude = 0;
+                    look.hairStyle = 0;
+                    yaw = 180f;
+                }
+                else
+                {
+                    look.skin = 0.26f;
+                    look.hairHue = 0.04f;
+                    look.hairSat = 0.35f;
+                    look.hairVal = 0.08f;
+                    look.outfit = 5;
+                    look.attitude = 1;
+                    look.hairStyle = 1;
+                    yaw = 90f;
+                }
+                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
+                go.name = n.name;
+                go.AddComponent<GuestNpc>().def = n;
+                var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+                life.job = NpcLife.Job.Watch;
+            }
+        }
+
         void DressGrove()
         {
             var oaks = new[] { "tree_oak", "tree_oak_dark", "tree_default", "tree_pineTallA", "tree_pineTallA_detailed", "tree_pineTallB" };
@@ -536,6 +610,8 @@ namespace Concordia
                 "They held the Court four hours. Then the ground spoke in flowers. No one died. You cannot own the heart.");
             PlaceStone(new Vector3(8.2f, 0f, 2.1f), "Flower-law",
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
+            PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
+                "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
         }
 
         void PlaceStone(Vector3 pos, string title, string text)

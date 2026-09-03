@@ -88,6 +88,18 @@ namespace Concordia
             new GuestDef { id = "oldseam", name = "Old Seam", title = "Lantern path", line = "I have mended this street since before the gates had names. Walk soft.", color = Hex("7a6a58"), x = -11.2f, z = -4.1f, height = 1.58f },
         };
 
+        /// <summary>
+        /// Founding Day stand on the unpaved ring. Concordia at the warm apex,
+        /// Concord facing her, the Sovereign with his back to both.
+        /// Do not put "Concord admits he loves her" in anyone's mouth.
+        /// </summary>
+        public static readonly GuestDef[] Pillars =
+        {
+            new GuestDef { id = "concordia", name = "Concordia", title = "The First Breath", line = "This ground is mine. Walk it. You cannot own the heart.", color = Hex("c8721a"), x = 0f, z = -6.4f, height = 1.78f },
+            new GuestDef { id = "concord", name = "Concord", title = "The First Law", line = "I am measuring. That is enough.", color = Hex("8aa0b4"), x = 0f, z = 6.2f, height = 1.82f },
+            new GuestDef { id = "sovereign", name = "The Sovereign", title = "The First Refusal", line = "…", color = Hex("2a1c14"), x = 8.6f, z = 0.3f, height = 1.94f },
+        };
+
         public static WorldDef Hub => Get(WorldId.Hub);
 
         public static WorldDef Get(WorldId id)
