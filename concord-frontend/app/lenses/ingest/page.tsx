@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { IngestionRepos } from '@/components/ingest/IngestionRepos';
 import { PipelinePanel } from '@/components/ingest/PipelinePanel';
+import { LatticeSeedPanel } from '@/components/ingest/LatticeSeedPanel';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -595,6 +596,9 @@ export default function IngestLensPage() {
 
       {/* ELT Pipeline — connectors, schedules, transforms, runs, dedup, OCR, webhook */}
       <PipelinePanel />
+
+      {/* Recovered Auto-DTU + page-queue ingest scheduler (persisted, quota-gated) */}
+      <LatticeSeedPanel />
 
       {/* Ingest Analysis Actions — profile & validate the content in the text area */}
       <div className="panel p-4 space-y-4">

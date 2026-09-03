@@ -196,6 +196,7 @@ import githubConnector from './github.js';
 import notion from './notion.js';
 import importdomain from './importdomain.js';
 import ingest from './ingest.js';
+import latticeSeed from './lattice-seed.js';
 import law from './law.js';
 import marketplace from './marketplace.js';
 import ml from './ml.js';
@@ -495,6 +496,7 @@ export default [
   notion,
   importdomain,
   ingest,
+  latticeSeed,
   law,
   marketplace,
   ml,
