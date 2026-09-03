@@ -90,6 +90,56 @@ namespace Concordia
             Debug.Log("ConcordiaShot wrote Game-view person-now + plaza/frontier/cyber");
         }
 
+        public static IEnumerator Tour(ConcordiaGame game)
+        {
+            try { File.Delete("/tmp/concordia-request-tour"); } catch { }
+            for (int i = 0; i < 20; i++) yield return null;
+            if (CharacterCreator.IsOpen) CharacterCreator.SkipNow();
+            yield return new WaitForSeconds(0.4f);
+            ForceGameView();
+            var dump = new StringBuilder();
+            dump.AppendLine(System.DateTime.Now.ToString("o"));
+            foreach (WorldId id in System.Enum.GetValues(typeof(WorldId)))
+            {
+                if (!game) yield break;
+                game.Travel(id);
+                yield return new WaitForSeconds(0.85f);
+                var cities = CityAtlas.For(id);
+                dump.AppendLine(id + " " + Canon.Get(id).title + " cities=" + cities.Length);
+                foreach (var c in cities)
+                    dump.AppendLine("  " + c.name + " @ " + c.x.ToString("0.0") + "," + c.z.ToString("0.0"));
+                var cam = Camera.main;
+                var chase = cam ? cam.GetComponent<ChaseCamera>() : null;
+                if (chase) chase.enabled = false;
+                if (cam)
+                {
+                    cam.transform.position = new Vector3(0f, 28f, -42f);
+                    cam.transform.LookAt(new Vector3(0f, 2f, 8f));
+                    cam.fieldOfView = 58f;
+                }
+                yield return new WaitForEndOfFrame();
+                Capture("/tmp/concordia-world-" + id + ".png");
+                if (cities.Length > 0)
+                {
+                    game.EnterCity(cities[0]);
+                    yield return new WaitForSeconds(0.35f);
+                    if (cam)
+                    {
+                        var p = new Vector3(cities[0].x, 0f, cities[0].z);
+                        cam.transform.position = p + new Vector3(8f, 14f, -16f);
+                        cam.transform.LookAt(p + Vector3.up * 2f);
+                    }
+                    yield return new WaitForEndOfFrame();
+                    Capture("/tmp/concordia-city-" + id + ".png");
+                }
+                if (chase) chase.enabled = true;
+            }
+            if (game) game.Travel(WorldId.Hub);
+            try { File.WriteAllText("/tmp/concordia-atlas.txt", dump.ToString() + "\n" + CityAtlas.Dump()); }
+            catch { }
+            Debug.Log("ConcordiaShot tour wrote every world + /tmp/concordia-atlas.txt");
+        }
+
         static void PosePerson(Camera cam)
         {
             if (!cam) return;

@@ -71,6 +71,7 @@ namespace Concordia
             WorldId.Cyber => "cyber",
             WorldId.Frontier => "concord-link-frontier",
             WorldId.Superhero => "superhero",
+            WorldId.Sere => "sere",
             _ => "lattice-crucible"
         };
 

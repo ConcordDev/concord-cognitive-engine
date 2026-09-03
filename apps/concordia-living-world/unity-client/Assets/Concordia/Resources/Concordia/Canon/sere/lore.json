@@ -1,0 +1,106 @@
+{
+  "world_id": "sere",
+  "world_name": "Corrupt Earth",
+  "world_description": "Eight centuries of extraction on an Earth-shaped world, told as the history of a machine that no one built and no one runs. It ends where every other sub-world begins: with seven arks leaving the ground. SATIRE — invented archetypes and history, exaggerated for parody; claims are about Sere only.",
+  "history": [
+    {
+      "id": "lore_sere_first_twin_siege",
+      "title": "The First Twin Siege",
+      "type": "founding_war",
+      "era": "Century 1 of the Tessera",
+      "description": "The first of the two great wars that moved the world's financial throne. Out of its smoke the Tally House was chartered — 'temporarily' — to issue the Mark and steady the realms. House Aldermere, already old, had financed both besiegers and emerged owning the peace.",
+      "significance": "major",
+      "factions_involved": ["house_aldermere", "the_tally_house"],
+      "known_by": ["house_aldermere", "the_tally_house"],
+      "hidden_truth": "The 'temporary' charter has been renewed every charter-cycle for three centuries, always 'until conditions stabilize.' Conditions have never stabilized because stability would end the charter."
+    },
+    {
+      "id": "lore_sere_second_twin_siege",
+      "title": "The Second Twin Siege",
+      "type": "founding_war",
+      "era": "Century 1 of the Tessera",
+      "description": "The second great war. When it ended, the banks of the warring realms needed a neutral place to settle their accounts, and the Clearing Spire rose — sovereign-immune, answerable to no realm, the still point that lets the wars below run forever.",
+      "significance": "major",
+      "factions_involved": ["the_clearing_spire", "house_aldermere", "the_tessera"],
+      "known_by": ["the_clearing_spire", "the_tessera"],
+      "hidden_truth": "The Spire's immunity charter is public law no one has read. It has no flag because flags can be burned, and the Spire intends to be there after every flag."
+    },
+    {
+      "id": "lore_sere_the_long_mirror",
+      "title": "The Long Mirror",
+      "type": "managed_parity",
+      "era": "Centuries 5-6 of the Tessera",
+      "description": "A forty-year cold standoff between two giants that somehow never resolved, technology trickling to both sides in lockstep. Every 'breakthrough' by one was matched by the other within a season — far too neatly.",
+      "significance": "major",
+      "factions_involved": ["verge_dynamics", "the_tessera"],
+      "known_by": ["verge_dynamics"],
+      "hidden_truth": "Parity wasn't a stalemate; it was the product. Resolution ends the procurement, so the procurement ensured there was no resolution. Verge's annual report called it 'a stable demand environment.'"
+    },
+    {
+      "id": "lore_sere_the_quiet_fall",
+      "title": "The Quiet Fall",
+      "type": "anomaly",
+      "era": "Century 6 of the Tessera",
+      "description": "The year something fell from the sky. Within a single season the Curtain, Verge Dynamics' war-arm, and the classification charter were all founded. The evidence is on the public record. The verdict is not shipped.",
+      "significance": "major",
+      "factions_involved": ["the_curtain", "verge_dynamics"],
+      "known_by": ["the_curtain"],
+      "hidden_truth": "Coincidence, or cause? Candidate explanations range from a routine munitions accident to a non-native arrival the Curtain was founded to bury. The world ships the evidence; the player weighs it; nothing is confirmed. (See the Deep Watchers.)"
+    },
+    {
+      "id": "lore_sere_crushed_refusals",
+      "title": "The Three That Tried",
+      "type": "suppressed_movement",
+      "era": "Centuries 6-7 of the Tessera",
+      "description": "Three times a people tried to build something outside the machine. The Almsfolk held their goods in common; the Lamplighters opened their cognition to all; the Table-of-All attempted direct rule with no holders above them. Each was bought, hollowed, or broken in turn.",
+      "significance": "major",
+      "factions_involved": ["the_tessera", "the_open_table"],
+      "known_by": ["the_open_table", "the_tessera"],
+      "hidden_truth": "None were defeated by force. The Almsfolk were lent to; the Lamplighters were ridiculed into silence by the Curtain; the Table-of-All was split by an engineered border quarrel. The pattern that broke them is the pattern the Open Table was designed around."
+    },
+    {
+      "id": "lore_sere_the_border_mirror",
+      "title": "The Border Mirror",
+      "type": "manufactured_war",
+      "era": "Century 7 of the Tessera",
+      "description": "Dovrane and Keshar were brothers — the Twin Pact, two anchors whose union could have made an unbound world. Then an incident in the contested passes turned them into enemies in a single season. Sixty years of border hatred followed.",
+      "significance": "major",
+      "factions_involved": ["dovrane", "keshar", "verge_dynamics", "the_tessera"],
+      "known_by": ["dovrane", "keshar"],
+      "hidden_truth": "The incident never happened the way both realms were told. Verge supplied the same crates to both armies to keep the front lit; the dual manifests prove it. Amon of the Reach kept the letters from his Keshar friend Pell across sixty severed years; together the two halves reconstruct the truth. The Pact had to be broken precisely because the Open Table needed both anchors to reach critical mass."
+    },
+    {
+      "id": "lore_sere_eastern_acquisition",
+      "title": "The Eastern Acquisition",
+      "type": "slow_ensnarement",
+      "era": "Century 8 of the Tessera",
+      "description": "The last great productive realm, Keshar, almost built something outside the Mark. It could not be trapped by a loan — it is a creditor. So it was not lent to. The world's next workshop was simply built elsewhere, and Keshar's customers began, one by one, to stop calling.",
+      "significance": "major",
+      "factions_involved": ["keshar", "the_tessera", "hollowford_seed"],
+      "known_by": ["keshar"],
+      "hidden_truth": "When the export market closes, the rescue arrives. The Mercy Fund is already drawing up the conditions for the day Keshar can no longer pay for the border war it was maneuvered into."
+    },
+    {
+      "id": "lore_sere_open_table_rises",
+      "title": "The Open Table Convenes",
+      "type": "coalition",
+      "era": "Late Century 8 of the Tessera — the present",
+      "description": "Esha Varan, who lost her delta to a rescue and owns nothing, read how every prior attempt died and built the next one around those exact failure modes: an open ledger, a seed-library, a price for the Black Tithe set by those who pump it. It is small. It works.",
+      "significance": "major",
+      "factions_involved": ["the_open_table", "dovrane", "keshar"],
+      "known_by": ["the_open_table"],
+      "hidden_truth": "The coalition is always almost enough — the brotherhood was real and the math worked. That is exactly why the anchors had to be split. The Tessera fears nothing on Sere as much as the Open Table reaching critical mass."
+    },
+    {
+      "id": "lore_sere_the_ark_exodus",
+      "title": "The Ark Exodus",
+      "type": "terminal_event",
+      "era": "End of Century 8 — the bridge",
+      "description": "When the open ledger could not be allowed to take root on the ground, the unbound built it above the atmosphere. Seven arks launched from the First Launch Cradle, carrying who they could. You cannot refuse the unrefusable machine from inside it, so you leave the planet. The Exodus was the first Refusal made physical — and the reason every sub-world downstream of Sere exists.",
+      "significance": "world_defining",
+      "factions_involved": ["the_open_table", "house_aldermere", "the_tessera"],
+      "known_by": ["the_open_table"],
+      "hidden_truth": "The control terminals at the Cradle still hold the last manifests — the names of who boarded, and the longer list of who was refused a berth. The arks reached Tunya (Africa first, Eurasia fourth, the rest scattered by time dilation); their archives boot from the same terminals on the far side. Sere and Tunya are two ends of one umbilical. House Aldermere helped clear the launch — and does not advertise that the world it drained is the one the arks fled."
+    }
+  ]
+}

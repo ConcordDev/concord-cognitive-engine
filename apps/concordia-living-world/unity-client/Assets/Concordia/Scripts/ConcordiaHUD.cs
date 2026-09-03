@@ -91,10 +91,12 @@ namespace Concordia
             var world = Canon.Get(player.world);
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
-            GUI.DrawTexture(new Rect(22, 36, 268, 118), _white);
+            var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
+            GUI.DrawTexture(new Rect(22, 36, 268, city == null ? 118 : 134), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 40, 250, 22), world.title.ToUpperInvariant(), _title);
-            GUI.Label(new Rect(32, 62, 250, 16), live ? "LIVE STEEL" : "FLOWER-LAW", _small);
+            GUI.Label(new Rect(32, 62, 250, 16),
+                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name), _small);
             DrawBar(32, 84, 196, 7, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
             DrawBar(32, 94, 196, 5, player.stamina / 100f, new Color(0.86f, 0.64f, 0.22f));
             DrawBar(32, 102, 196, 4, player.poise / 16f, new Color(0.42f, 0.72f, 0.82f));
@@ -136,6 +138,21 @@ namespace Concordia
             }
             if (!string.IsNullOrEmpty(name) && player.world == WorldId.Hub)
                 GUI.Label(new Rect(cx - 80, 42, 160, 18), name, _center);
+            if (player.world != WorldId.Hub)
+            {
+                float cityBest = 0.72f;
+                string cityName = null;
+                foreach (var c in CityAtlas.For(player.world))
+                {
+                    var to = new Vector3(c.x, 0f, c.z) - player.transform.position;
+                    to.y = 0f;
+                    if (to.sqrMagnitude < 16f) continue;
+                    float dot = Vector3.Dot(fwd.normalized, to.normalized);
+                    if (dot > cityBest) { cityBest = dot; cityName = c.name; }
+                }
+                if (!string.IsNullOrEmpty(cityName))
+                    GUI.Label(new Rect(cx - 120, 42, 240, 18), cityName, _center);
+            }
         }
 
         void Prompt(float w, float h)

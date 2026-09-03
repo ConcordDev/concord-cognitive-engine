@@ -83,6 +83,13 @@ namespace Concordia // keep-spawn-assign
                     Scatter(root, "building-type-a", 8, 10f, 16f, 8f);
                     Horizon(root, "building-skyscraper-b", 52f, 8, 26f);
                     break;
+                case WorldId.Sere:
+                    Ring(root, "building-d", 18f, 6, 10f, 0f);
+                    Ring(root, "building-type-h", 12f, 7, 7f, 25f);
+                    Scatter(root, "dumpster", 8, 5f, 16f, 1.6f);
+                    Scatter(root, "barrel", 8, 4f, 14f, 0.9f);
+                    Horizon(root, "building-skyscraper-e", 52f, 7, 20f);
+                    break;
                 default:
                     Ring(root, "detail-crystal-large", 14f, 12, 3.2f, 20f);
                     Scatter(root, "tower-hexagon-mid", 4, 16f, 24f, 8f);
@@ -168,20 +175,31 @@ namespace Concordia // keep-spawn-assign
                 if (person == null || string.IsNullOrEmpty(person.name)) continue;
                 if (w.id == WorldId.Hub && IsHubGuest(person.name)) continue;
                 Vector3 p;
-                var fi = IndexOfFaction(facs, person.faction_id);
-                if (fi >= 0)
+                var city = w.id == WorldId.Hub ? null : CityAtlas.ForPerson(w.id, person);
+                if (city != null)
                 {
-                    float a = fi / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
-                    var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
-                    var side = Vector3.Cross(Vector3.up, camp.normalized);
-                    p = camp + side * ((n % 5) - 2) * 1.6f + camp.normalized * 2.4f;
+                    var camp = new Vector3(city.x, 0f, city.z);
+                    var inward = camp.sqrMagnitude > 0.2f ? camp.normalized : Vector3.forward;
+                    var side = Vector3.Cross(Vector3.up, inward);
+                    p = camp + side * ((n % 5) - 2) * 1.7f + inward * 3.1f;
                 }
                 else
                 {
-                    float a = n * 0.48f + 0.8f;
-                    float rad = w.id == WorldId.Hub ? 21f : 7.5f;
-                    p = new Vector3(Mathf.Cos(a) * rad, 0f, (w.id == WorldId.Hub ? 0f : 4f) + Mathf.Sin(a) * rad);
-                    if (w.id == WorldId.Hub && Canon.InArena(p)) continue;
+                    var fi = IndexOfFaction(facs, person.faction_id);
+                    if (fi >= 0)
+                    {
+                        float a = fi / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
+                        var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
+                        var side = Vector3.Cross(Vector3.up, camp.normalized);
+                        p = camp + side * ((n % 5) - 2) * 1.6f + camp.normalized * 2.4f;
+                    }
+                    else
+                    {
+                        float a = n * 0.48f + 0.8f;
+                        float rad = w.id == WorldId.Hub ? 21f : 7.5f;
+                        p = new Vector3(Mathf.Cos(a) * rad, 0f, (w.id == WorldId.Hub ? 0f : 4f) + Mathf.Sin(a) * rad);
+                        if (w.id == WorldId.Hub && Canon.InArena(p)) continue;
+                    }
                 }
                 var look = Appearance.Random(person.name.GetHashCode());
                 look.displayName = person.name;
@@ -272,20 +290,19 @@ namespace Concordia // keep-spawn-assign
         static void Roads(Transform root, WorldDef w)
         {
             var start = w.id == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0f, 2f);
+            var cities = CityAtlas.For(w.id);
+            if (cities.Length > 0)
+            {
+                for (int i = 0; i < cities.Length; i++)
+                    Road(root, start, new Vector3(cities[i].x, 0f, cities[i].z), w.ground, "RoadCity_" + cities[i].id);
+                return;
+            }
             var facs = WorldBook.Factions(w.id);
             for (int i = 0; i < facs.Length; i++)
             {
                 float a = i / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
                 var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
                 Road(root, start, camp, w.ground, "RoadFac_" + i);
-            }
-            var kings = WorldBook.Countries(w.id);
-            int kn = kings.Length > 0 ? kings.Length : facs.Length;
-            for (int i = 0; i < kn; i++)
-            {
-                float a = i / Mathf.Max(1f, kn) * Mathf.PI * 2f + 0.18f;
-                var keep = new Vector3(Mathf.Cos(a) * 40f, 0f, Mathf.Sin(a) * 40f);
-                Road(root, start, keep, w.ground * 0.85f, "RoadKing_" + i);
             }
         }
 
@@ -314,60 +331,7 @@ namespace Concordia // keep-spawn-assign
 
         static void Kingdoms(Transform root, WorldDef w)
         {
-            var countries = WorldBook.Countries(w.id);
-            if (countries != null && countries.Length > 0)
-            {
-                for (int i = 0; i < countries.Length; i++)
-                {
-                    var c = countries[i];
-                    if (c == null || string.IsNullOrEmpty(c.name)) continue;
-                    float a = i / (float)countries.Length * Mathf.PI * 2f + 0.18f;
-                    var p = new Vector3(Mathf.Cos(a) * 40f, 0f, Mathf.Sin(a) * 40f);
-                    Keep(root, p, -a * Mathf.Rad2Deg, c.name, c.description ?? c.theme, w, i);
-                }
-                return;
-            }
-            var facs = WorldBook.Factions(w.id);
-            for (int i = 0; i < facs.Length; i++)
-            {
-                var f = facs[i];
-                if (f == null) continue;
-                float a = i / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
-                var p = new Vector3(Mathf.Cos(a) * 32f, 0f, Mathf.Sin(a) * 32f);
-                Keep(root, p, -a * Mathf.Rad2Deg, f.name, f.motto + "\n" + (f.goal ?? ""), w, i);
-            }
-        }
-
-        static void Keep(Transform root, Vector3 p, float yaw, string name, string text, WorldDef w, int i)
-        {
-            var hold = new GameObject("Kingdom_" + name).transform;
-            hold.SetParent(root, false);
-            hold.position = p;
-            hold.rotation = Quaternion.Euler(0f, yaw, 0f);
-            var left = hold.TransformPoint(new Vector3(-4.6f, 0f, 2.2f));
-            var right = hold.TransformPoint(new Vector3(4.6f, 0f, 2.2f));
-            var door = hold.TransformPoint(new Vector3(0f, 0f, -5.4f));
-            var mid = hold.TransformPoint(new Vector3(0f, 0f, 1.6f));
-            FreePacks.Spawn("tower-square-base", hold, left, yaw, 5.8f);
-            FreePacks.Spawn("tower-square-roof", hold, left + Vector3.up * 5.2f, yaw, 3.2f);
-            FreePacks.Spawn("tower-square-base", hold, right, yaw, 5.8f);
-            FreePacks.Spawn("tower-square-roof", hold, right + Vector3.up * 5.2f, yaw, 3.2f);
-            FreePacks.Spawn("wall", hold, hold.TransformPoint(new Vector3(0f, 0f, 5.4f)), yaw, 3.6f);
-            FreePacks.Spawn("wall-corner", hold, hold.TransformPoint(new Vector3(-5.2f, 0f, 5.2f)), yaw, 3.4f);
-            FreePacks.Spawn("wall-corner", hold, hold.TransformPoint(new Vector3(5.2f, 0f, 5.2f)), yaw + 90f, 3.4f);
-            if (!FreePacks.Spawn("tower-square-mid", hold, mid, yaw, 5.2f))
-                FreePacks.Spawn("tower-base", hold, mid, yaw, 5.2f);
-            if (!FreePacks.Spawn("gate", hold, door, yaw, 3.8f)
-                && !FreePacks.Spawn("wall-narrow-gate", hold, door, yaw, 3.8f))
-                FreePacks.Spawn("castle-gate", hold, door, yaw, 3.8f);
-            FreePacks.Spawn("flag-banner-long", hold, hold.TransformPoint(new Vector3(0f, 0f, 3.2f)), yaw, 3.6f);
-            FreePacks.Spawn("stairs-stone", hold, hold.TransformPoint(new Vector3(0f, 0f, -3.2f)), yaw, 2.2f);
-            var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.15f, -5.9f), new Vector3(1.2f, 1.7f, 0.16f), HubLook.Lit(w.sun, 0.25f, 0.4f), "Plaque");
-            var ls = plaque.AddComponent<LoreStone>();
-            ls.title = name;
-            var body = text ?? "";
-            if (body.Length > 700) body = body.Substring(0, 697) + "…";
-            ls.text = body;
+            CityTown.BuildAll(root, w);
         }
 
         static void Horizon(Transform root, string stem, float rad, int n, float h)

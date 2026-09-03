@@ -8,6 +8,15 @@ namespace Concordia
         public string Prompt => "E  ·  " + def.name + "  —  " + def.refusal;
     }
 
+    // City inside the current world. E walks you into that town plaza.
+    public class CityGate : MonoBehaviour
+    {
+        public CityDef city;
+        public string Prompt => city == null || string.IsNullOrEmpty(city.name)
+            ? "E  ·  town"
+            : "E  ·  Enter " + city.name;
+    }
+
     public class LoreStone : MonoBehaviour
     {
         public string title, text;

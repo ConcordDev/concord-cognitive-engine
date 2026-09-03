@@ -79,6 +79,7 @@ namespace Concordia
                 WorldId.Superhero => "concrete_floor",
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
+                WorldId.Sere => "wet_asphalt",
                 _ => "stone_tiles"
             };
             var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
@@ -95,6 +96,7 @@ namespace Concordia
                 WorldId.Cyber => (new Color(0.55f, 0.18f, 0.85f), 0.85f, new Vector3(22f, 210f, 0f)),
                 WorldId.Frontier => (new Color(1f, 0.88f, 0.55f), 1.85f, new Vector3(38f, 24f, 0f)),
                 WorldId.Superhero => (new Color(1f, 0.62f, 0.38f), 1.7f, new Vector3(6f, 92f, 0f)),
+                WorldId.Sere => (new Color(0.82f, 0.62f, 0.38f), 0.55f, new Vector3(18f, 140f, 0f)),
                 _ => (new Color(0.25f, 1f, 0.85f), 1.2f, new Vector3(28f, 80f, 0f))
             };
             HubLook.MakeSun(root, sun.Item1, sun.Item2, sun.Item3);
@@ -122,6 +124,7 @@ namespace Concordia
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
                 WorldId.Frontier => 0.007f,
+                WorldId.Sere => 0.02f,
                 _ => 0.011f
             };
             RenderSettings.fogColor = w.id switch
@@ -134,6 +137,7 @@ namespace Concordia
                 WorldId.Tunya => new Color(0.42f, 0.52f, 0.28f),
                 WorldId.Superhero => new Color(0.72f, 0.42f, 0.28f),
                 WorldId.Ruins => new Color(0.32f, 0.28f, 0.24f),
+                WorldId.Sere => new Color(0.22f, 0.16f, 0.10f),
                 _ => new Color(0.08f, 0.28f, 0.28f)
             };
             DynamicGI.UpdateEnvironment();
@@ -612,6 +616,32 @@ namespace Concordia
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
             PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
                 "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
+            DressSereWaystone();
+        }
+
+        void DressSereWaystone()
+        {
+            // Not a ninth Refusal door. Sere is extra-canonical satire —
+            // the First Launch Cradle from the authored Concord Link anchor.
+            var p = new Vector3(14.2f, 0f, -18.4f);
+            PlaceStone(p, "The First Launch Cradle",
+                "The scorched gantry-field the seven arks left from. Cold for generations. Sere is not on the Ring. No Refusal ever held there.");
+            var go = new GameObject("Waystone_Sere");
+            go.transform.SetParent(root, false);
+            go.transform.position = p + Vector3.up * 0.2f;
+            go.AddComponent<WorldGate>().def = new GateDef
+            {
+                world = WorldId.Sere,
+                name = "The First Launch Cradle",
+                shortName = "SERE",
+                refusal = "No Refusal ever held here.",
+                theNo = "The seven arks left from this soil.",
+                color = Canon.Hex("8a7a3a")
+            };
+            var box = go.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.2f, 0f);
+            box.size = new Vector3(2.8f, 2.4f, 2.2f);
+            box.isTrigger = true;
         }
 
         void PlaceStone(Vector3 pos, string title, string text)
