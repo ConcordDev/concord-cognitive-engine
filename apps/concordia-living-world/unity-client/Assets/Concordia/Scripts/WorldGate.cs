@@ -26,7 +26,47 @@ namespace Concordia
     public class GuestNpc : MonoBehaviour
     {
         public GuestDef def;
+        public string personId;
+        public string[] questHooks;
         public string Prompt => "E  ·  " + def.name + ", " + def.title;
+    }
+
+    /// <summary>Authored quest on a board. E accepts or reports progress.</summary>
+    public class QuestBoard : MonoBehaviour
+    {
+        public WorldBook.Quest quest;
+        public WorldId world;
+        public string Prompt => quest == null || string.IsNullOrEmpty(quest.title)
+            ? "E  ·  quest"
+            : "E  ·  " + quest.title;
+    }
+
+    /// <summary>Reach-location token. Standing inside radius stamps the log.</summary>
+    public class QuestBeacon : MonoBehaviour
+    {
+        public string[] tokens;
+        public float radius = 6f;
+    }
+
+    /// <summary>Kenney hold mouth. Geometry is dressing; the plaque stays honest.</summary>
+    public class DungeonGate : MonoBehaviour
+    {
+        public string holdName = "the hold";
+        public Vector3 inside;
+        public Vector3 mouth;
+        public bool inHold;
+        public string Prompt => inHold
+            ? "E  ·  Leave " + holdName
+            : "E  ·  Enter " + holdName;
+    }
+
+    /// <summary>E picks up. Only stamps what this object actually is.</summary>
+    public class Gatherable : MonoBehaviour
+    {
+        public string itemId = "chest";
+        public string label = "chest";
+        public bool taken;
+        public string Prompt => taken ? null : "E  ·  Take " + label;
     }
 
     public class CourtBird : MonoBehaviour

@@ -92,6 +92,7 @@ namespace Concordia
                 else FitMax(go, maxDim);
             }
             Sit(go, pos);
+            PaintIfBlank(go);
             var kind = stem.ToLowerInvariant();
             if (IsTree(kind)) TrunkCollider(go);
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
@@ -245,6 +246,53 @@ namespace Concordia
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
             return go;
+        }
+
+        /// <summary>
+        /// Kenney GLBs often land white because URP never got the colormap.
+        /// Steal albedo from the mesh's own material, else the pack colormap.
+        /// </summary>
+        public static void PaintIfBlank(GameObject go)
+        {
+            if (!go) return;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var src = r.sharedMaterial;
+                Texture tex = null;
+                if (src)
+                {
+                    if (src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
+                    if (!tex && src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
+                    if (!tex && src.HasProperty("_baseColorTexture")) tex = src.GetTexture("_baseColorTexture");
+                }
+#if UNITY_EDITOR
+                if (!tex)
+                {
+                    var path = AssetDatabase.GetAssetPath(go);
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        var prefab = PrefabUtility.GetCorrespondingObjectFromSource(go);
+                        if (prefab) path = AssetDatabase.GetAssetPath(prefab);
+                    }
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        var dir = Path.GetDirectoryName(path)?.Replace("\\", "/");
+                        if (!string.IsNullOrEmpty(dir))
+                        {
+                            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/colormap.png")
+                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/colormap.png")
+                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/dungeon_texture.png");
+                        }
+                    }
+                }
+#endif
+                if (!tex) continue;
+                var m = HubLook.Lit(Color.white, 0.04f, 0.28f);
+                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
+                r.sharedMaterial = m;
+            }
         }
 
         public static void EnsureCollider(GameObject go, float height = 1.8f)

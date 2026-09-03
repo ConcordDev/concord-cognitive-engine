@@ -15,6 +15,9 @@ namespace Concordia
         CityGate[] _cities;
         LoreStone[] _stones;
         GuestNpc[] _npcs;
+        QuestBoard[] _boards;
+        DungeonGate[] _holds;
+        Gatherable[] _loot;
         float _probeAt;
 
         async void Start()
@@ -43,6 +46,10 @@ namespace Concordia
             _player.world = world;
             chase.target = pgo.transform;
             chase.yaw = Mathf.PI;
+            chase.pov = 0;
+            chase.distance = 3.4f;
+            chase.shoulder = 0.62f;
+            chase.height = 1.55f;
             chase.Bind();
             chase.AimAt(pgo.transform);
             cam.clearFlags = CameraClearFlags.Skybox;
@@ -51,6 +58,7 @@ namespace Concordia
 
             var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
             _player.person = ModularPerson.Attach(pgo.transform, look);
+            _player.EquipWorldKit();
             _player.onInteract = TryInteract;
             pgo.AddComponent<ConcordiaHUD>().player = _player;
             pgo.AddComponent<Footsteps>();
@@ -105,6 +113,9 @@ namespace Concordia
             _cities = FindObjectsByType<CityGate>(FindObjectsInactive.Exclude);
             _stones = FindObjectsByType<LoreStone>(FindObjectsInactive.Exclude);
             _npcs = FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude);
+            _boards = FindObjectsByType<QuestBoard>(FindObjectsInactive.Exclude);
+            _holds = FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude);
+            _loot = FindObjectsByType<Gatherable>(FindObjectsInactive.Exclude);
             _probeAt = Time.unscaledTime;
         }
 
@@ -144,7 +155,29 @@ namespace Concordia
                     var d = Vector3.Distance(pos, n.transform.position);
                     if (d < best) { best = d; prompt = n.Prompt; }
                 }
+            if (_boards != null)
+                foreach (var b in _boards)
+                {
+                    if (!b) continue;
+                    var d = Vector3.Distance(pos, b.transform.position);
+                    if (d < best) { best = d; prompt = b.Prompt; }
+                }
+            if (_holds != null)
+                foreach (var h in _holds)
+                {
+                    if (!h) continue;
+                    var d = Vector3.Distance(pos, h.transform.position);
+                    if (d < best) { best = d; prompt = h.Prompt; }
+                }
+            if (_loot != null)
+                foreach (var l in _loot)
+                {
+                    if (!l || l.taken) continue;
+                    var d = Vector3.Distance(pos, l.transform.position);
+                    if (d < best) { best = d; prompt = l.Prompt; }
+                }
             _player.SetNearPrompt(prompt);
+            QuestLog.TickBeacons(pos);
         }
 
         string TryInteract(Vector3 pos)
@@ -154,49 +187,120 @@ namespace Concordia
             CityGate city = null;
             LoreStone stone = null;
             GuestNpc npc = null;
+            QuestBoard board = null;
+            DungeonGate hold = null;
+            Gatherable loot = null;
             float best = 3.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; }
+                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; }
                 }
             if (_cities != null)
                 foreach (var c in _cities)
                 {
                     if (!c) continue;
                     var d = Vector3.Distance(pos, c.transform.position);
-                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; }
+                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; board = null; hold = null; loot = null; }
+                }
+            if (_holds != null)
+                foreach (var h in _holds)
+                {
+                    if (!h) continue;
+                    var d = Vector3.Distance(pos, h.transform.position);
+                    if (d < best) { best = d; hold = h; gate = null; city = null; stone = null; npc = null; board = null; loot = null; }
+                }
+            if (_boards != null)
+                foreach (var b in _boards)
+                {
+                    if (!b) continue;
+                    var d = Vector3.Distance(pos, b.transform.position);
+                    if (d < best) { best = d; board = b; gate = null; city = null; stone = null; npc = null; hold = null; loot = null; }
+                }
+            if (_loot != null)
+                foreach (var l in _loot)
+                {
+                    if (!l || l.taken) continue;
+                    var d = Vector3.Distance(pos, l.transform.position);
+                    if (d < best) { best = d; loot = l; gate = null; city = null; stone = null; npc = null; board = null; hold = null; }
                 }
             if (_stones != null)
                 foreach (var s in _stones)
                 {
                     if (!s) continue;
                     var d = Vector3.Distance(pos, s.transform.position);
-                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; }
+                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; board = null; hold = null; loot = null; }
                 }
             if (_npcs != null)
                 foreach (var n in _npcs)
                 {
                     if (!n) continue;
                     var d = Vector3.Distance(pos, n.transform.position);
-                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; }
+                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; board = null; hold = null; loot = null; }
                 }
             if (gate != null)
             {
                 Travel(gate.def.world);
                 return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
             }
+            if (hold != null)
+                return EnterHold(hold);
             if (city != null)
                 return EnterCity(city.city);
-            if (stone != null) return stone.title + "\n" + stone.text;
+            if (board != null)
+                return QuestLog.Offer(board.quest, board.world);
+            if (loot != null)
+                return TakeLoot(loot);
+            if (stone != null)
+            {
+                QuestLog.NoteLocation(stone.title);
+                return stone.title + "\n" + stone.text;
+            }
             if (npc != null)
             {
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
+                QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
+                var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
+                if (offered.Length > 0)
+                    return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(offered[0], world);
+                if (npc.questHooks != null)
+                    foreach (var hook in npc.questHooks)
+                    {
+                        var q = WorldBook.QuestById(world, hook);
+                        if (q != null) return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(q, world);
+                    }
                 return npc.def.name + ": " + npc.def.line;
             }
             return null;
+        }
+
+        string EnterHold(DungeonGate hold)
+        {
+            var dest = hold.inHold ? hold.mouth : hold.inside;
+            hold.inHold = !hold.inHold;
+            _player.cc.enabled = false;
+            _player.transform.position = dest;
+            _player.cc.enabled = true;
+            Grounding.Snap(_player.cc);
+            QuestLog.NoteLocation("dungeon", "hold");
+            if (hold.inHold)
+            {
+                ConcordiaHUD.Announce("A hold", "Kenney tiles. No authored name.");
+                return "You enter the hold. Live steel if the world allows it.";
+            }
+            return "You leave the hold.";
+        }
+
+        static string TakeLoot(Gatherable loot)
+        {
+            if (loot.taken) return null;
+            loot.taken = true;
+            loot.gameObject.SetActive(false);
+            QuestLog.NoteGather(loot.itemId);
+            QuestLog.NoteGather(loot.label);
+            return "Took " + loot.label + ".";
         }
 
         public void Travel(WorldId next)
@@ -213,6 +317,10 @@ namespace Concordia
             _world.Build(next);
             _gates = null;
             _cities = null;
+            _holds = null;
+            _boards = null;
+            _loot = null;
+            _player.EquipWorldKit();
             Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
@@ -242,6 +350,8 @@ namespace Concordia
             if (cut > 0) line = line.Substring(0, cut);
             if (line.Length > 160) line = line.Substring(0, 157) + "…";
             ConcordiaHUD.Announce(city.name, string.IsNullOrEmpty(line) ? Canon.Get(world).title : line);
+            QuestLog.NoteLocation(city.id, city.name, RealmFill.Slug(city.name));
+            if (city.districts != null) QuestLog.NoteLocation(city.districts);
             _player.Notice("You are in " + city.name + ".");
             return "Entered " + city.name + ".";
         }

@@ -47,11 +47,13 @@ namespace Concordia
         [Serializable] public class Quest
         {
             public string id, title, description, giver_npc_id, difficulty;
+            public string[] prerequisites;
             public Objective[] objectives;
         }
         [Serializable] public class Objective
         {
             public string id, type, target, description;
+            public int required_count;
         }
         [Serializable] public class CountriesDoc { public Country[] countries; }
         [Serializable] public class Country
@@ -143,6 +145,27 @@ namespace Concordia
                         Debug.LogWarning("WorldBook quest " + t.name + ": " + e.Message);
                     }
                 }
+            }
+            return list.ToArray();
+        }
+
+        public static Quest QuestById(WorldId id, string questId)
+        {
+            if (string.IsNullOrEmpty(questId)) return null;
+            foreach (var q in Quests(id))
+                if (q != null && q.id == questId) return q;
+            return null;
+        }
+
+        public static Quest[] OfferedBy(WorldId id, string npcId)
+        {
+            var list = new List<Quest>();
+            if (string.IsNullOrEmpty(npcId)) return Array.Empty<Quest>();
+            foreach (var q in Quests(id))
+            {
+                if (q == null) continue;
+                if (string.Equals(q.giver_npc_id, npcId, StringComparison.OrdinalIgnoreCase))
+                    list.Add(q);
             }
             return list.ToArray();
         }

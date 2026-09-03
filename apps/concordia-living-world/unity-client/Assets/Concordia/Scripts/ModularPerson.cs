@@ -90,7 +90,15 @@ namespace Concordia // FORCE_REFRESH_0011
             }
         }
 
-        public void Slash() => _slashT = 0.48f;
+        public void Slash()
+        {
+            _slashT = 0.48f;
+            if (_anim && _anim.runtimeAnimatorController)
+            {
+                if (HasParam(_anim, "Attack")) _anim.SetTrigger("Attack");
+                else if (HasParam(_anim, "Slash")) _anim.SetTrigger("Slash");
+            }
+        }
         public void Sit(bool on) => _sit = on ? 1f : 0f;
         public void Hurt() => _hitT = 0.32f;
         public void Land() => _landT = 0.22f;

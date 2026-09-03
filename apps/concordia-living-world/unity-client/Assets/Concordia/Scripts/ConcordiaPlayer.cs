@@ -22,11 +22,13 @@ namespace Concordia
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
+        public string kitWeapon;
         float _toastT;
         public System.Action<string> onToast;
         public System.Func<Vector3, string> onInteract;
         public static ConcordiaPlayer Live { get; private set; }
         float _dmgMul = 1f;
+        GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
 
@@ -119,6 +121,7 @@ namespace Concordia
             if (KeyDown(KeyCode.F)) TryAttack(true);
             if (KeyDown(KeyCode.G)) TrySpecial();
             if (KeyDown(KeyCode.E)) Interact();
+            if (KeyDown(KeyCode.Q)) CycleKit();
 
             prompt = nearPrompt;
             if (_toastT > 0) _toastT -= dt;
@@ -128,8 +131,46 @@ namespace Concordia
 
         public void SetNearPrompt(string p) => nearPrompt = p;
 
+        public void EquipWorldKit()
+        {
+            var city = CityAtlas.Nearest(world, transform.position, 22f);
+            var fac = city != null ? PersonKit.FactionOf(world, city.factionId) : null;
+            if (fac == null)
+            {
+                var facs = WorldBook.Factions(world);
+                if (facs.Length > 0) fac = facs[0];
+            }
+            kitWeapon = PersonKit.WeaponStem(fac, GetHashCode());
+            if (_heldKit) Destroy(_heldKit);
+            if (person)
+            {
+                if (person.sword) person.sword.SetActive(false);
+                _heldKit = CharacterGear.Attach(person.gameObject, kitWeapon, true, 1.05f);
+            }
+        }
+
+        void CycleKit()
+        {
+            var facs = WorldBook.Factions(world);
+            if (facs.Length == 0) { Toast("No faction kit in this world."); return; }
+            var i = 0;
+            for (int n = 0; n < facs.Length; n++)
+                if (PersonKit.WeaponStem(facs[n], n) == kitWeapon) { i = (n + 1) % facs.Length; break; }
+            var fac = facs[i];
+            kitWeapon = PersonKit.WeaponStem(fac, i);
+            if (_heldKit) Destroy(_heldKit);
+            if (person)
+            {
+                if (person.sword) person.sword.SetActive(false);
+                _heldKit = CharacterGear.Attach(person.gameObject, kitWeapon, true, 1.05f);
+            }
+            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+        }
+
         void TryAttack(bool heavy)
         {
+            var style = Canon.Get(world).style;
+            var art = heavy ? style.heavy : style.light;
             var live = Canon.SteelLive(world, transform.position);
             avatar?.Slash();
             person?.Slash();
@@ -139,6 +180,7 @@ namespace Concordia
             if (!live)
             {
                 FlowerBurst();
+                SkillLedger.Record(art, false);
                 Toast("The ground refuses it.");
                 return;
             }
@@ -148,6 +190,7 @@ namespace Concordia
                 if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
             }
             var connected = HitScan(heavy, 1f);
+            SkillLedger.Record(art, connected);
             var feel = GetComponent<CombatFeel>();
             feel?.Strike(heavy, connected);
         }
@@ -163,48 +206,61 @@ namespace Concordia
             if (!live)
             {
                 FlowerBurst();
+                SkillLedger.Record(style.special, false);
                 Toast(style.special + " dies as flowers.");
                 return;
             }
+            bool connected = false;
             switch (world)
             {
                 case WorldId.Ruins:
                     hp = Mathf.Min(100, hp + 10f);
+                    connected = HitScan(true, 1.15f);
                     Toast(style.special + " — a fall pulled back.");
                     break;
                 case WorldId.Tunya:
                     poise = 12f * style.poiseMul;
+                    connected = HitScan(false, 1.1f);
                     Toast(style.special + " — grove restores poise.");
                     break;
                 case WorldId.Fantasy:
                     hostility = Mathf.Max(0f, hostility - 5f);
+                    connected = HitScan(true, 1.05f);
                     Toast(style.special + " — the curse folds inward, not out.");
                     break;
                 case WorldId.Crime:
                     _dmgMul = 1.55f;
+                    connected = HitScan(true, 1.05f);
                     Toast(style.special + " — the bill arrives now.");
                     break;
                 case WorldId.Cyber:
-                    HitScan(true, 1.4f);
+                    connected = HitScan(true, 1.4f);
                     Toast(style.special + " — pulse.");
                     break;
                 case WorldId.Frontier:
                     _vel += cam.PlanarForward * 11f;
+                    connected = HitScan(true, 1.25f);
                     Toast(style.special + " — dust sprint.");
                     break;
                 case WorldId.Superhero:
-                    HitScan(true, 1.6f);
+                    connected = HitScan(true, 1.6f);
                     Toast(style.special + " — they stand.");
                     break;
                 case WorldId.Crucible:
                     ReviveNearest();
+                    connected = HitScan(true, 1.2f);
                     Toast(style.special + " — un-end it.");
                     break;
+                case WorldId.Sere:
+                    connected = HitScan(true, 1.2f);
+                    Toast(style.special + " — " + style.power);
+                    break;
                 default:
-                    HitScan(true, 1.2f);
+                    connected = HitScan(true, 1.2f);
                     Toast(style.special + " — " + style.power);
                     break;
             }
+            SkillLedger.Record(style.special, connected);
         }
 
         bool HitScan(bool heavy, float reachMul)
@@ -442,6 +498,7 @@ namespace Concordia
             KeyCode.X => Key.X,
             KeyCode.F => Key.F,
             KeyCode.G => Key.G,
+            KeyCode.Q => Key.Q,
             KeyCode.E => Key.E,
             KeyCode.Escape => Key.Escape,
             KeyCode.Tab => Key.Tab,

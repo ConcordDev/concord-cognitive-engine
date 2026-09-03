@@ -1,0 +1,17 @@
+# CREATURES
+
+**Status:** PARTIAL  
+**Authority:** Concord  
+**Source:** `Canon.fauna`; `EvoSpawner.cs`; `Hostile.cs`; `DungeonHold`; `src/game/creatures.ts`, `evo.ts`
+
+## LIVE
+
+Per-world fauna lists (wraith, sealie, wolf, drone, griffin, basilisk, …). Unity spawns + `Hostile` on steel worlds. Dummy in Hub arena. Each steel world also builds one Kenney **hold** (`DungeonHold`) with 1–2 hostiles and a gatherable chest. Geometry is dressing; the plaque does not invent an authored dungeon name.
+
+## TARGET
+
+Persistent populations, patrols, flying vs ground, evolution under selection. Authored dungeon names when the canon has them.
+
+## Gap
+
+No wild.ts persistence in Unity. Hostile is local chase/damage. One hold per world, not a dungeon graph.

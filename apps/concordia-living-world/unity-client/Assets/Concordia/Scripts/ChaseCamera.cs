@@ -14,16 +14,16 @@ namespace Concordia
     public class ChaseCamera : MonoBehaviour
     {
         public Transform target;
-        public float distance = 5.1f;
-        public float height = 1.62f;
-        public float shoulder = 0.55f;
-        public float yaw, pitch = 0.18f;
+        public float distance = 3.4f;
+        public float height = 1.55f;
+        public float shoulder = 0.62f;
+        public float yaw, pitch = 0.22f;
         public bool sprinting;
         public bool inCombat;
         public bool creatorFraming;
-        public int pov = 1;
-        static readonly float[] PovDist = { 3.6f, 5.1f, 7.4f };
-        static readonly float[] PovFov = { 52f, 50f, 46f };
+        public int pov = 0;
+        static readonly float[] PovDist = { 3.2f, 4.6f, 6.8f };
+        static readonly float[] PovFov = { 50f, 48f, 44f };
         bool _snapped;
         CinemachineCamera _vcam;
         CinemachineOrbitalFollow _orbit;
@@ -59,15 +59,15 @@ namespace Concordia
             _vcam.Priority = 20;
             _orbit = vgo.GetComponent<CinemachineOrbitalFollow>() ?? vgo.AddComponent<CinemachineOrbitalFollow>();
             _orbit.OrbitStyle = CinemachineOrbitalFollow.OrbitStyles.Sphere;
-            _orbit.Radius = 6.2f;
-            _orbit.TargetOffset = new Vector3(0f, 1.35f, 0f);
+            _orbit.Radius = 3.4f;
+            _orbit.TargetOffset = new Vector3(0.18f, 1.48f, 0f);
             var track = _orbit.TrackerSettings;
             track.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.WorldSpace;
             track.PositionDamping = new Vector3(0.12f, 0.18f, 0.12f);
             _orbit.TrackerSettings = track;
 
             _look = vgo.GetComponent<CinemachineHardLookAt>() ?? vgo.AddComponent<CinemachineHardLookAt>();
-            _look.LookAtOffset = new Vector3(0f, 1.35f, 0f);
+            _look.LookAtOffset = new Vector3(0.12f, 1.48f, 0f);
             // No Deoccluder: plaza/ground colliders are 40m+ discs and would yank the camera.
 
             AimAt(target);

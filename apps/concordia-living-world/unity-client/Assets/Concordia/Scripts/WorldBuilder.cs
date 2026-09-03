@@ -199,6 +199,20 @@ namespace Concordia
             var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
             dummy.AddComponent<TrainingDummy>();
             FreePacks.EnsureCollider(dummy, 1.8f);
+            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
+            Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
+            var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
+            Beacon(root, east, 7f, "east_gate");
+        }
+
+        static void Beacon(Transform root, Vector3 pos, float radius, params string[] tokens)
+        {
+            var go = new GameObject("Beacon_" + tokens[0]);
+            go.transform.SetParent(root, false);
+            go.transform.position = pos;
+            var b = go.AddComponent<QuestBeacon>();
+            b.tokens = tokens;
+            b.radius = radius;
         }
 
         void DressCrowd()
@@ -455,7 +469,9 @@ namespace Concordia
                 go.name = n.name;
                 if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, weapon, true, 0.95f);
                 if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);
-                go.AddComponent<GuestNpc>().def = n;
+                var guest = go.AddComponent<GuestNpc>();
+                guest.def = n;
+                guest.personId = n.id;
                 var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
                 life.job = job;
             }
@@ -512,7 +528,9 @@ namespace Concordia
                 }
                 var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
                 go.name = n.name;
-                go.AddComponent<GuestNpc>().def = n;
+                var guest = go.AddComponent<GuestNpc>();
+                guest.def = n;
+                guest.personId = n.id;
                 var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
                 life.job = NpcLife.Job.Watch;
             }

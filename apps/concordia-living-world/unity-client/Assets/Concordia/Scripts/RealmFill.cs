@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Concordia // keep-spawn-assign
@@ -18,7 +19,11 @@ namespace Concordia // keep-spawn-assign
             Lore(root, w);
             People(root, w);
             Quests(root, w);
-            if (id != WorldId.Hub) Beasts(root, w);
+            if (id != WorldId.Hub)
+            {
+                Beasts(root, w);
+                DungeonHold.Build(root, w);
+            }
         }
 
         static void DressKit(Transform root, WorldDef w)
@@ -220,8 +225,12 @@ namespace Concordia // keep-spawn-assign
                     x = p.x,
                     z = p.z
                 };
-                var weap = WeaponFor(facs, person.faction_id, n);
+                guest.personId = person.id;
+                guest.questHooks = person.quest_hooks;
+                var weap = PersonKit.WeaponStem(IndexOfFaction(facs, person.faction_id) >= 0
+                    ? facs[IndexOfFaction(facs, person.faction_id)] : null, n);
                 if (!string.IsNullOrEmpty(weap)) CharacterGear.Attach(go, weap, true, 0.95f);
+                StampGiverBeacon(go, w.id, person);
                 n++;
             }
         }
@@ -247,6 +256,9 @@ namespace Concordia // keep-spawn-assign
                 var ls = board.AddComponent<LoreStone>();
                 ls.title = "Quest · " + q.title;
                 ls.text = WorldBook.QuestText(q);
+                var qb = board.AddComponent<QuestBoard>();
+                qb.quest = q;
+                qb.world = w.id;
                 StoreDress.QuestMark(root, board.transform.position);
             }
         }
@@ -369,19 +381,33 @@ namespace Concordia // keep-spawn-assign
             return n % 2 == 0 ? "weapon-sword" : null;
         }
 
-        static string MapWeapon(string raw)
+        static void StampGiverBeacon(GameObject go, WorldId world, WorldBook.Person person)
         {
-            var s = (raw ?? "").ToLowerInvariant();
-            if (s.Contains("spear") || s.Contains("lance")) return "spear";
-            if (s.Contains("staff") || s.Contains("wand")) return "staff";
-            if (s.Contains("dagger") || s.Contains("knife")) return "dagger";
-            if (s.Contains("axe")) return "axe";
-            if (s.Contains("bow")) return "bow";
-            if (s.Contains("mace") || s.Contains("club")) return "mace";
-            if (s.Contains("great")) return "greatsword";
-            if (s.Contains("shield")) return "shield-rectangle";
-            return "weapon-sword";
+            var tokens = new List<string>();
+            if (!string.IsNullOrEmpty(person.id)) tokens.Add(person.id);
+            if (!string.IsNullOrEmpty(person.name)) tokens.Add(person.name);
+            foreach (var q in WorldBook.OfferedBy(world, person.id))
+            {
+                if (q?.objectives == null) continue;
+                foreach (var o in q.objectives)
+                {
+                    if (o == null || string.IsNullOrEmpty(o.target)) continue;
+                    if (QuestLog.CanDo(o.type)) tokens.Add(o.target);
+                }
+            }
+            if (tokens.Count == 0) return;
+            var b = go.AddComponent<QuestBeacon>();
+            b.tokens = tokens.ToArray();
+            b.radius = 5.5f;
         }
+
+        public static string Slug(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return "";
+            return raw.Trim().ToLowerInvariant().Replace(' ', '_');
+        }
+
+        static string MapWeapon(string raw) => PersonKit.MapWeapon(raw);
 
         static void Ring(Transform root, string stem, float rad, int n, float h, float yawOff)
         {
@@ -462,6 +488,17 @@ namespace Concordia // keep-spawn-assign
             FreePacks.Spawn("road-straight", hold, hold.TransformPoint(new Vector3(0f, 0f, 0f)), yaw + 90f, 5.2f, false, false);
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(-2.4f, 0f, -4.2f)));
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(2.4f, 0f, 4.2f)));
+            FreePacks.Spawn("barrel", hold, hold.TransformPoint(new Vector3(-3.2f, 0f, -1.2f)), yaw, 1.1f);
+            FreePacks.Spawn("barrel", hold, hold.TransformPoint(new Vector3(3.4f, 0f, 1.6f)), yaw + 40f, 1.1f);
+            FreePacks.Spawn("table", hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 1.2f)), yaw, 1.0f);
+            FreePacks.Spawn("chest", hold, hold.TransformPoint(new Vector3(2.1f, 0f, -3.4f)), yaw + 90f, 0.85f);
+            var beacon = hold.gameObject.AddComponent<QuestBeacon>();
+            var tokens = new List<string> { city.id, city.name, RealmFill.Slug(city.name) };
+            if (city.districts != null)
+                foreach (var d in city.districts)
+                    if (!string.IsNullOrEmpty(d)) tokens.Add(d);
+            beacon.tokens = tokens.ToArray();
+            beacon.radius = 14f;
 
             var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.1f, -8.6f),
                 new Vector3(1.15f, 1.7f, 0.16f), HubLook.Lit(w.sun, 0.25f, 0.4f), "Plaque");
@@ -513,5 +550,108 @@ namespace Concordia // keep-spawn-assign
             WorldId.Sere => new[] { "archive", "market", "tower", "tavern", "archive", "market" },
             _ => new[] { "archive", "tavern", "market", "embassy", "archive", "tavern" }
         };
+    }
+
+    /// <summary>
+    /// Kenney mini-dungeon tiles as a walkable hold. The plaque does not invent a place name.
+    /// Hostiles and a chest are real; the hold is dressing for an authored world's steel.
+    /// </summary>
+    public static class DungeonHold
+    {
+        public static void Build(Transform root, WorldDef w)
+        {
+            if (w.id == WorldId.Hub) return;
+            var cities = CityAtlas.For(w.id);
+            Vector3 mouth;
+            if (cities.Length > 0)
+                mouth = new Vector3(cities[0].x + 10f, 0f, cities[0].z - 12f);
+            else
+                mouth = new Vector3(22f, 0f, -18f);
+
+            var hold = new GameObject("Hold_" + w.id).transform;
+            hold.SetParent(root, false);
+            hold.position = mouth;
+
+            const int cols = 6;
+            const int rows = 8;
+            const float tile = 2.2f;
+            var origin = new Vector3(-(cols - 1) * 0.5f * tile, 0f, 4f);
+
+            for (int z = 0; z < rows; z++)
+            for (int x = 0; x < cols; x++)
+            {
+                var p = hold.TransformPoint(origin + new Vector3(x * tile, 0f, z * tile));
+                FreePacks.Spawn((x + z) % 5 == 0 ? "floor-detail" : "floor", hold, p, 0f, 2.2f, false, false);
+            }
+
+            for (int x = 0; x < cols; x++)
+            {
+                Wall(hold, origin + new Vector3(x * tile, 0f, -1.1f), 0f);
+                Wall(hold, origin + new Vector3(x * tile, 0f, (rows - 1) * tile + 1.1f), 180f);
+            }
+            for (int z = 0; z < rows; z++)
+            {
+                if (z == 0) continue;
+                Wall(hold, origin + new Vector3(-1.1f, 0f, z * tile), 90f);
+                Wall(hold, origin + new Vector3((cols - 1) * tile + 1.1f, 0f, z * tile), -90f);
+            }
+            FreePacks.Spawn("wall-opening", hold, hold.TransformPoint(origin + new Vector3(2.5f * tile, 0f, -1.1f)), 0f, 2.6f);
+            FreePacks.Spawn("stairs", hold, hold.TransformPoint(origin + new Vector3(2.5f * tile, 0f, -2.4f)), 180f, 1.8f);
+            FreePacks.Spawn("column", hold, hold.TransformPoint(origin + new Vector3(0.4f * tile, 0f, 1.2f * tile)), 0f, 2.8f);
+            FreePacks.Spawn("column", hold, hold.TransformPoint(origin + new Vector3(4.6f * tile, 0f, 1.2f * tile)), 0f, 2.8f);
+            FreePacks.Spawn("barrel", hold, hold.TransformPoint(origin + new Vector3(0.6f * tile, 0f, 5.2f * tile)), 20f, 1.0f);
+            FreePacks.Spawn("wood-structure", hold, hold.TransformPoint(origin + new Vector3(4.4f * tile, 0f, 5.4f * tile)), 10f, 2.2f);
+
+            var chestPos = hold.TransformPoint(origin + new Vector3(2.5f * tile, 0f, 6.2f * tile));
+            var chest = FreePacks.Spawn("chest", hold, chestPos, 180f, 0.9f);
+            if (chest)
+            {
+                var g = chest.AddComponent<Gatherable>();
+                g.itemId = "chest";
+                g.label = "chest";
+            }
+
+            var inside = hold.TransformPoint(origin + new Vector3(2.5f * tile, 0.12f, 2.2f * tile));
+            var gateGo = new GameObject("DungeonGate_" + w.id);
+            gateGo.transform.SetParent(hold, false);
+            gateGo.transform.position = mouth;
+            var gate = gateGo.AddComponent<DungeonGate>();
+            gate.holdName = "the hold";
+            gate.inside = inside;
+            gate.mouth = mouth + new Vector3(0f, 0.12f, -3.2f);
+            var box = gateGo.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.1f, 0f);
+            box.size = new Vector3(3.6f, 2.4f, 2.2f);
+            box.isTrigger = true;
+
+            var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.05f, -2.6f),
+                new Vector3(1.05f, 1.5f, 0.12f), HubLook.Lit(w.ground, 0.08f, 0.22f), "HoldPlaque");
+            var stone = plaque.AddComponent<LoreStone>();
+            stone.title = "A hold";
+            stone.text = "Kenney tiles. No authored dungeon name in this world's canon — the geometry is dressing. Live steel applies.";
+
+            var beacon = hold.gameObject.AddComponent<QuestBeacon>();
+            beacon.tokens = new[] { "dungeon", "hold", "training_hollow", WorldBook.Folder(w.id) + "_hold" };
+            beacon.radius = 16f;
+
+            int packs = w.steelLive ? 2 : 1;
+            for (int i = 0; i < packs; i++)
+            {
+                var p = hold.TransformPoint(origin + new Vector3((1 + i * 2) * tile, 0f, (3 + i) * tile));
+                var kind = w.fauna != null && w.fauna.Length > 0 ? w.fauna[i % w.fauna.Length] : "hound";
+                var go = EvoSpawner.Spawn(hold, kind, p, w);
+                if (go)
+                {
+                    var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
+                    h.aggro = 10f;
+                    h.damage = 7f + i;
+                }
+            }
+        }
+
+        static void Wall(Transform hold, Vector3 local, float yaw)
+        {
+            FreePacks.Spawn("wall", hold, hold.TransformPoint(local), yaw, 2.6f);
+        }
     }
 }
