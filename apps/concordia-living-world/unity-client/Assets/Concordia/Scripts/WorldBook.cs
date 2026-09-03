@@ -257,7 +257,8 @@ namespace Concordia
             {
                 if (c == null || string.IsNullOrEmpty(c.name)) continue;
                 var id = string.IsNullOrEmpty(c.country_id) ? c.name : c.country_id;
-                if (!seen.Add(id) || !seen.Add(c.name)) continue;
+                if (!seen.Add(id)) continue;
+                seen.Add(c.name);
                 var cap = c.capital != null && !string.IsNullOrEmpty(c.capital.name) ? c.capital.name : c.name;
                 float x = c.capital != null ? c.capital.x : 0f;
                 float z = c.capital != null ? c.capital.z : 0f;
@@ -281,7 +282,8 @@ namespace Concordia
                 if (seen.Contains(f.name)) continue;
                 var districts = f.controlled_districts;
                 if (districts == null || districts.Length == 0) continue;
-                if (!seen.Add(f.id ?? f.name) || !seen.Add(f.name)) continue;
+                if (!seen.Add(f.id ?? f.name)) continue;
+                seen.Add(f.name);
                 list.Add(new WorldBook.CityDef
                 {
                     id = string.IsNullOrEmpty(f.id) ? districts[0] : f.id,
