@@ -716,6 +716,14 @@ registerHeartbeat("lattice-federation-poll", {
   handler: runFederationPoll,
   scope: "global",
 });
+registerHeartbeat("constellation-observe-cycle", {
+  frequency: 20,
+  handler: async () => {
+    const { runConstellationObserveCycle } = await import("./lib/runtime/constellation.js");
+    return runConstellationObserveCycle({ probeLab: false });
+  },
+  scope: "global",
+});
 // Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
 // 16 macros were registered via Ghost Fleet but never tick-scheduled.
 registerHeartbeat("culture-drift-pass", {
@@ -56148,6 +56156,53 @@ app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign",
       modules: getHeartbeatTimingStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Concord Runtime observability — capability registry + sister constellation.
+app.get("/api/runtime/capabilities", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { listCapabilities, checkCapabilityHealth } = await import("./lib/runtime/capability-registry.js");
+    const filters = {};
+    if (req.query.owner) filters.owner = String(req.query.owner);
+    if (req.query.risk) filters.risk = String(req.query.risk);
+    const capabilities = listCapabilities(filters).map((c) => ({ ...c, health: checkCapabilityHealth(c.capability) }));
+    res.json({ ok: true, count: capabilities.length, capabilities });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/capabilities/:capability/health", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { getCapabilityDescriptor, checkCapabilityHealth } = await import("./lib/runtime/capability-registry.js");
+    const capability = req.params.capability;
+    const descriptor = getCapabilityDescriptor(capability);
+    if (!descriptor) return res.status(404).json({ ok: false, error: "not_registered" });
+    res.json({ ok: true, descriptor, health: checkCapabilityHealth(capability) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/events/recent", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { recentEvents } = await import("./lib/runtime/event-bus.js");
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    res.json({ ok: true, events: recentEvents(limit) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/constellation", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { collectConstellationHealth } = await import("./lib/runtime/constellation.js");
+    const { recentEvents } = await import("./lib/runtime/event-bus.js");
+    const health = await collectConstellationHealth({ probeLab: req.query.probe === "1" });
+    res.json({ ok: true, ...health, recent: recentEvents(20) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

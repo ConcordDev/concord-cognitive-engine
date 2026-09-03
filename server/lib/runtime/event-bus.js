@@ -30,6 +30,7 @@ export const KNOWN_EVENTS = [
   "agent.task.created", "agent.task.completed",
   "capability.invoked", "capability.completed", "capability.failed",
   "capability.promoted", "capability.rejected",
+  "constellation.observed",
 ];
 
 const bus = new EventEmitter();

@@ -104,6 +104,30 @@ export async function collectSupervisorStatus({ db, dispatchMCP } = {}) {
     subsystems.predict = { status: "UNKNOWN", tickets: 0 };
   }
 
+  // Sister-system constellation (Dila / Zuko / Pentester / Trading / Concordia).
+  // ABSENT homes (no ~/.zuko on CI) must not flip overall to DEGRADED.
+  try {
+    const { collectConstellationHealth } = await import("./constellation.js");
+    const constellation = await collectConstellationHealth({ probeLab: false });
+    subsystems.constellation = {
+      status: constellation.overall === "FAILED" ? "FAILED" : "HEALTHY",
+      overall: constellation.overall,
+      domains: Object.fromEntries(
+        Object.entries(constellation.domains || {}).map(([k, v]) => [k, { status: v.status, present: v.present, executeLocked: v.executeLocked }]),
+      ),
+    };
+    for (const [name, domain] of Object.entries(constellation.domains || {})) {
+      if (domain.status === "ABSENT") continue;
+      subsystems[name] = {
+        status: domain.status,
+        present: domain.present,
+        executeLocked: domain.executeLocked === true,
+      };
+    }
+  } catch {
+    subsystems.constellation = { status: "UNKNOWN" };
+  }
+
   // Auth gate mode
   const authMode = process.env.CONCORD_AUTH_GATE_MODE || "observe";
   const enforceAutonomous = process.env.CONCORD_AUTH_GATE_ENFORCE_AUTONOMOUS === "true";

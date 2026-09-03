@@ -264,6 +264,12 @@ import registerDistrictActions from './district.js';
 import registerCobuildActions from './cobuild.js';
 import registerCompanionActions from './companion.js';
 import hub from './hub.js';
+import dila from './dila.js';
+import zuko from './zuko.js';
+import trading from './trading.js';
+import pentester from './pentester.js';
+import concordia from './concordia.js';
+import constellation from './constellation.js';
 
 // ── TheVault ⇄ DTU-permanence handshake ───────────────────────────────────
 //
@@ -563,4 +569,10 @@ export default [
   registerCobuildActions,
   registerCompanionActions,
   hub,
+  dila,
+  zuko,
+  trading,
+  pentester,
+  concordia,
+  constellation,
 ];
