@@ -226,7 +226,7 @@ namespace Concordia
                 _ = client.RequestScene(WorldBook.Folder(next));
         }
 
-        public string EnterCity(CityDef city)
+        public string EnterCity(WorldBook.CityDef city)
         {
             if (city == null) return null;
             var dest = new Vector3(city.x, 0.12f, city.z);
