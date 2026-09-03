@@ -187,6 +187,8 @@ namespace Concordia
             DressGuests();
             DressCrowd();
             DressLore();
+            DressRoads();
+            DressCityRing();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -355,20 +357,20 @@ namespace Concordia
 
         void DressCityRing()
         {
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 22; i++)
             {
-                var a = (i / 16f) * Mathf.PI * 2 + 0.18f;
-                if (Mathf.Sin(a) > 0.72f) continue;
-                var rad = 38 + (i % 3) * 3f;
+                var a = (i / 22f) * Mathf.PI * 2 + 0.12f;
+                if (Mathf.Sin(a) > 0.55f && Mathf.Abs(Mathf.Cos(a)) < 0.78f) continue;
+                var rad = 56f + (i % 3) * 6f;
                 var pos = new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad);
-                var yaw = -a * Mathf.Rad2Deg + 90;
+                var yaw = Mathf.Atan2(-Mathf.Cos(a), -Mathf.Sin(a)) * Mathf.Rad2Deg;
                 if (i % 5 == 0)
-                    FreePacks.Spawn(Shops[i % Shops.Length], root, pos, yaw, 7f);
+                    FreePacks.Spawn(Shops[i % Shops.Length], root, pos, yaw, 9f, required: false, byHeight: true);
                 else
-                    FreePacks.Spawn(Houses[i % Houses.Length], root, pos, yaw, 5.5f);
+                    FreePacks.Spawn(Houses[i % Houses.Length], root, pos, yaw, 6.5f, required: false, byHeight: true);
             }
-            EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(34, 0, 10), Quaternion.Euler(0, 70, 0), 1f);
-            EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(28, 0, -4), Quaternion.Euler(0, 90, 0), 1f);
+            EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(52, 0, 18), Quaternion.Euler(0, 70, 0), 1f);
+            EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(48, 0, -12), Quaternion.Euler(0, 90, 0), 1f);
         }
 
         void DressForest()
