@@ -69,6 +69,27 @@ namespace Concordia
         public string Prompt => taken ? null : "E  ·  Take " + label;
     }
 
+    /// <summary>A kitchen you walk to. Cooks only if you actually gathered something.</summary>
+    public class CookStation : MonoBehaviour
+    {
+        public string Prompt => "E  ·  Cook";
+
+        public static void Stamp(GameObject go)
+        {
+            if (!go || go.GetComponent<CookStation>()) return;
+            go.AddComponent<CookStation>();
+        }
+
+        public string Use()
+        {
+            if (!QuestLog.HoldingAny())
+                return "The stove is cold. Take ingredients from a chest or market first.";
+            QuestLog.NoteGather("meal");
+            WorldClock.NoteAct("someone cooks");
+            return "You cook what you gathered. The meal is real because the ingredients were.";
+        }
+    }
+
     public class CourtBird : MonoBehaviour
     {
         public int seed;

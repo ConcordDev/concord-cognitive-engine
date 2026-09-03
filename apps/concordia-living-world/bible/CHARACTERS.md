@@ -10,7 +10,7 @@ Lamplighter, Elias Voss, Vesper Kane, Lady Seraphine Voss, Jax Rivera, Mama Iron
 
 Interact at Lamplighter returns the refusal-of-choice line.
 
-Authored people wear a faction sash from `visual.primary_color`. They walk a day schedule. Unlabeled city walkers are titled "a worker" / "a traveler" and say they are not authored citizens. Pillars stay pinned.
+Authored people wear a faction sash from `visual.primary_color`. They walk a day schedule and can carry, open a shop, patrol, talk, or enter a building. Unlabeled city walkers are titled "a worker" / "a traveler" / "a guard" and say they are not authored citizens. Talk appends `WorldClock.LastEvent` as a rumor. Pillars stay pinned.
 
 ## TARGET
 

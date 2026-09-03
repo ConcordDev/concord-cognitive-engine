@@ -16,7 +16,7 @@ Travel: `ConcordiaGame.Travel` rebuilds `World`. Must `DestroyImmediate` previou
 
 Cities: `CityAtlas` + `CityTown` + `CityGate`. Each town now has a PBR plaza pad (brick/asphalt/moss/earth — Court stays unpaved), a street cross, ten Kenney slots, edge flora, and outskirts hostiles from authored fauna. Interiors open on the first four buildings of the first six cities only (Tunya hitch). Steel worlds get a Kenney hold with mouth / hall / vault rooms (`DungeonGate`). HUD: circular minimap + vitals rings (SR2 camera language) plus a world-life clock. Kenney GLBs are still Kenney — the plaza pad is the readable ground.
 
-`WorldClock` / `WorldMemory` port `kernel.ts` + `persist.ts`: hour, day, weather, ecology, prices. Leaving a world writes a slice; returning advances the away hours so the kingdom did not freeze. LOD is REAL / BULK / VIRTUAL.
+`WorldClock` / `WorldMemory` port `kernel.ts` + `persist.ts`: hour, day, weather, ecology, prices. Leaving a world writes a slice; returning advances the away hours so the kingdom did not freeze. LOD is REAL / BULK / VIRTUAL. `TickEvents` ports `events.ts` (authored title / refusal / fauna / city / lore beat only). City plazas now have sidewalk slabs. Ecology below 0.28 skips outskirts packs; below 0.4 halves them.
 
 ## TARGET
 

@@ -127,6 +127,14 @@ namespace Concordia
             Refresh();
         }
 
+        public static bool HoldingAny() => Held.Count > 0;
+
+        public static bool Holding(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return Held.Count > 0;
+            return Held.Contains(id);
+        }
+
         public static void TickBeacons(Vector3 pos)
         {
             foreach (var b in UnityEngine.Object.FindObjectsByType<QuestBeacon>(FindObjectsInactive.Exclude))

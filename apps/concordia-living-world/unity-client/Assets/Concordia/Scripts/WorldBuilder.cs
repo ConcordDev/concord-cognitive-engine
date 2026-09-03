@@ -350,7 +350,7 @@ namespace Concordia
             FreePacks.Spawn("chair", root, p + new Vector3(3.8f, 0, 1.5f), 200, 0.9f);
             FreePacks.Spawn("loungeSofa", root, p + new Vector3(4.6f, 0, 0.4f), 90, 1.6f);
             FreePacks.Spawn("lampRoundFloor", root, p + new Vector3(5.2f, 0, 2.2f), 0, 1.4f);
-            FreePacks.Spawn("kitchenStove", root, p + new Vector3(-2.4f, 0, 2.2f), 0, 1.2f);
+            CookStation.Stamp(FreePacks.Spawn("kitchenStove", root, p + new Vector3(-2.4f, 0, 2.2f), 0, 1.2f));
             FreePacks.Spawn("barrel", root, p + new Vector3(2.0f, 0, -1.5f), 0, 0.8f);
             FreePacks.Spawn("burger-cheese", root, p + new Vector3(3.2f, 0.9f, 2), 0, 0.25f);
         }

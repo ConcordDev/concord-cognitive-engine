@@ -151,6 +151,7 @@ namespace Concordia
             var go = FreePacks.Spawn(stem, room, world, room.eulerAngles.y + yaw, h);
             if (!go) return;
             go.transform.SetParent(room, true);
+            if (stem == "kitchenStove") CookStation.Stamp(go);
         }
 
         static void Slab(Transform parent, Vector3 local, Vector3 scale, Color c, string pbr = null)

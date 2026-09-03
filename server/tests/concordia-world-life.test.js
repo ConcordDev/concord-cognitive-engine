@@ -26,7 +26,7 @@ describe("Concordia world-life — source contracts", () => {
   it("NpcLife walks sleep/work/eat/gather and flees steel", () => {
     const life = src("NpcLife.cs");
     assert.match(life, /act = "sleep"/);
-    assert.match(life, /act = "work"/);
+    assert.match(life, /"work"/);
     assert.match(life, /act = "eat"/);
     assert.match(life, /act = "gather"/);
     assert.match(life, /act = "flee"/);
@@ -74,5 +74,43 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(game, /NoticePlayer/);
     assert.match(hud, /WorldClock\.HudClock\(\)/);
     assert.match(hud, /WorldClock\.NearbyAct/);
+  });
+
+  it("activities are visible: open shop, patrol, deliver, talk, enter a building", () => {
+    const life = src("NpcLife.cs");
+    assert.match(life, /act = job == Job\.Stall \? "open"/);
+    assert.match(life, /act = "patrol"/);
+    assert.match(life, /act = "deliver"/);
+    assert.match(life, /TrySocial/);
+    assert.match(life, /TryEnter/);
+    assert.match(life, /CharacterGear\.Attach\(gameObject, "crate"/);
+    assert.match(life, /opens a shop/);
+    assert.match(life, /changes post/);
+    assert.match(life, /enters a building/);
+  });
+
+  it("WorldClock rolls authored events and fauna hunt other fauna", () => {
+    const book = src("WorldBook.cs");
+    const evo = src("EvoSpawner.cs");
+    assert.match(book, /TickEvents/);
+    assert.match(book, /stores tightened/);
+    assert.match(book, /EventKinds/);
+    assert.match(book, /NoteBirth/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+    assert.match(evo, /HuntPrey/);
+    assert.match(evo, /CityAtlas\.For\(WorldClock\.World\)/);
+  });
+
+  it("cook is a station you walk to, and talk carries the last event as a rumor", () => {
+    const gate = src("WorldGate.cs");
+    const game = src("ConcordiaGame.cs");
+    const fill = src("RealmFill.cs");
+    assert.match(gate, /class CookStation/);
+    assert.match(gate, /The stove is cold/);
+    assert.match(game, /cook\.Use\(\)/);
+    assert.match(game, /They heard:/);
+    assert.match(fill, /Sidewalks/);
+    assert.match(fill, /a guard/);
+    assert.match(fill, /WorldClock\.Ecology < 0\.28f/);
   });
 });

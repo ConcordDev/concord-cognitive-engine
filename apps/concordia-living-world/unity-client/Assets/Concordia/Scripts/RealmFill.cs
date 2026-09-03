@@ -487,6 +487,7 @@ namespace Concordia // keep-spawn-assign
 
             PlazaPad(hold, w);
             CrossStreets(hold, yaw);
+            Sidewalks(hold);
 
             var kit = Kit(w.id);
             var plans = Plans(w.id);
@@ -584,6 +585,15 @@ namespace Concordia // keep-spawn-assign
             FreePacks.Spawn("road-intersection", hold, hold.position, yaw, 5.4f, false, false);
         }
 
+        static void Sidewalks(Transform hold)
+        {
+            var mat = HubLook.Pbr("stone_tiles", new Color(0.56f, 0.52f, 0.46f), 0.04f, 0.2f, 8f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.05f, 3.55f), new Vector3(20f, 0.04f, 1.05f), mat, "Walk", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.05f, -3.55f), new Vector3(20f, 0.04f, 1.05f), mat, "Walk", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.55f, 0.05f, 0f), new Vector3(1.05f, 0.04f, 20f), mat, "Walk", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.55f, 0.05f, 0f), new Vector3(1.05f, 0.04f, 20f), mat, "Walk", false);
+        }
+
         static void StreetDress(Transform hold, WorldDef w, float yaw)
         {
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(-2.4f, 0f, -4.2f)));
@@ -632,17 +642,18 @@ namespace Concordia // keep-spawn-assign
         static void AmbientWalkers(Transform hold, WorldDef w, int cityIndex)
         {
             if (cityIndex >= 4) return;
-            for (int n = 0; n < 2; n++)
+            int count = cityIndex < 2 ? 3 : 2;
+            for (int n = 0; n < count; n++)
             {
-                var local = new Vector3((n == 0 ? -3.4f : 3.6f), 0f, 1.2f + n);
+                var local = new Vector3((n == 0 ? -3.4f : n == 1 ? 3.6f : 0.2f), 0f, 1.2f + n);
                 var world = hold.TransformPoint(local);
                 var look = Appearance.Random(w.id.GetHashCode() + cityIndex * 17 + n * 31);
-                look.displayName = n == 0 ? "a worker" : "a traveler";
+                look.displayName = n == 0 ? "a worker" : n == 1 ? "a traveler" : "a guard";
                 look.outfit = (cityIndex + n) % 6;
                 var go = ModularPerson.SpawnNpc(hold, world, hold.eulerAngles.y + 180f, look, false);
                 go.name = look.displayName;
                 var life = go.AddComponent<NpcLife>();
-                life.job = n == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
+                life.job = n == 0 ? NpcLife.Job.Sweep : n == 1 ? NpcLife.Job.Wander : NpcLife.Job.Watch;
                 var guest = go.AddComponent<GuestNpc>();
                 guest.def = new GuestDef
                 {
@@ -657,8 +668,9 @@ namespace Concordia // keep-spawn-assign
         static void Outskirts(Transform hold, WorldDef w, int cityIndex)
         {
             if (!w.steelLive) return;
+            if (WorldClock.Ecology < 0.28f) return;
             var critters = WorldBook.Critters(w.id);
-            var packs = cityIndex < 4 ? 2 : 1;
+            var packs = WorldClock.Ecology < 0.4f ? 1 : (cityIndex < 4 ? 2 : 1);
             for (int n = 0; n < packs; n++)
             {
                 var local = new Vector3(16f + n * 3.2f, 0f, -14f - n * 2.4f);

@@ -432,6 +432,7 @@ namespace Concordia
         static float _dumpAt;
         static float _actAge;
         static float _threatAt;
+        static float _eventCd = 16f;
 
         public static void Enter(WorldId id)
         {
@@ -494,6 +495,7 @@ namespace Concordia
             }
             _actAge += dt;
             if (_actAge > 8f) NearbyAct = "";
+            TickEvents(dt);
             if (Mathf.FloorToInt(Hour * 4f) != Mathf.FloorToInt((Hour - dt * 0.08f) * 4f))
                 ApplySky();
             if (Time.unscaledTime >= _threatAt)
@@ -531,6 +533,99 @@ namespace Concordia
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
             LastEvent = Canon.Get(World).title + ": a pack thinned.";
         }
+
+        /// <summary>Port of events.ts tickEvents / rollEvent — authored strings only.</summary>
+        static void TickEvents(float dt)
+        {
+            _eventCd -= dt;
+            if (_eventCd > 0f) return;
+            _eventCd = 24f + (World == WorldId.Hub ? 10f : 0f);
+            var ev = RollEvent();
+            Ecology = Mathf.Clamp(Ecology + ev.ecology, 0.08f, 1f);
+            FactionHeat = Mathf.Clamp(FactionHeat + ev.heat, 0f, 1f);
+            Prices = Mathf.Clamp(Prices + ev.prices, 0.6f, 1.8f);
+            LastEvent = ev.text;
+            if (ev.births > 0) WorldMemory.NoteBirth(World, ev.births);
+        }
+
+        struct EvRec
+        {
+            public string text;
+            public float ecology, heat, prices;
+            public int births;
+        }
+
+        static EvRec RollEvent()
+        {
+            var w = Canon.Get(World);
+            var cities = CityAtlas.For(World);
+            var town = cities != null && cities.Length > 0 && !string.IsNullOrEmpty(cities[0].name)
+                ? cities[0].name : "the rim";
+            var lore = WorldBook.Lore(World);
+            var beat = lore?.history != null && lore.history.Length > 0 && !string.IsNullOrEmpty(lore.history[0].title)
+                ? lore.history[0].title : w.title;
+            var creature = w.fauna != null && w.fauna.Length > 0 ? w.fauna[0] : "packs";
+            var kinds = EventKinds(World);
+            var kind = kinds[Mathf.Abs(Day * 7 + Mathf.FloorToInt(Hour)) % kinds.Length];
+            return kind switch
+            {
+                "migration" => new EvRec
+                {
+                    text = creature + " shifted toward " + town + ". Territory moved.",
+                    ecology = 0.06f, heat = -0.04f, prices = 0.02f, births = 1
+                },
+                "shortage" => new EvRec
+                {
+                    text = w.title + ": stores tightened. " + w.refusal,
+                    ecology = -0.08f, heat = 0.1f, prices = 0.14f
+                },
+                "scheme" => new EvRec
+                {
+                    text = "A faction scheme ripened. " + beat,
+                    heat = 0.16f, prices = 0.04f
+                },
+                "emergence" => new EvRec
+                {
+                    text = w.title + ": " + creature + " took the hour.",
+                    ecology = -0.05f, heat = 0.08f, births = 2
+                },
+                "treaty" => new EvRec
+                {
+                    text = w.title + " offered a treaty that will not hold unless someone walks it.",
+                    ecology = 0.03f, heat = -0.18f, prices = -0.06f
+                },
+                "unburial" => new EvRec
+                {
+                    text = w.title + ": something catalogued stood up and walked the road.",
+                    ecology = 0.02f, heat = 0.05f, births = 1
+                },
+                "census" => new EvRec
+                {
+                    text = w.title + ": a census skipped four numbers. Someone left a ledger, not a grave.",
+                    ecology = -0.02f, heat = 0.12f, prices = 0.05f
+                },
+                _ => new EvRec
+                {
+                    text = w.title + ": weather shifted. " + w.refusal,
+                    ecology = 0.01f
+                }
+            };
+        }
+
+        static string[] EventKinds(WorldId id) => id switch
+        {
+            WorldId.Hub => new[] { "scheme", "treaty", "weather" },
+            WorldId.Ruins => new[] { "unburial", "emergence", "migration", "scheme" },
+            WorldId.Tunya => new[] { "migration", "shortage", "weather", "treaty" },
+            WorldId.Fantasy => new[] { "emergence", "scheme", "treaty" },
+            WorldId.Crime => new[] { "scheme", "shortage", "census" },
+            WorldId.Cyber => new[] { "census", "scheme", "emergence" },
+            WorldId.Frontier => new[] { "weather", "migration", "treaty" },
+            WorldId.Superhero => new[] { "treaty", "scheme", "emergence" },
+            WorldId.Crucible => new[] { "emergence", "weather", "unburial" },
+            WorldId.Sere => new[] { "scheme", "census", "weather" },
+            _ => new[] { "weather" }
+        };
 
         public static SimLod LodAt(Vector3 pos)
         {
@@ -598,10 +693,24 @@ namespace Concordia
                     else if (l == SimLod.Bulk) bulk++;
                     else virt++;
                 }
+                int open = 0, patrol = 0, talk = 0, deliver = 0, inside = 0, hunt = 0;
+                foreach (var n in UnityEngine.Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+                {
+                    if (!n) continue;
+                    if (n.act == "open") open++;
+                    else if (n.act == "patrol") patrol++;
+                    else if (n.act == "talk") talk++;
+                    else if (n.act == "deliver") deliver++;
+                    else if (n.act == "inside") inside++;
+                }
+                foreach (var f in UnityEngine.Object.FindObjectsByType<FaunaLife>(FindObjectsInactive.Exclude))
+                    if (f && f.act == "hunt") hunt++;
                 File.WriteAllText("/tmp/concordia-world-life.txt",
                     DateTime.Now.ToString("o") + " world=" + World + " hour=" + Hour.ToString("0.00")
                     + " day=" + Day + " weather=" + Weather + " ecology=" + Ecology.ToString("0.00")
                     + " prices=" + Prices.ToString("0.00") + " lod=" + real + "/" + bulk + "/" + virt
+                    + " acts open=" + open + " patrol=" + patrol + " talk=" + talk
+                    + " deliver=" + deliver + " inside=" + inside + " hunt=" + hunt
                     + "\n" + Line() + "\n" + LastEvent + "\n");
             }
             catch { }
@@ -720,6 +829,13 @@ namespace Concordia
             foreach (var p in s.deadCsv.Split(','))
                 if (string.Equals(p.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase)) return true;
             return false;
+        }
+
+        public static void NoteBirth(WorldId id, int n)
+        {
+            var s = Load(id);
+            s.births += Mathf.Max(0, n);
+            Cache[id] = s;
         }
 
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";

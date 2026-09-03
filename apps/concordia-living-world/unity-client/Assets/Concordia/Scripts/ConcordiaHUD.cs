@@ -97,7 +97,9 @@ namespace Concordia
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon), _small);
             GUI.Label(new Rect(32, 70, 520, 16), WorldClock.HudClock(), _small);
             GUI.Label(new Rect(32, 86, 520, 16),
-                string.IsNullOrEmpty(WorldClock.NearbyAct) ? ConcordClient.StatusJson : WorldClock.NearbyAct, _small);
+                !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
+                : !string.IsNullOrEmpty(WorldClock.LastEvent) ? WorldClock.LastEvent
+                : ConcordClient.StatusJson, _small);
             GUI.Label(new Rect(32, 102, 520, 16), HubObjectives.Line(), _small);
             GUI.Label(new Rect(32, 118, 520, 16), QuestLog.HudBlock(), _small);
             GUI.Label(new Rect(32, 134, 520, 16), SkillLedger.Line(), _small);

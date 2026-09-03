@@ -206,6 +206,8 @@ namespace Concordia
                 return;
             }
 
+            if (predator && HuntPrey(lod)) return;
+
             if (player && dist < (predator ? 7f : 11f) && (!predator || !steel))
             {
                 act = "flee";
@@ -246,8 +248,33 @@ namespace Concordia
             if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " " + act + "s");
         }
 
+        bool HuntPrey(SimLod lod)
+        {
+            FaunaLife prey = null;
+            float best = 14f;
+            foreach (var f in FindObjectsByType<FaunaLife>(FindObjectsInactive.Exclude))
+            {
+                if (!f || f == this || f.predator) continue;
+                if (f.act == "dead") continue;
+                var d = Vector3.Distance(transform.position, f.transform.position);
+                if (d < best) { best = d; prey = f; }
+            }
+            if (!prey) return false;
+            act = "hunt";
+            Step(prey.transform.position, fly ? 3.8f : 3.1f);
+            if (lod == SimLod.Real) WorldClock.NoteAct(Label() + " hunts");
+            return true;
+        }
+
         void Pick()
         {
+            var cities = CityAtlas.For(WorldClock.World);
+            if (cities != null && cities.Length > 0 && Random.value < 0.45f)
+            {
+                var c = cities[Random.Range(0, Mathf.Min(3, cities.Length))];
+                _dest = Vector3.Lerp(_home, new Vector3(c.x, 0f, c.z), 0.4f);
+                return;
+            }
             var a = Random.Range(0f, Mathf.PI * 2f);
             var r = Random.Range(2.4f, 9f);
             _dest = _home + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
