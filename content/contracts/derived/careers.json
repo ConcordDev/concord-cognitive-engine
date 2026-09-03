@@ -106,6 +106,19 @@
       "name": "counter"
     },
     {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.employers",
+      "name": "employers"
+    },
+    {
       "_derived": false,
       "domain": "careers",
       "fuzz_cases": [
@@ -152,6 +165,19 @@
       ],
       "macro_id": "careers.ladder",
       "name": "ladder"
+    },
+    {
+      "_derived": true,
+      "domain": "careers",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "careers.myReputation",
+      "name": "myReputation"
     },
     {
       "_derived": false,
@@ -377,5 +403,5 @@
   ],
   "domain": "careers",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 10
 }

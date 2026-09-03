@@ -753,6 +753,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "robotics.safetyEnvelopeCompile",
+      "name": "safetyEnvelopeCompile"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.safetyEnvelopeEmit",
+      "name": "safetyEnvelopeEmit"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.safetyEnvelopeGet",
+      "name": "safetyEnvelopeGet"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "robotics.safetyEnvelopeList",
+      "name": "safetyEnvelopeList"
+    },
+    {
+      "_derived": true,
+      "domain": "robotics",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "robotics.save",
       "name": "save"
     },
@@ -998,5 +1050,5 @@
   ],
   "domain": "robotics",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 41
+  "macroCount": 45
 }

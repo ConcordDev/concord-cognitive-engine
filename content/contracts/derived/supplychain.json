@@ -451,6 +451,97 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "supplychain.orgCreate",
+      "name": "orgCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgJoin",
+      "name": "orgJoin"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgLeave",
+      "name": "orgLeave"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgList",
+      "name": "orgList"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgMembers",
+      "name": "orgMembers"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgMine",
+      "name": "orgMine"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "supplychain.orgSetRole",
+      "name": "orgSetRole"
+    },
+    {
+      "_derived": true,
+      "domain": "supplychain",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "supplychain.pin",
       "name": "pin"
     },
@@ -929,5 +1020,5 @@
   ],
   "domain": "supplychain",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 43
+  "macroCount": 50
 }

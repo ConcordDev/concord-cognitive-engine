@@ -114,6 +114,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "desert.incidentDelete",
+      "name": "incidentDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.incidentList",
+      "name": "incidentList"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.incidentReport",
+      "name": "incidentReport"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.incidentsNearby",
+      "name": "incidentsNearby"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.incidentUpdateStatus",
+      "name": "incidentUpdateStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "desert.kitDelete",
       "name": "kitDelete"
     },
@@ -426,6 +491,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "desert.sightingDelete",
+      "name": "sightingDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.sightingList",
+      "name": "sightingList"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.sightingSave",
+      "name": "sightingSave"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "desert.sightingsNearby",
+      "name": "sightingsNearby"
+    },
+    {
+      "_derived": true,
+      "domain": "desert",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "desert.solarInstall",
       "name": "solarInstall"
     },
@@ -575,5 +692,5 @@
   ],
   "domain": "desert",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 44
+  "macroCount": 53
 }

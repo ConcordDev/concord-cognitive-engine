@@ -158,6 +158,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "energy.cheapest-window",
+      "name": "cheapest-window"
+    },
+    {
+      "_derived": true,
+      "domain": "energy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "energy.comment",
       "name": "comment"
     },
@@ -1066,5 +1079,5 @@
   ],
   "domain": "energy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 55
 }

@@ -492,6 +492,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "urban-planning.project-add",
+      "name": "project-add"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.project-list",
+      "name": "project-list"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.project-remove",
+      "name": "project-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.project-status-update",
+      "name": "project-status-update"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.project-update",
+      "name": "project-update"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "urban-planning.publish",
       "name": "publish"
     },
@@ -598,6 +663,19 @@
       ],
       "macro_id": "urban-planning.scenario-remove",
       "name": "scenario-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "urban-planning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "urban-planning.shadowStudy",
+      "name": "shadowStudy"
     },
     {
       "_derived": true,
@@ -958,5 +1036,5 @@
   ],
   "domain": "urban-planning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 48
 }

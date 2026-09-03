@@ -88,6 +88,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.assessments_list",
+      "name": "assessments_list"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.assign",
       "name": "assign"
     },
@@ -257,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "metacognition.journalBiasDetection",
+      "name": "journalBiasDetection"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "metacognition.journalDelete",
       "name": "journalDelete"
     },
@@ -376,6 +402,19 @@
       ],
       "macro_id": "metacognition.predict",
       "name": "predict"
+    },
+    {
+      "_derived": true,
+      "domain": "metacognition",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "metacognition.predictions_list",
+      "name": "predictions_list"
     },
     {
       "_derived": true,
@@ -601,5 +640,5 @@
   ],
   "domain": "metacognition",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 49
 }

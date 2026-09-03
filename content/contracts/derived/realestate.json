@@ -192,6 +192,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "realestate.cma_generate",
+      "name": "cma_generate"
+    },
+    {
+      "_derived": true,
+      "domain": "realestate",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "realestate.comment",
       "name": "comment"
     },
@@ -991,5 +1004,5 @@
   ],
   "domain": "realestate",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 76
+  "macroCount": 77
 }

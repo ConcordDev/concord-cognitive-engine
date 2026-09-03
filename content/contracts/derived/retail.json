@@ -542,6 +542,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.deals-delete",
+      "name": "deals-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.deals-list",
+      "name": "deals-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.deals-stage-move",
+      "name": "deals-stage-move"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.deals-upsert",
+      "name": "deals-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.discounts-apply",
       "name": "discounts-apply"
     },
@@ -596,6 +648,84 @@
       ],
       "macro_id": "retail.dislike",
       "name": "dislike"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-delete",
+      "name": "displays-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-list",
+      "name": "displays-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-log-impressions",
+      "name": "displays-log-impressions"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-record-conversion",
+      "name": "displays-record-conversion"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-status-move",
+      "name": "displays-status-move"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.displays-upsert",
+      "name": "displays-upsert"
     },
     {
       "_derived": true,
@@ -996,8 +1126,60 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.product-price-history",
+      "name": "product-price-history"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.product-upsert",
       "name": "product-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-variant-delete",
+      "name": "product-variant-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-variant-list",
+      "name": "product-variant-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.product-variant-upsert",
+      "name": "product-variant-upsert"
     },
     {
       "_derived": true,
@@ -1748,6 +1930,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "retail.tickets-delete",
+      "name": "tickets-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tickets-list",
+      "name": "tickets-list"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tickets-reply-add",
+      "name": "tickets-reply-add"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tickets-status-move",
+      "name": "tickets-status-move"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "retail.tickets-upsert",
+      "name": "tickets-upsert"
+    },
+    {
+      "_derived": true,
+      "domain": "retail",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "retail.transfers-create",
       "name": "transfers-create"
     },
@@ -1793,5 +2040,5 @@
   ],
   "domain": "retail",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 105
+  "macroCount": 124
 }

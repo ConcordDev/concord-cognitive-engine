@@ -192,6 +192,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "fork.instantiate_preview",
+      "name": "instantiate_preview"
+    },
+    {
+      "_derived": true,
+      "domain": "fork",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "fork.like",
       "name": "like"
     },
@@ -510,5 +523,5 @@
   ],
   "domain": "fork",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 39
+  "macroCount": 40
 }

@@ -36,6 +36,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dtu.citation-graph",
+      "name": "citation-graph"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dtu.cluster",
       "name": "cluster"
     },
@@ -129,6 +142,19 @@
       ],
       "macro_id": "dtu.get",
       "name": "get"
+    },
+    {
+      "_derived": true,
+      "domain": "dtu",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dtu.lineage",
+      "name": "lineage"
     },
     {
       "_derived": true,
@@ -250,5 +276,5 @@
   ],
   "domain": "dtu",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 19
+  "macroCount": 21
 }

@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ingest.detectSchema",
+      "name": "detectSchema"
+    },
+    {
+      "_derived": true,
+      "domain": "ingest",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ingest.dislike",
       "name": "dislike"
     },
@@ -627,5 +640,5 @@
   ],
   "domain": "ingest",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 48
+  "macroCount": 49
 }

@@ -153,8 +153,34 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.counterArgumentGen",
+      "name": "counterArgumentGen"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.create_chain",
       "name": "create_chain"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "reasoning.deepAnalysis",
+      "name": "deepAnalysis"
     },
     {
       "_derived": true,
@@ -708,6 +734,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "reasoning.strengthAssessment",
+      "name": "strengthAssessment"
+    },
+    {
+      "_derived": true,
+      "domain": "reasoning",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "reasoning.tag",
       "name": "tag"
     },
@@ -853,5 +892,5 @@
   ],
   "domain": "reasoning",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 56
+  "macroCount": 59
 }

@@ -227,6 +227,32 @@
       "name": "get_will_version"
     },
     {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.intestacy-lookup",
+      "name": "intestacy-lookup"
+    },
+    {
+      "_derived": true,
+      "domain": "inheritance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "inheritance.intestacy-states-list",
+      "name": "intestacy-states-list"
+    },
+    {
       "_derived": false,
       "domain": "inheritance",
       "fuzz_cases": [
@@ -615,5 +641,5 @@
   ],
   "domain": "inheritance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 29
+  "macroCount": 31
 }

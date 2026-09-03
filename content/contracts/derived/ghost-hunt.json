@@ -192,6 +192,19 @@
       "name": "detail"
     },
     {
+      "_derived": true,
+      "domain": "ghost-hunt",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ghost-hunt.dossiers",
+      "name": "dossiers"
+    },
+    {
       "_derived": false,
       "domain": "ghost-hunt",
       "fuzz_cases": [
@@ -420,5 +433,5 @@
   ],
   "domain": "ghost-hunt",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 8
+  "macroCount": 9
 }

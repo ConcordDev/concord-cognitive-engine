@@ -310,6 +310,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "mentorship.group-session-create",
+      "name": "group-session-create"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.group-session-join",
+      "name": "group-session-join"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.group-session-leave",
+      "name": "group-session-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.group-session-list",
+      "name": "group-session-list"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mentorship.group-session-update",
+      "name": "group-session-update"
+    },
+    {
+      "_derived": true,
+      "domain": "mentorship",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "mentorship.like",
       "name": "like"
     },
@@ -968,5 +1033,5 @@
   ],
   "domain": "mentorship",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 46
+  "macroCount": 51
 }

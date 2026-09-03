@@ -375,6 +375,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "marketing.campaign-gmail-send-history",
+      "name": "campaign-gmail-send-history"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "marketing.campaign-kpis",
       "name": "campaign-kpis"
     },
@@ -390,6 +403,19 @@
       ],
       "macro_id": "marketing.campaign-list",
       "name": "campaign-list"
+    },
+    {
+      "_derived": true,
+      "domain": "marketing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "marketing.campaign-send-gmail",
+      "name": "campaign-send-gmail"
     },
     {
       "_derived": true,
@@ -1458,5 +1484,5 @@
   ],
   "domain": "marketing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 86
+  "macroCount": 88
 }

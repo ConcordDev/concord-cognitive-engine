@@ -387,6 +387,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.client-add",
+      "name": "client-add"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.client-list",
+      "name": "client-list"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.comment",
       "name": "comment"
     },
@@ -1423,6 +1449,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "insurance.producer-compliance-add",
+      "name": "producer-compliance-add"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.producer-compliance-list",
+      "name": "producer-compliance-list"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.producer-compliance-remove",
+      "name": "producer-compliance-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "insurance.producer-compliance-update",
+      "name": "producer-compliance-update"
+    },
+    {
+      "_derived": true,
+      "domain": "insurance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "insurance.producer-leaderboard",
       "name": "producer-leaderboard"
     },
@@ -1853,5 +1931,5 @@
   ],
   "domain": "insurance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 97
+  "macroCount": 103
 }

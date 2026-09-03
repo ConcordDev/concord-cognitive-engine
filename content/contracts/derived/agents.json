@@ -127,6 +127,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "agents.createTaskDefinition",
+      "name": "createTaskDefinition"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "agents.deleteGraph",
       "name": "deleteGraph"
     },
@@ -142,6 +155,19 @@
       ],
       "macro_id": "agents.deleteSchedule",
       "name": "deleteSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agents.deleteTaskDefinition",
+      "name": "deleteTaskDefinition"
     },
     {
       "_derived": true,
@@ -324,6 +350,19 @@
       ],
       "macro_id": "agents.listSchedules",
       "name": "listSchedules"
+    },
+    {
+      "_derived": true,
+      "domain": "agents",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "agents.listTaskDefinitions",
+      "name": "listTaskDefinitions"
     },
     {
       "_derived": true,
@@ -679,5 +718,5 @@
   ],
   "domain": "agents",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 52
+  "macroCount": 55
 }

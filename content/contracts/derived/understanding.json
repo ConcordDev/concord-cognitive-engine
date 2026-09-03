@@ -130,6 +130,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "understanding.due",
+      "name": "due"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "understanding.edit",
       "name": "edit"
     },
@@ -258,6 +271,32 @@
       "name": "list_mine"
     },
     {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.move",
+      "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.outline",
+      "name": "outline"
+    },
+    {
       "_derived": false,
       "domain": "understanding",
       "fuzz_cases": [
@@ -309,6 +348,19 @@
       ],
       "macro_id": "understanding.remove",
       "name": "remove"
+    },
+    {
+      "_derived": true,
+      "domain": "understanding",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "understanding.reorder",
+      "name": "reorder"
     },
     {
       "_derived": false,
@@ -381,5 +433,5 @@
   ],
   "domain": "understanding",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 16
+  "macroCount": 20
 }

@@ -36,6 +36,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "services.bookingConfirmPayment",
+      "name": "bookingConfirmPayment"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "services.bookingCreatePaymentIntent",
+      "name": "bookingCreatePaymentIntent"
+    },
+    {
+      "_derived": true,
+      "domain": "services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "services.bookingGridCancel",
       "name": "bookingGridCancel"
     },
@@ -1087,5 +1113,5 @@
   ],
   "domain": "services",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 52
+  "macroCount": 54
 }

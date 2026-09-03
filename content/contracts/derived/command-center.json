@@ -101,6 +101,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "command-center.dashboardData",
+      "name": "dashboardData"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "command-center.deleteAlertRule",
       "name": "deleteAlertRule"
     },
@@ -298,6 +311,45 @@
       ],
       "macro_id": "command-center.muteAlertRule",
       "name": "muteAlertRule"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.onCallSchedule",
+      "name": "onCallSchedule"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.onCallScheduleSet",
+      "name": "onCallScheduleSet"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.onCallWho",
+      "name": "onCallWho"
     },
     {
       "_derived": true,
@@ -517,6 +569,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "command-center.teamCreate",
+      "name": "teamCreate"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.teamJoin",
+      "name": "teamJoin"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.teamLeave",
+      "name": "teamLeave"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.teamListMine",
+      "name": "teamListMine"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.teamMembers",
+      "name": "teamMembers"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "command-center.teamSetRole",
+      "name": "teamSetRole"
+    },
+    {
+      "_derived": true,
+      "domain": "command-center",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "command-center.updateIncident",
       "name": "updateIncident"
     },
@@ -575,5 +705,5 @@
   ],
   "domain": "command-center",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 44
+  "macroCount": 54
 }

@@ -23,6 +23,110 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "emergency-services.agency-create",
+      "name": "agency-create"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-join",
+      "name": "agency-join"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-leave",
+      "name": "agency-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-list",
+      "name": "agency-list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-members",
+      "name": "agency-members"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-mine",
+      "name": "agency-mine"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-mutual-aid-consent",
+      "name": "agency-mutual-aid-consent"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.agency-set-role",
+      "name": "agency-set-role"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "emergency-services.archive",
       "name": "archive"
     },
@@ -437,6 +541,58 @@
       ],
       "macro_id": "emergency-services.move",
       "name": "move"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.mutual-aid-commit-unit",
+      "name": "mutual-aid-commit-unit"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.mutual-aid-list",
+      "name": "mutual-aid-list"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.mutual-aid-recall",
+      "name": "mutual-aid-recall"
+    },
+    {
+      "_derived": true,
+      "domain": "emergency-services",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "emergency-services.mutual-aid-share",
+      "name": "mutual-aid-share"
     },
     {
       "_derived": true,
@@ -865,5 +1021,5 @@
   ],
   "domain": "emergency-services",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 43
+  "macroCount": 55
 }

@@ -12,9 +12,22 @@
       ],
       "macro_id": "weather.live_forecast",
       "name": "live_forecast"
+    },
+    {
+      "_derived": true,
+      "domain": "weather",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "weather.publish-daily",
+      "name": "publish-daily"
     }
   ],
   "domain": "weather",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 1
+  "macroCount": 2
 }

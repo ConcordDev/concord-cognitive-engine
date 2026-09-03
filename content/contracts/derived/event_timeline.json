@@ -75,6 +75,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "event_timeline.on_this_day",
+      "name": "on_this_day"
+    },
+    {
+      "_derived": true,
+      "domain": "event_timeline",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "event_timeline.range",
       "name": "range"
     },
@@ -146,5 +159,5 @@
   ],
   "domain": "event_timeline",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 11
+  "macroCount": 12
 }

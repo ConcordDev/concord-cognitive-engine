@@ -145,6 +145,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dx-platform.exportSarif",
+      "name": "exportSarif"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dx-platform.generateCiConfig",
       "name": "generateCiConfig"
     },
@@ -272,6 +285,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dx-platform.issueTrend",
+      "name": "issueTrend"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dx-platform.joinTeam",
       "name": "joinTeam"
     },
@@ -298,6 +324,19 @@
       ],
       "macro_id": "dx-platform.listCodebases",
       "name": "listCodebases"
+    },
+    {
+      "_derived": true,
+      "domain": "dx-platform",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "dx-platform.postCommitStatus",
+      "name": "postCommitStatus"
     },
     {
       "_derived": true,
@@ -484,5 +523,5 @@
   ],
   "domain": "dx-platform",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 15
+  "macroCount": 18
 }

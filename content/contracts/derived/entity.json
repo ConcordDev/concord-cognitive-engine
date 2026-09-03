@@ -517,11 +517,24 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "entity.terminal_pending",
+      "name": "terminal_pending"
+    },
+    {
+      "_derived": true,
+      "domain": "entity",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "entity.vote",
       "name": "vote"
     }
   ],
   "domain": "entity",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 40
+  "macroCount": 41
 }

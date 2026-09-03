@@ -1,37 +1,41 @@
 {
-  "generatedAt": "2026-07-04T23:20:10.874Z",
-  "durationMs": 68232,
+  "generatedAt": "2026-09-03T13:12:54.578Z",
+  "durationMs": 30895,
   "totals": {
-    "macrosEnumerated": 14533,
-    "headlessSafeDriven": 13441,
-    "headlessUnsafeSkipped": 1092,
-    "violations": 1,
+    "macrosEnumerated": 15075,
+    "headlessSafeDriven": 13977,
+    "headlessUnsafeSkipped": 1098,
+    "violations": 2,
     "hardCrashes": 0
   },
   "byVector": {
-    "V1": 1,
-    "V2": 0,
-    "V3": 0,
+    "V1": 0,
+    "V2": 1,
+    "V3": 1,
     "META": 0,
     "HARD": 0
   },
   "byReason": {
-    "seed_expect_mismatch": 1
+    "fuzz_timeout": 1,
+    "invariant_input_timeout": 1
   },
   "byDomain": {
-    "saved": 1
+    "code": 2
   },
   "violations": [
     {
-      "macro_id": "saved.folderCreate",
-      "vector": "V1",
-      "reason": "seed_expect_mismatch",
+      "macro_id": "code.refresh",
+      "vector": "V2",
+      "reason": "fuzz_timeout",
       "detail": {
-        "caseIndex": 0,
-        "key": "ok",
-        "want": true,
-        "got": "false"
+        "poisonedNumericFields": []
       }
+    },
+    {
+      "macro_id": "code.refresh",
+      "vector": "V3",
+      "reason": "invariant_input_timeout",
+      "detail": null
     }
   ],
   "hardCrashes": []
