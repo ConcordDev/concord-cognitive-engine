@@ -75,6 +75,7 @@ namespace Concordia
             _world.player = _player;
             await HubKit.EnsureLoaded();
             _world.Build(world);
+            WorldClock.Enter(world);
             Grounding.Snap(cc);
             var py = pgo.transform.position.y;
             if (py < 0f || py > 3.5f)
@@ -178,6 +179,7 @@ namespace Concordia
                 }
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
+            WorldClock.Tick(Time.deltaTime);
         }
 
         string TryInteract(Vector3 pos)
@@ -260,6 +262,8 @@ namespace Concordia
             }
             if (npc != null)
             {
+                var life = npc.GetComponent<NpcLife>();
+                if (life) life.NoticePlayer(8f);
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
                 var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
@@ -305,6 +309,7 @@ namespace Concordia
 
         public void Travel(WorldId next)
         {
+            WorldClock.Leave();
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
@@ -315,6 +320,7 @@ namespace Concordia
             _player.cc.enabled = true;
             if (_player.cam) _player.cam.yaw = Mathf.PI;
             _world.Build(next);
+            WorldClock.Enter(next);
             _gates = null;
             _cities = null;
             _holds = null;
@@ -329,6 +335,8 @@ namespace Concordia
                 : "Flower-law. Blades die as flowers except in the Arena.";
             ConcordiaHUD.Announce(w.title, w.refusal);
             _player.Notice(w.law + " " + steel);
+            if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
+                _player.Notice(WorldClock.LastEvent);
             var client = ConcordClient.Live;
             if (client && client.Connected)
                 _ = client.RequestScene(WorldBook.Folder(next));
@@ -368,6 +376,7 @@ namespace Concordia
 
         void OnDestroy()
         {
+            WorldClock.Leave();
             var kernel = ConcordClient.Live;
             if (kernel != null) kernel.OnEvent -= HandleKernelEvent;
         }

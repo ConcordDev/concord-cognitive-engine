@@ -89,16 +89,18 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 112), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 148), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon), _small);
-            GUI.Label(new Rect(32, 70, 280, 16), ConcordClient.StatusJson, _small);
-            GUI.Label(new Rect(32, 86, 520, 16), HubObjectives.Line(), _small);
-            GUI.Label(new Rect(32, 102, 520, 16), QuestLog.HudBlock(), _small);
-            GUI.Label(new Rect(32, 118, 520, 16), SkillLedger.Line(), _small);
+            GUI.Label(new Rect(32, 70, 520, 16), WorldClock.HudClock(), _small);
+            GUI.Label(new Rect(32, 86, 520, 16),
+                string.IsNullOrEmpty(WorldClock.NearbyAct) ? ConcordClient.StatusJson : WorldClock.NearbyAct, _small);
+            GUI.Label(new Rect(32, 102, 520, 16), HubObjectives.Line(), _small);
+            GUI.Label(new Rect(32, 118, 520, 16), QuestLog.HudBlock(), _small);
+            GUI.Label(new Rect(32, 134, 520, 16), SkillLedger.Line(), _small);
         }
 
         void Rings(float w)

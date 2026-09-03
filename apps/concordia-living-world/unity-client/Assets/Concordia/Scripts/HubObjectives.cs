@@ -142,7 +142,9 @@ namespace Concordia
             if (Active.Count == 0)
                 return Done.Count == 0 ? "No quest in hand. E a quest board or a giver." : "Quests done: " + Done.Count;
             var a = Active[0];
-            return a.quest.title + "  —  " + a.ShortProgress();
+            var line = a.quest.title + "  —  " + a.ShortProgress();
+            if (WorldClock.Ecology < 0.4f) line += "  ·  ecology thin";
+            return line;
         }
 
         public static ActiveQuest Find(string id)

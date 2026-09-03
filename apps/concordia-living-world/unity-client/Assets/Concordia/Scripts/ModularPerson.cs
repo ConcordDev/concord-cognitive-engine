@@ -911,6 +911,20 @@ namespace Concordia // FORCE_REFRESH_0011
             foreach (var r in rs) if (r) r.sharedMaterial = m;
         }
 
+        public static void StampSash(GameObject go, Color col)
+        {
+            if (!go) return;
+            var sash = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            sash.name = "FactionSash";
+            sash.transform.SetParent(go.transform, false);
+            sash.transform.localPosition = new Vector3(0.02f, 1.15f, 0.12f);
+            sash.transform.localScale = new Vector3(0.42f, 0.08f, 0.16f);
+            sash.transform.localRotation = Quaternion.Euler(12f, 0f, -18f);
+            Object.Destroy(sash.GetComponent<Collider>());
+            var r = sash.GetComponent<Renderer>();
+            if (r) r.sharedMaterial = HubLook.Lit(col, 0.08f, 0.28f);
+        }
+
         static GameObject MakeSword()
         {
             var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("weapon-sword");

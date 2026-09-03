@@ -26,6 +26,9 @@ namespace Concordia
             bi.plan = plan;
             bi._shell = shell.GetComponentsInChildren<Renderer>();
             bi.Build();
+            var place = shell.GetComponent<BuildingPlace>() ?? shell.AddComponent<BuildingPlace>();
+            place.plan = plan;
+            place.door = shell.transform.position + shell.transform.forward * -2.4f;
             return bi;
         }
 

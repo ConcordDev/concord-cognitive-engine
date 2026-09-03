@@ -16,7 +16,7 @@ JSON quests become `LoreStone` + `QuestBoard`. E on a board or a `giver_npc_id` 
 | `gather` | E on a `Gatherable` (hold chest) |
 | `deliver` | gathered **and** talked |
 
-Types this client cannot run (`cook`, `consume`, `macro`, `tame`, `stealth_traverse`, events, minigames, …) stay **open** with an honest HUD reason. Never auto-complete.
+Types this client cannot run (`cook`, `consume`, `macro`, `tame`, `stealth_traverse`, events, minigames, …) stay **open** with an honest HUD reason. Never auto-complete. HUD appends `ecology thin` when `WorldClock.Ecology < 0.4` so a hunt/gather quest reads the living world.
 
 Hub P0 checklist (`HubObjectives`) is separate: lamp / ring / arena / ruins / return.
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace Concordia
@@ -403,6 +404,336 @@ namespace Concordia
                 s = motto + "\n\n" + goal;
             if (s.Length > 700) s = s.Substring(0, 697) + "…";
             return s;
+        }
+    }
+
+    /// <summary>
+    /// REAL / BULK / VIRTUAL — AC Origins / KCD scale, not 500 full-AI bodies.
+    /// </summary>
+    public enum SimLod { Real, Bulk, Virtual }
+
+    /// <summary>
+    /// Port of browser kernel.ts — hour, weather, ecology, prices.
+    /// The world keeps its hours when the player stands still.
+    /// </summary>
+    public static class WorldClock
+    {
+        public static WorldId World;
+        public static float Hour = 7.2f;
+        public static int Day = 1;
+        public static string Weather = "clear";
+        public static float Ecology = 0.7f;
+        public static float Prices = 1f;
+        public static float FactionHeat = 0.2f;
+        public static string LastEvent = "";
+        public static string NearbyAct = "";
+        public static Vector3[] Threats = System.Array.Empty<Vector3>();
+        static float _weatherT = 40f;
+        static float _dumpAt;
+        static float _actAge;
+        static float _threatAt;
+
+        public static void Enter(WorldId id)
+        {
+            World = id;
+            var slice = WorldMemory.Load(id);
+            var away = WorldMemory.AwayHours(slice);
+            if (away > 0.05f) WorldMemory.Advance(slice, away, id);
+            Hour = slice.hour;
+            Day = slice.day;
+            Ecology = slice.ecology;
+            Prices = slice.prices;
+            FactionHeat = slice.factionHeat;
+            LastEvent = slice.lastEvent;
+            Weather = Canon.Get(id).weather;
+            ApplySky();
+            NoteAct(Canon.Get(id).title + " kept its hours.");
+        }
+
+        public static void Leave()
+        {
+            WorldMemory.Write(World, Snapshot());
+        }
+
+        public static WorldSliceRec Snapshot()
+        {
+            return new WorldSliceRec
+            {
+                world = World.ToString(),
+                hour = Hour,
+                day = Day,
+                ecology = Ecology,
+                prices = Prices,
+                factionHeat = FactionHeat,
+                lastEvent = LastEvent,
+                savedAt = Now(),
+                deadCsv = WorldMemory.DeadCsv(World),
+                births = WorldMemory.Births(World)
+            };
+        }
+
+        public static void Tick(float dt)
+        {
+            Hour = (Hour + dt * 0.08f) % 24f;
+            if (Hour < 0.05f * dt + 0.02f)
+            {
+                Day += 1;
+                Prices = Mathf.Clamp(Prices * (0.96f + UnityEngine.Random.value * 0.1f), 0.7f, 1.6f);
+                LastEvent = "Day " + Day + ". Markets " + (Prices > 1.1f ? "tightened" : "eased") + ". The world did not wait.";
+            }
+            _weatherT -= dt;
+            Ecology = Mathf.Clamp(Ecology + dt * 0.004f, 0.15f, 1f);
+            FactionHeat = Mathf.Max(0f, FactionHeat - dt * 0.02f);
+            if (_weatherT <= 0f)
+            {
+                _weatherT = 28f + UnityEngine.Random.value * 22f;
+                var kit = Canon.Get(World).weather;
+                var cycle = new[] { kit, "wind", "clear", kit };
+                Weather = cycle[UnityEngine.Random.Range(0, cycle.Length)];
+                LastEvent = Canon.Get(World).title + ": weather shifted. Schedules will.";
+            }
+            _actAge += dt;
+            if (_actAge > 8f) NearbyAct = "";
+            if (Mathf.FloorToInt(Hour * 4f) != Mathf.FloorToInt((Hour - dt * 0.08f) * 4f))
+                ApplySky();
+            if (Time.unscaledTime >= _threatAt)
+            {
+                _threatAt = Time.unscaledTime + 0.45f;
+                var hs = UnityEngine.Object.FindObjectsByType<Hostile>(FindObjectsInactive.Exclude);
+                var list = new List<Vector3>(hs.Length);
+                foreach (var h in hs)
+                {
+                    if (!h) continue;
+                    var dummy = h.GetComponent<TrainingDummy>();
+                    if (dummy && dummy.hp <= 0f) continue;
+                    list.Add(h.transform.position);
+                }
+                Threats = list.ToArray();
+            }
+            if (Time.unscaledTime >= _dumpAt)
+            {
+                _dumpAt = Time.unscaledTime + 2f;
+                Dump();
+            }
+        }
+
+        public static void NoteAct(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return;
+            NearbyAct = line;
+            _actAge = 0f;
+        }
+
+        public static void NoteKill(string id)
+        {
+            WorldMemory.MarkDead(World, id);
+            Ecology = Mathf.Max(0.15f, Ecology - 0.03f);
+            FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
+            LastEvent = Canon.Get(World).title + ": a pack thinned.";
+        }
+
+        public static SimLod LodAt(Vector3 pos)
+        {
+            var player = ConcordiaPlayer.Live;
+            if (!player) return SimLod.Virtual;
+            var d = Vector3.Distance(player.transform.position, pos);
+            if (d < 28f) return SimLod.Real;
+            if (d < 70f) return SimLod.Bulk;
+            return SimLod.Virtual;
+        }
+
+        public static string Phase
+        {
+            get
+            {
+                if (Hour < 6f || Hour >= 22f) return "night";
+                if (Hour < 12f) return "morning";
+                if (Hour < 14f) return "midday";
+                if (Hour < 18f) return "afternoon";
+                return "evening";
+            }
+        }
+
+        public static string Line()
+        {
+            var w = Canon.Get(World);
+            var cities = CityAtlas.For(World);
+            var facs = WorldBook.Factions(World);
+            var hh = Mathf.FloorToInt(Hour);
+            var mm = Mathf.FloorToInt((Hour - hh) * 60f);
+            var kingdom = w.title + " · " + cities.Length + " settlements · " + facs.Length + " factions";
+            var clock = "Day " + Day + " · " + hh.ToString("00") + ":" + mm.ToString("00") + " · " + Weather + " · " + Phase;
+            var act = string.IsNullOrEmpty(NearbyAct) ? "the plaza keeps its own hours" : NearbyAct;
+            return clock + "\n" + kingdom + "\n" + act;
+        }
+
+        public static string HudClock()
+        {
+            var hh = Mathf.FloorToInt(Hour);
+            var mm = Mathf.FloorToInt((Hour - hh) * 60f);
+            return "Day " + Day + " · " + hh.ToString("00") + ":" + mm.ToString("00") + " · " + Weather
+                + (Ecology < 0.4f ? " · ecology thin" : "");
+        }
+
+        static void ApplySky()
+        {
+            float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
+            RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+            var sun = UnityEngine.Object.FindFirstObjectByType<Light>();
+            if (sun && sun.type == LightType.Directional)
+                sun.intensity = 0.35f + 0.9f * day;
+        }
+
+        static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
+
+        static void Dump()
+        {
+            try
+            {
+                int real = 0, bulk = 0, virt = 0;
+                foreach (var n in UnityEngine.Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+                {
+                    var l = LodAt(n.transform.position);
+                    if (l == SimLod.Real) real++;
+                    else if (l == SimLod.Bulk) bulk++;
+                    else virt++;
+                }
+                File.WriteAllText("/tmp/concordia-world-life.txt",
+                    DateTime.Now.ToString("o") + " world=" + World + " hour=" + Hour.ToString("0.00")
+                    + " day=" + Day + " weather=" + Weather + " ecology=" + Ecology.ToString("0.00")
+                    + " prices=" + Prices.ToString("0.00") + " lod=" + real + "/" + bulk + "/" + virt
+                    + "\n" + Line() + "\n" + LastEvent + "\n");
+            }
+            catch { }
+        }
+    }
+
+    [Serializable]
+    public class WorldSliceRec
+    {
+        public string world;
+        public float ecology = 0.7f;
+        public float prices = 1f;
+        public float factionHeat = 0.2f;
+        public float hour = 7.2f;
+        public int day = 1;
+        public int births;
+        public string lastEvent = "";
+        public float savedAt;
+        public string deadCsv = "";
+    }
+
+    [Serializable]
+    public class LivingSaveRec
+    {
+        public int v = 1;
+        public WorldSliceRec[] slices;
+    }
+
+    /// <summary>
+    /// Port of persist.ts WorldSlice — per-world memory that survives a gate.
+    /// Virtual kingdoms keep hours while the player is elsewhere.
+    /// </summary>
+    public static class WorldMemory
+    {
+        static readonly Dictionary<WorldId, WorldSliceRec> Cache = new Dictionary<WorldId, WorldSliceRec>();
+
+        public static WorldSliceRec Load(WorldId id)
+        {
+            if (Cache.TryGetValue(id, out var hit) && hit != null) return hit;
+            var all = ReadFile();
+            WorldSliceRec found = null;
+            if (all?.slices != null)
+                foreach (var s in all.slices)
+                    if (s != null && s.world == id.ToString()) found = s;
+            if (found == null)
+            {
+                found = new WorldSliceRec { world = id.ToString(), hour = 7.2f, day = 1, ecology = 0.7f, prices = 1f };
+            }
+            Cache[id] = found;
+            return found;
+        }
+
+        public static void Write(WorldId id, WorldSliceRec slice)
+        {
+            slice.world = id.ToString();
+            slice.savedAt = (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
+            Cache[id] = slice;
+            var map = new Dictionary<string, WorldSliceRec>();
+            foreach (WorldId w in Enum.GetValues(typeof(WorldId)))
+                map[w.ToString()] = Load(w);
+            map[id.ToString()] = slice;
+            var list = new List<WorldSliceRec>();
+            foreach (var kv in map) list.Add(kv.Value);
+            var rec = new LivingSaveRec { v = 1, slices = list.ToArray() };
+            try
+            {
+                var path = Path.Combine(Application.persistentDataPath, "concordia-living-v1.json");
+                File.WriteAllText(path, JsonUtility.ToJson(rec, true));
+            }
+            catch { }
+        }
+
+        public static float AwayHours(WorldSliceRec slice)
+        {
+            if (slice == null || slice.savedAt <= 1f) return 0f;
+            var now = (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
+            return Mathf.Min(18f, (now - slice.savedAt) / 60f);
+        }
+
+        public static void Advance(WorldSliceRec slice, float hours, WorldId id)
+        {
+            var next = slice.hour + hours;
+            slice.day += Mathf.FloorToInt(next / 24f);
+            slice.hour = next % 24f;
+            slice.ecology = Mathf.Clamp(slice.ecology + hours * 0.01f, 0.15f, 1f);
+            slice.prices = Mathf.Clamp(slice.prices * (0.96f + UnityEngine.Random.value * 0.08f), 0.7f, 1.6f);
+            slice.factionHeat = Mathf.Max(0f, slice.factionHeat - hours * 0.02f);
+            if (slice.ecology > 0.55f && !string.IsNullOrEmpty(slice.deadCsv))
+            {
+                var parts = new List<string>(slice.deadCsv.Split(','));
+                if (parts.Count > 0)
+                {
+                    parts.RemoveAt(0);
+                    slice.deadCsv = string.Join(",", parts);
+                    slice.births += 1;
+                }
+            }
+            slice.lastEvent = Canon.Get(id).title + ": Day " + slice.day + ". The world continued while you were away.";
+        }
+
+        public static void MarkDead(WorldId id, string name)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            var s = Load(id);
+            var key = name.Trim();
+            if (string.IsNullOrEmpty(s.deadCsv)) s.deadCsv = key;
+            else if (!s.deadCsv.Contains(key)) s.deadCsv += "," + key;
+            Cache[id] = s;
+        }
+
+        public static bool IsDead(WorldId id, string name)
+        {
+            if (string.IsNullOrEmpty(name)) return false;
+            var s = Load(id);
+            if (string.IsNullOrEmpty(s.deadCsv)) return false;
+            foreach (var p in s.deadCsv.Split(','))
+                if (string.Equals(p.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
+        public static int Births(WorldId id) => Load(id).births;
+
+        static LivingSaveRec ReadFile()
+        {
+            try
+            {
+                var path = Path.Combine(Application.persistentDataPath, "concordia-living-v1.json");
+                if (!File.Exists(path)) return null;
+                return JsonUtility.FromJson<LivingSaveRec>(File.ReadAllText(path));
+            }
+            catch { return null; }
         }
     }
 }

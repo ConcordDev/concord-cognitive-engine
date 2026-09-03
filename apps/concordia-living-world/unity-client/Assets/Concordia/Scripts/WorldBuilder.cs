@@ -540,6 +540,7 @@ namespace Concordia
                 guest.personId = n.id;
                 var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
                 life.job = NpcLife.Job.Watch;
+                life.pinned = true;
             }
         }
 
