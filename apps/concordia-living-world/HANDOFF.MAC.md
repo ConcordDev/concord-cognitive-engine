@@ -56,21 +56,22 @@ On the pod:
 |---|---|
 | `/workspace/concord-cognitive-engine` | Live Concordos |
 | `/workspace/unity/editor` | Unity 6.5.9 Linux Editor (extracting/extracted) |
-| `/workspace/unity/projects/Concordia` | Unity client skeleton |
+| `/workspace/unity/projects/Concordia` | Older pod skeleton — **canonical client is this repo** |
 | `/workspace/unity/unity-mcp` | Coplay MCP v10 clone |
-| `/workspace/unity/projects/Concordia/Assets/Scripts/ConcordClient.cs` | `/unity-ws` client |
+| `/workspace/unity/projects/Concordia/Assets/Scripts/ConcordClient.cs` | `/unity-ws` client (also in this repo) |
 
 ## What you do on the Mac (Unity Hub)
 
-1. Finish installing **Unity 6** (6000.5.x or whatever Hub offers; URP).
-2. Create or open a project named **Concordia**.
-3. Copy `Assets/Scripts/ConcordClient.cs` from this repo (`unity-client/` once pushed) into the Mac project.
-4. Install package: `https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#v10.0.0`
-5. Window → MCP for Unity → Configure (so this Grok can drive the Editor).
-6. Import Mixamo: idle / walk / run / slash / heavy / hit / jump. Humanoid avatar.
-7. Right hand socket for the sword. Camera behind the back.
-8. Export GLB clips back into this repo `public/models/` for the browser game.
-9. Standalone builds go on the live site `/download` later.
+The Unity project **already lives in this repo.** Do not create a second Concordia project and copy scripts into it.
+
+1. Install **Unity 6** (`6000.5.x`, URP) via Unity Hub.
+2. Hub → Add / Open → `apps/concordia-living-world/unity-client/` (this folder).
+3. Cursor/VS Code: File → Open Workspace from File → repo-root `concord.code-workspace` (Unity + Godot + frontend + server + mobile as sibling roots).
+4. Play `Assets/Scenes/ConcordiaHub.unity`. `Library/` regenerates locally; it is gitignored (~10GB).
+5. Coplay MCP is already in `Packages/manifest.json` (`com.coplaydev.unity-mcp` v10). Window → MCP for Unity → Configure if this agent should drive the Editor.
+6. Live scripts: `Assets/Concordia/Scripts/` (not the stale copies under `unity-client/Scripts/`).
+7. Export new Mixamo/GLB clips into this repo `public/models/` for the browser game.
+8. Standalone builds go on the live site `/download` later.
 
 Do **not** wait for the Linux Editor on the pod to license. The Mac Hub login is the license.
 

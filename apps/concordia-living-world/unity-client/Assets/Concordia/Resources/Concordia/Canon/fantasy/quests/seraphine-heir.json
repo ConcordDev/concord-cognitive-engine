@@ -1,0 +1,135 @@
+[
+  {
+    "id": "fantasy_seraphine_01_audience",
+    "title": "Thornwood — The Long Audience",
+    "description": "Lady Seraphine summons you to a private audience. The court is half-empty; the rest are listening. She has chosen you for a reason.",
+    "giver_npc_id": "lady_seraphine_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sera1_visit",
+        "type": "reach_location",
+        "target": "fantasy_thornwood_throne",
+        "required_count": 1,
+        "description": "Visit the throne room during her morning audience."
+      },
+      {
+        "id": "obj_sera1_talk",
+        "type": "talk_to",
+        "target": "lady_seraphine_voss",
+        "required_count": 1,
+        "description": "Hear what Seraphine asks."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_sera1",
+        "content": "Seraphine and Iyatte of Sandrun have hidden mirror-children. She wants a courier who can cross both worlds.",
+        "unlocks_after": "obj_sera1_talk",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "fantasy_seraphine_02_lacquer"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "fantasy",
+      "fantasy_main"
+    ]
+  },
+  {
+    "id": "fantasy_seraphine_02_lacquer",
+    "title": "Thornwood — The Lacquered Box",
+    "description": "Carry a lacquered box to the Verge crossroads at sunset. Don't open it. A woman in red will be waiting.",
+    "giver_npc_id": "lady_seraphine_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sera2_carry",
+        "type": "deliver",
+        "target": "lacquer_box_to_verge_runner",
+        "required_count": 1,
+        "description": "Arrive at the Verge crossroads before sunset with the box sealed."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_sera2",
+        "content": "The woman in red is a Sandrun courier. The box contains a sealed copy of Iyatte's son's borrowed identity.",
+        "unlocks_after": "obj_sera2_carry",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "fantasy_seraphine_03_choice"
+    ],
+    "prerequisites": [
+      "fantasy_seraphine_01_audience"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_main"
+    ]
+  },
+  {
+    "id": "fantasy_seraphine_03_choice",
+    "title": "Thornwood — Resolution",
+    "description": "Return to Seraphine. She'll know whether you opened the box. The keep's future hangs on the next half-hour.",
+    "giver_npc_id": "lady_seraphine_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_sera3_choose",
+        "type": "any_of",
+        "target": "thornwood_resolution",
+        "required_count": 1,
+        "description": "Choose: held faith / opened it / told someone else."
+      }
+    ],
+    "rewards": {
+      "xp": 600,
+      "items": [
+        "thornwood_sworn_signet"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "fantasy_seraphine_02_lacquer"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_main"
+    ],
+    "moral_branch": {
+      "description": "Did you hold faith?",
+      "options": [
+        {
+          "id": "held",
+          "trigger": "obj_sera3_choose:held",
+          "consequence": "Seraphine elevates you. Permanent thornwood faction +0.7."
+        },
+        {
+          "id": "opened",
+          "trigger": "obj_sera3_choose:opened",
+          "consequence": "Seraphine knows. She will not say so. -0.5 reputation."
+        },
+        {
+          "id": "told",
+          "trigger": "obj_sera3_choose:told",
+          "consequence": "Iyatte's son is exposed. Cross-world war intensifies."
+        }
+      ]
+    }
+  }
+]

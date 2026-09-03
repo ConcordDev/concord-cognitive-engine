@@ -1,0 +1,118 @@
+[
+  {
+    "id": "crime_thorpe_01_bell",
+    "title": "Bell's Corner — Buy a Tip",
+    "description": "Iniko Voss wants Bell's tip about the Thorpe ring's last shipment. Bell will sell it. Cost: 50 sparks.",
+    "giver_npc_id": "detective_iniko_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thorpe1_bell",
+        "type": "interact",
+        "target": "crime_alley_corner",
+        "required_count": 1,
+        "description": "Find Bell at the alley corner during Freeus or later."
+      },
+      {
+        "id": "obj_thorpe1_buy",
+        "type": "deliver",
+        "target": "sparks_to_bell",
+        "required_count": 50,
+        "description": "Pay 50 sparks for the tip."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_thorpe1",
+        "content": "The Thorpe ring's last shipment crossed paths with hub-Bazaar goods. Velka and Silas are running the same chain.",
+        "unlocks_after": "obj_thorpe1_buy",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "crime_thorpe_02_maddox"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "crime",
+      "crime_main"
+    ]
+  },
+  {
+    "id": "crime_thorpe_02_maddox",
+    "title": "The Wharf — Get Maddox to Sign",
+    "description": "Maddox Kray owes Iniko three favours. He has paid none. Lean on him until you have his signature on a witness statement.",
+    "giver_npc_id": "detective_iniko_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thorpe2_maddox",
+        "type": "talk_to",
+        "target": "fence_maddox_kray",
+        "required_count": 1,
+        "description": "Confront Maddox at the wharf."
+      },
+      {
+        "id": "obj_thorpe2_sign",
+        "type": "interact",
+        "target": "maddox_statement_sealed",
+        "required_count": 1,
+        "description": "Get the statement on paper, sealed."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "crime_thorpe_03_haldane"
+    ],
+    "prerequisites": [
+      "crime_thorpe_01_bell"
+    ],
+    "tags": [
+      "crime",
+      "crime_main"
+    ]
+  },
+  {
+    "id": "crime_thorpe_03_haldane",
+    "title": "The Courthouse — Hand it to the Judge",
+    "description": "Judge Haldane has been collecting evidence for an indictment. With Maddox's statement, she can move. Hand it directly — never through Iniko.",
+    "giver_npc_id": "judge_pia_haldane",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thorpe3_deliver",
+        "type": "deliver",
+        "target": "statement_to_haldane",
+        "required_count": 1,
+        "description": "Deliver the sealed statement to Judge Haldane in chambers."
+      }
+    ],
+    "rewards": {
+      "xp": 500,
+      "skill_xp": {
+        "investigation": 80
+      },
+      "items": [
+        "watch_commendation"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "crime_thorpe_02_maddox"
+    ],
+    "tags": [
+      "crime",
+      "crime_main"
+    ]
+  }
+]

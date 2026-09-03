@@ -1,0 +1,60 @@
+[
+  {
+    "id": "ruin_rat_king",
+    "name": "Ruin Rat King",
+    "world_id": "sovereign-ruins",
+    "description": "A tangle of plague-rats moving as one body through the collapsed Court, swelling larger the longer the ruin's sickness goes unchecked.",
+    "topology_hint": "polyped",
+    "size_band": "medium",
+    "starting_behavior": "Swarms in numbers, splits when struck, infests dark corners",
+    "emergent_ability_seeds": [
+      {
+        "name": "plague_bloat",
+        "verb": "plague_bloat",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": 0.5, "durationMs": 4000 } }
+        ],
+        "trigger": "below_30_health"
+      }
+    ]
+  },
+  {
+    "id": "ash_revenant",
+    "name": "Ash Revenant",
+    "world_id": "sovereign-ruins",
+    "description": "The smoke-and-cinder remnant of a courtier who would not leave. It drifts the ruined halls, cold to the touch, mourning a throne that no longer exists.",
+    "topology_hint": "humanoid",
+    "size_band": "medium",
+    "starting_behavior": "Haunts a fixed hall, lashes out when its grief is disturbed",
+    "emergent_ability_seeds": [
+      {
+        "name": "grief_wail",
+        "verb": "grief_wail",
+        "effects": [
+          { "kind": "channel", "params": { "stat": "fear", "radius": 5, "durationMs": 3000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  },
+  {
+    "id": "gloom_stalker",
+    "name": "Gloom Stalker",
+    "world_id": "sovereign-ruins",
+    "description": "A lean, light-shy predator that nests in the deepest ruin vaults, hunting by sound. The Dishonored Court's old guard-hounds, gone feral and silent.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Ambushes from darkness, retreats from bright light",
+    "emergent_ability_seeds": [
+      {
+        "name": "shadow_pounce",
+        "verb": "shadow_pounce",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "speed", "delta": 0.6, "durationMs": 2500 } },
+          { "kind": "buff", "params": { "stat": "damage", "delta": 0.4, "durationMs": 2500 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  }
+]
