@@ -6,7 +6,7 @@
 
 ## LIVE
 
-Per-world fauna lists (wraith, sealie, wolf, drone, griffin, basilisk, …). Unity spawns + `Hostile` on steel worlds. Dummy in Hub arena. Each steel world also builds one Kenney **hold** (`DungeonHold`) with 1–2 hostiles and a gatherable chest. Geometry is dressing; the plaque does not invent an authored dungeon name.
+Per-world fauna lists (wraith, sealie, wolf, drone, griffin, basilisk, …). Unity spawns + `Hostile` on steel worlds. Dummy in Hub arena. Each steel world also builds one Kenney **hold** (`DungeonHold`) with 1–2 hostiles and a gatherable chest. City outskirts spawn 1–2 more packs from `WorldBook.Critters` / `Canon.fauna` — no invented names. Geometry is dressing; the hold plaque does not invent an authored dungeon name.
 
 ## TARGET
 

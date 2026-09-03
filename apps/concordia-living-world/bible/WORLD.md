@@ -14,7 +14,7 @@ Hub = Unburned Court. Eight gates with refusal + theNo + color + angle.
 
 Travel: `ConcordiaGame.Travel` rebuilds `World`. Must `DestroyImmediate` previous root.
 
-Cities: `CityAtlas` + `CityTown` + `CityGate`. Steel worlds get one Kenney hold (`DungeonGate`). HUD: circular minimap + vitals rings (SR2 camera language). Presentation is still below the Saints Row 2 texture floor.
+Cities: `CityAtlas` + `CityTown` + `CityGate`. Each town now has a PBR plaza pad (brick/asphalt/moss/earth — Court stays unpaved), a street cross, ten Kenney slots, edge flora, and outskirts hostiles from authored fauna. Interiors open on the first four buildings of the first six cities only (Tunya hitch). Steel worlds still get one Kenney hold (`DungeonGate`). HUD: circular minimap + vitals rings (SR2 camera language). Kenney GLBs are still Kenney — the plaza pad is the readable ground.
 
 ## TARGET
 

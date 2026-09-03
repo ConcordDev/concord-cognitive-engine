@@ -278,11 +278,15 @@ namespace Concordia
                     if (!string.IsNullOrEmpty(path))
                     {
                         var dir = Path.GetDirectoryName(path)?.Replace("\\", "/");
-                        if (!string.IsNullOrEmpty(dir))
+                        for (int up = 0; up < 4 && !string.IsNullOrEmpty(dir) && !tex; up++)
                         {
                             tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/colormap.png")
                                   ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/colormap.png")
-                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/dungeon_texture.png");
+                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/dungeon_texture.png")
+                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/dungeon_texture.png");
+                            var parent = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                            if (parent == dir) break;
+                            dir = parent;
                         }
                     }
                 }

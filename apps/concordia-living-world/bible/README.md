@@ -10,7 +10,7 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 
 | Doc | LIVE snapshot |
 |---|---|
-| WORLD | 10 worlds + refusals; cities + one Kenney hold per steel world |
+| WORLD | 10 worlds + refusals; dressed city plazas + one Kenney hold per steel world |
 | LORE | JSON under `Resources/Concordia/Canon/` + `bible.ts` |
 | CHARACTERS | Hub guests speak; no relationship graph |
 | FACTIONS | JSON camps + weapon kits; no sim tick |
@@ -20,5 +20,5 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 | NPC_BRAIN | Unity 5 jobs; TS `NpcBrain` not in Unity |
 | SAVE_SYSTEM | Appearance JSON only |
 | NETWORK | `/unity-ws` unused this play |
-| ANIMATION | Slash trigger if controller has it; gait still often procedural |
+| ANIMATION | Hero prefers Soldier.glb + SoldierLocomotion; NPC gait still often procedural |
 | AUDIO | Prefab paths; Vrellan Six missing |

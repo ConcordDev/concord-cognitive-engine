@@ -43,13 +43,23 @@ namespace Concordia // FORCE_REFRESH_0011
         };
 
         public static ModularPerson Attach(Transform parent, Appearance look)
+            => Attach(parent, look, false);
+
+        /// <summary>
+        /// Live player. Soldier.glb + SoldierLocomotion when the mesh is imported;
+        /// rocketbox / primitive only if Soldier is missing. NPCs keep the rotating bind.
+        /// </summary>
+        public static ModularPerson AttachHero(Transform parent, Appearance look)
+            => Attach(parent, look, true);
+
+        static ModularPerson Attach(Transform parent, Appearance look, bool hero)
         {
             var root = new GameObject("Person");
             root.transform.SetParent(parent, false);
             root.transform.localPosition = Vector3.zero;
             root.transform.localRotation = Quaternion.identity;
             var p = root.AddComponent<ModularPerson>();
-            p.Build();
+            p.Build(hero);
             p.Apply(look ?? new Appearance());
             p.sword = MakeSword();
             CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
@@ -103,17 +113,19 @@ namespace Concordia // FORCE_REFRESH_0011
         public void Hurt() => _hitT = 0.32f;
         public void Land() => _landT = 0.22f;
 
-        public void Build()
+        public void Build() => Build(false);
+
+        public void Build(bool hero)
         {
             if (_built) return;
             _built = true;
-            if (TryBindAuthored()) return;
+            if (TryBindAuthored(hero)) return;
             BuildPrimitive();
         }
 
-        bool TryBindAuthored()
+        bool TryBindAuthored(bool hero)
         {
-            var prefab = LoadPersonPrefab();
+            var prefab = LoadPersonPrefab(hero);
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
@@ -209,29 +221,42 @@ namespace Concordia // FORCE_REFRESH_0011
             {
                 var b = _skinMesh ? _skinMesh.bounds : default;
                 System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
-                    System.DateTime.Now.ToString("o") + " authored=True kenney=True bounds=" + b +
+                    System.DateTime.Now.ToString("o") + " authored=True kenney=True hero=" + hero +
+                    " prefab=" + (_lastPrefabPath ?? "") +
+                    " ctrl=" + (ctrl ? ctrl.name : "none") +
+                    " bounds=" + b +
                     " scale=" + body.transform.localScale + " hip=" + (_hip ? _hip.name : "null") + "\n");
             }
             catch { }
-            Debug.Log("Concordia ModularPerson Kenney bound scale=" + body.transform.localScale);
+            Debug.Log("Concordia ModularPerson bound prefab=" + (_lastPrefabPath ?? "") + " ctrl=" + (ctrl ? ctrl.name : "none"));
             return true;
         }
 
-        static GameObject LoadPersonPrefab()
+        static GameObject LoadPersonPrefab(bool hero)
         {
             GameObject go = null;
 #if UNITY_EDITOR
+            const string soldierPath = "Assets/Concordia/Models/humans/Soldier.glb";
+            if (hero)
+            {
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(soldierPath);
+                if (go)
+                {
+                    _lastPrefabPath = soldierPath;
+                    return go;
+                }
+            }
             // Explicit adult rigs. FreePacks.Mesh("Soldier") can resolve a Kenney mini
             // because the index prefers kenney-free stems — that is the T-pose plaza.
             var adult = new[]
             {
-                "Assets/Concordia/Models/humans/Soldier.glb",
+                soldierPath,
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Male_Adult_05.fbx",
                 "Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx",
                 "Assets/Concordia/Models/humans/Xbot.glb"
             };
-            int start = Mathf.Abs(_bodySeq++) % adult.Length;
+            int start = hero ? 0 : Mathf.Abs(_bodySeq++) % adult.Length;
             for (int i = 0; i < adult.Length; i++)
             {
                 var p = adult[(start + i) % adult.Length];

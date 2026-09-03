@@ -266,6 +266,8 @@ namespace Concordia
     {
         static readonly Dictionary<WorldId, WorldBook.CityDef[]> Cache = new Dictionary<WorldId, WorldBook.CityDef[]>();
 
+        public static void Invalidate() => Cache.Clear();
+
         public static WorldBook.CityDef[] For(WorldId world)
         {
             if (Cache.TryGetValue(world, out var hit)) return hit;

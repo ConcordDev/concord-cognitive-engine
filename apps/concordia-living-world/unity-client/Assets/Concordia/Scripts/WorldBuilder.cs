@@ -33,6 +33,7 @@ namespace Concordia
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
+            CityAtlas.Invalidate();
             root = new GameObject("World").transform;
             ModularPerson.CastingWorld = world;
             FreePacks.Index();
@@ -44,6 +45,12 @@ namespace Concordia
             else BuildRealm(w);
             SpawnFauna(w);
             HubLook.UpgradeStandardMaterials();
+            try
+            {
+                System.IO.File.WriteAllText("/tmp/concordia-atlas.txt",
+                    System.DateTime.Now.ToString("o") + " world=" + world + "\n" + CityAtlas.Dump());
+            }
+            catch { }
         }
 
         static void PurgeWorldRoots()

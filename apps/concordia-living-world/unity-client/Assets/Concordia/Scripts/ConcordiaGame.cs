@@ -57,7 +57,7 @@ namespace Concordia
             camGo.transform.LookAt(new Vector3(Canon.Spawn.x, 1.4f, Canon.Spawn.z));
 
             var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
-            _player.person = ModularPerson.Attach(pgo.transform, look);
+            _player.person = ModularPerson.AttachHero(pgo.transform, look);
             _player.EquipWorldKit();
             _player.onInteract = TryInteract;
             pgo.AddComponent<ConcordiaHUD>().player = _player;

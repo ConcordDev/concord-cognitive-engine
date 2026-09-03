@@ -50,19 +50,19 @@ namespace Concordia
             var wood = new Color(0.38f, 0.26f, 0.16f);
             var floorC = new Color(0.45f, 0.32f, 0.20f);
 
-            Slab(room, new Vector3(0, 0.04f, 0), new Vector3(_w, 0.08f, _d), floorC);
-            Slab(room, new Vector3(0, _h, 0), new Vector3(_w, 0.08f, _d), wood);
+            Slab(room, new Vector3(0, 0.04f, 0), new Vector3(_w, 0.08f, _d), floorC, "packed_earth");
+            Slab(room, new Vector3(0, _h, 0), new Vector3(_w, 0.08f, _d), wood, "plastered_wall");
 
             float t = 0.28f;
             float doorW = 1.7f, doorH = 2.35f;
-            Slab(room, new Vector3(0, _h * 0.5f, _d * 0.5f - t * 0.5f), new Vector3(_w, _h, t), plaster);
-            Slab(room, new Vector3(-_w * 0.5f + t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster);
-            Slab(room, new Vector3(_w * 0.5f - t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster);
+            Slab(room, new Vector3(0, _h * 0.5f, _d * 0.5f - t * 0.5f), new Vector3(_w, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(-_w * 0.5f + t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster, "plastered_wall");
+            Slab(room, new Vector3(_w * 0.5f - t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster, "plastered_wall");
 
             float side = (_w - doorW) * 0.5f;
-            Slab(room, new Vector3(-(_w * 0.5f - side * 0.5f), _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster);
-            Slab(room, new Vector3(_w * 0.5f - side * 0.5f, _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster);
-            Slab(room, new Vector3(0, doorH + (_h - doorH) * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(doorW, _h - doorH, t), plaster);
+            Slab(room, new Vector3(-(_w * 0.5f - side * 0.5f), _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(_w * 0.5f - side * 0.5f, _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(0, doorH + (_h - doorH) * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(doorW, _h - doorH, t), plaster, "plastered_wall");
 
             var doorPos = transform.TransformPoint(new Vector3(0, 1.15f, -_d * 0.5f));
             var frame = FreePacks.Spawn("doorwayOpen", transform, doorPos, transform.eulerAngles.y, 2.4f)
@@ -150,7 +150,7 @@ namespace Concordia
             go.transform.SetParent(room, true);
         }
 
-        static void Slab(Transform parent, Vector3 local, Vector3 scale, Color c)
+        static void Slab(Transform parent, Vector3 local, Vector3 scale, Color c, string pbr = null)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Plan";
@@ -158,7 +158,10 @@ namespace Concordia
             go.transform.localPosition = local;
             go.transform.localScale = scale;
             var r = go.GetComponent<Renderer>();
-            if (r) r.material = new Material(r.sharedMaterial) { color = c };
+            if (!r) return;
+            r.sharedMaterial = string.IsNullOrEmpty(pbr)
+                ? HubLook.Lit(c, 0.04f, 0.22f)
+                : HubLook.Pbr(pbr, c, 0.03f, 0.2f, 4f);
         }
 
         void LateUpdate()
