@@ -55,10 +55,10 @@ namespace Concordia
             var feel = pgo.AddComponent<CombatFeel>();
             feel.body = cc;
             feel.cam = cam;
-            pgo.AddComponent<ConcordClient>();
             pgo.AddComponent<EvoResolver>();
-            var kernel = pgo.GetComponent<ConcordClient>();
-            if (kernel != null) kernel.OnEvent += HandleKernelEvent;
+            var kernelGo = new GameObject("ConcordClient");
+            var kernel = kernelGo.AddComponent<ConcordClient>();
+            kernel.OnEvent += HandleKernelEvent;
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -197,6 +197,9 @@ namespace Concordia
                 : "Flower-law. Blades die as flowers except in the Arena.";
             ConcordiaHUD.Announce(w.title, w.refusal);
             _player.Notice(w.law + " " + steel);
+            var client = ConcordClient.Live;
+            if (client && client.Connected)
+                _ = client.RequestScene(WorldBook.Folder(next));
         }
 
         void HandleKernelEvent(string evt, string json)
@@ -211,7 +214,7 @@ namespace Concordia
 
         void OnDestroy()
         {
-            var kernel = _player ? _player.GetComponent<ConcordClient>() : null;
+            var kernel = ConcordClient.Live;
             if (kernel != null) kernel.OnEvent -= HandleKernelEvent;
         }
 

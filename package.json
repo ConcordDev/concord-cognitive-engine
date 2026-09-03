@@ -33,7 +33,8 @@
     "lens:unsurfaced": "node scripts/lens-unsurfaced.mjs",
     "lens:broken-calls": "node scripts/lens-broken-calls.mjs",
     "lens:unloaded": "node scripts/lens-unloaded-domains.mjs",
-    "export:web": "node scripts/export-godot-web.mjs"
+    "export:web": "node scripts/export-godot-web.mjs",
+    "export:unity-web": "node scripts/export-unity-web.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

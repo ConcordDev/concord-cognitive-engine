@@ -28,6 +28,7 @@ namespace Concordia
         public static ConcordiaPlayer Live { get; private set; }
         float _dmgMul = 1f;
         TrainingDummy _pendingKernelTarget;
+        float _moveSentAt;
 
         void OnEnable() => Live = this;
         void OnDisable() { if (Live == this) Live = null; }
@@ -101,6 +102,14 @@ namespace Concordia
             cam.inCombat = Time.time < _slashUntil;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
+
+            if (Time.time >= _moveSentAt)
+            {
+                _moveSentAt = Time.time + 0.08f;
+                var client = ConcordClient.Live;
+                if (client && client.Connected)
+                    _ = client.SendMove(transform.position.x, transform.position.y, transform.position.z, client.WorldId);
+            }
 
             stamina = Mathf.Min(100, stamina + 18f * dt);
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
@@ -226,7 +235,7 @@ namespace Concordia
                 }
             }
             if (!dummy) return false;
-            var client = GetComponent<ConcordClient>();
+            var client = ConcordClient.Live;
             if (client && client.Connected)
             {
                 // Kernel resolves HP. Presentation already played the swing.

@@ -152,6 +152,11 @@ const PUBLIC_PREFIXES = [
   // /meshes/ above: these are asset bytes, not a page route, and the real
   // auth happens inside the client via the gateway token it's given at boot.
   '/godot-client/',
+  // Unity WebGL export (scripts/export-unity-web.mjs -> public/unity-client/).
+  // Same "static render-pipeline asset" reasoning as /godot-client/: index.html
+  // is nonce-injected by app/unity-client/index.html/route.ts; wasm/data/framework
+  // live under public/. Auth happens inside the client via /unity-ws.
+  '/unity-client/',
   '/manifest.json',
   '/manifest.webmanifest',
   '/robots.txt',

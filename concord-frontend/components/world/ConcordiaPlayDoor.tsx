@@ -43,13 +43,16 @@ export default function ConcordiaPlayDoor() {
         <div>
           <div className="text-[10px] uppercase tracking-widest text-amber-400/80">Play Concordia</div>
           <p className="mt-1 text-xs leading-relaxed text-zinc-200">
-            This lens is the OS world surface — DTUs, presence, stations. Combat,
-            traversal, and world entry run in the in-repo Unity client at{' '}
+            This lens is the OS world surface — DTUs, presence, stations. When a
+            Unity WebGL export exists, Concordia loads in-page at{' '}
+            <code className="font-mono text-[10px] text-amber-200">/unity-client/</code>
+            {' '}over <code className="font-mono text-[10px] text-zinc-400">/unity-ws</code>.
+            Until then this canvas stays Three.js. The Editor at{' '}
             <code className="font-mono text-[10px] text-amber-200">
               apps/concordia-living-world/unity-client/
             </code>
-            . Godot remains the parity native client on{' '}
-            <code className="font-mono text-[10px] text-zinc-400">/godot-ws</code>.
+            {' '}is the standalone AAA client. Godot remains the parity native
+            path on <code className="font-mono text-[10px] text-zinc-400">/godot-ws</code>.
           </p>
         </div>
         <button

@@ -105,6 +105,11 @@ world-lens-godot/*.x86_64
 # script's header for why nothing else needed to change.
 concord-frontend/public/godot-client/
 
+# Unity WebGL export (scripts/export-unity-web.mjs / `npm run export:unity-web`).
+# Same serving shape as Godot: wasm/data/framework in public/, index.html staged
+# for nonce injection. Never committed.
+concord-frontend/public/unity-client/
+
 # AssemblyScript build output (server/lib/wasm/**/*.ts sources are committed;
 # the compiled .wasm/.wat/.js/.d.ts are build artefacts, regenerated via
 # `npx asc <source>.ts --outFile server/lib/wasm/build/<name>.wasm --optimize`).
@@ -114,6 +119,7 @@ server/lib/wasm/build/
 # and nonce-injects at request time. Never served directly; see either
 # file's header for why index.html is kept out of public/.
 concord-frontend/.godot-web-staging/
+concord-frontend/.unity-web-staging/
 
 # Vendored Pyodide scientific packages (scripts/fetch-pyodide-packages.mjs /
 # server npm script `fetch-pyodide-packages`). Checksum-verified wheels for

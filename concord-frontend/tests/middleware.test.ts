@@ -104,6 +104,17 @@ describe('Auth Middleware', () => {
       middleware(makeRequest('/godot-client/index.js'));
       expect(mockNext).toHaveBeenCalled();
     });
+
+    it('allows /unity-client/* through (Unity WebGL index.html/.js/.wasm are not covered by STATIC_ASSET_RE)', () => {
+      middleware(makeRequest('/unity-client/index.html'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/unity-client/index.wasm'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/unity-client/index.js'));
+      expect(mockNext).toHaveBeenCalled();
+    });
   });
 
   describe('protected routes', () => {

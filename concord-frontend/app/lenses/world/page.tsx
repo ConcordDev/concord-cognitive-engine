@@ -521,6 +521,7 @@ const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay
 const WorldTintOverlay = dynamic(() => import('@/components/world/WorldTintOverlay'), { ssr: false });
 const SereFrameBanner = dynamic(() => import('@/components/world/SereFrameBanner'), { ssr: false });
 const ConcordiaPlayDoor = dynamic(() => import('@/components/world/ConcordiaPlayDoor'), { ssr: false });
+const NativeWorldPlayer = dynamic(() => import('@/components/world/NativeWorldPlayer'), { ssr: false });
 const CurtainDossier = dynamic(() => import('@/components/world/CurtainDossier'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
@@ -5127,6 +5128,10 @@ export default function WorldLensPage() {
               reportFrontendError (RepairBoundary never sees these) and flip
               sceneCrashed so the Hub view can say what happened instead of
               silently looking like "the world lens is just panels." */}
+          <NativeWorldPlayer
+            worldId={currentWorldId}
+            onReady={() => setSceneReady(true)}
+          >
           <ErrorBoundary
             fallback={null}
             onError={(error, errorInfo) => {
@@ -5171,6 +5176,7 @@ export default function WorldLensPage() {
             height="100%"
           />
           </ErrorBoundary>
+          </NativeWorldPlayer>
           {/* Theme picker — 3 swatches + PBR/Toon toggle top-right */}
           <div style={hudCornerStyle('theme-picker')} className={`absolute right-4 z-20 flex items-center gap-1.5 bg-black/50 border border-white/10 rounded-xl px-2 py-1.5 pointer-events-auto ${hudHidden ? 'hidden' : ''}`}>
             {[
