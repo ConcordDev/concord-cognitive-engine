@@ -180,6 +180,7 @@ namespace Concordia // keep-spawn-assign
                 if (person == null || string.IsNullOrEmpty(person.name)) continue;
                 if (w.id == WorldId.Hub && IsHubGuest(person.name)) continue;
                 Vector3 p;
+                var facI = IndexOfFaction(facs, person.faction_id);
                 var city = w.id == WorldId.Hub ? null : CityAtlas.ForPerson(w.id, person);
                 if (city != null)
                 {
@@ -190,10 +191,9 @@ namespace Concordia // keep-spawn-assign
                 }
                 else
                 {
-                    var fi = IndexOfFaction(facs, person.faction_id);
-                    if (fi >= 0)
+                    if (facI >= 0)
                     {
-                        float a = fi / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
+                        float a = facI / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
                         var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
                         var side = Vector3.Cross(Vector3.up, camp.normalized);
                         p = camp + side * ((n % 5) - 2) * 1.6f + camp.normalized * 2.4f;
@@ -230,12 +230,10 @@ namespace Concordia // keep-spawn-assign
                 };
                 guest.personId = person.id;
                 guest.questHooks = person.quest_hooks;
-                var weap = PersonKit.WeaponStem(IndexOfFaction(facs, person.faction_id) >= 0
-                    ? facs[IndexOfFaction(facs, person.faction_id)] : null, n);
+                var weap = PersonKit.WeaponStem(facI >= 0 ? facs[facI] : null, n);
                 if (!string.IsNullOrEmpty(weap)) CharacterGear.Attach(go, weap, true, 0.95f);
-                var fi = IndexOfFaction(facs, person.faction_id);
-                if (fi >= 0 && facs[fi].visual != null && !string.IsNullOrEmpty(facs[fi].visual.primary_color)
-                    && ColorUtility.TryParseHtmlString(facs[fi].visual.primary_color, out var sash))
+                if (facI >= 0 && facs[facI].visual != null && !string.IsNullOrEmpty(facs[facI].visual.primary_color)
+                    && ColorUtility.TryParseHtmlString(facs[facI].visual.primary_color, out var sash))
                     ModularPerson.StampSash(go, sash);
                 StampGiverBeacon(go, w.id, person);
                 n++;
