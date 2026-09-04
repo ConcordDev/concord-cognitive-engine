@@ -89,8 +89,9 @@
       },
       "gate": "honest floor (grade-macro-depth --honest weightedScore) rises, OR worldmodel's untested set shrinks with substantive assertions; check-depth-tests clean",
       "prompt": "Add REAL behavioral tests for the worldmodel domain. Run `node scripts/depth-scaffold.mjs worldmodel` to generate the skeleton at server/tests/depth/worldmodel-behavior.test.js, then replace every @depth-todo with a substantive assertion (exact computed value, round-trip, or validation-rejection) using lensRun/macroRuntime from server/tests/depth/_harness.js. Run `node scripts/check-depth-tests.mjs` until clean and `node --test server/tests/depth/worldmodel-behavior.test.js` until 0 fail. Do NOT edit the grader or any existing test.",
-      "status": "pending",
-      "attempts": 0
+      "status": "passed",
+      "attempts": 0,
+      "evidence": "worldmodel depth behavior tests already present and substantive; check-depth-tests clean; node --test server/tests/depth/worldmodel-behavior.test.js passes 60/60"
     },
     {
       "id": "depth:agents",
@@ -1055,5 +1056,6 @@
       "status": "pending",
       "attempts": 0
     }
-  ]
+  ],
+  "lastPassedAt": "2026-09-04T16:33:56.667Z"
 }
