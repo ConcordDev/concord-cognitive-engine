@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0014
+namespace Concordia // FORCE_REFRESH_0015
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -192,16 +192,21 @@ namespace Concordia // FORCE_REFRESH_0014
             if (!_anim) _anim = body.AddComponent<Animator>();
             _anim.applyRootMotion = false;
             _anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            // Mixamo SoldierLocomotion only drives a Humanoid avatar.
+            // Rocketbox Generic T-poses under it and LateUpdate gait is skipped.
             var ctrl = LoadLocomotion();
-            if (!ctrl)
+            var av = _anim.avatar;
+            bool clipsFit = ctrl && av && av.isHuman && av.isValid;
+            if (clipsFit)
             {
-#if UNITY_EDITOR
-                ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
-                    "Assets/Concordia/Anim/SoldierLocomotion.controller");
-#endif
+                _anim.runtimeAnimatorController = ctrl;
+                _anim.enabled = true;
             }
-            if (ctrl) _anim.runtimeAnimatorController = ctrl;
-            _anim.enabled = ctrl != null;
+            else
+            {
+                _anim.runtimeAnimatorController = null;
+                _anim.enabled = false;
+            }
 
             Capture(_hip, ref _hipsRest);
             Capture(_spine, ref _spineRest);
@@ -237,8 +242,7 @@ namespace Concordia // FORCE_REFRESH_0014
         {
             GameObject go = null;
 #if UNITY_EDITOR
-            // Soldier.glb is Mixamo Vanguard — glTF albedo lives on baseColorTexture
-            // and the mesh has no Textures/ folder. Rocketbox is the painted adult.
+            // Mixamo Vanguard has no folder albedo. Rocketbox is the painted adult.
             var adult = new[]
             {
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
@@ -635,7 +639,8 @@ namespace Concordia // FORCE_REFRESH_0014
                 _plantFrames++;
             }
 
-            bool animating = _authored && _anim && _anim.runtimeAnimatorController && _anim.enabled && _grounded;
+            bool animating = _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
+                && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _grounded;
             if (!animating)
             {
                 if (_authored) ApplyAuthoredGait();
@@ -753,16 +758,25 @@ namespace Concordia // FORCE_REFRESH_0014
         void ApplyAuthoredGait()
         {
             float dt = Time.deltaTime;
-            float spd = _grounded ? _speed : 0f;
-            _phase += dt * (spd > 0.3f ? Mathf.Lerp(5f, 9f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.5f);
+            _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-12f * dt));
+            _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
+            float spd = _shown;
+            _phase += dt * (spd > 0.3f ? Mathf.Lerp(5f, 9f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.6f);
             float w = Mathf.InverseLerp(0.3f, 4.5f, spd);
             float s = Mathf.Sin(_phase);
+            float sit = _sitShown;
+            float breath = Mathf.Sin(Time.time * 1.55f) * 3f;
             HangAuthoredArms(w);
-            if (_uArmL) _uArmL.localRotation = _lArmRest * Quaternion.Euler(-28f * s * w, 0f, Mathf.Lerp(72f, 28f, w));
-            if (_uArmR) _uArmR.localRotation = _rArmRest * Quaternion.Euler(28f * s * w, 0f, -Mathf.Lerp(72f, 28f, w));
-            if (_uLegL) _uLegL.localRotation = _lUpRest * Quaternion.Euler(32f * s * w, 0f, 0f);
-            if (_uLegR) _uLegR.localRotation = _rUpRest * Quaternion.Euler(-32f * s * w, 0f, 0f);
-            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(Mathf.Sin(Time.time * 1.6f) * 3f, 4f * s * w, 0f);
+            if (_uArmL) _uArmL.localRotation = _lArmRest * Quaternion.Euler(-32f * s * w + breath * 0.15f, 0f, Mathf.Lerp(72f, 28f, w));
+            if (_uArmR) _uArmR.localRotation = _rArmRest * Quaternion.Euler(32f * s * w - breath * 0.15f, 0f, -Mathf.Lerp(72f, 28f, w));
+            if (_fArmL) _fArmL.localRotation = _lForeRest * Quaternion.Euler(0f, 0f, 10f + 14f * w);
+            if (_fArmR) _fArmR.localRotation = _rForeRest * Quaternion.Euler(0f, 0f, -10f - 14f * w);
+            if (_uLegL) _uLegL.localRotation = _lUpRest * Quaternion.Euler(34f * s * w + sit * 50f, 0f, 4f);
+            if (_uLegR) _uLegR.localRotation = _rUpRest * Quaternion.Euler(-34f * s * w + sit * 50f, 0f, -4f);
+            if (_lLegL) _lLegL.localRotation = _lLegRest * Quaternion.Euler(Mathf.Max(0f, -s) * 42f * w + sit * 38f, 0f, 0f);
+            if (_lLegR) _lLegR.localRotation = _rLegRest * Quaternion.Euler(Mathf.Max(0f, s) * 42f * w + sit * 38f, 0f, 0f);
+            if (_hip) _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 4f * w, 6f * s * w, 0f);
+            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f, 5f * s * w, 0f);
             ApplyAuthoredAttitude();
             if (!_grounded)
             {

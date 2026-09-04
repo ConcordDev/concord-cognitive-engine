@@ -15,7 +15,7 @@ namespace Concordia // keep-spawn-assign
             if (id != WorldId.Hub) DressKit(root, w);
             Factions(root, w);
             Kingdoms(root, w);
-            Roads(root, w);
+            if (id != WorldId.Hub) Roads(root, w);
             Lore(root, w);
             People(root, w);
             Quests(root, w);

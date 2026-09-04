@@ -481,34 +481,50 @@ namespace Concordia
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
                 if (!r) continue;
-                var src = r.sharedMaterial;
-                var tex = HubLook.FirstAlbedo(src);
+                var slots = r.sharedMaterials;
+                if (slots == null || slots.Length == 0) continue;
+                var next = new Material[slots.Length];
+                bool any = false;
+                for (int s = 0; s < slots.Length; s++)
+                {
+                    var src = slots[s];
+                    var tex = HubLook.FirstAlbedo(src);
 #if UNITY_EDITOR
-                if (HubLook.IsBlankAlbedo(tex))
-                {
-                    var path = sourcePath;
-                    if (string.IsNullOrEmpty(path))
-                        path = AssetDatabase.GetAssetPath(go);
-                    if (string.IsNullOrEmpty(path))
+                    if (HubLook.IsBlankAlbedo(tex))
                     {
-                        var prefab = PrefabUtility.GetCorrespondingObjectFromSource(go);
-                        if (prefab) path = AssetDatabase.GetAssetPath(prefab);
+                        var path = sourcePath;
+                        if (string.IsNullOrEmpty(path))
+                            path = AssetDatabase.GetAssetPath(go);
+                        if (string.IsNullOrEmpty(path))
+                        {
+                            var prefab = PrefabUtility.GetCorrespondingObjectFromSource(go);
+                            if (prefab) path = AssetDatabase.GetAssetPath(prefab);
+                        }
+                        tex = ColormapNear(path, go.name);
                     }
-                    tex = ColormapNear(path, go.name);
-                }
 #endif
-                if (HubLook.IsBlankAlbedo(tex)) continue;
-                var col = HubLook.FirstColor(src, Color.white);
-                var m = HubLook.Lit(col, 0.04f, 0.28f);
-                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
-                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
-                var nrm = HubLook.FirstNormal(src);
-                if (nrm)
-                {
-                    if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
-                    m.EnableKeyword("_NORMALMAP");
+                    if (HubLook.IsBlankAlbedo(tex))
+                    {
+                        next[s] = src;
+                        continue;
+                    }
+                    var col = HubLook.FirstColor(src, Color.white);
+                    if (!string.IsNullOrEmpty(go.name)
+                        && go.name.IndexOf("road", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                        col = Color.Lerp(col, new Color(0.46f, 0.36f, 0.24f), 0.62f);
+                    var m = HubLook.Lit(col, 0.04f, 0.28f);
+                    if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                    if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
+                    var nrm = HubLook.FirstNormal(src);
+                    if (nrm)
+                    {
+                        if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
+                        m.EnableKeyword("_NORMALMAP");
+                    }
+                    next[s] = m;
+                    any = true;
                 }
-                r.sharedMaterial = m;
+                if (any) r.sharedMaterials = next;
             }
         }
 

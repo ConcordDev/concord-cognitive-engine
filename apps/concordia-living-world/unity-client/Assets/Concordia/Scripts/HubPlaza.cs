@@ -221,7 +221,7 @@ namespace Concordia
                 stone.text = gate.refusal + " — " + gate.theNo;
 
                 if (gate.world == WorldId.Frontier || gate.world == WorldId.Cyber)
-                    HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4f, 1.2f)), portalCol, 7.5f, 16f, false);
+                    HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4f, 1.2f)), portalCol, 1.65f, 16f, false);
 
                 var flag = FreePacks.Spawn("flag-banner-long", hold, hold.TransformPoint(new Vector3(0f, 0f, -0.6f)), hold.eulerAngles.y, 3.2f);
                 if (flag) FreePacks.StripColliders(flag);

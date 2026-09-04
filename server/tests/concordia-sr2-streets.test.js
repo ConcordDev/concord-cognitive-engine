@@ -13,12 +13,16 @@ function src(name) {
 }
 
 describe("SR2 street floor — source contracts", () => {
-  it("player bind prefers Soldier.glb + SoldierLocomotion", () => {
+  it("player bind prefers rocketbox adults and drops Mixamo clips that T-pose", () => {
     const person = src("ModularPerson.cs");
     const game = src("ConcordiaGame.cs");
     assert.match(person, /AttachHero\(/);
-    assert.match(person, /if \(hero\)/);
-    assert.match(person, /Models\/humans\/Soldier\.glb/);
+    assert.match(person, /hero \?/);
+    assert.match(person, /rocketbox\/Male_Adult_01/);
+    assert.match(person, /Never Mixamo Soldier/);
+    assert.match(person, /clipsFit/);
+    assert.match(person, /ApplyAuthoredGait/);
+    assert.doesNotMatch(person, /LoadAssetAtPath.*Soldier\.glb/);
     assert.match(game, /ModularPerson\.AttachHero\(/);
   });
 

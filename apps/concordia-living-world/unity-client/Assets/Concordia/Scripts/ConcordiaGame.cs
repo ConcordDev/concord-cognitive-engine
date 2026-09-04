@@ -419,11 +419,7 @@ namespace Concordia
         async void AskTwoB(GuestNpc npc, string authored)
         {
             var client = ConcordClient.Live;
-            if (client == null || !client.Connected)
-            {
-                ConcordiaHUD.Announce(npc.def.name, "no_gateway");
-                return;
-            }
+            if (client == null || !client.Connected) return;
             var reply = await client.AskTwoB(
                 npc.personId ?? npc.def.id,
                 npc.def.name,

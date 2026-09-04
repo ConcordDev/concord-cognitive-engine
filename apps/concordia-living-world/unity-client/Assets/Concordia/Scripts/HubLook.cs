@@ -525,7 +525,7 @@ namespace Concordia
                 WorldId.Tunya => "kloofendal_48d_partly_cloudy_puresky_2k.hdr",
                 WorldId.Fantasy => "venice_sunset_2k.hdr",
                 WorldId.Crucible => "kloppenheim_06_puresky_2k.hdr",
-                _ => "venice_sunset_2k.hdr"
+                _ => "kloofendal_48d_partly_cloudy_puresky_2k.hdr"
             };
             var path = "Assets/Concordia/Models/polyhaven/" + file;
             float exposure = world == WorldId.Hub ? 0.48f : 0.62f;
@@ -646,43 +646,55 @@ namespace Concordia
             var rs = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             for (int i = 0; i < rs.Length; i++)
             {
-                var src = rs[i].sharedMaterial;
-                if (src == null) continue;
-                if (!ShaderNeedsUrp(src.shader)) continue;
                 if (rs[i].GetComponent<TextMesh>())
                 {
                     DressTextMesh(rs[i].GetComponent<TextMesh>());
                     n++;
                     continue;
                 }
-                if (!cache.TryGetValue(src, out var dst))
+                var slots = rs[i].sharedMaterials;
+                if (slots == null || slots.Length == 0) continue;
+                var next = new Material[slots.Length];
+                bool any = false;
+                for (int s = 0; s < slots.Length; s++)
                 {
-                    dst = new Material(_lit);
-                    var col = FirstColor(src, Color.white);
-                    if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", col);
-                    dst.color = col;
-                    var tex = FirstAlbedo(src);
-                    if (tex)
+                    var src = slots[s];
+                    if (src == null || !ShaderNeedsUrp(src.shader))
                     {
-                        if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", tex);
-                        if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", tex);
+                        next[s] = src;
+                        continue;
                     }
-                    var nrm = FirstNormal(src);
-                    if (nrm)
+                    if (!cache.TryGetValue(src, out var dst))
                     {
-                        if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
-                        dst.EnableKeyword("_NORMALMAP");
+                        dst = new Material(_lit);
+                        var col = FirstColor(src, Color.white);
+                        if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", col);
+                        dst.color = col;
+                        var tex = FirstAlbedo(src);
+                        if (tex)
+                        {
+                            if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", tex);
+                            if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", tex);
+                        }
+                        var nrm = FirstNormal(src);
+                        if (nrm)
+                        {
+                            if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
+                            dst.EnableKeyword("_NORMALMAP");
+                        }
+                        if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
+                            dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
+                        if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
+                            dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
+                        if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
+                            dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
+                        cache[src] = dst;
                     }
-                    if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
-                        dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
-                    if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
-                        dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
-                    if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
-                        dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
-                    cache[src] = dst;
+                    next[s] = dst;
+                    any = true;
+                    n++;
                 }
-                rs[i].sharedMaterial = dst;
-                n++;
+                if (any) rs[i].sharedMaterials = next;
             }
             return n;
         }
