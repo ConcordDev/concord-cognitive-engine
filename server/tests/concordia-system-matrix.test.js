@@ -39,6 +39,11 @@ describe("Concordia system matrix — audit pins", () => {
     assert.match(doc, /composeSpell/);
     assert.match(doc, /origin_world/);
     assert.match(doc, /World filters \(intent, from Canon staples/);
+    assert.match(doc, /simulation platform with a game on top/);
+    assert.match(doc, /Vocabulary \/ combinations \/ history \/ interference/);
+    assert.match(doc, /It is not one object yet/);
+    assert.match(doc, /persistGeneratedNpc/);
+    assert.match(src("server/lib/npc-generator.js"), /export function persistGeneratedNpc/);
     assert.match(src("server/lib/craft-resolve.js"), /export function resolveCraft/);
     assert.match(src("server/lib/glyph-spells.js"), /export function composeSpell/);
     assert.match(src("server/lib/craft-chains.js"), /VALID_STEP_KINDS/);

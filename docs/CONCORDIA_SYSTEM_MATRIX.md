@@ -233,6 +233,42 @@ P1–P7 in the punch list (character paper-doll, living settlement dresser, ecol
 
 ---
 
+## Ruleset, not a content explosion
+
+This is a **simulation platform with a game on top**. The systems multiply; they do not stack as a backlog of finished objects.
+
+```
+9 worlds → resources → materials → equipment → characters → factions
+        → settlements → produce/consume → caravans → gates → history
+        → NPC memory → Concord reasons → the player walks in
+```
+
+| Arrow | Owner already | Honest residual |
+|---|---|---|
+| 9 worlds | `Canon` + `content/world/` | Sere is not a ninth Gate |
+| resources → materials | `RESOURCE_CATALOG` + `craft-chains` | World **filters** still R |
+| materials → equipment | `craft-resolve` + affixes | Component table still R |
+| equipment → characters | `player_inventory` + affixes + pain | Unity KitBag not that row |
+| characters → factions | authored `faction_id` + reputation | Unity heat is a float |
+| factions → settlements | `land-claims`, `world_buildings`, `CityAtlas` | Occupancy not one table |
+| produce / consume | `npc-economy`, crop-season | Unity stock is a slice |
+| caravans → gates | Unity `CrossRing` | Server caravans honestly empty |
+| history | `event_timeline_log`, `npc-legacy` | Unity LastEvent is a string |
+| NPCs remember | grudges, hooks, spouse-react | Not Unity talk context yet |
+| Concord reasons | `AskTwoB` over world state | `no_gateway` when disconnected |
+
+**Vocabulary / combinations / history / interference** — that is the growth rule:
+
+- Author hundreds of primitives (resources, archetypes, modifiers, world constraints), not 50,000 swords.
+- Author species / culture / profession / trait / skill / need / faction **templates**, not 100,000 NPCs. Population already comes from authored `content/world/*/npcs.json` plus `persistGeneratedNpc` (`npc-generator.js`). Grow the generator’s vocabulary; don’t type a census.
+- Worlds grow the same way: Canon + dresser kit + filters, not nine hand-built Oblivion maps.
+
+**“That’s a world” provenance** — one inventory row should be able to carry: mined here → caravan across a Gate → forged by this NPC → enchanted from a discovered technique → looted from a corpse → sold → inherited. Pieces exist (gather, `CrossRing`, `craft-resolve`, affixes, corpse loot, marketplace, `npc-legacy`). **It is not one object yet.** That chain becomes real when `origin_world` + persist-sync + `creator_id` land. Concord explaining *why* is 2B over that row, not an LLM memoir.
+
+Do not claim that story in a HUD until the row can prove it.
+
+---
+
 ## 60-minute acceptance (when we claim living world)
 
 Measurable, not cinematic:
@@ -241,5 +277,6 @@ Measurable, not cinematic:
 2. Logout / `Leave` / `Enter` after Advance(away) → slice **causally** different (hour, ecology, stock), not rerolled names.
 3. Walk a gate with a kit stem → destination `CrossRing.LivingLines` / travelersCsv knows a weapon crossed.
 4. (After P0) Server snapshot lists the same caravan id Unity dispatched.
+5. (After `origin_world`) 2B can name the mine world and the forge NPC for a kit stem **from the row**, or return `no_gateway` / `no_provenance` honestly.
 
 #954 already lets you walk, cut, open kit, type to an NPC, and enter a building. That is the presentation floor. This matrix is what the floor stands on.
