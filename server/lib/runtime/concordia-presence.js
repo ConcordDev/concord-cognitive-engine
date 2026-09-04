@@ -2,6 +2,7 @@
 //
 // Concord Runtime — honest presence of Concordia's already-shipped clients
 // and seeded worlds. Does not invent a world, does not boot Unity/Godot.
+// @sync-fs-ok: local repository presence checks are bounded diagnostics, not hot request IO.
 
 import fs from "node:fs";
 import path from "node:path";

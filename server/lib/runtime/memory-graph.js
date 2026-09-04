@@ -84,15 +84,19 @@ export function getNode(db, nodeId) {
   if (!db || !nodeId) return null;
   try {
     const row = db.prepare(`SELECT * FROM runtime_memory_nodes WHERE id = ?`).get(nodeId);
-    if (!row) return null;
-    return {
-      ...row,
-      content: JSON.parse(row.content_json || "{}"),
-      provenance: row.provenance_json ? JSON.parse(row.provenance_json) : null,
-    };
+    return rowToNode(row);
   } catch {
     return null;
   }
+}
+
+function rowToNode(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    content: JSON.parse(row.content_json || "{}"),
+    provenance: row.provenance_json ? JSON.parse(row.provenance_json) : null,
+  };
 }
 
 export function queryGraph(db, { refId, kind, memoryClass, limit = 50 } = {}) {
@@ -126,15 +130,30 @@ export function getNeighborhood(db, nodeId, depth = 1) {
   let frontier = [nodeId];
   for (let d = 0; d < depth; d++) {
     const next = [];
-    for (const nid of frontier) {
-      const out = db.prepare(`SELECT * FROM runtime_memory_edges WHERE from_node_id = ?`).all(nid);
-      const inn = db.prepare(`SELECT * FROM runtime_memory_edges WHERE to_node_id = ?`).all(nid);
-      for (const e of [...out, ...inn]) {
-        edges.push(e);
-        const other = e.from_node_id === nid ? e.to_node_id : e.from_node_id;
-        if (!nodes.has(other)) {
-          const n = getNode(db, other);
-          if (n) { nodes.set(other, n); next.push(other); }
+    if (!frontier.length) break;
+    const placeholders = frontier.map(() => "?").join(",");
+    const frontierSet = new Set(frontier);
+    const edgeRows = db.prepare(`
+      SELECT * FROM runtime_memory_edges
+      WHERE from_node_id IN (${placeholders}) OR to_node_id IN (${placeholders})
+    `).all(...frontier, ...frontier);
+    const missing = new Set();
+    for (const e of edgeRows) {
+      edges.push(e);
+      const other = frontierSet.has(e.from_node_id) ? e.to_node_id : e.from_node_id;
+      if (!nodes.has(other)) missing.add(other);
+    }
+    if (missing.size) {
+      const ids = [...missing];
+      const nodePlaceholders = ids.map(() => "?").join(",");
+      const nodeRows = db.prepare(`
+        SELECT * FROM runtime_memory_nodes WHERE id IN (${nodePlaceholders})
+      `).all(...ids);
+      for (const row of nodeRows) {
+        const n = rowToNode(row);
+        if (n && !nodes.has(n.id)) {
+          nodes.set(n.id, n);
+          next.push(n.id);
         }
       }
     }

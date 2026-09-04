@@ -182,7 +182,6 @@ describe('CycleTelemetryRibbon — honesty guards that prevent fabrication', () 
   // regression fails in this PR rather than waiting for the gate.
 
   function readSrc(): string {
-    const fs = require('node:fs') as typeof import('node:fs');
     return fs.readFileSync('components/conkay/CycleTelemetryRibbon.tsx', 'utf8');
   }
 
@@ -206,3 +205,4 @@ describe('CycleTelemetryRibbon — honesty guards that prevent fabrication', () 
     expect(src).not.toMatch(/\bHealth: OK\b/);
   });
 });
+import fs from 'node:fs';

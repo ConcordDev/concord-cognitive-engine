@@ -8,6 +8,8 @@
 // Secrets stay on disk. Callers must strip auth/key material before any
 // value leaves an observe adapter (see stripSecrets).
 
+// @sync-fs-ok: sister-system probes are bounded local-home diagnostics and never recurse.
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

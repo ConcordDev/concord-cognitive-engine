@@ -22,7 +22,9 @@
 // requirement — every failure mode (non-Linux, missing taskset, too few
 // cores, exec error) degrades to a no-op with a logged reason.
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+// @sync-fs-ok: procfs affinity reads are boot-time/local diagnostics in a sync boot helper.
+
 import fs from "node:fs";
 
 /** Parse a Linux CPU list spec ("0-3,7,9-11") into a flat array of ints. Pure. */
@@ -110,7 +112,7 @@ function discoverCoreState() {
   const allowed = readCpusAllowedList("/proc/self/status");
   const ollamaUsed = new Set();
   try {
-    const pidList = execSync("pgrep -f 'ollama serve|llama-server' 2>/dev/null || true", {
+    const pidList = execFileSync("pgrep", ["-f", "ollama serve|llama-server"], {
       encoding: "utf8",
       timeout: 5000,
     })
@@ -145,7 +147,7 @@ export function selfPinAwayFromOllama(opts = {}) {
     const decision = computeSelfPinCores(allowed, ollamaUsed, opts);
     if (!decision.ok) return { pinned: false, reason: decision.reason, freeCoreCount: decision.freeCoreCount };
     const spec = toRangeSpec(decision.cores);
-    execSync(`taskset -cp ${spec} ${process.pid}`, { stdio: "ignore", timeout: 5000 });
+    execFileSync("taskset", ["-cp", spec, String(process.pid)], { stdio: "ignore", timeout: 5000 });
     return {
       pinned: true,
       cores: spec,

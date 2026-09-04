@@ -73,7 +73,7 @@ async function bm25Track(db, query) {
     // FTS5 returns rowid which is the content table's rowid (dtus.rowid).
     // We select from dtus_fts directly with bm25(), then fetch full DTUs by id.
     const rows = db.prepare(`
-      SELECT rowid AS id, bm25(dtus_fts) AS rank
+      SELECT /* @drift-ok: FTS5 external-content implicit rowid mirrors dtus.rowid. */ rowid AS id, bm25(dtus_fts) AS rank
       FROM dtus_fts
       WHERE dtus_fts MATCH ?
       ORDER BY rank LIMIT ?

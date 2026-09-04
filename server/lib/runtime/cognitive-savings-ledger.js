@@ -61,8 +61,14 @@ export function estimateRecallPackTokens(db, recallPack) {
   for (const r of recallPack.recent || []) ids.add(r.id);
   for (const r of recallPack.pinned || []) ids.add(r.id);
 
-  for (const id of ids) {
-    const row = db.prepare(`SELECT title, body_json FROM hermes_dtus WHERE id = ?`).get(id);
+  const idList = [...ids];
+  if (!idList.length) return { selected, tokens };
+  const placeholders = idList.map(() => "?").join(",");
+  const rows = db.prepare(`
+    SELECT id, title, body_json FROM hermes_dtus WHERE id IN (${placeholders})
+  `).all(...idList);
+
+  for (const row of rows) {
     if (!row) continue;
     selected += 1;
     const body = safeParse(row.body_json, {});
