@@ -100,7 +100,7 @@ namespace Concordia
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = eq;
             RenderSettings.ambientGroundColor = ground;
-            RenderSettings.reflectionIntensity = world == WorldId.Hub ? 1.15f : 0.95f;
+            RenderSettings.reflectionIntensity = world == WorldId.Hub ? 0.72f : 0.88f;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
             DynamicGI.UpdateEnvironment();
             PlaceProbe(world == WorldId.Hub ? 120f : 95f);
@@ -113,8 +113,8 @@ namespace Concordia
             switch (world)
             {
                 case WorldId.Hub:
-                    bloomI = 0.12f; bloomT = 0.92f; exposure = -0.45f; contrast = 16f; sat = -12f; vigI = 0.36f; temp = -2f;
-                    sky = new Color(0.58f, 0.55f, 0.50f); eq = new Color(0.32f, 0.28f, 0.24f); ground = new Color(0.08f, 0.07f, 0.05f); break;
+                    bloomI = 0.08f; bloomT = 0.95f; exposure = -0.72f; contrast = 18f; sat = -8f; vigI = 0.32f; temp = 6f;
+                    sky = new Color(0.42f, 0.38f, 0.34f); eq = new Color(0.28f, 0.24f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
                 case WorldId.Ruins:
                     bloomI = 0.28f; bloomT = 0.72f; exposure = 0.08f; contrast = 16f; sat = 4f; vigI = 0.4f; temp = -8f;
                     sky = new Color(0.55f, 0.52f, 0.48f); eq = new Color(0.32f, 0.26f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
@@ -262,8 +262,73 @@ namespace Concordia
             if (m.HasProperty("_Color")) m.SetColor("_Color", c);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smooth);
-            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", Texture2D.whiteTexture);
             return m;
+        }
+
+        public static bool IsBlankAlbedo(Texture tex)
+        {
+            if (!tex) return true;
+            var n = tex.name ?? "";
+            return tex == Texture2D.whiteTexture
+                   || n == "UnityWhite"
+                   || n == "Default-Particle"
+                   || n.IndexOf("Internal-White", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        public static Texture FirstAlbedo(Material src)
+        {
+            if (!src) return null;
+            string[] names =
+            {
+                "baseColorTexture", "_baseColorTexture", "_BaseMap", "_MainTex",
+                "_BaseColorMap", "_Diffuse", "diffuseTexture", "colormap"
+            };
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (!src.HasProperty(names[i])) continue;
+                var t = src.GetTexture(names[i]);
+                if (!IsBlankAlbedo(t)) return t;
+            }
+            if (!src.shader) return null;
+            int n = src.shader.GetPropertyCount();
+            for (int i = 0; i < n; i++)
+            {
+                if (src.shader.GetPropertyType(i) != ShaderPropertyType.Texture) continue;
+                var p = src.shader.GetPropertyName(i);
+                var t = src.GetTexture(p);
+                if (IsBlankAlbedo(t)) continue;
+                var pl = (p ?? "").ToLowerInvariant();
+                if (pl.Contains("lightmap") || pl.Contains("shadow") || pl.Contains("unity_")) continue;
+                if (pl.Contains("base") || pl.Contains("albedo") || pl.Contains("diffuse")
+                    || pl.Contains("color") || pl.Contains("main") || pl.Contains("col"))
+                    return t;
+            }
+            return null;
+        }
+
+        public static Color FirstColor(Material src, Color fallback)
+        {
+            if (!src) return fallback;
+            string[] names = { "baseColorFactor", "_BaseColor", "_Color", "baseColor" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (!src.HasProperty(names[i])) continue;
+                return src.GetColor(names[i]);
+            }
+            return src.color.a > 0.01f ? src.color : fallback;
+        }
+
+        public static Texture FirstNormal(Material src)
+        {
+            if (!src) return null;
+            string[] names = { "normalTexture", "_BumpMap", "_NormalMap", "normal" };
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (!src.HasProperty(names[i])) continue;
+                var t = src.GetTexture(names[i]);
+                if (t) return t;
+            }
+            return null;
         }
 
         public static Material Pbr(string stem, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
@@ -463,25 +528,28 @@ namespace Concordia
                 _ => "venice_sunset_2k.hdr"
             };
             var path = "Assets/Concordia/Models/polyhaven/" + file;
-            var tex = AssetDatabase.LoadAssetAtPath<Texture>(path);
+            float exposure = world == WorldId.Hub ? 0.48f : 0.62f;
+            // HDRs in this project are imported as Cubemap (textureShape 2).
+            // Skybox/Panoramic on a Cubemap is a white void. Use Cubemap shader
+            // for cubes; Panoramic only when the asset is actually 2D lat-long.
             var cubemap = AssetDatabase.LoadAssetAtPath<Cubemap>(path);
-            // URP: Skybox/Cubemap on an HDR imported as 2D is magenta. Prefer panoramic.
-            var pano = Shader.Find("Skybox/Panoramic");
-            if (tex && pano && !IsErrorShader(pano))
-            {
-                var m = new Material(pano);
-                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
-                m.SetFloat("_Exposure", world == WorldId.Hub ? 0.85f : 0.72f);
-                RenderSettings.skybox = m;
-                DynamicGI.UpdateEnvironment();
-                return true;
-            }
             var cubeSh = Shader.Find("Skybox/Cubemap");
             if (cubemap && cubeSh && !IsErrorShader(cubeSh))
             {
                 var m = new Material(cubeSh);
                 m.SetTexture("_Tex", cubemap);
-                m.SetFloat("_Exposure", 0.72f);
+                m.SetFloat("_Exposure", exposure);
+                RenderSettings.skybox = m;
+                DynamicGI.UpdateEnvironment();
+                return true;
+            }
+            var tex2d = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            var pano = Shader.Find("Skybox/Panoramic");
+            if (tex2d && tex2d.dimension == TextureDimension.Tex2D && pano && !IsErrorShader(pano))
+            {
+                var m = new Material(pano);
+                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex2d);
+                m.SetFloat("_Exposure", exposure);
                 RenderSettings.skybox = m;
                 DynamicGI.UpdateEnvironment();
                 return true;
@@ -565,6 +633,7 @@ namespace Concordia
             if (n.StartsWith("Sprites/")) return false;
             if (n.StartsWith("Hidden/") && n.IndexOf("Error", System.StringComparison.OrdinalIgnoreCase) < 0) return false;
             if (n.StartsWith("TextMeshPro")) return false;
+            if (n.StartsWith("Shader Graphs/")) return true;
             return true;
         }
 
@@ -589,24 +658,25 @@ namespace Concordia
                 if (!cache.TryGetValue(src, out var dst))
                 {
                     dst = new Material(_lit);
-                    Color col = Color.white;
-                    if (src.HasProperty("_BaseColor")) col = src.GetColor("_BaseColor");
-                    else if (src.HasProperty("_Color")) col = src.GetColor("_Color");
+                    var col = FirstColor(src, Color.white);
                     if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", col);
                     dst.color = col;
-                    Texture tex = null;
-                    if (src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
-                    if (!tex && src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
-                    if (!tex && src.HasProperty("_baseColorTexture")) tex = src.GetTexture("_baseColorTexture");
+                    var tex = FirstAlbedo(src);
                     if (tex)
                     {
                         if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", tex);
                         if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", tex);
                     }
-                    else if (dst.HasProperty("_BaseMap"))
-                        dst.SetTexture("_BaseMap", Texture2D.whiteTexture);
+                    var nrm = FirstNormal(src);
+                    if (nrm)
+                    {
+                        if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
+                        dst.EnableKeyword("_NORMALMAP");
+                    }
                     if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
                         dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
+                    if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
+                        dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
                     if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
                         dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
                     cache[src] = dst;

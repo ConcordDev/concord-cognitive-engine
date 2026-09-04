@@ -94,6 +94,7 @@ namespace Concordia
             camGo.transform.position = pgo.transform.position + new Vector3(1.7f, 2.55f, -5.2f);
             camGo.transform.LookAt(pgo.transform.position + Vector3.up * 1.3f);
             try { HubLook.Apply(cam, world); } catch (Exception e) { Debug.LogException(e); }
+            try { HubLook.UpgradeStandardMaterials(); } catch (Exception e) { Debug.LogException(e); }
 
             if (!AppearanceStore.HasSaved)
             {

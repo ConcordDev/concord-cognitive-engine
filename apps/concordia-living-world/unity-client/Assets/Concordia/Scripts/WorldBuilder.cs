@@ -69,7 +69,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                HubLook.MakeSun(root, new Color(1f, 0.76f, 0.55f), 0.95f, new Vector3(36f, -42f, 0f));
+                HubLook.MakeSun(root, new Color(1f, 0.82f, 0.62f), 0.72f, new Vector3(38f, -48f, 0f));
                 return;
             }
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);

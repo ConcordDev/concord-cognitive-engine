@@ -262,6 +262,20 @@ namespace Concordia
 #endif
         }
 
+        public static string PathForStem(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return null;
+            Index();
+#if UNITY_EDITOR
+            if (_meshes == null) return null;
+            var key = HubKit.Alias(stem).ToLowerInvariant();
+            if (_meshes.TryGetValue(key, out var path)) return path;
+            var raw = stem.ToLowerInvariant();
+            if (_meshes.TryGetValue(raw, out path)) return path;
+#endif
+            return null;
+        }
+
         public static T Load<T>(string path) where T : Object
         {
 #if UNITY_EDITOR
@@ -296,7 +310,7 @@ namespace Concordia
                 else FitMax(go, maxDim);
             }
             Sit(go, pos);
-            PaintIfBlank(go);
+            PaintIfBlank(go, PathForStem(stem));
             var kind = stem.ToLowerInvariant();
             if (IsTree(kind)) TrunkCollider(go);
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
@@ -455,54 +469,73 @@ namespace Concordia
 
         /// <summary>
         /// Kenney GLBs often land white because URP never got the colormap.
-        /// Steal albedo from the mesh's own material, else the pack colormap.
+        /// Steal albedo from glTF <c>baseColorTexture</c> (no underscore), else
+        /// colormap.png / {stem}.png next to the source GLB.
         /// </summary>
-        public static void PaintIfBlank(GameObject go)
+        public static void PaintIfBlank(GameObject go) => PaintIfBlank(go, null);
+
+        public static void PaintIfBlank(GameObject go, string sourcePath)
         {
             if (!go) return;
+            if (string.IsNullOrEmpty(sourcePath)) sourcePath = PathForStem(go.name);
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
                 if (!r) continue;
                 var src = r.sharedMaterial;
-                Texture tex = null;
-                if (src)
-                {
-                    if (src.HasProperty("_BaseMap")) tex = src.GetTexture("_BaseMap");
-                    if (!tex && src.HasProperty("_MainTex")) tex = src.GetTexture("_MainTex");
-                    if (!tex && src.HasProperty("_baseColorTexture")) tex = src.GetTexture("_baseColorTexture");
-                }
+                var tex = HubLook.FirstAlbedo(src);
 #if UNITY_EDITOR
-                if (!tex)
+                if (HubLook.IsBlankAlbedo(tex))
                 {
-                    var path = AssetDatabase.GetAssetPath(go);
+                    var path = sourcePath;
+                    if (string.IsNullOrEmpty(path))
+                        path = AssetDatabase.GetAssetPath(go);
                     if (string.IsNullOrEmpty(path))
                     {
                         var prefab = PrefabUtility.GetCorrespondingObjectFromSource(go);
                         if (prefab) path = AssetDatabase.GetAssetPath(prefab);
                     }
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        var dir = Path.GetDirectoryName(path)?.Replace("\\", "/");
-                        for (int up = 0; up < 4 && !string.IsNullOrEmpty(dir) && !tex; up++)
-                        {
-                            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/colormap.png")
-                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/colormap.png")
-                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/dungeon_texture.png")
-                                  ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/dungeon_texture.png");
-                            var parent = Path.GetDirectoryName(dir)?.Replace("\\", "/");
-                            if (parent == dir) break;
-                            dir = parent;
-                        }
-                    }
+                    tex = ColormapNear(path, go.name);
                 }
 #endif
-                if (!tex) continue;
-                var m = HubLook.Lit(Color.white, 0.04f, 0.28f);
+                if (HubLook.IsBlankAlbedo(tex)) continue;
+                var col = HubLook.FirstColor(src, Color.white);
+                var m = HubLook.Lit(col, 0.04f, 0.28f);
                 if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
                 if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
+                var nrm = HubLook.FirstNormal(src);
+                if (nrm)
+                {
+                    if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
+                    m.EnableKeyword("_NORMALMAP");
+                }
                 r.sharedMaterial = m;
             }
         }
+
+#if UNITY_EDITOR
+        static Texture2D ColormapNear(string path, string stem)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            var dir = Path.GetDirectoryName(path)?.Replace("\\", "/");
+            var file = Path.GetFileNameWithoutExtension(path);
+            if (string.IsNullOrEmpty(stem)) stem = file;
+            for (int up = 0; up < 4 && !string.IsNullOrEmpty(dir); up++)
+            {
+                var hit = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/" + stem + ".png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/" + file + ".png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/colormap.png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/colormap.png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/colormap_2.png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/dungeon_texture.png")
+                       ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/dungeon_texture.png");
+                if (hit) return hit;
+                var parent = Path.GetDirectoryName(dir)?.Replace("\\", "/");
+                if (parent == dir) break;
+                dir = parent;
+            }
+            return null;
+        }
+#endif
 
         public static void EnsureCollider(GameObject go, float height = 1.8f)
         {

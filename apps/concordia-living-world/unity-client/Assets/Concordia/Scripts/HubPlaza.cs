@@ -28,10 +28,10 @@ namespace Concordia
             Gates(root, bronze, gold);
             Clutter(root);
             Dust(root, new Color(1f, 0.88f, 0.62f));
-            HubLook.Point(root, "MonumentLight", new Vector3(0f, 6.5f, 0f), new Color(1f, 0.72f, 0.42f), 4.2f, 16f, true);
-            HubLook.Point(root, "OculusLight", new Vector3(0f, 28f, 0f), new Color(1f, 0.86f, 0.68f), 6.5f, 40f, false);
-            HubLook.Point(root, "RimWarm", new Vector3(18f, 4f, -12f), new Color(1f, 0.55f, 0.28f), 2.4f, 18f, false);
-            HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.42f, 0.52f, 0.62f), 1.8f, 16f, false);
+            HubLook.Point(root, "MonumentLight", new Vector3(0f, 6.5f, 0f), new Color(1f, 0.72f, 0.42f), 2.2f, 14f, true);
+            HubLook.Point(root, "OculusLight", new Vector3(0f, 28f, 0f), new Color(1f, 0.86f, 0.68f), 2.4f, 28f, false);
+            HubLook.Point(root, "RimWarm", new Vector3(18f, 4f, -12f), new Color(1f, 0.55f, 0.28f), 1.1f, 16f, false);
+            HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.42f, 0.52f, 0.62f), 0.85f, 14f, false);
         }
 
         static void Floor(Transform root, Material earth, Material dark)

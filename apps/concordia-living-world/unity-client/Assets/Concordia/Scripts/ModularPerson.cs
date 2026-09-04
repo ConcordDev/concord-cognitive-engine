@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0011
+namespace Concordia // FORCE_REFRESH_0012
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -46,8 +46,8 @@ namespace Concordia // FORCE_REFRESH_0011
             => Attach(parent, look, false);
 
         /// <summary>
-        /// Live player. Soldier.glb + SoldierLocomotion when the mesh is imported;
-        /// rocketbox / primitive only if Soldier is missing. NPCs keep the rotating bind.
+        /// Live player. Rocketbox adult with authored textures. Never Mixamo
+        /// Soldier/Vanguard — that mesh has no folder albedo and lands clay-white.
         /// </summary>
         public static ModularPerson AttachHero(Transform parent, Appearance look)
             => Attach(parent, look, true);
@@ -130,6 +130,7 @@ namespace Concordia // FORCE_REFRESH_0011
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
             DressFromPrefabFolder(body);
+            FreePacks.PaintIfBlank(body, _lastPrefabPath);
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity;
             body.transform.localScale = Vector3.one;
@@ -236,25 +237,15 @@ namespace Concordia // FORCE_REFRESH_0011
         {
             GameObject go = null;
 #if UNITY_EDITOR
-            const string soldierPath = "Assets/Concordia/Models/humans/Soldier.glb";
-            if (hero)
-            {
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(soldierPath);
-                if (go)
-                {
-                    _lastPrefabPath = soldierPath;
-                    return go;
-                }
-            }
-            // Explicit adult rigs. FreePacks.Mesh("Soldier") can resolve a Kenney mini
-            // because the index prefers kenney-free stems — that is the T-pose plaza.
+            // Soldier.glb is Mixamo Vanguard — glTF albedo lives on baseColorTexture
+            // and the mesh has no Textures/ folder. Rocketbox is the painted adult.
             var adult = new[]
             {
-                soldierPath,
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Male_Adult_05.fbx",
+                "Assets/Concordia/Models/humans/rocketbox/Male_Adult_08/Male_Adult_08.fbx",
                 "Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx",
-                "Assets/Concordia/Models/humans/Xbot.glb"
+                "Assets/Concordia/Models/humans/rocketbox/Female_Adult_04/Female_Adult_04.fbx"
             };
             int start = hero ? 0 : Mathf.Abs(_bodySeq++) % adult.Length;
             for (int i = 0; i < adult.Length; i++)
@@ -933,6 +924,7 @@ namespace Concordia // FORCE_REFRESH_0011
                 var held = Object.Instantiate(mesh);
                 held.name = "HeldSword";
                 foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                FreePacks.PaintIfBlank(held);
                 return held;
             }
             var g = new GameObject("HeldSword");
