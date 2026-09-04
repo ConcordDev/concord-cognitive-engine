@@ -85,11 +85,9 @@ namespace Concordia
             if (biped)
             {
                 // After FromToRotation(..., left) the handle sits at max.x and
-                // the tip at min.x. Put the handle in the palm, tip along −X.
-                held.transform.localPosition = new Vector3(
-                    -lb.max.x - 0.015f,
-                    -lb.center.y + 0.01f,
-                    -lb.center.z);
+                // the tip at min.x. Stay on the along-bone axis — Y/Z bound
+                // centering shoved the blade 30cm outboard of the hip.
+                held.transform.localPosition = new Vector3(-lb.max.x + 0.04f, 0f, 0f);
             }
             else
             {

@@ -1042,7 +1042,7 @@ namespace Concordia // FORCE_REFRESH_0020
             if (footY > 40f) return;
             var cc = GetComponentInParent<CharacterController>();
             float ground = cc ? cc.transform.position.y : transform.position.y;
-            var delta = (ground + 0.025f) - footY;
+            var delta = (ground + 0.08f) - footY;
             if (Mathf.Abs(delta) < 0.006f) return;
             if (Mathf.Abs(delta) > 1.8f) return;
             transform.position += Vector3.up * Mathf.Clamp(delta, -0.16f, 0.16f);
