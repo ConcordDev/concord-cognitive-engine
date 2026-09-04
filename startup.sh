@@ -317,11 +317,29 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
 
   # ── Fresh-pod bootstrap restore (data durability on pod reclaim) ──────────
   # A pod reclaim wipes the EPHEMERAL container disk, but backups live on the
-  # PERSISTENT volume (CONCORD_BACKUP_DIR, e.g. /workspace/concord/backups).
+  # PERSISTENT volume (CONCORD_BACKUP_DIR, e.g. /workspace/concord-data/backups).
   # If the live DB is missing AND a volume backup exists, restore the latest
   # BEFORE starting the backend — otherwise the server boots against an empty
   # DB and the user's data sits in a volume tar.gz doing nothing. Only fires
   # when DB_PATH doesn't exist, so a healthy boot is never touched.
+  #
+  # Local-disk DB migration (2026-08-24): DB_PATH is now DELIBERATELY on the
+  # ephemeral container disk, not the network volume. Root cause traced live:
+  # better-sqlite3 is fully synchronous, single-writer, in-process — every
+  # write blocks the Node event loop for however long the underlying disk
+  # I/O takes. Running that against a network-mounted volume (RunPod's
+  # MooseFS/FUSE /workspace) meant ordinary application writes were exposed
+  # to network-storage latency and (observed live) intermittent I/O errors,
+  # producing multi-second event-loop-lag spikes and load-shedding 503s
+  # under normal traffic — including on /api/auth/refresh, which broke
+  # sessions for brand-new signups mid-onboarding. Moving DB_PATH to local
+  # disk removes the network volume from the write hot path entirely; this
+  # bootstrap-restore block (previously a rarely-exercised safety net for
+  # actual pod reclaims) is now the PRIMARY mechanism that makes local
+  # storage durable at all — it fires on every fresh container, not just
+  # disaster recovery. Paired with: the 15-min backup cron (was 6-hourly)
+  # and a final backup on every graceful shutdown (server.js's
+  # gracefulShutdown), both writing to CONCORD_BACKUP_DIR on the volume.
   BOOTSTRAP_DB="${DB_PATH:-${DATA_DIR:-$SCRIPT_DIR/data}/concord.db}"
   if [ ! -f "$BOOTSTRAP_DB" ] && [ -n "${CONCORD_BACKUP_DIR:-}" ] && [ -d "$CONCORD_BACKUP_DIR" ]; then
     if ls "$CONCORD_BACKUP_DIR"/concord-backup-*.tar.gz "$CONCORD_BACKUP_DIR"/concord-*.db.gz "$CONCORD_BACKUP_DIR"/concord-*.db >/dev/null 2>&1; then
@@ -373,11 +391,20 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
         # disabled — if cloudflared died for any reason (network blip, a
         # Cloudflare-side issue, OOM), the tunnel stayed down and the site
         # was externally unreachable with no automatic recovery until the
-        # 5-minute health-check cron noticed and force-restarted it. Fixed by
-        # setting --autorestart directly on the one real start command.
+        # 5-minute health-check cron noticed and force-restarted it.
+        #
+        # Follow-up bug (found 2026-08-24 during a live outage recovery):
+        # the "fix" above added a bare `--autorestart` flag, but pm2's CLI
+        # has no such flag (verified live: `pm2 start --help` lists no
+        # restart-related option at all; only `--no-autorestart` exists to
+        # DISABLE the already-on-by-default behavior). Passing it made the
+        # whole `pm2 start` command fail outright with
+        # `error: unknown option '--autorestart'`, so the tunnel never
+        # started at all — a full step backward from the bug it was fixing.
+        # autorestart is pm2's default, so the fix is simply not passing
+        # any restart flag.
         pm2 start cloudflared \
           --name concord-tunnel \
-          --autorestart \
           --max-restarts 20 \
           -- tunnel --no-autoupdate run --token "${CLOUDFLARE_TUNNEL_TOKEN}"
         pm2 save
@@ -401,21 +428,39 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   fi
 
   # ── DB backup watchdog (Vector — data durability) ─────────────────────────
-  # 6-hourly WAL-safe SQLite snapshot to a PERSISTENT location. CONCORD_BACKUP_DIR
-  # MUST point at the network volume (e.g. /workspace/concord/backups) or the
-  # backups die with the container on a pod reclaim. Idempotent install.
+  # 15-minutely WAL-safe SQLite snapshot to a PERSISTENT location.
+  # CONCORD_BACKUP_DIR MUST point at the network volume (e.g.
+  # /workspace/concord-data/backups) or the backups die with the container
+  # on a pod reclaim. Idempotent install.
+  #
+  # Cadence tightened from 6-hourly (2026-08-24 — local-disk DB migration):
+  # DB_PATH now intentionally lives on the ephemeral container disk (see
+  # that migration's own comment further down), so CONCORD_BACKUP_DIR is
+  # the ONLY durable copy between snapshots — the risk window IS the cron
+  # interval, not a "just in case" margin on top of an already-persistent
+  # DB_PATH the way it was at 6-hourly. Also cheap to run this often now:
+  # the snapshot's SOURCE read is local disk (fast, no network latency),
+  # so only the compressed write to the volume touches the network mount,
+  # and that's normally sub-second at this DB's size. A graceful shutdown
+  # (server.js's gracefulShutdown) additionally takes one more snapshot on
+  # every planned restart, so this interval only bounds exposure to a hard
+  # crash / force-kill, not routine redeploys.
   if command -v crontab &>/dev/null; then
     mkdir -p logs
-    BACKUP_CRON="0 */6 * * * cd $SCRIPT_DIR && DB_PATH='${DB_PATH:-}' DATA_DIR='${DATA_DIR:-}' CONCORD_BACKUP_DIR='${CONCORD_BACKUP_DIR:-}' CONCORD_BACKUP_REMOTE='${CONCORD_BACKUP_REMOTE:-}' bash scripts/db-backup.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
+    BACKUP_CRON="*/15 * * * * cd $SCRIPT_DIR && DB_PATH='${DB_PATH:-}' DATA_DIR='${DATA_DIR:-}' CONCORD_BACKUP_DIR='${CONCORD_BACKUP_DIR:-}' CONCORD_BACKUP_REMOTE='${CONCORD_BACKUP_REMOTE:-}' CONCORD_BACKUP_RETAIN='${CONCORD_BACKUP_RETAIN:-96}' bash scripts/db-backup.sh >> $SCRIPT_DIR/logs/backup.log 2>&1"
     ( crontab -l 2>/dev/null | grep -v "db-backup\.sh" ; echo "$BACKUP_CRON" ) | crontab - 2>/dev/null \
-      && log "DB backup cron installed (every 6 hours → ${CONCORD_BACKUP_DIR:-<DATA_DIR>/backups})" \
+      && log "DB backup cron installed (every 15 minutes → ${CONCORD_BACKUP_DIR:-<DATA_DIR>/backups})" \
       || log "WARNING: Could not install backup cron — add it manually: $BACKUP_CRON"
-    # Durability guard: warn loudly if the DB or backups are NOT on a volume.
-    case "${DB_PATH:-${DATA_DIR:-}}" in
+    # Durability guard: warn loudly if the BACKUP DESTINATION is not on a
+    # volume. Checking CONCORD_BACKUP_DIR here, not DB_PATH — DB_PATH on the
+    # ephemeral container disk is the intended architecture (see the
+    # local-disk DB migration comment below); what actually has to be
+    # persistent is where the backups land.
+    case "${CONCORD_BACKUP_DIR:-${DATA_DIR:-}}" in
       /workspace*|/runpod-volume*|/data/*) : ;;  # likely persistent
-      *) log "⚠️  DB_PATH='${DB_PATH:-unset}' may be on the EPHEMERAL container disk."
-         log "    Point DB_PATH + CONCORD_BACKUP_DIR at your network volume (e.g."
-         log "    /workspace/concord/db/concord.db) or a pod reclaim = total data loss." ;;
+      *) log "⚠️  CONCORD_BACKUP_DIR='${CONCORD_BACKUP_DIR:-unset}' may be on the EPHEMERAL container disk."
+         log "    Point CONCORD_BACKUP_DIR at your network volume (e.g."
+         log "    /workspace/concord-data/backups) or a pod reclaim = total data loss." ;;
     esac
     # Take one backup right now so there's always at least one on disk.
     DB_PATH="${DB_PATH:-}" DATA_DIR="${DATA_DIR:-}" CONCORD_BACKUP_DIR="${CONCORD_BACKUP_DIR:-}" \

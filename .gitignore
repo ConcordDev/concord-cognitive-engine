@@ -194,3 +194,12 @@ apps/concordia-living-world/unity-client/Assets/Screenshots/
 apps/concordia-living-world/unity-client/*.csproj
 apps/concordia-living-world/unity-client/*.sln
 apps/concordia-living-world/unity-client/*.unityproj
+
+.aider*
+
+# RunPod API credentials (used ad-hoc via curl during infra incidents —
+# never persisted to a tracked file, but ignored defensively in case a
+# future setup step writes a config/token file here).
+.runpod/
+runpod-api-key*
+.runpodctl*

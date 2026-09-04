@@ -74,18 +74,35 @@ export const runAgingCycle = safeRun("aging-cycle", async (state) => {
   const { onNpcDeath } = await import("../lib/npc-legacy.js");
   const selDecStmt = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`);
   const markDeadStmt = db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`);
-  for (const due of r.dueForDeath || []) {
-    try {
-      const dec = selDecStmt.get(due.npcId);
-      if (dec) {
-        dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
-        // Mark dead.
-        markDeadStmt.run(due.npcId);
-        onNpcDeath(db, dec, { cause: "natural", killerId: null });
-        killed++;
-      }
-    } catch { failed++; }
-  }
+  // Batched into ONE transaction — the last of the population-scale
+  // heartbeat write-loops flagged during the 2026-08-23 audit (see
+  // lib/npc-simulator.js#_flushPendingPersists for the full measured
+  // rationale) and deliberately deferred at the time because onNpcDeath's
+  // own cascade (legacy record, settlement vacancy, heir inheritance
+  // across grudges/preoccupations/desires/recipes/wealth) looked too
+  // complex to batch blind. Re-verified: onNpcDeath and its entire call
+  // chain (_openSettlementVacancyOnDeath, findHeirs, inherit{Grudges,
+  // Preoccupations,Desires,Recipes,Wealth} in lib/npc-legacy.js) contain
+  // zero await/async — fully synchronous, same shape as every other fix
+  // tonight, safe to wrap. The existing per-death try/catch (unchanged
+  // below) already isolates one NPC's death-processing failure from the
+  // others, so nothing here can throw out to the transaction wrapper and
+  // roll back deaths already processed earlier in the same pass.
+  const processDeaths = db.transaction((deaths) => {
+    for (const due of deaths) {
+      try {
+        const dec = selDecStmt.get(due.npcId);
+        if (dec) {
+          dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
+          // Mark dead.
+          markDeadStmt.run(due.npcId);
+          onNpcDeath(db, dec, { cause: "natural", killerId: null });
+          killed++;
+        }
+      } catch { failed++; }
+    }
+  });
+  processDeaths(r.dueForDeath || []);
   return { day, considered: r.dueForDeath?.length || 0, killed, failed };
 });
 
