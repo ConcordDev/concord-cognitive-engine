@@ -694,8 +694,8 @@ namespace Concordia // FORCE_REFRESH_0021
             {
                 _slashT -= Time.deltaTime;
                 var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
-                float wind = t < 0.25f ? t / 0.25f : t < 0.45f ? 1f : 1f - (t - 0.45f) / 0.55f;
-                var swing = t < 0.4f ? Mathf.Lerp(-70f, 100f, t / 0.4f) : Mathf.Lerp(100f, 0f, (t - 0.4f) / 0.6f);
+                float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
+                var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
                 float arc = swing * wind;
                 if (_biped)
                 {
