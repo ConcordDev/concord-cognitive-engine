@@ -44,11 +44,11 @@ describe("Concord 2B dialogue provider", () => {
     assert.ok(r.text.length > 0);
   });
 
-  it("calls local 127.0.0.1:11434, not docker ollama-conscious", async () => {
+  it("calls local 127.0.0.1:11434 with think:false, not docker ollama-conscious", async () => {
     const seen = [];
     const prev = globalThis.fetch;
-    globalThis.fetch = async (url) => {
-      seen.push(String(url));
+    globalThis.fetch = async (url, opts) => {
+      seen.push({ url: String(url), body: String(opts?.body || "") });
       return { ok: true, json: async () => ({ message: { content: "The Court stays dirt." } }) };
     };
     try {
@@ -57,8 +57,9 @@ describe("Concord 2B dialogue provider", () => {
       assert.equal(r.fallback, false);
       assert.equal(r.model, "qwen3.5:2b");
       assert.equal(seen.length, 1);
-      assert.match(seen[0], /127\.0\.0\.1:11434\/api\/chat/);
-      assert.doesNotMatch(seen[0], /ollama-conscious/);
+      assert.match(seen[0].url, /127\.0\.0\.1:11434\/api\/chat/);
+      assert.doesNotMatch(seen[0].url, /ollama-conscious/);
+      assert.match(seen[0].body, /"think":false/);
     } finally {
       globalThis.fetch = prev;
     }

@@ -136,6 +136,7 @@ async function defaultTwoBChat({ worldId, npcName, line, text }) {
     body: JSON.stringify({
       model: CONCORD_2B_MODEL,
       stream: false,
+      think: false,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
