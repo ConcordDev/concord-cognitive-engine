@@ -141,6 +141,42 @@ namespace Concordia
 #endif
         }
 
+        /// <summary>Retry kitchen then live if Talk happens before Start finished, or after a drop.</summary>
+        public async Task<bool> EnsureConnected()
+        {
+            if (Connected) return true;
+            if (_cts == null || _cts.IsCancellationRequested)
+                _cts = new CancellationTokenSource();
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return Connected;
+#else
+            var urls =
+#if UNITY_EDITOR
+                new[] { kitchenUrl, gatewayUrl };
+#else
+                new[] { gatewayUrl, kitchenUrl };
+#endif
+            foreach (var url in urls)
+            {
+                if (string.IsNullOrWhiteSpace(url)) continue;
+                try
+                {
+                    _ws?.Dispose();
+                    _ws = new ClientWebSocket();
+                    await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    await AfterOpen();
+                    return Connected;
+                }
+                catch
+                {
+                    _ws?.Dispose();
+                    _ws = null;
+                }
+            }
+            return false;
+#endif
+        }
+
         public void OnWsOpen(string unused)
         {
             _jsOpen = true;

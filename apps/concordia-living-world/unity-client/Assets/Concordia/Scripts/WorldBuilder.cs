@@ -229,6 +229,7 @@ namespace Concordia
                 var go = ModularPerson.SpawnNpc(root, p, a * Mathf.Rad2Deg, look, true, 8f + (i % 4));
                 var life = go.AddComponent<NpcLife>();
                 life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
+                TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
             }
             for (int i = 0; i < 8; i++)
             {
@@ -240,6 +241,7 @@ namespace Concordia
                 look.outfit = i % 6;
                 var go = ModularPerson.SpawnNpc(root, p, -g.angle * Mathf.Rad2Deg + 180f, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
+                TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
             }
             for (int i = 0; i < 4; i++)
             {
@@ -251,7 +253,21 @@ namespace Concordia
                 var look = Appearance.Random(3300 + i * 13);
                 var go = ModularPerson.SpawnNpc(root, p + new Vector3(0f, 0f, 0.1f), -a * Mathf.Rad2Deg, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Sit;
+                TagCrowd(go, "crowd-sit-" + i, look.displayName ?? "Citizen", "bench");
             }
+        }
+
+        static void TagCrowd(GameObject go, string id, string name, string title)
+        {
+            if (!go || go.GetComponent<GuestNpc>()) return;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = new GuestDef
+            {
+                id = id,
+                name = string.IsNullOrEmpty(name) ? "Citizen" : name,
+                title = string.IsNullOrEmpty(title) ? "unlabeled" : title,
+                line = "They keep their own hours. Not an authored citizen."
+            };
         }
 
         void DressArena()

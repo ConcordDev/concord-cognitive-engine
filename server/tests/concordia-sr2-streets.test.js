@@ -22,6 +22,15 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /Never Mixamo Soldier/);
     assert.match(person, /clipsFit/);
     assert.match(person, /ApplyAuthoredGait/);
+    assert.match(person, /Bip01 L UpperArm/);
+    assert.match(person, /Bip01 Pelvis/);
+    assert.match(person, /_biped/);
+    assert.match(person, /BipedArm\(/);
+    assert.match(person, /FromToRotation/);
+    assert.match(person, /TryBipedAvatar/);
+    assert.match(person, /AvatarBuilder\.BuildHumanAvatar/);
+    assert.match(person, /BipedHinge\(/);
+    assert.match(person, /_speed > 0.35f/);
     assert.doesNotMatch(person, /LoadAssetAtPath.*Soldier\.glb/);
     assert.match(game, /ModularPerson\.AttachHero\(/);
   });
@@ -64,5 +73,19 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(interior, /HubLook\.Pbr\(pbr/);
     assert.match(packs, /for \(int up = 0; up < 4/);
     assert.match(packs, /colormap\.png/);
+    assert.match(packs, /IsClothName/);
+    assert.match(packs, /DyeCloth\(/);
+    assert.match(packs, /SitOrHang\(/);
+  });
+
+  it("portal swirl is a small alpha mote, not a 3m additive oval", () => {
+    const plaza = src("HubPlaza.cs");
+    const look = src("HubLook.cs");
+    assert.match(plaza, /startSize = 0.05f/);
+    assert.match(plaza, /sh.radius = 0.42f/);
+    assert.match(plaza, /ParticleMat\(c, false\)/);
+    assert.match(look, /bool additive = true/);
+    assert.doesNotMatch(plaza, /startSize = 0.28f/);
+    assert.doesNotMatch(plaza, /sh.radius = 1.6f/);
   });
 });

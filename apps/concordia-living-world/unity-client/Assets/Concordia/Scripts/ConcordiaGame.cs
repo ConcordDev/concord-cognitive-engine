@@ -419,14 +419,17 @@ namespace Concordia
         async void AskTwoB(GuestNpc npc, string authored)
         {
             var client = ConcordClient.Live;
-            if (client == null || !client.Connected) return;
+            if (client == null) return;
+            if (!client.Connected) await client.EnsureConnected();
+            if (!client.Connected) return;
             var reply = await client.AskTwoB(
                 npc.personId ?? npc.def.id,
                 npc.def.name,
                 npc.def.line,
                 authored);
-            if (!string.IsNullOrEmpty(reply))
-                ConcordiaHUD.Announce(npc.def.name, reply);
+            if (string.IsNullOrEmpty(reply)) return;
+            ConcordiaHUD.Announce(npc.def.name, reply);
+            _player?.Notice(npc.def.name + ": " + reply);
         }
 
         void OnDestroy()

@@ -309,7 +309,7 @@ namespace Concordia
                 if (byHeight) FitHeight(go, maxDim);
                 else FitMax(go, maxDim);
             }
-            Sit(go, pos);
+            SitOrHang(go, pos, stem);
             PaintIfBlank(go, PathForStem(stem));
             var kind = stem.ToLowerInvariant();
             if (IsTree(kind)) TrunkCollider(go);
@@ -418,6 +418,23 @@ namespace Concordia
             go.transform.position += Vector3.up * (pos.y - b.min.y);
         }
 
+        /// <summary>
+        /// Flags hang from a pole. Sit's negative dy buried Kenney banners at y=-1
+        /// when bounds were tall at the pivot. Cloth only lifts, never drops.
+        /// </summary>
+        static void SitOrHang(GameObject go, Vector3 pos, string stem)
+        {
+            if (IsClothName(stem) || IsClothName(go ? go.name : null))
+            {
+                go.transform.position = pos;
+                var b = Encapsulate(go);
+                if (b.min.y < pos.y)
+                    go.transform.position += Vector3.up * (pos.y - b.min.y);
+                return;
+            }
+            Sit(go, pos);
+        }
+
         public static void FitMax(GameObject go, float want)
         {
             var b = Encapsulate(go);
@@ -474,10 +491,64 @@ namespace Concordia
         /// </summary>
         public static void PaintIfBlank(GameObject go) => PaintIfBlank(go, null);
 
+        public static bool IsClothName(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return false;
+            var n = s.ToLowerInvariant();
+            return n.Contains("flag") || n.Contains("banner");
+        }
+
+        static Color ClothDye(string name)
+        {
+            unchecked
+            {
+                int h = 23;
+                if (!string.IsNullOrEmpty(name))
+                    for (int i = 0; i < name.Length; i++) h = h * 31 + name[i];
+                var dyes = new[]
+                {
+                    new Color(0.62f, 0.16f, 0.14f),
+                    new Color(0.18f, 0.28f, 0.48f),
+                    new Color(0.70f, 0.52f, 0.20f),
+                    new Color(0.76f, 0.70f, 0.54f),
+                    new Color(0.22f, 0.38f, 0.24f),
+                    new Color(0.40f, 0.14f, 0.26f)
+                };
+                return dyes[Mathf.Abs(h) % dyes.Length];
+            }
+        }
+
+        /// <summary>
+        /// Kenney city atlas on a flag UV is one solid texel. Dye cloth, never atlas.
+        /// </summary>
+        public static void DyeCloth(GameObject go, Color c)
+        {
+            if (!go) return;
+            var m = HubLook.Lit(c, 0.06f, 0.62f);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var slots = r.sharedMaterials;
+                if (slots == null || slots.Length == 0)
+                {
+                    r.sharedMaterial = m;
+                    continue;
+                }
+                var next = new Material[slots.Length];
+                for (int i = 0; i < slots.Length; i++) next[i] = m;
+                r.sharedMaterials = next;
+            }
+        }
+
         public static void PaintIfBlank(GameObject go, string sourcePath)
         {
             if (!go) return;
             if (string.IsNullOrEmpty(sourcePath)) sourcePath = PathForStem(go.name);
+            if (IsClothName(go.name) || IsClothName(sourcePath))
+            {
+                DyeCloth(go, ClothDye(go.name));
+                return;
+            }
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
                 if (!r) continue;
@@ -532,6 +603,7 @@ namespace Concordia
         static Texture2D ColormapNear(string path, string stem)
         {
             if (string.IsNullOrEmpty(path)) return null;
+            if (IsClothName(path) || IsClothName(stem)) return null;
             var dir = Path.GetDirectoryName(path)?.Replace("\\", "/");
             var file = Path.GetFileNameWithoutExtension(path);
             if (string.IsNullOrEmpty(stem)) stem = file;

@@ -126,21 +126,21 @@ namespace Concordia
             go.transform.position = new Vector3(0f, 12f, 0f);
             var ps = go.AddComponent<ParticleSystem>();
             var main = ps.main;
-            main.startLifetime = 8f;
-            main.startSpeed = 0.15f;
-            main.startSize = 0.12f;
-            main.startColor = new Color(c.r, c.g, c.b, 0.35f);
-            main.maxParticles = 80;
+            main.startLifetime = 6f;
+            main.startSpeed = 0.08f;
+            main.startSize = 0.05f;
+            main.startColor = new Color(c.r, c.g, c.b, 0.16f);
+            main.maxParticles = 28;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             var em = ps.emission;
-            em.rateOverTime = 8f;
+            em.rateOverTime = 3f;
             var sh = ps.shape;
             sh.shapeType = ParticleSystemShapeType.Cone;
-            sh.angle = 18f;
-            sh.radius = 2.5f;
+            sh.angle = 14f;
+            sh.radius = 1.1f;
             sh.rotation = new Vector3(90f, 0f, 0f);
             var r = go.GetComponent<ParticleSystemRenderer>();
-            if (r) r.sharedMaterial = HubLook.ParticleMat(c);
+            if (r) r.sharedMaterial = HubLook.ParticleMat(c, false);
         }
 
         static void Balcony(Transform root, Material bronze, Material copper)
@@ -189,7 +189,7 @@ namespace Concordia
                 }
 
                 var portalCol = PortalColor(gate);
-                var portal = HubLook.Prim(hold, PrimitiveType.Cylinder, Vector3.zero, new Vector3(w * 0.72f, 0.12f, h * 0.72f), HubLook.Emit(portalCol, 3.6f), "Portal", false);
+                var portal = HubLook.Prim(hold, PrimitiveType.Cylinder, Vector3.zero, new Vector3(w * 0.72f, 0.12f, h * 0.72f), HubLook.Emit(portalCol, 0.4f), "Portal", false);
                 portal.transform.localPosition = new Vector3(0f, h * 0.42f, 0.15f);
                 portal.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 Swirl(hold, new Vector3(0f, h * 0.42f, 0.2f), portalCol);
@@ -221,10 +221,14 @@ namespace Concordia
                 stone.text = gate.refusal + " — " + gate.theNo;
 
                 if (gate.world == WorldId.Frontier || gate.world == WorldId.Cyber)
-                    HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4f, 1.2f)), portalCol, 1.65f, 16f, false);
+                    HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4f, 1.2f)), portalCol, 0.55f, 16f, false);
 
                 var flag = FreePacks.Spawn("flag-banner-long", hold, hold.TransformPoint(new Vector3(0f, 0f, -0.6f)), hold.eulerAngles.y, 3.2f);
-                if (flag) FreePacks.StripColliders(flag);
+                if (flag)
+                {
+                    FreePacks.StripColliders(flag);
+                    FreePacks.DyeCloth(flag, Color.Lerp(portalCol, new Color(0.55f, 0.22f, 0.16f), 0.4f));
+                }
             }
         }
 
@@ -242,30 +246,30 @@ namespace Concordia
             go.transform.localPosition = local;
             var ps = go.AddComponent<ParticleSystem>();
             var main = ps.main;
-            main.startLifetime = 2.4f;
-            main.startSpeed = 0.05f;
-            main.startSize = 0.28f;
-            main.startColor = new Color(c.r, c.g, c.b, 0.85f);
-            main.maxParticles = 120;
+            main.startLifetime = 1.2f;
+            main.startSpeed = 0.04f;
+            main.startSize = 0.05f;
+            main.startColor = new Color(c.r, c.g, c.b, 0.35f);
+            main.maxParticles = 22;
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
             var em = ps.emission;
-            em.rateOverTime = 28f;
+            em.rateOverTime = 7f;
             var sh = ps.shape;
             sh.shapeType = ParticleSystemShapeType.Circle;
-            sh.radius = 1.6f;
+            sh.radius = 0.42f;
             var vol = ps.velocityOverLifetime;
             vol.enabled = true;
             vol.orbitalZ = 1.4f;
-            vol.radial = -0.25f;
+            vol.radial = -0.18f;
             var col = ps.colorOverLifetime;
             col.enabled = true;
             var g = new Gradient();
             g.SetKeys(
-                new[] { new GradientColorKey(c, 0f), new GradientColorKey(Color.white, 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.3f), new GradientAlphaKey(0f, 1f) });
+                new[] { new GradientColorKey(c, 0f), new GradientColorKey(Color.Lerp(c, Color.white, 0.35f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.28f, 0.3f), new GradientAlphaKey(0f, 1f) });
             col.color = g;
             var r = go.GetComponent<ParticleSystemRenderer>();
-            if (r) r.sharedMaterial = HubLook.ParticleMat(c);
+            if (r) r.sharedMaterial = HubLook.ParticleMat(c, false);
         }
 
         static void Clutter(Transform root)
@@ -276,7 +280,11 @@ namespace Concordia
                 HubLook.Lantern(root, dir * 18.5f);
                 var flag = FreePacks.Spawn("banner", root, dir * 22f, -g.angle * Mathf.Rad2Deg, 2.8f, required: false)
                            ?? FreePacks.Spawn("flag-banner-long", root, dir * 22f, -g.angle * Mathf.Rad2Deg, 2.8f, required: false);
-                if (flag) flag.name = "RefusalBanner_" + g.shortName;
+                if (flag)
+                {
+                    flag.name = "RefusalBanner_" + g.shortName;
+                    FreePacks.DyeCloth(flag, Color.Lerp(g.color, new Color(0.52f, 0.18f, 0.14f), 0.35f));
+                }
             }
             for (int i = 0; i < 24; i++)
             {

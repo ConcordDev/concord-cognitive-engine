@@ -422,7 +422,7 @@ namespace Concordia
             return m;
         }
 
-        public static Material ParticleMat(Color c)
+        public static Material ParticleMat(Color c, bool additive = true)
         {
             EnsureShaders();
             var sh = _particles != null ? _particles : (_unlit != null ? _unlit : Shader.Find("Sprites/Default"));
@@ -430,7 +430,7 @@ namespace Concordia
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
             if (m.HasProperty("_Color")) m.SetColor("_Color", c);
             m.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-            m.SetInt("_DstBlend", (int)BlendMode.One);
+            m.SetInt("_DstBlend", (int)(additive ? BlendMode.One : BlendMode.OneMinusSrcAlpha));
             m.SetInt("_ZWrite", 0);
             m.renderQueue = 3000;
             return m;

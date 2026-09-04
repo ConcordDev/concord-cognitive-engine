@@ -206,6 +206,9 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(src("ConcordClient.cs"), /dialogue:request/);
     assert.match(src("ConcordClient.cs"), /AskTwoB/);
     assert.match(src("ConcordClient.cs"), /kitchenUrl, gatewayUrl/);
+    assert.match(src("ConcordClient.cs"), /EnsureConnected/);
+    assert.match(game, /EnsureConnected/);
+    assert.match(src("WorldBuilder.cs"), /TagCrowd\(/);
     assert.match(fill, /Sidewalks/);
     assert.match(fill, /a guard/);
     assert.match(fill, /WorldClock\.Ecology < 0\.28f/);

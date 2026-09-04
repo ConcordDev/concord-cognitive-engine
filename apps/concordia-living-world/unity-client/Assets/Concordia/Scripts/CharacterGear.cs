@@ -28,8 +28,8 @@ namespace Concordia
                 ? (rightHand ? person.rightHand : person.leftHand)
                 : Bone(body.transform,
                     rightHand
-                        ? new[] { "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
-                        : new[] { "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
+                        ? new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
+                        : new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
             if (!socket) socket = body.transform;
             var go = Object.Instantiate(mesh);
             go.name = stem;
