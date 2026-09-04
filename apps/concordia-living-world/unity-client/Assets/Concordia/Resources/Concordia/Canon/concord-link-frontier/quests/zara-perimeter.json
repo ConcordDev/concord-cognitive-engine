@@ -1,0 +1,118 @@
+[
+  {
+    "id": "frontier_zara_01_brief",
+    "title": "The Perimeter — Captain's Brief",
+    "description": "Captain Zara Morn has noticed lattice-Crucible scouts probing. She wants a back-channel with Emer Voss.",
+    "giver_npc_id": "captain_zara_morn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_zara1_visit",
+        "type": "reach_location",
+        "target": "frontier_perimeter",
+        "required_count": 1,
+        "description": "Find Zara on her morning patrol."
+      },
+      {
+        "id": "obj_zara1_talk",
+        "type": "talk_to",
+        "target": "captain_zara_morn",
+        "required_count": 1,
+        "description": "Hear her plan."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "frontier_zara_02_token"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_main"
+    ]
+  },
+  {
+    "id": "frontier_zara_02_token",
+    "title": "The Verge — Bring a Token",
+    "description": "Cross to the lattice-Crucible verge. Find Emer Voss. Bring back any token of recognition.",
+    "giver_npc_id": "captain_zara_morn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_zara2_cross",
+        "type": "reach_location",
+        "target": "lattice_verge_north",
+        "required_count": 1,
+        "description": "Cross to Emer's territory."
+      },
+      {
+        "id": "obj_zara2_meet",
+        "type": "talk_to",
+        "target": "scout_emer_voss",
+        "required_count": 1,
+        "description": "Meet Emer."
+      },
+      {
+        "id": "obj_zara2_token",
+        "type": "deliver",
+        "target": "emer_token_to_zara",
+        "required_count": 1,
+        "description": "Bring Emer's token back to Zara."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "frontier_zara_03_watch"
+    ],
+    "prerequisites": [
+      "frontier_zara_01_brief"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_main"
+    ]
+  },
+  {
+    "id": "frontier_zara_03_watch",
+    "title": "The Frontier — Mutual Watch",
+    "description": "Zara sends a token back. Carry it to Emer. Both sides can stop sleeping with one eye open.",
+    "giver_npc_id": "captain_zara_morn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_zara3_carry",
+        "type": "deliver",
+        "target": "zara_token_to_emer",
+        "required_count": 1,
+        "description": "Deliver Zara's reciprocating token to Emer."
+      }
+    ],
+    "rewards": {
+      "xp": 700,
+      "skill_xp": {
+        "diplomacy": 80
+      },
+      "items": [
+        "frontier_watch_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "frontier_zara_02_token"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_main"
+    ]
+  }
+]

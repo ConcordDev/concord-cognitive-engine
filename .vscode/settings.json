@@ -41,11 +41,19 @@
     "**/node_modules": true,
     "**/.next": true,
     "server/data": true,
-    "audit/cartograph": true
+    "audit/cartograph": true,
+    "**/Library": true,
+    "**/Temp": true,
+    "**/Logs": true,
+    "**/UserSettings": true
   },
   "files.watcherExclude": {
     "**/node_modules/**": true,
     "**/.next/**": true,
-    "server/data/**": true
+    "server/data/**": true,
+    "**/Library/**": true,
+    "**/Temp/**": true,
+    "**/Logs/**": true,
+    "**/UserSettings/**": true
   }
 }

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "superhero_mira_01_warn",
+    "title": "The News Office — A Story She Won't Publish",
+    "description": "Mira Vance is building a profile on Champion's identity. Tell her not to publish. She'll listen if you can give her a reason.",
+    "giver_npc_id": "reporter_mira_vance",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mira1_visit",
+        "type": "reach_location",
+        "target": "superhero_news_office",
+        "required_count": 1,
+        "description": "Visit Mira during work hours."
+      },
+      {
+        "id": "obj_mira1_argue",
+        "type": "talk_to",
+        "target": "reporter_mira_vance",
+        "required_count": 1,
+        "description": "Make the case."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "superhero_mira_02_intel"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "superhero",
+      "superhero_side"
+    ]
+  },
+  {
+    "id": "superhero_mira_02_intel",
+    "title": "The News Office — Trade Intel",
+    "description": "Mira will sit on the Champion story for intel of equal weight. Tell her something that's both true and runnable.",
+    "giver_npc_id": "reporter_mira_vance",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mira2_offer",
+        "type": "any_of",
+        "target": "mira_intel_offer",
+        "required_count": 1,
+        "description": "Offer something — Carver's truce with Iron Hex, Ana Pell's gene treatment, or your own knowledge of Silas Crane's identity."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "superhero_mira_03_published"
+    ],
+    "prerequisites": [
+      "superhero_mira_01_warn"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_side"
+    ]
+  },
+  {
+    "id": "superhero_mira_03_published",
+    "title": "The Front Page — Tomorrow Morning",
+    "description": "Whatever you traded, Mira will publish it tomorrow. Watch the city react.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_mira3_observe",
+        "type": "observe",
+        "target": "mira_published_column",
+        "required_count": 1,
+        "description": "Read the morning column."
+      }
+    ],
+    "rewards": {
+      "xp": 500,
+      "items": [
+        "mira_press_card_unofficial"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "superhero_mira_02_intel"
+    ],
+    "tags": [
+      "superhero",
+      "superhero_side"
+    ]
+  }
+]

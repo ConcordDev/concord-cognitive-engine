@@ -1,0 +1,907 @@
+using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
+namespace Concordia // FORCE_REFRESH_0011
+{
+    /// <summary>
+    /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
+    /// Never non-uniform-scale bones with descendants. Never Mixamo Soldier. Never T-pose.
+    /// </summary>
+    public class ModularPerson : MonoBehaviour
+    {
+        public Appearance look = new Appearance();
+        public Transform rightHand, leftHand;
+        public GameObject sword;
+
+        Transform _hip, _spine, _chest, _neck, _head;
+        Transform _uArmL, _fArmL, _handL, _uArmR, _fArmR, _handR;
+        Transform _uLegL, _lLegL, _footL, _uLegR, _lLegR, _footR;
+        Transform _jaw, _brow, _nose, _eyeL, _eyeR, _hairRoot;
+        Vector3 _eye0;
+        Transform _tunic, _coat, _coatL, _coatR, _sash, _pelvisMesh, _skull;
+        Vector3 _tunic0, _coat0, _coatL0, _coatR0, _pelvis0, _skull0, _jaw0;
+        Renderer[] _skin, _shirt, _pants, _trim, _hair, _eyes;
+        Quaternion _hipsRest, _spineRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
+        Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
+        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT;
+        bool _grounded = true;
+        bool _built;
+        bool _authored;
+        Animator _anim;
+        SkinnedMeshRenderer _skinMesh;
+        int _plantFrames;
+        static int _bodySeq;
+        static string _lastPrefabPath;
+        public static WorldId CastingWorld = WorldId.Hub;
+
+        static readonly string[] SkinFiles =
+        {
+            "skaterFemaleA", "skaterMaleA", "cyborgFemaleA",
+            "criminalMaleA", "skaterMaleA", "cyborgFemaleA"
+        };
+
+        public static ModularPerson Attach(Transform parent, Appearance look)
+        {
+            var root = new GameObject("Person");
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = Vector3.zero;
+            root.transform.localRotation = Quaternion.identity;
+            var p = root.AddComponent<ModularPerson>();
+            p.Build();
+            p.Apply(look ?? new Appearance());
+            p.sword = MakeSword();
+            CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
+            return p;
+        }
+
+        public static GameObject SpawnNpc(Transform parent, Vector3 pos, float yaw, Appearance look, bool wander, float roam = 10f)
+        {
+            var go = new GameObject(string.IsNullOrEmpty(look?.displayName) ? "Citizen" : look.displayName);
+            go.transform.SetParent(parent, false);
+            go.transform.position = pos;
+            go.transform.rotation = Quaternion.Euler(0, yaw, 0);
+            var person = go.AddComponent<ModularPerson>();
+            person.Build();
+            person.Apply(look ?? Appearance.Random(go.GetHashCode()));
+            var h = 1.7f * (look != null ? look.height : 1f);
+            var cc = Grounding.EnsureController(go, h);
+            Grounding.Snap(cc);
+            if (wander)
+            {
+                var w = go.AddComponent<NpcWander>();
+                w.roam = roam;
+            }
+            return go;
+        }
+
+        public void SetGait(float speed, bool grounded, float vert = 0f)
+        {
+            _speed = speed;
+            _grounded = grounded;
+            _vert = vert;
+            if (_anim && _anim.runtimeAnimatorController)
+            {
+                _anim.enabled = true;
+                _anim.SetFloat("Speed", grounded ? speed : 0f);
+                if (HasParam(_anim, "Grounded")) _anim.SetBool("Grounded", grounded);
+                if (HasParam(_anim, "MotionSpeed")) _anim.SetFloat("MotionSpeed", grounded ? 1f : 0f);
+            }
+        }
+
+        public void Slash() => _slashT = 0.48f;
+        public void Sit(bool on) => _sit = on ? 1f : 0f;
+        public void Hurt() => _hitT = 0.32f;
+        public void Land() => _landT = 0.22f;
+
+        public void Build()
+        {
+            if (_built) return;
+            _built = true;
+            if (TryBindAuthored()) return;
+            BuildPrimitive();
+        }
+
+        bool TryBindAuthored()
+        {
+            var prefab = LoadPersonPrefab();
+            if (!prefab) return false;
+            var body = Object.Instantiate(prefab, transform);
+            body.name = "AuthoredPerson";
+            DressFromPrefabFolder(body);
+            body.transform.localPosition = Vector3.zero;
+            body.transform.localRotation = Quaternion.identity;
+            body.transform.localScale = Vector3.one;
+            foreach (var c in body.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+
+            _hip = FindBone(body.transform, "Hips", "mixamorig:Hips");
+            _spine = FindBone(body.transform, "Spine", "mixamorig:Spine");
+            _chest = FindBone(body.transform, "Chest", "UpperChest", "Spine1", "mixamorig:Spine1") ?? _spine;
+            _neck = FindBone(body.transform, "Neck", "mixamorig:Neck");
+            _head = FindBone(body.transform, "Head", "mixamorig:Head");
+            _uArmL = FindBone(body.transform, "LeftArm", "Left_UpperArm", "mixamorig:LeftArm");
+            _fArmL = FindBone(body.transform, "LeftForeArm", "Left_LowerArm", "mixamorig:LeftForeArm");
+            _handL = FindBone(body.transform, "LeftHand", "Left_Hand", "mixamorig:LeftHand");
+            _uArmR = FindBone(body.transform, "RightArm", "Right_UpperArm", "mixamorig:RightArm");
+            _fArmR = FindBone(body.transform, "RightForeArm", "Right_LowerArm", "mixamorig:RightForeArm");
+            _handR = FindBone(body.transform, "RightHand", "Right_Hand", "mixamorig:RightHand");
+            _uLegL = FindBone(body.transform, "LeftUpLeg", "Left_UpperLeg", "mixamorig:LeftUpLeg");
+            _lLegL = FindBone(body.transform, "LeftLeg", "Left_LowerLeg", "mixamorig:LeftLeg");
+            _footL = FindBone(body.transform, "LeftFoot", "Left_Foot", "mixamorig:LeftFoot");
+            _uLegR = FindBone(body.transform, "RightUpLeg", "Right_UpperLeg", "mixamorig:RightUpLeg");
+            _lLegR = FindBone(body.transform, "RightLeg", "Right_LowerLeg", "mixamorig:RightLeg");
+            _footR = FindBone(body.transform, "RightFoot", "Right_Foot", "mixamorig:RightFoot");
+            leftHand = _handL;
+            rightHand = _handR;
+            if (!_hip || !_head || !_uArmL || !_uArmR)
+            {
+                // Kenney mini-characters are painted meshes, not Mixamo rigs.
+                _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
+                float h = RendererHeight(body);
+                if (h > 0.15f) body.transform.localScale *= Mathf.Clamp(1.72f / h, 0.05f, 10f);
+                _authored = true;
+                leftHand = rightHand = body.transform;
+                return true;
+            }
+
+            // Only collapse 100-unit FBX roots. Flattening every child made
+            // visor/head meshes 100× and read as giant balls.
+            if (body.transform.localScale.x > 10f)
+                body.transform.localScale = Vector3.one;
+            if (_hip && _hip.localScale.x > 10f)
+                _hip.localScale = Vector3.one;
+            var fbxRoot = FindBone(body.transform, "Root");
+            if (fbxRoot && fbxRoot.localScale.x > 10f)
+                fbxRoot.localScale = Vector3.one;
+            body.transform.localPosition = Vector3.zero;
+            body.transform.localRotation = Quaternion.identity;
+
+            _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
+            if (_skinMesh)
+            {
+                _skinMesh.updateWhenOffscreen = true;
+                _skinMesh.enabled = true;
+            }
+            float worldH = RendererHeight(body);
+            if (worldH > 0.2f && (worldH < 1.2f || worldH > 2.4f))
+                body.transform.localScale *= Mathf.Clamp(1.72f / worldH, 0.05f, 8f);
+
+            _anim = body.GetComponentInChildren<Animator>();
+            if (!_anim) _anim = body.AddComponent<Animator>();
+            _anim.applyRootMotion = false;
+            _anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            var ctrl = LoadLocomotion();
+            if (!ctrl)
+            {
+#if UNITY_EDITOR
+                ctrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Anim/SoldierLocomotion.controller");
+#endif
+            }
+            if (ctrl) _anim.runtimeAnimatorController = ctrl;
+            _anim.enabled = ctrl != null;
+
+            Capture(_hip, ref _hipsRest);
+            Capture(_spine, ref _spineRest);
+            Capture(_uArmL, ref _lArmRest);
+            Capture(_fArmL, ref _lForeRest);
+            Capture(_uArmR, ref _rArmRest);
+            Capture(_fArmR, ref _rForeRest);
+            Capture(_uLegL, ref _lUpRest);
+            Capture(_lLegL, ref _lLegRest);
+            Capture(_uLegR, ref _rUpRest);
+            Capture(_lLegR, ref _rLegRest);
+            Capture(_head, ref _headRest);
+            HangAuthoredArms(0f);
+
+            // Kenney already has a painted head. Extra hair/coat cubes were 1000-unit and hid the person.
+            _authored = true;
+            try
+            {
+                var b = _skinMesh ? _skinMesh.bounds : default;
+                System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
+                    System.DateTime.Now.ToString("o") + " authored=True kenney=True bounds=" + b +
+                    " scale=" + body.transform.localScale + " hip=" + (_hip ? _hip.name : "null") + "\n");
+            }
+            catch { }
+            Debug.Log("Concordia ModularPerson Kenney bound scale=" + body.transform.localScale);
+            return true;
+        }
+
+        static GameObject LoadPersonPrefab()
+        {
+            GameObject go = null;
+#if UNITY_EDITOR
+            // Explicit adult rigs. FreePacks.Mesh("Soldier") can resolve a Kenney mini
+            // because the index prefers kenney-free stems — that is the T-pose plaza.
+            var adult = new[]
+            {
+                "Assets/Concordia/Models/humans/Soldier.glb",
+                "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
+                "Assets/Concordia/Models/humans/rocketbox/Male_Adult_05/Male_Adult_05.fbx",
+                "Assets/Concordia/Models/humans/rocketbox/Female_Adult_01/Female_Adult_01.fbx",
+                "Assets/Concordia/Models/humans/Xbot.glb"
+            };
+            int start = Mathf.Abs(_bodySeq++) % adult.Length;
+            for (int i = 0; i < adult.Length; i++)
+            {
+                var p = adult[(start + i) % adult.Length];
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                if (!go) continue;
+                _lastPrefabPath = p;
+                return go;
+            }
+#endif
+            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight" };
+            for (int i = 0; i < stems.Length; i++)
+            {
+                go = FreePacks.Mesh(stems[i]);
+                if (!go) continue;
+#if UNITY_EDITOR
+                _lastPrefabPath = AssetDatabase.GetAssetPath(go);
+#endif
+                return go;
+            }
+            return go;
+        }
+
+        static void DressFromPrefabFolder(GameObject body)
+        {
+#if UNITY_EDITOR
+            if (!body) return;
+            if (string.IsNullOrEmpty(_lastPrefabPath))
+                _lastPrefabPath = InferRocketboxPath(body);
+            if (string.IsNullOrEmpty(_lastPrefabPath)) return;
+            var dir = System.IO.Path.GetDirectoryName(_lastPrefabPath);
+            if (string.IsNullOrEmpty(dir)) return;
+            var texDir = dir.Replace("\\", "/") + "/Textures";
+            if (!AssetDatabase.IsValidFolder(texDir)) return;
+            Texture2D bodyC = null, bodyN = null, headC = null, headN = null, opac = null;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture", new[] { texDir }))
+            {
+                var p = AssetDatabase.GUIDToAssetPath(guid);
+                var fn = System.IO.Path.GetFileName(p).ToLowerInvariant();
+                var t = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+                if (!t) continue;
+                if (fn.Contains("opacity")) opac = t;
+                else if (fn.Contains("head") && fn.Contains("normal") && !fn.Contains("wrinkle")) headN = t;
+                else if (fn.Contains("head") && fn.Contains("color")) headC = t;
+                else if (fn.Contains("body") && fn.Contains("normal")) bodyN = t;
+                else if (fn.Contains("body") && fn.Contains("color")) bodyC = t;
+            }
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            {
+                var n = r.gameObject.name.ToLowerInvariant();
+                bool isOp = n.Contains("opacity") || n.Contains("hair") || n.Contains("lash");
+                bool isHead = n.Contains("head") || n.Contains("face") || n.Contains("eye");
+                var albedo = isOp ? (opac ? opac : headC) : isHead ? headC : bodyC;
+                var nrm = isHead ? headN : bodyN;
+                if (!albedo) continue;
+                var m = HubLook.Lit(Color.white, 0.03f, 0.28f);
+                var urp = Shader.Find("Universal Render Pipeline/Lit");
+                if (urp && (m.shader == null || m.shader.name.IndexOf("Universal", System.StringComparison.OrdinalIgnoreCase) < 0))
+                    m.shader = urp;
+                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", albedo);
+                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", albedo);
+                if (nrm)
+                {
+                    if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
+                    m.EnableKeyword("_NORMALMAP");
+                }
+                if (isOp)
+                {
+                    m.SetFloat("_Cutoff", 0.32f);
+                    m.EnableKeyword("_ALPHATEST_ON");
+                    m.SetOverrideTag("RenderType", "TransparentCutout");
+                    m.renderQueue = 2450;
+                }
+                r.sharedMaterial = m;
+            }
+#endif
+        }
+
+        static string InferRocketboxPath(GameObject body)
+        {
+            string n = "";
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+                if (r) { n = r.gameObject.name.ToLowerInvariant(); break; }
+            string folder = null;
+            if (n.StartsWith("m002")) folder = "Male_Adult_01";
+            else if (n.StartsWith("m009")) folder = "Male_Adult_05";
+            else if (n.StartsWith("m014")) folder = "Male_Adult_08";
+            else if (n.StartsWith("f001")) folder = "Female_Adult_01";
+            else if (n.StartsWith("f004")) folder = "Female_Adult_04";
+            if (folder == null) return null;
+            return "Assets/Concordia/Models/humans/rocketbox/" + folder + "/" + folder + ".fbx";
+        }
+
+        static RuntimeAnimatorController LoadLocomotion()
+        {
+            var c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
+#if UNITY_EDITOR
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Anim/SoldierLocomotion.controller");
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller");
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/SourceFiles/StarterAssets/ThirdPersonController/Character/Animations/StarterAssetsThirdPerson.controller");
+#endif
+            if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/KenneyLocomotion");
+            return c;
+        }
+
+        static bool HasParam(Animator a, string n)
+        {
+            foreach (var p in a.parameters)
+                if (p.name == n) return true;
+            return false;
+        }
+
+        static float RendererHeight(GameObject go)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return 0f;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            return b.size.y;
+        }
+
+        void BuildPrimitive()
+        {
+            _hip = Bone(transform, "Hips", new Vector3(0f, 0.96f, 0f));
+            _spine = Bone(_hip, "Spine", new Vector3(0f, 0.12f, 0f));
+            _chest = Bone(_spine, "Chest", new Vector3(0f, 0.20f, 0f));
+            _neck = Bone(_chest, "Neck", new Vector3(0f, 0.18f, 0f));
+            _head = Bone(_neck, "Head", new Vector3(0f, 0.14f, 0f));
+
+            _uArmL = Bone(_chest, "UpperArmL", new Vector3(-0.22f, 0.12f, 0f));
+            _fArmL = Bone(_uArmL, "ForeArmL", new Vector3(-0.28f, 0f, 0f));
+            _handL = Bone(_fArmL, "HandL", new Vector3(-0.26f, 0f, 0f));
+            _uArmR = Bone(_chest, "UpperArmR", new Vector3(0.22f, 0.12f, 0f));
+            _fArmR = Bone(_uArmR, "ForeArmR", new Vector3(0.28f, 0f, 0f));
+            _handR = Bone(_fArmR, "HandR", new Vector3(0.26f, 0f, 0f));
+            leftHand = _handL;
+            rightHand = _handR;
+
+            _uLegL = Bone(_hip, "UpperLegL", new Vector3(-0.11f, -0.04f, 0f));
+            _lLegL = Bone(_uLegL, "LowerLegL", new Vector3(0f, -0.42f, 0f));
+            _footL = Bone(_lLegL, "FootL", new Vector3(0f, -0.40f, 0.04f));
+            _uLegR = Bone(_hip, "UpperLegR", new Vector3(0.11f, -0.04f, 0f));
+            _lLegR = Bone(_uLegR, "LowerLegR", new Vector3(0f, -0.42f, 0f));
+            _footR = Bone(_lLegR, "FootR", new Vector3(0f, -0.40f, 0.04f));
+
+            _uArmL.localRotation = Quaternion.Euler(0f, 0f, 78f);
+            _uArmR.localRotation = Quaternion.Euler(0f, 0f, -78f);
+            _fArmL.localRotation = Quaternion.Euler(0f, 0f, 8f);
+            _fArmR.localRotation = Quaternion.Euler(0f, 0f, -8f);
+
+            var skin = HubLook.Lit(new Color(0.72f, 0.52f, 0.38f), 0.04f, 0.38f);
+            var cloth = HubLook.Lit(new Color(0.8f, 0.72f, 0.58f), 0.02f, 0.28f);
+            var dark = HubLook.Lit(new Color(0.22f, 0.18f, 0.14f), 0.02f, 0.22f);
+
+            _pelvisMesh = Part(_hip, PrimitiveType.Cube, new Vector3(0f, -0.02f, 0f), new Vector3(0.34f, 0.16f, 0.20f), dark, "Pelvis").transform;
+            _tunic = Part(_chest, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.38f, 0.40f, 0.22f), cloth, "Tunic").transform;
+            Part(_spine, PrimitiveType.Cube, Vector3.zero, new Vector3(0.28f, 0.18f, 0.18f), cloth, "Waist");
+            Part(_neck, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.10f, 0.12f, 0.10f), skin, "NeckMesh");
+
+            _skull = Part(_head, PrimitiveType.Capsule, new Vector3(0f, 0.02f, 0.01f), new Vector3(0.20f, 0.13f, 0.22f), skin, "Skull").transform;
+            _jaw = Part(_head, PrimitiveType.Cube, new Vector3(0f, -0.10f, 0.02f), new Vector3(0.14f, 0.08f, 0.15f), skin, "Jaw").transform;
+            _nose = Part(_head, PrimitiveType.Cube, new Vector3(0f, -0.01f, -0.12f), new Vector3(0.04f, 0.05f, 0.07f), skin, "Nose").transform;
+            _brow = Part(_head, PrimitiveType.Cube, new Vector3(0f, 0.07f, -0.10f), new Vector3(0.16f, 0.025f, 0.04f), skin, "Brow").transform;
+            Part(_head, PrimitiveType.Sphere, new Vector3(-0.12f, 0.01f, 0f), new Vector3(0.05f, 0.07f, 0.06f), skin, "EarL");
+            Part(_head, PrimitiveType.Sphere, new Vector3(0.12f, 0.01f, 0f), new Vector3(0.05f, 0.07f, 0.06f), skin, "EarR");
+
+            _eyeL = Part(_head, PrimitiveType.Sphere, new Vector3(-0.05f, 0.03f, -0.10f), new Vector3(0.045f, 0.045f, 0.04f), HubLook.Lit(Color.white, 0f, 0.8f), "EyeL").transform;
+            _eyeR = Part(_head, PrimitiveType.Sphere, new Vector3(0.05f, 0.03f, -0.10f), new Vector3(0.045f, 0.045f, 0.04f), HubLook.Lit(Color.white, 0f, 0.8f), "EyeR").transform;
+            _eye0 = _eyeL.localScale;
+            Part(_eyeL, PrimitiveType.Sphere, new Vector3(0f, 0f, -0.012f), new Vector3(0.55f, 0.55f, 0.4f), HubLook.Emit(new Color(0.2f, 0.3f, 0.5f), 0.4f), "IrisL");
+            Part(_eyeR, PrimitiveType.Sphere, new Vector3(0f, 0f, -0.012f), new Vector3(0.55f, 0.55f, 0.4f), HubLook.Emit(new Color(0.2f, 0.3f, 0.5f), 0.4f), "IrisR");
+
+            _hairRoot = new GameObject("Hair").transform;
+            _hairRoot.SetParent(_head, false);
+            BuildHair();
+
+            Limb(_uArmL, _fArmL, _handL, -1f, skin, cloth);
+            Limb(_uArmR, _fArmR, _handR, 1f, skin, cloth);
+
+            Part(_uLegL, PrimitiveType.Capsule, new Vector3(0f, -0.20f, 0f), new Vector3(0.14f, 0.22f, 0.14f), dark, "ThighL");
+            Part(_lLegL, PrimitiveType.Capsule, new Vector3(0f, -0.18f, 0f), new Vector3(0.12f, 0.20f, 0.12f), dark, "CalfL");
+            Part(_footL, PrimitiveType.Cube, new Vector3(0f, -0.03f, -0.06f), new Vector3(0.10f, 0.07f, 0.22f), dark, "BootL");
+            Part(_uLegR, PrimitiveType.Capsule, new Vector3(0f, -0.20f, 0f), new Vector3(0.14f, 0.22f, 0.14f), dark, "ThighR");
+            Part(_lLegR, PrimitiveType.Capsule, new Vector3(0f, -0.18f, 0f), new Vector3(0.12f, 0.20f, 0.12f), dark, "CalfR");
+            Part(_footR, PrimitiveType.Cube, new Vector3(0f, -0.03f, -0.06f), new Vector3(0.10f, 0.07f, 0.22f), dark, "BootR");
+
+            // Coat is a LAYER: thin back panel + side flaps. Not a second torso cube.
+            _coat = Part(_chest, PrimitiveType.Cube, new Vector3(0f, -0.10f, 0.12f), new Vector3(0.42f, 0.52f, 0.08f), cloth, "Coat").transform;
+            _coatL = Part(_chest, PrimitiveType.Cube, new Vector3(-0.20f, -0.10f, 0.02f), new Vector3(0.06f, 0.50f, 0.22f), cloth, "CoatL").transform;
+            _coatR = Part(_chest, PrimitiveType.Cube, new Vector3(0.20f, -0.10f, 0.02f), new Vector3(0.06f, 0.50f, 0.22f), cloth, "CoatR").transform;
+            _sash = Part(_hip, PrimitiveType.Cube, new Vector3(0f, 0.06f, 0f), new Vector3(0.38f, 0.07f, 0.22f), HubLook.Lit(new Color(0.55f, 0.35f, 0.16f), 0.15f, 0.4f), "Sash").transform;
+
+            _tunic0 = _tunic.localScale;
+            _coat0 = _coat.localScale;
+            _coatL0 = _coatL.localScale;
+            _coatR0 = _coatR.localScale;
+            _pelvis0 = _pelvisMesh.localScale;
+            _skull0 = _skull.localScale;
+            _jaw0 = _jaw.localScale;
+
+            _skin = FindRend("Skull", "Jaw", "Nose", "Brow", "EarL", "EarR", "NeckMesh", "UpperArmL", "UpperArmR", "ForeArmL", "ForeArmR", "HandL", "HandR");
+            _shirt = FindRend("Tunic", "Waist");
+            _pants = FindRend("ThighL", "ThighR", "CalfL", "CalfR", "Pelvis", "BootL", "BootR");
+            _trim = FindRend("Sash", "Coat", "CoatL", "CoatR");
+            _hair = _hairRoot.GetComponentsInChildren<Renderer>(true);
+            _eyes = FindRend("IrisL", "IrisR");
+            try
+            {
+                System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
+                    System.DateTime.Now.ToString("o") + " authored=False kenney=False primitive=True\n");
+            }
+            catch { }
+            Debug.Log("Concordia ModularPerson primitive fallback (Kenney not bound)");
+        }
+
+        void Limb(Transform upper, Transform fore, Transform hand, float side, Material skin, Material cloth)
+        {
+            Part(upper, PrimitiveType.Capsule, new Vector3(side * 0.12f, 0f, 0f), new Vector3(0.10f, 0.16f, 0.10f), cloth, upper.name);
+            var cap = upper.Find(upper.name);
+            if (cap) cap.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            Part(fore, PrimitiveType.Capsule, new Vector3(side * 0.12f, 0f, 0f), new Vector3(0.08f, 0.14f, 0.08f), skin, fore.name);
+            var f = fore.Find(fore.name);
+            if (f) f.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            Part(hand, PrimitiveType.Sphere, Vector3.zero, new Vector3(0.09f, 0.08f, 0.06f), skin, hand.name);
+        }
+
+        void BuildHair()
+        {
+            var mat = HubLook.Lit(new Color(0.12f, 0.08f, 0.06f), 0.02f, 0.18f);
+            HairPart("Crop", PrimitiveType.Sphere, new Vector3(0f, 0.08f, 0.01f), new Vector3(0.26f, 0.12f, 0.26f), mat);
+            HairPart("Short", PrimitiveType.Sphere, new Vector3(0f, 0.10f, 0.00f), new Vector3(0.27f, 0.16f, 0.27f), mat);
+            HairPart("Sweep", PrimitiveType.Sphere, new Vector3(0.02f, 0.10f, -0.04f), new Vector3(0.26f, 0.14f, 0.28f), mat);
+            HairPart("Bun", PrimitiveType.Sphere, new Vector3(0f, 0.08f, 0.02f), new Vector3(0.25f, 0.12f, 0.25f), mat);
+            HairPart("BunKnot", PrimitiveType.Sphere, new Vector3(0f, 0.14f, 0.08f), new Vector3(0.12f, 0.12f, 0.12f), mat);
+            HairPart("Long", PrimitiveType.Sphere, new Vector3(0f, 0.08f, 0.04f), new Vector3(0.26f, 0.14f, 0.24f), mat);
+            HairPart("LongFall", PrimitiveType.Capsule, new Vector3(0f, -0.06f, 0.10f), new Vector3(0.16f, 0.22f, 0.10f), mat);
+            HairPart("Topknot", PrimitiveType.Sphere, new Vector3(0f, 0.06f, 0.01f), new Vector3(0.22f, 0.08f, 0.22f), mat);
+            HairPart("Knot", PrimitiveType.Sphere, new Vector3(0f, 0.16f, 0.00f), new Vector3(0.10f, 0.12f, 0.10f), mat);
+        }
+
+        void HairPart(string n, PrimitiveType t, Vector3 pos, Vector3 sc, Material m)
+        {
+            var go = Part(_hairRoot, t, pos, sc, m, n);
+            go.SetActive(false);
+        }
+
+        public void Apply(Appearance a)
+        {
+            if (a == null) a = new Appearance();
+            look = a;
+            if (!_built) Build();
+
+            float h = Mathf.Clamp(a.height, 0.86f, 1.16f);
+            transform.localScale = Vector3.one * h;
+
+            // Bones with descendants stay at 1. Body type scales MESH parts only.
+            if (_hip) _hip.localScale = Vector3.one;
+            if (_spine) _spine.localScale = Vector3.one;
+            if (_chest) _chest.localScale = Vector3.one;
+            if (_neck) _neck.localScale = Vector3.one;
+            if (_head) _head.localScale = Vector3.one;
+            var fbxRoot2 = FindBone(transform, "Root");
+            if (fbxRoot2) fbxRoot2.localScale = Vector3.one;
+
+            float w = Mathf.Clamp(a.width, 0.8f, 1.28f);
+            float sh = Mathf.Clamp(a.shoulders, 0.82f, 1.28f);
+            float ch = Mathf.Clamp(a.chest, 0.86f, 1.24f);
+            float hp = Mathf.Lerp(0.92f, 1.12f, Mathf.Clamp01(a.hips));
+            float hd = Mathf.Clamp(a.head, 0.88f, 1.16f);
+
+            if (_tunic) _tunic.localScale = new Vector3(_tunic0.x * sh, _tunic0.y * ch, _tunic0.z);
+            if (_coat) _coat.localScale = new Vector3(_coat0.x * sh, _coat0.y * ch, _coat0.z);
+            if (_coatL) _coatL.localScale = new Vector3(_coatL0.x, _coatL0.y * ch, _coatL0.z * w);
+            if (_coatR) _coatR.localScale = new Vector3(_coatR0.x, _coatR0.y * ch, _coatR0.z * w);
+            if (_pelvisMesh) _pelvisMesh.localScale = new Vector3(_pelvis0.x * w, _pelvis0.y, _pelvis0.z * hp);
+            if (_skull) _skull.localScale = _skull0 * hd;
+            if (_jaw)
+            {
+                var js = _jaw0 == Vector3.zero ? _jaw.localScale : _jaw0;
+                _jaw.localScale = new Vector3(js.x * Mathf.Clamp(a.jaw, 0.8f, 1.3f), js.y * Mathf.Lerp(0.85f, 1.2f, a.jaw * 0.5f + 0.5f), js.z);
+            }
+            if (_brow) _brow.localPosition = new Vector3(0f, Mathf.Lerp(0.04f, 0.10f, a.brow), -0.10f);
+            if (_nose)
+            {
+                _nose.localPosition = new Vector3(0f, -0.01f, Mathf.Lerp(-0.10f, -0.15f, a.nose));
+                _nose.localScale = new Vector3(0.04f, Mathf.Lerp(0.04f, 0.07f, a.nose), Mathf.Lerp(0.05f, 0.09f, a.nose));
+            }
+            if (_hairRoot) _hairRoot.localScale = Vector3.one * hd;
+
+            if (_authored) ApplyAuthoredLook(a);
+            else
+            {
+                Tint(_skin, a.SkinColor());
+                Tint(_shirt, a.ShirtColor());
+                Tint(_pants, a.PantsColor());
+                Tint(_trim, a.TrimColor());
+                Tint(_hair, a.HairColor());
+                Tint(_eyes, a.EyeColor() * 1.4f, true);
+            }
+
+            bool coat = a.HasCoat;
+            if (_coat) _coat.gameObject.SetActive(coat);
+            if (_coatL) _coatL.gameObject.SetActive(coat);
+            if (_coatR) _coatR.gameObject.SetActive(coat);
+            if (_sash) _sash.gameObject.SetActive(a.HasSash);
+
+            if (_hairRoot)
+            {
+                int hs = Mathf.Clamp(a.hairStyle, 0, 5);
+                foreach (Transform c in _hairRoot)
+                    c.gameObject.SetActive(false);
+                void On(string n)
+                {
+                    var t = _hairRoot.Find(n);
+                    if (t) t.gameObject.SetActive(true);
+                }
+                switch (hs)
+                {
+                    case 0: On("Crop"); break;
+                    case 1: On("Short"); break;
+                    case 2: On("Sweep"); break;
+                    case 3: On("Bun"); On("BunKnot"); break;
+                    case 4: On("Long"); On("LongFall"); break;
+                    default: On("Topknot"); On("Knot"); break;
+                }
+            }
+        }
+
+        void ApplyAuthoredLook(Appearance a)
+        {
+            // Kenney mini-characters and KayKit knights are already painted.
+            // Replacing their materials with a skin tint washed the plaza.
+            Tint(_trim, a.TrimColor());
+            Tint(_hair, a.HairColor());
+        }
+
+        static Texture2D LoadSkinTex(string stem)
+        {
+            var t = Resources.Load<Texture2D>("Concordia/Person/" + stem);
+            if (t) return t;
+#if UNITY_EDITOR
+            t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Resources/Concordia/Person/" + stem + ".png");
+            if (!t) t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Models/living/kenney-person/" + stem + ".png");
+#endif
+            return t;
+        }
+
+        void LateUpdate()
+        {
+            if (!_built) return;
+            if (_authored && _plantFrames < 8)
+            {
+                StripGiantAndFallback();
+                PlantFeet();
+                _plantFrames++;
+            }
+
+            bool animating = _authored && _anim && _anim.runtimeAnimatorController && _anim.enabled && _grounded;
+            if (!animating)
+            {
+                if (_authored) ApplyAuthoredGait();
+                else ApplyPrimitiveGait();
+            }
+            else
+                ApplyAuthoredAttitude();
+
+            if (_slashT > 0f && _uArmR)
+            {
+                _slashT -= Time.deltaTime;
+                var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
+                float wind = t < 0.25f ? t / 0.25f : t < 0.45f ? 1f : 1f - (t - 0.45f) / 0.55f;
+                var swing = t < 0.4f ? Mathf.Lerp(-70f, 100f, t / 0.4f) : Mathf.Lerp(100f, 0f, (t - 0.4f) / 0.6f);
+                _uArmR.localRotation *= Quaternion.Euler(swing * wind, 18f * wind, 0f);
+            }
+
+            if (_eyeL && _eyeR && _eye0.sqrMagnitude > 0.0001f)
+            {
+                float blink = Mathf.PingPong(Time.time * 0.35f + transform.position.x, 3.2f);
+                float lid = blink > 3.05f ? 0.15f : 1f;
+                _eyeL.localScale = new Vector3(_eye0.x, _eye0.y * lid, _eye0.z);
+                _eyeR.localScale = new Vector3(_eye0.x, _eye0.y * lid, _eye0.z);
+            }
+        }
+
+        void ApplyPrimitiveGait()
+        {
+            if (!_hip || !_uArmL || !_uArmR) return;
+            float dt = Time.deltaTime;
+            _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-14f * dt));
+            _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
+            if (_hitT > 0f) _hitT -= dt;
+            if (_landT > 0f) _landT -= dt;
+            float spd = _shown;
+            if (spd > 0.25f) _phase += dt * Mathf.Lerp(5.2f, 9.2f, Mathf.InverseLerp(0.3f, 7f, spd));
+            else _phase += dt * 1.35f;
+
+            float walk = Mathf.InverseLerp(0.28f, 4.4f, spd);
+            float run = Mathf.InverseLerp(4.0f, 7.0f, spd);
+            int ws = look != null ? look.walkStyle : 0;
+            float armAmp = ws == 1 ? 44f : ws == 2 ? 16f : ws == 3 ? 22f : ws == 4 ? 36f : 32f;
+            float legAmp = ws == 1 ? 40f : ws == 2 ? 24f : ws == 3 ? 28f : ws == 4 ? 42f : 34f;
+            float hipSway = ws == 1 ? 12f : ws == 2 ? 4f : 8f;
+            armAmp = Mathf.Lerp(0f, armAmp, walk);
+            legAmp = Mathf.Lerp(0f, legAmp, Mathf.Max(walk, run));
+            if (run > 0.1f) { armAmp += 12f * run; legAmp += 14f * run; }
+
+            float s = Mathf.Sin(_phase);
+            float c = Mathf.Cos(_phase);
+            float punch = Mathf.Sin(_phase * 2f);
+            float breath = Mathf.Sin(Time.time * 1.55f) * 0.014f;
+            int att = look != null ? look.attitude : 0;
+            float cock = att == 1 ? 7f : att == 2 ? 0f : att == 3 ? -4f : 3f;
+            float chin = att == 2 ? -8f : att == 3 ? 4f : 0f;
+            float idleArm = att == 2 ? -8f : att == 1 ? 6f : 0f;
+            float sit = _sitShown;
+            float hit = Mathf.Clamp01(_hitT / 0.32f);
+            float land = Mathf.Clamp01(_landT / 0.22f);
+
+            _hip.localRotation = Quaternion.Euler(
+                sit * 18f + run * 7f + land * 14f + hit * 10f,
+                cock * (1f - walk) + s * hipSway * walk,
+                c * 3.5f * walk);
+            if (_spine) _spine.localRotation = Quaternion.Euler(-4f + breath * 22f + sit * 10f + land * 8f, s * 5f * walk, -c * 2.5f * walk);
+            if (_chest) _chest.localRotation = Quaternion.Euler((att == 2 ? -6f : -2f) + breath * 10f + punch * 2f * walk, -s * 4f * walk, 0f);
+            if (_head) _head.localRotation = Quaternion.Euler(
+                chin + Mathf.Sin(Time.time * 0.7f) * 3f * (1f - walk) - land * 6f - hit * 8f,
+                Mathf.Sin(Time.time * 0.45f) * 8f * (1f - walk) + s * 6f * walk,
+                0f);
+
+            float hang = 78f;
+            _uArmL.localRotation = Quaternion.Euler(-armAmp * s + idleArm + punch * 4f * walk, 8f, hang);
+            if (sword)
+            {
+                _uArmR.localRotation = Quaternion.Euler(armAmp * s * 0.35f - idleArm, 18f, -50f);
+                if (_fArmR) _fArmR.localRotation = Quaternion.Euler(12f + walk * 8f, 0f, -38f);
+            }
+            else
+            {
+                _uArmR.localRotation = Quaternion.Euler(armAmp * s - idleArm, -8f, -hang);
+                if (_fArmR) _fArmR.localRotation = Quaternion.Euler(0f, 0f, -10f - walk * 14f);
+            }
+            if (_fArmL) _fArmL.localRotation = Quaternion.Euler(0f, 0f, 10f + walk * 14f);
+
+            float squat = sit * 55f + land * 18f + hit * 12f;
+            float kneeL = Mathf.Max(0f, -s) * legAmp * 0.95f;
+            float kneeR = Mathf.Max(0f, s) * legAmp * 0.95f;
+            if (_uLegL) _uLegL.localRotation = Quaternion.Euler(legAmp * s + squat, 0f, 4f);
+            if (_uLegR) _uLegR.localRotation = Quaternion.Euler(-legAmp * s + squat, 0f, -4f);
+            if (_lLegL) _lLegL.localRotation = Quaternion.Euler(kneeL + sit * 40f, 0f, 0f);
+            if (_lLegR) _lLegR.localRotation = Quaternion.Euler(kneeR + sit * 40f, 0f, 0f);
+            if (_footL) _footL.localRotation = Quaternion.Euler(-6f - sit * 10f + Mathf.Max(0f, s) * 18f * walk, 0f, 0f);
+            if (_footR) _footR.localRotation = Quaternion.Euler(-6f - sit * 10f + Mathf.Max(0f, -s) * 18f * walk, 0f, 0f);
+
+            if (!_grounded)
+            {
+                float rising = _vert > 0.4f ? 1f : 0f;
+                if (_uLegL) _uLegL.localRotation = Quaternion.Euler(rising * -16f + 12f, 0f, 6f);
+                if (_uLegR) _uLegR.localRotation = Quaternion.Euler(rising * -16f + 12f, 0f, -6f);
+                if (_lLegL) _lLegL.localRotation = Quaternion.Euler(50f, 0f, 0f);
+                if (_lLegR) _lLegR.localRotation = Quaternion.Euler(50f, 0f, 0f);
+                _uArmL.localRotation = Quaternion.Euler(rising * -20f, 0f, 50f);
+                _uArmR.localRotation = Quaternion.Euler(rising * -20f, 0f, -50f);
+            }
+        }
+
+        void HangAuthoredArms(float walk)
+        {
+            float hang = Mathf.Lerp(72f, 28f, walk);
+            if (_uArmL) _uArmL.localRotation = _lArmRest * Quaternion.Euler(0f, 0f, hang);
+            if (_uArmR) _uArmR.localRotation = _rArmRest * Quaternion.Euler(0f, 0f, -hang);
+        }
+
+        void ApplyAuthoredGait()
+        {
+            float dt = Time.deltaTime;
+            float spd = _grounded ? _speed : 0f;
+            _phase += dt * (spd > 0.3f ? Mathf.Lerp(5f, 9f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.5f);
+            float w = Mathf.InverseLerp(0.3f, 4.5f, spd);
+            float s = Mathf.Sin(_phase);
+            HangAuthoredArms(w);
+            if (_uArmL) _uArmL.localRotation = _lArmRest * Quaternion.Euler(-28f * s * w, 0f, Mathf.Lerp(72f, 28f, w));
+            if (_uArmR) _uArmR.localRotation = _rArmRest * Quaternion.Euler(28f * s * w, 0f, -Mathf.Lerp(72f, 28f, w));
+            if (_uLegL) _uLegL.localRotation = _lUpRest * Quaternion.Euler(32f * s * w, 0f, 0f);
+            if (_uLegR) _uLegR.localRotation = _rUpRest * Quaternion.Euler(-32f * s * w, 0f, 0f);
+            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(Mathf.Sin(Time.time * 1.6f) * 3f, 4f * s * w, 0f);
+            ApplyAuthoredAttitude();
+            if (!_grounded)
+            {
+                var rising = _vert > 0.4f;
+                var tuck = rising ? 0.8f : 0.25f;
+                if (_uLegL) _uLegL.localRotation = _lUpRest * Quaternion.Euler(rising ? -16f : 14f, 0f, 6f);
+                if (_uLegR) _uLegR.localRotation = _rUpRest * Quaternion.Euler(rising ? -16f : 14f, 0f, -6f);
+                if (_lLegL) _lLegL.localRotation = _lLegRest * Quaternion.Euler(tuck * 65f, 0f, 0f);
+                if (_lLegR) _lLegR.localRotation = _rLegRest * Quaternion.Euler(tuck * 65f, 0f, 0f);
+                if (_uArmL) _uArmL.localRotation = _lArmRest * Quaternion.Euler(rising ? -22f : 12f, 0f, 40f);
+                if (_uArmR) _uArmR.localRotation = _rArmRest * Quaternion.Euler(rising ? -22f : 12f, 0f, -40f);
+            }
+        }
+
+        void ApplyAuthoredAttitude()
+        {
+            if (!_head) return;
+            int att = look != null ? look.attitude : 0;
+            float chin = att == 2 ? -8f : att == 3 ? 4f : 0f;
+            float walk = Mathf.InverseLerp(0.35f, 4.6f, _grounded ? _speed : 0f);
+            _head.localRotation = _headRest * Quaternion.Euler(
+                chin + Mathf.Sin(Time.time * 0.7f) * 3f * (1f - walk),
+                Mathf.Sin(Time.time * 0.45f) * 8f * (1f - walk), 0f);
+        }
+
+
+        void StripGiantAndFallback()
+        {
+            bool any = false;
+            Bounds enc = default;
+            Renderer biggest = null;
+            float maxDim = 0f;
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var s = r.bounds.size;
+                float d = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
+                if (d > maxDim) { maxDim = d; biggest = r; }
+                string n = r.gameObject.name;
+                bool extra = n == "Crop" || n == "Short" || n == "Sweep" || n == "Bun" || n == "BunKnot"
+                    || n == "Long" || n == "LongFall" || n == "Topknot" || n == "Knot"
+                    || n == "Coat" || n == "CoatL" || n == "CoatR" || n == "Tunic" || n == "Sash" || n == "Pelvis";
+                if (_authored && extra && !(r is SkinnedMeshRenderer))
+                {
+                    r.enabled = false;
+                    r.gameObject.SetActive(false);
+                    continue;
+                }
+                if (d > 6.5f && !(r is SkinnedMeshRenderer))
+                {
+                    r.enabled = false;
+                    continue;
+                }
+                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                if (!any) { enc = r.bounds; any = true; }
+                else enc.Encapsulate(r.bounds);
+            }
+            float hy = any ? enc.size.y : 0f;
+            bool broken = !any || hy < 0.45f || hy > 6.5f;
+            try
+            {
+                var kenneyXf = transform.Find("KenneyPerson");
+                System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
+                    System.DateTime.Now.ToString("o")
+                    + " authored=" + _authored
+                    + " enc=" + (any ? enc.ToString() : "none")
+                    + " hy=" + hy.ToString("0.000")
+                    + " maxDim=" + maxDim.ToString("0.000")
+                    + " biggest=" + (biggest ? biggest.name : "null")
+                    + " broken=" + broken
+                    + " kenneyLossy=" + (kenneyXf ? kenneyXf.lossyScale.ToString() : "none")
+                    + " personLossy=" + transform.lossyScale
+                    + "\n");
+            }
+            catch { }
+            if (!broken) return;
+            var kenney = transform.Find("KenneyPerson");
+            if (kenney)
+            {
+                kenney.gameObject.SetActive(false);
+                Object.Destroy(kenney.gameObject);
+            }
+            _authored = false;
+            _built = false;
+            _skinMesh = null;
+            _anim = null;
+            _hip = _spine = _chest = _neck = _head = null;
+            _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
+            _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
+            _hairRoot = _coat = _coatL = _coatR = _tunic = _sash = _pelvisMesh = _skull = _jaw = null;
+            Build();
+            Apply(look);
+            Debug.LogWarning("Concordia ModularPerson Kenney unusable (hy=" + hy + " maxDim=" + maxDim + ") — primitive visible fallback");
+        }
+
+        void PlantFeet()
+        {
+            var skins = GetComponentsInChildren<SkinnedMeshRenderer>();
+            if (skins.Length == 0) return;
+            var b = skins[0].bounds;
+            for (int i = 1; i < skins.Length; i++) b.Encapsulate(skins[i].bounds);
+            var cc = GetComponentInParent<CharacterController>();
+            float ground = cc ? cc.transform.position.y : transform.position.y;
+            var delta = ground - b.min.y;
+            if (Mathf.Abs(delta) < 0.002f) return;
+            if (Mathf.Abs(delta) > 2.5f) return;
+            transform.position += Vector3.up * delta;
+        }
+
+        static void Capture(Transform t, ref Quaternion rest)
+        {
+            if (t) rest = t.localRotation;
+        }
+
+        static Transform FindBone(Transform root, params string[] names)
+        {
+            var all = root.GetComponentsInChildren<Transform>(true);
+            foreach (var n in names)
+            foreach (var x in all)
+                if (string.Equals(x.name, n, System.StringComparison.OrdinalIgnoreCase))
+                    return x;
+            return null;
+        }
+
+        static Transform Bone(Transform parent, string n, Vector3 local)
+        {
+            var t = new GameObject(n).transform;
+            t.SetParent(parent, false);
+            t.localPosition = local;
+            t.localRotation = Quaternion.identity;
+            return t;
+        }
+
+        static GameObject Part(Transform parent, PrimitiveType t, Vector3 pos, Vector3 sc, Material mat, string n)
+        {
+            var go = GameObject.CreatePrimitive(t);
+            go.name = n;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+            go.transform.localScale = sc;
+            Object.Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            if (r) r.sharedMaterial = mat;
+            go.layer = parent.gameObject.layer;
+            return go;
+        }
+
+        Renderer[] FindRend(params string[] names)
+        {
+            var list = new System.Collections.Generic.List<Renderer>();
+            var all = GetComponentsInChildren<Renderer>(true);
+            foreach (var r in all)
+                foreach (var n in names)
+                    if (r.gameObject.name == n) list.Add(r);
+            return list.ToArray();
+        }
+
+        static void Tint(Renderer[] rs, Color c, bool emit = false)
+        {
+            if (rs == null) return;
+            var m = emit ? HubLook.Emit(c, 1.2f) : HubLook.Lit(c, 0.04f, 0.34f);
+            foreach (var r in rs) if (r) r.sharedMaterial = m;
+        }
+
+        static GameObject MakeSword()
+        {
+            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("weapon-sword");
+            if (mesh)
+            {
+                var held = Object.Instantiate(mesh);
+                held.name = "HeldSword";
+                foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                return held;
+            }
+            var g = new GameObject("HeldSword");
+            void Bit(PrimitiveType t, Vector3 p, Vector3 s, Color c)
+            {
+                var m = GameObject.CreatePrimitive(t);
+                m.transform.SetParent(g.transform, false);
+                m.transform.localPosition = p;
+                m.transform.localScale = s;
+                Object.Destroy(m.GetComponent<Collider>());
+                m.GetComponent<Renderer>().sharedMaterial = HubLook.Lit(c, 0.6f, 0.7f);
+            }
+            Bit(PrimitiveType.Cylinder, new Vector3(0, 0.07f, 0), new Vector3(0.04f, 0.07f, 0.04f), new Color(0.3f, 0.2f, 0.12f));
+            Bit(PrimitiveType.Cube, new Vector3(0, 0.16f, 0), new Vector3(0.22f, 0.03f, 0.04f), new Color(0.85f, 0.82f, 0.75f));
+            Bit(PrimitiveType.Cube, new Vector3(0, 0.55f, 0), new Vector3(0.035f, 0.75f, 0.09f), new Color(0.9f, 0.88f, 0.82f));
+            return g;
+        }
+    }
+}

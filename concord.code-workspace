@@ -1,0 +1,66 @@
+{
+  "folders": [
+    {
+      "name": "Concord",
+      "path": "."
+    },
+    {
+      "name": "Unity Concordia",
+      "path": "apps/concordia-living-world/unity-client"
+    },
+    {
+      "name": "Godot Concordia",
+      "path": "world-lens-godot"
+    },
+    {
+      "name": "Frontend",
+      "path": "concord-frontend"
+    },
+    {
+      "name": "Server",
+      "path": "server"
+    },
+    {
+      "name": "Mobile",
+      "path": "concord-mobile"
+    }
+  ],
+  "settings": {
+    "eslint.workingDirectories": [
+      { "directory": "server" },
+      { "directory": "concord-frontend" }
+    ],
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact"
+    ],
+    "javascript.validate.enable": false,
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "server/data": true,
+      "audit/cartograph": true,
+      "**/Library": true,
+      "**/Temp": true,
+      "**/Logs": true,
+      "**/UserSettings": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.next/**": true,
+      "server/data/**": true,
+      "**/Library/**": true,
+      "**/Temp/**": true,
+      "**/Logs/**": true,
+      "**/UserSettings/**": true
+    },
+    "files.exclude": {
+      "**/Library": true,
+      "**/Temp": true,
+      "**/Logs": true,
+      "**/UserSettings": true
+    }
+  }
+}

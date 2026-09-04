@@ -1,0 +1,14 @@
+Soldier.glb, Xbot.glb
+  Mixamo / Adobe. Redistributed as used in the three.js examples.
+
+Flamingo.glb, Horse.glb, Parrot.glb, Stork.glb
+  three.js examples (mrdoob/three.js).
+
+Fox.glb
+  Khronos glTF Sample Assets, CC0.
+
+gothic_statue, boulder_01, marble_bust_01
+  Poly Haven, CC0 1.0. https://polyhaven.com/
+
+Kenney Nature Kit trees/rocks/cliffs
+  Kenney.nl, CC0.
