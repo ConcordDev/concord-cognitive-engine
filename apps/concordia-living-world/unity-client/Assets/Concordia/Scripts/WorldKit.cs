@@ -4,7 +4,7 @@ namespace Concordia
 {
     /// <summary>
     /// One hold per world. Distinct ground, sky, landmark, streets, keep.
-    /// Geometry is Kenney/KayKit + PBR — law and names come from Canon.
+    /// Geometry is DressVocab (Store first, Kenney fallback) + PBR — law and names come from Canon.
     /// </summary>
     public static class WorldKit
     {
@@ -52,7 +52,8 @@ namespace Concordia
                     HubLook.Point(root, "AshHearth", new Vector3(0, 4, 10), new Color(1f, 0.55f, 0.22f), 3.5f, 18f, true);
                     break;
                 case WorldId.Tunya:
-                    FreePacks.Spawn("tree_oak", root, new Vector3(0, 0, 8), 0, 16f);
+                    var oak = DressVocab.Tree(WorldId.Tunya);
+                    FreePacks.Spawn(oak, root, new Vector3(0, 0, 8), 0, 16f);
                     FreePacks.Spawn("tree_pineTallA", root, new Vector3(6, 0, 12), 40, 12f);
                     FreePacks.Spawn("tree_pineTallA", root, new Vector3(-7, 0, 11), -30, 13f);
                     for (int i = 0; i < 24; i++)

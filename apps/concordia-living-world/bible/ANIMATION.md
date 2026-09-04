@@ -14,4 +14,4 @@ Gameplay state → animation presents it. Layers/masks. No root-motion stealing 
 
 ## Gap
 
-NPC gait is still often procedural. No IK/cloth. Soldier clips are locomotion-only — jump/hurt stay procedural.
+NPC gait is still often procedural. No IK/cloth. Soldier clips are locomotion-only — jump/hurt stay procedural. Human Melee Animations FREE (store 165785) is on the curated stack in `VISUAL.md` and is not imported yet — Concordia’s combat state machine stays the authoritative layer when those clips land.

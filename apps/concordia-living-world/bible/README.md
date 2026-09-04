@@ -11,6 +11,7 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 | Doc | LIVE snapshot |
 |---|---|
 | WORLD | 10 kingdoms + refusals; CityAtlas settlements; CrossRing cargo/plots/travelers; WorldClock hours + authored events persist across gates |
+| VISUAL | DressVocab culture kits (court/grove/ash/street/grid/drift); Store-first / Kenney-fallback; fake-window LOD; curated free Asset Store stack |
 | LORE | JSON under `Resources/Concordia/Canon/` + `bible.ts` |
 | CHARACTERS | Hub guests speak; faction sash on authored people; unlabeled ambient stay unlabeled; talk carries last event as rumor |
 | FACTIONS | JSON camps + weapon kits; sash color from `visual.primary_color` |

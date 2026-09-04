@@ -127,6 +127,31 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
+  it("DressVocab picks a culture kit per WorldId and never invents a kingdom name", () => {
+    const packs = src("FreePacks.cs");
+    const fill = src("RealmFill.cs");
+    const interior = src("BuildingInterior.cs");
+    assert.match(packs, /class DressVocab/);
+    assert.match(packs, /return "court"/);
+    assert.match(packs, /return "grove"/);
+    assert.match(packs, /return "ash"/);
+    assert.match(packs, /return "street"/);
+    assert.match(packs, /return "grid"/);
+    assert.match(packs, /return "drift"/);
+    assert.match(packs, /Assets\/Store/);
+    assert.match(packs, /IsStorePath/);
+    assert.match(packs, /PlayableRooms\(int cityIndex\) => cityIndex == 0 \? 4 : 0/);
+    assert.match(packs, /WantsFakeWindows/);
+    assert.doesNotMatch(packs, /Aurelia/);
+    assert.doesNotMatch(packs, /Concord admits he loves her/);
+    assert.match(fill, /DressVocab\.Kit\(/);
+    assert.match(fill, /BuildingInterior\.FakeWindows/);
+    assert.match(fill, /FortRim/);
+    assert.match(fill, /concordia-visual\.txt/);
+    assert.match(interior, /public static void FakeWindows/);
+    assert.match(interior, /FakeWindow/);
+  });
+
   it("cook is a station you walk to, and talk carries the last event as a rumor", () => {
     const gate = src("WorldGate.cs");
     const game = src("ConcordiaGame.cs");

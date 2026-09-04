@@ -454,7 +454,7 @@ namespace Concordia // keep-spawn-assign
 
     /// <summary>
     /// One walkable town per authored city: streets, enterable buildings, a gate.
-    /// Geometry is Kenney; the name and text are canon.
+    /// Geometry is DressVocab (Store pack first, Kenney fallback). Names stay canon.
     /// </summary>
     public static class CityTown
     {
@@ -468,6 +468,8 @@ namespace Concordia // keep-spawn-assign
             {
                 System.IO.File.WriteAllText("/tmp/concordia-atlas.txt",
                     System.DateTime.Now.ToString("o") + "\n" + CityAtlas.Dump());
+                System.IO.File.WriteAllText("/tmp/concordia-visual.txt",
+                    System.DateTime.Now.ToString("o") + "\n" + DressVocab.Audit());
             }
             catch { }
         }
@@ -489,7 +491,7 @@ namespace Concordia // keep-spawn-assign
             CrossStreets(hold, yaw);
             Sidewalks(hold);
 
-            var kit = Kit(w.id);
+            var kit = DressVocab.Kit(w.id);
             var plans = Plans(w.id);
             Vector3[] slots =
             {
@@ -504,7 +506,8 @@ namespace Concordia // keep-spawn-assign
                 new Vector3(-5.4f, 0f, 9.2f),
                 new Vector3(5.6f, 0f, -9.4f)
             };
-            int interiors = i < 6 ? 4 : 0;
+            int interiors = DressVocab.PlayableRooms(i);
+            bool fake = DressVocab.WantsFakeWindows(i);
             for (int s = 0; s < slots.Length; s++)
             {
                 var local = slots[s];
@@ -513,10 +516,12 @@ namespace Concordia // keep-spawn-assign
                 float h = stem.Contains("skyscraper") ? 14f : stem.Contains("tent") ? 3.4f : 6.2f;
                 var go = FreePacks.Spawn(stem, hold, world, yaw + (s % 2 == 0 ? 0f : 180f), h, required: false);
                 if (go && s < interiors) BuildingInterior.Open(go, plans[s % plans.Length], world);
+                else if (go && fake && s < 4) BuildingInterior.FakeWindows(go);
             }
 
             StreetDress(hold, w, yaw);
             EdgeFlora(hold, w, yaw);
+            FortRim(hold, w, yaw);
             Outskirts(hold, w, i);
             AmbientWalkers(hold, w, i);
             var beacon = hold.gameObject.AddComponent<QuestBeacon>();
@@ -600,8 +605,9 @@ namespace Concordia // keep-spawn-assign
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(2.4f, 0f, 4.2f)));
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(-8.2f, 0f, 2.6f)));
             HubLook.Lantern(hold, hold.TransformPoint(new Vector3(8.2f, 0f, -2.8f)));
-            FreePacks.Spawn("barrel", hold, hold.TransformPoint(new Vector3(-3.2f, 0f, -1.2f)), yaw, 1.1f);
-            FreePacks.Spawn("barrel", hold, hold.TransformPoint(new Vector3(3.4f, 0f, 1.6f)), yaw + 40f, 1.1f);
+            var prop = DressVocab.Prop(w.id);
+            FreePacks.Spawn(prop, hold, hold.TransformPoint(new Vector3(-3.2f, 0f, -1.2f)), yaw, 1.1f);
+            FreePacks.Spawn(prop, hold, hold.TransformPoint(new Vector3(3.4f, 0f, 1.6f)), yaw + 40f, 1.1f);
             FreePacks.Spawn("crate", hold, hold.TransformPoint(new Vector3(-4.6f, 0f, 2.2f)), yaw + 15f, 0.9f);
             FreePacks.Spawn("crate", hold, hold.TransformPoint(new Vector3(4.8f, 0f, -2.0f)), yaw + 70f, 0.9f);
             FreePacks.Spawn("table", hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 1.2f)), yaw, 1.0f);
@@ -637,6 +643,32 @@ namespace Concordia // keep-spawn-assign
                     : stem.Contains("crops") ? 1.4f : 0.7f;
                 FreePacks.Spawn(stem, hold, hold.TransformPoint(local), yaw + k * 28f, h);
             }
+            var grass = DressVocab.Grass(w.id);
+            for (int k = 0; k < 14; k++)
+            {
+                float a = k / 14f * Mathf.PI * 2f + 0.41f;
+                var local = new Vector3(Mathf.Cos(a) * 13.1f, 0f, Mathf.Sin(a) * 13.1f);
+                FreePacks.Spawn(grass, hold, hold.TransformPoint(local), yaw + k * 19f, 0.55f);
+            }
+        }
+
+        static void FortRim(Transform hold, WorldDef w, float yaw)
+        {
+            if (w.id != WorldId.Fantasy && w.id != WorldId.Ruins) return;
+            var wall = DressVocab.Wall(w.id);
+            var tower = DressVocab.Tower(w.id);
+            Vector3[] posts =
+            {
+                new Vector3(-12.6f, 0f, 12.6f),
+                new Vector3(12.6f, 0f, 12.6f),
+                new Vector3(-12.6f, 0f, -12.6f),
+                new Vector3(12.6f, 0f, -12.6f)
+            };
+            for (int i = 0; i < posts.Length; i++)
+                FreePacks.Spawn(tower, hold, hold.TransformPoint(posts[i]), yaw + i * 90f, 8.4f);
+            FreePacks.Spawn(wall, hold, hold.TransformPoint(new Vector3(-12.6f, 0f, 0f)), yaw + 90f, 4.2f);
+            FreePacks.Spawn(wall, hold, hold.TransformPoint(new Vector3(12.6f, 0f, 0f)), yaw + 90f, 4.2f);
+            FreePacks.Spawn(wall, hold, hold.TransformPoint(new Vector3(0f, 0f, 12.6f)), yaw, 4.2f);
         }
 
         static void AmbientWalkers(Transform hold, WorldDef w, int cityIndex)
@@ -688,19 +720,6 @@ namespace Concordia // keep-spawn-assign
                 }
             }
         }
-
-        static string[] Kit(WorldId id) => id switch
-        {
-            WorldId.Ruins => new[] { "crypt-a", "crypt-small", "column-large", "crypt-large", "altar-stone", "gravestone" },
-            WorldId.Tunya => new[] { "tent_detailedOpen", "tent_smallOpen", "tree_oak", "building-small-a", "crops_cornStageD", "tent_detailedOpen" },
-            WorldId.Fantasy => new[] { "building-small-b", "tower-square-base", "hedge-large", "building-small-c", "statue", "tower-square-base" },
-            WorldId.Crime => new[] { "building-type-h", "building-type-c", "building-d", "building-small-d", "dumpster", "building-type-h" },
-            WorldId.Cyber => new[] { "building-skyscraper-a", "corridor_end", "building-skyscraper-c", "detail-overhang-wide", "column", "building-skyscraper-a" },
-            WorldId.Frontier => new[] { "tent_detailedOpen", "cart", "palm-straight", "tent_smallOpen", "barrel", "cart" },
-            WorldId.Superhero => new[] { "building-skyscraper-d", "building-type-a", "building-skyscraper-b", "building-small-d", "building-type-a", "building-skyscraper-d" },
-            WorldId.Sere => new[] { "building-d", "building-type-h", "building-skyscraper-e", "building-small-c", "dumpster", "building-d" },
-            _ => new[] { "detail-crystal-large", "tower-hexagon-mid", "column-large", "crypt-small", "tower-hexagon-base", "detail-crystal-large" }
-        };
 
         static string[] Plans(WorldId id) => id switch
         {

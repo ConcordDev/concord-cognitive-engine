@@ -3,14 +3,39 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Hollow floorplan + court-facing door. Kenney shells are solid meshes,
-    /// so the facade hides while you are inside.
+    /// Hollow floorplan + court-facing door. Solid store/Kenney shells hide
+    /// while you are inside. FakeWindows is the density LOD — glow only.
     /// </summary>
     public class BuildingInterior : MonoBehaviour
     {
         public string plan;
         float _w = 8f, _d = 7f, _h = 3.15f;
         Renderer[] _shell;
+
+        public static void FakeWindows(GameObject shell)
+        {
+            if (!shell) return;
+            var rends = shell.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var glow = new Color(1f, 0.78f, 0.42f);
+            var mat = HubLook.Lit(glow, 0f, 0.04f);
+            float face = Mathf.Max(0.8f, b.size.z * 0.48f);
+            for (int i = 0; i < 3; i++)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                go.name = "FakeWindow";
+                go.transform.SetParent(shell.transform, false);
+                go.transform.localPosition = new Vector3(-1.35f + i * 1.35f, 1.55f, -face);
+                go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                go.transform.localScale = new Vector3(0.52f, 0.68f, 1f);
+                var r = go.GetComponent<Renderer>();
+                if (r) r.sharedMaterial = mat;
+                var col = go.GetComponent<Collider>();
+                if (col) Object.Destroy(col);
+            }
+        }
 
         public static BuildingInterior Open(GameObject shell, string plan, Vector3 worldPos)
         {
