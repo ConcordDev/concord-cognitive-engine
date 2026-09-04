@@ -36,7 +36,7 @@ namespace Concordia
             CityAtlas.Invalidate();
             root = new GameObject("World").transform;
             ModularPerson.CastingWorld = world;
-            FreePacks.Index();
+            FreePacks.Reindex();
             var w = Canon.Get(world);
             BuildGround(w);
             DressSky(w);

@@ -17,23 +17,19 @@ namespace Concordia
         static Dictionary<string, string> _meshes;
         static bool _indexed;
 
+        public static void Reindex()
+        {
+            _indexed = false;
+            _meshes = null;
+            Index();
+        }
+
         public static void Index()
         {
 #if UNITY_EDITOR
             if (_indexed) return;
             _meshes = new Dictionary<string, string>(4096);
-            var folders = new[]
-            {
-                "Assets/Concordia/Models",
-                "Assets/Prefabs",
-                "Assets/SourceFiles",
-                "Assets/VFX",
-                "Assets/Audio",
-                "Assets/Store",
-                "Assets/AssetStore",
-                "Assets/FreeAssets"
-            };
-            foreach (var guid in AssetDatabase.FindAssets("t:GameObject", folders))
+            foreach (var guid in AssetDatabase.FindAssets("t:GameObject", SearchFolders()))
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
                 var stem = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
@@ -46,8 +42,44 @@ namespace Concordia
                     _meshes[stem] = path;
             }
             _indexed = true;
-            Debug.Log("Concordia FreePacks indexed " + _meshes.Count + " meshes");
+            Debug.Log("Concordia FreePacks indexed " + _meshes.Count + " meshes (" + StoreStemCount() + " from imported packs)");
 #endif
+        }
+
+        /// <summary>
+        /// Kenney lives under Concordia/Models. My Assets imports usually land as
+        /// Assets/Store/… or Assets/<Pack Name>/ — the old fixed folder list
+        /// never saw those, so DressVocab kept Kenney even after a real import.
+        /// </summary>
+        static string[] SearchFolders()
+        {
+            var list = new List<string>
+            {
+                "Assets/Concordia/Models",
+                "Assets/Prefabs",
+                "Assets/SourceFiles",
+                "Assets/VFX",
+                "Assets/Audio",
+                "Assets/Store",
+                "Assets/AssetStore",
+                "Assets/FreeAssets"
+            };
+            try
+            {
+                var assets = Application.dataPath;
+                if (Directory.Exists(assets))
+                {
+                    foreach (var dir in Directory.GetDirectories(assets))
+                    {
+                        var name = Path.GetFileName(dir);
+                        if (IsReservedTop(name)) continue;
+                        var assetPath = "Assets/" + name;
+                        if (!list.Contains(assetPath)) list.Add(assetPath);
+                    }
+                }
+            }
+            catch { }
+            return list.ToArray();
         }
 
         public static GameObject Mesh(string stem)
@@ -66,8 +98,126 @@ namespace Concordia
             return null;
         }
 
-        static bool IsStorePath(string path) =>
-            path.Contains("/Store/") || path.Contains("/AssetStore/") || path.Contains("/FreeAssets/");
+        static bool IsReservedTop(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return true;
+            switch (name)
+            {
+                case "Concordia":
+                case "Editor":
+                case "Settings":
+                case "Plugins":
+                case "Scenes":
+                case "Scripts":
+                case "Screenshots":
+                case "StreamingAssets":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        static bool IsStorePath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            var p = path.Replace("\\", "/");
+            if (p.Contains("/Store/") || p.Contains("/AssetStore/") || p.Contains("/FreeAssets/"))
+                return true;
+            if (!p.StartsWith("Assets/")) return false;
+            var rest = p.Length > 7 ? p.Substring(7) : "";
+            var slash = rest.IndexOf('/');
+            var top = slash >= 0 ? rest.Substring(0, slash) : rest;
+            return !IsReservedTop(top);
+        }
+
+        static bool SkipFuzzy(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return true;
+            return stem.Contains("lod2") || stem.Contains("lod3") || stem.Contains("lod4")
+                || stem.Contains("collision") || stem.Contains("collider") || stem.StartsWith("col_")
+                || stem.Contains("demo") || stem.Contains("screenshot");
+        }
+
+        static bool StemHasNeedle(string stem, string needle)
+        {
+            if (string.IsNullOrEmpty(stem) || string.IsNullOrEmpty(needle)) return false;
+            var s = stem.ToLowerInvariant();
+            var n = needle.ToLowerInvariant();
+            if (s == n) return true;
+            var want = n.Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
+            if (want.Length < 3) return false;
+            var compact = s.Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", "");
+            if (want.Length >= 4 && compact.Contains(want)) return true;
+            var parts = s.Split(new[] { '_', '-', ' ', '.' }, System.StringSplitOptions.RemoveEmptyEntries);
+            foreach (var p in parts)
+                if (p == n || p == want || (want.Length >= 4 && p.StartsWith(want)))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// First imported-pack stem whose filename tokens match a culture needle
+        /// (SM_Bld_House_01 matches House). Kenney paths are ignored here.
+        /// </summary>
+        public static string FirstStoreStemContaining(string[] needles)
+        {
+            if (needles == null || needles.Length == 0) return null;
+            Index();
+#if UNITY_EDITOR
+            if (_meshes == null) return null;
+            string best = null;
+            foreach (var kv in _meshes)
+            {
+                if (!IsStorePath(kv.Value)) continue;
+                if (SkipFuzzy(kv.Key)) continue;
+                foreach (var n in needles)
+                {
+                    if (!StemHasNeedle(kv.Key, n)) continue;
+                    if (best == null || kv.Key.Length < best.Length) best = kv.Key;
+                }
+            }
+            return best;
+#else
+            return null;
+#endif
+        }
+
+        public static int StoreStemCount()
+        {
+            Index();
+#if UNITY_EDITOR
+            if (_meshes == null) return 0;
+            int n = 0;
+            foreach (var kv in _meshes)
+                if (IsStorePath(kv.Value)) n++;
+            return n;
+#else
+            return 0;
+#endif
+        }
+
+        public static string[] ImportedPackFolders()
+        {
+            var found = new List<string>();
+            try
+            {
+                var assets = Application.dataPath;
+                if (!Directory.Exists(assets)) return System.Array.Empty<string>();
+                foreach (var dir in Directory.GetDirectories(assets))
+                {
+                    var name = Path.GetFileName(dir);
+                    if (IsReservedTop(name)) continue;
+                    var hasMesh = Directory.GetFiles(dir, "*.prefab", SearchOption.AllDirectories).Length > 0
+                               || Directory.GetFiles(dir, "*.fbx", SearchOption.AllDirectories).Length > 0
+                               || Directory.GetFiles(dir, "*.glb", SearchOption.AllDirectories).Length > 0;
+                    if (!hasMesh) continue;
+                    found.Add("Assets/" + name);
+                }
+            }
+            catch { }
+            found.Sort();
+            return found.ToArray();
+        }
 
 #if UNITY_EDITOR
         static bool TryLoadIndexed(string key, bool storeOnly, out GameObject go)
@@ -369,6 +519,8 @@ namespace Concordia
             if (prefer != null)
                 foreach (var n in prefer)
                     if (!string.IsNullOrEmpty(n) && FreePacks.HasStem(n)) return n;
+            var fuzzy = FreePacks.FirstStoreStemContaining(prefer);
+            if (!string.IsNullOrEmpty(fuzzy)) return fuzzy;
             return kenney;
         }
 
@@ -449,6 +601,16 @@ namespace Concordia
             sb.AppendLine("packs are raw material — Kenney is fallback, never the destination");
             sb.AppendLine("culture keys from WorldId: court grove ash street grid drift");
             sb.AppendLine("do not invent place names; no example kingdoms in plaques");
+            sb.AppendLine("MY ASSETS vs THIS PROJECT");
+            sb.AppendLine("Package Manager My Assets is the account catalog. Listed != imported.");
+            sb.AppendLine("Download + Import into this project (Assets/Store/ or Assets/<Pack Name>/).");
+            sb.AppendLine("indexed=" + FreePacks.IndexedStems().Length + " store=" + FreePacks.StoreStemCount());
+            var imported = FreePacks.ImportedPackFolders();
+            if (imported.Length == 0)
+                sb.AppendLine("  imported  (none — Kenney fallback is live)");
+            else
+                foreach (var folder in imported)
+                    sb.AppendLine("  imported  " + folder);
             foreach (var p in Curated)
                 sb.AppendLine("  " + p.id + "  " + p.role + "  " + (FolderPresent(p.needles) ? "PRESENT" : "pending (Kenney fallback)"));
             sb.AppendLine("House(Tunya)=" + House(WorldId.Tunya) + " culture=" + Culture(WorldId.Tunya));

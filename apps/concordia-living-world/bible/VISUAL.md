@@ -1,6 +1,6 @@
 # VISUAL
 
-**Status:** LIVE (vocabulary + Kenney fallback) · PENDING (Asset Store packs not in this tree)  
+**Status:** LIVE (vocabulary + Kenney fallback + My-Assets indexer) · PENDING (no pack folder imported into this project yet)  
 **Authority:** Unity (presentation) — culture keys come from `WorldId`, never invented place names  
 **Source:** `DressVocab` in `FreePacks.cs`, `CityTown` in `RealmFill.cs`, `BuildingInterior.cs`
 
@@ -17,7 +17,9 @@
 | Cyber / Superhero | grid | Lab / skyline stems. Robot Kyle is grid-only, never medieval population. |
 | Crucible | drift | Crystal / tower stems. |
 
-Resolution order: `Assets/Store` (and AssetStore / FreeAssets) → HubKit Kenney → primitive. A missing pack never blanks a town.
+Resolution order: imported My Assets (`Assets/Store/`, `Assets/AssetStore/`, `Assets/FreeAssets/`, or any other top-level `Assets/<Pack Name>/`) → exact stem → fuzzy token match (`SM_Bld_House_01` satisfies `House`) → HubKit Kenney → primitive. A missing pack never blanks a town.
+
+**My Assets ≠ this project.** Package Manager's My Assets page is the Unity account catalog. This machine's `Assets/Store/` is still the empty drop folder; `~/Library/Unity/Asset Store-5.x` has no downloads. Until a pack is imported here, the audit prints `imported (none — Kenney fallback is live)`. Concordia → Asset Store → Dump visual audit writes `/tmp/concordia-visual.txt` with `indexed=` / `store=` / each imported folder.
 
 Interior LOD (Tunya hitch budget):
 
@@ -51,7 +53,7 @@ Import under `unity-client/Assets/Store/`. Do **not** commit the ~1.8 GB town de
 | Controller reference | Starter Assets — ThirdPerson URP | [196526](https://assetstore.unity.com/packages/essentials/starter-assets-thirdperson-updates-in-new-charactercontroller-pa-196526) — do not replace Concordia’s controller |
 | FX | Particle Pack | [127325](https://assetstore.unity.com/packages/vfx/particles/particle-pack-127325) |
 
-Editor: **Concordia → Asset Store → 01…15**. Downloads require a signed-in Package Manager (My Assets). This machine had no `~/Library/Unity/Asset Store-5.x` cache, so every pack above is **pending** until imported.
+Editor: **Concordia → Asset Store → 01…15** and **Open My Assets**. Downloads require a signed-in Package Manager. Import into this `unity-client` project (Store folder or the pack's own root). Do not assume a pack listed in My Assets is dressed — the dump is the authority.
 
 ## TARGET
 
@@ -59,4 +61,4 @@ Editor: **Concordia → Asset Store → 01…15**. Downloads require a signed-in
 
 ## Gap
 
-Packs are not in the repo. Dressing still reads Kenney until My Assets lands under `Assets/Store/`. Combat clip graph is still incomplete (Human Melee not imported). Point Grass is not wired — EdgeFlora uses extra Kenney/PBR grass patches as the honest coverage until that renderer exists.
+Packs are not in this tree. Dressing still reads Kenney until a My Asset is imported into an indexed folder. Combat clip graph is still incomplete (Human Melee not imported). Point Grass is not wired — EdgeFlora uses extra Kenney/PBR grass patches as the honest coverage until that renderer exists.
