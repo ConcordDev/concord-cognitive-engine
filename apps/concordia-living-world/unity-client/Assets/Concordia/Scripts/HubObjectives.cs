@@ -387,15 +387,15 @@ namespace Concordia
         public static string MapWeapon(string raw)
         {
             var s = (raw ?? "").ToLowerInvariant();
-            if (s.Contains("spear") || s.Contains("lance")) return "weapon-spear";
-            if (s.Contains("staff") || s.Contains("wand")) return "staff";
-            if (s.Contains("dagger") || s.Contains("knife")) return "dagger";
-            if (s.Contains("axe")) return "axe";
-            if (s.Contains("bow")) return "bow";
-            if (s.Contains("mace") || s.Contains("club")) return "mace";
-            if (s.Contains("great")) return "greatsword";
-            if (s.Contains("shield")) return "shield-rectangle";
-            return "weapon-sword";
+            if (s.Contains("spear") || s.Contains("lance")) return DressVocab.Weapon("spear");
+            if (s.Contains("staff") || s.Contains("wand")) return DressVocab.Weapon(s.Contains("wand") ? "wand" : "staff");
+            if (s.Contains("dagger") || s.Contains("knife")) return DressVocab.Weapon("dagger");
+            if (s.Contains("axe")) return DressVocab.Weapon("axe");
+            if (s.Contains("bow")) return DressVocab.Weapon("bow");
+            if (s.Contains("mace") || s.Contains("club")) return DressVocab.Weapon("mace");
+            if (s.Contains("great")) return DressVocab.Weapon("greatsword");
+            if (s.Contains("shield")) return DressVocab.Weapon("shield");
+            return DressVocab.Weapon("sword");
         }
 
         public static WorldBook.Faction FactionOf(WorldId world, string factionId)

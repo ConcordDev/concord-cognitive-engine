@@ -20,6 +20,7 @@ namespace Concordia
 
         public static GameObject Attach(GameObject body, string stem, bool rightHand, float size)
         {
+            stem = DressVocab.Weapon(stem);
             var mesh = FreePacks.Mesh(stem);
             if (!mesh) return null;
             var person = body.GetComponentInChildren<ModularPerson>() ?? body.GetComponent<ModularPerson>();

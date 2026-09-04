@@ -173,7 +173,7 @@ namespace Concordia
         void Put(Transform room, string stem, Vector3 local, float yaw, float h)
         {
             var world = room.TransformPoint(local);
-            var go = FreePacks.Spawn(stem, room, world, room.eulerAngles.y + yaw, h);
+            var go = FreePacks.Spawn(DressVocab.Resolve(stem), room, world, room.eulerAngles.y + yaw, h);
             if (!go) return;
             go.transform.SetParent(room, true);
             if (stem == "kitchenStove") CookStation.Stamp(go);

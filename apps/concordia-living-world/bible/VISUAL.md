@@ -19,6 +19,18 @@
 
 Resolution order: imported My Assets (`Assets/Store/`, `Assets/AssetStore/`, `Assets/FreeAssets/`, or any other top-level `Assets/<Pack Name>/`) → **store exact** → **store fuzzy** (`house.002` satisfies `House`) → HubKit Kenney → primitive. A Kenney exact name no longer beats a store fuzzy match. A missing pack never blanks a town.
 
+**Wired spawn paths** (owned stem first, Kenney last):
+
+| Surface | Uses |
+|---|---|
+| Realm towns (`CityTown` / `KeepRing` / `EdgeFlora` / `StreetDress`) | `DressVocab.Kit` / House / Tree / Wall / Tower / Cart / Crate |
+| Hub arena + eight embassies | `Wall` / `Column` / `Tower` / `House` / `Weapon`. Frontier embassy stays road-only. Court stays unpaved. |
+| Realm training dummy | `HumanDummy_M White` then Kenney skeleton |
+| Guest / faction weapons | `Sword01` / `TH_Sword03` / `Shield03` / `Axe01`. Spear / staff / wand / dagger / mace stay Kenney. |
+| Sky when HDR is missing | BOXOPHOBIC Day/Night/Blend or `Skybox_Daytime` / `Skybox_Sunset` |
+| Rain / fireflies | RainMaker `RainPrefab` or `vfx_Rain_01` / `FireFlies` |
+| Grove extras | `lb_sparrow` on Tunya / Fantasy only — not the live fauna path |
+
 **My Assets ≠ this project.** Package Manager's My Assets page is the account catalog. This project now has imported pack folders (Mega Fantasy Props, Barking_Dog modular kit, Fantasy Forest, BOXOPHOBIC skybox, Kevin Iglesias dummy + motions, ExplosiveLLC mecanim, UnityTechnologies particles, GabrielAguiar VFX, living birds, EasyRoads3D, SUIMONO, MYFG weapons, Starter Assets reference, Convai SDK, and the rest of the owned set that fit on disk). Concordia → Asset Store → Dump visual audit writes `/tmp/concordia-visual.txt` with `indexed=` / `store=` / each imported folder. Listed-but-truncated downloads (Demo City, Big Oak, Sound FX) stay pending until a complete `.unitypackage` lands.
 
 Do **not** commit pack binaries. `Assets/Store/.gitignore` and the pack folders stay local.
@@ -64,4 +76,4 @@ Editor: **Concordia → Asset Store → Open My Assets**. Downloads require a si
 
 ## Gap
 
-Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). Point Grass is not owned — EdgeFlora uses extra Kenney/PBR grass patches plus Fantasy Forest `grass01`. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass.
+Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). No owned wheat / palm / hedge / dumpster / crypt / gravestone / crystal / sci-fi lab — those stay Kenney. Point Grass is not owned. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass. SUIMONO / Convai / Starter Assets stay imported, not live paths.

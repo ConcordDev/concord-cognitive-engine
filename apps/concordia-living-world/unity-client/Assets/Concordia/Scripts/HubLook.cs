@@ -499,10 +499,10 @@ namespace Concordia
             return sh;
         }
 
-        public static void ApplySky(WorldId world)
+        public static bool ApplySky(WorldId world)
         {
             if (TryHdrSky(world))
-                return;
+                return true;
             var sh = Shader.Find("Skybox/Procedural");
             if (sh)
             {
@@ -523,7 +523,7 @@ namespace Concordia
                 var suns = Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
                 for (int i = 0; i < suns.Length; i++)
                     if (suns[i] && suns[i].type == LightType.Directional) { RenderSettings.sun = suns[i]; break; }
-                return;
+                return false;
             }
             EnsureShaders();
             var fallback = new Material(_unlit != null ? _unlit : Shader.Find("Sprites/Default"));
@@ -531,6 +531,7 @@ namespace Concordia
             if (fallback.HasProperty("_BaseColor")) fallback.SetColor("_BaseColor", top);
             fallback.color = top;
             RenderSettings.skybox = fallback;
+            return false;
         }
 
         public static GameObject Prim(Transform parent, PrimitiveType t, Vector3 pos, Vector3 scale, Material mat, string n, bool collider = true)

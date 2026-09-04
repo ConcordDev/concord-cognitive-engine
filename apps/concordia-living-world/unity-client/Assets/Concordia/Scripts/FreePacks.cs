@@ -305,7 +305,7 @@ namespace Concordia
         }
 
         static bool IsTree(string s) =>
-            s.Contains("tree") || s.Contains("palm") || s.Contains("pine");
+            s.Contains("tree") || s.Contains("palm") || s.Contains("pine") || s.Contains("fir");
 
         static bool WantsSolid(string s, float maxDim)
         {
@@ -324,7 +324,8 @@ namespace Concordia
                 || s.Contains("room") || s.Contains("crate") || s.Contains("table")
                 || s.Contains("barrel") || s.Contains("cart") || s.Contains("desk")
                 || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
-                || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove"))
+                || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
+                || s.Contains("wagon") || s.Contains("well"))
                 return true;
             return maxDim >= 2.4f;
         }
@@ -544,41 +545,166 @@ namespace Concordia
         public static string House(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "Lab_Module", "SciFi_Wall", "console" }, "building-skyscraper-a");
-            if (c == "ash") return FirstStem(new[] { "Ruin", "Castle", "Keep" }, "crypt-a");
-            if (c == "street") return FirstStem(new[] { "Shop", "Tavern", "House_01" }, "building-type-h");
-            if (c == "court") return FirstStem(new[] { "building-type-a" }, "building-type-a");
-            if (id == WorldId.Frontier) return FirstStem(new[] { "Hut", "Cottage", "House" }, "tent_detailedOpen");
-            if (id == WorldId.Fantasy) return FirstStem(new[] { "House", "Cottage", "Manor" }, "building-small-b");
-            return FirstStem(new[] { "House", "Cottage", "Hut", "House_01" }, "tent_detailedOpen");
+            if (c == "grid") return FirstStem(new[] { "Room_Big_Part_01", "Wall_Simple_01", "house.002" }, "building-skyscraper-a");
+            if (c == "ash") return FirstStem(new[] { "tower_destroyed", "house.003", "house.002" }, "crypt-a");
+            if (c == "street") return FirstStem(new[] { "house.002", "House.001", "house.003" }, "building-type-h");
+            if (c == "court") return FirstStem(new[] { "tower", "house.002" }, "building-type-a");
+            return FirstStem(new[] { "house.002", "House.001", "house.003", "House" }, "tent_detailedOpen");
         }
 
         public static string Tower(WorldId id)
         {
-            if (Culture(id) == "grid") return FirstStem(new[] { "Antenna", "Lab_Tower" }, "watertower");
-            return FirstStem(new[] { "Tower", "Keep", "Gatehouse", "watchtower" }, "watchtower");
+            if (Culture(id) == "ash") return FirstStem(new[] { "tower_destroyed", "tower" }, "tower-square-base");
+            if (Culture(id) == "grid") return FirstStem(new[] { "tower", "tower_small", "Wall_Simple_01" }, "watertower");
+            return FirstStem(new[] { "tower", "tower_small", "tower_enter" }, "watchtower");
         }
 
         public static string Wall(WorldId id) =>
-            FirstStem(new[] { "Fort_Wall", "Wall_01", "Palissade", "wall" }, "wall");
+            Culture(id) == "grid"
+                ? FirstStem(new[] { "Wall_Simple_01", "stone_wall" }, "skyscraper-small-a")
+                : FirstStem(new[] { "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
 
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "Antenna", "console" }, "tree-baobab");
-            if (c == "ash") return FirstStem(new[] { "DeadTree", "Stump", "tree-dead" }, "tree-dead");
-            return FirstStem(new[] { "tree", "FirTree", "tree_1", "Pine", "Oak", "Tree_01", "tree-oak", "tree_oak" }, "tree_oak");
+            if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
+            if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
+            return FirstStem(new[] { "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "grass01", "Grass_01", "Plant", "Fern", "grass_large", "grass" }, "grass");
+            FirstStem(new[] { "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
 
         public static string Prop(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "Crate_Metal", "Console" }, "barrel");
-            if (c == "street") return FirstStem(new[] { "Crate", "Barrel", "Cart" }, "crate");
-            return FirstStem(new[] { "Barrel", "Well", "Cart", "barrel" }, "barrel");
+            if (c == "grid") return FirstStem(new[] { "crate", "barrel" }, "barrel");
+            if (c == "street") return FirstStem(new[] { "crate", "barrel", "wagon" }, "crate");
+            return FirstStem(new[] { "barrel", "crate", "wagon", "well" }, "barrel");
+        }
+
+        public static string Column(WorldId id) =>
+            FirstStem(new[] { "stone_column" }, "column");
+
+        public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
+        public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
+        public static string Table() => FirstStem(new[] { "table" }, "table");
+        public static string Chair() => FirstStem(new[] { "chair" }, "chair");
+        public static string Chest() => FirstStem(new[] { "chest" }, "chest");
+        public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
+        public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
+        public static string Rock() => FirstStem(new[] { "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+
+        /// <summary>
+        /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace
+        /// have no pack mesh — Kenney stays the honest fallback.
+        /// </summary>
+        public static string Weapon(string kind)
+        {
+            if (string.IsNullOrEmpty(kind)) return kind;
+            var k = kind.ToLowerInvariant();
+            if (k.Contains("greatsword") || k.Contains("th_sword"))
+                return FirstStem(new[] { "TH_Sword03" }, "weapon-greatsword");
+            if (k.Contains("shortsword") || k == "sword" || k == "weapon-sword" || k.Contains("sword01"))
+                return FirstStem(new[] { "Sword01" }, k.Contains("weapon") ? k : "weapon-shortsword");
+            if (k.Contains("axe")) return FirstStem(new[] { "Axe01", "Axe04" }, "weapon-axe");
+            if (k.Contains("shield")) return FirstStem(new[] { "Shield03" }, "shield-rectangle");
+            if (k.Contains("bow")) return FirstStem(new[] { "Bow02" }, "weapon-bow");
+            if (k.Contains("spear") || k.Contains("lance")) return FirstStem(new[] { "Spear" }, "weapon-spear");
+            if (k.Contains("staff")) return FirstStem(new[] { "Staff" }, "staff");
+            if (k.Contains("wand")) return FirstStem(new[] { "Wand" }, "wand");
+            if (k.Contains("dagger") || k.Contains("knife")) return FirstStem(new[] { "Dagger" }, "dagger");
+            if (k.Contains("mace") || k.Contains("club")) return FirstStem(new[] { "Mace" }, "mace");
+            return kind;
+        }
+
+        /// <summary>Furniture / weapon aliases so tavern/forge/streets pick store stems.</summary>
+        public static string Resolve(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return stem;
+            var s = stem.ToLowerInvariant();
+            if (s.Contains("weapon") || s == "sword" || s == "greatsword" || s == "shortsword"
+                || s == "spear" || s == "staff" || s == "dagger" || s == "mace" || s == "wand"
+                || s.Contains("shield") || s == "axe" || s == "bow")
+                return Weapon(stem);
+            if (s == "crate" || s == "market_crate") return Crate();
+            if (s == "cart") return Cart();
+            if (s == "table") return Table();
+            if (s == "chair") return Chair();
+            if (s == "chest") return Chest();
+            if (s == "barrel" || s == "market_barrel") return FirstStem(new[] { "barrel" }, stem);
+            if (s == "column" || s == "column-large") return Column(WorldId.Hub);
+            if (s == "wall") return Wall(WorldId.Hub);
+            return stem;
+        }
+
+        public static string SkyMat(WorldId id)
+        {
+            bool day = id == WorldId.Hub || id == WorldId.Tunya;
+            bool sunset = id == WorldId.Frontier || id == WorldId.Superhero || id == WorldId.Fantasy;
+            var store = day
+                ? new[]
+                {
+                    "Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Materials/Skybox Cubemap Extended Day.mat",
+                    "Assets/Skybox/Materials/Skybox_Daytime.mat"
+                }
+                : sunset
+                    ? new[]
+                    {
+                        "Assets/Skybox/Materials/Skybox_Sunset.mat",
+                        "Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Materials/Skybox Cubemap Extended Blend.mat"
+                    }
+                    : new[]
+                    {
+                        "Assets/BOXOPHOBIC/Skybox Cubemap Extended/Demo/Materials/Skybox Cubemap Extended Night.mat"
+                    };
+            foreach (var p in store)
+                if (FreePacks.Load<Material>(p) != null) return p;
+            return day ? "Assets/Skyboxes/SkyDay.mat"
+                : sunset ? "Assets/Skyboxes/SkySunset.mat"
+                : "Assets/Skyboxes/SkyNight.mat";
+        }
+
+        public static string WeatherPath(string kind)
+        {
+            var paths = kind == "rain"
+                ? new[]
+                {
+                    "Assets/RainMaker/Prefab/RainPrefab.prefab",
+                    "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Rain_01.prefab",
+                    "Assets/VFX/VFX_Rain.prefab"
+                }
+                : kind == "fireflies"
+                    ? new[] { "Assets/VFX/VFX_Fireflies.prefab" }
+                    : new[] { "Assets/VFX/VFX_Snow.prefab" };
+            foreach (var p in paths)
+                if (FreePacks.Load<GameObject>(p) != null) return p;
+            return paths[paths.Length - 1];
+        }
+
+        public static void PlaceWeather(string kind, Transform root, Vector3 pos)
+        {
+            var stem = kind == "rain" ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
+                : kind == "fireflies" ? FirstStem(new[] { "FireFlies" }, "")
+                : FirstStem(new[] { "SnowEffect" }, "");
+            if (!string.IsNullOrEmpty(stem) && FreePacks.HasStem(stem))
+            {
+                FreePacks.Spawn(stem, root, pos, 0, 0);
+                return;
+            }
+            FreePacks.Prefab(WeatherPath(kind), root, pos);
+        }
+
+        public static string Residual(WorldId id)
+        {
+            var c = Culture(id);
+            if (c == "court") return "unpaved Court — no house ring";
+            if (c == "grove" && id == WorldId.Frontier) return "no palm pack — Kenney palm fallback; embassy is road only";
+            if (c == "grove") return "no wheat/hedge pack — Kenney crops/hedge fallback";
+            if (c == "ash") return "no crypt/gravestone pack — Kenney fallback";
+            if (c == "street") return "no dumpster pack — Kenney dumpster fallback";
+            if (c == "grid") return "no sci-fi lab / Kyle — modular rooms then Kenney skyline";
+            return "no crystal pack — Kenney crystal fallback";
         }
 
         /// <summary>
@@ -589,17 +715,20 @@ namespace Concordia
         {
             var house = House(id);
             var tower = Tower(id);
+            var wall = Wall(id);
+            var col = Column(id);
+            var cart = Cart();
             return id switch
             {
-                WorldId.Ruins => new[] { house, FirstStem(new[] { "Crypt", "Ruin" }, "crypt-small"), FirstStem(new[] { "Column" }, "column-large"), FirstStem(new[] { "Keep" }, "crypt-large"), FirstStem(new[] { "Altar" }, "altar-stone"), FirstStem(new[] { "Gravestone" }, "gravestone"), house, tower, FirstStem(new[] { "Column" }, "column-large"), house },
-                WorldId.Tunya => new[] { house, FirstStem(new[] { "Hut", "Cottage" }, "tent_smallOpen"), Tree(id), FirstStem(new[] { "House_01", "Cottage" }, "building-small-a"), FirstStem(new[] { "Crops", "Wheat" }, "crops_cornStageD"), house, FirstStem(new[] { "Hut" }, "tent_detailedOpen"), Tree(id), house, FirstStem(new[] { "Crops" }, "crops_cornStageD") },
-                WorldId.Fantasy => new[] { house, tower, FirstStem(new[] { "Hedge", "hedge-large" }, "hedge-large"), FirstStem(new[] { "House_02", "Cottage" }, "building-small-c"), FirstStem(new[] { "Statue" }, "statue"), tower, house, FirstStem(new[] { "Hedge" }, "hedge-large"), house, tower },
-                WorldId.Crime => new[] { house, FirstStem(new[] { "Shop", "Tavern" }, "building-type-c"), FirstStem(new[] { "Warehouse" }, "building-d"), FirstStem(new[] { "House_01" }, "building-small-d"), FirstStem(new[] { "Dumpster" }, "dumpster"), house, FirstStem(new[] { "Shop" }, "building-type-c"), house, FirstStem(new[] { "Dumpster" }, "dumpster"), house },
-                WorldId.Cyber => new[] { house, FirstStem(new[] { "Lab_Module", "corridor_end" }, "corridor_end"), FirstStem(new[] { "SciFi_Wall" }, "building-skyscraper-c"), FirstStem(new[] { "Antenna" }, "detail-overhang-wide"), FirstStem(new[] { "Column" }, "column"), house, FirstStem(new[] { "Lab_Module" }, "corridor_end"), house, FirstStem(new[] { "Console" }, "column"), house },
-                WorldId.Frontier => new[] { house, FirstStem(new[] { "Cart", "Wagon" }, "cart"), FirstStem(new[] { "Palm", "palm-straight" }, "palm-straight"), FirstStem(new[] { "Hut" }, "tent_smallOpen"), Prop(id), FirstStem(new[] { "Cart" }, "cart"), house, FirstStem(new[] { "Palm" }, "palm-straight"), house, FirstStem(new[] { "Hut" }, "tent_smallOpen") },
-                WorldId.Superhero => new[] { house, FirstStem(new[] { "building-type-a" }, "building-type-a"), FirstStem(new[] { "building-skyscraper-b" }, "building-skyscraper-b"), FirstStem(new[] { "building-small-d" }, "building-small-d"), FirstStem(new[] { "building-type-a" }, "building-type-a"), house, FirstStem(new[] { "building-skyscraper-d" }, "building-skyscraper-d"), house, FirstStem(new[] { "building-type-a" }, "building-type-a"), house },
-                WorldId.Sere => new[] { house, FirstStem(new[] { "Warehouse" }, "building-type-h"), FirstStem(new[] { "building-skyscraper-e" }, "building-skyscraper-e"), FirstStem(new[] { "House_01" }, "building-small-c"), FirstStem(new[] { "Dumpster" }, "dumpster"), house, FirstStem(new[] { "Shop" }, "building-d"), house, FirstStem(new[] { "Dumpster" }, "dumpster"), house },
-                _ => new[] { FirstStem(new[] { "Crystal" }, "detail-crystal-large"), tower, FirstStem(new[] { "Column" }, "column-large"), FirstStem(new[] { "Crypt" }, "crypt-small"), FirstStem(new[] { "Tower" }, "tower-hexagon-base"), FirstStem(new[] { "Crystal" }, "detail-crystal-large"), tower, FirstStem(new[] { "Column" }, "column-large"), house, tower }
+                WorldId.Ruins => new[] { house, FirstStem(new[] { "tower_destroyed" }, "crypt-small"), col, house, FirstStem(new[] { "Altar" }, "altar-stone"), FirstStem(new[] { "Gravestone" }, "gravestone"), house, tower, col, house },
+                WorldId.Tunya => new[] { house, house, Tree(id), house, FirstStem(new[] { "Crops", "Wheat" }, "crops_cornStageD"), house, house, Tree(id), house, FirstStem(new[] { "Crops" }, "crops_cornStageD") },
+                WorldId.Fantasy => new[] { house, tower, FirstStem(new[] { "Hedge", "hedge-large" }, "hedge-large"), house, FirstStem(new[] { "Statue" }, "statue"), tower, house, FirstStem(new[] { "Hedge" }, "hedge-large"), house, tower },
+                WorldId.Crime => new[] { house, house, FirstStem(new[] { "Warehouse" }, "building-d"), house, FirstStem(new[] { "Dumpster" }, "dumpster"), house, house, house, FirstStem(new[] { "Dumpster" }, "dumpster"), house },
+                WorldId.Cyber => new[] { house, FirstStem(new[] { "Room_Big_Part_01", "Wall_Simple_01" }, "corridor_end"), wall, col, FirstStem(new[] { "Floor_01" }, "detail-overhang-wide"), house, wall, house, col, house },
+                WorldId.Frontier => new[] { house, cart, FirstStem(new[] { "Palm", "palm-straight" }, "palm-straight"), house, Prop(id), cart, house, FirstStem(new[] { "Palm" }, "palm-straight"), house, house },
+                WorldId.Superhero => new[] { house, house, FirstStem(new[] { "building-skyscraper-b" }, "building-skyscraper-b"), house, wall, house, FirstStem(new[] { "building-skyscraper-d" }, "building-skyscraper-d"), house, wall, house },
+                WorldId.Sere => new[] { house, house, FirstStem(new[] { "building-skyscraper-e" }, "building-skyscraper-e"), house, FirstStem(new[] { "Dumpster" }, "dumpster"), house, house, house, FirstStem(new[] { "Dumpster" }, "dumpster"), house },
+                _ => new[] { FirstStem(new[] { "Crystal" }, "detail-crystal-large"), tower, col, FirstStem(new[] { "tower_destroyed" }, "crypt-small"), tower, FirstStem(new[] { "Crystal" }, "detail-crystal-large"), tower, col, house, tower }
             };
         }
 
@@ -634,8 +763,26 @@ namespace Concordia
             sb.AppendLine("House(Cyber)=" + House(WorldId.Cyber) + " culture=" + Culture(WorldId.Cyber));
             sb.AppendLine("House(Fantasy)=" + House(WorldId.Fantasy) + " culture=" + Culture(WorldId.Fantasy));
             sb.AppendLine("Tree(Tunya)=" + Tree(WorldId.Tunya));
+            sb.AppendLine("Weapon(sword)=" + Weapon("sword") + " Weapon(greatsword)=" + Weapon("greatsword") + " Weapon(spear)=" + Weapon("spear"));
+            sb.AppendLine("Dummy=" + Dummy());
             sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " other=" + PlayableRooms(1));
             sb.AppendLine("FakeWindows cities 1-3=" + WantsFakeWindows(2) + " city4=" + WantsFakeWindows(4));
+            sb.AppendLine("WORLD NEED vs HAVE");
+            foreach (var id in new[]
+            {
+                WorldId.Hub, WorldId.Tunya, WorldId.Fantasy, WorldId.Frontier, WorldId.Ruins,
+                WorldId.Crime, WorldId.Sere, WorldId.Cyber, WorldId.Superhero, WorldId.Crucible
+            })
+            {
+                sb.AppendLine("  " + id
+                    + "  culture=" + Culture(id)
+                    + " house=" + House(id)
+                    + " tree=" + Tree(id)
+                    + " tower=" + Tower(id)
+                    + " wall=" + Wall(id)
+                    + " prop=" + Prop(id)
+                    + "  " + Residual(id));
+            }
             return sb.ToString();
         }
 
@@ -648,7 +795,7 @@ namespace Concordia
 
         /// <summary>
         /// Owned My Assets only — not a wishlist. Needles match folder names
-        /// under Assets/ after import. Slavic Village / Distant Lands / Kyle
+        /// under Assets/ after import. Village / Distant Lands / Kyle packs
         /// are not on this account.
         /// </summary>
         public static readonly PackHint[] Curated =

@@ -608,42 +608,46 @@ namespace Concordia // keep-spawn-assign
             var prop = DressVocab.Prop(w.id);
             FreePacks.Spawn(prop, hold, hold.TransformPoint(new Vector3(-3.2f, 0f, -1.2f)), yaw, 1.1f);
             FreePacks.Spawn(prop, hold, hold.TransformPoint(new Vector3(3.4f, 0f, 1.6f)), yaw + 40f, 1.1f);
-            FreePacks.Spawn("crate", hold, hold.TransformPoint(new Vector3(-4.6f, 0f, 2.2f)), yaw + 15f, 0.9f);
-            FreePacks.Spawn("crate", hold, hold.TransformPoint(new Vector3(4.8f, 0f, -2.0f)), yaw + 70f, 0.9f);
-            FreePacks.Spawn("table", hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 1.2f)), yaw, 1.0f);
-            FreePacks.Spawn("chair", hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 0.2f)), yaw, 0.85f);
-            FreePacks.Spawn("chest", hold, hold.TransformPoint(new Vector3(2.1f, 0f, -3.4f)), yaw + 90f, 0.85f);
+            FreePacks.Spawn(DressVocab.Crate(), hold, hold.TransformPoint(new Vector3(-4.6f, 0f, 2.2f)), yaw + 15f, 0.9f);
+            FreePacks.Spawn(DressVocab.Crate(), hold, hold.TransformPoint(new Vector3(4.8f, 0f, -2.0f)), yaw + 70f, 0.9f);
+            FreePacks.Spawn(DressVocab.Table(), hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 1.2f)), yaw, 1.0f);
+            FreePacks.Spawn(DressVocab.Chair(), hold, hold.TransformPoint(new Vector3(-1.6f, 0f, 0.2f)), yaw, 0.85f);
+            FreePacks.Spawn(DressVocab.Chest(), hold, hold.TransformPoint(new Vector3(2.1f, 0f, -3.4f)), yaw + 90f, 0.85f);
             if (w.id == WorldId.Crime || w.id == WorldId.Sere || w.id == WorldId.Cyber)
-                FreePacks.Spawn("dumpster", hold, hold.TransformPoint(new Vector3(-7.2f, 0f, -5.4f)), yaw + 20f, 1.6f);
+                FreePacks.Spawn(DressVocab.FirstStem(new[] { "Dumpster" }, "dumpster"), hold, hold.TransformPoint(new Vector3(-7.2f, 0f, -5.4f)), yaw + 20f, 1.6f);
             if (w.id == WorldId.Tunya || w.id == WorldId.Frontier)
-                FreePacks.Spawn("cart", hold, hold.TransformPoint(new Vector3(3.8f, 0f, 5.2f)), yaw + 25f, 1.8f);
+                FreePacks.Spawn(DressVocab.Cart(), hold, hold.TransformPoint(new Vector3(3.8f, 0f, 5.2f)), yaw + 25f, 1.8f);
         }
 
         static void EdgeFlora(Transform hold, WorldDef w, float yaw)
         {
+            var tree = DressVocab.Tree(w.id);
+            var grass = DressVocab.Grass(w.id);
+            var prop = DressVocab.Prop(w.id);
+            var col = DressVocab.Column(w.id);
             var stems = w.id switch
             {
-                WorldId.Tunya => new[] { "tree_oak", "tree_pineTallA", "crops_cornStageD", "grass_large" },
-                WorldId.Fantasy => new[] { "hedge-large", "tree_oak_dark", "flower_redA", "grass_leafs" },
-                WorldId.Frontier => new[] { "palm-straight", "palm-detailed-bend", "grass_large", "rock_smallA" },
-                WorldId.Ruins => new[] { "gravestone", "column-large", "rock_smallB", "grass" },
-                WorldId.Crime => new[] { "dumpster", "barrel", "detail-awning", "grass" },
-                WorldId.Cyber => new[] { "detail-overhang-wide", "column", "grass", "barrel" },
-                WorldId.Superhero => new[] { "detail-awning", "column", "grass_large", "barrel" },
-                WorldId.Sere => new[] { "dumpster", "barrel", "column", "grass" },
-                _ => new[] { "detail-crystal-large", "grass_large", "column-large", "rock_smallA" }
+                WorldId.Tunya => new[] { tree, tree, DressVocab.FirstStem(new[] { "Crops" }, "crops_cornStageD"), grass },
+                WorldId.Fantasy => new[] { DressVocab.FirstStem(new[] { "Hedge" }, "hedge-large"), tree, DressVocab.FirstStem(new[] { "flower_redA" }, "flower_redA"), grass },
+                WorldId.Frontier => new[] { DressVocab.FirstStem(new[] { "Palm" }, "palm-straight"), DressVocab.FirstStem(new[] { "Palm" }, "palm-detailed-bend"), grass, DressVocab.Rock() },
+                WorldId.Ruins => new[] { DressVocab.FirstStem(new[] { "Gravestone" }, "gravestone"), col, DressVocab.Rock(), grass },
+                WorldId.Crime => new[] { DressVocab.FirstStem(new[] { "Dumpster" }, "dumpster"), prop, DressVocab.FirstStem(new[] { "detail-awning" }, "detail-awning"), grass },
+                WorldId.Cyber => new[] { DressVocab.Wall(w.id), col, grass, prop },
+                WorldId.Superhero => new[] { DressVocab.Wall(w.id), col, grass, prop },
+                WorldId.Sere => new[] { DressVocab.FirstStem(new[] { "Dumpster" }, "dumpster"), prop, col, grass },
+                _ => new[] { DressVocab.FirstStem(new[] { "Crystal" }, "detail-crystal-large"), grass, col, DressVocab.Rock() }
             };
             for (int k = 0; k < 8; k++)
             {
                 float a = k / 8f * Mathf.PI * 2f + 0.18f;
                 var local = new Vector3(Mathf.Cos(a) * 15.4f, 0f, Mathf.Sin(a) * 15.4f);
                 var stem = stems[k % stems.Length];
-                float h = stem.Contains("tree") || stem.Contains("palm") ? 7.2f
-                    : stem.Contains("hedge") || stem.Contains("column") ? 2.6f
-                    : stem.Contains("crops") ? 1.4f : 0.7f;
+                var key = (stem ?? "").ToLowerInvariant();
+                float h = key.Contains("tree") || key.Contains("palm") || key.Contains("fir") ? 7.2f
+                    : key.Contains("hedge") || key.Contains("column") ? 2.6f
+                    : key.Contains("crops") ? 1.4f : 0.7f;
                 FreePacks.Spawn(stem, hold, hold.TransformPoint(local), yaw + k * 28f, h);
             }
-            var grass = DressVocab.Grass(w.id);
             for (int k = 0; k < 14; k++)
             {
                 float a = k / 14f * Mathf.PI * 2f + 0.41f;
