@@ -43,4 +43,24 @@ describe("Concord 2B dialogue provider", () => {
     assert.equal(r.reason, "brain_unavailable");
     assert.ok(r.text.length > 0);
   });
+
+  it("calls local 127.0.0.1:11434, not docker ollama-conscious", async () => {
+    const seen = [];
+    const prev = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      seen.push(String(url));
+      return { ok: true, json: async () => ({ message: { content: "The Court stays dirt." } }) };
+    };
+    try {
+      const r = await composeTwoBDialogue({ npcId: "lamplighter", npcName: "The Lamplighter", text: "Who keeps this?" });
+      assert.equal(r.ok, true);
+      assert.equal(r.fallback, false);
+      assert.equal(r.model, "qwen3.5:2b");
+      assert.equal(seen.length, 1);
+      assert.match(seen[0], /127\.0\.0\.1:11434\/api\/chat/);
+      assert.doesNotMatch(seen[0], /ollama-conscious/);
+    } finally {
+      globalThis.fetch = prev;
+    }
+  });
 });

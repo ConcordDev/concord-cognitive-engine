@@ -4,7 +4,6 @@
 // chokepoint: try the local 2B (qwen3.5:2b on this box), then the existing
 // deterministic NPC fallback. Never invent cities, lovers, or lore.
 
-import { ollamaChat } from "./inference/ollama-client.js";
 import {
   composeDeterministicDialogue,
   composeDeterministicResponse,
@@ -108,6 +107,11 @@ function deterministicReply({ npcId, npcName, playerText }) {
   };
 }
 
+function twoBEndpoint() {
+  const raw = process.env.CONCORD_2B_URL || "http://127.0.0.1:11434";
+  return String(raw).replace(/\/$/, "");
+}
+
 async function defaultTwoBChat({ worldId, npcName, line, text }) {
   const system = [
     "You are Concord's 2B decision voice for one authored NPC.",
@@ -122,17 +126,29 @@ async function defaultTwoBChat({ worldId, npcName, line, text }) {
     text ? `Player said: ${text}` : "Player approached and waited.",
   ].filter(Boolean).join("\n");
 
-  const r = await ollamaChat("conscious", [
-    { role: "system", content: system },
-    { role: "user", content: user },
-  ], {
-    model: CONCORD_2B_MODEL,
-    temperature: 0.4,
-    maxTokens: 80,
-    timeoutMs: 8000,
+  // Call-time URL — do not go through BRAIN_CONFIG. That object freezes the
+  // docker hostname `ollama-conscious` at import, before dotenv, which is
+  // why a working local qwen3.5:2b was reporting fetch failed.
+  const endpoint = twoBEndpoint();
+  const res = await fetch(`${endpoint}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: CONCORD_2B_MODEL,
+      stream: false,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      options: { temperature: 0.4, num_predict: 80 },
+    }),
+    signal: AbortSignal.timeout(8000),
   });
-  if (!r?.ok) throw new Error(r?.error || "brain_unavailable");
-  return { text: r.text, model: CONCORD_2B_MODEL };
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const j = await res.json();
+  const out = j?.message?.content || j?.response || "";
+  if (!out) throw new Error("brain_unavailable");
+  return { text: out, model: CONCORD_2B_MODEL };
 }
 
 export default { composeTwoBDialogue, CONCORD_2B_PROVIDER_ID, CONCORD_2B_MODEL };
