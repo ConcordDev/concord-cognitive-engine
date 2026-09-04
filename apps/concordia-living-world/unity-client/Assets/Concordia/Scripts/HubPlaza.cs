@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Runtime cathedral plaza. Custom geometry + lighting + VFX.
-    /// Kenney is clutter only — stalls, trees, a cart — never the aesthetic.
+    /// Unburned Court: the old battlefield, left unpaved, under her dome.
+    /// Eight named doors. No town of houses on the ring.
     /// </summary>
     public static class HubPlaza
     {
@@ -16,19 +16,16 @@ namespace Concordia
             var bronze = HubLook.Pbr("rusty_metal", new Color(0.62f, 0.42f, 0.28f), 0.78f, 0.38f, 4f);
             var bronzeDark = HubLook.Pbr("metal_plate", new Color(0.32f, 0.22f, 0.16f), 0.82f, 0.28f, 3f);
             var copper = HubLook.Pbr("rusty_metal", new Color(0.55f, 0.34f, 0.22f), 0.7f, 0.34f, 5f);
-            var stone = HubLook.Pbr("stone_tiles", new Color(0.52f, 0.48f, 0.42f), 0.04f, 0.18f, 10f);
-            var stoneDark = HubLook.Pbr("concrete_floor", new Color(0.28f, 0.26f, 0.22f), 0.05f, 0.14f, 8f);
+            var earth = HubLook.Pbr("packed_earth", Canon.Hub.ground, 0.02f, 0.12f, 14f);
+            var earthDark = HubLook.Pbr("ash_soil", new Color(0.38f, 0.30f, 0.22f), 0.02f, 0.10f, 12f);
             var gold = HubLook.Pbr("metal_plate", new Color(0.62f, 0.50f, 0.28f), 0.85f, 0.42f, 2.5f);
             var glass = HubLook.Lit(new Color(0.22f, 0.26f, 0.28f, 0.55f), 0.12f, 0.92f);
-            var plaster = HubLook.Pbr("plastered_wall", new Color(0.62f, 0.56f, 0.48f), 0.04f, 0.18f, 6f);
 
-            Floor(root, stone, stoneDark);
+            Floor(root, earth, earthDark);
             Monument(root, bronze, gold);
             Dome(root, bronze, bronzeDark, gold, glass);
             Balcony(root, bronze, copper);
-            Facades(root, bronze, copper, plaster);
             Gates(root, bronze, gold);
-            Banners(root);
             Clutter(root);
             Dust(root, new Color(1f, 0.88f, 0.62f));
             HubLook.Point(root, "MonumentLight", new Vector3(0f, 6.5f, 0f), new Color(1f, 0.72f, 0.42f), 4.2f, 16f, true);
@@ -37,29 +34,22 @@ namespace Concordia
             HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.42f, 0.52f, 0.62f), 1.8f, 16f, false);
         }
 
-        static void Floor(Transform root, Material stone, Material dark)
+        static void Floor(Transform root, Material earth, Material dark)
         {
-            var bed = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.01f, 0f), new Vector3(DomeR * 2.05f, 0.04f, DomeR * 2.05f), dark, "PlazaBed");
+            var bed = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.01f, 0f), new Vector3(DomeR * 2.05f, 0.04f, DomeR * 2.05f), dark, "Battlefield");
             FreePacks.FlattenDisc(bed);
-            var disc = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.04f, 0f), new Vector3(Canon.CourtRadius * 2.15f, 0.05f, Canon.CourtRadius * 2.15f), stone, "CourtStone");
+            var disc = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.03f, 0f), new Vector3(Canon.CourtRadius * 2.15f, 0.04f, Canon.CourtRadius * 2.15f), earth, "UnpavedCourt");
             FreePacks.FlattenDisc(disc);
-            for (int i = 0; i < 3; i++)
-            {
-                float r = 8f + i * 6f;
-                RingBoxes(root, r, 0.08f, 48, new Vector3(0.9f, 0.08f, 0.28f), dark, "Inlay" + i, 0f);
-            }
-            // radial stone paths to each gate
             foreach (var g in Canon.Gates)
             {
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 for (int s = 1; s <= 12; s++)
                 {
                     var p = dir * (s * 2.85f);
-                    var path = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.06f, new Vector3(2.6f, 0.05f, 1.2f), stone, "Path_" + g.world + "_" + s, false);
+                    var path = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.045f, new Vector3(2.2f, 0.04f, 0.95f), dark, "Track_" + g.world + "_" + s, false);
                     path.transform.rotation = Quaternion.LookRotation(dir);
                 }
             }
-            RingBoxes(root, 20.4f, 0.07f, 64, new Vector3(1.15f, 0.05f, 0.55f), stone, "RingRoad", 0f);
         }
 
         static void Monument(Transform root, Material bronze, Material gold)
@@ -166,44 +156,6 @@ namespace Concordia
                 HubLook.Prim(root, PrimitiveType.Cylinder, p + Vector3.up * 4.6f, new Vector3(0.7f, 4.6f, 0.7f), bronze, "BalcCol" + i);
                 HubLook.Lantern(root, p + Vector3.up * 0.02f);
             }
-        }
-
-        static void Facades(Transform root, Material bronze, Material copper, Material plaster)
-        {
-            // multi-level bronze buildings between the eight gates
-            for (int i = 0; i < 8; i++)
-            {
-                var g0 = Canon.Gates[i];
-                var g1 = Canon.Gates[(i + 1) % 8];
-                float a = Mathf.LerpAngle(g0.angle * Mathf.Rad2Deg, (g1.angle + (g1.angle < g0.angle ? Mathf.PI * 2f : 0f)) * Mathf.Rad2Deg, 0.5f) * Mathf.Deg2Rad;
-                // lerpAngle is degrees; we stored radians. Do it in radians:
-                float d = g1.angle - g0.angle;
-                if (d < 0f) d += Mathf.PI * 2f;
-                a = g0.angle + d * 0.5f;
-                var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-                var p = dir * 38.5f;
-                float yaw = -a * Mathf.Rad2Deg + 180f;
-                Building(root, p, yaw, 10f + (i % 3) * 3.5f, bronze, copper, plaster, i);
-            }
-        }
-
-        static void Building(Transform root, Vector3 p, float yaw, float h, Material bronze, Material copper, Material plaster, int i)
-        {
-            var hold = new GameObject("House_" + i).transform;
-            hold.SetParent(root, false);
-            hold.position = p;
-            hold.rotation = Quaternion.Euler(0f, yaw, 0f);
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, h * 0.5f, 0f), new Vector3(7.5f, h, 5.5f), bronze, "Mass");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, h + 0.1f, 0f), new Vector3(8.2f, 0.35f, 6.1f), copper, "Cornice");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, h * 0.55f, -3.2f), new Vector3(6.4f, 0.2f, 2.2f), bronze, "Balc");
-            for (int w = 0; w < 4; w++)
-            {
-                float x = -2.2f + (w % 2) * 4.4f;
-                float y = 2.4f + (w / 2) * (h * 0.32f);
-                HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(x, y, -2.78f), new Vector3(1.1f, 1.5f, 0.12f), HubLook.Emit(new Color(1f, 0.72f, 0.35f), 2.2f), "Win" + w, false);
-            }
-            string[] plans = { "tavern", "forge", "archive", "market", "tower", "tavern", "archive", "market" };
-            BuildingInterior.Open(hold.gameObject, plans[i % plans.Length], p);
         }
 
         static void Gates(Transform root, Material bronze, Material gold)
@@ -316,54 +268,23 @@ namespace Concordia
             if (r) r.sharedMaterial = HubLook.ParticleMat(c);
         }
 
-        static void Banners(Transform root)
-        {
-            for (int i = 0; i < 10; i++)
-            {
-                float a = i / 10f * Mathf.PI * 2f + 0.31f;
-                var p = new Vector3(Mathf.Cos(a) * 30f, 11.5f, Mathf.Sin(a) * 30f);
-                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                q.name = "Banner" + i;
-                q.transform.SetParent(root, false);
-                q.transform.position = p;
-                q.transform.localScale = new Vector3(1.6f, 4.8f, 1f);
-                q.transform.rotation = Quaternion.LookRotation(new Vector3(p.x, 0f, p.z));
-                Object.Destroy(q.GetComponent<Collider>());
-                var col = Color.Lerp(new Color(0.55f, 0.18f, 0.12f), new Color(0.7f, 0.45f, 0.12f), i % 2);
-                q.GetComponent<Renderer>().sharedMaterial = HubLook.Lit(col, 0.05f, 0.25f);
-            }
-        }
-
         static void Clutter(Transform root)
         {
-            // Stalls beside each radial road, not in the court and not on the path.
-            var stalls = new[] { "market_crate", "market_barrel", "crate", "cart", "barrel", "table" };
-            for (int i = 0; i < 8; i++)
-            {
-                var g = Canon.Gates[i];
-                var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
-                var side = Vector3.Cross(Vector3.up, dir).normalized;
-                var p = dir * 26f + side * 5.2f;
-                FreePacks.Spawn(stalls[i % stalls.Length], root, p, -g.angle * Mathf.Rad2Deg, 1.1f);
-                if (i % 2 == 0)
-                    FreePacks.Spawn("table", root, p + side * 1.4f, 20f, 1.0f);
-            }
-            // Trees in the wedges BETWEEN gates, outside the court.
-            var trees = new[] { "tree_oak", "tree_oak_dark", "tree_default", "tree_pineTallA" };
-            for (int i = 0; i < 8; i++)
-            {
-                var g0 = Canon.Gates[i];
-                var g1 = Canon.Gates[(i + 1) % 8];
-                float d = g1.angle - g0.angle;
-                if (d < 0f) d += Mathf.PI * 2f;
-                float a = g0.angle + d * 0.5f;
-                var p = new Vector3(Mathf.Cos(a) * 31f, 0f, Mathf.Sin(a) * 31f);
-                FreePacks.Spawn(trees[i % trees.Length], root, p, i * 40f, 6.5f);
-            }
             foreach (var g in Canon.Gates)
             {
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 HubLook.Lantern(root, dir * 18.5f);
+                var flag = FreePacks.Spawn("banner", root, dir * 22f, -g.angle * Mathf.Rad2Deg, 2.8f, required: false)
+                           ?? FreePacks.Spawn("flag-banner-long", root, dir * 22f, -g.angle * Mathf.Rad2Deg, 2.8f, required: false);
+                if (flag) flag.name = "RefusalBanner_" + g.shortName;
+            }
+            for (int i = 0; i < 24; i++)
+            {
+                float a = i / 24f * Mathf.PI * 2f + 0.17f;
+                var r = 10.5f + (i % 5) * 1.1f;
+                var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                if (Canon.InArena(p)) continue;
+                FreePacks.Spawn("flower_redA", root, p, i * 37f, 0.35f, required: false);
             }
         }
 

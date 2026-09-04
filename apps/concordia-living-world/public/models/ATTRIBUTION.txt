@@ -12,3 +12,8 @@ gothic_statue, boulder_01, marble_bust_01
 
 Kenney Nature Kit trees/rocks/cliffs
   Kenney.nl, CC0.
+
+Unburned Court hub kit (shared with Unity + Godot)
+  content/concordia-assets/hub/ — Kenney CC0 + KayKit forge/tower CC0.
+  Copied here as public/models/kenney/ for KenneyField.
+

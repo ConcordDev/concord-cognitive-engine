@@ -47,6 +47,17 @@ namespace Concordia
 
         public void Hit(float dmg, WorldId world)
         {
+            ApplyDamage(dmg, world);
+        }
+
+        /// <summary>HP from combat:attack:ack. Same presentation as the offline sandbox Hit.</summary>
+        public void ApplyServerHit(float dmg, WorldId world)
+        {
+            ApplyDamage(dmg, world);
+        }
+
+        void ApplyDamage(float dmg, WorldId world)
+        {
             if (hp <= 0) return;
             hp -= dmg;
             _flash = 0.16f;

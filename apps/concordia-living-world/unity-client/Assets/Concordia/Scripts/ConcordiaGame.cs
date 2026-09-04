@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Concordia
@@ -11,11 +12,12 @@ namespace Concordia
         ConcordiaPlayer _player;
         WorldBuilder _world;
         WorldGate[] _gates;
+        CityGate[] _cities;
         LoreStone[] _stones;
         GuestNpc[] _npcs;
         float _probeAt;
 
-        void Start()
+        async void Start()
         {
             HubObjectives.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
@@ -55,12 +57,15 @@ namespace Concordia
             var feel = pgo.AddComponent<CombatFeel>();
             feel.body = cc;
             feel.cam = cam;
-            pgo.AddComponent<ConcordClient>();
             pgo.AddComponent<EvoResolver>();
+            var kernelGo = new GameObject("ConcordClient");
+            var kernel = kernelGo.AddComponent<ConcordClient>();
+            kernel.OnEvent += HandleKernelEvent;
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
             _world.player = _player;
+            await HubKit.EnsureLoaded();
             _world.Build(world);
             Grounding.Snap(cc);
             var py = pgo.transform.position.y;
@@ -90,11 +95,14 @@ namespace Concordia
             }
             Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
             StartCoroutine(ConcordiaShot.Grab());
+            if (File.Exists("/tmp/concordia-request-tour"))
+                StartCoroutine(ConcordiaShot.Tour(this));
         }
 
         void RefreshProbe()
         {
             _gates = FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude);
+            _cities = FindObjectsByType<CityGate>(FindObjectsInactive.Exclude);
             _stones = FindObjectsByType<LoreStone>(FindObjectsInactive.Exclude);
             _npcs = FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude);
             _probeAt = Time.unscaledTime;
@@ -114,6 +122,13 @@ namespace Concordia
                     var d = Vector3.Distance(pos, g.transform.position);
                     if (d < best) { best = d; prompt = g.Prompt; }
                     if (d < 9f && g.def.world != WorldId.Hub) HubObjectives.NoteGateWalked(g.def.world);
+                }
+            if (_cities != null)
+                foreach (var c in _cities)
+                {
+                    if (!c) continue;
+                    var d = Vector3.Distance(pos, c.transform.position);
+                    if (d < best) { best = d; prompt = c.Prompt; }
                 }
             if (_stones != null)
                 foreach (var s in _stones)
@@ -136,6 +151,7 @@ namespace Concordia
         {
             RefreshProbe();
             WorldGate gate = null;
+            CityGate city = null;
             LoreStone stone = null;
             GuestNpc npc = null;
             float best = 3.2f;
@@ -144,27 +160,36 @@ namespace Concordia
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; stone = null; npc = null; }
+                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; }
+                }
+            if (_cities != null)
+                foreach (var c in _cities)
+                {
+                    if (!c) continue;
+                    var d = Vector3.Distance(pos, c.transform.position);
+                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; }
                 }
             if (_stones != null)
                 foreach (var s in _stones)
                 {
                     if (!s) continue;
                     var d = Vector3.Distance(pos, s.transform.position);
-                    if (d < best) { best = d; stone = s; gate = null; npc = null; }
+                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; }
                 }
             if (_npcs != null)
                 foreach (var n in _npcs)
                 {
                     if (!n) continue;
                     var d = Vector3.Distance(pos, n.transform.position);
-                    if (d < best) { best = d; npc = n; gate = null; stone = null; }
+                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; }
                 }
             if (gate != null)
             {
                 Travel(gate.def.world);
                 return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
             }
+            if (city != null)
+                return EnterCity(city.city);
             if (stone != null) return stone.title + "\n" + stone.text;
             if (npc != null)
             {
@@ -187,6 +212,7 @@ namespace Concordia
             if (_player.cam) _player.cam.yaw = Mathf.PI;
             _world.Build(next);
             _gates = null;
+            _cities = null;
             Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
@@ -195,6 +221,62 @@ namespace Concordia
                 : "Flower-law. Blades die as flowers except in the Arena.";
             ConcordiaHUD.Announce(w.title, w.refusal);
             _player.Notice(w.law + " " + steel);
+            var client = ConcordClient.Live;
+            if (client && client.Connected)
+                _ = client.RequestScene(WorldBook.Folder(next));
+        }
+
+        public string EnterCity(WorldBook.CityDef city)
+        {
+            if (city == null) return null;
+            var dest = new Vector3(city.x, 0.12f, city.z);
+            if (Vector3.Distance(_player.transform.position, dest) > 6f)
+            {
+                _player.cc.enabled = false;
+                _player.transform.position = dest;
+                _player.cc.enabled = true;
+                Grounding.Snap(_player.cc);
+            }
+            var line = city.description ?? "";
+            var cut = line.IndexOf('\n');
+            if (cut > 0) line = line.Substring(0, cut);
+            if (line.Length > 160) line = line.Substring(0, 157) + "…";
+            ConcordiaHUD.Announce(city.name, string.IsNullOrEmpty(line) ? Canon.Get(world).title : line);
+            _player.Notice("You are in " + city.name + ".");
+            return "Entered " + city.name + ".";
+        }
+
+        void HandleKernelEvent(string evt, string json)
+        {
+            if (evt != "combat:attack:ack") return;
+            KernelAckEnvelope env = null;
+            try { env = JsonUtility.FromJson<KernelAckEnvelope>(json); }
+            catch { return; }
+            if (env?.data == null) return;
+            _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
+        }
+
+        void OnDestroy()
+        {
+            var kernel = ConcordClient.Live;
+            if (kernel != null) kernel.OnEvent -= HandleKernelEvent;
+        }
+
+        [Serializable]
+        class KernelAckEnvelope
+        {
+            public string evt;
+            public KernelAckData data;
+        }
+
+        [Serializable]
+        class KernelAckData
+        {
+            public bool ok;
+            public bool refused;
+            public float damage;
+            public string error;
+            public string reason;
         }
     }
 }

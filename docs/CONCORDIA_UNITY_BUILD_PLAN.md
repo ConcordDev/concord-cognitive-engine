@@ -118,6 +118,13 @@ DTUs + ROYALTY GRAPH         creation economy (the moat)
 
 **LLM placement:** dialogue, rumor, quest interpretation, reflection — **never** footsteps, combat frames, traffic. Pipeline: rules → utility → BT/state → sim → memory → LLM.
 
+**Where new Concordia work goes (lock, 2026-09-03).** Unity now lives in this repo (`apps/concordia-living-world/unity-client/`). Do **not** add combat resolution, NPC brain, travel-as-world-state, persist, or dummy-HP to:
+
+- Three.js world-lens (`concord-frontend/app/lenses/world/`, `lib/world-lens/`) — web OS viewport (HUD, DTU, presence, stations)
+- living-world Vite `src/game/` — browser prototype; spec/reference, superseded as a third sim
+
+Add a **server handler** (kernel) + a **Unity presenter** (input / animation / feel). Godot stays the parity native client on the same `{evt,data}` envelope (`/godot-ws`). Unity uses `/unity-ws` (same `onClientMessage` → `applyAttack` path). Contract: `server/lib/concordia/client-roles.js`. Offline Editor play is an honest sandbox (`{ok:false, reason:'no_gateway'}`), never a fabricated connected kernel.
+
 **NPC decision pipeline (universal):**
 perception → world state → needs → goals → memory → relationships → risk → actions → utility → action → world mutation → memory.
 

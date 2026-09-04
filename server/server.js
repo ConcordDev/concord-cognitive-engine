@@ -29368,6 +29368,7 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 // created later via `app.listen()`); the mount call itself is deferred to right
 // after that `server` binding + `tryInitWebSockets(server)` — see ~line 65605.
 import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
+import { mountUnityGateway } from "./lib/unity-bridge.js";
 import { exportScene } from "./lib/scene-export.js";
 import { makeGodotMoveRateGate } from "./lib/godot-move-rate.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
@@ -70526,6 +70527,25 @@ if (server) {
     structuredLog("info", "godot_gateway_mounted", { path: "/godot-ws" });
   } catch (e) {
     structuredLog("warn", "godot_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
+  }
+  // Unity Editor client — same {evt,data} envelope and the SAME
+  // `_onGodotClientMessage` → applyAttack / combat-limits path as Godot.
+  // Presentation only. Do not invent a second combat resolver here.
+  // Gated on `server` like Godot: CONCORD_NO_LISTEN=true never fabricates a
+  // listener. Path filter is `/unity-ws` so this coexists with `/godot-ws`.
+  try {
+    const unityGatewayHandle = mountUnityGateway(server, {
+      verifyToken,
+      getUser: AuthDB.getUser,
+      exportScene,
+      db: STATE?.db || db,
+      onClientMessage: _onGodotClientMessage,
+      verifyApiKeyPair: _godotVerifyApiKeyPair,
+    });
+    globalThis._concordUnityGateway = unityGatewayHandle;
+    structuredLog("info", "unity_gateway_mounted", { path: "/unity-ws" });
+  } catch (e) {
+    structuredLog("warn", "unity_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
   }
 }
 

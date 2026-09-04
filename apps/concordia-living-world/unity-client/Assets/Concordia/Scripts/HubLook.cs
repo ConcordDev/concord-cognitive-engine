@@ -136,6 +136,9 @@ namespace Concordia
                 case WorldId.Superhero:
                     bloomI = 0.7f; bloomT = 0.55f; exposure = 0.32f; contrast = 18f; sat = 12f; vigI = 0.26f; temp = 10f;
                     sky = new Color(1f, 0.72f, 0.48f); eq = new Color(0.28f, 0.34f, 0.52f); ground = new Color(0.10f, 0.10f, 0.14f); break;
+                case WorldId.Sere:
+                    bloomI = 0.22f; bloomT = 0.78f; exposure = -0.18f; contrast = 18f; sat = -6f; vigI = 0.44f; temp = 6f;
+                    sky = new Color(0.38f, 0.32f, 0.24f); eq = new Color(0.28f, 0.20f, 0.12f); ground = new Color(0.08f, 0.06f, 0.04f); break;
                 default:
                     bloomI = 0.6f; bloomT = 0.52f; exposure = 0.15f; contrast = 20f; sat = 18f; vigI = 0.36f; temp = -12f;
                     sky = new Color(0.20f, 0.85f, 0.78f); eq = new Color(0.10f, 0.28f, 0.32f); ground = new Color(0.04f, 0.10f, 0.12f); break;

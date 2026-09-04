@@ -1,19 +1,18 @@
 // server/lib/unity-bridge.js
 //
-// Unity WebGL bridge — adds Unity as a third client alongside Three.js and Godot.
-// All three clients render the SAME scene from the SAME descriptor.
+// Unity is a presentation client of the Concord kernel — not a second sim.
+// `mountUnityGateway` is mounted from server.js next to `/godot-ws` at
+// `/unity-ws`. Same WebSocket primitive, same auth, same rooms, same
+// `{evt,data}` envelope. Combat is `combat:attack` (not `unity:combat:attack`)
+// so `_onGodotClientMessage` → `_dispatchGodotCombatAttack` → `applyAttack`
+// is the one resolver.
 //
-// Unity Asset Store provides "out of the box" assets via the Standard Assets package
-// (cross-platform essentials: First Person Controller, Camera, etc.) plus the
-// Asset Store package downloads that ship as .unitypackage files (which can be
-// extracted to standard asset formats). Unity also uses the same GLB/glTF 2.0
-// format that Three.js and Godot use, so assets downloaded for one client work
-// across all three.
+// `UNITY_MESSAGE_TYPES` below is the unused prefixed-envelope experiment.
+// The in-repo Editor client (`apps/concordia-living-world/unity-client/`)
+// speaks the Godot envelope. Do not revive a parallel combat math path.
 //
-// This module extends godot-gateway.js with Unity-specific message envelope
-// support, adds a Unity scene descriptor, and wires Unity WebGL build hooks
-// so the same hub can serve Three.js, Godot, AND Unity clients from one
-// /godot-ws endpoint (renamed to /multi-ws in spirit; alias preserved).
+// Scene helpers (`toUnityScene`, asset lists) still decorate the shared
+// descriptor for Unity-specific materials/shaders.
 
 import { mountGodotGateway } from './godot-gateway.js';
 
@@ -32,15 +31,14 @@ export const UNITY_MESSAGE_TYPES = {
 };
 
 /**
- * Mount a Unity-compatible client endpoint at /unity-ws.
- * Same protocol as /godot-ws, with Unity-specific message types.
+ * Mount the Unity Editor / standalone client at /unity-ws.
+ * Same protocol as /godot-ws. Pass the same `onClientMessage` the Godot
+ * mount uses so combat/move hit the kernel once.
  * @param {import('http').Server} server
  * @param {object} deps
  * @returns {object}
  */
 export function mountUnityGateway(server, deps) {
-  // Reuses godot-gateway's mounting logic (same WebSocket, same auth, same rooms)
-  // Unity-specific messages are routed through onClientMessage
   return mountGodotGateway(server, {
     ...deps,
     path: '/unity-ws',

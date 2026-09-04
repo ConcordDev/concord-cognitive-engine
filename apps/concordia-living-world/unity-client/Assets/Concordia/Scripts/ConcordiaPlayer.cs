@@ -27,6 +27,8 @@ namespace Concordia
         public System.Func<Vector3, string> onInteract;
         public static ConcordiaPlayer Live { get; private set; }
         float _dmgMul = 1f;
+        TrainingDummy _pendingKernelTarget;
+        float _moveSentAt;
 
         void OnEnable() => Live = this;
         void OnDisable() { if (Live == this) Live = null; }
@@ -100,6 +102,14 @@ namespace Concordia
             cam.inCombat = Time.time < _slashUntil;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
+
+            if (Time.time >= _moveSentAt)
+            {
+                _moveSentAt = Time.time + 0.08f;
+                var client = ConcordClient.Live;
+                if (client && client.Connected)
+                    _ = client.SendMove(transform.position.x, transform.position.y, transform.position.z, client.WorldId);
+            }
 
             stamina = Mathf.Min(100, stamina + 18f * dt);
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
@@ -225,19 +235,39 @@ namespace Concordia
                 }
             }
             if (!dummy) return false;
-            dummy.Hit(dmg, world);
-            HubObjectives.NoteArenaHit();
-            var client = GetComponent<ConcordClient>();
+            var client = ConcordClient.Live;
             if (client && client.Connected)
             {
-                Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp));
+                // Kernel resolves HP. Presentation already played the swing.
+                _pendingKernelTarget = dummy;
+                Toast(dummy.name + " — Concord resolving");
                 _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon());
+                return true;
             }
-            else
-            {
-                Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
-            }
+            dummy.Hit(dmg, world);
+            HubObjectives.NoteArenaHit();
+            Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
             return true;
+        }
+
+        /// <summary>Apply combat:attack:ack from the Concord kernel. Never invent HP.</summary>
+        public void ApplyKernelAttackAck(bool ok, bool refused, float damage, string error, string reason)
+        {
+            var dummy = _pendingKernelTarget;
+            _pendingKernelTarget = null;
+            if (refused)
+            {
+                Toast("The ground refuses it. Concord {reason:'" + (reason ?? "refused") + "'}");
+                return;
+            }
+            if (!ok)
+            {
+                Toast("Concord {ok:false, error:'" + (error ?? "rejected") + "'}");
+                return;
+            }
+            if (dummy) dummy.ApplyServerHit(damage, world);
+            HubObjectives.NoteArenaHit();
+            if (dummy) Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp));
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)

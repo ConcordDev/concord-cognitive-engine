@@ -1,0 +1,410 @@
+{
+  "id": "unburned-court-hub-kit",
+  "title": "Unburned Court hub kit",
+  "note": "One piece. Shared by Unity, Godot, and the Vite KenneyField. Not the 118MB kenney-free tree.",
+  "files": [
+    {
+      "stem": "wall",
+      "file": "wall.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/wall.glb"
+    },
+    {
+      "stem": "column",
+      "file": "column.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/column.glb"
+    },
+    {
+      "stem": "weapon-sword",
+      "file": "weapon-sword.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/weapon-sword.glb"
+    },
+    {
+      "stem": "banner",
+      "file": "banner.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/banner.glb"
+    },
+    {
+      "stem": "tower-square-base",
+      "file": "tower-square-base.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "castle/tower-square-base.glb"
+    },
+    {
+      "stem": "crypt-small",
+      "file": "crypt-small.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "graveyard/crypt-small.glb"
+    },
+    {
+      "stem": "tent_detailedOpen",
+      "file": "tent_detailedOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/tent_detailedOpen.glb"
+    },
+    {
+      "stem": "tent_smallOpen",
+      "file": "tent_smallOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/tent_smallOpen.glb"
+    },
+    {
+      "stem": "tree_oak",
+      "file": "tree_oak.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_oak.glb"
+    },
+    {
+      "stem": "tree_default",
+      "file": "tree_default.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_default.glb"
+    },
+    {
+      "stem": "tree_simple",
+      "file": "tree_simple.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_simple.glb"
+    },
+    {
+      "stem": "tree_pineTallA",
+      "file": "tree_pineTallA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/tree_pineTallA.glb"
+    },
+    {
+      "stem": "plant_bush",
+      "file": "plant_bush.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/plant_bush.glb"
+    },
+    {
+      "stem": "table",
+      "file": "table.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/table.glb"
+    },
+    {
+      "stem": "chair",
+      "file": "chair.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/chair.glb"
+    },
+    {
+      "stem": "barrel",
+      "file": "barrel.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "mini-dungeon/barrel.glb"
+    },
+    {
+      "stem": "crate",
+      "file": "crate.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "platformer/crate.glb"
+    },
+    {
+      "stem": "cart",
+      "file": "cart.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/cart.glb"
+    },
+    {
+      "stem": "desk",
+      "file": "desk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/desk.glb"
+    },
+    {
+      "stem": "books",
+      "file": "books.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/books.glb"
+    },
+    {
+      "stem": "bookcaseOpen",
+      "file": "bookcaseOpen.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/bookcaseOpen.glb"
+    },
+    {
+      "stem": "bookcaseClosed",
+      "file": "bookcaseClosed.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/bookcaseClosed.glb"
+    },
+    {
+      "stem": "campfire_stones",
+      "file": "campfire_stones.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/campfire_stones.glb"
+    },
+    {
+      "stem": "campfire_logs",
+      "file": "campfire_logs.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/campfire_logs.glb"
+    },
+    {
+      "stem": "crops_wheatStageB",
+      "file": "crops_wheatStageB.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/crops_wheatStageB.glb"
+    },
+    {
+      "stem": "lantern",
+      "file": "lantern.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "fantasy-town/lantern.glb"
+    },
+    {
+      "stem": "lampRoundFloor",
+      "file": "lampRoundFloor.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/lampRoundFloor.glb"
+    },
+    {
+      "stem": "character-skeleton",
+      "file": "character-skeleton.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "graveyard/character-skeleton.glb"
+    },
+    {
+      "stem": "road-straight",
+      "file": "road-straight.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-roads/road-straight.glb"
+    },
+    {
+      "stem": "loungeSofa",
+      "file": "loungeSofa.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/loungeSofa.glb"
+    },
+    {
+      "stem": "kitchenStove",
+      "file": "kitchenStove.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/kitchenStove.glb"
+    },
+    {
+      "stem": "burger-cheese",
+      "file": "burger-cheese.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/burger-cheese.glb"
+    },
+    {
+      "stem": "apple",
+      "file": "apple.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/apple.glb"
+    },
+    {
+      "stem": "bread",
+      "file": "bread.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/bread.glb"
+    },
+    {
+      "stem": "cheese-cut",
+      "file": "cheese-cut.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "food/cheese-cut.glb"
+    },
+    {
+      "stem": "detail-parasol-a",
+      "file": "detail-parasol-a.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-commercial/detail-parasol-a.glb"
+    },
+    {
+      "stem": "chairDesk",
+      "file": "chairDesk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/chairDesk.glb"
+    },
+    {
+      "stem": "log_large",
+      "file": "log_large.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/log_large.glb"
+    },
+    {
+      "stem": "flower_redA",
+      "file": "flower_redA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/flower_redA.glb"
+    },
+    {
+      "stem": "building-type-a",
+      "file": "building-type-a.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-a.glb"
+    },
+    {
+      "stem": "building-type-b",
+      "file": "building-type-b.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-b.glb"
+    },
+    {
+      "stem": "building-type-c",
+      "file": "building-type-c.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-c.glb"
+    },
+    {
+      "stem": "building-type-d",
+      "file": "building-type-d.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "city-suburban/building-type-d.glb"
+    },
+    {
+      "stem": "statue_head",
+      "file": "statue_head.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/statue_head.glb"
+    },
+    {
+      "stem": "statue_obelisk",
+      "file": "statue_obelisk.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/statue_obelisk.glb"
+    },
+    {
+      "stem": "coatRackStanding",
+      "file": "coatRackStanding.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "furniture/coatRackStanding.glb"
+    },
+    {
+      "stem": "rock_smallA",
+      "file": "rock_smallA.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/rock_smallA.glb"
+    },
+    {
+      "stem": "rock_smallB",
+      "file": "rock_smallB.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "web-seed/rock_smallB.glb"
+    },
+    {
+      "stem": "grass",
+      "file": "grass.glb",
+      "license": "CC0",
+      "author": "Kenney",
+      "source": "nature/grass.glb"
+    },
+    {
+      "stem": "forge",
+      "file": "forge.glb",
+      "license": "CC0",
+      "author": "Kay Lousberg",
+      "source": "concord-frontend/public/models/building/forge.glb"
+    },
+    {
+      "stem": "tower",
+      "file": "tower.glb",
+      "license": "CC0",
+      "author": "Kay Lousberg",
+      "source": "concord-frontend/public/models/building/tower.glb"
+    }
+  ],
+  "aliases": [
+    {
+      "from": "building-small-a",
+      "to": "building-type-a"
+    },
+    {
+      "from": "building-small-b",
+      "to": "building-type-b"
+    },
+    {
+      "from": "building-small-c",
+      "to": "building-type-c"
+    },
+    {
+      "from": "building-small-d",
+      "to": "building-type-d"
+    },
+    {
+      "from": "statue",
+      "to": "statue_head"
+    },
+    {
+      "from": "weapon-rack",
+      "to": "coatRackStanding"
+    },
+    {
+      "from": "trophy",
+      "to": "statue_obelisk"
+    },
+    {
+      "from": "market_crate",
+      "to": "crate"
+    },
+    {
+      "from": "market_barrel",
+      "to": "barrel"
+    },
+    {
+      "from": "building-garage",
+      "to": "building-type-d"
+    },
+    {
+      "from": "road-straight-lightposts",
+      "to": "road-straight"
+    }
+  ]
+}

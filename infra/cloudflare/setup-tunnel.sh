@@ -58,7 +58,7 @@ TOKEN MODE — what to do in Cloudflare's dashboard first:
   4. Name it (e.g. "concord-runpod"), Save
   5. On the next screen, copy the LONG token string (starts with "ey...")
      — that's your CLOUDFLARE_TUNNEL_TOKEN.
-  6. Click "Next", then on the "Public Hostnames" tab add THREE routes,
+  6. Click "Next", then on the "Public Hostnames" tab add path-first routes,
      in this order (path rules first — Cloudflare matches top-down).
      Use 127.0.0.1 targets on bare metal / pm2 (the A40 path); on
      docker-compose use service names (backend:5050 / frontend:3000).
@@ -71,6 +71,10 @@ TOKEN MODE — what to do in Cloudflare's dashboard first:
      b) Godot client gateway — also straight to the backend:
        Subdomain: concord    Domain: <your-domain>.com
        Path:      /godot-ws.*
+       Service:   HTTP   http://127.0.0.1:5050
+     b2) Unity WebGL gateway — same kernel, in-page presenter:
+       Subdomain: concord    Domain: <your-domain>.com
+       Path:      /unity-ws.*
        Service:   HTTP   http://127.0.0.1:5050
      c) API + health — straight to the backend (keeps backend traffic
         at ONE proxy hop so per-IP rate limiting sees real client IPs):

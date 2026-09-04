@@ -30,6 +30,7 @@ namespace Concordia
                 WorldId.Frontier => ("packed_earth", new Color(0.72f, 0.58f, 0.38f), 14f),
                 WorldId.Superhero => ("concrete_floor", new Color(0.48f, 0.50f, 0.55f), 12f),
                 WorldId.Crucible => ("metal_plate", new Color(0.35f, 0.85f, 0.78f), 9f),
+                WorldId.Sere => ("wet_asphalt", new Color(0.32f, 0.28f, 0.22f), 16f),
                 _ => ("stone_tiles", new Color(0.55f, 0.50f, 0.42f), 10f)
             };
             var mat = HubLook.Pbr(stem, tint, 0.04f, 0.18f, tile);
@@ -91,6 +92,12 @@ namespace Concordia
                     FreePacks.Spawn("building-skyscraper-d", root, new Vector3(8, 0, 18), 20, 20f);
                     HubLook.Point(root, "DawnGold", new Vector3(0, 14, 10), new Color(1f, 0.72f, 0.35f), 8f, 28f, false);
                     break;
+                case WorldId.Sere:
+                    FreePacks.Spawn("building-skyscraper-e", root, new Vector3(0, 0, 14), 0, 22f);
+                    FreePacks.Spawn("building-d", root, new Vector3(-8, 0, 10), 15, 12f);
+                    FreePacks.Spawn("dumpster", root, new Vector3(4, 0, 6), 20, 2f);
+                    HubLook.Point(root, "SpireAmber", new Vector3(0, 10, 12), new Color(0.85f, 0.65f, 0.28f), 4.2f, 18f, false);
+                    break;
                 default:
                     FreePacks.Spawn("detail-crystal-large", root, new Vector3(0, 0, 8), 0, 5f);
                     FreePacks.Spawn("tower-hexagon-base", root, new Vector3(8, 0, 12), 30, 10f);
@@ -134,6 +141,7 @@ namespace Concordia
                 WorldId.Cyber => new[] { "building-skyscraper-a", "building-skyscraper-c", "corridor_end", "detail-overhang-wide" },
                 WorldId.Frontier => new[] { "tent_detailedOpen", "cart", "palm-straight", "barrel" },
                 WorldId.Superhero => new[] { "building-skyscraper-d", "building-type-a", "building-skyscraper-b", "building-small-d" },
+                WorldId.Sere => new[] { "building-d", "building-type-h", "building-skyscraper-e", "dumpster" },
                 _ => new[] { "detail-crystal-large", "tower-hexagon-mid", "column-large", "crypt-small" }
             };
             float[] rads = { 16f, 22f, 30f };

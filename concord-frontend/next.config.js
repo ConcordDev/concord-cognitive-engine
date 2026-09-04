@@ -52,10 +52,6 @@ const nextConfig = {
             value: 'nosniff',
           },
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
@@ -125,6 +121,32 @@ const nextConfig = {
         headers: [
           { key: 'Service-Worker-Allowed', value: '/' },
           { key: 'Cache-Control', value: 'no-cache' },
+        ],
+      },
+      {
+        // Clickjacking: DENY everywhere except the Unity WebGL player, which
+        // /lenses/world iframes same-origin. `/(.*)` used to set DENY globally
+        // and that refused the embed even from the world lens.
+        source: '/((?!unity-client/).*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+        ],
+      },
+      {
+        source: '/unity-client/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      },
+      {
+        // Unity gzip-compresses *.unityweb at export time. The browser must
+        // see Content-Encoding: gzip (or Unity's decompressionFallback, which
+        // the index route also injects). Without this, createUnityInstance
+        // treats gzip bytes as wasm and the canvas stays black.
+        source: '/unity-client/Build/:file*.unityweb',
+        headers: [
+          { key: 'Content-Encoding', value: 'gzip' },
+          { key: 'Content-Type', value: 'application/octet-stream' },
         ],
       },
     ];
