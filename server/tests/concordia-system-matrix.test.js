@@ -1,0 +1,35 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+
+function src(rel) {
+  return readFileSync(join(root, rel), "utf8");
+}
+
+describe("Concordia system matrix — audit pins", () => {
+  it("indexes the real stack and refuses a second civilization engine", () => {
+    const doc = src("docs/CONCORDIA_SYSTEM_MATRIX.md");
+    const resources = src("server/lib/resources.js");
+    const inv = src("server/migrations/050_player_inventory.js");
+    const economy = src("server/lib/npc-economy.js");
+    assert.match(doc, /This is an audit, not a rebuild/);
+    assert.match(doc, /WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR/);
+    assert.match(doc, /persist-sync/);
+    assert.match(doc, /PR #954/);
+    assert.match(doc, /RESOURCE_CATALOG/);
+    assert.match(resources, /export const RESOURCE_CATALOG/);
+    assert.match(inv, /player_inventory/);
+    assert.match(economy, /npc_inventory/);
+    assert.match(doc, /SimLod/);
+    assert.match(doc, /KitBag = player_inventory/);
+    assert.match(doc, /different trust boundaries/);
+    assert.match(doc, /Simulation scale must never equal rendering scale/);
+    assert.match(doc, /Sere is not a ninth Refusal gate/);
+    assert.doesNotMatch(doc, /Concord admits he loves her/);
+    assert.doesNotMatch(doc, /Aurelia/);
+  });
+});
