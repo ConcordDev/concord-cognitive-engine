@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0013
+namespace Concordia // FORCE_REFRESH_0014
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -301,11 +301,23 @@ namespace Concordia // FORCE_REFRESH_0013
                 var dressed = new Material[mats.Length];
                 for (int i = 0; i < mats.Length; i++)
                 {
-                    var mn = ((mats[i] ? mats[i].name : "") + " " + r.gameObject.name).ToLowerInvariant();
-                    bool isOp = mn.Contains("opacity") || mn.Contains("hair") || mn.Contains("lash") || mn.Contains("alpha");
-                    bool isHead = !isOp && (mn.Contains("head") || mn.Contains("face") || mn.Contains("eye"));
-                    // Multi-material rocketbox: slot 0 is body even when the mesh is named *_opacity.
-                    if (mats.Length > 1 && i == 0 && !mn.Contains("head"))
+                    var mn = mats[i] ? mats[i].name.ToLowerInvariant() : "";
+                    bool namedOp = mn.Contains("opacity") || mn.Contains("hair") || mn.Contains("lash") || mn.Contains("alpha");
+                    bool namedHead = mn.Contains("head") || mn.Contains("face") || mn.Contains("eye");
+                    bool namedBody = mn.Contains("body") || mn.Contains("skin") || mn.Contains("torso");
+                    bool isOp, isHead;
+                    if (namedOp || namedHead || namedBody)
+                    {
+                        isOp = namedOp;
+                        isHead = namedHead && !namedOp;
+                    }
+                    else if (mats.Length > 1)
+                    {
+                        // Rocketbox hipoly: body, head, opacity — mesh itself is often named *_opacity.
+                        isHead = i == 1;
+                        isOp = i >= 2;
+                    }
+                    else
                     {
                         isOp = false;
                         isHead = false;
