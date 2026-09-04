@@ -65,9 +65,15 @@ namespace Concordia
             }
             else if (biped)
             {
-                // 3ds Max Biped: local -X is along-bone (wrist → fingers).
+                // Hang rotates the hand — local −X is not always wrist→fingers.
+                // Aim the blade along the live forearm→hand bone.
                 from = longest(lb);
-                held.transform.localRotation = Quaternion.FromToRotation(from, Vector3.left);
+                var bone = hand.parent
+                    ? (hand.position - hand.parent.position)
+                    : hand.TransformDirection(Vector3.left);
+                if (bone.sqrMagnitude < 1e-6f) bone = hand.TransformDirection(Vector3.left);
+                var boneLocal = hand.InverseTransformDirection(bone.normalized);
+                held.transform.localRotation = Quaternion.FromToRotation(from, boneLocal);
             }
             else
             {
@@ -84,10 +90,13 @@ namespace Concordia
             lb = Local(held);
             if (biped)
             {
-                // After FromToRotation(..., left) the handle sits at max.x and
-                // the tip at min.x. Stay on the along-bone axis — Y/Z bound
-                // centering shoved the blade 30cm outboard of the hip.
-                held.transform.localPosition = new Vector3(-lb.max.x + 0.04f, 0f, 0f);
+                var bone = hand.parent
+                    ? (hand.position - hand.parent.position)
+                    : hand.TransformDirection(Vector3.left);
+                if (bone.sqrMagnitude < 1e-6f) bone = hand.TransformDirection(Vector3.left);
+                var boneLocal = hand.InverseTransformDirection(bone.normalized);
+                // Handle at the palm (8cm past the wrist along the live bone).
+                held.transform.localPosition = boneLocal * 0.08f;
             }
             else
             {

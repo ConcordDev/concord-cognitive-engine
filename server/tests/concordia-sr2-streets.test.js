@@ -139,8 +139,9 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(plaza, /DressVocab\.Tree\(/);
     assert.match(plaza, /DressVocab\.Grass\(/);
     assert.match(plaza, /DressVocab\.Table\(/);
-    assert.match(src("CharacterGear.cs"), /FromToRotation\(from, Vector3\.left\)/);
-    assert.match(src("CharacterGear.cs"), /-lb\.max\.x \+ 0\.04f, 0f, 0f/);
+    assert.match(src("CharacterGear.cs"), /FromToRotation\(from, boneLocal\)/);
+    assert.match(src("CharacterGear.cs"), /boneLocal \* 0\.08f/);
+    assert.match(src("CharacterGear.cs"), /hand\.position - hand\.parent\.position/);
     assert.match(src("HubLook.cs"), /stem \+ "_rough_2k/);
     assert.match(src("NpcLife.cs"), /Grounding\.Snap\(_cc\)/);
   });
