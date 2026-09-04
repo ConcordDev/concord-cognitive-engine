@@ -31,6 +31,12 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /AvatarBuilder\.BuildHumanAvatar/);
     assert.match(person, /BipedHinge\(/);
     assert.match(person, /_speed > 0.35f/);
+    assert.match(person, /_clipsFit && !_biped && _authored/);
+    assert.match(person, /_clipsFit = !_biped &&/);
+    assert.match(person, /StripPrefabWeapons/);
+    assert.match(person, /_footL\.position\.y/);
+    assert.match(person, /float contra = -swing/);
+    assert.match(person, /_authored && _sit < 0\.4f\) PlantFeet/);
     assert.doesNotMatch(person, /LoadAssetAtPath.*Soldier\.glb/);
     assert.match(game, /ModularPerson\.AttachHero\(/);
   });
@@ -110,7 +116,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /Talking\(\)/);
     assert.match(person, /PlanarSpeed/);
     assert.match(person, /talkLift/);
-    assert.match(person, /FORCE_REFRESH_0019/);
+    assert.match(person, /FORCE_REFRESH_0020/);
     assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
     assert.match(builder, /for \(int i = 0; i < 24; i\+\+\)/);
   });
@@ -126,5 +132,16 @@ describe("SR2 street floor — source contracts", () => {
     assert.doesNotMatch(plaza, /sh.radius = 1.6f/);
     assert.match(plaza, /new Vector3\(2\.4f, 0\.06f, 4\.2f\)/);
     assert.doesNotMatch(plaza, /w \* 0\.72f, 0\.12f, h \* 0\.72f/);
+    assert.match(plaza, /GodRays\(root\)/);
+    assert.match(plaza, /RingWalk/);
+    assert.match(plaza, /UnpavedKeep/);
+    assert.match(plaza, /MossVerge/);
+    assert.match(plaza, /DressVocab\.Tree\(/);
+    assert.match(plaza, /DressVocab\.Grass\(/);
+    assert.match(plaza, /DressVocab\.Table\(/);
+    assert.match(src("CharacterGear.cs"), /FromToRotation\(from, Vector3\.left\)/);
+    assert.match(src("CharacterGear.cs"), /-lb\.max\.x - 0\.015f/);
+    assert.match(src("HubLook.cs"), /stem \+ "_rough_2k/);
+    assert.match(src("NpcLife.cs"), /Grounding\.Snap\(_cc\)/);
   });
 });

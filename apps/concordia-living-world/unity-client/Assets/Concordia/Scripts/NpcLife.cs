@@ -44,6 +44,7 @@ namespace Concordia
             workplace = WorkplaceFor(job, home);
             post = PostFor(job, home, workplace);
             _rend = GetComponentsInChildren<Renderer>(true);
+            if (_cc) Grounding.Snap(_cc);
         }
 
         public void NoticePlayer(float seconds = 6f)

@@ -337,6 +337,7 @@ namespace Concordia
             var m = Lit(tint, metallic, smooth);
             var diff = LoadPbrTex(stem + "_diff_2k.jpg") ?? LoadPbrTex(stem + "_diff_2k");
             var nrm = LoadPbrTex(stem + "_nor_gl_2k.jpg") ?? LoadPbrTex(stem + "_nor_gl_2k");
+            var rough = LoadPbrTex(stem + "_rough_2k.jpg") ?? LoadPbrTex(stem + "_rough_2k");
             if (diff)
             {
                 if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", diff);
@@ -349,8 +350,10 @@ namespace Concordia
                 if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
                 m.EnableKeyword("_NORMALMAP");
                 m.SetTextureScale("_BumpMap", Vector2.one * tile);
-                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.15f);
+                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.35f);
             }
+            if (rough && m.HasProperty("_Smoothness"))
+                m.SetFloat("_Smoothness", Mathf.Min(smooth, 0.22f));
             return m;
         }
 

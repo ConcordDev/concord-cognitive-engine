@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0019
+namespace Concordia // FORCE_REFRESH_0020
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -25,6 +25,7 @@ namespace Concordia // FORCE_REFRESH_0019
         Renderer[] _skin, _shirt, _pants, _trim, _hair, _eyes;
         Quaternion _hipsRest, _spineRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
         Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
+        Vector3 _hipPos0;
         float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT;
         bool _grounded = true;
         bool _built;
@@ -204,7 +205,9 @@ namespace Concordia // FORCE_REFRESH_0019
             _anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
             _biped = NameHasBip(_uArmL) || NameHasBip(_hip);
+            StripPrefabWeapons(body);
             Capture(_hip, ref _hipsRest);
+            if (_hip) _hipPos0 = _hip.localPosition;
             Capture(_spine, ref _spineRest);
             Capture(_uArmL, ref _lArmRest);
             Capture(_fArmL, ref _lForeRest);
@@ -222,7 +225,10 @@ namespace Concordia // FORCE_REFRESH_0019
             if (built) _anim.avatar = built;
             var ctrl = LoadLocomotion();
             var av = _anim.avatar;
-            _clipsFit = ctrl && av && av.isHuman && av.isValid;
+            // Mixamo clips on 3ds Max Biped skate and sink the hips. Authored
+            // BipedHinge gait is the accurate walk for this skeleton. Clips
+            // stay available for a true Mixamo humanoid.
+            _clipsFit = !_biped && ctrl && av && av.isHuman && av.isValid;
             bool clipsFit = _clipsFit;
             if (_clipsFit)
             {
@@ -656,7 +662,6 @@ namespace Concordia // FORCE_REFRESH_0019
             if (_authored && _plantFrames < 8)
             {
                 StripGiantAndFallback();
-                PlantFeet();
                 if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
                 {
                     float dy = _handL.position.y - _uArmL.position.y;
@@ -674,7 +679,7 @@ namespace Concordia // FORCE_REFRESH_0019
                 _plantFrames++;
             }
 
-            bool animating = _clipsFit && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
+            bool animating = _clipsFit && !_biped && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
                 && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _grounded && _sit < 0.4f
                 && _speed > 0.35f;
             if (!animating)
@@ -693,6 +698,8 @@ namespace Concordia // FORCE_REFRESH_0019
                 var swing = t < 0.4f ? Mathf.Lerp(-70f, 100f, t / 0.4f) : Mathf.Lerp(100f, 0f, (t - 0.4f) / 0.6f);
                 _uArmR.localRotation *= Quaternion.Euler(swing * wind, 18f * wind, 0f);
             }
+
+            if (_authored && _sit < 0.4f) PlantFeet();
 
             if (_eyeL && _eyeR && _eye0.sqrMagnitude > 0.0001f)
             {
@@ -869,24 +876,26 @@ namespace Concordia // FORCE_REFRESH_0019
             bool talk = Talking();
             float talkLift = talk ? 16f + Mathf.Sin(Time.time * 5.2f) * 11f : 0f;
             float talkCurl = talk ? 20f + Mathf.Abs(Mathf.Sin(Time.time * 6.1f)) * 14f : 0f;
+            // Opposite arm to the stepping leg — ipsilateral swing reads as a march.
+            float contra = -swing;
             if (_biped)
             {
-                if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, swing - breath * 0.15f + shift * 0.4f, true);
-                if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, swing - breath * 0.15f + talkLift, false);
+                if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, contra - breath * 0.15f + shift * 0.4f, true);
+                if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, contra - breath * 0.15f + talkLift, false);
             }
             else
             {
-                if (_uArmL) _uArmL.localRotation = _lArmRest * ArmDelta(swing - breath * 0.15f, hang, true);
-                if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(swing - breath * 0.15f + talkLift, hang, false);
+                if (_uArmL) _uArmL.localRotation = _lArmRest * ArmDelta(contra - breath * 0.15f, hang, true);
+                if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(contra - breath * 0.15f + talkLift, hang, false);
             }
             if (_fArmL) _fArmL.localRotation = _lForeRest * ForeDelta(10f + 14f * w, true);
             if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 14f * w + talkCurl, false);
             if (_biped)
             {
-                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 34f * s * w + sit * 50f + shift * 0.5f);
-                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -34f * s * w + sit * 50f - shift * 0.5f);
-                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, -s) * 42f * w + sit * 38f);
-                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, s) * 42f * w + sit * 38f);
+                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 40f * s * w + sit * 50f + shift * 0.5f);
+                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -40f * s * w + sit * 50f - shift * 0.5f);
+                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, s) * 50f * w + sit * 38f);
+                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, -s) * 50f * w + sit * 38f);
             }
             else
             {
@@ -895,7 +904,12 @@ namespace Concordia // FORCE_REFRESH_0019
                 if (_lLegL) _lLegL.localRotation = _lLegRest * KneeDelta(Mathf.Max(0f, -s) * 42f * w + sit * 38f);
                 if (_lLegR) _lLegR.localRotation = _rLegRest * KneeDelta(Mathf.Max(0f, s) * 42f * w + sit * 38f);
             }
-            if (_hip) _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 4f * w + shift * 0.4f, 6f * s * w + shift, 0f);
+            if (_hip)
+            {
+                float bob = w > 0.05f ? -0.03f * w + 0.035f * Mathf.Abs(s) * w : 0f;
+                _hip.localPosition = _hipPos0 + new Vector3(0f, bob, 0f);
+                _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 6f * w + shift * 0.4f, 8f * s * w + shift, 0f);
+            }
             if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f, 5f * s * w, 0f);
             ApplyAuthoredAttitude();
             if (!_grounded)
@@ -1006,18 +1020,32 @@ namespace Concordia // FORCE_REFRESH_0019
             Debug.LogWarning("Concordia ModularPerson Kenney unusable (hy=" + hy + " maxDim=" + maxDim + ") — primitive visible fallback");
         }
 
+        static void StripPrefabWeapons(GameObject body)
+        {
+            if (!body) return;
+            foreach (var t in body.GetComponentsInChildren<Transform>(true))
+            {
+                if (!t || t == body.transform) continue;
+                var n = t.name.ToLowerInvariant();
+                if (n.Contains("heldsword")) continue;
+                if (!(n.Contains("sword") || n.Contains("weapon") || n.Contains("blade") || n.Contains("shield")))
+                    continue;
+                t.gameObject.SetActive(false);
+            }
+        }
+
         void PlantFeet()
         {
-            var skins = GetComponentsInChildren<SkinnedMeshRenderer>();
-            if (skins.Length == 0) return;
-            var b = skins[0].bounds;
-            for (int i = 1; i < skins.Length; i++) b.Encapsulate(skins[i].bounds);
+            float footY = float.MaxValue;
+            if (_footL) footY = Mathf.Min(footY, _footL.position.y);
+            if (_footR) footY = Mathf.Min(footY, _footR.position.y);
+            if (footY > 40f) return;
             var cc = GetComponentInParent<CharacterController>();
             float ground = cc ? cc.transform.position.y : transform.position.y;
-            var delta = ground - b.min.y;
-            if (Mathf.Abs(delta) < 0.002f) return;
-            if (Mathf.Abs(delta) > 2.5f) return;
-            transform.position += Vector3.up * delta;
+            var delta = (ground + 0.025f) - footY;
+            if (Mathf.Abs(delta) < 0.006f) return;
+            if (Mathf.Abs(delta) > 1.8f) return;
+            transform.position += Vector3.up * Mathf.Clamp(delta, -0.16f, 0.16f);
         }
 
         static void Capture(Transform t, ref Quaternion rest)

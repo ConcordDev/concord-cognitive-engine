@@ -19,14 +19,19 @@ namespace Concordia
             var earth = HubLook.Pbr("packed_earth", Canon.Hub.ground, 0.02f, 0.12f, 14f);
             var earthDark = HubLook.Pbr("ash_soil", new Color(0.38f, 0.30f, 0.22f), 0.02f, 0.10f, 12f);
             var gold = HubLook.Pbr("metal_plate", new Color(0.62f, 0.50f, 0.28f), 0.85f, 0.42f, 2.5f);
+            var masonry = HubLook.Pbr("plastered_wall", new Color(0.72f, 0.64f, 0.52f), 0.04f, 0.18f, 3.5f);
+            var brick = HubLook.Pbr("brick_wall_02", new Color(0.62f, 0.42f, 0.32f), 0.03f, 0.16f, 2.8f);
+            var stone = HubLook.Pbr("stone_tiles", new Color(0.58f, 0.52f, 0.44f), 0.04f, 0.2f, 6f);
+            var moss = HubLook.Pbr("grove_moss", new Color(0.34f, 0.40f, 0.24f), 0.02f, 0.14f, 9f);
             var glass = HubLook.Lit(new Color(0.22f, 0.26f, 0.28f, 0.55f), 0.12f, 0.92f);
 
-            Floor(root, earth, earthDark);
+            Floor(root, earth, earthDark, stone, moss);
             Monument(root, bronze, gold);
-            Dome(root, bronze, bronzeDark, gold, glass);
+            Dome(root, masonry, brick, gold, glass);
             Balcony(root, bronze, copper);
             Gates(root, bronze, gold);
             Clutter(root);
+            GodRays(root);
             Dust(root, new Color(1f, 0.88f, 0.62f));
             HubLook.Point(root, "MonumentLight", new Vector3(0f, 6.5f, 0f), new Color(1f, 0.72f, 0.42f), 2.2f, 14f, true);
             HubLook.Point(root, "OculusLight", new Vector3(0f, 28f, 0f), new Color(1f, 0.86f, 0.68f), 2.4f, 28f, false);
@@ -34,19 +39,26 @@ namespace Concordia
             HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.42f, 0.52f, 0.62f), 0.85f, 14f, false);
         }
 
-        static void Floor(Transform root, Material earth, Material dark)
+        static void Floor(Transform root, Material earth, Material dark, Material stone, Material moss)
         {
             var bed = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.01f, 0f), new Vector3(DomeR * 2.05f, 0.04f, DomeR * 2.05f), dark, "Battlefield");
             FreePacks.FlattenDisc(bed);
             var disc = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.03f, 0f), new Vector3(Canon.CourtRadius * 2.15f, 0.04f, Canon.CourtRadius * 2.15f), earth, "UnpavedCourt");
             FreePacks.FlattenDisc(disc);
+            // Stone ring between the unpaved court and the gates — not a paved court.
+            var ring = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.035f, 0f), new Vector3(42f, 0.035f, 42f), stone, "RingWalk");
+            FreePacks.FlattenDisc(ring);
+            var verge = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.038f, 0f), new Vector3(Canon.CourtRadius * 2.45f, 0.03f, Canon.CourtRadius * 2.45f), moss, "MossVerge");
+            FreePacks.FlattenDisc(verge);
+            var keep = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.04f, 0f), new Vector3(Canon.CourtRadius * 2.08f, 0.05f, Canon.CourtRadius * 2.08f), earth, "UnpavedKeep");
+            FreePacks.FlattenDisc(keep);
             foreach (var g in Canon.Gates)
             {
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
-                for (int s = 1; s <= 12; s++)
+                for (int s = 6; s <= 12; s++)
                 {
                     var p = dir * (s * 2.85f);
-                    var path = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.045f, new Vector3(2.2f, 0.04f, 0.95f), dark, "Track_" + g.world + "_" + s, false);
+                    var path = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.05f, new Vector3(2.6f, 0.05f, 1.35f), stone, "Track_" + g.world + "_" + s, false);
                     path.transform.rotation = Quaternion.LookRotation(dir);
                 }
             }
@@ -293,6 +305,49 @@ namespace Concordia
                 var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                 if (Canon.InArena(p)) continue;
                 FreePacks.Spawn("flower_redA", root, p, i * 37f, 0.35f, required: false);
+            }
+            for (int i = 0; i < 18; i++)
+            {
+                float a = i / 18f * Mathf.PI * 2f + 0.31f;
+                var r = 24.5f + (i % 4) * 1.8f;
+                var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                if (Canon.InArena(p)) continue;
+                if (i % 3 == 0)
+                    FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, p, a * Mathf.Rad2Deg, 7.2f + (i % 3), required: false);
+                else if (i % 3 == 1)
+                    FreePacks.Spawn(DressVocab.Rock(), root, p, i * 21f, 1.1f + (i % 3) * 0.25f, required: false);
+                else
+                    FreePacks.Spawn(DressVocab.Column(WorldId.Hub), root, p, a * Mathf.Rad2Deg, 2.6f, required: false);
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                float a = i / 10f * Mathf.PI * 2f + 0.7f;
+                var p = new Vector3(Mathf.Cos(a) * 20.4f, 0f, Mathf.Sin(a) * 20.4f);
+                FreePacks.Spawn(i % 2 == 0 ? DressVocab.Crate() : DressVocab.Prop(WorldId.Hub), root, p, i * 33f, 0.95f, required: false);
+            }
+            for (int i = 0; i < 20; i++)
+            {
+                float a = i / 20f * Mathf.PI * 2f + 0.09f;
+                var r = 17.4f + (i % 5) * 0.42f;
+                var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                if (Canon.InArena(p)) continue;
+                FreePacks.Spawn(DressVocab.Grass(WorldId.Hub), root, p, i * 29f, 0.85f + (i % 3) * 0.12f, required: false);
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                float a = i / 8f * Mathf.PI * 2f + 0.48f;
+                var p = new Vector3(Mathf.Cos(a) * 22.4f, 0f, Mathf.Sin(a) * 22.4f);
+                if (Canon.InArena(p)) continue;
+                var tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+                FreePacks.Spawn(DressVocab.Table(), root, p, a * Mathf.Rad2Deg, 1.15f, required: false);
+                FreePacks.Spawn(DressVocab.Chair(), root, p + tangent * 1.15f, a * Mathf.Rad2Deg + 180f, 0.95f, required: false);
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                var g = Canon.Gates[i % Canon.Gates.Length];
+                var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
+                var side = new Vector3(-dir.z, 0f, dir.x);
+                FreePacks.Spawn(DressVocab.Cart(), root, dir * 26.5f + side * 2.4f, -g.angle * Mathf.Rad2Deg + 12f, 1.8f, required: false);
             }
         }
 

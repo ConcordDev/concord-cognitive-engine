@@ -48,18 +48,26 @@ namespace Concordia
             if (!held || !hand) return;
             foreach (var c in held.GetComponentsInChildren<Collider>())
                 Object.Destroy(c);
+            held.transform.SetParent(null);
+            held.transform.localScale = Vector3.one;
+            FreePacks.FitMax(held, size);
             held.transform.SetParent(hand, false);
             held.transform.localPosition = Vector3.zero;
             held.transform.localRotation = Quaternion.identity;
-            held.transform.localScale = Vector3.one;
-            FreePacks.FitMax(held, size);
 
+            bool biped = hand.name.IndexOf("Bip", System.StringComparison.OrdinalIgnoreCase) >= 0;
             var lb = Local(held);
             Vector3 from;
             if (shield)
             {
                 from = thinnest(lb);
                 held.transform.localRotation = Quaternion.FromToRotation(from, Vector3.forward);
+            }
+            else if (biped)
+            {
+                // 3ds Max Biped: local -X is along-bone (wrist → fingers).
+                from = longest(lb);
+                held.transform.localRotation = Quaternion.FromToRotation(from, Vector3.left);
             }
             else
             {
@@ -74,11 +82,23 @@ namespace Concordia
             }
 
             lb = Local(held);
-            float palmX = right ? lb.min.x : lb.max.x;
-            held.transform.localPosition = new Vector3(
-                -palmX + (right ? 0.04f : -0.04f),
-                -lb.center.y,
-                -lb.center.z + (shield ? 0.04f : 0f));
+            if (biped)
+            {
+                // After FromToRotation(..., left) the handle sits at max.x and
+                // the tip at min.x. Put the handle in the palm, tip along −X.
+                held.transform.localPosition = new Vector3(
+                    -lb.max.x - 0.015f,
+                    -lb.center.y + 0.01f,
+                    -lb.center.z);
+            }
+            else
+            {
+                float palmX = right ? lb.min.x : lb.max.x;
+                held.transform.localPosition = new Vector3(
+                    -palmX + (right ? 0.04f : -0.04f),
+                    -lb.center.y,
+                    -lb.center.z + (shield ? 0.04f : 0f));
+            }
         }
 
         static Vector3 longest(Bounds b)
