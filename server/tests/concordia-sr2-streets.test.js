@@ -170,6 +170,8 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(life, /class UsePlace/);
     assert.match(life, /NearestDoor/);
     assert.match(packs, /HumanHeight/);
+    assert.match(packs, /var hh = HumanHeight\(stem\)/);
+    assert.match(packs, /if \(hh > 0\.01f\) maxDim = hh/);
     assert.match(game, /UsePlace\.Nearest/);
     assert.match(game, /NearestDoor/);
     assert.match(game, /OpenTalk/);

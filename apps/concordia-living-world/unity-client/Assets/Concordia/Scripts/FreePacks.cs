@@ -304,6 +304,13 @@ namespace Concordia
                 go.transform.localScale = Vector3.one * 0.35f;
             }
             go.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
+            // Named furniture/trees always use the human-scale table. Callers
+            // that pass 2.2f carts or 1.6f desks were the leftover mismatch.
+            if (byHeight)
+            {
+                var hh = HumanHeight(stem);
+                if (hh > 0.01f) maxDim = hh;
+            }
             if (maxDim > 0.01f)
             {
                 if (byHeight) FitHeight(go, maxDim);
