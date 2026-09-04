@@ -232,6 +232,23 @@ namespace Concordia
 
         public static bool HasStem(string stem) => Mesh(stem) != null;
 
+        /// <summary>
+        /// True only when an imported My Asset folder owns the stem.
+        /// Kenney / HubKit hits do not count — store first, Kenney last.
+        /// </summary>
+        public static bool HasStoreStem(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return false;
+            Index();
+#if UNITY_EDITOR
+            if (_meshes == null) return false;
+            var key = HubKit.Alias(stem);
+            if (_meshes.TryGetValue(key, out var path) && IsStorePath(path)) return true;
+            if (_meshes.TryGetValue(stem.ToLowerInvariant(), out path) && IsStorePath(path)) return true;
+#endif
+            return false;
+        }
+
         public static string[] IndexedStems()
         {
             Index();
@@ -518,7 +535,7 @@ namespace Concordia
         {
             if (prefer != null)
                 foreach (var n in prefer)
-                    if (!string.IsNullOrEmpty(n) && FreePacks.HasStem(n)) return n;
+                    if (!string.IsNullOrEmpty(n) && FreePacks.HasStoreStem(n)) return n;
             var fuzzy = FreePacks.FirstStoreStemContaining(prefer);
             if (!string.IsNullOrEmpty(fuzzy)) return fuzzy;
             return kenney;
@@ -550,11 +567,11 @@ namespace Concordia
             var c = Culture(id);
             if (c == "grid") return FirstStem(new[] { "Antenna", "console" }, "tree-baobab");
             if (c == "ash") return FirstStem(new[] { "DeadTree", "Stump", "tree-dead" }, "tree-dead");
-            return FirstStem(new[] { "Pine", "Oak", "Tree_01", "tree-oak", "tree_oak" }, "tree_oak");
+            return FirstStem(new[] { "tree", "FirTree", "tree_1", "Pine", "Oak", "Tree_01", "tree-oak", "tree_oak" }, "tree_oak");
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "Grass_01", "Plant", "Fern", "grass_large", "grass" }, "grass");
+            FirstStem(new[] { "grass01", "Grass_01", "Plant", "Fern", "grass_large", "grass" }, "grass");
 
         public static string Prop(WorldId id)
         {
@@ -629,23 +646,30 @@ namespace Concordia
             public string[] needles;
         }
 
+        /// <summary>
+        /// Owned My Assets only — not a wishlist. Needles match folder names
+        /// under Assets/ after import. Slavic Village / Distant Lands / Kyle
+        /// are not on this account.
+        /// </summary>
         public static readonly PackHint[] Curated =
         {
-            new PackHint { id = "167010", role = "medieval town", needles = new[] { "slavic", "medieval environment" } },
-            new PackHint { id = "fantasy-town-demo", role = "hero settlement (do not vendor 1.8GB)", needles = new[] { "fantasy town", "medieval fantasy town" } },
-            new PackHint { id = "fortification", role = "walls / holds", needles = new[] { "fortification", "medieval fort" } },
-            new PackHint { id = "urp-trees", role = "trees", needles = new[] { "urp tree", "tree models" } },
-            new PackHint { id = "point-grass", role = "grass coverage", needles = new[] { "point grass", "pointgrass" } },
-            new PackHint { id = "lowpoly-veg", role = "bulk flora", needles = new[] { "low poly trees", "vegetation" } },
-            new PackHint { id = "mountain", role = "wilderness", needles = new[] { "stylized fantasy environment", "mountain" } },
-            new PackHint { id = "melee-anims", role = "combat clips", needles = new[] { "melee animation", "human melee", "human basic motions" } },
-            new PackHint { id = "distant-lands", role = "npc archetypes", needles = new[] { "distant lands" } },
-            new PackHint { id = "scifi-lab", role = "grid interiors", needles = new[] { "sci-fi lab", "scifi lab" } },
-            new PackHint { id = "robot-kyle", role = "grid / industrial npc", needles = new[] { "robot kyle", "robotkyle" } },
-            new PackHint { id = "fake-interiors", role = "window density", needles = new[] { "fake interior", "fakeinteriors" } },
-            new PackHint { id = "mapmagic2", role = "terrain gen", needles = new[] { "mapmagic" } },
-            new PackHint { id = "particle-pack", role = "fx", needles = new[] { "particle pack" } },
-            new PackHint { id = "starter-thirdperson", role = "reference only — do not replace Concordia controller", needles = new[] { "starter assets", "thirdperson" } }
+            new PackHint { id = "87811", role = "fantasy props / houses / towers", needles = new[] { "Mega Fantasy Props" } },
+            new PackHint { id = "85732", role = "modular walls / rooms", needles = new[] { "Barking_Dog" } },
+            new PackHint { id = "35361", role = "forest trees / grass", needles = new[] { "Fantasy Forest Environment" } },
+            new PackHint { id = "107400", role = "skybox + lowpoly fir", needles = new[] { "BOXOPHOBIC" } },
+            new PackHint { id = "154271", role = "human locomotion clips", needles = new[] { "Kevin Iglesias", "Human Basic Motions" } },
+            new PackHint { id = "178395", role = "human dummy meshes", needles = new[] { "Human Character Dummy", "Kevin Iglesias" } },
+            new PackHint { id = "65284", role = "RPG mecanim clips", needles = new[] { "ExplosiveLLC" } },
+            new PackHint { id = "127325", role = "particle fx", needles = new[] { "UnityTechnologies", "Particle Pack" } },
+            new PackHint { id = "304424", role = "quick combat vfx", needles = new[] { "GabrielAguiar" } },
+            new PackHint { id = "15649", role = "living birds", needles = new[] { "living birds" } },
+            new PackHint { id = "987", role = "roads (EasyRoads)", needles = new[] { "EasyRoads3D" } },
+            new PackHint { id = "4387", role = "water (SUIMONO) — imported, not the live water path", needles = new[] { "SUIMONO" } },
+            new PackHint { id = "14360", role = "weapon meshes", needles = new[] { "MYFG-Weapon" } },
+            new PackHint { id = "267961", role = "controller reference — do not replace Concordia", needles = new[] { "Starter Assets" } },
+            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "Big Oak", "Objective Environment" } },
+            new PackHint { id = "269772", role = "demo city (re-download if truncated; do not vendor)", needles = new[] { "Demo City", "Versatile Studio" } },
+            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Sound Effects" } }
         };
 
         public static bool FolderPresent(string[] needles)

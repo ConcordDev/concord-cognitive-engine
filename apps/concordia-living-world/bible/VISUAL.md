@@ -1,6 +1,6 @@
 # VISUAL
 
-**Status:** LIVE (vocabulary + Kenney fallback + My-Assets indexer) · PENDING (no pack folder imported into this project yet)  
+**Status:** LIVE (owned My Assets imported into this `unity-client`) · Kenney is last fallback  
 **Authority:** Unity (presentation) — culture keys come from `WorldId`, never invented place names  
 **Source:** `DressVocab` in `FreePacks.cs`, `CityTown` in `RealmFill.cs`, `BuildingInterior.cs`
 
@@ -14,12 +14,14 @@
 | Tunya / Fantasy / Frontier | grove | Houses, trees, crops / palms. Fantasy + Ruins also get a fort rim. |
 | Ruins | ash | Crypt / remnant stems. |
 | Crime / Sere | street | Shop / warehouse / dumpster. |
-| Cyber / Superhero | grid | Lab / skyline stems. Robot Kyle is grid-only, never medieval population. |
+| Cyber / Superhero | grid | Lab / skyline stems. |
 | Crucible | drift | Crystal / tower stems. |
 
-Resolution order: imported My Assets (`Assets/Store/`, `Assets/AssetStore/`, `Assets/FreeAssets/`, or any other top-level `Assets/<Pack Name>/`) → exact stem → fuzzy token match (`SM_Bld_House_01` satisfies `House`) → HubKit Kenney → primitive. A missing pack never blanks a town.
+Resolution order: imported My Assets (`Assets/Store/`, `Assets/AssetStore/`, `Assets/FreeAssets/`, or any other top-level `Assets/<Pack Name>/`) → **store exact** → **store fuzzy** (`house.002` satisfies `House`) → HubKit Kenney → primitive. A Kenney exact name no longer beats a store fuzzy match. A missing pack never blanks a town.
 
-**My Assets ≠ this project.** Package Manager's My Assets page is the Unity account catalog. This machine's `Assets/Store/` is still the empty drop folder; `~/Library/Unity/Asset Store-5.x` has no downloads. Until a pack is imported here, the audit prints `imported (none — Kenney fallback is live)`. Concordia → Asset Store → Dump visual audit writes `/tmp/concordia-visual.txt` with `indexed=` / `store=` / each imported folder.
+**My Assets ≠ this project.** Package Manager's My Assets page is the account catalog. This project now has imported pack folders (Mega Fantasy Props, Barking_Dog modular kit, Fantasy Forest, BOXOPHOBIC skybox, Kevin Iglesias dummy + motions, ExplosiveLLC mecanim, UnityTechnologies particles, GabrielAguiar VFX, living birds, EasyRoads3D, SUIMONO, MYFG weapons, Starter Assets reference, Convai SDK, and the rest of the owned set that fit on disk). Concordia → Asset Store → Dump visual audit writes `/tmp/concordia-visual.txt` with `indexed=` / `store=` / each imported folder. Listed-but-truncated downloads (Demo City, Big Oak, Sound FX) stay pending until a complete `.unitypackage` lands.
+
+Do **not** commit pack binaries. `Assets/Store/.gitignore` and the pack folders stay local.
 
 Interior LOD (Tunya hitch budget):
 
@@ -29,31 +31,32 @@ Interior LOD (Tunya hitch budget):
 
 Dump: `/tmp/concordia-visual.txt` on `CityTown.BuildAll` and **Concordia → Asset Store → Dump visual audit**.
 
-Kenney stays the prototyping fallback. Plaques still refuse invented names.
+Hub Court stays unpaved. Plaques still refuse invented names. Starter Assets / Kinematic / 3rd Person are reference only — they do not replace Concordia's controller. SUIMONO and Convai are imported, not the live water or NPC path.
 
-## Curated stack (raw material — do not depend on one pack)
+## Owned stack (this account — imported here)
 
-Import under `unity-client/Assets/Store/`. Do **not** commit the ~1.8 GB town demo.
+| Role | Pack | Store id | In this project |
+|---|---|---|---|
+| Fantasy houses / towers / props | Mega Fantasy Props Pack | 87811 | PRESENT |
+| Modular rooms / walls | 3D Free Modular Kit | 85732 | PRESENT (`Barking_Dog`) |
+| Forest trees / grass | Fantasy Forest Environment Free Demo | 35361 | PRESENT |
+| Skybox + lowpoly fir | FREE Skybox Extended Shader | 107400 | PRESENT (`BOXOPHOBIC`) |
+| Human dummy + locomotion | Human Character Dummy + Human Basic Motions FREE | 178395 / 154271 | PRESENT (`Kevin Iglesias`) |
+| RPG mecanim clips | RPG Character Mecanim Animation Pack FREE | 65284 | PRESENT (`ExplosiveLLC`) |
+| Particle fx | Particle Pack \| Starter Assets | 127325 | PRESENT (`UnityTechnologies`) |
+| Combat VFX | Free Quick Effects Vol. 1 | 304424 | PRESENT (`GabrielAguiarProductions`) |
+| Birds | Living Birds | 15649 | PRESENT |
+| Roads | EasyRoads3D Free v3 | 987 | PRESENT |
+| Water (imported, not live path) | SUIMONO Water System | 4387 | PRESENT |
+| Weapons | MYFG - Weapon Pack Lite | 14360 | PRESENT |
+| Controller reference | Starter Assets: Character Controllers \| URP | 267961 | PRESENT — do not replace Concordia |
+| Big oak | Big Oak Tree FREE | 279431 | pending (truncated download) |
+| Demo city (do not vendor) | Demo City By Versatile Studio | 269772 | pending (truncated download) |
+| Sound fx | Free Sound Effects Pack Starter | 155776 | pending (truncated download) |
 
-| Role | Pack | Store |
-|---|---|---|
-| Medieval town (first grab) | Slavic Medieval Village Free | [167010](https://assetstore.unity.com/packages/3d/environments/fantasy/slavic-medieval-village-free-modular-environment-kit-167010) |
-| Hero settlement | Medieval Fantasy Town Village — Demo Scenes | [280621](https://assetstore.unity.com/packages/3d/environments/fantasy/medieval-fantasy-town-village-environment-demo-scenes-280621) — 1–2 towns only |
-| Walls / holds | Medieval Fortification (free filter) | [search $0](https://assetstore.unity.com/search?q=Medieval%20Fortification&orderBy=1&price=0-0) |
-| Trees | URP Tree Models | [253340](https://assetstore.unity.com/packages/3d/vegetation/trees/urp-tree-models-253340) |
-| Grass coverage | Point Grass Renderer | [207854](https://assetstore.unity.com/packages/3d/vegetation/point-grass-renderer-207854) |
-| Bulk flora | Low Poly Trees and Vegetation (free filter) | [search $0](https://assetstore.unity.com/search?q=Low%20Poly%20Trees%20and%20Vegetation&orderBy=1&price=0-0) |
-| Wilderness | Mountain — Stylized Fantasy Environment | [307488](https://assetstore.unity.com/packages/3d/environments/landscapes/mountain-stylized-fantasy-environment-307488) |
-| Combat clips | Human Melee Animations FREE | [165785](https://assetstore.unity.com/packages/3d/animations/human-melee-animations-free-165785) — Concordia SM stays authoritative |
-| Extra NPC meshes | Distant Lands Free Characters | [178123](https://assetstore.unity.com/packages/3d/characters/distant-lands-free-characters-178123) |
-| Sci-fi seed | Sci-Fi Lab Kit | [324212](https://assetstore.unity.com/packages/3d/environments/sci-fi/sci-fi-lab-kit-modular-stylized-low-poly-environment-assets-324212) |
-| Industrial NPC | Robot Kyle URP | [4696](https://assetstore.unity.com/packages/3d/characters/robots/robot-kyle-urp-4696) |
-| Window density | Fake Interiors FREE | [104029](https://assetstore.unity.com/packages/vfx/shaders/fake-interiors-free-104029) |
-| Terrain gen | MapMagic 2 | [165180](https://assetstore.unity.com/packages/tools/terrain/mapmagic-2-165180) |
-| Controller reference | Starter Assets — ThirdPerson URP | [196526](https://assetstore.unity.com/packages/essentials/starter-assets-thirdperson-updates-in-new-charactercontroller-pa-196526) — do not replace Concordia’s controller |
-| FX | Particle Pack | [127325](https://assetstore.unity.com/packages/vfx/particles/particle-pack-127325) |
+Not on this account (do not claim): Slavic Medieval Village 167010, Distant Lands, Robot Kyle, Point Grass, MapMagic, Fake Interiors, Sci-Fi Lab.
 
-Editor: **Concordia → Asset Store → 01…15** and **Open My Assets**. Downloads require a signed-in Package Manager. Import into this `unity-client` project (Store folder or the pack's own root). Do not assume a pack listed in My Assets is dressed — the dump is the authority.
+Editor: **Concordia → Asset Store → Open My Assets**. Downloads require a signed-in Package Manager. Import into this `unity-client` project. The dump is the authority for PRESENT vs pending.
 
 ## TARGET
 
@@ -61,4 +64,4 @@ Editor: **Concordia → Asset Store → 01…15** and **Open My Assets**. Downlo
 
 ## Gap
 
-Packs are not in this tree. Dressing still reads Kenney until a My Asset is imported into an indexed folder. Combat clip graph is still incomplete (Human Melee not imported). Point Grass is not wired — EdgeFlora uses extra Kenney/PBR grass patches as the honest coverage until that renderer exists.
+Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). Point Grass is not owned — EdgeFlora uses extra Kenney/PBR grass patches plus Fantasy Forest `grass01`. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass.

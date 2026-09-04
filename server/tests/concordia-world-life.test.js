@@ -168,6 +168,10 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(packs, /IsStorePath/);
     assert.match(packs, /SearchFolders/);
     assert.match(packs, /FirstStoreStemContaining/);
+    assert.match(packs, /HasStoreStem/);
+    assert.match(packs, /87811/);
+    assert.match(packs, /Mega Fantasy Props/);
+    assert.doesNotMatch(packs, /slavic/);
     assert.match(packs, /ImportedPackFolders/);
     assert.match(packs, /MY ASSETS vs THIS PROJECT/);
     assert.match(packs, /Listed != imported/);
