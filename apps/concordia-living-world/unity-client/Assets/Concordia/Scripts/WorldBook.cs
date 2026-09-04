@@ -687,8 +687,16 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
             else
                 RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
-            var sun = UnityEngine.Object.FindAnyObjectByType<Light>();
-            if (sun && sun.type == LightType.Directional)
+            var suns = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
+            Light sun = null;
+            for (int i = 0; i < suns.Length; i++)
+            {
+                var l = suns[i];
+                if (!l || l.type != LightType.Directional) continue;
+                if (l.name == "Sun") { sun = l; break; }
+                if (sun == null && l.shadows != LightShadows.None) sun = l;
+            }
+            if (sun)
             {
                 if (World == WorldId.Hub)
                     sun.intensity = 0.92f + 0.38f * day;
