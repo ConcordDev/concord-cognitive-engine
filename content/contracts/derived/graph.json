@@ -400,6 +400,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "graph.map-merge-nodes",
+      "name": "map-merge-nodes"
+    },
+    {
+      "_derived": true,
+      "domain": "graph",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "graph.map-metrics",
       "name": "map-metrics"
     },
@@ -692,5 +705,5 @@
   ],
   "domain": "graph",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 53
+  "macroCount": 54
 }

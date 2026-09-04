@@ -34,8 +34,18 @@
 //               a brownout reads as a dead box and a recoverable slowdown
 //               becomes an outage — worse than doing nothing.
 //   PROTECTED — an authenticated request (`req.user?.id` truthy, set by
-//               authMiddleware upstream) that isn't bulk-shaped. This is
-//               the in-flight-session traffic the whole exercise exists to
+//               authMiddleware upstream) that isn't bulk-shaped, OR one of
+//               the small set of auth-critical endpoints a user hits
+//               BEFORE they have a session (login/register/refresh/
+//               csrf-token). Those are unauthenticated by definition — the
+//               plain authed-check would otherwise put them at the same
+//               tight 300ms bar as anonymous bulk traffic, which is wrong:
+//               a random "signup failed" reads as "the site is broken" to
+//               a new user, not as a polite ask to retry, even with a
+//               correct Retry-After header. Real production symptom fixed
+//               2026-08-23: live login/register 503s traced to exactly
+//               this misclassification. This is the in-flight-session
+//               traffic (plus its on-ramp) the whole exercise exists to
 //               protect. Only sheds once lag is well past the point where
 //               shedding SHEDDABLE traffic alone hasn't been enough.
 //   SHEDDABLE — everything else: unauthenticated/new-session traffic, and
@@ -67,6 +77,16 @@ const _CRITICAL_PATH_RE = /^\/(health|ready|metrics)(\b|\/)|^\/api\/(health|stat
 // `/api/artifact/:id/download`, etc.) without needing an exhaustive
 // allowlist of every such route.
 const _BULK_PATH_RE = /\/(bulk|export|import|download)(\b|[-/])/i;
+
+// Auth-critical endpoints a user necessarily hits with NO session yet.
+// Mirrors the write-auth-public-paths ratchet's own EXPECTED entries for
+// these four routes (server/tests/invariants/write-auth-public-paths.test.js)
+// — same set, different reason (that test pins they're allowed to run
+// unauthenticated at all; this one pins they don't get shed like bulk
+// traffic while doing so). csrf-token is included because it's a hard
+// prerequisite fetch before login/register can even be attempted — shedding
+// it blocks the flow just as effectively as shedding login itself.
+const _AUTH_CRITICAL_PATH_RE = /^\/api\/auth\/(login|register|refresh|csrf-token)(\b|\/)/;
 
 function _isKillSwitchOff(enabledOverride) {
   if (enabledOverride !== undefined) return !enabledOverride;
@@ -103,6 +123,7 @@ export function getRetryAfterSeconds() {
 export function classifyRequest(req) {
   const path = req?.path || req?.url || "";
   if (_CRITICAL_PATH_RE.test(path)) return PRIORITY.CRITICAL;
+  if (_AUTH_CRITICAL_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   const authed = !!(req?.user?.id);
   if (authed && !_BULK_PATH_RE.test(path)) return PRIORITY.PROTECTED;
   return PRIORITY.SHEDDABLE;

@@ -179,6 +179,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "thread.delete_node",
+      "name": "delete_node"
+    },
+    {
+      "_derived": true,
+      "domain": "thread",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "thread.detect_consensus",
       "name": "detect_consensus"
     },
@@ -699,6 +712,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "thread.thread-clone",
+      "name": "thread-clone"
+    },
+    {
+      "_derived": true,
+      "domain": "thread",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "thread.thread-dashboard",
       "name": "thread-dashboard"
     },
@@ -757,5 +783,5 @@
   ],
   "domain": "thread",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 58
+  "macroCount": 60
 }

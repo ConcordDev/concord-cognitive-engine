@@ -467,6 +467,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "foundry.promote",
+      "name": "promote"
+    },
+    {
+      "_derived": true,
+      "domain": "foundry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "foundry.publish",
       "name": "publish"
     },
@@ -642,5 +655,5 @@
   ],
   "domain": "foundry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 40
+  "macroCount": 41
 }

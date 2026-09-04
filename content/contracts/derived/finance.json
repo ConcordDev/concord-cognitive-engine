@@ -270,6 +270,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "finance.cashflow-projection-python",
+      "name": "cashflow-projection-python"
+    },
+    {
+      "_derived": true,
+      "domain": "finance",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "finance.cashflow-sankey",
       "name": "cashflow-sankey"
     },
@@ -1329,5 +1342,5 @@
   ],
   "domain": "finance",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 102
+  "macroCount": 103
 }

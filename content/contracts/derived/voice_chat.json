@@ -49,19 +49,6 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
-      "macro_id": "voice_chat.leave",
-      "name": "leave"
-    },
-    {
-      "_derived": true,
-      "domain": "voice_chat",
-      "fuzz_cases": [],
-      "inputs": {},
-      "invariants": [
-        "output !== null && output !== undefined",
-        "typeof output === 'object'",
-        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
-      ],
       "macro_id": "voice_chat.leave_room",
       "name": "leave_room"
     },
@@ -94,5 +81,5 @@
   ],
   "domain": "voice_chat",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 7
+  "macroCount": 6
 }

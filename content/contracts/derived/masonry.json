@@ -49,6 +49,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "masonry.cert-add",
+      "name": "cert-add"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.cert-list",
+      "name": "cert-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.cert-remove",
+      "name": "cert-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "masonry.change-order-create",
       "name": "change-order-create"
     },
@@ -77,6 +116,45 @@
       ],
       "macro_id": "masonry.change-order-sign",
       "name": "change-order-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.client-add",
+      "name": "client-add"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.client-delete",
+      "name": "client-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.client-list",
+      "name": "client-list"
     },
     {
       "_derived": true,
@@ -142,6 +220,45 @@
       ],
       "macro_id": "masonry.duplicate",
       "name": "duplicate"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.inspection-add",
+      "name": "inspection-add"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.inspection-list",
+      "name": "inspection-list"
+    },
+    {
+      "_derived": true,
+      "domain": "masonry",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "masonry.inspection-update",
+      "name": "inspection-update"
     },
     {
       "_derived": true,
@@ -945,5 +1062,5 @@
   ],
   "domain": "masonry",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 51
+  "macroCount": 60
 }

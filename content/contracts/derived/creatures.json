@@ -60,6 +60,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "creatures.creature-list-mine",
+      "name": "creature-list-mine"
+    },
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creatures.creature-publish",
+      "name": "creature-publish"
+    },
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "creatures.for_world",
       "name": "for_world"
     },
@@ -75,6 +101,19 @@
       ],
       "macro_id": "creatures.lineage",
       "name": "lineage"
+    },
+    {
+      "_derived": true,
+      "domain": "creatures",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "creatures.portrait",
+      "name": "portrait"
     },
     {
       "_derived": false,
@@ -175,5 +214,5 @@
   ],
   "domain": "creatures",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 9
 }

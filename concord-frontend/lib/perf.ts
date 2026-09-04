@@ -26,7 +26,17 @@ let reporter: MetricReporter = (metric) => {
   }
   // In production, beacon metrics to the backend (fire-and-forget, no user data)
   if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-    navigator.sendBeacon('/api/metrics/vitals', JSON.stringify({ name: metric.name, value: metric.value, kind: metric.kind }));
+    // sendBeacon's Content-Type defaults to text/plain;charset=UTF-8 when
+    // given a plain string, which the backend's express.json() parser never
+    // reads — req.body came back empty server-side, so every beacon 400'd
+    // with "name and value required" (found live 2026-08-24, real-browser
+    // load test). Wrapping in a Blob with an explicit type sets the header
+    // sendBeacon actually honors, matching what express.json() expects.
+    const payload = new Blob(
+      [JSON.stringify({ name: metric.name, value: metric.value, kind: metric.kind })],
+      { type: 'application/json' },
+    );
+    navigator.sendBeacon('/api/metrics/vitals', payload);
   }
 };
 

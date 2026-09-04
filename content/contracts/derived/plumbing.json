@@ -49,6 +49,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "plumbing.clientAdd",
+      "name": "clientAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.clientList",
+      "name": "clientList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.codeReference",
+      "name": "codeReference"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "plumbing.comment",
       "name": "comment"
     },
@@ -299,6 +338,45 @@
       ],
       "macro_id": "plumbing.fixtureCount",
       "name": "fixtureCount"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.inspectionAdd",
+      "name": "inspectionAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.inspectionList",
+      "name": "inspectionList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.inspectionUpdate",
+      "name": "inspectionUpdate"
     },
     {
       "_derived": true,
@@ -811,6 +889,45 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "plumbing.techCertAdd",
+      "name": "techCertAdd"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.techCertList",
+      "name": "techCertList"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "plumbing.techCertRemove",
+      "name": "techCertRemove"
+    },
+    {
+      "_derived": true,
+      "domain": "plumbing",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "plumbing.techList",
       "name": "techList"
     },
@@ -966,5 +1083,5 @@
   ],
   "domain": "plumbing",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 51
+  "macroCount": 60
 }

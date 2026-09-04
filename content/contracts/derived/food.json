@@ -322,6 +322,97 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "food.floorplan-table-add",
+      "name": "floorplan-table-add"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-table-delete",
+      "name": "floorplan-table-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-table-list",
+      "name": "floorplan-table-list"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-table-update",
+      "name": "floorplan-table-update"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-waitlist-add",
+      "name": "floorplan-waitlist-add"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-waitlist-list",
+      "name": "floorplan-waitlist-list"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.floorplan-waitlist-remove",
+      "name": "floorplan-waitlist-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "food.food-discover-dashboard",
       "name": "food-discover-dashboard"
     },
@@ -636,6 +727,45 @@
       ],
       "macro_id": "food.pourCost",
       "name": "pourCost"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.prep-list-get",
+      "name": "prep-list-get"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.prep-list-save",
+      "name": "prep-list-save"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.prep-list-toggle-task",
+      "name": "prep-list-toggle-task"
     },
     {
       "_derived": true,
@@ -1219,11 +1349,50 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "food.waste-log-add",
+      "name": "waste-log-add"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.waste-log-delete",
+      "name": "waste-log-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "food.waste-log-list",
+      "name": "waste-log-list"
+    },
+    {
+      "_derived": true,
+      "domain": "food",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "food.wasteReport",
       "name": "wasteReport"
     }
   ],
   "domain": "food",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 94
+  "macroCount": 107
 }

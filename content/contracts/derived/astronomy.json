@@ -917,8 +917,112 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "astronomy.session-join",
+      "name": "session-join"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-leave",
+      "name": "session-leave"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "astronomy.session-list",
       "name": "session-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-log-list",
+      "name": "session-log-list"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-log-post",
+      "name": "session-log-post"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-observers",
+      "name": "session-observers"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-share",
+      "name": "session-share"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-target-get",
+      "name": "session-target-get"
+    },
+    {
+      "_derived": true,
+      "domain": "astronomy",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "astronomy.session-target-set",
+      "name": "session-target-set"
     },
     {
       "_derived": true,
@@ -1171,5 +1275,5 @@
   ],
   "domain": "astronomy",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 71
+  "macroCount": 79
 }

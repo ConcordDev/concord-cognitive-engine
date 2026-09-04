@@ -161,7 +161,7 @@ function validateResponse(response, expected) {
 
   // Pattern checks
   if (expected.needsList) {
-    if (!/\b\d+[.\)]|\n[-*•]/.test(response)) {
+    if (!/\b\d+[.)]|\n[-*•]/.test(response)) {
       issues.push(`no list structure found`);
     }
   }

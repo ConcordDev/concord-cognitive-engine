@@ -10,7 +10,7 @@ Momentum = boneMass × leverArm × angularVelocity. Stagger: graze / flinch / ro
 
 ## LIVE (Unity play)
 
-LMB light, F heavy, G special, X dodge (shove), Space jump. Flower-law in Court. Arena dummy HP. Hitscan SphereCast. Poise is a HUD bar, not a stagger resolver. Socket down.
+LMB light, F heavy, G special, X dodge (shove), Space jump. Flower-law in Court. Arena dummy HP. Hitscan SphereCast. Hostile: perception cone, last-seen, strafe, per-name speed. Fauna compose hunt/flee. Poise is a HUD bar, not a stagger resolver. Socket down.
 
 ## TARGET
 

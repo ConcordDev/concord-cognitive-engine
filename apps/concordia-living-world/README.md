@@ -19,7 +19,7 @@ Not wired into `concord-frontend` / Godot.
 | `src/components/concordia/` | R3F world, HUD, rigged figures, Kenney field |
 | `public/models/` | Soldier / Kenney / fauna / ruins GLBs |
 | `unity-client/` | Unity 6 URP project (Hub plaza playable in Editor). Open from this repo — do not copy out. |
-| `bible/` | Living specs (LIVE vs TARGET). Authority: Concord owns sim, Unity owns presentation. |
+| `bible/` | Living specs (LIVE vs TARGET). Authority: Concord owns sim, Unity owns presentation. Visual stack: `bible/VISUAL.md`. |
 | `HANDOFF.MAC.md` | Mac Unity Hub instructions (in-repo project) |
 | `CONCORDIA_SYSTEM_AUDIT.md` | 2026-09-01 code-vs-play audit |
 | `CONCORDIA_AAA_GAP_REPORT.md` | Remaining AAA gaps |

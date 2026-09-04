@@ -44,8 +44,9 @@ export function detectKind(bytes) {
   if (buf.length >= 3 && matchesMagic(buf, MAGIC_BYTES.gif)) return 'gif';
 
   // Check WebP (RIFF at 0, WEBP at 8)
-  if (buf.length >= 12 && matchesMagic(buf, MAGIC_BYTES.webp) && buf.toString('utf8', 8, 12) === 'WEBP')
+  if (buf.length >= 12 && matchesMagic(buf, MAGIC_BYTES.webp) && buf.toString('utf8', 8, 12) === 'WEBP') {
     return 'webp';
+  }
 
   // Check MP3
   if (buf.length >= 2 && matchesMagic(buf, MAGIC_BYTES.mp3)) return 'mp3';
@@ -54,8 +55,9 @@ export function detectKind(bytes) {
   if (buf.length >= 12 && buf.toString('utf8', 4, 8) === 'ftyp') return 'mp4';
 
   // Check WAV (RIFF at 0, WAVE at 8)
-  if (buf.length >= 12 && matchesMagic(buf, MAGIC_BYTES.wav) && buf.toString('utf8', 8, 12) === 'WAVE')
+  if (buf.length >= 12 && matchesMagic(buf, MAGIC_BYTES.wav) && buf.toString('utf8', 8, 12) === 'WAVE') {
     return 'wav';
+  }
 
   // Check ZIP
   if (buf.length >= 4 && matchesMagic(buf, MAGIC_BYTES.zip)) return 'zip';

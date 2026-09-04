@@ -34,6 +34,11 @@ sysinfo.txt
 
 # Editor debug captures (p0 Hub shots) — never commit
 [Aa]ssets/[Ss]creenshots/
+Assets/Concordia/Shots/
+
+# Mixamo / character FBX (~587MB). Restore locally from the kitchen tree.
+Assets/Concordia/Models/**
+!Assets/Concordia/Models/README.txt
 
 # Stale copies sitting outside Assets/ — Unity does not compile these.
 # Live gameplay scripts: Assets/Concordia/Scripts/

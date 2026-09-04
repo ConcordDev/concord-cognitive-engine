@@ -17,6 +17,11 @@
 
 import { mountGodotGateway } from './godot-gateway.js';
 
+function isLoopback(addr) {
+  const a = String(addr || "");
+  return a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
+}
+
 export const UNITY_MESSAGE_TYPES = {
   CLIENT_HELLO: 'unity:hello',
   SCENE_REQUEST: 'unity:scene:request',
@@ -41,8 +46,33 @@ export const UNITY_MESSAGE_TYPES = {
 export function mountUnityGateway(server, deps) {
   // Reuses godot-gateway's mounting logic (same WebSocket, same auth, same rooms)
   // Unity-specific messages are routed through onClientMessage
+  const verifyToken = async (token, meta = {}) => {
+    if (token && token !== "unity-local-guest" && typeof deps.verifyToken === "function") {
+      const hit = await deps.verifyToken(token);
+      if (hit) return hit;
+    }
+    // Kitchen / Editor guest. Remote production still requires a real bearer.
+    // Loopback (this box's Unity Editor → :5050) may use unity-local-guest
+    // so Concord 2B can answer without a Convai cloud key.
+    const loopback = isLoopback(meta.remoteAddress);
+    if (!token || token === "unity-local-guest") {
+      if (process.env.NODE_ENV !== "production" || (token === "unity-local-guest" && loopback)) {
+        return { userId: "unity-local-guest" };
+      }
+    }
+    return null;
+  };
+  const getUser = async (userId) => {
+    if (userId === "unity-local-guest") {
+      return { id: "unity-local-guest", username: "unity-local" };
+    }
+    if (typeof deps.getUser === "function") return deps.getUser(userId);
+    return null;
+  };
   return mountGodotGateway(server, {
     ...deps,
+    verifyToken,
+    getUser,
     path: '/unity-ws',
     clientHint: 'unity',
   });

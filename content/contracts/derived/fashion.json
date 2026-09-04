@@ -439,6 +439,84 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "fashion.moodboard-add-item",
+      "name": "moodboard-add-item"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.moodboard-create",
+      "name": "moodboard-create"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.moodboard-delete",
+      "name": "moodboard-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.moodboard-list",
+      "name": "moodboard-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.moodboard-remove-item",
+      "name": "moodboard-remove-item"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.moodboard-update",
+      "name": "moodboard-update"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "fashion.move",
       "name": "move"
     },
@@ -493,6 +571,19 @@
       ],
       "macro_id": "fashion.outfit-list",
       "name": "outfit-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.outfit-set-item-position",
+      "name": "outfit-set-item-position"
     },
     {
       "_derived": true,
@@ -725,6 +816,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "fashion.social-clone-item",
+      "name": "social-clone-item"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "fashion.social-delete",
       "name": "social-delete"
     },
@@ -935,9 +1039,61 @@
       ],
       "macro_id": "fashion.weather-forecast",
       "name": "weather-forecast"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.wishlist-add",
+      "name": "wishlist-add"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.wishlist-convert-to-item",
+      "name": "wishlist-convert-to-item"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.wishlist-list",
+      "name": "wishlist-list"
+    },
+    {
+      "_derived": true,
+      "domain": "fashion",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "fashion.wishlist-remove",
+      "name": "wishlist-remove"
     }
   ],
   "domain": "fashion",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 72
+  "macroCount": 84
 }

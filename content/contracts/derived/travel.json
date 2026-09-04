@@ -296,6 +296,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "travel.inbox-sync",
+      "name": "inbox-sync"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "travel.itinerary-add",
       "name": "itinerary-add"
     },
@@ -454,6 +467,84 @@
       ],
       "macro_id": "travel.lock",
       "name": "lock"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-account-add",
+      "name": "loyalty-account-add"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-account-list",
+      "name": "loyalty-account-list"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-account-remove",
+      "name": "loyalty-account-remove"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-account-update",
+      "name": "loyalty-account-update"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-points-log-add",
+      "name": "loyalty-points-log-add"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.loyalty-points-log-list",
+      "name": "loyalty-points-log-list"
     },
     {
       "_derived": true,
@@ -790,6 +881,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "travel.travel-doc-attachment-delete",
+      "name": "travel-doc-attachment-delete"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.travel-doc-attachment-download",
+      "name": "travel-doc-attachment-download"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.travel-doc-attachment-list",
+      "name": "travel-doc-attachment-list"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "travel.travel-doc-attachment-upload",
+      "name": "travel-doc-attachment-upload"
+    },
+    {
+      "_derived": true,
+      "domain": "travel",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "travel.travel-doc-list",
       "name": "travel-doc-list"
     },
@@ -952,5 +1095,5 @@
   ],
   "domain": "travel",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 73
+  "macroCount": 84
 }

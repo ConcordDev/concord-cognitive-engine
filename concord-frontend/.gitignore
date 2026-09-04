@@ -10,8 +10,10 @@ coverage/
 .next/
 out/
 
-# Production
-build/
+# Production (this frontend's own /build folder only). A bare `build/`
+# is case-insensitive on macOS and would ignore public/unity-client/Build/,
+# which is the committed Unity WebGL player.
+/build/
 
 # Misc
 .DS_Store

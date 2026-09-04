@@ -283,6 +283,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "hvac.ductulator",
+      "name": "ductulator"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "hvac.duplicate",
       "name": "duplicate"
     },
@@ -450,6 +463,19 @@
       ],
       "macro_id": "hvac.field-visit-update",
       "name": "field-visit-update"
+    },
+    {
+      "_derived": true,
+      "domain": "hvac",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "hvac.hangerSpanCheck",
+      "name": "hangerSpanCheck"
     },
     {
       "_derived": true,
@@ -1016,5 +1042,5 @@
   ],
   "domain": "hvac",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 54
+  "macroCount": 56
 }

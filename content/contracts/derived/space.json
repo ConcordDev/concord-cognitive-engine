@@ -517,6 +517,71 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "space.satellite-catalog",
+      "name": "satellite-catalog"
+    },
+    {
+      "_derived": true,
+      "domain": "space",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "space.satellite-list",
+      "name": "satellite-list"
+    },
+    {
+      "_derived": true,
+      "domain": "space",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "space.satellite-passes",
+      "name": "satellite-passes"
+    },
+    {
+      "_derived": true,
+      "domain": "space",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "space.satellite-track",
+      "name": "satellite-track"
+    },
+    {
+      "_derived": true,
+      "domain": "space",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "space.satellite-untrack",
+      "name": "satellite-untrack"
+    },
+    {
+      "_derived": true,
+      "domain": "space",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "space.save",
       "name": "save"
     },
@@ -614,5 +679,5 @@
   ],
   "domain": "space",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 47
+  "macroCount": 52
 }

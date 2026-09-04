@@ -491,6 +491,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "sim.spikingNetworkSimulate",
+      "name": "spikingNetworkSimulate"
+    },
+    {
+      "_derived": true,
+      "domain": "sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "sim.spikingSTDPLearn",
+      "name": "spikingSTDPLearn"
+    },
+    {
+      "_derived": true,
+      "domain": "sim",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "sim.star",
       "name": "star"
     },
@@ -549,5 +575,5 @@
   ],
   "domain": "sim",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 42
+  "macroCount": 44
 }

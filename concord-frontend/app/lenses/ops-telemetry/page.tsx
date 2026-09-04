@@ -22,6 +22,7 @@ import { AdminRequiredState } from '@/components/common/EmptyState';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LivenessPanel } from '@/components/admin/LivenessPanel';
+import { RuntimeConstellationPanel } from '@/components/runtime/RuntimeConstellationPanel';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useSmartPolling } from '@/hooks/useSmartPolling';
 import { lensRun } from '@/lib/api/client';
@@ -417,6 +418,8 @@ export default function OpsTelemetryPage() {
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
             <LivenessPanel refreshToken={livenessTick} />
           </div>
+
+          <RuntimeConstellationPanel />
 
           {/* Wave E — Simulation Overview. This lens was infra-health-only
               (heartbeat timing, worker pools, brain endpoints, world shards)

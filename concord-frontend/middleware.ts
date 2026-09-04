@@ -38,7 +38,10 @@ import type { NextRequest } from 'next/server';
  * report-only rollout history this flip closes out.
  */
 
-function buildCsp(nonce: string): string {
+function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }): string {
+  // Default document policy is frame-ancestors 'none'. /unity-client/ is the
+  // one same-origin iframe exception (world lens → Unity WebGL).
+  const frameAncestors = opts?.frameAncestors ?? "'none'";
   const directives = [
     `default-src 'self'`,
     // 'strict-dynamic' lets Next's own nonce'd bootstrap script load its
@@ -110,7 +113,7 @@ function buildCsp(nonce: string): string {
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    `frame-ancestors 'none'`,
+    `frame-ancestors ${frameAncestors}`,
   ];
   return directives.join('; ');
 }
@@ -152,6 +155,11 @@ const PUBLIC_PREFIXES = [
   // /meshes/ above: these are asset bytes, not a page route, and the real
   // auth happens inside the client via the gateway token it's given at boot.
   '/godot-client/',
+  // Unity WebGL export (scripts/export-unity-web.mjs -> public/unity-client/).
+  // Same "static render-pipeline asset" reasoning as /godot-client/: index.html
+  // is nonce-injected by app/unity-client/index.html/route.ts; wasm/data/framework
+  // live under public/. Auth happens inside the client via /unity-ws.
+  '/unity-client/',
   '/manifest.json',
   '/manifest.webmanifest',
   '/robots.txt',
@@ -216,7 +224,12 @@ export function middleware(request: NextRequest) {
   // of a random UUID, the standard pattern (128 bits of entropy, never
   // reused across requests).
   const nonce = btoa(crypto.randomUUID());
-  const csp = buildCsp(nonce);
+  // /unity-client/ is the world-lens iframe document. frame-ancestors 'none'
+  // (and X-Frame-Options DENY) would refuse even a same-origin embed.
+  const csp = buildCsp(
+    nonce,
+    pathname.startsWith('/unity-client/') ? { frameAncestors: "'self'" } : undefined,
+  );
 
   // Propagate the nonce to Server Components via a request header (read
   // with `(await headers()).get('x-nonce')`), and set the CSP itself as a

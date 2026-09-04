@@ -465,6 +465,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "invariant.testAction",
+      "name": "testAction"
+    },
+    {
+      "_derived": true,
+      "domain": "invariant",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "invariant.violationHistory",
       "name": "violationHistory"
     },
@@ -484,5 +497,5 @@
   ],
   "domain": "invariant",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 37
+  "macroCount": 38
 }

@@ -508,6 +508,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "civic_bonds.scopes",
+      "name": "scopes"
+    },
+    {
+      "_derived": true,
+      "domain": "civic_bonds",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "civic_bonds.share",
       "name": "share"
     },
@@ -619,5 +632,5 @@
   ],
   "domain": "civic_bonds",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 33
+  "macroCount": 34
 }

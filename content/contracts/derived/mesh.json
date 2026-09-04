@@ -98,6 +98,71 @@
       "name": "channels"
     },
     {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.consensusAppend",
+      "name": "consensusAppend"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.consensusEquivocation",
+      "name": "consensusEquivocation"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.consensusMergeRemote",
+      "name": "consensusMergeRemote"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.consensusState",
+      "name": "consensusState"
+    },
+    {
+      "_derived": true,
+      "domain": "mesh",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "mesh.consensusStatus",
+      "name": "consensusStatus"
+    },
+    {
       "_derived": false,
       "domain": "mesh",
       "fuzz_cases": [
@@ -711,5 +776,5 @@
   ],
   "domain": "mesh",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 29
+  "macroCount": 34
 }

@@ -75,7 +75,13 @@ const eslintConfig = [
     },
   },
   {
-    ignores: ['node_modules/', '.next/', 'out/', 'dist/', 'build/', 'coverage/', '*.min.js'],
+    ignores: ['node_modules/', '.next/', 'out/', 'dist/', 'build/', 'coverage/', '*.min.js', 'public/unity-client/Build/'],
+  },
+  {
+    files: ['server-proxy.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
   },
 ];
 

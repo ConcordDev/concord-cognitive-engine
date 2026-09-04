@@ -36,6 +36,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "district.list_proposals",
+      "name": "list_proposals"
+    },
+    {
+      "_derived": true,
+      "domain": "district",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "district.propose_change",
+      "name": "propose_change"
+    },
+    {
+      "_derived": true,
+      "domain": "district",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "district.snapshot-record",
       "name": "snapshot-record"
     },
@@ -51,9 +77,22 @@
       ],
       "macro_id": "district.timeline-list",
       "name": "timeline-list"
+    },
+    {
+      "_derived": true,
+      "domain": "district",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "district.vote",
+      "name": "vote"
     }
   ],
   "domain": "district",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 4
+  "macroCount": 7
 }

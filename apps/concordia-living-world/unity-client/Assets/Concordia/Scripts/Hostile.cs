@@ -3,7 +3,8 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Live-steel hunter. Does not wound inside the Unburned Court.
+    /// Live-steel hunter. Perception → close → strafe → hit → recover.
+    /// Does not wound inside the Unburned Court. Composes with FaunaLife.
     /// </summary>
     public class Hostile : MonoBehaviour
     {
@@ -13,26 +14,35 @@ namespace Concordia
         public float speed = 3.4f;
         TrainingDummy _body;
         CharacterController _cc;
+        FaunaLife _fauna;
         Vector3 _home;
         float _cd;
+        float _seen;
+        Vector3 _lastSeen;
         Vector3 _vel;
+        float _strafe;
+        float _style;
 
         void Start()
         {
             _body = GetComponent<TrainingDummy>() ?? GetComponentInParent<TrainingDummy>();
             _cc = GetComponent<CharacterController>();
+            _fauna = GetComponent<FaunaLife>();
             _home = transform.position;
+            _style = 0.85f + Mathf.Abs(name.GetHashCode() % 40) / 100f;
+            speed *= _style;
             var drift = GetComponent<EvoDrift>();
             if (drift) drift.enabled = false;
         }
 
         void Update()
         {
-            if (_body && _body.hp <= 0) return;
+            if (_body && _body.hp <= 0) { if (_fauna) _fauna.hunting = false; return; }
             var player = ConcordiaPlayer.Live;
             if (!player) return;
             if (!Canon.SteelLive(player.world, player.transform.position))
             {
+                if (_fauna) _fauna.hunting = false;
                 Hold();
                 return;
             }
@@ -41,8 +51,18 @@ namespace Concordia
             var dist = to.magnitude;
             _cd -= Time.deltaTime;
 
-            if (dist > aggro)
+            var see = dist < aggro * 1.15f && Vector3.Dot(transform.forward, to.normalized) > -0.15f;
+            if (see)
             {
+                _seen = 2.4f;
+                _lastSeen = player.transform.position;
+            }
+            else
+                _seen -= Time.deltaTime;
+
+            if (_seen <= 0f && dist > aggro)
+            {
+                if (_fauna) _fauna.hunting = false;
                 var home = _home - transform.position;
                 home.y = 0f;
                 if (home.magnitude > 0.6f) Step(home.normalized);
@@ -50,17 +70,24 @@ namespace Concordia
                 return;
             }
 
-            if (dist > range)
+            if (_fauna) _fauna.hunting = true;
+            var aim = see ? to : _lastSeen - transform.position;
+            aim.y = 0f;
+            var aimDist = aim.magnitude;
+
+            if (aimDist > range)
             {
-                Step(to.normalized);
-                Face(to);
+                Step(aim.normalized);
+                Face(aim);
                 return;
             }
 
-            Hold();
-            Face(to);
+            _strafe += Time.deltaTime * (0.7f + _style);
+            var side = Vector3.Cross(Vector3.up, aim.normalized);
+            Step((side * Mathf.Sin(_strafe * 2.2f) * 0.55f).normalized);
+            Face(aim);
             if (_cd > 0f) return;
-            _cd = 1.15f;
+            _cd = 0.85f + (1.4f - _style);
             player.TakeHit(damage, name);
         }
 

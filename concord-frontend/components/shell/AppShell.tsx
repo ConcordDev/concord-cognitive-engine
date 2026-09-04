@@ -116,7 +116,35 @@ const NowPlayingBar = dynamic(
 // '/share/animation/' is the public, no-account animation share viewer (view
 // a shared animation via a token link) — same reasoning: a logged-out
 // visitor should never see Concord's authenticated app chrome.
-const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/', '/share/animation/'];
+// '/onboarding' (bare page + every /onboarding/* step — brain-mode,
+// character, location, confirm-age) is a brand-new account's very first
+// screen. Rendering it inside the full AppShell exposed the entire
+// 60+-destination sidebar, topbar, NotificationBell, SystemGuidePanel, and
+// FirstWinWizard around a single yes/no onboarding question — overwhelming
+// for a first-time visitor (real feedback: "regular apps are simple," this
+// one required dodging unrelated UI to find the actual next step) and, on
+// the resilience side, those chrome widgets each fire their own fetch
+// (guidance/first-win, guidance/suggestions, tutorial/first-cycle,
+// events/paginated, NotificationBell's poll) the instant they mount — a
+// burst of ~6 simultaneous calls on top of onboarding's own auth/wizard
+// checks, at exactly the moment a fresh signup's session is most fragile.
+// Standalone here stops all of that chrome (and its fetch burst) from
+// mounting during onboarding; the onboarding pages' own hooks (useOnboarding,
+// the confirm-age redirect effect) still run identically either way, since
+// hooks execute regardless of which JSX branch AppShell returns.
+// /register + /login (2026-08-24, found live during a concurrent real-browser
+// load test): these are pre-auth pages — the visitor has no session yet, so
+// the full authenticated-app <Sidebar/> (links to all ~260 lenses) was
+// rendering there anyway and Next.js eagerly prefetches every visible Link,
+// firing dozens of `_rsc` GETs that each redirect through /login?from=... on
+// the unauthenticated request. Under concurrent load (several real signups
+// sharing one page-load burst) that prefetch storm measurably delayed the
+// actual register/login POST — up to several seconds before it even left
+// the browser, well past what reads as "the button works" to a real user.
+// Same fix, same reasoning as the /onboarding entry above: standalone here
+// stops that chrome (and its fetch/prefetch burst) from mounting at exactly
+// the moment the page has the least reason to show it.
+const STANDALONE_PREFIXES = ['/legal/', '/welding-portal/', '/share/animation/', '/onboarding', '/register', '/login'];
 
 interface AppShellProps {
   children: React.ReactNode;

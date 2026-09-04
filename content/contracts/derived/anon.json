@@ -257,6 +257,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "anon.privacyBudgetReset",
+      "name": "privacyBudgetReset"
+    },
+    {
+      "_derived": true,
+      "domain": "anon",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "anon.privacyBudgetStatus",
+      "name": "privacyBudgetStatus"
+    },
+    {
+      "_derived": true,
+      "domain": "anon",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "anon.privacyRisk",
       "name": "privacyRisk"
     },
@@ -497,5 +523,5 @@
   ],
   "domain": "anon",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 38
+  "macroCount": 40
 }

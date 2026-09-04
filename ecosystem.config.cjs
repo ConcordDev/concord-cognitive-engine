@@ -275,7 +275,27 @@ module.exports = {
     {
       name: 'concord-frontend',
       script: 'node',
-      args: '.next/standalone/server.js',
+      // MUST be server-proxy.js, not .next/standalone/server.js — the
+      // vanilla standalone server ignores BACKEND_URL below and has no
+      // /socket.io/* proxy, so a request to it falls into Next's own
+      // routing and gets redirected (observed live 2026-08-24: redirected
+      // all the way to /login), breaking every WebSocket-dependent feature
+      // (chat, presence, live world/game sync) for every user.
+      //
+      // server-proxy.js DOES work under the current Next.js 16.2.12 — a
+      // same-day false alarm here was corrected by more patient testing.
+      // Its cold start (nextServer.prepare() -> getServer() ->
+      // createServer()) genuinely takes ~20-40s on this box before it logs
+      // "[proxy] Concord frontend listening on ..." and binds the port —
+      // checking within a few seconds of launch (as an earlier version of
+      // this comment did) looks identical to a permanent hang but isn't.
+      // The "next start does not work with output: standalone" line it
+      // prints on boot is an upstream Next.js WARNING only (next.js's own
+      // source: `_log.warn(...)`, no throw) — harmless, expected, not a
+      // sign of failure. When restarting this app, wait for the
+      // "[proxy] Concord frontend listening" log line (or a successful
+      // curl to the port) before concluding it's broken.
+      args: 'server-proxy.js',
       cwd: `${__dirname}/concord-frontend`,
       instances: 1,
       exec_mode: 'fork',

@@ -75,6 +75,58 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "ar.captureDelete",
+      "name": "captureDelete"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.captureGet",
+      "name": "captureGet"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.captureList",
+      "name": "captureList"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "ar.captureUpload",
+      "name": "captureUpload"
+    },
+    {
+      "_derived": true,
+      "domain": "ar",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "ar.comment",
       "name": "comment"
     },
@@ -445,5 +497,5 @@
   ],
   "domain": "ar",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 34
+  "macroCount": 38
 }

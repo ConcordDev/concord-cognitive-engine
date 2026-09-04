@@ -140,6 +140,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law.citation-graph",
+      "name": "citation-graph"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law.cite",
       "name": "cite"
     },
@@ -322,6 +335,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law.contract-redline-init",
+      "name": "contract-redline-init"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.contract-redline-link",
+      "name": "contract-redline-link"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law.contract-review",
       "name": "contract-review"
     },
@@ -337,6 +376,19 @@
       ],
       "macro_id": "law.contract-sign",
       "name": "contract-sign"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.contract-trends",
+      "name": "contract-trends"
     },
     {
       "_derived": true,
@@ -569,6 +621,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law.patent-claims",
+      "name": "patent-claims"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law.pin",
       "name": "pin"
     },
@@ -660,6 +725,32 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "law.recap-docket-documents",
+      "name": "recap-docket-documents"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.recap-docket-search",
+      "name": "recap-docket-search"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "law.recent_mine",
       "name": "recent_mine"
     },
@@ -701,6 +792,58 @@
       ],
       "macro_id": "law.save",
       "name": "save"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.search-alert-add",
+      "name": "search-alert-add"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.search-alert-check",
+      "name": "search-alert-check"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.search-alert-list",
+      "name": "search-alert-list"
+    },
+    {
+      "_derived": true,
+      "domain": "law",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
+      "macro_id": "law.search-alert-remove",
+      "name": "search-alert-remove"
     },
     {
       "_derived": true,
@@ -796,5 +939,5 @@
   ],
   "domain": "law",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 61
+  "macroCount": 72
 }

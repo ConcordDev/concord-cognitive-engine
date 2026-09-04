@@ -238,12 +238,18 @@ else
   WARNINGS+=("$(c_y "⚠ DB_PATH dir missing")  $DB_DIR — server will create at boot if parent is writable")
 fi
 
-# ── Data durability — is the DB on a persistent volume? ──
-# The container disk is ephemeral on RunPod; a pod reclaim wipes it. Warn if
-# DB_PATH doesn't look like a persistent network-volume mount.
-case "${DB_PATH:-$DB_DIR}" in
-  /workspace*|/runpod-volume*|/data/*) echo "$(c_g "✓ DB on a likely-persistent path")  ${DB_PATH:-$DB_DIR}" ;;
-  *) WARNINGS+=("$(c_y "⚠ DB_PATH may be EPHEMERAL")  ${DB_PATH:-$DB_DIR} — put it on the network volume (e.g. /workspace/concord/db/concord.db) or a pod reclaim = total data loss") ;;
+# ── Data durability — is the BACKUP DESTINATION on a persistent volume? ──
+# Local-disk DB migration (2026-08-24): DB_PATH is now deliberately on the
+# ephemeral container disk by design (better-sqlite3 is fully synchronous —
+# running it against RunPod's network-mounted /workspace exposed every
+# write to network-storage latency/errors, causing real event-loop-lag
+# spikes and load-shed 503s; see startup.sh's bootstrap-restore comment for
+# the full trace). DB_PATH-on-ephemeral-disk is therefore NOT itself a
+# durability problem — what has to be persistent is CONCORD_BACKUP_DIR,
+# which startup.sh's fresh-pod bootstrap-restore reads on every boot.
+case "${CONCORD_BACKUP_DIR:-$DATA_DIR}" in
+  /workspace*|/runpod-volume*|/data/*) echo "$(c_g "✓ Backups land on a likely-persistent path")  ${CONCORD_BACKUP_DIR:-$DATA_DIR/backups}" ;;
+  *) WARNINGS+=("$(c_y "⚠ CONCORD_BACKUP_DIR may be EPHEMERAL")  ${CONCORD_BACKUP_DIR:-$DATA_DIR/backups} — put it on the network volume (e.g. /workspace/concord-data/backups) or a pod reclaim = total data loss") ;;
 esac
 
 # ── Transactional email — account recovery depends on it ──

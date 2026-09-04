@@ -12,6 +12,7 @@
  */
 
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
+import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
 
 // === DATA DIRECTORY (canonical) ===
 // Resolution order:
@@ -29,6 +30,19 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'backups'), { recursive: true }); } catch
 try { fs.mkdirSync(path.join(DATA_DIR, 'snapshots'), { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'artifacts'), { recursive: true }); } catch { /* intentional */ }
 try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { /* intentional */ }
+
+// Best-effort CPU self-pin, as early in boot as possible — see
+// lib/cpu-self-pin.js's header for the real production bug this closes
+// (2026-08-23: a live pod had its 5 Ollama brain processes correctly
+// core-pinned by scripts/runpod-cognition.sh, but Node itself was never
+// pinned, free to be scheduled onto the same busy cores). Runs every boot
+// automatically, unlike scripts/pin-processes.sh's external/manual
+// invocation, which does not survive a restart. console.log, not
+// structuredLog — this runs before that's defined.
+try {
+  const _pin = selfPinAwayFromOllama();
+  console.log("[cpu-self-pin]", JSON.stringify(_pin));
+} catch (_e) { /* best-effort, never block boot */ }
 /**
  * Concord v2 — Macro‑Max Monolith (Single File)
  * - Macro-first architecture: nearly all logic is macros.
@@ -55,7 +69,8 @@ import { createLensArtifactStore } from "./lib/lens-artifact-store.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
-import { spawnSync } from "child_process";
+import { spawnSync, spawn } from "child_process";
+import { fileURLToPath as __serverFileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
@@ -699,6 +714,14 @@ registerHeartbeat("lattice-breakthrough-pass", {
 registerHeartbeat("lattice-federation-poll", {
   frequency: 120,
   handler: runFederationPoll,
+  scope: "global",
+});
+registerHeartbeat("constellation-observe-cycle", {
+  frequency: 20,
+  handler: async () => {
+    const { runConstellationObserveCycle } = await import("./lib/runtime/constellation.js");
+    return runConstellationObserveCycle({ probeLab: false });
+  },
   scope: "global",
 });
 // Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
@@ -3026,6 +3049,32 @@ async function gracefulShutdown(signal) {
 
   structuredLog("info", "shutdown_received", { signal });
 
+  // Root cause of the graceful-shutdown hang (found live 2026-08-24, via
+  // hrtime instrumentation on every other shutdown step — all of which
+  // completed in ~170ms combined, yet the process still took 19-27s wall
+  // clock to actually die): __governorTimer (the 15s setInterval driving
+  // governorTick — the tick that dispatches all ~168 registered heartbeat
+  // modules: NPC sim, economy, world events, etc.) was never cleared on
+  // shutdown. It kept firing during the drain/timeout waits below, and a
+  // single tick can run long enough to block the event loop for multiple
+  // seconds (the same event_loop_lag_spike pattern documented elsewhere in
+  // this file) — enough to push total shutdown time past pm2's
+  // kill_timeout (15s in ecosystem.config.cjs), so pm2 SIGKILLed the
+  // process before it could ever reach shutdown_complete. Stopping it
+  // FIRST, before anything else, so no further tick can start once
+  // shutdown begins (an already-in-flight tick still has to finish
+  // naturally — clearInterval only stops the NEXT one from being
+  // scheduled).
+  try {
+    if (typeof __governorTimer !== "undefined" && __governorTimer) {
+      clearInterval(__governorTimer);
+      __governorTimer = null;
+      structuredLog("info", "shutdown_governor_timer_cleared", {});
+    }
+  } catch (e) {
+    structuredLog("warn", "shutdown_governor_timer_clear_failed", { error: e.message });
+  }
+
   // Flush state to disk immediately — critical for OOM kills and SIGTERM
   try {
     clearTimeout(_saveTimer); // Cancel any pending debounced save
@@ -3041,6 +3090,50 @@ async function gracefulShutdown(signal) {
     structuredLog("info", "shutdown_state_saved", {});
   } catch (e) {
     console.error("[Shutdown] State save failed:", e.message);
+  }
+
+  // Final DB backup on every graceful shutdown (2026-08-24 — local-disk DB
+  // migration). DB_PATH now lives on the container's ephemeral local disk
+  // (fast, no network-storage exposure on the write hot path); the ONLY
+  // copy on persistent storage is scripts/db-backup.sh's periodic snapshot
+  // into CONCORD_BACKUP_DIR. A planned restart/redeploy (pm2 restart,
+  // `startup.sh` re-run) is by far the most common shutdown reason, so
+  // taking one more snapshot here — on top of the periodic cron — closes
+  // the gap between "last cron backup" and "this restart" for the common
+  // case, leaving only a hard crash/force-kill exposed to the cron
+  // interval.
+  //
+  // MUST be async (spawn, not spawnSync) and MUST NOT be awaited here.
+  // Measured live: SHUTDOWN_DRAIN_MS (5s) + SHUTDOWN_TIMEOUT_MS (10s) below
+  // already summed to exactly pm2's kill_timeout (15s) before this backup
+  // step existed — a synchronous spawnSync here blocked in FRONT of both
+  // waits, so it always pushed the total past 15s and pm2 SIGKILLed the
+  // parent mid-backup on every single restart. The backup itself still
+  // completed (the spawned bash/gzip child outlives a SIGKILLed parent as
+  // an orphan), but the rest of graceful shutdown — closing the HTTP
+  // server, draining in-flight requests, shutdownCallbacks — never ran.
+  // Fix: fire the backup now without waiting, let it run CONCURRENTLY with
+  // the drain/timeout waits below (which were already going to occupy the
+  // full 15s regardless), and only check in on it right before exit.
+  let _shutdownBackupChild = null;
+  let _shutdownBackupDone = false;
+  try {
+    const backupScript = path.join(path.dirname(__serverFileURLToPath(import.meta.url)), "..", "scripts", "db-backup.sh");
+    if (fs.existsSync(backupScript)) {
+      _shutdownBackupChild = spawn("bash", [backupScript], { env: process.env, stdio: "ignore" });
+      _shutdownBackupChild.on("exit", (code) => {
+        _shutdownBackupDone = true;
+        if (code === 0) structuredLog("info", "shutdown_backup_taken", {});
+        else structuredLog("warn", "shutdown_backup_failed", { code });
+      });
+      _shutdownBackupChild.on("error", (e) => {
+        _shutdownBackupDone = true;
+        structuredLog("warn", "shutdown_backup_failed", { error: e.message });
+      });
+    }
+  } catch (e) {
+    _shutdownBackupDone = true;
+    structuredLog("warn", "shutdown_backup_failed", { error: e.message });
   }
 
   // Clear all tracked interval timers
@@ -3082,6 +3175,16 @@ async function gracefulShutdown(signal) {
   // Give pending requests time to complete
   const timeout = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10000);
   await new Promise(resolve => { setTimeout(resolve, timeout); });
+
+  // The backup fired earlier (non-blocking) has now had the full drain +
+  // timeout window above to finish concurrently. Log its outcome if known;
+  // if it's still running, it survives this process exiting (same
+  // orphan-completes-fine behavior verified live) — note that rather than
+  // extend shutdown further, since the whole point of firing it async was
+  // to not add to the already-tight kill_timeout budget.
+  if (_shutdownBackupChild && !_shutdownBackupDone) {
+    structuredLog("info", "shutdown_backup_still_running", { pid: _shutdownBackupChild.pid });
+  }
 
   structuredLog("info", "shutdown_complete", {});
   process.exit(0);
@@ -6086,10 +6189,20 @@ if (_DTU_STORE_READY) {
 }
 
 // Register database close on shutdown
+// (Root-caused 2026-08-24 — see gracefulShutdown's own comment on clearing
+// __governorTimer for the full story: this callback and db.close() itself
+// were never the problem, they complete in well under 100ms. The actual
+// hang was the 15s governor heartbeat timer never being stopped, so it kept
+// firing during the shutdown drain/timeout waits and blocked the event
+// loop long enough to blow past pm2's kill_timeout. Kept the ms timing
+// here — cheap, and it's exactly what proved db.close() wasn't the culprit.)
 if (db) {
   registerShutdownCallback(() => {
     structuredLog("info", "shutdown_closing_database", {});
+    const __t0 = process.hrtime.bigint();
     db.close();
+    const __ms = Number(process.hrtime.bigint() - __t0) / 1e6;
+    structuredLog("info", "shutdown_database_closed", { ms: __ms });
   });
 }
 
@@ -6986,14 +7099,32 @@ _unrefInTest(setInterval(() => {
   }
 }, 6 * 60 * 60 * 1000)); // every 6 hours
 
-function hashPassword(password) {
+// Async on purpose: bcryptjs is a pure-JS implementation, so its hashing work
+// runs on the main thread either way -- but the sync variants (hashSync/
+// compareSync) run it as one uninterrupted block, fully blocking Node's
+// single event loop for the whole ~400-460ms cost-12 hash (measured live,
+// 2026-08-24 concurrent-signup latency investigation). Under N concurrent
+// registrations that serializes into an N x ~430ms tail on the main thread
+// AND stalls every other request/socket/heartbeat in the process for that
+// whole window -- directly reproduced: 6 concurrent signups measured with
+// zero hash-phase overlap (each waited for the previous to fully finish),
+// and severe enough instances tripped the event-loop-lag load-shedder
+// (lagMs 1427 vs a 900ms threshold) into honest-but-avoidable 503s.
+// bcryptjs's async hash()/compare() do the identical computation but yield
+// to the event loop between internal rounds, so concurrent calls interleave
+// cooperatively instead of monopolizing the loop start-to-finish. Total CPU
+// time doesn't shrink, but no single request (or unrelated traffic sharing
+// the process) has to wait behind another's entire hash before the loop can
+// serve anything else. Same pattern already used correctly elsewhere in this
+// codebase -- see forge-template-generator.js's `await auth.hashPassword`.
+async function hashPassword(password) {
   if (!bcrypt) return null;
-  return bcrypt.hashSync(password, BCRYPT_ROUNDS);
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-function verifyPassword(password, hash) {
+async function verifyPassword(password, hash) {
   if (!bcrypt) return false;
-  return bcrypt.compareSync(password, hash);
+  return bcrypt.compare(password, hash);
 }
 
 function generateApiKey() {
@@ -7091,7 +7222,7 @@ function csrfMiddleware(req, res, next) {
   // /api/stripe/webhook is authenticated by Stripe's request SIGNATURE (verified
   // in handleWebhook), not a cookie/CSRF token — Stripe can't send one. It must
   // be CSRF-exempt or every webhook 403s and paid coins never mint.
-  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists
+  const csrfExempt = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/google", "/api/auth/apple", "/health", "/ready", "/api/chat", "/api/lens", "/api/stripe/webhook", "/mcp", "/api/metrics/vitals", "/api/client-error", "/api/world/perf-telemetry"];  // "/mcp" added Sprint 54 for local-first MCP server bypass; "/api/auth/refresh" is cookie-authenticated via the httpOnly refresh token (SameSite=lax already blocks cross-site POST) and must work before a CSRF cookie exists. The 3 telemetry paths added 2026-08-24 (found live during a real-browser load test) — all three are reported via navigator.sendBeacon (lib/perf.ts and its error-reporting sibling), which cannot attach a custom X-CSRF-Token header the way a fetch() call can; requiring one made every anonymous beacon 403 unconditionally. All three are fire-and-forget, non-sensitive (perf numbers / error messages / vitals), already have their own Gate-1 POST bypasses just above this file's authMiddleware for the identical reason, and have no state-changing side effect beyond appending to an in-memory buffer — the CSRF gate exists to stop a forged cross-site STATE CHANGE, and there is none here to forge.
   if (csrfExempt.some(p => req.path.startsWith(p))) return next();
 
   // In AUTH_MODE=public, skip CSRF — anonymous users have no session to protect
@@ -7587,6 +7718,15 @@ function authMiddleware(req, res, next) {
   // Gate 1 POST bypass: anonymous client telemetry pings (perf, error reports).
   if (req.method === "POST" && req.path === "/api/world/perf-telemetry") return next();
   if (req.method === "POST" && req.path === "/api/client-error") return next();
+  // Gate 1 POST bypass: Web Vitals telemetry (2026-08-24, found live during a
+  // real-browser load test — this is the actual gate that was blocking it;
+  // the WRITE_AUTH_PUBLIC_PATHS entry added earlier the same pass was Gate 3,
+  // which this Gate-1 401 never let the request reach). Same shape as the
+  // perf-telemetry/client-error bypasses immediately above: the handler
+  // (server.js's POST /api/metrics/vitals) never reads req.user, just pushes
+  // {name, value, kind} into an anonymous in-memory rolling window, so no
+  // identity-resolution discipline is needed here the way it was for /api/chat.
+  if (req.method === "POST" && req.path === "/api/metrics/vitals") return next();
   // Gate 1 POST bypass: ActivityPub inbox. Per W3C AP §7 federated peers
   // POST activities here without any local auth — authentication is the
   // HTTP-Signature on the request, verified by the inbox handler itself
@@ -7831,7 +7971,17 @@ function requireRole(...roles) {
 // comment on the Gate-1 bypass above). No Concord account exists to
 // authenticate, and the token itself is the access control, scoped
 // server-side to exactly one estimate/invoice.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
+// /api/metrics/vitals (added 2026-08-24, found live during a real-browser
+// load test) — the frontend reports Web Vitals via navigator.sendBeacon on
+// every page load, authenticated or not (lib/perf.ts), which is standard
+// practice for this kind of telemetry and was firing on the public register
+// page specifically. The route itself only accepts {name, value, kind} and
+// pushes into an in-memory rolling window (server.js's own handler has no
+// auth check) — this gate was the only thing blocking it. Anonymous
+// submissions were 401ing on every metric per page load, silently wasting
+// the same 30-req/min anonymous IP bucket real anonymous traffic (including
+// registration) also depends on.
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/api/auth/refresh", "/health", "/ready", "/metrics", "/api/metrics/vitals", "/api/stripe/webhook", "/api/welding/portal/", "/api/spectate/"]; // NOTE: /api/animation/share/ and /api/chat/share/ intentionally NOT here — GET-only, this gate already exempts GET/HEAD/OPTIONS above, so they need no entry; adding a prefix would also bypass write-auth for any future POST/PUT/DELETE under it. NOTE: /api/welding/portal/ — reviewed, intentional (see the "Welding client portal" comment above this array and at its route handlers near /api/welding/portal/:token), token-scoped to exactly one estimate/invoice, and security-tested end-to-end in tests/e2e/welding-portal-routes.test.js (cross-tenant isolation, no fabricated payment success, invalid-token rejection). NOTE: /api/spectate/ IS needed here, unlike the two GET-only share viewers — POST /api/spectate/:worldId/subscribe and POST /api/spectate/heartbeat are genuinely anonymous-capable POSTs (open/refresh a read-only spectator session), so this gate's automatic GET/HEAD/OPTIONS exemption doesn't cover them.
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -8960,7 +9110,7 @@ function _rateLimitKey(req) {
       if (decoded?.userId) return `u:${decoded.userId}`;
     }
   } catch { /* best-effort — never let key derivation break rate limiting */ }
-  return req.ip;
+  return globalThis._ipKeyGenerator?.(req.ip) || req.ip;
 }
 
 let rateLimiter = null;
@@ -9045,7 +9195,34 @@ if (rateLimit) {
     // a real 429 while logged in. It's a cheap, idempotent cookie-issuance
     // call with no scraping value, so it gets the same exemption as health
     // probes rather than counting toward the anon-scraping deterrent.
-    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token",
+    //
+    // The 3 telemetry paths below (added 2026-08-24, found live during a
+    // real-browser load test): navigator.sendBeacon-reported Web Vitals /
+    // perf / client-error pings fire repeatedly per anonymous page load
+    // (lib/perf.ts) — observed live at 15-25 calls on a single /register
+    // page load alone. Counting each one toward the SAME 30rpm-per-IP
+    // budget real anonymous traffic (including registration itself) draws
+    // from meant a single visitor's own telemetry could exhaust their own
+    // budget before they ever submitted a form — and on a shared IP
+    // (corporate/campus NAT, mobile CGNAT), one visitor's telemetry could
+    // exhaust it for everyone else behind that IP too. Same reasoning as
+    // the csrf-token exemption just above: cheap, idempotent, no scraping
+    // value, shouldn't compete with real user actions for the same bucket.
+    //
+    // register/login/refresh (added 2026-08-24, same load test): these three
+    // already sit behind their OWN purpose-built limiter
+    // (`authRateLimiter` / `authRateLimitMiddleware`, 5 attempts per
+    // IP+identity per 15min) — a genuinely appropriate abuse defense that
+    // buckets per identity, not just per IP. Stacking the coarse 30rpm
+    // general-anonymous-IP cap on TOP of that double-gates them, and it's
+    // the general cap that loses first: 6 concurrent real signups sharing
+    // one IP (office/campus/CGNAT — exactly the launch-day shape) sum their
+    // page-load + auth traffic past 30/min and the SUBMIT itself 429s with
+    // ANON_RATE_LIMIT, even though the identity-scoped limiter would have
+    // allowed every one of them. Verified live: a 6-way concurrent
+    // real-browser registration test 429'd on POST /api/auth/register (and
+    // /api/auth/refresh) under this cap before this exemption was added.
+    skip: (req) => _RATE_LIMIT_BYPASS_ENV || !!req.user?.id || _HEALTH_PROBE_RE.test(req.path) || _STRIPE_WEBHOOK_RE.test(req.path) || req.path === "/api/auth/csrf-token" || req.path === "/api/metrics/vitals" || req.path === "/api/client-error" || req.path === "/api/world/perf-telemetry" || req.path === "/api/auth/register" || req.path === "/api/auth/login" || req.path === "/api/auth/refresh",
     keyGenerator: (req) => globalThis._ipKeyGenerator?.(req.ip) || req.ip,  // Sprint 32 (E5) IPv6-safe
     message: { ok: false, error: "Rate limit exceeded. Authenticate for higher limits.", code: "ANON_RATE_LIMIT" },
     standardHeaders: true,
@@ -29191,7 +29368,9 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 // created later via `app.listen()`); the mount call itself is deferred to right
 // after that `server` binding + `tryInitWebSockets(server)` — see ~line 65605.
 import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
+import { mountUnityGateway } from "./lib/unity-bridge.js";
 import { exportScene } from "./lib/scene-export.js";
+import { buildKingdomSnapshot } from "./lib/concordia-kingdom-snapshot.js";
 import { makeGodotMoveRateGate } from "./lib/godot-move-rate.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
@@ -55984,6 +56163,53 @@ app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Concord Runtime observability — capability registry + sister constellation.
+app.get("/api/runtime/capabilities", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { listCapabilities, checkCapabilityHealth } = await import("./lib/runtime/capability-registry.js");
+    const filters = {};
+    if (req.query.owner) filters.owner = String(req.query.owner);
+    if (req.query.risk) filters.risk = String(req.query.risk);
+    const capabilities = listCapabilities(filters).map((c) => ({ ...c, health: checkCapabilityHealth(c.capability) }));
+    res.json({ ok: true, count: capabilities.length, capabilities });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/capabilities/:capability/health", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { getCapabilityDescriptor, checkCapabilityHealth } = await import("./lib/runtime/capability-registry.js");
+    const capability = req.params.capability;
+    const descriptor = getCapabilityDescriptor(capability);
+    if (!descriptor) return res.status(404).json({ ok: false, error: "not_registered" });
+    res.json({ ok: true, descriptor, health: checkCapabilityHealth(capability) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/events/recent", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { recentEvents } = await import("./lib/runtime/event-bus.js");
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    res.json({ ok: true, events: recentEvents(limit) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/runtime/constellation", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { collectConstellationHealth } = await import("./lib/runtime/constellation.js");
+    const { recentEvents } = await import("./lib/runtime/event-bus.js");
+    const health = await collectConstellationHealth({ probeLab: req.query.probe === "1" });
+    res.json({ ok: true, ...health, recent: recentEvents(20) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // Wave 7 / Track D3 — the SDK-facing agent + affect read surface (the licensable
 // middleware: "deploy a living being / read its felt state"). Deploy is privileged +
 // respects the C3 kill-switch; reads are auth-gated.
@@ -70293,6 +70519,7 @@ if (server) {
       verifyToken,
       getUser: AuthDB.getUser,
       exportScene,
+      exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
@@ -70302,6 +70529,26 @@ if (server) {
     structuredLog("info", "godot_gateway_mounted", { path: "/godot-ws" });
   } catch (e) {
     structuredLog("warn", "godot_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
+  }
+  // Unity Editor client — same {evt,data} envelope and the SAME
+  // `_onGodotClientMessage` → applyAttack / combat-limits path as Godot.
+  // Presentation only. Do not invent a second combat resolver here.
+  // Gated on `server` like Godot: CONCORD_NO_LISTEN=true never fabricates a
+  // listener. Path filter is `/unity-ws` so this coexists with `/godot-ws`.
+  try {
+    const unityGatewayHandle = mountUnityGateway(server, {
+      verifyToken,
+      getUser: AuthDB.getUser,
+      exportScene,
+      exportKingdom: buildKingdomSnapshot,
+      db: STATE?.db || db,
+      onClientMessage: _onGodotClientMessage,
+      verifyApiKeyPair: _godotVerifyApiKeyPair,
+    });
+    globalThis._concordUnityGateway = unityGatewayHandle;
+    structuredLog("info", "unity_gateway_mounted", { path: "/unity-ws" });
+  } catch (e) {
+    structuredLog("warn", "unity_gateway_mount_failed", { error: String(e?.message || e), stack: String(e?.stack || "").slice(0, 500) });
   }
 }
 

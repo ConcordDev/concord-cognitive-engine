@@ -137,7 +137,9 @@ export async function archiveOldDtuStore(db, opts = {}) {
         // Nothing in this batch was safe to archive. Yield + retry with
         // a fresh batch so we don't infinite-loop on a table that's
         // full of protected DTUs.
-        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => {
+          setImmediate(r);
+        });
         if (!hasMore) {
           remaining = 0;
           break;
@@ -180,7 +182,9 @@ export async function archiveOldDtuStore(db, opts = {}) {
       // Yield to the event loop between batches. setImmediate (not
       // setTimeout 0) keeps a tight loop on small workloads without
       // burning a 1ms timer per batch.
-      await new Promise((r) => setImmediate(r));
+      await new Promise((r) => {
+        setImmediate(r);
+      });
     }
 
     // Record the run. duration_ms + rows_archived are the dashboard

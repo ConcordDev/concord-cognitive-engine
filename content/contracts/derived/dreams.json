@@ -10,6 +10,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "dreams.busiest-night",
+      "name": "busiest-night"
+    },
+    {
+      "_derived": true,
+      "domain": "dreams",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "dreams.detail",
       "name": "detail"
     },
@@ -172,5 +185,5 @@
   ],
   "domain": "dreams",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 13
+  "macroCount": 14
 }

@@ -496,7 +496,6 @@ describe('(D) source-level honesty guards across the whole skills file', () => {
   // in this PR.
 
   function readSkillsSrc(): string {
-    const fs = require('node:fs') as typeof import('node:fs');
     return fs.readFileSync(
       'components/conkay/conkay-skills.ts',
       'utf8',
@@ -532,3 +531,4 @@ describe('(D) source-level honesty guards across the whole skills file', () => {
 
 // Helper exports for any follow-up test that wants to reuse.
 export type { ConKaySkillResult };
+import fs from 'node:fs';

@@ -33,9 +33,10 @@ namespace Concordia
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
+            CityAtlas.Invalidate();
             root = new GameObject("World").transform;
             ModularPerson.CastingWorld = world;
-            FreePacks.Index();
+            FreePacks.Reindex();
             var w = Canon.Get(world);
             BuildGround(w);
             DressSky(w);
@@ -44,6 +45,12 @@ namespace Concordia
             else BuildRealm(w);
             SpawnFauna(w);
             HubLook.UpgradeStandardMaterials();
+            try
+            {
+                System.IO.File.WriteAllText("/tmp/concordia-atlas.txt",
+                    System.DateTime.Now.ToString("o") + " world=" + world + "\n" + CityAtlas.Dump());
+            }
+            catch { }
         }
 
         static void PurgeWorldRoots()
@@ -62,7 +69,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                HubLook.MakeSun(root, new Color(1f, 0.76f, 0.55f), 0.95f, new Vector3(36f, -42f, 0f));
+                HubLook.MakeSun(root, new Color(1f, 0.94f, 0.82f), 1.18f, new Vector3(42f, -38f, 0f));
                 return;
             }
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -79,6 +86,7 @@ namespace Concordia
                 WorldId.Superhero => "concrete_floor",
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
+                WorldId.Sere => "wet_asphalt",
                 _ => "stone_tiles"
             };
             var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
@@ -95,6 +103,7 @@ namespace Concordia
                 WorldId.Cyber => (new Color(0.55f, 0.18f, 0.85f), 0.85f, new Vector3(22f, 210f, 0f)),
                 WorldId.Frontier => (new Color(1f, 0.88f, 0.55f), 1.85f, new Vector3(38f, 24f, 0f)),
                 WorldId.Superhero => (new Color(1f, 0.62f, 0.38f), 1.7f, new Vector3(6f, 92f, 0f)),
+                WorldId.Sere => (new Color(0.82f, 0.62f, 0.38f), 0.55f, new Vector3(18f, 140f, 0f)),
                 _ => (new Color(0.25f, 1f, 0.85f), 1.2f, new Vector3(28f, 80f, 0f))
             };
             HubLook.MakeSun(root, sun.Item1, sun.Item2, sun.Item3);
@@ -102,31 +111,23 @@ namespace Concordia
 
         void DressSky(WorldDef w)
         {
-            HubLook.ApplySky(w.id);
-            var sky = w.id switch
-            {
-                WorldId.Hub => "Assets/Skyboxes/SkyDay.mat",
-                WorldId.Superhero => "Assets/Skyboxes/SkySunset.mat",
-                WorldId.Frontier => "Assets/Skyboxes/SkySunset.mat",
-                WorldId.Fantasy => "Assets/Skyboxes/SkySunset.mat",
-                WorldId.Tunya => "Assets/Skyboxes/SkyDay.mat",
-                _ => "Assets/Skyboxes/SkyNight.mat"
-            };
-            if (w.id != WorldId.Hub) FreePacks.Sky(sky);
+            if (!HubLook.ApplySky(w.id))
+                FreePacks.Sky(DressVocab.SkyMat(w.id));
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => 0.011f,
+                WorldId.Hub => 0.0045f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
                 WorldId.Frontier => 0.007f,
+                WorldId.Sere => 0.02f,
                 _ => 0.011f
             };
             RenderSettings.fogColor = w.id switch
             {
-                WorldId.Hub => new Color(0.42f, 0.38f, 0.32f),
+                WorldId.Hub => new Color(0.62f, 0.68f, 0.74f),
                 WorldId.Fantasy => new Color(0.62f, 0.28f, 0.18f),
                 WorldId.Cyber => new Color(0.18f, 0.06f, 0.28f),
                 WorldId.Crime => new Color(0.12f, 0.08f, 0.10f),
@@ -134,15 +135,16 @@ namespace Concordia
                 WorldId.Tunya => new Color(0.42f, 0.52f, 0.28f),
                 WorldId.Superhero => new Color(0.72f, 0.42f, 0.28f),
                 WorldId.Ruins => new Color(0.32f, 0.28f, 0.24f),
+                WorldId.Sere => new Color(0.22f, 0.16f, 0.10f),
                 _ => new Color(0.08f, 0.28f, 0.28f)
             };
             DynamicGI.UpdateEnvironment();
             if (w.id == WorldId.Hub)
-                FreePacks.Prefab("Assets/VFX/VFX_Fireflies.prefab", root, new Vector3(0, 2.2f, 0));
+                DressVocab.PlaceWeather("fireflies", root, new Vector3(0, 2.2f, 0));
             if (w.id == WorldId.Crime || w.weather == "rain")
-                FreePacks.Prefab("Assets/VFX/VFX_Rain.prefab", root, new Vector3(0, 8, 0));
+                DressVocab.PlaceWeather("rain", root, new Vector3(0, 8, 0));
             if (w.id == WorldId.Ruins || w.id == WorldId.Crucible)
-                FreePacks.Prefab("Assets/VFX/VFX_Snow.prefab", root, new Vector3(0, 8, 0));
+                DressVocab.PlaceWeather("snow", root, new Vector3(0, 8, 0));
         }
 
         void DressAudio(WorldDef w)
@@ -183,6 +185,7 @@ namespace Concordia
             }
 
             DressGuests();
+            DressPillars();
             DressCrowd();
             DressLore();
             RealmFill.Populate(root, WorldId.Hub);
@@ -194,14 +197,28 @@ namespace Concordia
             var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
             dummy.AddComponent<TrainingDummy>();
             FreePacks.EnsureCollider(dummy, 1.8f);
+            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
+            Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
+            var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
+            Beacon(root, east, 7f, "east_gate");
+        }
+
+        static void Beacon(Transform root, Vector3 pos, float radius, params string[] tokens)
+        {
+            var go = new GameObject("Beacon_" + tokens[0]);
+            go.transform.SetParent(root, false);
+            go.transform.position = pos;
+            var b = go.AddComponent<QuestBeacon>();
+            b.tokens = tokens;
+            b.radius = radius;
         }
 
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < 16; i++)
             {
-                var a = i / 12f * Mathf.PI * 2f + 0.4f;
+                var a = i / 16f * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -212,6 +229,7 @@ namespace Concordia
                 var go = ModularPerson.SpawnNpc(root, p, a * Mathf.Rad2Deg, look, true, 8f + (i % 4));
                 var life = go.AddComponent<NpcLife>();
                 life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
+                TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
             }
             for (int i = 0; i < 8; i++)
             {
@@ -223,75 +241,114 @@ namespace Concordia
                 look.outfit = i % 6;
                 var go = ModularPerson.SpawnNpc(root, p, -g.angle * Mathf.Rad2Deg + 180f, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
+                TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
             }
             for (int i = 0; i < 4; i++)
             {
                 float a = i / 4f * Mathf.PI * 2f + 0.55f;
-                var p = new Vector3(Mathf.Cos(a) * 15.2f, 0f, Mathf.Sin(a) * 15.2f);
+                var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
                 HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.28f, new Vector3(1.4f, 0.22f, 0.45f),
                     HubLook.Lit(new Color(0.35f, 0.2f, 0.1f), 0.1f, 0.25f), "Bench" + i);
                 var look = Appearance.Random(3300 + i * 13);
                 var go = ModularPerson.SpawnNpc(root, p + new Vector3(0f, 0f, 0.1f), -a * Mathf.Rad2Deg, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Sit;
+                TagCrowd(go, "crowd-sit-" + i, look.displayName ?? "Citizen", "bench");
             }
+        }
+
+        static void TagCrowd(GameObject go, string id, string name, string title)
+        {
+            if (!go || go.GetComponent<GuestNpc>()) return;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = new GuestDef
+            {
+                id = id,
+                name = string.IsNullOrEmpty(name) ? "Citizen" : name,
+                title = string.IsNullOrEmpty(title) ? "unlabeled" : title,
+                line = "They keep their own hours. Not an authored citizen."
+            };
         }
 
         void DressArena()
         {
             var c = Canon.Arena;
+            var wall = DressVocab.Wall(WorldId.Hub);
+            var col = DressVocab.Column(WorldId.Hub);
+            var sword = DressVocab.Weapon("sword");
+            var tower = DressVocab.Tower(WorldId.Hub);
             for (int i = 0; i < 12; i++)
             {
                 var a = (i / 12f) * Mathf.PI * 2;
-                FreePacks.Spawn("wall", root, c + new Vector3(Mathf.Cos(a) * 8.4f, 0, Mathf.Sin(a) * 8.4f),
+                FreePacks.Spawn(wall, root, c + new Vector3(Mathf.Cos(a) * 8.4f, 0, Mathf.Sin(a) * 8.4f),
                     -a * Mathf.Rad2Deg + 90, 3.2f);
                 if (i % 3 == 0)
-                    FreePacks.Spawn("column", root, c + new Vector3(Mathf.Cos(a) * 7.2f, 0, Mathf.Sin(a) * 7.2f), 0, 2.6f);
+                    FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 7.2f, 0, Mathf.Sin(a) * 7.2f), 0, 2.6f);
             }
-            FreePacks.Spawn("statue", root, c + new Vector3(6, 0, 6), 40, 2.2f);
+            FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, c + new Vector3(6, 0, 6), 40, 2.2f);
             FreePacks.Spawn("weapon-rack", root, c + new Vector3(-5, 0, 5), 90, 1.8f);
-            FreePacks.Spawn("weapon-sword", root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f);
+            FreePacks.Spawn(sword, root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f);
             FreePacks.Spawn("banner", root, c + new Vector3(0, 0, -7.4f), 0, 2.4f);
             FreePacks.Spawn("trophy", root, c + new Vector3(4.5f, 0, -3), 0, 1.1f);
             FreePacks.Prefab("Assets/Prefabs/Stairs.prefab", root, c + new Vector3(0, 0, -10), 0);
-            FreePacks.Spawn("tower-square-base", root, c + new Vector3(10, 0, 0), 0, 4.5f);
-            FreePacks.Spawn("tower-square-base", root, c + new Vector3(-10, 0, 0), 0, 4.5f);
+            FreePacks.Spawn(tower, root, c + new Vector3(10, 0, 0), 0, 4.5f);
+            FreePacks.Spawn(tower, root, c + new Vector3(-10, 0, 0), 0, 4.5f);
         }
 
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
         {
-            var outPos = p + p.normalized * 8.5f;
+            var outDir = p.normalized;
+            var outPos = p + outDir * 8.5f;
+            var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
             string plan = "embassy";
             switch (gate.world)
             {
                 case WorldId.Ruins:
-                    shell = FreePacks.Spawn("crypt-small", root, outPos, yaw, 5.5f);
+                    shell = FreePacks.Spawn(DressVocab.House(WorldId.Ruins), root, outPos, yaw, 5.5f);
+                    FreePacks.Spawn(DressVocab.Column(WorldId.Ruins), root, outPos + side * 3.4f, yaw, 2.4f, required: false);
                     plan = "archive";
                     break;
                 case WorldId.Tunya:
-                    shell = FreePacks.Spawn("tent_detailedOpen", root, outPos, yaw, 4.2f);
-                    FreePacks.Spawn("crops_wheatStageB", root, outPos + Vector3.right * 3.2f, yaw, 1.2f);
+                    shell = FreePacks.Spawn(DressVocab.House(WorldId.Tunya), root, outPos, yaw, 4.2f);
+                    FreePacks.Spawn(DressVocab.FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB"), root, outPos + side * 3.2f, yaw, 1.2f);
+                    FreePacks.Spawn(DressVocab.Grass(WorldId.Tunya), root, outPos + side * 4.4f, yaw + 15f, 1.2f, required: false);
                     break;
                 case WorldId.Fantasy:
-                    shell = FreePacks.Spawn("building-small-b", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 9f, required: false);
+                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 7.5f, required: false);
+                    shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Fantasy), root, outPos, yaw, 7.2f, required: false);
                     break;
                 case WorldId.Crime:
-                    shell = FreePacks.Spawn("building-small-a", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn(DressVocab.Cart(), root, outPos, yaw + 20f, 2.2f);
+                    FreePacks.Spawn(DressVocab.Crate(), root, outPos + side * 2.2f, yaw, 0.9f);
+                    FreePacks.Spawn(DressVocab.Prop(WorldId.Crime), root, outPos - side * 1.8f, yaw, 0.8f);
+                    FreePacks.Spawn(DressVocab.Crate(), root, outPos + outDir * 1.6f, 15f, 0.9f, required: false);
                     plan = "market";
                     break;
                 case WorldId.Cyber:
-                    shell = FreePacks.Spawn("building-small-c", root, outPos, yaw, 6.5f);
+                    FreePacks.Spawn(DressVocab.Column(WorldId.Cyber), root, outPos + side * 2.4f, yaw, 3.2f);
+                    FreePacks.Spawn(DressVocab.Column(WorldId.Cyber), root, outPos - side * 2.4f, yaw, 3.2f);
+                    HubLook.Lantern(root, outPos);
+                    shell = FreePacks.Spawn(DressVocab.House(WorldId.Cyber), root, outPos + outDir * 1.2f, yaw, 6.4f, required: false);
                     break;
                 case WorldId.Frontier:
-                    shell = FreePacks.Spawn("tent_smallOpen", root, outPos, yaw, 4f);
-                    break;
+                    for (int i = 0; i < 5; i++)
+                    {
+                        var rp = p + outDir * (6f + i * 4.2f);
+                        FreePacks.Spawn("road-straight", root, rp, yaw + 90f, 5.5f, required: false, byHeight: false);
+                    }
+                    PlaceStone(outPos + side * 2.6f, "No embassy",
+                        "The frontier keeps no seat. The road is their door. To claim a fixed house here would be to accept a dome.");
+                    return;
                 case WorldId.Superhero:
-                    shell = FreePacks.Spawn("building-small-d", root, outPos, yaw, 7f);
+                    shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Superhero), root, outPos, yaw, 8.5f);
                     plan = "tower";
                     break;
                 case WorldId.Crucible:
-                    shell = FreePacks.Spawn("building-small-a", root, outPos, yaw, 6f);
+                    FreePacks.Spawn(DressVocab.Rock(), root, outPos + side * 2.1f, yaw, 1.2f, required: false);
+                    FreePacks.Spawn(DressVocab.Rock(), root, outPos - side * 1.6f, yaw, 1.0f, required: false);
+                    FreePacks.Spawn(DressVocab.Column(WorldId.Crucible), root, outPos, yaw, 3.2f, required: false);
                     break;
             }
             if (shell) BuildingInterior.Open(shell, plan, outPos);
@@ -299,13 +356,13 @@ namespace Concordia
 
         void DressTavern(Vector3 p)
         {
-            FreePacks.Spawn("table", root, p + new Vector3(3.2f, 0, 2), 20, 1.4f);
-            FreePacks.Spawn("chair", root, p + new Vector3(2.4f, 0, 2.4f), 40, 0.9f);
-            FreePacks.Spawn("chair", root, p + new Vector3(3.8f, 0, 1.5f), 200, 0.9f);
+            FreePacks.Spawn(DressVocab.Table(), root, p + new Vector3(3.2f, 0, 2), 20, 1.4f);
+            FreePacks.Spawn(DressVocab.Chair(), root, p + new Vector3(2.4f, 0, 2.4f), 40, 0.9f);
+            FreePacks.Spawn(DressVocab.Chair(), root, p + new Vector3(3.8f, 0, 1.5f), 200, 0.9f);
             FreePacks.Spawn("loungeSofa", root, p + new Vector3(4.6f, 0, 0.4f), 90, 1.6f);
             FreePacks.Spawn("lampRoundFloor", root, p + new Vector3(5.2f, 0, 2.2f), 0, 1.4f);
-            FreePacks.Spawn("kitchenStove", root, p + new Vector3(-2.4f, 0, 2.2f), 0, 1.2f);
-            FreePacks.Spawn("barrel", root, p + new Vector3(2.0f, 0, -1.5f), 0, 0.8f);
+            CookStation.Stamp(FreePacks.Spawn("kitchenStove", root, p + new Vector3(-2.4f, 0, 2.2f), 0, 1.2f));
+            FreePacks.Spawn(DressVocab.Prop(WorldId.Hub), root, p + new Vector3(2.0f, 0, -1.5f), 0, 0.8f);
             FreePacks.Spawn("burger-cheese", root, p + new Vector3(3.2f, 0.9f, 2), 0, 0.25f);
         }
 
@@ -314,7 +371,7 @@ namespace Concordia
             FreePacks.Spawn("campfire_stones", root, p + new Vector3(3, 0, 2), 0, 1.6f);
             FreePacks.Spawn("campfire_logs", root, p + new Vector3(3, 0, 2), 0, 1.2f);
             FreePacks.Spawn("weapon-rack", root, p + new Vector3(-2, 0, 2), 90, 1.8f);
-            FreePacks.Spawn("weapon-sword", root, p + new Vector3(2, 0, -1), 0, 1.1f);
+            FreePacks.Spawn(DressVocab.Weapon("sword"), root, p + new Vector3(2, 0, -1), 0, 1.1f);
         }
 
         void DressArchive(Vector3 p)
@@ -328,14 +385,14 @@ namespace Concordia
 
         void DressMarket(Vector3 p)
         {
-            FreePacks.Spawn("market_crate", root, p + new Vector3(3, 0, 1), 0, 0.9f);
-            FreePacks.Spawn("market_barrel", root, p + new Vector3(2.2f, 0, 2), 0, 0.9f);
-            FreePacks.Spawn("crate", root, p + new Vector3(4, 0, 0), 15, 0.9f);
+            FreePacks.Spawn(DressVocab.Crate(), root, p + new Vector3(3, 0, 1), 0, 0.9f);
+            FreePacks.Spawn(DressVocab.Prop(WorldId.Hub), root, p + new Vector3(2.2f, 0, 2), 0, 0.9f);
+            FreePacks.Spawn(DressVocab.Crate(), root, p + new Vector3(4, 0, 0), 15, 0.9f);
             FreePacks.Spawn("detail-parasol-a", root, p + new Vector3(3.5f, 0, 2.5f), 0, 2.8f);
             FreePacks.Spawn("apple", root, p + new Vector3(3, 0.7f, 1), 0, 0.2f);
             FreePacks.Spawn("bread", root, p + new Vector3(3.4f, 0.7f, 1.2f), 0, 0.25f);
             FreePacks.Spawn("cheese-cut", root, p + new Vector3(2.6f, 0.7f, 1.4f), 0, 0.2f);
-            FreePacks.Spawn("cart", root, p + new Vector3(-3, 0, 2), 40, 2.2f);
+            FreePacks.Spawn(DressVocab.Cart(), root, p + new Vector3(-3, 0, 2), 40, 2.2f);
         }
 
         void DressRoads()
@@ -353,20 +410,20 @@ namespace Concordia
 
         void DressCityRing()
         {
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 22; i++)
             {
-                var a = (i / 16f) * Mathf.PI * 2 + 0.18f;
-                if (Mathf.Sin(a) > 0.72f) continue;
-                var rad = 38 + (i % 3) * 3f;
+                var a = (i / 22f) * Mathf.PI * 2 + 0.12f;
+                if (Mathf.Sin(a) > 0.55f && Mathf.Abs(Mathf.Cos(a)) < 0.78f) continue;
+                var rad = 56f + (i % 3) * 6f;
                 var pos = new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad);
-                var yaw = -a * Mathf.Rad2Deg + 90;
+                var yaw = Mathf.Atan2(-Mathf.Cos(a), -Mathf.Sin(a)) * Mathf.Rad2Deg;
                 if (i % 5 == 0)
-                    FreePacks.Spawn(Shops[i % Shops.Length], root, pos, yaw, 7f);
+                    FreePacks.Spawn(Shops[i % Shops.Length], root, pos, yaw, 9f, required: false, byHeight: true);
                 else
-                    FreePacks.Spawn(Houses[i % Houses.Length], root, pos, yaw, 5.5f);
+                    FreePacks.Spawn(Houses[i % Houses.Length], root, pos, yaw, 6.5f, required: false, byHeight: true);
             }
-            EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(34, 0, 10), Quaternion.Euler(0, 70, 0), 1f);
-            EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(28, 0, -4), Quaternion.Euler(0, 90, 0), 1f);
+            EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(52, 0, 18), Quaternion.Euler(0, 70, 0), 1f);
+            EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(48, 0, -12), Quaternion.Euler(0, 90, 0), 1f);
         }
 
         void DressForest()
@@ -428,23 +485,86 @@ namespace Concordia
                 var wander = job == NpcLife.Job.Wander;
                 var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), 180f, look, wander, n.id == "warden" ? 5f : 10f);
                 go.name = n.name;
-                if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, weapon, true, 0.95f);
+                if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, DressVocab.Weapon(weapon), true, 0.95f);
                 if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);
-                go.AddComponent<GuestNpc>().def = n;
+                var guest = go.AddComponent<GuestNpc>();
+                guest.def = n;
+                guest.personId = n.id;
                 var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
                 life.job = job;
             }
         }
 
+        void DressPillars()
+        {
+            foreach (var n in Canon.Pillars)
+            {
+                var look = new Appearance
+                {
+                    displayName = n.name,
+                    height = Mathf.Clamp(n.height / 1.8f, 0.95f, 1.16f),
+                    width = 1f,
+                    shoulders = n.id == "sovereign" ? 1.18f : 1f,
+                    chest = 1f,
+                    hips = 1f,
+                    head = 1f,
+                    jaw = n.id == "sovereign" ? 1.12f : 1f
+                };
+                float yaw;
+                if (n.id == "concordia")
+                {
+                    look.skin = 0.34f;
+                    look.hairHue = 0.07f;
+                    look.hairSat = 0.55f;
+                    look.hairVal = 0.12f;
+                    look.outfit = 0;
+                    look.attitude = 3;
+                    look.hairStyle = 4;
+                    yaw = 0f;
+                }
+                else if (n.id == "concord")
+                {
+                    look.skin = 0.86f;
+                    look.hairHue = 0.58f;
+                    look.hairSat = 0.08f;
+                    look.hairVal = 0.22f;
+                    look.outfit = 1;
+                    look.attitude = 0;
+                    look.hairStyle = 0;
+                    yaw = 180f;
+                }
+                else
+                {
+                    look.skin = 0.26f;
+                    look.hairHue = 0.04f;
+                    look.hairSat = 0.35f;
+                    look.hairVal = 0.08f;
+                    look.outfit = 5;
+                    look.attitude = 1;
+                    look.hairStyle = 1;
+                    yaw = 90f;
+                }
+                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
+                go.name = n.name;
+                var guest = go.AddComponent<GuestNpc>();
+                guest.def = n;
+                guest.personId = n.id;
+                var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+                life.job = NpcLife.Job.Watch;
+                life.pinned = true;
+            }
+        }
+
         void DressGrove()
         {
-            var oaks = new[] { "tree_oak", "tree_oak_dark", "tree_default", "tree_pineTallA", "tree_pineTallA_detailed", "tree_pineTallB" };
+            var oak = DressVocab.Tree(WorldId.Tunya);
+            var grass = DressVocab.Grass(WorldId.Tunya);
             for (int i = 0; i < 18; i++)
             {
                 var a = (i / 18f) * Mathf.PI * 1.1f + 3.4f;
                 var rad = 36 + (i % 4) * 3.2f;
                 var h = 9f + (i % 5) * 1.4f;
-                FreePacks.Spawn(oaks[i % oaks.Length], root,
+                FreePacks.Spawn(oak, root,
                     new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 21f, h);
             }
             for (int i = 0; i < 40; i++)
@@ -452,8 +572,7 @@ namespace Concordia
                 var a = (i / 40f) * Mathf.PI * 2;
                 if (a > 1.1f && a < 2.1f) continue;
                 var rad = 14.5f + (i % 5) * 1.7f;
-                var stem = i % 3 == 0 ? "grass_large" : i % 3 == 1 ? "grass_leafs" : "grass";
-                FreePacks.Spawn(stem, root,
+                FreePacks.Spawn(grass, root,
                     new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 40f, 0.55f);
             }
         }
@@ -472,7 +591,7 @@ namespace Concordia
             WorldKit.Build(root, w);
             RealmFill.Populate(root, w.id);
             StoreDress.Realm(root, w);
-            var dummy = FreePacks.Spawn("character-skeleton", root, new Vector3(4, 0, 8), 180, 1.85f);
+            var dummy = FreePacks.Spawn(DressVocab.Dummy(), root, new Vector3(4, 0, 8), 180, 1.85f);
             if (dummy)
             {
                 FreePacks.EnsureCollider(dummy);
@@ -532,6 +651,34 @@ namespace Concordia
                 "They held the Court four hours. Then the ground spoke in flowers. No one died. You cannot own the heart.");
             PlaceStone(new Vector3(8.2f, 0f, 2.1f), "Flower-law",
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
+            PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
+                "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
+            DressSereWaystone();
+        }
+
+        void DressSereWaystone()
+        {
+            // Not a ninth Refusal door. Sere is extra-canonical satire —
+            // the First Launch Cradle from the authored Concord Link anchor.
+            var p = new Vector3(14.2f, 0f, -18.4f);
+            PlaceStone(p, "The First Launch Cradle",
+                "The scorched gantry-field the seven arks left from. Cold for generations. Sere is not on the Ring. No Refusal ever held there.");
+            var go = new GameObject("Waystone_Sere");
+            go.transform.SetParent(root, false);
+            go.transform.position = p + Vector3.up * 0.2f;
+            go.AddComponent<WorldGate>().def = new GateDef
+            {
+                world = WorldId.Sere,
+                name = "The First Launch Cradle",
+                shortName = "SERE",
+                refusal = "No Refusal ever held here.",
+                theNo = "The seven arks left from this soil.",
+                color = Canon.Hex("8a7a3a")
+            };
+            var box = go.AddComponent<BoxCollider>();
+            box.center = new Vector3(0f, 1.2f, 0f);
+            box.size = new Vector3(2.8f, 2.4f, 2.2f);
+            box.isTrigger = true;
         }
 
         void PlaceStone(Vector3 pos, string title, string text)
@@ -562,9 +709,10 @@ namespace Concordia
                         go.AddComponent<CourtBird>().height = 0.4f;
                     }
                 }
+                DressGroveBirds(w);
                 return;
             }
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 24; i++)
             {
                 var go = new GameObject("Dove" + i);
                 go.transform.SetParent(root, false);
@@ -572,6 +720,18 @@ namespace Concordia
                 bird.seed = 40 + i * 13;
                 bird.radius = 10f + (i % 5) * 3.2f;
                 bird.height = 6.5f + (i % 4) * 1.4f;
+            }
+        }
+
+        void DressGroveBirds(WorldDef w)
+        {
+            if (w.id != WorldId.Tunya && w.id != WorldId.Fantasy) return;
+            var bird = DressVocab.Bird();
+            if (string.IsNullOrEmpty(bird)) return;
+            for (int i = 0; i < 3; i++)
+            {
+                float a = i / 3f * Mathf.PI * 2f + 0.3f;
+                FreePacks.Spawn(bird, root, new Vector3(Mathf.Cos(a) * 9f, 0f, Mathf.Sin(a) * 9f), a * Mathf.Rad2Deg, 0.28f);
             }
         }
 

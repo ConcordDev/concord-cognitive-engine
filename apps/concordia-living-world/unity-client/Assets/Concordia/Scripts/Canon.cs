@@ -5,8 +5,8 @@ namespace Concordia
 {
     public enum WorldId
     {
-        Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible
-    }
+    Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible, Sere
+}
 
     [Serializable]
     public class GateDef
@@ -88,6 +88,18 @@ namespace Concordia
             new GuestDef { id = "oldseam", name = "Old Seam", title = "Lantern path", line = "I have mended this street since before the gates had names. Walk soft.", color = Hex("7a6a58"), x = -11.2f, z = -4.1f, height = 1.58f },
         };
 
+        /// <summary>
+        /// Founding Day stand on the unpaved ring. Concordia at the warm apex,
+        /// Concord facing her, the Sovereign with his back to both.
+        /// Do not put "Concord admits he loves her" in anyone's mouth.
+        /// </summary>
+        public static readonly GuestDef[] Pillars =
+        {
+            new GuestDef { id = "concordia", name = "Concordia", title = "The First Breath", line = "This ground is mine. Walk it. You cannot own the heart.", color = Hex("c8721a"), x = 0f, z = -6.4f, height = 1.78f },
+            new GuestDef { id = "concord", name = "Concord", title = "The First Law", line = "I am measuring. That is enough.", color = Hex("8aa0b4"), x = 0f, z = 6.2f, height = 1.82f },
+            new GuestDef { id = "sovereign", name = "The Sovereign", title = "The First Refusal", line = "…", color = Hex("2a1c14"), x = 8.6f, z = 0.3f, height = 1.94f },
+        };
+
         public static WorldDef Hub => Get(WorldId.Hub);
 
         public static WorldDef Get(WorldId id)
@@ -110,6 +122,10 @@ namespace Concordia
                     return new WorldDef { id = id, title = "The Frontier", refusal = "The road is our door.", theNo = "No dome means no shelter.", fantasy = "roads between refusals", traversal = "wagon and wind", combat = "open range", weather = "wind", ground = Hex("c8b070"), sun = Hex("ffe8b0"), steelLive = true, law = "Drop the dome; wind will do the rest.", style = S("road", "Open Road", "Dust-kick", "Wagon iron", "Leave the dome", "Dust sprint", 1.05f, 1.25f, 1f), fauna = new[] { "hound", "wolf" } };
                 case WorldId.Superhero:
                     return new WorldDef { id = id, title = "The Permanent Dawn", refusal = "I will not take the final victory.", theNo = "If I win this sunrise I become the Luminary.", fantasy = "height as verb", traversal = "vertical city", combat = "impact", weather = "dawn", ground = Hex("4a5870"), sun = Hex("ffd0a0"), steelLive = true, law = "Mercy. They stand. The dawn does not end.", style = S("dawn", "Permanent Dawn", "Fist", "Shockwave", "Refuse the win", "Mercy shock", 1.3f, 1.1f, 1.4f), fauna = new[] { "drone", "sentinel" } };
+                case WorldId.Sere:
+                    return new WorldDef { id = id, title = "Sere", refusal = "No Refusal ever held here.", theNo = "Every attempt to build outside the machine was bought, hollowed, or crushed.", fantasy = "extraction that outlived its authors", traversal = "spire and furnace belt", combat = "close and paid-for", weather = "smog", ground = Hex("3a3428"), sun = Hex("c8a060"), steelLive = true, law = "The Mark is the only law that compounds. Live steel is allowed. Flower-law is the Court only.", style = S("tessera", "Tessera Hold", "Invoice", "Clearing", "Name the holder", "Broken tile", 1.05f, 1.05f, 0.95f), fauna = new[] { "hound", "drone" } };
+                case WorldId.Crucible:
+                    return new WorldDef { id = id, title = "The Crucible", refusal = "A system that refuses to close can never rest.", theNo = "There is no ninth.", fantasy = "rules that refuse to stay", traversal = "unstable ground", combat = "drift", weather = "drift", ground = Hex("204040"), sun = Hex("20ffd0"), steelLive = true, law = "If it would end, un-end it.", style = S("drift", "Open Lattice", "Shard", "Recycle", "Refuse completion", "Un-end", 1.15f, 1f, 1.1f), fauna = new[] { "drift", "wraith", "construct" } };
                 default:
                     return new WorldDef { id = WorldId.Crucible, title = "The Crucible", refusal = "A system that refuses to close can never rest.", theNo = "There is no ninth.", fantasy = "rules that refuse to stay", traversal = "unstable ground", combat = "drift", weather = "drift", ground = Hex("204040"), sun = Hex("20ffd0"), steelLive = true, law = "If it would end, un-end it.", style = S("drift", "Open Lattice", "Shard", "Recycle", "Refuse completion", "Un-end", 1.15f, 1f, 1.1f), fauna = new[] { "drift", "wraith", "construct" } };
             }

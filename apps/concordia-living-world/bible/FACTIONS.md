@@ -14,4 +14,4 @@ Simulate resources, territory, leaders, heat, secrets, plans. Faction decisions 
 
 ## Gap
 
-No tick, no heat, no membership, no war/trade actions.
+`WorldClock.FactionHeat` ticks down and rises on a kill or a carried import. CROSS_PLOTS advance when the player walks a matching pair of doors. No membership roll, no war AI, no faction-owned gate.

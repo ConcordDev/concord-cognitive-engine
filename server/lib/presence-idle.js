@@ -207,8 +207,7 @@ export function markLagProbe(name) {
 export function wrappedSetInterval(fn, ms, name) {
   const tagged = async (...args) => {
     markLagProbe(name || "unknown");
-    try { return await fn(...args); }
-    catch (e) { throw e; }
+    return fn(...args);
   };
   /* @drift-ok: intentional design — caller owns lifecycle and clears via the returned handle */
   return setInterval(tagged, ms);

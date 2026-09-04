@@ -415,3 +415,75 @@ test("12. foreign user:<other> join rejected as forbidden_room", async () => {
     ws.close();
   } finally { await h.stop(); }
 });
+
+test("13. kingdom:request with no exportKingdom → honest unavailable", async () => {
+  const h = await startGateway({ exportKingdom: undefined });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "kingdom:request", { worldId: "concordia-hub" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "kingdom:data");
+    assert.equal(f.data.ok, false);
+    assert.equal(f.data.reason, "kingdom_export_unavailable");
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("14. kingdom:request → kingdom:data matching export verbatim", async () => {
+  const snap = { ok: true, format: "concord-kingdom/v1", worldId: "concordia-hub", title: "The Unburned Court", caravans: [] };
+  const h = await startGateway({ exportKingdom: () => snap });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "kingdom:request", { worldId: "concordia-hub" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "kingdom:data");
+    assert.equal(f.data.format, "concord-kingdom/v1");
+    assert.equal(f.data.title, "The Unburned Court");
+    assert.deepEqual(f.data.caravans, []);
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("15. dialogue:request uses injected Concord 2B composer", async () => {
+  const h = await startGateway({
+    composeDialogue: async (input) => ({
+      ok: true,
+      provider: "concord-2b",
+      text: "The Court stays dirt.",
+      requestId: input.requestId,
+      fallback: false,
+    }),
+  });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "dialogue:request", {
+      requestId: "d1",
+      worldId: "concordia-hub",
+      npcId: "lamplighter",
+      npcName: "The Lamplighter",
+      text: "Who keeps this court?",
+    });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "dialogue:data");
+    assert.equal(f.data.ok, true);
+    assert.equal(f.data.provider, "concord-2b");
+    assert.equal(f.data.text, "The Court stays dirt.");
+    assert.equal(f.data.requestId, "d1");
+    assert.doesNotMatch(JSON.stringify(f.data), /Aurelia/i);
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("16. dialogue:request with no composer → honest unavailable", async () => {
+  const h = await startGateway({ composeDialogue: null });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "dialogue:request", { requestId: "d2", npcId: "n1" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "dialogue:data");
+    assert.equal(f.data.ok, false);
+    assert.equal(f.data.reason, "dialogue_unavailable");
+    assert.equal(f.data.requestId, "d2");
+    ws.close();
+  } finally { await h.stop(); }
+});

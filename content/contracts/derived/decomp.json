@@ -23,6 +23,19 @@
         "typeof output === 'object'",
         "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
       ],
+      "macro_id": "decomp.assign",
+      "name": "assign"
+    },
+    {
+      "_derived": true,
+      "domain": "decomp",
+      "fuzz_cases": [],
+      "inputs": {},
+      "invariants": [
+        "output !== null && output !== undefined",
+        "typeof output === 'object'",
+        "(typeof output.ok === 'boolean') || (output !== null && typeof output === 'object')"
+      ],
       "macro_id": "decomp.create",
       "name": "create"
     },
@@ -81,5 +94,5 @@
   ],
   "domain": "decomp",
   "generatedBy": "scripts/contracts/derive-contracts.mjs",
-  "macroCount": 6
+  "macroCount": 7
 }

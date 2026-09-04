@@ -104,6 +104,26 @@ describe('Auth Middleware', () => {
       middleware(makeRequest('/godot-client/index.js'));
       expect(mockNext).toHaveBeenCalled();
     });
+
+    it('allows /unity-client/* through (Unity WebGL index.html/.js/.wasm are not covered by STATIC_ASSET_RE)', () => {
+      middleware(makeRequest('/unity-client/index.html'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/unity-client/index.wasm'));
+      expect(mockNext).toHaveBeenCalled();
+      mockNext.mockClear();
+      middleware(makeRequest('/unity-client/index.js'));
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('lets /lenses/world iframe /unity-client/ (frame-ancestors self, not none)', () => {
+      const player = middleware(makeRequest('/unity-client/index.html')) as { headers: { get: (k: string) => string | undefined } };
+      expect(player.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'self'");
+      expect(player.headers.get('Content-Security-Policy')).not.toContain("frame-ancestors 'none'");
+
+      const app = middleware(makeRequest('/')) as { headers: { get: (k: string) => string | undefined } };
+      expect(app.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'");
+    });
   });
 
   describe('protected routes', () => {
