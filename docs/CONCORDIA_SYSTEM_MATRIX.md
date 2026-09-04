@@ -132,7 +132,7 @@ Columns: **S**erver · **U**nity kitchen · **W**eb lens. Owner is the authorita
 | 19 | Audio identity | Y | Y | G | Web `SoundscapeEngine`. Unity `Footsteps` | Per-world Unity bus is thin (audit residual) | — | sonic pulse (web) | One ambience bus per `WorldId` in Unity, sourced from Canon weather + settlement |
 | 20 | Weather / seasons | G | Y | G | Server `seasons`, embodied signals. Unity `WorldClock.Weather` + VFX | Weather→caravan delay is **not** wired | Server yes · Unity string | `world:season-transition` | Subscribe caravans/crops to season (server already has crop-season gates) |
 | 21 | Traversal | G | Y | G | Server climb/swim/dive/mounts. Unity walk/sprint/jump/dodge | Per-world extra verb is mostly **web** | Server yes | — | Unity: one extra verb per gated world, not a parkour engine |
-| 22 | Sim LOD | Y | G | Y | Unity `SimLod` Real <28m / Bulk <70m / Virtual. Server world shards + draw budgets | Same actor, cheaper brain — Unity does this | Runtime | — | Browser WebGPU client must reuse this contract (see §Streaming) |
+| 22 | Sim LOD | Y | G | Y | Unity `SimLod` Real <28m / Bulk <70m / Virtual. Server `interest-management.js` + `city-presence` chunks + world shards | Same actor, cheaper brain — Unity does this | Runtime | — | Browser WebGPU reuses this contract (see §Streaming). Do not invent a parallel LOD enum |
 | 23 | Memory / history | G | Y | G | Server dreams, grudges, event_timeline. Unity `LastEvent` + deadCsv | “Why does this guard hate me?” is **server grudges/hooks**, not Unity | Server yes | — | Surface memory in Unity talk / 2B context |
 | 24 | Relationships | G | Y | G | Nemesis, opinions, hooks, courtship, marriage | Graph is server | Server yes · Unity rumor lines | spouse-react | Don’t build a second graph |
 | 25 | Politics | G | Y | G | Faction strategy, decrees, war campaigns | Unity rolls `scheme`/`treaty` strings | Server yes | strategy-move | Unity should **display** server moves, not re-roll them |
@@ -196,17 +196,134 @@ A Tunya bow and a Cyber tool can both be “weapons” and still be different ob
 
 ## Simulate globally, render locally (queued)
 
-Already the architecture:
+**Simulation scale must never equal rendering scale.** The server may hold nine worlds, kingdoms, settlements, and millions of abstract actors. A client renders one player, one local region, ~50–200 relevant actors, and the immediate environment. That is already the architecture — Unity `SimLod`, server shards, spatial chunks, combat anti-cheat. A WebGPU browser client reuses this contract. It does not change `npc_id`.
 
-| Tier | What runs | Who |
+Do **not** stand up a parallel LOD enum, a `PerformanceManager` server, or a second interest bus. Extend the owners below.
+
+### Stream the player's reality, not the kingdom
+
+The server can know an entire kingdom (people, settlements, livestock, buildings, caravans, armies). The browser never receives that list.
+
+| Slice | What the client may get | What it must not get |
 |---|---|---|
-| Full | Skeletal body, combat, talk, enter | Unity `SimLod.Real` (<28 m); web nearby actors |
-| Regional | Cheap gait / snap-to-destination | Unity `Bulk` (<70 m); server shard for per-world tables |
-| World | Hour, ecology, prices, stock, AwayTick | `WorldClock` + `WorldMemory.Advance`; server heartbeats with **no GPU** |
+| Immediate bubble | 50–150 visible actors, nearby buildings/props/wildlife, active quests, nearby market, relevant sounds, weather | The other 83,850 people in the capital |
+| Nearby region | Simplified actors, simplified traffic, distant shells, statistical activity | Full skeletal + combat AI |
+| Far world | Essentially nothing visual | GPU involvement of any kind |
 
-Locked rule: **the browser never receives the kingdom.** Interest management is “stream the player’s reality.” WebGPU / instancing / quality tiers are **client** work on top of this contract. They do not change `npc_id`.
+Locked rule: **the browser never receives the kingdom.** Interest management is stream the player's reality. Network AoI is already `server/lib/movement/interest-management.js` (speed-scaled radius, predictive chunk preload, departing-vector) wired into `city-presence.js` (100 m spatial chunks, `MAX_VISIBLE_AVATARS` per chunk). Unity visual LOD is a **tighter** bubble than that network radius — that split is correct.
 
-Server shards already split per-world writes (`server/lib/world-shard-protocol.js`). That is the LOD-4 statistical layer’s home, not a new service.
+### Three simulation / rendering levels — existing `SimLod`, not a new enum
+
+Industry analog (Warhorse / KCD II AI-LOD at thousands of NPCs) maps onto names we already have. Do **not** invent a parallel LOD enum.
+
+| Spec name | Concordia name | Distance (Unity `LodAt`) | What actually runs |
+|---|---|---|---|
+| LOD 0 — Full | `SimLod.Real` | `<28 m` | Skeletal body, animation, IK, combat, physics, particles, detailed AI, audio, interaction |
+| LOD 1 — Regional | `SimLod.Bulk` | `<70 m` | Cheap gait / snap-to-destination, impostors, simplified meshes, aggregated crowds, simplified AI |
+| LOD 2 — World | `SimLod.Virtual` | beyond | No rendering. `population +=`, `production +=`, `consumption -=`, `caravan_position =`, political_state, weather_state. `WorldClock` + `WorldMemory.Advance` + server heartbeats. **No GPU.** |
+
+Server shards (`server/lib/world-shard-protocol.js` `PER_WORLD_WRITE_TABLES`) are the statistical / per-world-write home of Virtual, not a new service. Same actor, cheaper brain — Unity already does this on #954.
+
+### WebGPU instancing is client work
+
+Do not draw Tree × N as N objects. GPU-instance one mesh (position, rotation, scale, variation). Same for grass, rocks, barrels, houses, racked weapons, repeated NPC archetypes, foliage, particles.
+
+Owner: **client renderer** (browser WebGPU / Unity / Godot). Stems come from `DressVocab` / `FreePacks`, not a new server mesh catalog. Instancing does not change simulation.
+
+### Browser-aware assets = dresser, not the Unity library dump
+
+```
+semantic object → visual archetype → client-compatible asset → LOD selection → GPU representation
+```
+
+Example: settlement = wealthy medieval capital → World Dresser (`DressVocab` kit: stone houses, stalls, banners, warehouses, gardens, guards, carts) → distance system → `SimLod.Real` / `Bulk` / `Virtual`.
+
+The **server does not care** which `.glb` is a wealthy house. The client does. Grow the vocab (row 30). Do not invent a second asset CMS. Do not ship “the entire Unity asset library” to the browser.
+
+### Stream assets asynchronously (client / CDN)
+
+Login → player spawn → terrain → nearest buildings → player/NPC meshes → nearby props → audio → distant scenery. Compressed meshes, GPU-friendly textures, manifests, chunk streaming, cache of visited places. The player moves while the rest arrives.
+
+This is **client** work on top of `city-presence` chunk preload. It is not a #954 kitchen task and not a new simulation.
+
+### Server stays authoritative
+
+The browser must not decide “I killed that guy.”
+
+```
+PLAYER_ATTACK  target=NPC_1842  weapon=ITEM_9381  timestamp=…
+        ↓
+server: validate → combat calculation → apply damage → NPC state → broadcast
+        ↓
+browser: sword animation, hit effect, health bar
+```
+
+Owners already: `_validateCombatReach` and `_validateDamageCap` in `server/routes/worlds.js` (HTTP NPC path); socket `combat:attack` → `cityPresence.applyAttack` → `combat:attack:ack` + `combat:impact`. Client plays feel from the ack. Godot uses the same ack. Unity slash is local until the gateway; Hub Flower-law still refuses damage outside the Arena. Never reintroduce a trust-the-client-damage path.
+
+### Do not send state every frame
+
+60 FPS × thousands of entities would murder the pipe. Server tick → state changes → interest filter → **only relevant deltas** → client interpolates locally.
+
+Web already lerps: `concord-frontend/lib/world-lens/creature-renderer.ts` (`pos.lerp(entry.target, …)` toward the server position; the boid flock moves them server-side). Departing-vector in `interest-management.js` is the off-screen half of the same idea. Do not add a second 60 Hz entity dump.
+
+### Interest management is already a subsystem — two radii, one filter
+
+```
+PLAYER
+  ├─ INTERACTION radius  → detailed (combat, talk, enter, stalls)
+  └─ VISUAL radius       → simplified (Bulk / impostor)
+            ↓
+      STREAM FILTER (network AoI)
+```
+
+| Situation | Priority |
+|---|---|
+| Fighting someone | Extreme — Real LOD + combat events |
+| Merchant ~30 m | High — nearby bubble |
+| Farmer ~400 m | Low — Bulk or statistical |
+| Kingdom three worlds away | Zero visual. Virtual sim only. Diseases still never cross worlds. |
+
+Owners: `interest-management.js` (network AoI, default base 500 m when speed-AoI is on) + Unity `LodAt` 28 / 70 (presentation) + combat reach cap (interaction). Interaction radius ≠ visual radius ≠ network AoI — keep them distinct. Do not collapse them into one magic number.
+
+### Physics gets the same LOD
+
+Do not run physics for 10,000 NPCs.
+
+| Distance | Physics |
+|---|---|
+| Near player | Full collision — web `physics-world.ts` (Rapier kinematic capsules); Unity character controller |
+| Nearby | Simplified collision |
+| Far | None. The server knows `cart A`, `road B`, `speed 12`, `destination C`. No wheel collider while nobody is looking. |
+
+Far carts are `CrossRing` / `world-vehicles` state, not Rapier.
+
+### Audio is a field, not 10,000 emitters
+
+Player position → audio field (forest / market / forge / birds / wind / distant combat / nearby talk) → priority mixer. Only nearby sounds become real sources.
+
+Owners: web `SoundscapeEngine` (already ducks on `world:sonic-pulse`); Unity `Footsteps`. Per-world Unity bus is still thin (row 19). One ambience bus per `WorldId` from Canon weather + settlement — not a second Wwise project.
+
+### GPU budget and quality tiers change presentation only
+
+A client-side budget (GPU / CPU / memory / textures / draw-calls / visible actors / particles / shadows) may drop foliage, shadows, NPC animation, view distance as FPS falls. Named quality tiers (cinematic / high / balanced / performance / potato) are the same knob with a preset.
+
+**Quality tiers change presentation only.** The world simulation does not change. A laptop and a desktop are in the same universe. `SimLod` is distance + interest; quality is how expensive that bubble is allowed to look. Do not put a `PerformanceManager` on the server. Do not let a quality slider skip combat validation or shrink the kingdom snapshot.
+
+### Three clients, one authority
+
+```
+CONCORDIA AUTHORITY
+        World Snapshot
+   ┌────────┼────────┐
+Browser   Godot     Unity
+WebGPU    native    native
+```
+
+Same: player, world, inventory, equipment, NPC, quest, economy, physics **authority**, history.
+
+Different: renderer, asset representation, performance budget, platform input, presentation fidelity.
+
+An iPhone and a desktop are not two games. They enter the same world through different clients. P0 persist-sync is what makes that sentence true for Unity; the web lens already lives on the snapshot.
 
 ---
 
