@@ -106,3 +106,27 @@ test("Unity /unity-ws dialogue:request returns Concord 2B provider stamp", async
     await h.stop();
   }
 });
+
+test("production loopback unity-local-guest is allowed so Editor can reach Concord 2B", async () => {
+  const prev = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
+  try {
+    const h = await start();
+    try {
+      const ws = new WebSocket(h.url);
+      await new Promise((resolve, reject) => {
+        ws.once("open", resolve);
+        ws.once("error", reject);
+      });
+      ws.send(JSON.stringify({ evt: "auth", data: { token: "unity-local-guest" } }));
+      const hello = await nextFrame(ws);
+      assert.equal(hello.evt, "hello");
+      assert.equal(hello.data.userId, "unity-local-guest");
+      ws.close();
+    } finally {
+      await h.stop();
+    }
+  } finally {
+    process.env.NODE_ENV = prev;
+  }
+});

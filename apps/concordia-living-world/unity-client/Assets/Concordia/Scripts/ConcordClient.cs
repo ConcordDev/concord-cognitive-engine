@@ -105,7 +105,12 @@ namespace Concordia
             }
             ConcordWsConnect(gatewayUrl);
 #else
+#if UNITY_EDITOR
+            // Kitchen 2B first. live.concordos.ai is the shipped client fallback.
+            var urls = new[] { kitchenUrl, gatewayUrl };
+#else
             var urls = new[] { gatewayUrl, kitchenUrl };
+#endif
             Exception last = null;
             foreach (var url in urls)
             {

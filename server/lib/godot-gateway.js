@@ -196,7 +196,9 @@ function isBinaryMovePayload(p) {
     if (token) {
       let res;
       try {
-        res = await verifyToken(token);
+        res = await verifyToken(token, {
+          remoteAddress: client.ws?._socket?.remoteAddress || "",
+        });
       } catch {
         res = null;
       }

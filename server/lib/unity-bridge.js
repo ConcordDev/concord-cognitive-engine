@@ -1,20 +1,26 @@
 // server/lib/unity-bridge.js
 //
-// Unity is a presentation client of the Concord kernel — not a second sim.
-// `mountUnityGateway` is mounted from server.js next to `/godot-ws` at
-// `/unity-ws`. Same WebSocket primitive, same auth, same rooms, same
-// `{evt,data}` envelope. Combat is `combat:attack` (not `unity:combat:attack`)
-// so `_onGodotClientMessage` → `_dispatchGodotCombatAttack` → `applyAttack`
-// is the one resolver.
+// Unity WebGL bridge — adds Unity as a third client alongside Three.js and Godot.
+// All three clients render the SAME scene from the SAME descriptor.
 //
-// `UNITY_MESSAGE_TYPES` below is the unused prefixed-envelope experiment.
-// The in-repo Editor client (`apps/concordia-living-world/unity-client/`)
-// speaks the Godot envelope. Do not revive a parallel combat math path.
+// Unity Asset Store provides "out of the box" assets via the Standard Assets package
+// (cross-platform essentials: First Person Controller, Camera, etc.) plus the
+// Asset Store package downloads that ship as .unitypackage files (which can be
+// extracted to standard asset formats). Unity also uses the same GLB/glTF 2.0
+// format that Three.js and Godot use, so assets downloaded for one client work
+// across all three.
 //
-// Scene helpers (`toUnityScene`, asset lists) still decorate the shared
-// descriptor for Unity-specific materials/shaders.
+// This module extends godot-gateway.js with Unity-specific message envelope
+// support, adds a Unity scene descriptor, and wires Unity WebGL build hooks
+// so the same hub can serve Three.js, Godot, AND Unity clients from one
+// /godot-ws endpoint (renamed to /multi-ws in spirit; alias preserved).
 
 import { mountGodotGateway } from './godot-gateway.js';
+
+function isLoopback(addr) {
+  const a = String(addr || "");
+  return a === "127.0.0.1" || a === "::1" || a === "::ffff:127.0.0.1";
+}
 
 export const UNITY_MESSAGE_TYPES = {
   CLIENT_HELLO: 'unity:hello',
@@ -31,23 +37,28 @@ export const UNITY_MESSAGE_TYPES = {
 };
 
 /**
- * Mount the Unity Editor / standalone client at /unity-ws.
- * Same protocol as /godot-ws. Pass the same `onClientMessage` the Godot
- * mount uses so combat/move hit the kernel once.
+ * Mount a Unity-compatible client endpoint at /unity-ws.
+ * Same protocol as /godot-ws, with Unity-specific message types.
  * @param {import('http').Server} server
  * @param {object} deps
  * @returns {object}
  */
 export function mountUnityGateway(server, deps) {
-  const verifyToken = async (token) => {
+  // Reuses godot-gateway's mounting logic (same WebSocket, same auth, same rooms)
+  // Unity-specific messages are routed through onClientMessage
+  const verifyToken = async (token, meta = {}) => {
     if (token && token !== "unity-local-guest" && typeof deps.verifyToken === "function") {
       const hit = await deps.verifyToken(token);
       if (hit) return hit;
     }
-    // Kitchen / Editor guest. Production still requires a real bearer —
-    // never a fabricated world, only a socket identity so /unity-ws can speak.
-    if (process.env.NODE_ENV !== "production" && (!token || token === "unity-local-guest")) {
-      return { userId: "unity-local-guest" };
+    // Kitchen / Editor guest. Remote production still requires a real bearer.
+    // Loopback (this box's Unity Editor → :5050) may use unity-local-guest
+    // so Concord 2B can answer without a Convai cloud key.
+    const loopback = isLoopback(meta.remoteAddress);
+    if (!token || token === "unity-local-guest") {
+      if (process.env.NODE_ENV !== "production" || (token === "unity-local-guest" && loopback)) {
+        return { userId: "unity-local-guest" };
+      }
     }
     return null;
   };
