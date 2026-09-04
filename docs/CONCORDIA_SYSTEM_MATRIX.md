@@ -152,25 +152,45 @@ Columns: **S**erver · **U**nity kitchen · **W**eb lens. Owner is the authorita
 
 ## Crafting taxonomy (queued, not a second catalog)
 
-The “resource → material → component → recipe → item → unique” stack is the right **shape**. The code already has the left half:
+The stack `resource → material → component → recipe → item → variant → unique` is the right **shape**. There is already a craft kernel. Do **not** stand up `ItemGenerator` as a parallel engine. Do **not** author a 20-school spell list beside glyph algebra. Do **not** hand-author fifty thousand finished swords.
 
-| Layer | Exists | Owner |
+Authored content is the **vocabulary**. `craft-resolve` + affixes + world filters + the Ring are the **combinations**. Persistent `player_inventory` is the **history**. The player is the **interference**.
+
+| Spec layer | Status | Owner — extend this, don’t fork |
 |---|---|---|
-| Resource properties | G | `server/lib/resources.js` `RESOURCE_CATALOG` (potency, affinity, stability, volume, weight, rarity, source, magical_sub) |
-| Market ids | G | `server/lib/world-economy.js` `BASE_PRICES` (alias table in `resources.js` reconciles hyphen vs snake) |
-| Resolve | G | `server/lib/craft-resolve.js` |
-| Affixes / sets / durability | G | `item-affixes.js`, `item-sets.js`, `gear-durability.js` |
-| Glyph / spell composition | G | `glyph-spells.js` (base-6 algebra — this **is** the systemic magic, not a flat spell list) |
-| Unity items | Y | `KitBag` stems + `DressVocab.Weapon` |
-| Per-world ecology filters | R | Catalog is global; worlds do not yet **forbid** producing steel without imports |
-| Unique instance history | Y | `player_inventory.id` is a row id; there is no provenance/history log on that row |
-| Named uniques | Y | DTU recipes + UGC; not “King’s Blade recognized by royal guards” as a first-class object |
+| 1. Resource families + properties | G / Y | `RESOURCE_CATALOG` already has organic/stone/metal/mineral/creature/botanical/arcane/energy-ish fuel (`wood`…`dragonbone`, `iron_ore`→`steel_ingot`, `hide`→`leather`, `mana_crystal`, `aether_dust`, soul gems). Live fields: potency, affinity, stability, volume, weight, rarity_tier, source_type, magical_sub. Hardness / conductivity / toxicity / biome / compatible_recipes are **columns to add**, not a new resource object. |
+| 2. Materials (ore → ingot → steel) | G | Same catalog + `craft-chains.js` (gather/process/cure/assemble/finish, season gates). `iron_ore` → `iron_ingot` → `steel_ingot` is already the smelt chain in data. |
+| 3. Components (blade, pommel, plate, focus) | R | No component table yet. Add a data table `craft-resolve` consumes. One component in many recipes. Not a second resolver. |
+| 4–5. Weapon / firearm families | Y | Archetypes live in `DressVocab.Weapon` + KitBag stems + affix slots. A gun existing in Cyber does **not** let Tunya manufacture it — that is a **world filter + knowledge**, not a shared tech tree. Do not paste a 40-gun list. |
+| 6. Spell construction | G | `glyph-spells.js` `composeSpell` folds `glyphAdd` (fire/water/ice/lightning/bio/energy/psychic/refusal). Fire+projectile vs fire+area is **glyph chain + params**, not a named spell spreadsheet. Extra “schools” are labels over glyphs. |
+| 7. Identity-bound uniques | Y | DTU recipes + UGC + faction recognition residuals. Not yet “this instance commands royal guards.” Stealing a unique must hit ownership + rumor (`npc-legacy` / timeline), not a special-case quest. |
+| 8. Unique generation | G / Y | `craft-resolve` (inputs + skill + station + affinity conflict → quality/backfire) + `item-affixes` rarity rolls. Two swords already differ by mats/skill/station. Emergent names are presentation over that roll, not a name database. |
+| 9. Recipes as knowledge | Y | Chain JSON: inputs, station implicit, duration, season_gate, output. Skill weight is in `craft-resolve`. Unlock-button recipes are the wrong shape — keep chains as data. |
+| 10. Discovery / tech spread | Y | `npc-skill-author` already biases the next NPC revision from witnessed demonstrations (lineage). Alloy-experiment → civilization-learns-it is **not** built; extend demonstration/knowledge, don’t add a research tree UI. |
+| 11. Per-world ecology | R | Catalog is global today. Filters (extract / refine / forbid) are P0 #6, keyed by **existing** Canon worlds + staples — not a new World-1…World-5 set. |
+| 12. Cross-world craft | Y | `CrossRing` already moves kit and cargo. Missing: `origin_world` (and optional `origin_settlement`) on the inventory row so a blade forged in one world and gripped in another is one object. |
+| 13. Starting scale | — | Targets (hundreds of primitives, thousands of variants) are **catalog growth + combinatorics**, not a content sprint to 100k finished items. |
+| 14. Player creator | Y | Evaluate through `craft-resolve` + station + skill + knowledge + scarcity. Unity CookStation is the only kitchen craft surface. Do not confuse this with Forge (polyglot app generator). |
+| 15. Permanent item identity | Y | `player_inventory.id` is a row id. Provenance (`archetype_id`, `material_ids`, `recipe_id`, `creator_id`, `origin_world`, history) is the next columns. Ownership already moves; history does not yet. |
+| Mounts / vehicles | G | `mount-gear.js`, `world-vehicles.js` — gear/vehicles are this same inventory, not a side catalog. |
+| World scale | — | Oblivion/Fallout **extent** per gated world is `SimLod` + `DressVocab` + `RealmFill` towns/holds, not a second map generator. |
 
-**Do not** author 150–300 resources from scratch, and do **not** hand-author fifty thousand finished swords. Authored content is the **vocabulary** (catalog rows, archetypes, modifiers, world constraints). The simulation is the **combinations**. Add **world filters** and missing families onto `RESOURCE_CATALOG`. Components (blade/pommel/…) are a data table that `craft-resolve` can consume — they are not a reason to fork the resolver.
+**World filters (intent, from Canon staples — not invented profiles):**
 
-The catalog already spans organic/stone/metal/mineral/creature/botanical/arcane (`wood`…`dragonbone`, soul gems, `mana_crystal`, `aether_dust`). Glyph algebra is the systemic magic. Mounts and vehicles are server substrates, not a new item generator.
+| World | Staple | Extract / tradition | Cannot make without import |
+|---|---|---|---|
+| Hub | lanterns | Court; Flower-law, not a factory | Live steel (except Arena) |
+| Tunya | harvest | Wood, fiber, hide, herb, food | Advanced metals, crystals |
+| Fantasy | ward | Glyph/magic mats, medieval archetypes | Industrial firearms |
+| Cyber | census | Tech affinity, refined metals, energy | Grove/harvest abundance |
+| Crime | invoices | Urban refined, creature/black-market | Open-grove extract |
+| Ruins | remnants | `ancient_tech_core`, remnant salvage | Living harvest |
+| Frontier | road | Movement; no embassy seat | A domestic industrial base |
+| Superhero | mercy | Energy / “dawn” kits | Harvest-as-Tunya |
+| Crucible | drift | Chaos/`element_shard` | Closed, restful production |
+| Sere | marks | Economic/Mark layer — **not a ninth Gate** | — |
 
-Cross-world crafted objects become real when `player_inventory` (or a future instance table) carries `origin_world` and the Ring already carries kit on `CrossRing.Walk`. That field is the next row, not a new item generator. Oblivion/Fallout **scale** per gated world is a presentation/LOD + dresser problem (`SimLod` + `DressVocab`), not a second map engine.
+A Tunya bow and a Cyber tool can both be “weapons” and still be different objects because the **filter + mats + knowledge** differ. That is the 9-world craft spec. The Ring (ore here, smith there, crystal there, bone there) is `CrossRing` + `origin_world`, not a new trade sim.
 
 ---
 

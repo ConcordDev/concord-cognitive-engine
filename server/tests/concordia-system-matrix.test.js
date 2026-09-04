@@ -35,6 +35,15 @@ describe("Concordia system matrix — audit pins", () => {
     assert.match(doc, /Drought→revolt is \*\*not\*\* one closed loop yet/);
     assert.match(doc, /diseases \*\*never cross worlds\*\*/);
     assert.match(doc, /Authored content is the \*\*vocabulary\*\*/);
+    assert.match(doc, /Do \*\*not\*\* stand up `ItemGenerator` as a parallel engine/);
+    assert.match(doc, /composeSpell/);
+    assert.match(doc, /origin_world/);
+    assert.match(doc, /World filters \(intent, from Canon staples/);
+    assert.match(src("server/lib/craft-resolve.js"), /export function resolveCraft/);
+    assert.match(src("server/lib/glyph-spells.js"), /export function composeSpell/);
+    assert.match(src("server/lib/craft-chains.js"), /VALID_STEP_KINDS/);
+    assert.match(src("server/lib/item-affixes.js"), /RARITY_RULES/);
+    assert.match(src("server/lib/world-vehicles.js"), /world.?vehicle|vehicle/i);
     assert.doesNotMatch(doc, /Concord admits he loves her/);
     assert.doesNotMatch(doc, /Aurelia/);
   });
