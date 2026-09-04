@@ -29370,6 +29370,7 @@ import { mountChatAgentStream } from "./routes/chat-agent-stream.js";
 import { mountGodotGateway, createGatewayEmitter } from "./lib/godot-gateway.js";
 import { mountUnityGateway } from "./lib/unity-bridge.js";
 import { exportScene } from "./lib/scene-export.js";
+import { buildKingdomSnapshot } from "./lib/concordia-kingdom-snapshot.js";
 import { makeGodotMoveRateGate } from "./lib/godot-move-rate.js";
 import { runAgentMarathonCycle } from "./emergent/agent-marathon-cycle.js";
 registerHeartbeat("agent-marathon-cycle", {
@@ -70518,6 +70519,7 @@ if (server) {
       verifyToken,
       getUser: AuthDB.getUser,
       exportScene,
+      exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
@@ -70538,6 +70540,7 @@ if (server) {
       verifyToken,
       getUser: AuthDB.getUser,
       exportScene,
+      exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
       verifyApiKeyPair: _godotVerifyApiKeyPair,

@@ -20,6 +20,7 @@ namespace Concordia
 
         public static GameObject Attach(GameObject body, string stem, bool rightHand, float size)
         {
+            stem = DressVocab.Weapon(stem);
             var mesh = FreePacks.Mesh(stem);
             if (!mesh) return null;
             var person = body.GetComponentInChildren<ModularPerson>() ?? body.GetComponent<ModularPerson>();
@@ -27,8 +28,8 @@ namespace Concordia
                 ? (rightHand ? person.rightHand : person.leftHand)
                 : Bone(body.transform,
                     rightHand
-                        ? new[] { "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
-                        : new[] { "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
+                        ? new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
+                        : new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
             if (!socket) socket = body.transform;
             var go = Object.Instantiate(mesh);
             go.name = stem;
@@ -47,18 +48,32 @@ namespace Concordia
             if (!held || !hand) return;
             foreach (var c in held.GetComponentsInChildren<Collider>())
                 Object.Destroy(c);
+            held.transform.SetParent(null);
+            held.transform.localScale = Vector3.one;
+            FreePacks.FitMax(held, size);
             held.transform.SetParent(hand, false);
             held.transform.localPosition = Vector3.zero;
             held.transform.localRotation = Quaternion.identity;
-            held.transform.localScale = Vector3.one;
-            FreePacks.FitMax(held, size);
 
+            bool biped = hand.name.IndexOf("Bip", System.StringComparison.OrdinalIgnoreCase) >= 0;
             var lb = Local(held);
             Vector3 from;
             if (shield)
             {
                 from = thinnest(lb);
                 held.transform.localRotation = Quaternion.FromToRotation(from, Vector3.forward);
+            }
+            else if (biped)
+            {
+                // Hang rotates the hand — local −X is not always wrist→fingers.
+                // Aim the blade along the live forearm→hand bone.
+                from = longest(lb);
+                var bone = hand.parent
+                    ? (hand.position - hand.parent.position)
+                    : hand.TransformDirection(Vector3.left);
+                if (bone.sqrMagnitude < 1e-6f) bone = hand.TransformDirection(Vector3.left);
+                var boneLocal = hand.InverseTransformDirection(bone.normalized);
+                held.transform.localRotation = Quaternion.FromToRotation(from, boneLocal);
             }
             else
             {
@@ -73,11 +88,24 @@ namespace Concordia
             }
 
             lb = Local(held);
-            float palmX = right ? lb.min.x : lb.max.x;
-            held.transform.localPosition = new Vector3(
-                -palmX + (right ? 0.04f : -0.04f),
-                -lb.center.y,
-                -lb.center.z + (shield ? 0.04f : 0f));
+            if (biped)
+            {
+                var bone = hand.parent
+                    ? (hand.position - hand.parent.position)
+                    : hand.TransformDirection(Vector3.left);
+                if (bone.sqrMagnitude < 1e-6f) bone = hand.TransformDirection(Vector3.left);
+                var boneLocal = hand.InverseTransformDirection(bone.normalized);
+                // Handle at the palm (8cm past the wrist along the live bone).
+                held.transform.localPosition = boneLocal * 0.08f;
+            }
+            else
+            {
+                float palmX = right ? lb.min.x : lb.max.x;
+                held.transform.localPosition = new Vector3(
+                    -palmX + (right ? 0.04f : -0.04f),
+                    -lb.center.y,
+                    -lb.center.z + (shield ? 0.04f : 0f));
+            }
         }
 
         static Vector3 longest(Bounds b)

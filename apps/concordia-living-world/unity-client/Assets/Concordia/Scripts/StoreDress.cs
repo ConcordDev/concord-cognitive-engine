@@ -65,6 +65,7 @@ namespace Concordia
             StripPlayable(go);
             if (height > 0.01f) FreePacks.FitHeight(go, height);
             FreePacks.Sit(go, pos);
+            FreePacks.PaintIfBlank(go, path);
             return go;
         }
 

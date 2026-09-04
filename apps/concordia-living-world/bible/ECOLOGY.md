@@ -6,7 +6,9 @@
 
 ## LIVE
 
-A float `ecology` on browser world slices. No births/deaths/predation graph running in Unity.
+Browser: a float `ecology` on world slices.
+
+Unity: `WorldClock.Ecology` + `FaunaLife` (wander / graze / flee / hunt / sleep). Predators hunt nearby non-predator fauna, not only the player. Pack dests sometimes lean toward an authored city so animals cross streets. A kill marks `WorldMemory` dead and drops ecology. Returning to a world with recovered ecology can clear a dead id (a birth). HUD says `ecology thin` below 0.4. `EvoDrift` sine is no longer the live path.
 
 ## TARGET
 
@@ -14,4 +16,4 @@ RDR2 lesson: animals belong to an ecosystem. Persistent consequences (hide scarc
 
 ## Gap
 
-Do not spawn decorative packs and call it ecology.
+Predator/prey between fauna is now a nearby hunt, not a species graph. Price coupling is still the kernel-style float plus shortage events.

@@ -10,13 +10,16 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 
 | Doc | LIVE snapshot |
 |---|---|
-| WORLD | 9 worlds + refusals in `Canon.cs` |
+| WORLD | 10 kingdoms + refusals; CityAtlas settlements; CrossRing caravans/tariffs/plots/travelers; WorldClock hours + authored events persist across gates |
+| VISUAL | DressVocab culture kits; imported My Assets (Store or Assets/<Pack>/) first, Kenney fallback; fake-window LOD; listed != imported |
 | LORE | JSON under `Resources/Concordia/Canon/` + `bible.ts` |
-| CHARACTERS | Hub guests speak; no relationship graph |
-| FACTIONS | JSON camps; no sim tick |
-| COMBAT | Unity hitscan; physics combat in `src/game/combat.ts` only |
-| NPC_BRAIN | Unity 5 jobs; TS `NpcBrain` not in Unity |
-| SAVE_SYSTEM | Appearance JSON only |
-| NETWORK | `/unity-ws` unused this play |
-| ANIMATION | Soldier T-pose |
+| CHARACTERS | Hub guests speak; faction sash on authored people; unlabeled ambient stay unlabeled; talk carries last event as rumor |
+| FACTIONS | JSON camps + weapon kits; sash color from `visual.primary_color` |
+| COMBAT | Unity hitscan; Hostile perceives / strafes; physics combat in `src/game/combat.ts` only |
+| QUESTS | Accept/track/complete for talk / reach / defeat / gather; HUD notes thin ecology |
+| SKILLS | Local attempt/connect ledger |
+| NPC_BRAIN | Unity schedules + visible activities (open/patrol/deliver/talk/inside); REAL/BULK/VIRTUAL LOD |
+| SAVE_SYSTEM | Appearance JSON + `concordia-living-v1.json` world slices |
+| NETWORK | `/unity-ws` mounted; `kingdom:request` → authored snapshot; offline stays `no_gateway` |
+| ANIMATION | Hero prefers Soldier.glb + SoldierLocomotion; NPC gait still often procedural |
 | AUDIO | Prefab paths; Vrellan Six missing |

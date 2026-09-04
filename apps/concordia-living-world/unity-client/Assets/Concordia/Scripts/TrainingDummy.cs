@@ -6,6 +6,7 @@ namespace Concordia
     {
         public float hp = 80;
         public bool unburied;
+        public bool living;
         float _reviveAt;
         Vector3 _home;
         Vector3 _scale0;
@@ -35,7 +36,8 @@ namespace Concordia
             else if (_rend != null)
                 FlashMats(Color.white);
 
-            transform.position = Vector3.Lerp(transform.position, _home, 1f - Mathf.Exp(-7f * Time.deltaTime));
+            if (!living && GetComponent<FaunaLife>() == null && GetComponent<Hostile>() == null)
+                transform.position = Vector3.Lerp(transform.position, _home, 1f - Mathf.Exp(-7f * Time.deltaTime));
 
             if (unburied && hp <= 0 && Time.time >= _reviveAt)
             {
@@ -63,6 +65,7 @@ namespace Concordia
             _flash = 0.16f;
             transform.position += -transform.forward * 0.42f + Vector3.up * 0.06f;
             if (hp > 0) return;
+            QuestLog.NoteDefeat(name);
             if (world == WorldId.Ruins || world == WorldId.Crucible)
             {
                 unburied = true;

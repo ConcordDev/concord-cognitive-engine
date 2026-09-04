@@ -3,14 +3,40 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Hollow floorplan + court-facing door. Kenney shells are solid meshes,
-    /// so the facade hides while you are inside.
+    /// Hollow floorplan + court-facing door. Solid store/Kenney shells hide
+    /// while you are inside. FakeWindows is the density LOD — glow only.
     /// </summary>
     public class BuildingInterior : MonoBehaviour
     {
         public string plan;
+        public bool entered;
         float _w = 8f, _d = 7f, _h = 3.15f;
         Renderer[] _shell;
+
+        public static void FakeWindows(GameObject shell)
+        {
+            if (!shell) return;
+            var rends = shell.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var glow = new Color(1f, 0.78f, 0.42f);
+            var mat = HubLook.Lit(glow, 0f, 0.04f);
+            float face = Mathf.Max(0.8f, b.size.z * 0.48f);
+            for (int i = 0; i < 3; i++)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                go.name = "FakeWindow";
+                go.transform.SetParent(shell.transform, false);
+                go.transform.localPosition = new Vector3(-1.35f + i * 1.35f, 1.55f, -face);
+                go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+                go.transform.localScale = new Vector3(0.52f, 0.68f, 1f);
+                var r = go.GetComponent<Renderer>();
+                if (r) r.sharedMaterial = mat;
+                var col = go.GetComponent<Collider>();
+                if (col) Object.Destroy(col);
+            }
+        }
 
         public static BuildingInterior Open(GameObject shell, string plan, Vector3 worldPos)
         {
@@ -26,6 +52,9 @@ namespace Concordia
             bi.plan = plan;
             bi._shell = shell.GetComponentsInChildren<Renderer>();
             bi.Build();
+            var place = shell.GetComponent<BuildingPlace>() ?? shell.AddComponent<BuildingPlace>();
+            place.plan = plan;
+            place.door = shell.transform.position + shell.transform.forward * -2.4f;
             return bi;
         }
 
@@ -50,19 +79,19 @@ namespace Concordia
             var wood = new Color(0.38f, 0.26f, 0.16f);
             var floorC = new Color(0.45f, 0.32f, 0.20f);
 
-            Slab(room, new Vector3(0, 0.04f, 0), new Vector3(_w, 0.08f, _d), floorC);
-            Slab(room, new Vector3(0, _h, 0), new Vector3(_w, 0.08f, _d), wood);
+            Slab(room, new Vector3(0, 0.04f, 0), new Vector3(_w, 0.08f, _d), floorC, "packed_earth");
+            Slab(room, new Vector3(0, _h, 0), new Vector3(_w, 0.08f, _d), wood, "plastered_wall");
 
             float t = 0.28f;
             float doorW = 1.7f, doorH = 2.35f;
-            Slab(room, new Vector3(0, _h * 0.5f, _d * 0.5f - t * 0.5f), new Vector3(_w, _h, t), plaster);
-            Slab(room, new Vector3(-_w * 0.5f + t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster);
-            Slab(room, new Vector3(_w * 0.5f - t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster);
+            Slab(room, new Vector3(0, _h * 0.5f, _d * 0.5f - t * 0.5f), new Vector3(_w, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(-_w * 0.5f + t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster, "plastered_wall");
+            Slab(room, new Vector3(_w * 0.5f - t * 0.5f, _h * 0.5f, 0), new Vector3(t, _h, _d), plaster, "plastered_wall");
 
             float side = (_w - doorW) * 0.5f;
-            Slab(room, new Vector3(-(_w * 0.5f - side * 0.5f), _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster);
-            Slab(room, new Vector3(_w * 0.5f - side * 0.5f, _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster);
-            Slab(room, new Vector3(0, doorH + (_h - doorH) * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(doorW, _h - doorH, t), plaster);
+            Slab(room, new Vector3(-(_w * 0.5f - side * 0.5f), _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(_w * 0.5f - side * 0.5f, _h * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(side, _h, t), plaster, "plastered_wall");
+            Slab(room, new Vector3(0, doorH + (_h - doorH) * 0.5f, -_d * 0.5f + t * 0.5f), new Vector3(doorW, _h - doorH, t), plaster, "plastered_wall");
 
             var doorPos = transform.TransformPoint(new Vector3(0, 1.15f, -_d * 0.5f));
             var frame = FreePacks.Spawn("doorwayOpen", transform, doorPos, transform.eulerAngles.y, 2.4f)
@@ -144,13 +173,16 @@ namespace Concordia
 
         void Put(Transform room, string stem, Vector3 local, float yaw, float h)
         {
+            var hh = FreePacks.HumanHeight(stem);
+            if (hh > 0.01f) h = hh;
             var world = room.TransformPoint(local);
-            var go = FreePacks.Spawn(stem, room, world, room.eulerAngles.y + yaw, h);
+            var go = FreePacks.Spawn(DressVocab.Resolve(stem), room, world, room.eulerAngles.y + yaw, h);
             if (!go) return;
             go.transform.SetParent(room, true);
+            if (stem == "kitchenStove") CookStation.Stamp(go);
         }
 
-        static void Slab(Transform parent, Vector3 local, Vector3 scale, Color c)
+        static void Slab(Transform parent, Vector3 local, Vector3 scale, Color c, string pbr = null)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "Plan";
@@ -158,7 +190,17 @@ namespace Concordia
             go.transform.localPosition = local;
             go.transform.localScale = scale;
             var r = go.GetComponent<Renderer>();
-            if (r) r.material = new Material(r.sharedMaterial) { color = c };
+            if (!r) return;
+            r.sharedMaterial = string.IsNullOrEmpty(pbr)
+                ? HubLook.Lit(c, 0.04f, 0.22f)
+                : HubLook.Pbr(pbr, c, 0.03f, 0.2f, 4f);
+        }
+
+        public string Prompt => "E  ·  Enter";
+
+        public Vector3 Inside()
+        {
+            return transform.position + Vector3.up * 0.12f;
         }
 
         void LateUpdate()
