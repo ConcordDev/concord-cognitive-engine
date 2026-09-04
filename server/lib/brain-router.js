@@ -72,7 +72,9 @@ export async function preloadBrains(structuredLog = () => {}) {
       // Sprint 60+ — retry with backoff. Conscious (14B) often times out during
       // boot when ollama is also busy loading other models. Two retries, 5s + 15s.
       for (const backoff of [5000, 15000]) {
-        await new Promise(r => setTimeout(r, backoff));
+        await new Promise(r => {
+          setTimeout(r, backoff);
+        });
         try {
           const retryRes = await fetch(`${epUrl}/api/generate`, {
             method: "POST",

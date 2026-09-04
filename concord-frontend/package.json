@@ -137,7 +137,13 @@
     "dompurify": "^3.4.1",
     "sharp": "^0.35.0",
     "postcss": "^8.5.18",
-    "lodash-es": "^4.18.1"
+    "lodash-es": "^4.18.1",
+    "@excalidraw/excalidraw": {
+      "nanoid": "3.3.18"
+    },
+    "@excalidraw/mermaid-to-excalidraw": {
+      "nanoid": "5.1.16"
+    }
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -9110,7 +9110,7 @@ function _rateLimitKey(req) {
       if (decoded?.userId) return `u:${decoded.userId}`;
     }
   } catch { /* best-effort — never let key derivation break rate limiting */ }
-  return _ipKeyGenerator(req.ip);
+  return globalThis._ipKeyGenerator?.(req.ip) || req.ip;
 }
 
 let rateLimiter = null;

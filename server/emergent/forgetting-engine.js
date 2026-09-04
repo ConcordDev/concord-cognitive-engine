@@ -352,7 +352,9 @@ export async function runForgettingCycle(dryRun = false, opts = {}) {
         forgotten.push({ id: dtu.id, tombstoneId: tombstone.id, score });
       } catch (_e) { logger.debug('emergent:forgetting-engine', 'skip on error', { error: _e?.message }); }
       if ((i + 1) % YIELD_EVERY === 0) {
-        await new Promise((r) => setImmediate(r));
+        await new Promise((r) => {
+          setImmediate(r);
+        });
       }
     }
 

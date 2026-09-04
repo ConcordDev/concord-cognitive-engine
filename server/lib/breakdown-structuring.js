@@ -83,13 +83,15 @@ Constraints:
     opts: { maxTokens: 2000, temperature: 0.4 },
   });
 
-  if (!r?.ok) return {
-    ok: false,
-    error: "brain_failed",
-    detail: r?.error || "unknown",
-    provider: r?.provider,
-    model: r?.model,
-  };
+  if (!r?.ok) {
+    return {
+      ok: false,
+      error: "brain_failed",
+      detail: r?.error || "unknown",
+      provider: r?.provider,
+      model: r?.model,
+    };
+  }
 
   // Parse JSON from response
   const text = r.text || "";

@@ -231,7 +231,6 @@ export async function dispatchMCP(tool, args = {}, ctx = {}) {
         };
       }
       // Fall through to execute in observe-only mode
-      // eslint-disable-next-line no-fallthrough
       // INTENTIONAL: OBSERVE in observe-only mode = log + execute
       break;
 

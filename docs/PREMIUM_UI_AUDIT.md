@@ -175,7 +175,7 @@ Adoption numbers (reproduced 2026-07-18, `concord-frontend/`):
 | …carrying generic scaffold (`AutoActionStrip`/`UniversalActions`/`ManifestActionBar`) | **222** | `grep -rlE "AutoActionStrip\|UniversalActions\|ManifestActionBar" app/lenses/*/page.tsx` |
 | …carrying `RecentMineCard` | **202** | `grep -rl RecentMineCard app/lenses/*/page.tsx` |
 | …with ≥1 arbitrary `text-[Npx]` size | **175** | `grep -rlE "text-\[[0-9]+px\]" app/lenses/*/page.tsx` |
-| total arbitrary `text-[Npx]` occurrences | **1763** | `grep -rhoE "text-\[[0-9]+px\]" concord-frontend/app/lenses/*/page.tsx \| wc -l` |
+| total arbitrary `text-[Npx]` occurrences | **1770** | `grep -rhoE "text-\[[0-9]+px\]" concord-frontend/app/lenses/*/page.tsx \| wc -l` |
 | …with `sr-only` "polish sentinel" divs | **109** | `grep -rliE sentinel app/lenses/*/page.tsx` |
 
 ### The grade is gamed (critical honesty finding)
@@ -261,7 +261,7 @@ same grader-sentinels.** Grounded observations:
 Takeaway: the craft is real but **uneven and un-systematized** — every flagship
 leaks the same fingerprints (ad-hoc type sizes, per-lens palette, `Loading...`
 text, generic auto-button walls bracketing the bespoke UI, grader-sentinels),
-and in two cases (`code`, `music`) the *best* asset is either unwired or demoted
+and in two cases (`code`, `music`) the *best* asset was historically either disconnected or demoted
 behind a generic default.
 
 ### Rubric vs. code — where the gap actually is

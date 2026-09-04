@@ -175,9 +175,10 @@ export class PhysicsEngine {
    */
   environmentTick(worldId) {
     const w = this.worlds.get(worldId);
-    if (!w) return;
-    // Per-world env logic
-    // (steam cascade in cyber/tunya, brine in fantasy, etc.)
+    if (w) {
+      // Per-world env logic
+      // (steam cascade in cyber/tunya, brine in fantasy, etc.)
+    }
   }
 
   /**
