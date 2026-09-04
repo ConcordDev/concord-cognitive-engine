@@ -1393,4 +1393,41 @@ Question under deliberation: ${question}
 Your provisional lean (already decided by deterministic scoring, do NOT change it): ${vote} (score ${score}).
 
 Write a fully-argued 2-4 sentence case for your lean, grounded ONLY in the question as given. Do not invent facts not implied by the question. Do not mention scores, JSON, or that you are an AI. Plain prose, first person as this voice.`,
+
+  // ── Lattice-seed (recovered Auto-DTU + ingest-scheduler loop) ────
+  // Callers MUST fall back to a deterministic composer when the brain
+  // is down — these prompts never invent a success on their own.
+  latticeSeedHypotheses: () =>
+    `You are Concord ingesting a source excerpt.
+From the excerpt, propose 3–5 testable hypotheses or research directions.
+Number them. Keep them concrete and grounded in the excerpt — do not invent facts that are not in the text.
+If the excerpt is too thin to support a hypothesis, say so in one line instead of padding.`,
+
+  latticeSeedResearch: ({ topic } = {}) =>
+    `You are ConcordOS performing a focused research synthesis.
+
+Topic: ${topic || "(unspecified)"}
+
+The user message lists relevant DTUs (or notes that none were supplied).
+Output:
+- Key findings (bullets), grounded only in the supplied DTU summaries and the topic
+- Uncertainties / open questions
+- Suggested DTUs or hypotheses to create next
+Do not invent DTUs that were not listed. If the DTU list is empty, say so and stay at the topic level.`,
+
+  latticeSeedDtu: ({ layerHint } = {}) =>
+    `You are designing a Domain Thought Unit (DTU) for ConcordOS.
+
+From the following seed text, create a JSON object with:
+{
+  "key": "short-machine-slug-like-this",
+  "title": "Human readable DTU title",
+  "summary": "2–4 sentence summary.",
+  "tags": ["short", "lowercase", "tags"],
+  "layer": "domain | HLM | HLR | meta"
+}
+
+Prefer the layer hint if it makes sense: ${layerHint || "none"}.
+Return ONLY valid JSON, no extra text, no markdown fences.
+Ground the summary in the seed. Do not invent capabilities or citations.`,
 };
