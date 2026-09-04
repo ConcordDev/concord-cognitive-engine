@@ -35,8 +35,8 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /_clipsFit = !_biped &&/);
     assert.match(person, /StripPrefabWeapons/);
     assert.match(person, /_footL\.position\.y/);
-    assert.match(person, /float contra = -swing/);
-    assert.match(person, /_authored && _sit < 0\.4f\) PlantFeet/);
+    assert.match(person, /float contra = -s \* armAmp/);
+    assert.match(person, /_shown < 0\.35f && _grounded\) PlantFeet/);
     assert.doesNotMatch(person, /LoadAssetAtPath.*Soldier\.glb/);
     assert.match(game, /ModularPerson\.AttachHero\(/);
   });
@@ -116,7 +116,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /Talking\(\)/);
     assert.match(person, /PlanarSpeed/);
     assert.match(person, /talkLift/);
-    assert.match(person, /FORCE_REFRESH_0021/);
+    assert.match(person, /FORCE_REFRESH_0022/);
     assert.match(person, /18f \+ arc/);
     assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
     assert.match(builder, /for \(int i = 0; i < 24; i\+\+\)/);
@@ -184,5 +184,16 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(interior, /HumanHeight/);
     assert.match(interior, /public bool entered/);
     assert.doesNotMatch(plaza, /DressCityRing/);
+  });
+
+  it("authored gait is a jog/run, not a high-step march", () => {
+    const person = src("ModularPerson.cs");
+    assert.match(person, /float jog = Mathf\.InverseLerp/);
+    assert.match(person, /float run = Mathf\.InverseLerp/);
+    assert.match(person, /kneeSwing/);
+    assert.match(person, /kneeStance/);
+    assert.match(person, /_shown < 0\.35f && _grounded\) PlantFeet/);
+    assert.doesNotMatch(person, /Lerp\(6\.4f, 10\.6f/);
+    assert.doesNotMatch(person, /56f \* w/);
   });
 });

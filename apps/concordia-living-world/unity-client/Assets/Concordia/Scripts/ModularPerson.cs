@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0021
+namespace Concordia // FORCE_REFRESH_0022
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -706,7 +706,9 @@ namespace Concordia // FORCE_REFRESH_0021
                     _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
             }
 
-            if (_authored && _sit < 0.4f) PlantFeet();
+            // Idle plant only. While moving the gait owns the feet — planting
+            // every LateUpdate yanks the whole body and reads as a stomp.
+            if (_authored && _sit < 0.4f && _shown < 0.35f && _grounded) PlantFeet();
 
             if (_eyeL && _eyeR && _eye0.sqrMagnitude > 0.0001f)
             {
@@ -726,11 +728,11 @@ namespace Concordia // FORCE_REFRESH_0021
             if (_hitT > 0f) _hitT -= dt;
             if (_landT > 0f) _landT -= dt;
             float spd = _shown;
-            if (spd > 0.25f) _phase += dt * Mathf.Lerp(5.2f, 9.2f, Mathf.InverseLerp(0.3f, 7f, spd));
+            float walk = Mathf.InverseLerp(0.28f, 3.8f, spd);
+            float jog = Mathf.InverseLerp(3.4f, 5.6f, spd);
+            float run = Mathf.InverseLerp(5.4f, 8.0f, spd);
+            if (spd > 0.25f) _phase += dt * (Mathf.Lerp(4.4f, 5.6f, walk) + 1.35f * jog + 1.15f * run);
             else _phase += dt * 1.35f;
-
-            float walk = Mathf.InverseLerp(0.28f, 4.4f, spd);
-            float run = Mathf.InverseLerp(4.0f, 7.0f, spd);
             int ws = look != null ? look.walkStyle : 0;
             float armAmp = ws == 1 ? 44f : ws == 2 ? 16f : ws == 3 ? 22f : ws == 4 ? 36f : 32f;
             float legAmp = ws == 1 ? 40f : ws == 2 ? 24f : ws == 3 ? 28f : ws == 4 ? 42f : 34f;
@@ -871,20 +873,31 @@ namespace Concordia // FORCE_REFRESH_0021
             _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-12f * dt));
             _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
             float spd = _shown;
-            _phase += dt * (spd > 0.3f ? Mathf.Lerp(6.4f, 10.6f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.6f);
-            float w = Mathf.InverseLerp(0.3f, 4.5f, spd);
+            // Walk / jog / run. Old Lerp(6.4, 10.6) + 56° knees was a march.
+            float walk = Mathf.InverseLerp(0.28f, 3.8f, spd);
+            float jog = Mathf.InverseLerp(3.4f, 5.6f, spd);
+            float run = Mathf.InverseLerp(5.4f, 8.0f, spd);
+            float cadence = spd > 0.28f
+                ? Mathf.Lerp(4.4f, 5.6f, walk) + 1.35f * jog + 1.15f * run
+                : 1.35f;
+            _phase += dt * cadence;
             float s = Mathf.Sin(_phase);
             float sit = _sitShown;
             float breath = Mathf.Sin(Time.time * 1.55f) * 3f;
-            float hang = Mathf.Lerp(72f, 28f, w);
-            float swing = 32f * s * w;
-            float idle = 1f - w;
+            float moving = Mathf.Clamp01(walk + jog * 0.35f);
+            float hang = Mathf.Lerp(72f, 28f, moving);
+            float hipAmp = 22f * walk + 14f * jog + 10f * run;
+            float kneeSwing = 22f * walk + 6f * jog + 4f * run;
+            float kneeStance = 8f + 4f * jog + 6f * run;
+            float armAmp = 22f * walk + 14f * jog + 10f * run;
+            float lean = 4f * walk + 6f * jog + 8f * run;
+            float idle = 1f - moving;
             float shift = Mathf.Sin(Time.time * 1.15f + transform.position.x) * 6f * idle;
             bool talk = Talking();
             float talkLift = talk ? 16f + Mathf.Sin(Time.time * 5.2f) * 11f : 0f;
             float talkCurl = talk ? 20f + Mathf.Abs(Mathf.Sin(Time.time * 6.1f)) * 14f : 0f;
             // Opposite arm to the stepping leg — ipsilateral swing reads as a march.
-            float contra = -swing;
+            float contra = -s * armAmp;
             if (_biped)
             {
                 if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, contra - breath * 0.15f + shift * 0.4f, true);
@@ -895,29 +908,31 @@ namespace Concordia // FORCE_REFRESH_0021
                 if (_uArmL) _uArmL.localRotation = _lArmRest * ArmDelta(contra - breath * 0.15f, hang, true);
                 if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(contra - breath * 0.15f + talkLift, hang, false);
             }
-            if (_fArmL) _fArmL.localRotation = _lForeRest * ForeDelta(10f + 14f * w, true);
-            if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 14f * w + talkCurl, false);
+            if (_fArmL) _fArmL.localRotation = _lForeRest * ForeDelta(10f + 10f * moving, true);
+            if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 10f * moving + talkCurl, false);
+            float liftL = Mathf.Max(0f, s);
+            float liftR = Mathf.Max(0f, -s);
             if (_biped)
             {
-                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 46f * s * w + sit * 50f + shift * 0.5f);
-                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -46f * s * w + sit * 50f - shift * 0.5f);
-                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, s) * 56f * w + sit * 38f);
-                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, -s) * 56f * w + sit * 38f);
+                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, hipAmp * s + sit * 50f + shift * 0.5f);
+                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -hipAmp * s + sit * 50f - shift * 0.5f);
+                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, kneeStance + liftL * kneeSwing + sit * 38f);
+                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, kneeStance + liftR * kneeSwing + sit * 38f);
             }
             else
             {
-                if (_uLegL) _uLegL.localRotation = _lUpRest * LegDelta(34f * s * w, sit * 50f, true);
-                if (_uLegR) _uLegR.localRotation = _rUpRest * LegDelta(-34f * s * w, sit * 50f, false);
-                if (_lLegL) _lLegL.localRotation = _lLegRest * KneeDelta(Mathf.Max(0f, -s) * 42f * w + sit * 38f);
-                if (_lLegR) _lLegR.localRotation = _rLegRest * KneeDelta(Mathf.Max(0f, s) * 42f * w + sit * 38f);
+                if (_uLegL) _uLegL.localRotation = _lUpRest * LegDelta(hipAmp * 0.85f * s, sit * 50f, true);
+                if (_uLegR) _uLegR.localRotation = _rUpRest * LegDelta(-hipAmp * 0.85f * s, sit * 50f, false);
+                if (_lLegL) _lLegL.localRotation = _lLegRest * KneeDelta(kneeStance + liftR * kneeSwing + sit * 38f);
+                if (_lLegR) _lLegR.localRotation = _rLegRest * KneeDelta(kneeStance + liftL * kneeSwing + sit * 38f);
             }
             if (_hip)
             {
-                float bob = w > 0.05f ? -0.03f * w + 0.035f * Mathf.Abs(s) * w : 0f;
+                float bob = moving > 0.05f ? -0.018f * moving - 0.012f * run + 0.022f * Mathf.Abs(s) * (0.55f + 0.45f * run) : 0f;
                 _hip.localPosition = _hipPos0 + new Vector3(0f, bob, 0f);
-                _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 6f * w + shift * 0.4f, 8f * s * w + shift, 0f);
+                _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + lean + shift * 0.4f, 6f * s * moving + shift, 0f);
             }
-            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f, 5f * s * w, 0f);
+            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f + lean * 0.35f, 4f * s * moving, 0f);
             ApplyAuthoredAttitude();
             if (!_grounded)
             {
