@@ -443,6 +443,26 @@ namespace Concordia
             go.transform.localScale *= want / m;
         }
 
+        /// <summary>Human-scale height for Kenney/store stems. 0 = caller keeps its number.</summary>
+        public static float HumanHeight(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return 0f;
+            var s = stem.ToLowerInvariant();
+            if (s.Contains("grass")) return 0.40f;
+            if (s.Contains("flower") || s.Contains("plant")) return 0.28f;
+            if (s.Contains("chair")) return 0.88f;
+            if (s.Contains("sofa") || s.Contains("lounge")) return 0.82f;
+            if (s.Contains("table") || s.Contains("desk")) return 0.76f;
+            if (s.Contains("crate") || s.Contains("barrel") || s.Contains("chest")) return 0.68f;
+            if (s.Contains("cart") || s.Contains("wagon")) return 1.35f;
+            if (s.Contains("bookcase") || s.Contains("shelf")) return 2.15f;
+            if (s.Contains("column") || s.Contains("pillar")) return 3.2f;
+            if (s.Contains("lantern") || s.Contains("lamp")) return 1.15f;
+            if (s.Contains("tree") || s.Contains("palm") || s.Contains("pine")) return 7.6f;
+            if (s.Contains("sword") || s.Contains("weapon")) return 1.05f;
+            return 0f;
+        }
+
         public static void FitHeight(GameObject go, float wantY)
         {
             var b = Encapsulate(go);

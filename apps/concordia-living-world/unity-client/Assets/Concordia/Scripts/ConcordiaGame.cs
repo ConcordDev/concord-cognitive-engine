@@ -69,6 +69,7 @@ namespace Concordia
             _player.person = ModularPerson.AttachHero(pgo.transform, look);
             _player.EquipWorldKit();
             _player.onInteract = TryInteract;
+            _player.onTalkSend = SubmitTalk;
             pgo.AddComponent<ConcordiaHUD>().player = _player;
             pgo.AddComponent<Footsteps>();
             var feel = pgo.AddComponent<CombatFeel>();
@@ -197,6 +198,23 @@ namespace Concordia
                     var d = Vector3.Distance(pos, k.transform.position);
                     if (d < best) { best = d; prompt = k.Prompt; }
                 }
+            var use = UsePlace.Nearest(pos, 2.4f);
+            if (use)
+            {
+                var d = Vector3.Distance(pos, use.transform.position);
+                if (d < best) { best = d; prompt = use.Prompt; }
+            }
+            var door = BuildingPlace.NearestDoor(pos, 3.4f);
+            if (door)
+            {
+                var d = Vector3.Distance(pos, door.door);
+                if (d < best)
+                {
+                    best = d;
+                    var bi = door.GetComponent<BuildingInterior>();
+                    prompt = bi != null && bi.entered ? "E  ·  Leave" : door.Prompt;
+                }
+            }
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
             WorldClock.Tick(Time.deltaTime);
@@ -290,6 +308,14 @@ namespace Concordia
                 QuestLog.NoteLocation(stone.title);
                 return stone.title + "\n" + stone.text;
             }
+            var use = UsePlace.Nearest(pos, 2.4f);
+            var door = BuildingPlace.NearestDoor(pos, 3.4f);
+            float useD = use ? Vector3.Distance(pos, use.transform.position) : 99f;
+            float doorD = door ? Vector3.Distance(pos, door.door) : 99f;
+            if (use && useD <= best && useD <= doorD)
+                return UseSpot(use);
+            if (door && doorD <= best)
+                return EnterBuilding(door);
             if (npc != null)
             {
                 var life = npc.GetComponent<NpcLife>();
@@ -310,10 +336,46 @@ namespace Concordia
                     line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
-                AskTwoB(npc, line);
-                return line;
+                _player.OpenTalk(npc, line);
+                return "Talking with " + npc.def.name + ".";
             }
             return null;
+        }
+
+        string UseSpot(UsePlace use)
+        {
+            if (use.sit) _player?.person?.Sit(true);
+            QuestLog.NoteLocation(use.verb);
+            return string.IsNullOrEmpty(use.line) ? use.verb : use.line;
+        }
+
+        string EnterBuilding(BuildingPlace door)
+        {
+            var bi = door.GetComponent<BuildingInterior>();
+            var dest = door.door;
+            if (bi)
+            {
+                if (bi.entered)
+                {
+                    bi.entered = false;
+                    dest = door.door + Vector3.up * 0.12f;
+                }
+                else
+                {
+                    bi.entered = true;
+                    dest = bi.Inside();
+                }
+            }
+            else
+                dest = door.door + Vector3.up * 0.12f;
+            _player.cc.enabled = false;
+            _player.transform.position = dest;
+            _player.cc.enabled = true;
+            Grounding.Snap(_player.cc);
+            QuestLog.NoteLocation(door.plan, "building");
+            return bi != null && bi.entered
+                ? "You step inside" + (string.IsNullOrEmpty(door.plan) ? "." : " the " + door.plan + ".")
+                : "You leave.";
         }
 
         string EnterHold(DungeonGate hold)
@@ -340,6 +402,7 @@ namespace Concordia
             loot.gameObject.SetActive(false);
             QuestLog.NoteGather(loot.itemId);
             QuestLog.NoteGather(loot.label);
+            KitBag.AddLoot(loot.itemId, loot.label);
             return "Took " + loot.label + ".";
         }
 
@@ -416,20 +479,40 @@ namespace Concordia
             _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
         }
 
-        async void AskTwoB(GuestNpc npc, string authored)
+        async void SubmitTalk(string typed)
+        {
+            var npc = _player != null ? _player.talkNpc : null;
+            if (npc == null) return;
+            await AskTwoB(npc, typed);
+        }
+
+        async System.Threading.Tasks.Task AskTwoB(GuestNpc npc, string typed)
         {
             var client = ConcordClient.Live;
-            if (client == null) return;
+            if (client == null)
+            {
+                _player?.AppendTalk("2B is not on this box (no_gateway)");
+                return;
+            }
             if (!client.Connected) await client.EnsureConnected();
-            if (!client.Connected) return;
+            if (!client.Connected)
+            {
+                var why = string.IsNullOrEmpty(ConcordClient.LastReason) ? "no_gateway" : ConcordClient.LastReason;
+                _player?.AppendTalk("2B is not on this box (" + why + ")");
+                return;
+            }
             var reply = await client.AskTwoB(
                 npc.personId ?? npc.def.id,
                 npc.def.name,
                 npc.def.line,
-                authored);
-            if (string.IsNullOrEmpty(reply)) return;
-            ConcordiaHUD.Announce(npc.def.name, reply);
-            _player?.Notice(npc.def.name + ": " + reply);
+                typed);
+            if (string.IsNullOrEmpty(reply))
+            {
+                var why = string.IsNullOrEmpty(ConcordClient.LastReason) ? "no_gateway" : ConcordClient.LastReason;
+                _player?.AppendTalk("2B is not on this box (" + why + ")");
+                return;
+            }
+            _player?.AppendTalk(npc.def.name + ": " + reply);
         }
 
         void OnDestroy()

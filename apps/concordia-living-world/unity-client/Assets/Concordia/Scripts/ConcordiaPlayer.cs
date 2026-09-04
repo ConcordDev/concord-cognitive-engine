@@ -23,10 +23,18 @@ namespace Concordia
         public string prompt;
         public string toast;
         public string kitWeapon;
+        public bool menuOpen;
+        public bool talkOpen;
+        public bool focusTalk;
+        public string talkDraft = "";
+        public GuestNpc talkNpc;
+        public readonly System.Collections.Generic.List<string> talkLog = new System.Collections.Generic.List<string>();
+        public System.Action<string> onTalkSend;
         float _toastT;
         public System.Action<string> onToast;
         public System.Func<Vector3, string> onInteract;
         public static ConcordiaPlayer Live { get; private set; }
+        public bool Busy => talkOpen || menuOpen;
         float _dmgMul = 1f;
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
@@ -52,9 +60,10 @@ namespace Concordia
             }
             var dt = Time.deltaTime;
             var style = Canon.Get(world).style;
-            var axes = MoveAxes();
+            HandleMenuKeys();
             LookInput();
-            var sprint = KeyHeld(KeyCode.LeftShift);
+            var axes = Busy ? Vector2.zero : MoveAxes();
+            var sprint = !Busy && KeyHeld(KeyCode.LeftShift);
             var speed = (sprint ? 8.1f : 5.2f) * style.speedMul;
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
@@ -69,18 +78,19 @@ namespace Concordia
             var grounded = cc.isGrounded;
             if (grounded) _coyote = 0.14f;
             else _coyote -= dt;
-            if (KeyDown(KeyCode.Space) && _coyote > 0f)
+            if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
             {
                 _vel.y = 8.2f;
                 _coyote = 0f;
                 grounded = false;
             }
-            if (KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
+            if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
             {
                 _vel += wish.normalized * 12.4f;
                 _dodgeUntil = Time.time + 0.38f;
                 stamina -= 18;
             }
+            if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
             if (grounded && !_wasGrounded) person?.Land();
             _wasGrounded = grounded;
@@ -117,11 +127,15 @@ namespace Concordia
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
             if (world == WorldId.Tunya && planar.magnitude < 0.4f) poise = Mathf.Min(12 * style.poiseMul, poise + 8f * dt);
 
-            if (MouseDown(0)) TryAttack(false);
-            if (KeyDown(KeyCode.F)) TryAttack(true);
-            if (KeyDown(KeyCode.G)) TrySpecial();
-            if (KeyDown(KeyCode.E)) Interact();
-            if (KeyDown(KeyCode.Q)) CycleKit();
+            if (!Busy && MouseDown(0) && Cursor.lockState == CursorLockMode.Locked)
+            {
+                if (KitBag.Art == 2) TrySpecial();
+                else TryAttack(KitBag.Art == 1);
+            }
+            if (!Busy && KeyDown(KeyCode.F)) TryAttack(true);
+            if (!Busy && KeyDown(KeyCode.G)) TrySpecial();
+            if (!talkOpen && KeyDown(KeyCode.E)) Interact();
+            if (!Busy && KeyDown(KeyCode.Q)) CycleKit();
 
             prompt = nearPrompt;
             if (_toastT > 0) _toastT -= dt;
@@ -141,12 +155,7 @@ namespace Concordia
                 if (facs.Length > 0) fac = facs[0];
             }
             kitWeapon = PersonKit.WeaponStem(fac, GetHashCode());
-            if (_heldKit) Destroy(_heldKit);
-            if (person)
-            {
-                if (person.sword) person.sword.SetActive(false);
-                _heldKit = CharacterGear.Attach(person.gameObject, kitWeapon, true, 1.05f);
-            }
+            HoldFromBag(kitWeapon);
         }
 
         void CycleKit()
@@ -158,13 +167,90 @@ namespace Concordia
                 if (PersonKit.WeaponStem(facs[n], n) == kitWeapon) { i = (n + 1) % facs.Length; break; }
             var fac = facs[i];
             kitWeapon = PersonKit.WeaponStem(fac, i);
+            HoldFromBag(kitWeapon);
+            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+        }
+
+        public void HoldFromBag(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return;
+            kitWeapon = stem;
+            KitBag.HoldWeapon(stem);
             if (_heldKit) Destroy(_heldKit);
             if (person)
             {
                 if (person.sword) person.sword.SetActive(false);
-                _heldKit = CharacterGear.Attach(person.gameObject, kitWeapon, true, 1.05f);
+                _heldKit = CharacterGear.Attach(person.gameObject, stem, true, 1.05f);
             }
-            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+        }
+
+        public void OpenTalk(GuestNpc npc, string first)
+        {
+            talkOpen = true;
+            menuOpen = false;
+            talkNpc = npc;
+            talkDraft = "";
+            talkLog.Clear();
+            if (!string.IsNullOrEmpty(first)) talkLog.Add(first);
+            focusTalk = true;
+            UnlockCursor();
+        }
+
+        public void CloseTalk()
+        {
+            talkOpen = false;
+            talkNpc = null;
+            talkDraft = "";
+            LockCursor();
+        }
+
+        public void AppendTalk(string line)
+        {
+            if (!string.IsNullOrEmpty(line)) talkLog.Add(line);
+        }
+
+        public void SubmitTalk()
+        {
+            var typed = (talkDraft ?? "").Trim();
+            if (typed.Length == 0) return;
+            talkLog.Add("You: " + typed);
+            talkDraft = "";
+            focusTalk = true;
+            onTalkSend?.Invoke(typed);
+        }
+
+        public void ToggleMenu()
+        {
+            menuOpen = !menuOpen;
+            if (menuOpen)
+            {
+                talkOpen = false;
+                UnlockCursor();
+            }
+            else LockCursor();
+        }
+
+        void UnlockCursor()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
+        void LockCursor()
+        {
+            if (Busy) return;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
+        void HandleMenuKeys()
+        {
+            if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
+            if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
+            if (Busy) return;
+            if (KeyDown(KeyCode.Alpha1)) { KitBag.Art = 0; Toast(KitBag.ArtName(world)); }
+            if (KeyDown(KeyCode.Alpha2)) { KitBag.Art = 1; Toast(KitBag.ArtName(world)); }
+            if (KeyDown(KeyCode.Alpha3)) { KitBag.Art = 2; Toast(KitBag.ArtName(world)); }
         }
 
         void TryAttack(bool heavy)
@@ -462,6 +548,18 @@ namespace Concordia
 
         void LookInput()
         {
+            if (talkOpen && KeyDown(KeyCode.Escape))
+            {
+                CloseTalk();
+                return;
+            }
+            if (menuOpen && KeyDown(KeyCode.Escape))
+            {
+                menuOpen = false;
+                LockCursor();
+                return;
+            }
+            if (Busy) return;
             if (KeyDown(KeyCode.Escape) || KeyDown(KeyCode.Tab))
             {
                 Cursor.lockState = Cursor.lockState == CursorLockMode.Locked ? CursorLockMode.None : CursorLockMode.Locked;
@@ -488,7 +586,7 @@ namespace Concordia
 #endif
         }
 
-        static bool MouseOverHud() => false;
+        static bool MouseOverHud() => Live != null && Live.Busy;
 
 #if ENABLE_INPUT_SYSTEM
         static Key? ToKey(KeyCode k) => k switch
@@ -500,6 +598,11 @@ namespace Concordia
             KeyCode.G => Key.G,
             KeyCode.Q => Key.Q,
             KeyCode.E => Key.E,
+            KeyCode.I => Key.I,
+            KeyCode.Return => Key.Enter,
+            KeyCode.Alpha1 => Key.Digit1,
+            KeyCode.Alpha2 => Key.Digit2,
+            KeyCode.Alpha3 => Key.Digit3,
             KeyCode.Escape => Key.Escape,
             KeyCode.Tab => Key.Tab,
             _ => null

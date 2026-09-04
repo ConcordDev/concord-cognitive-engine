@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0020
+namespace Concordia // FORCE_REFRESH_0021
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -696,7 +696,14 @@ namespace Concordia // FORCE_REFRESH_0020
                 var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
                 float wind = t < 0.25f ? t / 0.25f : t < 0.45f ? 1f : 1f - (t - 0.45f) / 0.55f;
                 var swing = t < 0.4f ? Mathf.Lerp(-70f, 100f, t / 0.4f) : Mathf.Lerp(100f, 0f, (t - 0.4f) / 0.6f);
-                _uArmR.localRotation *= Quaternion.Euler(swing * wind, 18f * wind, 0f);
+                float arc = swing * wind;
+                if (_biped)
+                {
+                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
+                    if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                }
+                else
+                    _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
             }
 
             if (_authored && _sit < 0.4f) PlantFeet();
@@ -864,7 +871,7 @@ namespace Concordia // FORCE_REFRESH_0020
             _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-12f * dt));
             _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
             float spd = _shown;
-            _phase += dt * (spd > 0.3f ? Mathf.Lerp(5f, 9f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.6f);
+            _phase += dt * (spd > 0.3f ? Mathf.Lerp(6.4f, 10.6f, Mathf.InverseLerp(0.3f, 7f, spd)) : 1.6f);
             float w = Mathf.InverseLerp(0.3f, 4.5f, spd);
             float s = Mathf.Sin(_phase);
             float sit = _sitShown;
@@ -892,10 +899,10 @@ namespace Concordia // FORCE_REFRESH_0020
             if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 14f * w + talkCurl, false);
             if (_biped)
             {
-                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 40f * s * w + sit * 50f + shift * 0.5f);
-                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -40f * s * w + sit * 50f - shift * 0.5f);
-                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, s) * 50f * w + sit * 38f);
-                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, -s) * 50f * w + sit * 38f);
+                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 46f * s * w + sit * 50f + shift * 0.5f);
+                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -46f * s * w + sit * 50f - shift * 0.5f);
+                if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, s) * 56f * w + sit * 38f);
+                if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, -s) * 56f * w + sit * 38f);
             }
             else
             {

@@ -465,10 +465,56 @@ namespace Concordia
     }
 
     /// <summary>A building that is a place — door + plan — not scenery.</summary>
+    public class UsePlace : MonoBehaviour
+    {
+        public string verb = "Use";
+        public string line;
+        public bool sit;
+
+        public string Prompt => "E  ·  " + (string.IsNullOrEmpty(verb) ? "Use" : verb);
+
+        public static UsePlace Stamp(GameObject go, string verb, string line, bool sit = false)
+        {
+            if (!go) return null;
+            var u = go.GetComponent<UsePlace>() ?? go.AddComponent<UsePlace>();
+            u.verb = verb;
+            u.line = line;
+            u.sit = sit;
+            return u;
+        }
+
+        public static UsePlace Nearest(Vector3 from, float max = 2.4f)
+        {
+            UsePlace best = null;
+            float bestD = max;
+            foreach (var u in FindObjectsByType<UsePlace>(FindObjectsInactive.Exclude))
+            {
+                if (!u) continue;
+                var d = Vector3.Distance(from, u.transform.position);
+                if (d < bestD) { bestD = d; best = u; }
+            }
+            return best;
+        }
+    }
+
     public class BuildingPlace : MonoBehaviour
     {
         public string plan;
         public Vector3 door;
+        public string Prompt => "E  ·  Enter";
+
+        public static BuildingPlace NearestDoor(Vector3 from, float max = 3.4f)
+        {
+            BuildingPlace best = null;
+            float bestD = max;
+            foreach (var p in FindObjectsByType<BuildingPlace>(FindObjectsInactive.Exclude))
+            {
+                if (!p) continue;
+                var d = Vector3.Distance(from, p.door);
+                if (d < bestD) { bestD = d; best = p; }
+            }
+            return best;
+        }
 
         public static BuildingPlace Nearest(Vector3 from, string plan)
         {

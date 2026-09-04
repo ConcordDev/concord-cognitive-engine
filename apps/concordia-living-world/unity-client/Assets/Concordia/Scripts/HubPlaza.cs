@@ -66,7 +66,8 @@ namespace Concordia
 
         static void Monument(Transform root, Material bronze, Material gold)
         {
-            HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.4f, 0f), new Vector3(7.2f, 0.8f, 7.2f), bronze, "Plinth");
+            var plinth = HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 0.4f, 0f), new Vector3(7.2f, 0.8f, 7.2f), bronze, "Plinth");
+            UsePlace.Stamp(plinth, "Commune", "The Court does not speak first. You came anyway.");
             HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 1.2f, 0f), new Vector3(5.4f, 0.5f, 5.4f), gold, "PlinthRim");
             HubLook.Prim(root, PrimitiveType.Cylinder, new Vector3(0f, 2.6f, 0f), new Vector3(2.2f, 3.4f, 2.2f), bronze, "Column");
             HubLook.Prim(root, PrimitiveType.Sphere, new Vector3(0f, 5.6f, 0f), new Vector3(2.8f, 1.6f, 2.8f), bronze, "Bowl");
@@ -298,56 +299,55 @@ namespace Concordia
                     FreePacks.DyeCloth(flag, Color.Lerp(g.color, new Color(0.52f, 0.18f, 0.14f), 0.35f));
                 }
             }
-            for (int i = 0; i < 24; i++)
+            for (int i = 0; i < 16; i++)
             {
-                float a = i / 24f * Mathf.PI * 2f + 0.17f;
-                var r = 10.5f + (i % 5) * 1.1f;
+                float a = i / 16f * Mathf.PI * 2f + 0.17f;
+                var r = 9.4f + (i % 4) * 0.85f;
                 var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                 if (Canon.InArena(p)) continue;
-                FreePacks.Spawn("flower_redA", root, p, i * 37f, 0.35f, required: false);
+                FreePacks.Spawn("flower_redA", root, p, i * 37f, FreePacks.HumanHeight("flower"), required: false);
             }
-            for (int i = 0; i < 18; i++)
+            for (int i = 0; i < 16; i++)
             {
-                float a = i / 18f * Mathf.PI * 2f + 0.31f;
-                var r = 24.5f + (i % 4) * 1.8f;
+                float a = i / 16f * Mathf.PI * 2f + 0.09f;
+                var r = 17.6f + (i % 4) * 0.35f;
                 var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                 if (Canon.InArena(p)) continue;
-                if (i % 3 == 0)
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, p, a * Mathf.Rad2Deg, 7.2f + (i % 3), required: false);
-                else if (i % 3 == 1)
-                    FreePacks.Spawn(DressVocab.Rock(), root, p, i * 21f, 1.1f + (i % 3) * 0.25f, required: false);
-                else
-                    FreePacks.Spawn(DressVocab.Column(WorldId.Hub), root, p, a * Mathf.Rad2Deg, 2.6f, required: false);
+                FreePacks.Spawn(DressVocab.Grass(WorldId.Hub), root, p, i * 29f, FreePacks.HumanHeight("grass"), required: false);
             }
-            for (int i = 0; i < 10; i++)
+            // Four hearths on the stone ring — sit-able, not scattered junk.
+            for (int i = 0; i < 4; i++)
             {
-                float a = i / 10f * Mathf.PI * 2f + 0.7f;
-                var p = new Vector3(Mathf.Cos(a) * 20.4f, 0f, Mathf.Sin(a) * 20.4f);
-                FreePacks.Spawn(i % 2 == 0 ? DressVocab.Crate() : DressVocab.Prop(WorldId.Hub), root, p, i * 33f, 0.95f, required: false);
-            }
-            for (int i = 0; i < 20; i++)
-            {
-                float a = i / 20f * Mathf.PI * 2f + 0.09f;
-                var r = 17.4f + (i % 5) * 0.42f;
-                var p = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-                if (Canon.InArena(p)) continue;
-                FreePacks.Spawn(DressVocab.Grass(WorldId.Hub), root, p, i * 29f, 0.85f + (i % 3) * 0.12f, required: false);
-            }
-            for (int i = 0; i < 8; i++)
-            {
-                float a = i / 8f * Mathf.PI * 2f + 0.48f;
-                var p = new Vector3(Mathf.Cos(a) * 22.4f, 0f, Mathf.Sin(a) * 22.4f);
+                float a = i / 4f * Mathf.PI * 2f + 0.48f;
+                var p = new Vector3(Mathf.Cos(a) * 22.2f, 0f, Mathf.Sin(a) * 22.2f);
                 if (Canon.InArena(p)) continue;
                 var tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
-                FreePacks.Spawn(DressVocab.Table(), root, p, a * Mathf.Rad2Deg, 1.15f, required: false);
-                FreePacks.Spawn(DressVocab.Chair(), root, p + tangent * 1.15f, a * Mathf.Rad2Deg + 180f, 0.95f, required: false);
+                var table = FreePacks.Spawn(DressVocab.Table(), root, p, a * Mathf.Rad2Deg, FreePacks.HumanHeight("table"), required: false);
+                UsePlace.Stamp(table, "Sit", "A ring table. People leave it as they found it.", true);
+                FreePacks.Spawn(DressVocab.Chair(), root, p + tangent * 1.05f, a * Mathf.Rad2Deg + 180f, FreePacks.HumanHeight("chair"), required: false);
+                FreePacks.Spawn(DressVocab.Chair(), root, p - tangent * 1.05f, a * Mathf.Rad2Deg, FreePacks.HumanHeight("chair"), required: false);
+            }
+            // Groves between gates — trees belong in the gaps, not on the court.
+            for (int i = 0; i < Canon.Gates.Length; i++)
+            {
+                var g = Canon.Gates[i];
+                var n = Canon.Gates[(i + 1) % Canon.Gates.Length];
+                float mid = (g.angle + n.angle) * 0.5f;
+                if (Mathf.Abs(n.angle - g.angle) > Mathf.PI) mid += Mathf.PI;
+                var grove = new Vector3(Mathf.Cos(mid) * 27.5f, 0f, Mathf.Sin(mid) * 27.5f);
+                FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, grove, mid * Mathf.Rad2Deg, FreePacks.HumanHeight("tree"), required: false);
+                FreePacks.Spawn(DressVocab.Rock(), root, grove + new Vector3(1.6f, 0f, -0.8f), i * 21f, 1.05f, required: false);
+                var col = new Vector3(Mathf.Cos(g.angle + 0.12f) * 31.2f, 0f, Mathf.Sin(g.angle + 0.12f) * 31.2f);
+                FreePacks.Spawn(DressVocab.Column(WorldId.Hub), root, col, g.angle * Mathf.Rad2Deg, FreePacks.HumanHeight("column"), required: false);
             }
             for (int i = 0; i < 4; i++)
             {
-                var g = Canon.Gates[i % Canon.Gates.Length];
+                var g = Canon.Gates[i];
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 var side = new Vector3(-dir.z, 0f, dir.x);
-                FreePacks.Spawn(DressVocab.Cart(), root, dir * 26.5f + side * 2.4f, -g.angle * Mathf.Rad2Deg + 12f, 1.8f, required: false);
+                var cart = FreePacks.Spawn(DressVocab.Cart(), root, dir * 26.2f + side * 2.2f, -g.angle * Mathf.Rad2Deg + 12f, FreePacks.HumanHeight("cart"), required: false);
+                UsePlace.Stamp(cart, "Inspect", "A Ring cart. The invoice is still on the board.");
+                FreePacks.Spawn(DressVocab.Crate(), root, dir * 26.2f + side * 3.4f, i * 33f, FreePacks.HumanHeight("crate"), required: false);
             }
         }
 

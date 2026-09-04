@@ -23,6 +23,7 @@ namespace Concordia
             Seen.Clear();
             QuestLog.Reset();
             SkillLedger.Reset();
+            KitBag.Reset();
         }
 
         public static void NoteLamp() => Lamp = true;
@@ -369,6 +370,63 @@ namespace Concordia
         }
 
         static int Count(Dictionary<string, int> d, string k) => d.TryGetValue(k, out var n) ? n : 0;
+    }
+
+    /// <summary>
+    /// What the player is actually carrying. Equip swaps the held mesh.
+    /// Not a full item-instance economy — that lives in the kernel.
+    /// </summary>
+    public static class KitBag
+    {
+        public class Item
+        {
+            public string id, name, kind, stem;
+        }
+
+        public static readonly List<Item> Items = new List<Item>();
+        public static string Equipped;
+        public static int Art;
+
+        public static void Reset()
+        {
+            Items.Clear();
+            Equipped = null;
+            Art = 0;
+        }
+
+        public static void HoldWeapon(string stem, string name = null)
+        {
+            if (string.IsNullOrEmpty(stem)) return;
+            if (!Has(stem))
+                Items.Add(new Item { id = stem, name = name ?? Pretty(stem), kind = "weapon", stem = stem });
+            Equipped = stem;
+        }
+
+        public static void AddLoot(string id, string name = null)
+        {
+            if (string.IsNullOrEmpty(id) || Has(id)) return;
+            Items.Add(new Item { id = id, name = name ?? Pretty(id), kind = "loot", stem = id });
+        }
+
+        public static bool Has(string id)
+        {
+            foreach (var it in Items)
+                if (it.id == id) return true;
+            return false;
+        }
+
+        public static string ArtName(WorldId world)
+        {
+            var s = Canon.Get(world).style;
+            return Art == 1 ? s.heavy : Art == 2 ? s.special : s.light;
+        }
+
+        static string Pretty(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "thing";
+            s = s.Replace("weapon-", "").Replace('_', ' ').Replace('-', ' ');
+            return char.ToUpperInvariant(s[0]) + s.Substring(1);
+        }
     }
 
     /// <summary>

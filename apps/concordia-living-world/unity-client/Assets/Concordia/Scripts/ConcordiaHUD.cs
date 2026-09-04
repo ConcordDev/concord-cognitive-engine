@@ -11,7 +11,7 @@ namespace Concordia
     public class ConcordiaHUD : MonoBehaviour
     {
         public ConcordiaPlayer player;
-        GUIStyle _title, _small, _center, _prompt, _card, _cardSub;
+        GUIStyle _title, _small, _center, _prompt, _card, _cardSub, _btn, _log;
         Texture2D _white, _ring;
         static float _announceT;
         static string _announceTitle, _announceLine;
@@ -40,6 +40,16 @@ namespace Concordia
             _prompt = Sty(16, FontStyle.Bold, TextAnchor.MiddleCenter, new Color(1f, 0.96f, 0.86f));
             _card = Sty(42, FontStyle.Bold, TextAnchor.MiddleCenter, Color.white);
             _cardSub = Sty(16, FontStyle.Normal, TextAnchor.MiddleCenter, new Color(0.92f, 0.82f, 0.62f));
+            _log = Sty(13, FontStyle.Normal, TextAnchor.UpperLeft, new Color(0.94f, 0.88f, 0.74f));
+            _btn = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 13,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = true
+            };
+            if (_font) _btn.font = _font;
+            _btn.normal.textColor = new Color(1f, 0.93f, 0.78f);
         }
 
         GUIStyle Sty(int size, FontStyle fs, TextAnchor a, Color c)
@@ -64,21 +74,26 @@ namespace Concordia
             Compass(w);
             Vitals();
             Rings(w);
-            Minimap(h);
+            if (!player.Busy) Minimap(h);
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
+            if (player.talkOpen) TalkPanel(w, h);
+            if (player.menuOpen) KitMenu(w, h);
             Hints(w, h);
         }
 
         void Hints(float w, float h)
         {
             GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.88f);
+            var style = Canon.Get(player.world).style;
             GUI.Label(new Rect(18, h - 22, w - 36, 20),
-                "WASD  walk   ·   Shift  run   ·   Space  jump   ·   LMB  " + Canon.Get(player.world).style.light
-                + "   ·   F  " + Canon.Get(player.world).style.heavy
-                + "   ·   G  " + Canon.Get(player.world).style.special
-                + "   ·   Q  kit   ·   E  talk   ·   V  camera",
+                player.talkOpen
+                    ? "Type  ·  Enter  send  ·  Esc  leave  ·  2B " + TwoBStatus()
+                    : player.menuOpen
+                        ? "I  close kit  ·  click a weapon  ·  1/2/3  art  ·  Esc  close"
+                        : "I  kit   ·   1/2/3  " + style.light + "/" + style.heavy + "/" + style.special
+                          + "   ·   LMB  swing   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
                 _small);
             GUI.color = Color.white;
         }
@@ -89,21 +104,109 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 148), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
-                + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon), _small);
-            GUI.Label(new Rect(32, 70, 520, 16), WorldClock.HudClock() + "  ·  " + KingdomBook.HudLine(), _small);
-            GUI.Label(new Rect(32, 86, 520, 16),
+                + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
+                + "  ·  " + KitBag.ArtName(player.world), _small);
+            GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
+                + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
+            GUI.Label(new Rect(32, 86, 280, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
-                : !string.IsNullOrEmpty(WorldClock.LastEvent) ? WorldClock.LastEvent
-                : !string.IsNullOrEmpty(ConcordClient.HudLine) ? ConcordClient.HudLine
-                : ConcordClient.StatusJson, _small);
-            GUI.Label(new Rect(32, 102, 520, 16), HubObjectives.Line(), _small);
-            GUI.Label(new Rect(32, 118, 520, 16), QuestLog.HudBlock(), _small);
-            GUI.Label(new Rect(32, 134, 520, 16), SkillLedger.Line(), _small);
+                : HubObjectives.Line(), _small);
+        }
+
+        static string TwoBStatus()
+        {
+            var c = ConcordClient.Live;
+            if (c != null && c.Connected) return "live";
+            var why = string.IsNullOrEmpty(ConcordClient.LastReason) ? "no_gateway" : ConcordClient.LastReason;
+            return why;
+        }
+
+        void TalkPanel(float w, float h)
+        {
+            float pw = 640f, ph = 248f;
+            float x = (w - pw) * 0.5f, y = h - ph - 36f;
+            GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.88f);
+            GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
+            GUI.color = Color.white;
+            var who = player.talkNpc != null ? player.talkNpc.def.name : "Someone";
+            GUI.Label(new Rect(x + 16, y + 10, pw - 32, 22), who + "  ·  2B " + TwoBStatus(), _title);
+            var log = player.talkLog.Count == 0 ? "" : string.Join("\n", player.talkLog);
+            GUI.Label(new Rect(x + 16, y + 36, pw - 32, 140), log, _log);
+            GUI.SetNextControlName("TalkDraft");
+            player.talkDraft = GUI.TextField(new Rect(x + 16, y + 186, pw - 140, 28), player.talkDraft ?? "", 240);
+            if (player.focusTalk)
+            {
+                GUI.FocusControl("TalkDraft");
+                player.focusTalk = false;
+            }
+            if (GUI.Button(new Rect(x + pw - 116, y + 186, 100, 28), "Send", _btn))
+                player.SubmitTalk();
+            GUI.Label(new Rect(x + 16, y + 220, pw - 32, 18), "Enter send  ·  Esc leave", _small);
+        }
+
+        void KitMenu(float w, float h)
+        {
+            float pw = 860f, ph = 420f;
+            float x = (w - pw) * 0.5f, y = (h - ph) * 0.5f - 10f;
+            GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.9f);
+            GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons  ·  arts", _title);
+            float col = (pw - 48f) / 3f;
+            DrawInvCol(x + 16, y + 44, col, "Carry", false);
+            DrawInvCol(x + 24 + col, y + 44, col, "Weapons", true);
+            DrawArtCol(x + 32 + col * 2f, y + 44, col);
+            GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
+        }
+
+        void DrawInvCol(float x, float y, float w, string title, bool weaponsOnly)
+        {
+            GUI.Label(new Rect(x, y, w, 20), title, _center);
+            float yy = y + 26f;
+            var items = KitBag.Items;
+            if (items.Count == 0)
+            {
+                GUI.Label(new Rect(x, yy, w, 36), weaponsOnly ? "No other kit yet. Q cycles faction steel." : "Empty hands. Take from the ring.", _small);
+                return;
+            }
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                if (weaponsOnly && it.kind != "weapon") continue;
+                if (!weaponsOnly && it.kind == "weapon") continue;
+                var label = (it.id == KitBag.Equipped ? "▸ " : "  ") + it.name;
+                if (weaponsOnly)
+                {
+                    if (GUI.Button(new Rect(x, yy, w - 8, 32), label, _btn))
+                        player.HoldFromBag(it.stem);
+                }
+                else
+                    GUI.Label(new Rect(x, yy, w - 8, 28), label, _small);
+                yy += 36f;
+                if (yy > y + 300f) break;
+            }
+        }
+
+        void DrawArtCol(float x, float y, float w)
+        {
+            var s = Canon.Get(player.world).style;
+            GUI.Label(new Rect(x, y, w, 20), "Arts", _center);
+            ArtBtn(x, y + 26, w, 0, "1  ·  " + s.light);
+            ArtBtn(x, y + 70, w, 1, "2  ·  " + s.heavy);
+            ArtBtn(x, y + 114, w, 2, "3  ·  " + s.special);
+            GUI.Label(new Rect(x, y + 168, w, 48), "LMB fires the selected art. F and G still cut heavy and special.", _small);
+        }
+
+        void ArtBtn(float x, float y, float w, int art, string label)
+        {
+            var mark = KitBag.Art == art ? "▸ " + label : label;
+            if (GUI.Button(new Rect(x, y, w - 8, 36), mark, _btn))
+                KitBag.Art = art;
         }
 
         void Rings(float w)

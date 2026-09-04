@@ -9,6 +9,7 @@ namespace Concordia
     public class BuildingInterior : MonoBehaviour
     {
         public string plan;
+        public bool entered;
         float _w = 8f, _d = 7f, _h = 3.15f;
         Renderer[] _shell;
 
@@ -172,6 +173,8 @@ namespace Concordia
 
         void Put(Transform room, string stem, Vector3 local, float yaw, float h)
         {
+            var hh = FreePacks.HumanHeight(stem);
+            if (hh > 0.01f) h = hh;
             var world = room.TransformPoint(local);
             var go = FreePacks.Spawn(DressVocab.Resolve(stem), room, world, room.eulerAngles.y + yaw, h);
             if (!go) return;
@@ -191,6 +194,13 @@ namespace Concordia
             r.sharedMaterial = string.IsNullOrEmpty(pbr)
                 ? HubLook.Lit(c, 0.04f, 0.22f)
                 : HubLook.Pbr(pbr, c, 0.03f, 0.2f, 4f);
+        }
+
+        public string Prompt => "E  ·  Enter";
+
+        public Vector3 Inside()
+        {
+            return transform.position + Vector3.up * 0.12f;
         }
 
         void LateUpdate()
