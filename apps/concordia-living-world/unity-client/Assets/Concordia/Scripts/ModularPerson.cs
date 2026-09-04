@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0012
+namespace Concordia // FORCE_REFRESH_0013
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -296,31 +296,44 @@ namespace Concordia // FORCE_REFRESH_0012
             }
             foreach (var r in body.GetComponentsInChildren<Renderer>(true))
             {
-                var n = r.gameObject.name.ToLowerInvariant();
-                bool isOp = n.Contains("opacity") || n.Contains("hair") || n.Contains("lash");
-                bool isHead = n.Contains("head") || n.Contains("face") || n.Contains("eye");
-                var albedo = isOp ? (opac ? opac : headC) : isHead ? headC : bodyC;
-                var nrm = isHead ? headN : bodyN;
-                if (!albedo) continue;
-                var m = HubLook.Lit(Color.white, 0.03f, 0.28f);
-                var urp = Shader.Find("Universal Render Pipeline/Lit");
-                if (urp && (m.shader == null || m.shader.name.IndexOf("Universal", System.StringComparison.OrdinalIgnoreCase) < 0))
-                    m.shader = urp;
-                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", albedo);
-                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", albedo);
-                if (nrm)
+                var mats = r.sharedMaterials;
+                if (mats == null || mats.Length == 0) continue;
+                var dressed = new Material[mats.Length];
+                for (int i = 0; i < mats.Length; i++)
                 {
-                    if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
-                    m.EnableKeyword("_NORMALMAP");
+                    var mn = ((mats[i] ? mats[i].name : "") + " " + r.gameObject.name).ToLowerInvariant();
+                    bool isOp = mn.Contains("opacity") || mn.Contains("hair") || mn.Contains("lash") || mn.Contains("alpha");
+                    bool isHead = !isOp && (mn.Contains("head") || mn.Contains("face") || mn.Contains("eye"));
+                    // Multi-material rocketbox: slot 0 is body even when the mesh is named *_opacity.
+                    if (mats.Length > 1 && i == 0 && !mn.Contains("head"))
+                    {
+                        isOp = false;
+                        isHead = false;
+                    }
+                    var albedo = isOp ? (opac ? opac : headC) : isHead ? (headC ? headC : bodyC) : (bodyC ? bodyC : headC);
+                    var nrm = isHead ? headN : bodyN;
+                    if (!albedo) { dressed[i] = mats[i]; continue; }
+                    var m = HubLook.Lit(Color.white, 0.03f, 0.28f);
+                    var urp = Shader.Find("Universal Render Pipeline/Lit");
+                    if (urp && (m.shader == null || m.shader.name.IndexOf("Universal", System.StringComparison.OrdinalIgnoreCase) < 0))
+                        m.shader = urp;
+                    if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", albedo);
+                    if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", albedo);
+                    if (nrm)
+                    {
+                        if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
+                        m.EnableKeyword("_NORMALMAP");
+                    }
+                    if (isOp)
+                    {
+                        m.SetFloat("_Cutoff", 0.32f);
+                        m.EnableKeyword("_ALPHATEST_ON");
+                        m.SetOverrideTag("RenderType", "TransparentCutout");
+                        m.renderQueue = 2450;
+                    }
+                    dressed[i] = m;
                 }
-                if (isOp)
-                {
-                    m.SetFloat("_Cutoff", 0.32f);
-                    m.EnableKeyword("_ALPHATEST_ON");
-                    m.SetOverrideTag("RenderType", "TransparentCutout");
-                    m.renderQueue = 2450;
-                }
-                r.sharedMaterial = m;
+                r.sharedMaterials = dressed;
             }
 #endif
         }
