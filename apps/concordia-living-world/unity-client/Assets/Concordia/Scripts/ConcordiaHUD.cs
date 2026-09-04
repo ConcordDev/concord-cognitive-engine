@@ -99,6 +99,7 @@ namespace Concordia
             GUI.Label(new Rect(32, 86, 520, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : !string.IsNullOrEmpty(WorldClock.LastEvent) ? WorldClock.LastEvent
+                : !string.IsNullOrEmpty(ConcordClient.HudLine) ? ConcordClient.HudLine
                 : ConcordClient.StatusJson, _small);
             GUI.Label(new Rect(32, 102, 520, 16), HubObjectives.Line(), _small);
             GUI.Label(new Rect(32, 118, 520, 16), QuestLog.HudBlock(), _small);

@@ -38,7 +38,8 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {(token:string)=>({userId:string}|null|Promise)} deps.verifyToken  REQUIRED — validates a bearer token, returns `{userId}` (or throws/returns null on failure).
  * @param {(userId:string)=>({id:string,username?:string}|null|Promise)} deps.getUser REQUIRED — resolves a user record.
  * @param {(db:any, worldId:string)=>object} [deps.exportScene]  scene:request handler; omit → honest scene_export_unavailable.
- * @param {any} [deps.db]  passed verbatim to exportScene.
+ * @param {(db:any, worldId:string)=>object} [deps.exportKingdom]  kingdom:request handler; omit → honest kingdom_export_unavailable.
+ * @param {any} [deps.db]  passed verbatim to exportScene / exportKingdom.
  * @param {string} [deps.path="/godot-ws"]  upgrade path this gateway claims.
  * @param {(client:object, evt:string, data:object)=>void} [deps.onClientMessage]  fallback for unknown post-auth events.
  * @param {(verifyApiKeyPair:Function)} [deps.verifyApiKeyPair]  optional apiKey auth (see api-key note).
@@ -55,6 +56,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     verifyToken,
     getUser,
     exportScene,
+    exportKingdom,
     db = null,
     path = "/godot-ws",
     onClientMessage = null,
@@ -377,6 +379,23 @@ function isBinaryMovePayload(p) {
         }
         // Passthrough verbatim, including honest {ok:false,...} failures. Never fabricate a scene.
         send(client.ws, "scene:data", scene);
+        return;
+      }
+
+      case "kingdom:request": {
+        const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        if (typeof exportKingdom !== "function") {
+          send(client.ws, "kingdom:data", { ok: false, reason: "kingdom_export_unavailable" });
+          return;
+        }
+        let kingdom;
+        try {
+          kingdom = await exportKingdom(db, worldId);
+        } catch (e) {
+          send(client.ws, "kingdom:data", { ok: false, reason: "kingdom_export_failed", error: String(e?.message || e) });
+          return;
+        }
+        send(client.ws, "kingdom:data", kingdom);
         return;
       }
 

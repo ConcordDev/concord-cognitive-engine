@@ -502,6 +502,8 @@ namespace Concordia
             _actAge += dt;
             if (_actAge > 8f) NearbyAct = "";
             TickEvents(dt);
+            CrossRing.TickCaravans(dt * 0.08f);
+            CrossRing.PresentNearPlayer();
             if (Mathf.FloorToInt(Hour * 4f) != Mathf.FloorToInt((Hour - dt * 0.08f) * 4f))
                 ApplySky();
             if (Time.unscaledTime >= _threatAt)
@@ -752,6 +754,8 @@ namespace Concordia
         public string plotsCsv = "";
         public string travelersCsv = "";
         public string crossCsv = "";
+        public string caravansCsv = "";
+        public string tariffsCsv = "";
     }
 
     /// <summary>
@@ -810,6 +814,8 @@ namespace Concordia
             if (FileCache.plotsCsv == null) FileCache.plotsCsv = "";
             if (FileCache.travelersCsv == null) FileCache.travelersCsv = "";
             if (FileCache.crossCsv == null) FileCache.crossCsv = "";
+            if (FileCache.caravansCsv == null) FileCache.caravansCsv = "";
+            if (FileCache.tariffsCsv == null) FileCache.tariffsCsv = "";
             return FileCache;
         }
 
@@ -938,8 +944,10 @@ namespace Concordia
             var seat = WorldClock.World == WorldId.Hub
                 ? "The Court is the city"
                 : cities.Length + " settlements";
+            var caravan = CrossRing.HudCaravan();
             return w.title + " · " + s.staple + " " + s.stock.ToString("0.0")
-                + " · need " + s.need.ToString("0.0") + " · " + seat;
+                + " · need " + s.need.ToString("0.0") + " · " + seat
+                + (string.IsNullOrEmpty(caravan) ? "" : " · " + caravan);
         }
 
         public static void Dump()
@@ -997,6 +1005,8 @@ namespace Concordia
             var all = WorldMemory.All();
             sb.AppendLine();
             sb.AppendLine("CROSS plots=" + (all.plotsCsv ?? "") + " travelers=" + (all.travelersCsv ?? ""));
+            sb.AppendLine("CARAVANS " + (string.IsNullOrEmpty(all.caravansCsv) ? "(none — economy has not dispatched)" : all.caravansCsv));
+            sb.AppendLine("TARIFFS " + (string.IsNullOrEmpty(all.tariffsCsv) ? "(none)" : all.tariffsCsv));
             return sb.ToString();
         }
 
@@ -1028,15 +1038,7 @@ namespace Concordia
             if (fromSlice.stock > 0.85f)
             {
                 float ship = Mathf.Min(0.18f, fromSlice.stock - 0.7f);
-                fromSlice.stock -= ship;
-                toSlice.need = Mathf.Max(0.05f, toSlice.need - ship);
-                toSlice.stock = Mathf.Clamp(toSlice.stock + ship * 0.6f, 0.2f, 2.2f);
-                toSlice.prices = Mathf.Clamp(toSlice.prices * (1f - ship * 0.15f), 0.6f, 1.8f);
-                fromSlice.prices = Mathf.Clamp(fromSlice.prices * (1f + ship * 0.1f), 0.6f, 1.8f);
-                var cargo = fromSlice.staple + " from " + Canon.Get(from).title;
-                toSlice.imports = cargo;
-                toSlice.lastEvent = Canon.Get(to).title + " received " + cargo + " through the door.";
-                fromSlice.lastEvent = Canon.Get(from).title + " sent " + fromSlice.staple + " through the door.";
+                DispatchCaravan(from, to, fromSlice, ship, "walk");
             }
 
             if (!string.IsNullOrEmpty(carried))
@@ -1065,18 +1067,7 @@ namespace Concordia
             slice.need = Mathf.Clamp(slice.need + hours * 0.03f - hours * 0.01f * slice.stock, 0.05f, 1.4f);
             slice.population = Mathf.Max(1, slice.population + (slice.ecology > 0.6f ? 1 : 0) * Mathf.FloorToInt(hours / 8f));
             if (hours >= 2f && slice.stock > 1.2f && id != WorldId.Hub)
-            {
-                var hub = WorldMemory.Load(WorldId.Hub);
-                KingdomBook.Ensure(hub, WorldId.Hub);
-                float ship = 0.12f;
-                slice.stock -= ship;
-                hub.stock = Mathf.Clamp(hub.stock + ship, 0.2f, 2.4f);
-                hub.imports = slice.staple + " from " + Canon.Get(id).title;
-                slice.lastEvent = Canon.Get(id).title + " sent " + slice.staple
-                    + " to the Ring while you were away.";
-                hub.lastEvent = "The Ring took in " + hub.imports + ".";
-                WorldMemory.Put(WorldId.Hub, hub);
-            }
+                DispatchCaravan(id, WorldId.Hub, slice, 0.12f, "away");
             if (hours >= 4f) AdvanceTravelers(hours);
         }
 
@@ -1221,5 +1212,207 @@ namespace Concordia
             foreach (var kv in map) list.Add(kv.Key + ":" + kv.Value);
             csv = string.Join(";", list);
         }
+
+        public const float RingTariff = 0.05f;
+
+        public static string HudCaravan()
+        {
+            foreach (var c in ListCaravans())
+            {
+                if (c.status == "arrived" || c.status == "returned") continue;
+                return "Caravan " + c.id + " · " + c.staple + " " + Canon.Get(c.from).title
+                    + " → " + Canon.Get(c.to).title + " · " + c.status;
+            }
+            return "";
+        }
+
+        public static void TickCaravans(float hours)
+        {
+            if (hours < 0.001f) return;
+            var all = WorldMemory.All();
+            var list = ListCaravans();
+            if (list.Count == 0) return;
+            bool dirty = false;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var c = list[i];
+                if (c.status == "arrived" || c.status == "returned" || c.status == "raided") continue;
+                c.hoursLeft -= hours;
+                if (c.status == "loading" && c.hoursLeft <= 1.75f)
+                {
+                    c.status = "traveling";
+                    dirty = true;
+                }
+                if (c.status == "traveling" && c.hoursLeft <= 0.35f)
+                {
+                    c.status = "at_gate";
+                    dirty = true;
+                }
+                if (c.status == "at_gate" && c.hoursLeft <= 0f)
+                {
+                    Arrive(c);
+                    dirty = true;
+                }
+                list[i] = c;
+            }
+            if (dirty) WriteCaravans(list);
+        }
+
+        public static void PresentNearPlayer()
+        {
+            var player = ConcordiaPlayer.Live;
+            if (!player) return;
+            foreach (var c in ListCaravans())
+            {
+                if (c.status != "traveling" && c.status != "at_gate") continue;
+                if (c.from != WorldClock.World && c.to != WorldClock.World) continue;
+                if (GameObject.Find("Caravan_" + c.id)) continue;
+                WorldGate near = null;
+                float best = 80f;
+                foreach (var g in UnityEngine.Object.FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
+                {
+                    if (!g) continue;
+                    var match = g.def.world == c.from || g.def.world == c.to || g.def.world == WorldId.Hub;
+                    if (!match) continue;
+                    var d = Vector3.Distance(player.transform.position, g.transform.position);
+                    if (d < best) { best = d; near = g; }
+                }
+                if (!near || best > 70f)
+                {
+                    var line = HudCaravan();
+                    if (!string.IsNullOrEmpty(line)) WorldClock.NoteAct(line);
+                    continue;
+                }
+                var hold = near.transform;
+                var pos = hold.position + hold.forward * 3.4f + hold.right * 1.6f;
+                var cart = FreePacks.Spawn("cart", hold, pos, hold.eulerAngles.y, 2.2f)
+                           ?? GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cart.name = "Caravan_" + c.id;
+                cart.transform.SetParent(hold, true);
+                cart.transform.position = pos;
+                if (!cart.GetComponent<RingCaravan>())
+                {
+                    var tag = cart.AddComponent<RingCaravan>();
+                    tag.id = c.id;
+                    tag.staple = c.staple;
+                    tag.status = c.status;
+                }
+                WorldClock.NoteAct("Caravan of " + c.staple + " " + c.status + " at " + near.def.name + ".");
+            }
+        }
+
+        static void DispatchCaravan(WorldId from, WorldId to, WorldSliceRec fromSlice, float qty, string why)
+        {
+            if (qty <= 0.01f || from == to) return;
+            fromSlice.stock = Mathf.Max(0.2f, fromSlice.stock - qty);
+            fromSlice.prices = Mathf.Clamp(fromSlice.prices * (1f + qty * 0.1f), 0.6f, 1.8f);
+            fromSlice.lastEvent = Canon.Get(from).title + " loaded a caravan of " + fromSlice.staple
+                + " toward " + Canon.Get(to).title + ".";
+            var c = new CaravanRec
+            {
+                id = "cv-" + from + "-" + to + "-" + WorldClock.Day + "-" + Mathf.FloorToInt(WorldClock.Hour),
+                from = from,
+                to = to,
+                staple = fromSlice.staple,
+                qty = qty,
+                value = qty * 100f,
+                status = "loading",
+                guards = 2,
+                hoursLeft = 2f,
+                owner = OwnerOf(from)
+            };
+            var list = ListCaravans();
+            list.Add(c);
+            WriteCaravans(list);
+            if (why == "away") WorldMemory.Put(from, fromSlice);
+        }
+
+        static void Arrive(CaravanRec c)
+        {
+            var dest = WorldMemory.Load(c.to);
+            KingdomBook.Ensure(dest, c.to);
+            dest.need = Mathf.Max(0.05f, dest.need - c.qty);
+            dest.stock = Mathf.Clamp(dest.stock + c.qty * 0.6f, 0.2f, 2.2f);
+            dest.prices = Mathf.Clamp(dest.prices * (1f - c.qty * 0.15f), 0.6f, 1.8f);
+            dest.imports = c.staple + " from " + Canon.Get(c.from).title;
+            float paid = c.value * RingTariff;
+            dest.lastEvent = Canon.Get(c.to).title + " received " + dest.imports
+                + ". Ring tariff " + paid.ToString("0.0") + " on cargo " + c.value.ToString("0.0") + ".";
+            WorldMemory.Put(c.to, dest);
+            if (c.to == WorldClock.World) WorldClock.LastEvent = dest.lastEvent;
+            c.status = "arrived";
+            c.hoursLeft = 0f;
+            var all = WorldMemory.All();
+            var row = c.id + "|" + c.from + "|" + c.to + "|" + c.value.ToString("0.00")
+                + "|" + RingTariff.ToString("0.00") + "|" + paid.ToString("0.00")
+                + "|" + WorldClock.Day + ":" + Mathf.FloorToInt(WorldClock.Hour);
+            all.tariffsCsv = string.IsNullOrEmpty(all.tariffsCsv) ? row : all.tariffsCsv + ";" + row;
+        }
+
+        static string OwnerOf(WorldId id)
+        {
+            if (id == WorldId.Hub) return "Concordant Watch";
+            var facs = WorldBook.Factions(id);
+            if (facs != null && facs.Length > 0 && !string.IsNullOrEmpty(facs[0].name))
+                return facs[0].name;
+            return Canon.Get(id).title;
+        }
+
+        public static List<CaravanRec> ListCaravans()
+        {
+            var list = new List<CaravanRec>();
+            var csv = WorldMemory.All().caravansCsv ?? "";
+            if (string.IsNullOrEmpty(csv)) return list;
+            foreach (var part in csv.Split(';'))
+            {
+                if (string.IsNullOrWhiteSpace(part)) continue;
+                var f = part.Split('|');
+                if (f.Length < 10) continue;
+                if (!Enum.TryParse(f[1], out WorldId from)) continue;
+                if (!Enum.TryParse(f[2], out WorldId to)) continue;
+                float.TryParse(f[4], out var qty);
+                float.TryParse(f[5], out var value);
+                int.TryParse(f[7], out var guards);
+                float.TryParse(f[8], out var hours);
+                list.Add(new CaravanRec
+                {
+                    id = f[0],
+                    from = from,
+                    to = to,
+                    staple = f[3],
+                    qty = qty,
+                    value = value,
+                    status = f[6],
+                    guards = guards,
+                    hoursLeft = hours,
+                    owner = f[9]
+                });
+            }
+            return list;
+        }
+
+        static void WriteCaravans(List<CaravanRec> list)
+        {
+            var parts = new List<string>();
+            foreach (var c in list)
+                parts.Add(c.id + "|" + c.from + "|" + c.to + "|" + c.staple + "|"
+                    + c.qty.ToString("0.000") + "|" + c.value.ToString("0.00") + "|"
+                    + c.status + "|" + c.guards + "|" + c.hoursLeft.ToString("0.00") + "|" + c.owner);
+            WorldMemory.All().caravansCsv = string.Join(";", parts);
+        }
+
+        public struct CaravanRec
+        {
+            public string id, staple, status, owner;
+            public WorldId from, to;
+            public float qty, value, hoursLeft;
+            public int guards;
+        }
+    }
+
+    /// <summary>Presentation tag. The caravan exists because CrossRing dispatched it.</summary>
+    public class RingCaravan : MonoBehaviour
+    {
+        public string id, staple, status;
     }
 }

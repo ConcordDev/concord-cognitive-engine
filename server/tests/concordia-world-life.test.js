@@ -127,6 +127,32 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
+  it("stock becomes a caravan with a real Ring tariff, never an invented city", () => {
+    const book = src("WorldBook.cs");
+    const gate = src("WorldGate.cs");
+    const client = src("ConcordClient.cs");
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(book, /caravansCsv/);
+    assert.match(book, /tariffsCsv/);
+    assert.match(book, /DispatchCaravan/);
+    assert.match(book, /status = "loading"/);
+    assert.match(book, /status = "traveling"/);
+    assert.match(book, /status = "at_gate"/);
+    assert.match(book, /RingTariff = 0\.05f/);
+    assert.match(book, /class RingCaravan/);
+    assert.match(gate, /class GatePost/);
+    assert.match(gate, /Concordant Watch/);
+    assert.match(gate, /Not an authored citizen/);
+    assert.match(client, /kingdom:request/);
+    assert.match(client, /concord-kingdom\/v1/);
+    assert.match(client, /ApplyKingdom/);
+    assert.match(hud, /ConcordClient\.HudLine/);
+    assert.doesNotMatch(book, /Aurelia/);
+    assert.doesNotMatch(gate, /Aurelia/);
+    assert.doesNotMatch(client, /Aurelia/);
+    assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
   it("DressVocab picks a culture kit per WorldId and never invents a kingdom name", () => {
     const packs = src("FreePacks.cs");
     const fill = src("RealmFill.cs");

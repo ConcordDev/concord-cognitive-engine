@@ -32,6 +32,8 @@ namespace Concordia
 #endif
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
+        public static string HudLine { get; private set; } = "";
+        public static string SnapshotJson { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
 
         public string WorldId => worldId;
@@ -152,6 +154,7 @@ namespace Concordia
         public void OnWsMessage(string text)
         {
             TryParseEvt(text, out var evt);
+            HandleFrame(evt, text);
             OnEvent?.Invoke(evt, text);
         }
 
@@ -159,11 +162,12 @@ namespace Concordia
         {
             try
             {
-                if (!string.IsNullOrEmpty(bearerToken))
-                    await SendEvt("auth", "{\"token\":\"" + Escape(bearerToken) + "\"}");
+                var token = string.IsNullOrEmpty(bearerToken) ? "unity-local-guest" : bearerToken;
+                await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
-                LastReason = "";
-                StatusJson = "{\"ok\":true}";
+                await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                LastReason = "awaiting_kingdom";
+                StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
                 _ = ReceiveLoop();
 #endif
@@ -179,12 +183,56 @@ namespace Concordia
         {
             LastReason = "no_gateway";
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
+            HudLine = "";
+            SnapshotJson = "";
         }
 
-        public Task RequestScene(string nextWorldId)
+        void HandleFrame(string evt, string text)
+        {
+            if (evt == "kingdom:data")
+            {
+                ApplyKingdom(text);
+                return;
+            }
+            if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
+                MarkDisconnected();
+        }
+
+        void ApplyKingdom(string json)
+        {
+            SnapshotJson = json ?? "";
+            if (JsonFlagFalse(json, "ok"))
+            {
+                var reason = JsonString(json, "reason");
+                LastReason = string.IsNullOrEmpty(reason) ? "kingdom_export_unavailable" : reason;
+                StatusJson = "{\"ok\":false,\"reason\":\"" + Escape(LastReason) + "\"}";
+                HudLine = "";
+                return;
+            }
+            var title = JsonString(json, "title");
+            var staple = JsonNestedString(json, "staple");
+            var n = JsonArrayCount(json, "settlements");
+            if (string.IsNullOrEmpty(title)) title = worldId;
+            if (string.IsNullOrEmpty(staple)) staple = "";
+            LastReason = "";
+            StatusJson = "{\"ok\":true,\"format\":\"concord-kingdom/v1\",\"world\":\""
+                + Escape(title) + "\",\"staple\":\"" + Escape(staple)
+                + "\",\"settlements\":" + n + "}";
+            HudLine = title + " · kernel · " + staple
+                + (n == 0 ? " · The Court is the city" : " · " + n + " settlements");
+        }
+
+        public Task RequestKingdom(string nextWorldId)
         {
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
-            return SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+            return SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+        }
+
+        public async Task RequestScene(string nextWorldId)
+        {
+            if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
+            await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+            await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
         public Task SendMove(float x, float y, float z, string cityId) =>
@@ -219,8 +267,10 @@ namespace Concordia
                 if (result.MessageType == WebSocketMessageType.Close) break;
                 var text = Encoding.UTF8.GetString(buf, 0, result.Count);
                 TryParseEvt(text, out var evt);
+                HandleFrame(evt, text);
                 OnEvent?.Invoke(evt, text);
             }
+            MarkDisconnected();
         }
 #endif
 
@@ -236,6 +286,59 @@ namespace Concordia
             if (end <= start) return false;
             evt = json.Substring(start, end - start);
             return true;
+        }
+
+        static bool JsonFlagFalse(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return true;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return false;
+            var rest = json.Substring(i + needle.Length).TrimStart();
+            return rest.StartsWith("false", StringComparison.Ordinal);
+        }
+
+        static string JsonString(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return "";
+            var needle = "\"" + key + "\":\"";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return "";
+            var start = i + needle.Length;
+            var end = json.IndexOf('"', start);
+            return end <= start ? "" : json.Substring(start, end - start);
+        }
+
+        static string JsonNestedString(string json, string key)
+        {
+            var v = JsonString(json, key);
+            return v;
+        }
+
+        static int JsonArrayCount(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return 0;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return 0;
+            var start = json.IndexOf('[', i + needle.Length);
+            if (start < 0) return 0;
+            int depth = 0, n = 0;
+            bool inStr = false;
+            for (int p = start; p < json.Length; p++)
+            {
+                char c = json[p];
+                if (c == '"' && (p == 0 || json[p - 1] != '\\')) inStr = !inStr;
+                if (inStr) continue;
+                if (c == '[') depth++;
+                else if (c == ']')
+                {
+                    depth--;
+                    if (depth == 0) break;
+                }
+                else if (c == '{' && depth == 1) n++;
+            }
+            return n;
         }
 
         static string Escape(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");

@@ -415,3 +415,31 @@ test("12. foreign user:<other> join rejected as forbidden_room", async () => {
     ws.close();
   } finally { await h.stop(); }
 });
+
+test("13. kingdom:request with no exportKingdom → honest unavailable", async () => {
+  const h = await startGateway({ exportKingdom: undefined });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "kingdom:request", { worldId: "concordia-hub" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "kingdom:data");
+    assert.equal(f.data.ok, false);
+    assert.equal(f.data.reason, "kingdom_export_unavailable");
+    ws.close();
+  } finally { await h.stop(); }
+});
+
+test("14. kingdom:request → kingdom:data matching export verbatim", async () => {
+  const snap = { ok: true, format: "concord-kingdom/v1", worldId: "concordia-hub", title: "The Unburned Court", caravans: [] };
+  const h = await startGateway({ exportKingdom: () => snap });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "kingdom:request", { worldId: "concordia-hub" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "kingdom:data");
+    assert.equal(f.data.format, "concord-kingdom/v1");
+    assert.equal(f.data.title, "The Unburned Court");
+    assert.deepEqual(f.data.caravans, []);
+    ws.close();
+  } finally { await h.stop(); }
+});

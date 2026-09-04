@@ -20,12 +20,16 @@ Cities: `CityAtlas` + `CityTown` + `CityGate`. Each town has a PBR plaza pad (br
 
 `KingdomBook` treats each `WorldId` as a kingdom: staple from the refusal, settlements from `CityAtlas`, factions/people/lore from `WorldBook`. Hub: the Court is the city. Sere: Court waystone, not a ninth Refusal gate. Audit dump: `/tmp/concordia-kingdom.txt` (WORLD → KINGDOM → REGION → SETTLEMENT → ACTIVITY → ACTOR).
 
-`CrossRing` ports `cross.ts`: walking a gate moves staple stock, stamps an import, advances an authored CROSS_PLOT, and nudges a tagged traveler. Away hours keep producing and can ship to the Ring. A carried kit is noticed in the destination (heat + rumor). This is not a caravan mesh and not a weaponsmith tech tree.
+`CrossRing` ports `cross.ts`: walking a gate or an away pulse that has surplus **dispatches a Caravan** (`loading → traveling → at_gate → arrived`). Stock leaves the origin when the caravan is created; the destination only receives cargo after a 5% Ring tariff is recorded on `tariffsCsv`. A nearby traveling/at_gate caravan can dress a cart; far ones stay a HUD line. A carried kit is still noticed in the destination (heat + rumor). Authored CROSS_PLOT + traveler CSV unchanged.
+
+`GatePost` binds every `WorldGate`: Hub Ring doors belong to Concordant Watch; other worlds use that world's first authored faction; Sere is a waystone (no guards, not a ninth Refusal gate). Guards are unlabeled ambient ("They keep their own hours. Not an authored citizen.").
+
+`/unity-ws` now mounts (`mountUnityGateway`) and answers `kingdom:request` with `buildKingdomSnapshot` — authored graph only. Offline Editor play stays `{ok:false, reason:'no_gateway'}`. Connected HUD reads `ConcordClient.HudLine` from the snapshot.
 
 ## TARGET
 
-Each world is a civilization with WorldLaw (statement + sim/game/visual/audio/npc/econ/quest effects). Visible caravans / gate guards / tariffs still need presentation.
+Each world is a civilization with WorldLaw (statement + sim/game/visual/audio/npc/econ/quest effects). World Dresser still Kenney-first until Store packs land.
 
 ## Gap
 
-Kernel still `{ok:false, reason:'no gateway'}`. Cross-world economy is stock/need/import on the slice plus Ring shipments — not rendered caravans or faction-owned gates.
+Stock is still a slice float underneath the caravan qty. No persist-sync of caravans back onto the server snapshot (those arrays stay empty on `/unity-ws` until then). Kenney/graybox presentation. No invented settlements.

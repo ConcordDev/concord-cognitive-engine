@@ -39,8 +39,29 @@ export const UNITY_MESSAGE_TYPES = {
  * @returns {object}
  */
 export function mountUnityGateway(server, deps) {
+  const verifyToken = async (token) => {
+    if (token && token !== "unity-local-guest" && typeof deps.verifyToken === "function") {
+      const hit = await deps.verifyToken(token);
+      if (hit) return hit;
+    }
+    // Kitchen / Editor guest. Production still requires a real bearer —
+    // never a fabricated world, only a socket identity so /unity-ws can speak.
+    if (process.env.NODE_ENV !== "production" && (!token || token === "unity-local-guest")) {
+      return { userId: "unity-local-guest" };
+    }
+    return null;
+  };
+  const getUser = async (userId) => {
+    if (userId === "unity-local-guest") {
+      return { id: "unity-local-guest", username: "unity-local" };
+    }
+    if (typeof deps.getUser === "function") return deps.getUser(userId);
+    return null;
+  };
   return mountGodotGateway(server, {
     ...deps,
+    verifyToken,
+    getUser,
     path: '/unity-ws',
     clientHint: 'unity',
   });
