@@ -69,7 +69,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                HubLook.MakeSun(root, new Color(1f, 0.82f, 0.62f), 0.72f, new Vector3(38f, -48f, 0f));
+                HubLook.MakeSun(root, new Color(1f, 0.94f, 0.82f), 1.18f, new Vector3(42f, -38f, 0f));
                 return;
             }
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -117,7 +117,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => 0.011f,
+                WorldId.Hub => 0.0045f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -127,7 +127,7 @@ namespace Concordia
             };
             RenderSettings.fogColor = w.id switch
             {
-                WorldId.Hub => new Color(0.42f, 0.38f, 0.32f),
+                WorldId.Hub => new Color(0.62f, 0.68f, 0.74f),
                 WorldId.Fantasy => new Color(0.62f, 0.28f, 0.18f),
                 WorldId.Cyber => new Color(0.18f, 0.06f, 0.28f),
                 WorldId.Crime => new Color(0.12f, 0.08f, 0.10f),
@@ -216,9 +216,9 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < 16; i++)
             {
-                var a = i / 12f * Mathf.PI * 2f + 0.4f;
+                var a = i / 16f * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -712,7 +712,7 @@ namespace Concordia
                 DressGroveBirds(w);
                 return;
             }
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 24; i++)
             {
                 var go = new GameObject("Dove" + i);
                 go.transform.SetParent(root, false);

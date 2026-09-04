@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0018
+namespace Concordia // FORCE_REFRESH_0019
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -34,6 +34,7 @@ namespace Concordia // FORCE_REFRESH_0018
         Animator _anim;
         SkinnedMeshRenderer _skinMesh;
         int _plantFrames;
+        NpcLife _life;
         static int _bodySeq;
         static string _lastPrefabPath;
         public static WorldId CastingWorld = WorldId.Hub;
@@ -114,6 +115,13 @@ namespace Concordia // FORCE_REFRESH_0018
         public void Sit(bool on) => _sit = on ? 1f : 0f;
         public void Hurt() => _hitT = 0.32f;
         public void Land() => _landT = 0.22f;
+        public float PlanarSpeed => _speed;
+
+        bool Talking()
+        {
+            if (!_life) _life = GetComponentInParent<NpcLife>();
+            return _life && _life.IsTalking;
+        }
 
         public void Build() => Build(false);
 
@@ -856,22 +864,27 @@ namespace Concordia // FORCE_REFRESH_0018
             float breath = Mathf.Sin(Time.time * 1.55f) * 3f;
             float hang = Mathf.Lerp(72f, 28f, w);
             float swing = 32f * s * w;
+            float idle = 1f - w;
+            float shift = Mathf.Sin(Time.time * 1.15f + transform.position.x) * 6f * idle;
+            bool talk = Talking();
+            float talkLift = talk ? 16f + Mathf.Sin(Time.time * 5.2f) * 11f : 0f;
+            float talkCurl = talk ? 20f + Mathf.Abs(Mathf.Sin(Time.time * 6.1f)) * 14f : 0f;
             if (_biped)
             {
-                if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, swing - breath * 0.15f, true);
-                if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, swing - breath * 0.15f, false);
+                if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, swing - breath * 0.15f + shift * 0.4f, true);
+                if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, swing - breath * 0.15f + talkLift, false);
             }
             else
             {
                 if (_uArmL) _uArmL.localRotation = _lArmRest * ArmDelta(swing - breath * 0.15f, hang, true);
-                if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(swing - breath * 0.15f, hang, false);
+                if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(swing - breath * 0.15f + talkLift, hang, false);
             }
             if (_fArmL) _fArmL.localRotation = _lForeRest * ForeDelta(10f + 14f * w, true);
-            if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 14f * w, false);
+            if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(10f + 14f * w + talkCurl, false);
             if (_biped)
             {
-                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 34f * s * w + sit * 50f);
-                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -34f * s * w + sit * 50f);
+                if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 34f * s * w + sit * 50f + shift * 0.5f);
+                if (_uLegR) _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -34f * s * w + sit * 50f - shift * 0.5f);
                 if (_lLegL) _lLegL.localRotation = BipedHinge(_lLegL, _lLegRest, Mathf.Max(0f, -s) * 42f * w + sit * 38f);
                 if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, Mathf.Max(0f, s) * 42f * w + sit * 38f);
             }
@@ -882,7 +895,7 @@ namespace Concordia // FORCE_REFRESH_0018
                 if (_lLegL) _lLegL.localRotation = _lLegRest * KneeDelta(Mathf.Max(0f, -s) * 42f * w + sit * 38f);
                 if (_lLegR) _lLegR.localRotation = _rLegRest * KneeDelta(Mathf.Max(0f, s) * 42f * w + sit * 38f);
             }
-            if (_hip) _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 4f * w, 6f * s * w, 0f);
+            if (_hip) _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + 4f * w + shift * 0.4f, 6f * s * w + shift, 0f);
             if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f, 5f * s * w, 0f);
             ApplyAuthoredAttitude();
             if (!_grounded)
@@ -916,9 +929,11 @@ namespace Concordia // FORCE_REFRESH_0018
             int att = look != null ? look.attitude : 0;
             float chin = att == 2 ? -8f : att == 3 ? 4f : 0f;
             float walk = Mathf.InverseLerp(0.35f, 4.6f, _grounded ? _speed : 0f);
-            _head.localRotation = _headRest * Quaternion.Euler(
-                chin + Mathf.Sin(Time.time * 0.7f) * 3f * (1f - walk),
-                Mathf.Sin(Time.time * 0.45f) * 8f * (1f - walk), 0f);
+            float idle = 1f - walk;
+            bool talk = Talking();
+            float nod = talk ? Mathf.Sin(Time.time * 4.4f) * 6f : Mathf.Sin(Time.time * 0.7f) * 3f * idle;
+            float glance = talk ? Mathf.Sin(Time.time * 1.1f) * 10f : Mathf.Sin(Time.time * 0.45f) * 12f * idle;
+            _head.localRotation = _headRest * Quaternion.Euler(chin + nod, glance, 0f);
         }
 
 

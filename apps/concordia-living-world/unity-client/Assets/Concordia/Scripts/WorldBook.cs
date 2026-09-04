@@ -681,10 +681,20 @@ namespace Concordia
         static void ApplySky()
         {
             float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
-            RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+            // Trilight already carries HubLook's sky/equator/ground. Scaling
+            // ambientIntensity on top crushed the HDR sky to mud.
+            if (RenderSettings.ambientMode == AmbientMode.Trilight)
+                RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
+            else
+                RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
             var sun = UnityEngine.Object.FindAnyObjectByType<Light>();
             if (sun && sun.type == LightType.Directional)
-                sun.intensity = 0.35f + 0.9f * day;
+            {
+                if (World == WorldId.Hub)
+                    sun.intensity = 0.92f + 0.38f * day;
+                else
+                    sun.intensity = 0.35f + 0.9f * day;
+            }
         }
 
         static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
@@ -701,7 +711,7 @@ namespace Concordia
                     else if (l == SimLod.Bulk) bulk++;
                     else virt++;
                 }
-                int open = 0, patrol = 0, talk = 0, deliver = 0, inside = 0, hunt = 0;
+                int open = 0, patrol = 0, talk = 0, deliver = 0, inside = 0, hunt = 0, walking = 0;
                 foreach (var n in UnityEngine.Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
                 {
                     if (!n) continue;
@@ -710,6 +720,8 @@ namespace Concordia
                     else if (n.act == "talk") talk++;
                     else if (n.act == "deliver") deliver++;
                     else if (n.act == "inside") inside++;
+                    var person = n.GetComponent<ModularPerson>() ?? n.GetComponentInChildren<ModularPerson>();
+                    if (person && person.PlanarSpeed > 0.35f) walking++;
                 }
                 foreach (var f in UnityEngine.Object.FindObjectsByType<FaunaLife>(FindObjectsInactive.Exclude))
                     if (f && f.act == "hunt") hunt++;
@@ -719,6 +731,7 @@ namespace Concordia
                     + " prices=" + Prices.ToString("0.00") + " lod=" + real + "/" + bulk + "/" + virt
                     + " acts open=" + open + " patrol=" + patrol + " talk=" + talk
                     + " deliver=" + deliver + " inside=" + inside + " hunt=" + hunt
+                    + " walking=" + walking
                     + "\n" + Line() + "\n" + KingdomBook.HudLine() + "\n" + LastEvent + "\n");
                 KingdomBook.Dump();
             }

@@ -78,6 +78,42 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(packs, /SitOrHang\(/);
   });
 
+  it("Hub grade and clock leave the HDR sky readable, not crushed to mud", () => {
+    const look = src("HubLook.cs");
+    const book = src("WorldBook.cs");
+    const builder = src("WorldBuilder.cs");
+    assert.match(look, /exposure = 0\.12f/);
+    assert.match(look, /sat = 10f/);
+    assert.match(look, /ambientIntensity = 1f/);
+    assert.match(look, /reflectionIntensity = world == WorldId\.Hub \? 1\.05f/);
+    assert.match(look, /metallic = 0\.06f, float smooth = 0\.26f/);
+    assert.match(look, /SetFloat\("_Smoothness", 0\.22f\)/);
+    assert.match(book, /ambientMode == AmbientMode\.Trilight/);
+    assert.match(book, /World == WorldId\.Hub/);
+    assert.match(book, /sun\.intensity = 0\.92f \+ 0\.38f \* day/);
+    assert.match(builder, /1\.18f/);
+    assert.match(builder, /0\.0045f/);
+    assert.doesNotMatch(look, /exposure = -0\.72f/);
+  });
+
+  it("crowd walkers keep a ring and idle bodies still move", () => {
+    const life = src("NpcLife.cs");
+    const person = src("ModularPerson.cs");
+    const builder = src("WorldBuilder.cs");
+    assert.match(life, /WanderRing\(/);
+    assert.match(life, /PaceRing\(/);
+    assert.match(life, /IsWalkingJob/);
+    assert.match(life, /if \(IsWalkingJob\) return false/);
+    assert.match(life, /if \(IsWalkingJob\)/);
+    assert.match(life, /Notice\(other\.transform, 1\.8f\)/);
+    assert.match(person, /Talking\(\)/);
+    assert.match(person, /PlanarSpeed/);
+    assert.match(person, /talkLift/);
+    assert.match(person, /FORCE_REFRESH_0019/);
+    assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
+    assert.match(builder, /for \(int i = 0; i < 24; i\+\+\)/);
+  });
+
   it("portal swirl is a small alpha mote, not a 3m additive oval", () => {
     const plaza = src("HubPlaza.cs");
     const look = src("HubLook.cs");

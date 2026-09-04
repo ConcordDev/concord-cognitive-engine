@@ -59,6 +59,8 @@ namespace Concordia
         }
 
         public void BindWorkplace(Vector3 pos) => workplace = pos;
+        public bool IsTalking => act == "talk";
+        public bool IsWalkingJob => job == Job.Wander || job == Job.Sweep || job == Job.Watch;
 
         void Update()
         {
@@ -138,6 +140,14 @@ namespace Concordia
                 dest = WorkDest(hour);
                 act = job == Job.Stall ? "open" : job == Job.Watch ? "patrol" : "work";
                 DropCarry();
+                if (IsWalkingJob)
+                {
+                    WorkInPlace();
+                    if (lod == SimLod.Real && ConcordiaPlayer.Live
+                        && Vector3.Distance(ConcordiaPlayer.Live.transform.position, transform.position) < 16f)
+                        WorldClock.NoteAct(Who() + " " + Phrase(act));
+                    return;
+                }
                 if (Arrived(dest))
                 {
                     WorkInPlace();
@@ -184,18 +194,20 @@ namespace Concordia
         bool TrySocial(SimLod lod)
         {
             if (lod != SimLod.Real) return false;
+            if (IsWalkingJob) return false;
             if (Time.time < _socialAt) return false;
-            _socialAt = Time.time + 2.4f;
+            _socialAt = Time.time + 8f;
             var p = transform.position;
             foreach (var other in FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
             {
                 if (!other || other == this || other.pinned) continue;
+                if (other.IsWalkingJob) continue;
                 if (other.act == "flee" || other.act == "sleep" || other.act == "inside") continue;
                 var d = other.transform.position - p;
                 d.y = 0f;
-                if (d.sqrMagnitude > 7.8f) continue;
-                Notice(other.transform, 5.2f);
-                other.Notice(transform, 5.2f);
+                if (d.sqrMagnitude > 3.2f) continue;
+                Notice(other.transform, 1.8f);
+                other.Notice(transform, 1.8f);
                 act = "talk";
                 WorldClock.NoteAct(Who() + " stopped to speak");
                 return true;
@@ -234,9 +246,7 @@ namespace Concordia
                     _person?.SetGait(0f, true);
                     break;
                 case Job.Watch:
-                    Hold();
-                    _person?.SetGait(0f, true);
-                    transform.rotation = Quaternion.Euler(0f, Mathf.Sin(_t * 0.25f) * 40f + _face.eulerAngles.y, 0f);
+                    PaceRing(5.5f, 1.65f);
                     act = "patrol";
                     break;
                 case Job.Sweep:
@@ -247,10 +257,22 @@ namespace Concordia
                     }
                     break;
                 default:
-                    Hold();
-                    _person?.SetGait(0f, true);
+                    WanderRing();
                     break;
             }
+        }
+
+        void WanderRing()
+        {
+            var dest = home + Circle(_t * 0.22f, 7.5f);
+            Walk(dest, 1.85f);
+            act = "work";
+        }
+
+        void PaceRing(float radius, float speed)
+        {
+            var dest = home + Circle(_t * 0.18f, radius);
+            Walk(dest, speed);
         }
 
         void Walk(Vector3 dest, float speed)

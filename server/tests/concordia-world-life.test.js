@@ -83,6 +83,7 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(life, /act = "deliver"/);
     assert.match(life, /TrySocial/);
     assert.match(life, /TryEnter/);
+    assert.match(life, /WanderRing/);
     assert.match(life, /CharacterGear\.Attach\(gameObject, "crate"/);
     assert.match(life, /opens a shop/);
     assert.match(life, /changes post/);

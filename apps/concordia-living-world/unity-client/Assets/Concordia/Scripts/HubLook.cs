@@ -100,7 +100,8 @@ namespace Concordia
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = eq;
             RenderSettings.ambientGroundColor = ground;
-            RenderSettings.reflectionIntensity = world == WorldId.Hub ? 0.72f : 0.88f;
+            RenderSettings.ambientIntensity = 1f;
+            RenderSettings.reflectionIntensity = world == WorldId.Hub ? 1.05f : 0.88f;
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
             DynamicGI.UpdateEnvironment();
             PlaceProbe(world == WorldId.Hub ? 120f : 95f);
@@ -113,8 +114,8 @@ namespace Concordia
             switch (world)
             {
                 case WorldId.Hub:
-                    bloomI = 0.08f; bloomT = 0.95f; exposure = -0.72f; contrast = 18f; sat = -8f; vigI = 0.32f; temp = 6f;
-                    sky = new Color(0.42f, 0.38f, 0.34f); eq = new Color(0.28f, 0.24f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
+                    bloomI = 0.18f; bloomT = 0.88f; exposure = 0.12f; contrast = 12f; sat = 10f; vigI = 0.18f; temp = 8f;
+                    sky = new Color(0.58f, 0.64f, 0.74f); eq = new Color(0.48f, 0.42f, 0.36f); ground = new Color(0.22f, 0.18f, 0.14f); break;
                 case WorldId.Ruins:
                     bloomI = 0.28f; bloomT = 0.72f; exposure = 0.08f; contrast = 16f; sat = 4f; vigI = 0.4f; temp = -8f;
                     sky = new Color(0.55f, 0.52f, 0.48f); eq = new Color(0.32f, 0.26f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
@@ -253,7 +254,7 @@ namespace Concordia
             return tex;
         }
 
-        public static Material Lit(Color c, float metallic = 0.12f, float smooth = 0.4f)
+        public static Material Lit(Color c, float metallic = 0.06f, float smooth = 0.26f)
         {
             EnsureShaders();
             var m = new Material(_lit != null ? _lit : Shader.Find("Sprites/Default"));
@@ -528,7 +529,7 @@ namespace Concordia
                 _ => "kloofendal_48d_partly_cloudy_puresky_2k.hdr"
             };
             var path = "Assets/Concordia/Models/polyhaven/" + file;
-            float exposure = world == WorldId.Hub ? 0.48f : 0.62f;
+            float exposure = world == WorldId.Hub ? 0.78f : 0.62f;
             // HDRs in this project are imported as Cubemap (textureShape 2).
             // Skybox/Panoramic on a Cubemap is a white void. Use Cubemap shader
             // for cubes; Panoramic only when the asset is actually 2D lat-long.
@@ -577,9 +578,9 @@ namespace Concordia
                 var m = new Material(sh);
                 m.SetFloat("_SunSize", world == WorldId.Hub ? 0.04f : 0.04f);
                 m.SetFloat("_SunSizeConvergence", 6f);
-                m.SetFloat("_AtmosphereThickness", world == WorldId.Hub ? 1.05f : 1.0f);
-                m.SetFloat("_Exposure", world == WorldId.Hub ? 0.85f : 1.1f);
-                var sky = world == WorldId.Hub ? new Color(0.42f, 0.40f, 0.38f)
+                m.SetFloat("_AtmosphereThickness", world == WorldId.Hub ? 0.92f : 1.0f);
+                m.SetFloat("_Exposure", world == WorldId.Hub ? 1.15f : 1.1f);
+                var sky = world == WorldId.Hub ? new Color(0.52f, 0.62f, 0.78f)
                     : world == WorldId.Cyber ? new Color(0.12f, 0.04f, 0.22f)
                     : world == WorldId.Crime ? new Color(0.10f, 0.08f, 0.12f)
                     : world == WorldId.Frontier ? new Color(0.72f, 0.55f, 0.32f)
@@ -595,7 +596,7 @@ namespace Concordia
             }
             EnsureShaders();
             var fallback = new Material(_unlit != null ? _unlit : Shader.Find("Sprites/Default"));
-            var top = world == WorldId.Hub ? new Color(0.55f, 0.42f, 0.28f) : new Color(0.12f, 0.14f, 0.22f);
+            var top = world == WorldId.Hub ? new Color(0.48f, 0.62f, 0.82f) : new Color(0.12f, 0.14f, 0.22f);
             if (fallback.HasProperty("_BaseColor")) fallback.SetColor("_BaseColor", top);
             fallback.color = top;
             RenderSettings.skybox = fallback;
@@ -684,10 +685,16 @@ namespace Concordia
                         }
                         if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
                             dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
-                        if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
+                        else if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
                             dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
+                        else if (dst.HasProperty("_Metallic"))
+                            dst.SetFloat("_Metallic", 0.04f);
                         if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
                             dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
+                        else if (src.HasProperty("_Smoothness") && dst.HasProperty("_Smoothness"))
+                            dst.SetFloat("_Smoothness", src.GetFloat("_Smoothness"));
+                        else if (dst.HasProperty("_Smoothness"))
+                            dst.SetFloat("_Smoothness", 0.22f);
                         cache[src] = dst;
                     }
                     next[s] = dst;
