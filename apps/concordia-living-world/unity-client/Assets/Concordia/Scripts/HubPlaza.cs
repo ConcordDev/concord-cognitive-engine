@@ -189,7 +189,7 @@ namespace Concordia
                 }
 
                 var portalCol = PortalColor(gate);
-                var portal = HubLook.Prim(hold, PrimitiveType.Cylinder, Vector3.zero, new Vector3(w * 0.72f, 0.12f, h * 0.72f), HubLook.Emit(portalCol, 0.4f), "Portal", false);
+                var portal = HubLook.Prim(hold, PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.4f, 0.06f, 4.2f), HubLook.Emit(portalCol, 0.4f), "Portal", false);
                 portal.transform.localPosition = new Vector3(0f, h * 0.42f, 0.15f);
                 portal.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
                 Swirl(hold, new Vector3(0f, h * 0.42f, 0.2f), portalCol);

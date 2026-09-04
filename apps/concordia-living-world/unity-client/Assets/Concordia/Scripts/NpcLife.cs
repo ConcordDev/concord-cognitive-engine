@@ -123,6 +123,16 @@ namespace Concordia
             Vector3 dest;
             if (hour < 6f || hour >= 22f)
             {
+                if (job == Job.Watch || job == Job.Sweep)
+                {
+                    act = job == Job.Watch ? "patrol" : "work";
+                    DropCarry();
+                    WorkInPlace();
+                    if (lod == SimLod.Real && ConcordiaPlayer.Live
+                        && Vector3.Distance(ConcordiaPlayer.Live.transform.position, transform.position) < 16f)
+                        WorldClock.NoteAct(Who() + " " + Phrase(act));
+                    return;
+                }
                 act = "sleep";
                 dest = home;
                 DropCarry();

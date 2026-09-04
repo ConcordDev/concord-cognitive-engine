@@ -103,7 +103,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(life, /WanderRing\(/);
     assert.match(life, /PaceRing\(/);
     assert.match(life, /IsWalkingJob/);
-    assert.match(life, /if \(IsWalkingJob\) return false/);
+    assert.match(life, /if \(job == Job.Watch \|\| job == Job.Sweep\)/);
     assert.match(life, /if \(IsWalkingJob\)/);
     assert.match(life, /Notice\(other\.transform, 1\.8f\)/);
     assert.match(person, /Talking\(\)/);
@@ -123,5 +123,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(look, /bool additive = true/);
     assert.doesNotMatch(plaza, /startSize = 0.28f/);
     assert.doesNotMatch(plaza, /sh.radius = 1.6f/);
+    assert.match(plaza, /new Vector3\(2\.4f, 0\.06f, 4\.2f\)/);
+    assert.doesNotMatch(plaza, /w \* 0\.72f, 0\.12f, h \* 0\.72f/);
   });
 });
