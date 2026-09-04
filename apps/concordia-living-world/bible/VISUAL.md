@@ -43,7 +43,7 @@ Interior LOD (Tunya hitch budget):
 
 Dump: `/tmp/concordia-visual.txt` on `CityTown.BuildAll` and **Concordia → Asset Store → Dump visual audit**.
 
-Hub Court stays unpaved. Plaques still refuse invented names. Starter Assets / Kinematic / 3rd Person are reference only — they do not replace Concordia's controller. SUIMONO and Convai are imported, not the live water or NPC path.
+Hub Court stays unpaved. Plaques still refuse invented names. Starter Assets / Kinematic / 3rd Person are reference only — they do not replace Concordia's controller. SUIMONO is imported, not the live water path. Convai is the talk presentation layer; Concord 2B (`qwen3.5:2b` via `dialogue:request`) is the conversation provider.
 
 ## Owned stack (this account — imported here)
 
@@ -76,4 +76,4 @@ Editor: **Concordia → Asset Store → Open My Assets**. Downloads require a si
 
 ## Gap
 
-Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). No owned wheat / palm / hedge / dumpster / crypt / gravestone / crystal / sci-fi lab — those stay Kenney. Point Grass is not owned. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass. SUIMONO / Convai / Starter Assets stay imported, not live paths.
+Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). No owned wheat / palm / hedge / dumpster / crypt / gravestone / crystal / sci-fi lab — those stay Kenney. Point Grass is not owned. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass. SUIMONO stays imported, not the live water path. Starter Assets stay reference-only. Convai's conversation provider is Concord 2B.

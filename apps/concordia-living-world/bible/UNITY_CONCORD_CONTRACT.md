@@ -5,7 +5,7 @@
 
 ## LIVE (2026-09-01)
 
-Unity `ConcordiaPlayer.HitScan` mutates dummy HP. `ConcordiaGame.Travel` is the world transition. `ConcordClient` talks `{evt,data}` to `/unity-ws` (`mountUnityGateway` → `mountGodotGateway`). After auth it sends `scene:request` and `kingdom:request`. Offline Editor play stays `{ok:false, reason:'no_gateway'}` — never a fabricated connected kernel.
+Unity `ConcordiaPlayer.HitScan` mutates dummy HP. `ConcordiaGame.Travel` is the world transition. `ConcordClient` talks `{evt,data}` to `/unity-ws` (`mountUnityGateway` → `mountGodotGateway`). After auth it sends `scene:request` and `kingdom:request`. Talk (E) sends `dialogue:request`; Concord 2B (`qwen3.5:2b`) answers on `dialogue:data`. Convai's `IConversationProvider` is `concord-2b`, not the Convai cloud LLM. Offline Editor play stays `{ok:false, reason:'no_gateway'}` — never a fabricated connected kernel.
 
 Unity owns (and should keep): camera, animation playback, VFX, audio playback, UI, streaming/LOD presentation.
 

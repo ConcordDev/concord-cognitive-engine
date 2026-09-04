@@ -200,6 +200,11 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(gate, /The stove is cold/);
     assert.match(game, /cook\.Use\(\)/);
     assert.match(game, /They heard:/);
+    assert.match(game, /AskTwoB/);
+    assert.match(game, /ConcordConvaiManager/);
+    assert.match(game, /concord-2b/);
+    assert.match(src("ConcordClient.cs"), /dialogue:request/);
+    assert.match(src("ConcordClient.cs"), /AskTwoB/);
     assert.match(fill, /Sidewalks/);
     assert.match(fill, /a guard/);
     assert.match(fill, /WorldClock\.Ecology < 0\.28f/);

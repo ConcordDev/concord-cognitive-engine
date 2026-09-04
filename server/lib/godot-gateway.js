@@ -24,6 +24,7 @@ import { encodeFrame, decodeFrame, isBinaryFrame, encodeMove, decodeMove } from 
 //
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
+import { composeTwoBDialogue } from "./concordia-two-b.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -39,6 +40,7 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {(userId:string)=>({id:string,username?:string}|null|Promise)} deps.getUser REQUIRED — resolves a user record.
  * @param {(db:any, worldId:string)=>object} [deps.exportScene]  scene:request handler; omit → honest scene_export_unavailable.
  * @param {(db:any, worldId:string)=>object} [deps.exportKingdom]  kingdom:request handler; omit → honest kingdom_export_unavailable.
+ * @param {(input:object)=>object|Promise<object>} [deps.composeDialogue]  dialogue:request → Concord 2B; omit → built-in composeTwoBDialogue.
  * @param {any} [deps.db]  passed verbatim to exportScene / exportKingdom.
  * @param {string} [deps.path="/godot-ws"]  upgrade path this gateway claims.
  * @param {(client:object, evt:string, data:object)=>void} [deps.onClientMessage]  fallback for unknown post-auth events.
@@ -57,6 +59,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     getUser,
     exportScene,
     exportKingdom,
+    composeDialogue = composeTwoBDialogue,
     db = null,
     path = "/godot-ws",
     onClientMessage = null,
@@ -396,6 +399,37 @@ function isBinaryMovePayload(p) {
           return;
         }
         send(client.ws, "kingdom:data", kingdom);
+        return;
+      }
+
+      case "dialogue:request": {
+        const requestId = typeof data.requestId === "string" ? data.requestId : "";
+        if (typeof composeDialogue !== "function") {
+          send(client.ws, "dialogue:data", { ok: false, reason: "dialogue_unavailable", requestId });
+          return;
+        }
+        try {
+          const result = await composeDialogue({
+            db,
+            userId: client.userId,
+            worldId: typeof data.worldId === "string" ? data.worldId : "",
+            npcId: typeof data.npcId === "string" ? data.npcId : "",
+            npcName: typeof data.npcName === "string" ? data.npcName : "",
+            line: typeof data.line === "string" ? data.line : "",
+            text: typeof data.text === "string" ? data.text : "",
+            requestId,
+          });
+          send(client.ws, "dialogue:data", result && typeof result === "object"
+            ? result
+            : { ok: false, reason: "dialogue_failed", requestId });
+        } catch (e) {
+          send(client.ws, "dialogue:data", {
+            ok: false,
+            reason: "dialogue_failed",
+            requestId,
+            error: String(e?.message || e),
+          });
+        }
         return;
       }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -24,6 +25,8 @@ namespace Concordia
         ClientWebSocket _ws;
         CancellationTokenSource _cts;
         bool _jsOpen;
+        readonly Dictionary<string, TaskCompletionSource<string>> _dialogueWait =
+            new Dictionary<string, TaskCompletionSource<string>>();
         public bool Connected =>
 #if UNITY_WEBGL && !UNITY_EDITOR
             _jsOpen;
@@ -194,8 +197,58 @@ namespace Concordia
                 ApplyKingdom(text);
                 return;
             }
+            if (evt == "dialogue:data")
+            {
+                ApplyDialogue(text);
+                return;
+            }
             if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
                 MarkDisconnected();
+        }
+
+        void ApplyDialogue(string json)
+        {
+            var id = JsonString(json, "requestId");
+            if (string.IsNullOrEmpty(id)) return;
+            if (!_dialogueWait.TryGetValue(id, out var wait)) return;
+            if (JsonFlagFalse(json, "ok"))
+            {
+                wait.TrySetResult("");
+                return;
+            }
+            wait.TrySetResult(JsonString(json, "text"));
+        }
+
+        /// <summary>
+        /// Concord 2B line for Convai / Talk. Empty string is honest failure
+        /// (no_gateway, timeout, or ok:false) — never a fabricated voice.
+        /// </summary>
+        public async Task<string> AskTwoB(string npcId, string npcName, string line, string text)
+        {
+            if (!Connected) return "";
+            var id = Guid.NewGuid().ToString("N");
+            var wait = new TaskCompletionSource<string>();
+            _dialogueWait[id] = wait;
+            try
+            {
+                await SendEvt("dialogue:request",
+                    "{\"requestId\":\"" + Escape(id)
+                    + "\",\"worldId\":\"" + Escape(worldId)
+                    + "\",\"npcId\":\"" + Escape(npcId)
+                    + "\",\"npcName\":\"" + Escape(npcName)
+                    + "\",\"line\":\"" + Escape(line)
+                    + "\",\"text\":\"" + Escape(text) + "\"}");
+                var done = await Task.WhenAny(wait.Task, Task.Delay(12000, _cts.Token));
+                return done == wait.Task ? wait.Task.Result : "";
+            }
+            catch
+            {
+                return "";
+            }
+            finally
+            {
+                _dialogueWait.Remove(id);
+            }
         }
 
         void ApplyKingdom(string json)

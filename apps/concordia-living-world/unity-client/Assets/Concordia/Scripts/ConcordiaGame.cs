@@ -1,7 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
+using Convai.Runtime.Components;
+using Convai.Runtime.Core.Async;
+using Convai.Runtime.Core.Coordinators;
+using Convai.Runtime.Core.Providers;
 using UnityEngine;
+using UnityEngine.Scripting;
 
 namespace Concordia
 {
@@ -70,6 +78,8 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
+            var convaiGo = new GameObject("ConcordConvai");
+            convaiGo.AddComponent<ConcordConvaiManager>();
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -299,6 +309,7 @@ namespace Concordia
                     line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
+                AskTwoB(npc, line);
                 return line;
             }
             return null;
@@ -404,6 +415,23 @@ namespace Concordia
             _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
         }
 
+        async void AskTwoB(GuestNpc npc, string authored)
+        {
+            var client = ConcordClient.Live;
+            if (client == null || !client.Connected)
+            {
+                ConcordiaHUD.Announce(npc.def.name, "no_gateway");
+                return;
+            }
+            var reply = await client.AskTwoB(
+                npc.personId ?? npc.def.id,
+                npc.def.name,
+                npc.def.line,
+                authored);
+            if (!string.IsNullOrEmpty(reply))
+                ConcordiaHUD.Announce(npc.def.name, reply);
+        }
+
         void OnDestroy()
         {
             WorldClock.Leave();
@@ -426,6 +454,125 @@ namespace Concordia
             public float damage;
             public string error;
             public string reason;
+        }
+    }
+
+    /// <summary>
+    /// Convai talks to Concord 2B, not the Convai cloud LLM.
+    /// </summary>
+    public class ConcordConvaiManager : ConvaiManager
+    {
+        protected override IConversationProvider GetConversationProvider() =>
+            ConcordTwoBConversationProvider.Instance;
+    }
+
+    [Preserve]
+    public sealed class ConcordTwoBConversationProvider : IConversationProvider
+    {
+        static readonly ConcordTwoBConversationProvider Live = new ConcordTwoBConversationProvider();
+        ConcordTwoBConversationProvider() { }
+        public static ConcordTwoBConversationProvider Instance => Live;
+        public string ProviderId => "concord-2b";
+        public ConversationCapabilities Capabilities =>
+            ConversationCapabilities.TextInput | ConversationCapabilities.StreamingResponse | ConversationCapabilities.History;
+
+        public IConvaiOperation<IConversationSession> CreateSessionAsync(
+            ConversationSessionRequest request,
+            CancellationToken ct = default)
+        {
+            var session = new ConcordTwoBSession(
+                Guid.NewGuid().ToString("N"),
+                request.CharacterId,
+                Capabilities);
+            return ConvaiOperation<IConversationSession>.Succeeded(session);
+        }
+    }
+
+    [Preserve]
+    sealed class ConcordTwoBSession : IConversationSession
+    {
+        readonly object _lock = new object();
+        readonly Queue<ConversationResponsePart> _parts = new Queue<ConversationResponsePart>();
+        readonly SemaphoreSlim _signal = new SemaphoreSlim(0);
+        readonly CancellationTokenSource _life = new CancellationTokenSource();
+        bool _done;
+
+        public ConcordTwoBSession(string sessionId, string characterId, ConversationCapabilities capabilities)
+        {
+            SessionId = sessionId;
+            CharacterId = characterId;
+            Capabilities = capabilities;
+        }
+
+        public string SessionId { get; }
+        public string CharacterId { get; }
+        public ConversationCapabilities Capabilities { get; }
+        public event Action<ConversationEvent> EventReceived;
+
+        public IConvaiOperation<Unit> SendAsync(ConversationRequest request, CancellationToken ct = default)
+        {
+            if (_done)
+                return ConvaiOperation<Unit>.Failed(new ObjectDisposedException(nameof(ConcordTwoBSession)));
+            _ = Reply(request);
+            return ConvaiOperation<Unit>.Succeeded(Unit.Value);
+        }
+
+        async Task Reply(ConversationRequest request)
+        {
+            var client = ConcordClient.Live;
+            var text = "";
+            if (client != null && client.Connected)
+                text = await client.AskTwoB(CharacterId, CharacterId, "", request.Text ?? "");
+            if (string.IsNullOrEmpty(text))
+                text = "{ok:false, reason:'no_gateway'}";
+            Push(new ConversationResponsePart(text, null, true));
+        }
+
+        public IConvaiStream<ConversationResponsePart> OpenResponseStream(CancellationToken ct = default) =>
+            new ConvaiStream<ConversationResponsePart>(readCt => Read(readCt), disposeAsync: KillStream);
+
+        public ValueTask DisposeAsync()
+        {
+            if (!_done)
+            {
+                _done = true;
+                _life.Cancel();
+                _signal.Release();
+                EventReceived?.Invoke(new ConversationEvent("session_ended"));
+            }
+            return default;
+        }
+
+        void Push(ConversationResponsePart part)
+        {
+            lock (_lock) _parts.Enqueue(part);
+            _signal.Release();
+        }
+
+        async IAsyncEnumerable<ConversationResponsePart> Read([EnumeratorCancellation] CancellationToken ct)
+        {
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _life.Token);
+            while (!linked.IsCancellationRequested)
+            {
+                try { await _signal.WaitAsync(linked.Token); }
+                catch (OperationCanceledException) { yield break; }
+                while (true)
+                {
+                    ConversationResponsePart next;
+                    lock (_lock)
+                    {
+                        if (_parts.Count == 0) break;
+                        next = _parts.Dequeue();
+                    }
+                    yield return next;
+                }
+            }
+        }
+
+        ValueTask KillStream()
+        {
+            if (!_life.IsCancellationRequested) _life.Cancel();
+            return default;
         }
     }
 }
