@@ -29,6 +29,12 @@ describe("Concordia system matrix — audit pins", () => {
     assert.match(doc, /different trust boundaries/);
     assert.match(doc, /Simulation scale must never equal rendering scale/);
     assert.match(doc, /Sere is not a ninth Refusal gate/);
+    assert.match(doc, /persistent universe platform/);
+    assert.match(doc, /player is one participant/);
+    assert.match(doc, /observe \/ reason \/ remember/);
+    assert.match(doc, /Drought→revolt is \*\*not\*\* one closed loop yet/);
+    assert.match(doc, /diseases \*\*never cross worlds\*\*/);
+    assert.match(doc, /Authored content is the \*\*vocabulary\*\*/);
     assert.doesNotMatch(doc, /Concord admits he loves her/);
     assert.doesNotMatch(doc, /Aurelia/);
   });

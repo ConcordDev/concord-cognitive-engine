@@ -31,6 +31,47 @@ On `main` today the living-world index is `content/world/` + server heartbeats +
 
 ---
 
+## Destination — persistent universe platform
+
+Implementing the spec **on top of this stack** does not make “a bigger game.” It changes the category:
+
+```
+Concordia = autonomous persistent universe
+          + simulation engine
+          + game clients (Unity / web / Godot)
+          + cognitive interface (Concord / 2B)
+```
+
+The fundamental object is a **universe that can generate, simulate, remember, and present its own history.** The player is one participant inside an already-running system. If nobody logs in for a month, kingdoms still trade, people still work, caravans still move, and `WorldMemory.Advance` / server heartbeats still accumulate. “What happened while I was gone?” is `event_timeline_log` + Unity `LastEvent`, not an LLM story.
+
+Concord sits **above** the sim (observe / reason / remember). It does not puppet every NPC. `AskTwoB` reads world state; an empty box returns `no_gateway`, never a fabricated voice.
+
+That destination is **composition of owners already in the matrix**, not a second civilization engine. #954 stays the presentation floor.
+
+| Spec claim | Already true | Gap (do not rebuild) |
+|---|---|---|
+| City is not waiting for you | Unity `NpcLife` jobs + `WorldClock.Tick`; server `npc-routines` | Jobs are clock-driven; not yet one causal dossier per actor |
+| Interfere and the sim reacts | Flower-law, combat ack, stall `act=open`, `Hostile` | Unity stall is not a ledger transaction until KitBag = `player_inventory` |
+| Quest → scripted event is the wrong shape | Lattice-born quests + Unity `plotsCsv` already spawn from drift/state | Drought→revolt is **not** one closed loop yet (row 18) |
+| Edric as a persistent person | Server: routines, marriage, `npc-legacy` (inherit grudges/recipes/wealth), inventory, skills, pain, death | **Not one row.** Unity has job + appearance. House/debt/axe-instance still pieces |
+| If Edric dies, the world remembers | `onNpcDeath` → heirs, legacy, corpse | Unity `MarkDead` CSV must hit that path |
+| Equip changes more than an icon | Server affixes/durability/sets; Unity `CharacterGear` hand socket | Unity mesh must follow `CanEquip`; no `origin_world` on the row yet |
+| Gate is infrastructure | `CrossRing.Walk` carries kit; tariff 0.05; caravan `loading/traveling/at_gate` | Server `kingdom:request` caravans stay **honestly empty** until persist-sync |
+| Economy is a machine | `npc-economy` + `world-economy` + Ring cargo | “Why is grain expensive?” = 2B over that state after P0, not invented prose |
+| Nine worlds are societies | `Canon` + `DressVocab` + refusal laws | Unique **verbs** still thinner than unique **copy** |
+| Assets are the skin | `DressVocab` / `FreePacks` / Store packs | Dresser maps semantic kit → stems. Not “pop 4200 → generate a city” yet |
+| Simulate globally, render locally | Unity `SimLod` Real `<28m` / Bulk `<70m` / Virtual; server shards | Browser WebGPU reuses this contract; it does not change `npc_id` |
+
+**Policy lock (do not “fix” by crossing it):** diseases **never cross worlds** (`disease-engine` is per-`world_id`; contagion uses the patient’s current world). A Gate that moves goods and people does **not** move plague unless governance explicitly reverses that invariant. Creatures, kit, and travelers may cross; infection does not.
+
+**Causal drought chain** — target composition, not new modules:
+
+`seasons` / ecology → crop-season yield → `npc-economy` stock → `world-economy` price → `CrossRing` caravan → `Hostile` / combat → shortage (stock) → `faction-strategy` / reputation → decree / war.
+
+Each arrow already has an owner. Wiring them into **one** observable chain is P0+ (persist-sync first). Do not author a drought quest.
+
+---
+
 ## Three surfaces, one canon
 
 | Surface | Role | Authority |
@@ -125,9 +166,11 @@ The “resource → material → component → recipe → item → unique” sta
 | Unique instance history | Y | `player_inventory.id` is a row id; there is no provenance/history log on that row |
 | Named uniques | Y | DTU recipes + UGC; not “King’s Blade recognized by royal guards” as a first-class object |
 
-**Do not** author 150–300 resources from scratch. Add **world filters** and missing families onto `RESOURCE_CATALOG`. Components (blade/pommel/…) are a data table that `craft-resolve` can consume — they are not a reason to fork the resolver.
+**Do not** author 150–300 resources from scratch, and do **not** hand-author fifty thousand finished swords. Authored content is the **vocabulary** (catalog rows, archetypes, modifiers, world constraints). The simulation is the **combinations**. Add **world filters** and missing families onto `RESOURCE_CATALOG`. Components (blade/pommel/…) are a data table that `craft-resolve` can consume — they are not a reason to fork the resolver.
 
-Cross-world crafted objects become real when `player_inventory` (or a future instance table) carries `origin_world` and the Ring already carries kit on `CrossRing.Walk`. That field is the next row, not a new item generator.
+The catalog already spans organic/stone/metal/mineral/creature/botanical/arcane (`wood`…`dragonbone`, soul gems, `mana_crystal`, `aether_dust`). Glyph algebra is the systemic magic. Mounts and vehicles are server substrates, not a new item generator.
+
+Cross-world crafted objects become real when `player_inventory` (or a future instance table) carries `origin_world` and the Ring already carries kit on `CrossRing.Walk`. That field is the next row, not a new item generator. Oblivion/Fallout **scale** per gated world is a presentation/LOD + dresser problem (`SimLod` + `DressVocab`), not a second map engine.
 
 ---
 
@@ -151,7 +194,7 @@ Server shards already split per-world writes (`server/lib/world-shard-protocol.j
 
 When you stand still in Unity, `WorldClock.Tick` still advances hour, weather, prices, ecology, and authored events. `Enter` calls `WorldMemory.Advance` for hours away. `NpcLife` keeps jobs. `FaunaLife` hunts. `CrossRing` can dispatch a caravan.
 
-That is **already** a running kernel. It is **not** yet one causal machine with the server ledger. The gap is agreement, not absence.
+That is **already** a running kernel. It is **not** yet one causal machine with the server ledger. The gap is agreement, not absence. Morning shops / night taverns / weather / war are `WorldClock` hour + `NpcLife` jobs + server routines + `faction-strategy` — city **behavior**, not a second ambient director.
 
 ---
 
