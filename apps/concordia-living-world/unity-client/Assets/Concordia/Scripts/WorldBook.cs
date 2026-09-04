@@ -683,7 +683,7 @@ namespace Concordia
             float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
             // Trilight already carries HubLook's sky/equator/ground. Scaling
             // ambientIntensity on top crushed the HDR sky to mud.
-            if (RenderSettings.ambientMode == AmbientMode.Trilight)
+            if (RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight)
                 RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
             else
                 RenderSettings.ambientIntensity = 0.28f + 0.72f * day;

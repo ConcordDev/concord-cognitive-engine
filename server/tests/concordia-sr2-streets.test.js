@@ -88,7 +88,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(look, /reflectionIntensity = world == WorldId\.Hub \? 1\.05f/);
     assert.match(look, /metallic = 0\.06f, float smooth = 0\.26f/);
     assert.match(look, /SetFloat\("_Smoothness", 0\.22f\)/);
-    assert.match(book, /ambientMode == AmbientMode\.Trilight/);
+    assert.match(book, /UnityEngine\.Rendering\.AmbientMode\.Trilight/);
     assert.match(book, /World == WorldId\.Hub/);
     assert.match(book, /sun\.intensity = 0\.92f \+ 0\.38f \* day/);
     assert.match(builder, /1\.18f/);
