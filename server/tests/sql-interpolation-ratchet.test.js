@@ -173,6 +173,10 @@ const REVIEWED = {
   "lib/inference/thread-manager.js": 2,
   "lib/lattice-fork.js": 1,
   "lib/lattice-quest-composer.js": 1,
+  // lib/lattice-seed.js (1) — listPages' `clauses` is assembled only from
+  // fixed literal fragments ("user_id = ?" / "source_id = ?" / "status = ?")
+  // gated by presence checks; every value is bound via the `params` array.
+  "lib/lattice-seed.js": 1,
   "lib/lfg.js": 1,
   "lib/literary-vec.js": 1,
   "lib/long-horizon-planner.js": 1,
@@ -199,6 +203,22 @@ const REVIEWED = {
   "lib/quest-archetype-bias.js": 1,
   "lib/realm-access.js": 1,
   "lib/robotics-persistence.js": 1,
+  // lib/runtime/causal-memory.js (1) — retrieveRelevantLessons' `where` is
+  // assembled only from fixed literal SQL fragments gated by presence
+  // checks; every value (including the LIKE '%...%' wildcards) is bound via
+  // the `params` array, never spliced into SQL text.
+  "lib/runtime/causal-memory.js": 1,
+  // lib/runtime/cognitive-savings-ledger.js (2) — `placeholders` is the same
+  // fixed-count "?"-join IN-clause idiom as forgetting-engine.js above (over
+  // idList.length items, values bound via ...idList); the second site's
+  // `where` is a ternary over two fixed literal fragments, values bound via
+  // `params`.
+  "lib/runtime/cognitive-savings-ledger.js": 2,
+  // lib/runtime/memory-graph.js (3) — queryGraph's `where` is the same
+  // fixed-literal-fragment idiom as causal-memory.js above; getNeighborhood's
+  // two `placeholders`/`nodePlaceholders` are the fixed-count "?"-join
+  // IN-clause idiom, values bound via the spread frontier/ids arrays.
+  "lib/runtime/memory-graph.js": 3,
   "lib/scheme-overhear.js": 1,
   "lib/secrets.js": 2,
   "lib/security-ingest.js": 1,

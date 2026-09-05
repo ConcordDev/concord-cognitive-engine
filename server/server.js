@@ -36507,6 +36507,17 @@ if (db) {
     // Read-only replicas never seed — the writer owns content. seedContent
     // INSERTs authored factions/NPCs/lore and would throw on a readonly handle.
     if (!READ_REPLICA) { try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); } }
+    // Concord Runtime — deployment profile (docs/CONCORD_RUNTIME_MASTER_SPEC.md).
+    // getActiveProfile() alone only reads CONCORD_DEPLOYMENT_PROFILE as a
+    // fallback; applying it also persists the profile's derived settings
+    // (auth_gate.enforce_autonomous, mission.marathon_default, the DILA
+    // worker allowlist env var) so choosing a profile actually changes
+    // runtime behavior, not just what getActiveProfile() reports back.
+    // Idempotent — safe to re-apply on every boot.
+    try {
+      const { getActiveProfile, applyDeploymentProfile } = await import("./lib/runtime/deployment-profiles.js");
+      applyDeploymentProfile(db, getActiveProfile(db).id);
+    } catch (e) { console.warn("[deployment-profiles]", e.message); }
     // Living Society WS0 — the world breathes immediately. The heartbeat
     // dispatcher only starts at boot+50s (then npc-routine-cycle every ~75s),
     // so a bare boot leaves NPCs frozen for the first 1–2 minutes (the first
