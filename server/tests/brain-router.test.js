@@ -141,6 +141,28 @@ describe("resolveBrain", () => {
 // ── preloadBrains ───────────────────────────────────────────────────────────
 
 describe("preloadBrains", () => {
+  // preloadBrains() makes real `fetch()` calls to each brain's Ollama
+  // endpoint. In this sandboxed/CI environment none of those endpoints are
+  // reachable, so every call fell through to brain-router.js's real
+  // retry-with-backoff path (5s + 15s per brain across ~5 endpoints) —
+  // ~100s per preloadBrains() invocation, ~300s across this describe
+  // block's 3 invocations, which was landing right at (and sometimes over)
+  // the 300s file-level test-timeout. The docstring at the top of this file
+  // always claimed "mocked fetch", but no mock was ever installed — fixed
+  // here by actually stubbing `globalThis.fetch` so preload resolves
+  // immediately, matching the documented intent and removing the real
+  // network dependency (and its timing flakiness) from this suite.
+  let originalFetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    globalThis.fetch = mock.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }));
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   it("is exported as a function", async () => {
     const mod = await import("../lib/brain-router.js");
     assert.equal(typeof mod.preloadBrains, "function");
@@ -148,8 +170,6 @@ describe("preloadBrains", () => {
 
   it("accepts an optional structuredLog parameter", async () => {
     const mod = await import("../lib/brain-router.js");
-    // preloadBrains makes fetch calls which will fail in test env
-    // But it should handle errors gracefully and return loaded/failed arrays
     const logs = [];
     const result = await mod.preloadBrains((level, event, data) => {
       logs.push({ level, event, data });
@@ -176,8 +196,10 @@ describe("preloadBrains", () => {
       logs.push({ level, event });
     });
 
-    // Should have logged either success or failure for each brain
-    assert.ok(logs.length >= 0); // May have logs depending on network
+    // With fetch mocked to always succeed, every brain should log a
+    // successful preload.
+    assert.ok(logs.length > 0, "Expected at least one structured log entry");
+    assert.ok(logs.every((l) => l.event === "brain_preloaded"), "Expected only success logs when fetch is mocked to succeed");
   });
 });
 

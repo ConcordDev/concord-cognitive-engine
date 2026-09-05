@@ -666,6 +666,7 @@ export default function createAuthRouter({
   // isn't a failed *attempt* in the sense the limiter exists to catch) and
   // cheaper (skips the limiter's bookkeeping for what is, in practice, the
   // single most common call this route ever receives).
+  // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
   router.post("/refresh", (req, res, next) => {
     if (!req.cookies?.[REFRESH_TOKEN_COOKIE]) {
       return res.status(401).json({ ok: false, error: "No refresh token provided", code: "REFRESH_MISSING" });
