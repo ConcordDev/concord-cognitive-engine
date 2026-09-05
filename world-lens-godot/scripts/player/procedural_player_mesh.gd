@@ -150,7 +150,7 @@ func _build_from_proportions(p: Dictionary) -> void:
 
 	# Arms
 	for sign in [-1.0, 1.0]:
-		var ax := sign * (shoulder_w * 0.5 + head_w * 0.12)
+		var ax: float = sign * (shoulder_w * 0.5 + head_w * 0.12)
 		var upper := CylinderMesh.new()
 		upper.top_radius = head_w * 0.18
 		upper.bottom_radius = head_w * 0.18
@@ -176,7 +176,7 @@ func _build_from_proportions(p: Dictionary) -> void:
 
 	# Legs + feet
 	for sign2 in [-1.0, 1.0]:
-		var lx := sign2 * (hip_w * 0.25)
+		var lx: float = sign2 * (hip_w * 0.25)
 		var leg := CylinderMesh.new()
 		leg.top_radius = head_w * 0.22
 		leg.bottom_radius = head_w * 0.22

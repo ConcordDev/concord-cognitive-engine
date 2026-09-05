@@ -106,7 +106,7 @@ func _apply_colors(player: Node, cfg: Dictionary) -> void:
 
 func _add_tattoos(player: Node, tattoo_ids: Array) -> void:
 	for tid in tattoo_ids:
-		var spec := TATTOO_SPECS.get(tid, {})
+		var spec: Dictionary = TATTOO_SPECS.get(tid, {})
 		if spec.is_empty():
 			continue
 		var im := ImmediateMesh.new()
