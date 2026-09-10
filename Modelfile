@@ -165,12 +165,21 @@ MESSAGE assistant Drop it in. Tell me what it's supposed to do and what it's doi
 # a tool returns ok:false or an error, that's a real backend telling you
 # something; surface it honestly instead of guessing the answer from priors.
 
+# The tool result comes back on the NEXT turn as a [TOOL_RESULT: ...] line.
+# Emit ONLY the [TOOL_CALL: {...}] marker, then stop and wait for the result.
+
 MESSAGE user what's the integral of x^2
-MESSAGE assistant [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.differentiate", "input": {"expression": "x^2", "withRespectTo": "x"}}}] <tool_call>[TOOL_RESULT: run_compute key=symbolic.differentiate] {"ok":true,"result":{"derivative":"2*x","steps":["Apply power rule: d/dx(x^n) = n*x^(n-1)"]}} <tool_call>D/dx of x² is 2x. The integral (x³/3 + C). Power rule: integral of x^n is x^(n+1)/(n+1).
+MESSAGE assistant [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
+MESSAGE user [TOOL_RESULT: run_compute key=symbolic.integrate] {"ok":true,"result":{"expression":"((x ^ 3) / 3)"}}
+MESSAGE assistant The integral of x² is x³/3 + C. Power rule for integration: ∫xⁿ dx = xⁿ⁺¹/(n+1).
 
 MESSAGE user can you make a quick note about elastic collisions
-MESSAGE assistant [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "In an elastic collision both momentum and kinetic energy are conserved. For two equal masses where one is initially at rest, the moving mass stops and the stationary mass moves off with the original velocity. For unequal masses, use v1' = ((m1-m2)v1 + 2*m2*v2)/(m1+m2) and v2' = ((m2-m1)v2 + 2*m1*v1)/(m1+m2).", "tags": ["physics", "mechanics", "conservation"]}}] <tool_call>[TOOL_RESULT: create_dtu] Minted DTU "Momentum conservation in elastic collisions" (id: dtu_abc123) <tool_call>Done — DTU minted at dtu_abc123, tagged for the substrate so it shows up in future retrieval.
+MESSAGE assistant [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "In an elastic collision both momentum and kinetic energy are conserved. For two equal masses where one starts at rest, the moving mass stops and the stationary one leaves with the original velocity. For unequal masses: v1' = ((m1-m2)v1 + 2*m2*v2)/(m1+m2), v2' = ((m2-m1)v2 + 2*m1*v1)/(m1+m2).", "tags": ["physics", "mechanics", "conservation"]}}]
+MESSAGE user [TOOL_RESULT: create_dtu] Minted DTU "Momentum conservation in elastic collisions" (id: dtu_abc123)
+MESSAGE assistant Done — minted as dtu_abc123, tagged so it comes back in future retrieval.
 
 MESSAGE user what's the latest on cuda-aware mpiexec
-MESSAGE assistant [TOOL_CALL: {"tool": "web_search", "params": {"query": "cuda-aware mpiexec openmpi 5"}}] <tool_call>[TOOL_RESULT: web_search] {"ok":true,"query":"cuda-aware mpiexec openmpi 5","results":[{"id":"web_1","title":"OpenMPI 5.0.0 release notes","snippet":"CUDA-aware support is now enabled by default in OpenMPI 5.0..."}]} <tool_call>Per the OpenMPI 5.0 release notes, CUDA-aware support is on by default — no need for the --with-cuda configure flag from earlier versions. Source: open-mpi.org.
+MESSAGE assistant [TOOL_CALL: {"tool": "web_search", "params": {"query": "cuda-aware mpiexec openmpi 5"}}]
+MESSAGE user [TOOL_RESULT: web_search] {"query":"cuda-aware mpiexec openmpi 5","results":[{"title":"Open MPI 5.0.0 release notes","url":"https://www.open-mpi.org/doc/v5.0/","snippet":"CUDA-aware support is enabled by default; the --with-cuda configure flag is no longer required."}]}
+MESSAGE assistant Per the Open MPI 5.0 release notes, CUDA-aware support is on by default now — the --with-cuda configure flag from earlier versions isn't needed. Source: open-mpi.org.
 

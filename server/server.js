@@ -5981,7 +5981,13 @@ function installSharedStateWriteThrough() {
     structuredLog("warn", "shared_state_write_through_install_failed", { error: String(e?.message || e) });
   }
 }
-// Bridges are assigned earlier in Wave-9; install Map hooks now that STATE exists.
+// Install the Map hooks now that STATE exists. The bridge singletons
+// (_chatSessionBridge etc.) are assigned much later — right after redisClient
+// is created — but the onSet/onDelete closures read those `let` bindings at
+// call time, so hooks installed here light up once boot reaches that point.
+// A second installSharedStateWriteThrough() runs after the bridges are
+// assigned (idempotent via the __concordWriteThrough guard) to emit the
+// "installed" log line with real bridge references.
 installSharedStateWriteThrough();
 
 // ============================================================================

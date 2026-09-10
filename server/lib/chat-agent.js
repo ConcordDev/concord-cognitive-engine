@@ -107,6 +107,46 @@ function _validateToolCall(call) {
   };
 }
 
+// run_compute dispatch. Two calling conventions live under one tool:
+//   • physics/chemistry/engineering/stats/quantum — the fn destructures a
+//     single object: power({ voltage, current }). Pass `input` straight.
+//   • symbolic-math — the fns are positional string args:
+//     integrate(expression, variable). An LLM naturally emits
+//     input:{expression:"x^2", variable:"x"}; passing that object to
+//     integrate() makes `typeof expression === "string"` false and it
+//     silently returns 0. Adapt the common symbolic shapes to positionals.
+const _SYMBOLIC_MODS = new Set(["symbolic", "symbolic-math", "symbolicmath"]);
+export function invokeCompute(mod, modName, fnName, input) {
+  const fn = mod[fnName];
+  if (_SYMBOLIC_MODS.has(String(modName).toLowerCase()) && input && typeof input === "object" && !Array.isArray(input)) {
+    const expr = input.expression ?? input.expr ?? input.equation ?? input.value ?? input.input;
+    const variable = input.variable ?? input.var ?? input.withRespectTo ?? input.wrt ?? "x";
+    if (typeof expr === "string") {
+      if (fnName === "evaluate") return fn(expr, input.assignment ?? input.values ?? {});
+      if (fnName === "substitute") return fn(expr, variable, input.replacement ?? input.with);
+      return fn(expr, variable);
+    }
+  }
+  if (typeof input === "string") return fn(input);
+  return fn(input);
+}
+
+// symbolic-math returns an AST node ({type:"op",op:"/",args:[...]}) which is
+// unreadable to the model. `stringify` (passed in by the caller, which already
+// has the module loaded) turns it into "((x^3)/3)".
+export function normalizeComputeResult(result, stringify) {
+  if (
+    typeof stringify === "function" &&
+    result && typeof result === "object" && !Array.isArray(result) &&
+    typeof result.type === "string" &&
+    (result.op || result.name || result.value != null || Array.isArray(result.args))
+  ) {
+    try { return { expression: stringify(result), ast: result }; }
+    catch { /* fall through */ }
+  }
+  return result;
+}
+
 // Grounding-audit gap fix (2026-07-24) — tool-preference tally. One
 // initiative-engine instance per db handle (WeakMap keyed on the db object
 // itself, same shape as prompt-registry.js's _styleEngineByDb) so recording
@@ -133,8 +173,8 @@ guessing the answer from training data.
 Available tools (with one working example each):
 - web_search: Search the web for current information. Params: {"query": "search terms"}
   Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
-- run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
-  Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "physics.power", "input": {"force": 100, "velocity": 5}}}]
+- run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}. Physics/chemistry/engineering functions take a named-field object (e.g. physics.ohmsLaw -> {"voltage":12,"resistance":4}). Symbolic math (symbolic.differentiate / integrate / simplify / solve / expand / evaluate) takes {"expression": "...", "variable": "x"}.
+  Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.integrate", "input": {"expression": "x^2", "variable": "x"}}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
   Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
@@ -235,10 +275,27 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           limit: Number(call.params.limit) || 5,
         }, ctx);
         if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "web_search failed" };
+        // Keep only the fields the model needs, and bound the payload —
+        // expert_mode.web_search can return a large object (full snippets,
+        // raw HTML excerpts, provider metadata). formatToolResults stringifies
+        // this, so an uncapped object would blow the turn's token budget the
+        // way every other tool's result is capped (run_lens_action/run_compute
+        // slice to 4000).
+        const _results = Array.isArray(r.results) ? r.results : (Array.isArray(r.sources) ? r.sources : []);
+        const trimmed = {
+          query: r.query || call.params.query,
+          answer: typeof r.summary === "string" ? r.summary.slice(0, 2000)
+            : (typeof r.answer === "string" ? r.answer.slice(0, 2000) : undefined),
+          results: _results.slice(0, 6).map((x) => ({
+            title: String(x.title || x.name || "").slice(0, 200),
+            url: String(x.url || x.link || x.href || "").slice(0, 400),
+            snippet: String(x.snippet || x.description || x.text || "").slice(0, 500),
+          })),
+        };
         return {
           tool: call.tool, ok: true,
           query: call.params.query,
-          result: r,
+          result: JSON.stringify(trimmed).slice(0, MAX_TOOL_RESULT_LEN),
         };
       }
       case "run_compute": {
@@ -253,8 +310,12 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           if (!mod || typeof mod[fnName] !== "function") {
             return { tool: call.tool, ok: false, error: `unknown compute function ${key}` };
           }
-          const result = mod[fnName](input);
-          return { tool: call.tool, ok: true, key, result };
+          const rawResult = invokeCompute(mod, modName, fnName, input);
+          let _stringify;
+          if (_SYMBOLIC_MODS.has(String(modName).toLowerCase())) {
+            _stringify = mod.stringify || (await import("./compute/symbolic-math.js")).stringify;
+          }
+          return { tool: call.tool, ok: true, key, result: normalizeComputeResult(rawResult, _stringify) };
         } catch (err) {
           return { tool: call.tool, ok: false, error: `compute error: ${err?.message || err}` };
         }
@@ -868,27 +929,38 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
     // Resolve the caller's role once and inject into ctx.actor.role so
     // permissioned macros (dtu.create's skipCouncilGate check, scope-gated
     // detector registrations, council votes) see the right ACL context.
-    // Falls back to "member" (the most common non-system role) when the
-    // user lookup fails — a deliberate fail-open that prefers letting Kay
-    // do the user's work over silent permission denials. For the
-    // founder/owner-self-edit case, the DB lookup returns the actual role
-    // string from the users table.
+    //
+    // Fail-open to "member" (signed off, 2026-09-10): a users-table read
+    // that throws, or a userId with no row, resolves to "member" so Kay can
+    // still do the user's work rather than hard-denying. The fail-open is
+    // SAFE because escalation is gated the other way — `internal` (and thus
+    // any council-gate bypass) is granted ONLY when we positively READ
+    // "owner"/"founder" from the DB, never on the fallback. So the worst a
+    // failed lookup does is under-privilege, never over-privilege.
+    // The abnormal paths (query threw / user not found) are logged so a
+    // misconfigured deploy doesn't silently downgrade every caller forever.
     let callerRole = "member";
+    let _roleResolved = false;
     try {
       const roleRow = db.prepare(`SELECT role FROM users WHERE id = ?`).get(userId);
-      if (roleRow?.role) callerRole = String(roleRow.role);
-    } catch { /* table may not exist in some test contexts — keep member */ }
+      if (roleRow?.role) { callerRole = String(roleRow.role); _roleResolved = true; }
+      else if (!roleRow) {
+        try { console.warn(`[chat-agent] role lookup: no users row for ${userId} — treating as member`); } catch { /* noop */ }
+      }
+    } catch (e) {
+      try { console.warn(`[chat-agent] role lookup threw (${e?.message || e}) — fail-open to member`); } catch { /* noop */ }
+    }
+    const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
     const ctx = {
       db,
       actor: {
         userId,
         sessionId: opts.sessionId || null,
         role: callerRole,
-        // The dtu.create skipCouncilGate path also checks ctx.actor.internal.
-        // Mirror it on a per-call basis so the macro can do `if (internal ||
-        // ["owner","founder"].includes(role)) bypass()`. The user_role path
-        // covers the explicit role; internal=true is the admin/system path.
-        internal: callerRole === "owner" || callerRole === "founder",
+        // dtu.create's skipCouncilGate path checks ctx.actor.internal. Grant it
+        // ONLY for a DB-confirmed owner/founder — a fallback "member" (or a
+        // "member" from a failed lookup) never bypasses the gate.
+        internal: _elevated,
       },
       // The session-flag macros (chicken3.session_optin family) read session
       // via ctx.reqMeta.sessionId first. Pass it through so per-session opt-ins
