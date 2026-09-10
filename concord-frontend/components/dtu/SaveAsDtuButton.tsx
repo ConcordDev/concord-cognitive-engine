@@ -90,6 +90,10 @@ export interface SaveAsDtuButtonProps {
    * highlighting the saved row, refreshing a "my DTUs" sidebar, etc.
    */
   onSaved?: (dtuId: string) => void;
+  /** Optional initial content class (default: dataset for real-data saves). */
+  defaultContentClass?: ContentClass | string;
+  /** Optional initial license scopes (default: private). */
+  defaultLicenseScopes?: string[];
 }
 
 const RAW_SNAPSHOT_BUDGET = 8000;
@@ -115,14 +119,16 @@ export function SaveAsDtuButton({
   confirm = true,
   className = '',
   onSaved,
+  defaultContentClass = 'dataset',
+  defaultLicenseScopes,
 }: SaveAsDtuButtonProps) {
   const [open, setOpen] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState(title);
   const [editTags, setEditTags] = useState([apiSource, ...extraTags].join(', '));
   const [isGlobal, setIsGlobal] = useState(false);
-  const [contentClass, setContentClass] = useState<ContentClass>('dataset');
-  const [licenseScopes, setLicenseScopes] = useState<string[]>(['private']);
+  const [contentClass, setContentClass] = useState<ContentClass>((defaultContentClass as ContentClass) || 'dataset');
+  const [licenseScopes, setLicenseScopes] = useState<string[]>(defaultLicenseScopes?.length ? [...defaultLicenseScopes] : ['private']);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 

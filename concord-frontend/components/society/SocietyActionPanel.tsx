@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -94,7 +95,7 @@ export function SocietyActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `WB data — ${country} ${indicator}`, tags: ['society', 'worldbank', country], source: 'society:wb:mint', meta: { visibility: 'private', consent: { allowCitations: false }, wb: { indicator: indicatorResult, country: countryResult, compare: compareResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `WB data — ${country} ${indicator}`, tags: ['society', 'worldbank', country], source: 'society:wb:mint', meta: { visibility: 'private', consent: { allowCitations: false }, wb: { indicator: indicatorResult, country: countryResult, compare: compareResult } } }, 'dataset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('society.mintedDtuId', id, { label: `wb ${id.slice(0, 8)}` }); ok(`WB DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -117,7 +118,7 @@ export function SocietyActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `WB data viz — ${indicator}`, tags: ['society', 'worldbank', 'public'], source: 'society:wb:publish', meta: { visibility: 'public', consent: { allowCitations: true }, indicator: indicatorResult, compare: compareResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `WB data viz — ${indicator}`, tags: ['society', 'worldbank', 'public'], source: 'society:wb:publish', meta: { visibility: 'public', consent: { allowCitations: true }, indicator: indicatorResult, compare: compareResult } }, 'dataset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

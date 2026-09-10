@@ -3,14 +3,14 @@
 /**
  * LearningPanel — assessKnowledge + skill timeline from real assessments_list.
  */
-import { BookOpen, RefreshCw, Lightbulb, TrendingUp } from 'lucide-react';
+import { BookOpen, RefreshCw, Lightbulb, TrendingUp, Target, Sparkles, Brain } from 'lucide-react';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
 import { pct, formatTimestamp } from '@/components/metacognition/metacog-model';
 import { ErrorState } from '@/components/common/EmptyState';
 
 export function LearningPanel() {
   const {
-    knowledgeDomains, learningInsights, runAssessment,
+    knowledgeDomains, learningInsights, patterns, runAssessment,
     isLoading, isError, errorMessage, refetchAll,
   } = useMetacognitionDesk();
 

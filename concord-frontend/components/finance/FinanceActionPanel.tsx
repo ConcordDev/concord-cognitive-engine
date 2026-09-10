@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -140,12 +141,12 @@ export function FinanceActionPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Finance snapshot — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['finance', 'snapshot', netWorthResult?.netWorth != null ? `nw:${Math.round(netWorthResult.netWorth)}` : ''],
           source: 'finance:snapshot:mint',
           meta: { visibility: 'private', consent: { allowCitations: false }, finance: { netWorth: netWorthResult, tax: taxResult, monteCarlo: mcResult, subscriptions: subsResult, envCreated } },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -181,12 +182,12 @@ export function FinanceActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Retirement scenario — ${mcCurrentAge}→${mcRetireAge}, ${mcResult.successRate}% success`,
             tags: ['finance', 'retirement', 'public', `success:${mcResult.successRate}`],
             source: 'finance:retirement:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, scenario: { currentAge: parseInt(mcCurrentAge, 10), retirementAge: parseInt(mcRetireAge, 10), monthlyContrib: parseFloat(mcMonthlyContrib), result: mcResult } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

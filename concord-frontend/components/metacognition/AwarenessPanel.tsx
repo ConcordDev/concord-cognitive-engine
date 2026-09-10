@@ -3,14 +3,15 @@
 /**
  * AwarenessPanel — calibration, blind spots, knowledge map (reflective desk).
  */
-import { BarChart3, AlertTriangle, Target, Activity, BookOpen, Gauge } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { BarChart3, AlertTriangle, Target } from 'lucide-react';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
-import { pct, severityColor, severityBadge } from '@/components/metacognition/metacog-model';
+import { pct, severityColor, severityBadge, formatTimestamp, trendIcon } from '@/components/metacognition/metacog-model';
 import { ErrorState } from '@/components/common/EmptyState';
 
 export function AwarenessPanel() {
   const {
-    spots, cal, knowledgeDomains, patterns, introspectionHistory, predictionStats, statusInfo,
+    spots, cal, knowledgeDomains,
     isLoading, isError, errorMessage, refetchAll,
   } = useMetacognitionDesk();
 

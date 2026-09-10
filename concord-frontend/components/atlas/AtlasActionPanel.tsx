@@ -24,6 +24,7 @@ import {
   useRecallableAction,
   RecallSlot,
 } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -145,7 +146,7 @@ export function AtlasActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Geo — ${query.slice(0, 40) || 'atlas'}`, tags: ['atlas', 'geo'], source: 'atlas:geo:mint', meta: { visibility: 'private', consent: { allowCitations: false }, atlas: { geo: geoResult, rev: revResult, poi: poiResult, dist: distResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Geo — ${query.slice(0, 40) || 'atlas'}`, tags: ['atlas', 'geo'], source: 'atlas:geo:mint', meta: { visibility: 'private', consent: { allowCitations: false }, atlas: { geo: geoResult, rev: revResult, poi: poiResult, dist: distResult } } }, 'world_asset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('atlas.mintedDtuId', id, { label: `Geo DTU ${id.slice(0, 8)}…` }); ok(`Geo DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -173,7 +174,7 @@ export function AtlasActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Atlas dataset — ${query.slice(0, 30) || 'osm'}`, tags: ['atlas', 'osm', 'public'], source: 'atlas:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, geo: geoResult, poi: poiResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Atlas dataset — ${query.slice(0, 30) || 'osm'}`, tags: ['atlas', 'osm', 'public'], source: 'atlas:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, geo: geoResult, poi: poiResult } }, 'world_asset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -128,7 +129,7 @@ export function HouseholdActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Household — week of ${new Date().toISOString().slice(0, 10)}`, tags: ['household', 'week'], source: 'household:week:mint', meta: { visibility: 'private', consent: { allowCitations: false }, household: { meals: meals.split('\n').filter(Boolean), grocery: groceryResult, chores: choreResult, maintenance: maintResult, summary: summaryResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Household — week of ${new Date().toISOString().slice(0, 10)}`, tags: ['household', 'week'], source: 'household:week:mint', meta: { visibility: 'private', consent: { allowCitations: false }, household: { meals: meals.split('\n').filter(Boolean), grocery: groceryResult, chores: choreResult, maintenance: maintResult, summary: summaryResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('household.mintedDtuId', id, { label: `Week DTU ${id.slice(0, 8)}…` }); ok(`Week DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -156,7 +157,7 @@ export function HouseholdActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Household routine — ${chores.split('\n').filter(Boolean).length} chores`, tags: ['household', 'public', 'routine'], source: 'household:routine:publish', meta: { visibility: 'public', consent: { allowCitations: true }, routine: { chores: chores.split('\n').filter(Boolean), meals: meals.split('\n').filter(Boolean) } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Household routine — ${chores.split('\n').filter(Boolean).length} chores`, tags: ['household', 'public', 'routine'], source: 'household:routine:publish', meta: { visibility: 'public', consent: { allowCitations: true }, routine: { chores: chores.split('\n').filter(Boolean), meals: meals.split('\n').filter(Boolean) } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

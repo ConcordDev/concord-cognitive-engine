@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Studio DAW workspace — Ableton/Logic-shape session extracted from the lens
+ * page. Owns project state, transport, views, and macro call sites. The lens
+ * page is a thin re-export (see app/lenses/studio/page.tsx).
+ */
+
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { SessionRail } from '@/components/lens/SessionRail';
@@ -120,6 +126,7 @@ import { AutomationView } from '@/components/studio/AutomationView';
 import { MasteringPanel } from '@/components/studio/MasteringPanel';
 import { Soundboard } from '@/components/studio/Soundboard';
 import StudioWorkbench from '@/components/studio/StudioWorkbench';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 // ============================================================================
 // Constants & Defaults
@@ -414,6 +421,9 @@ function RecentProjectsList({
 // Main Studio Page Component
 // ============================================================================
 
+type SaveStatus = 'idle' | 'success' | 'error';
+type PublishLicense = 'basic' | 'premium' | 'exclusive';
+
 export function StudioDawWorkspace() {
   useLensNav('studio');
   const {
@@ -450,6 +460,10 @@ export function StudioDawWorkspace() {
     try { localStorage.setItem('concord_studio_view', studioView); } catch { /* private mode */ }
   }, [studioView]);
   const [project, setProject] = useState<DAWProject | null>(null);
+  const [workbenchOpen, setWorkbenchOpen] = useState(false);
+  const [showDawWorkbench, setShowDawWorkbench] = useState(false);
+  const [showStudioRepos, setShowStudioRepos] = useState(false);
+  const [showActionPanel, setShowActionPanel] = useState(false);
   const [transportState, setTransportState] = useState<TransportState>('stopped');
   const transportStateRef = useRef<TransportState>('stopped');
   const drumPatternRef = useRef<DrumPattern | null>(null);
@@ -529,12 +543,12 @@ export function StudioDawWorkspace() {
   const [recordingTimer, setRecordingTimer] = useState(0);
   const [isPlayingBack, setIsPlayingBack] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   // Publish to marketplace state
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishTitle, setPublishTitle] = useState('');
   const [publishPrice, setPublishPrice] = useState('');
-  const [publishLicense, setPublishLicense] = useState<'basic' | 'premium' | 'exclusive'>('basic');
+  const [publishLicense, setPublishLicense] = useState<PublishLicense>('basic');
   const [publishTags, setPublishTags] = useState('');
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
@@ -1511,7 +1525,7 @@ export function StudioDawWorkspace() {
     setPublishSubmitting(true);
     setPublishError(null);
     try {
-      const dtuResult = await createDTU({
+      const dtuResult = await createDTU(withContentLicense({
         title: publishTitle || project.title,
         content: `Studio project: ${project.title} | ${project.bpm} BPM | Key: ${project.key} | Genre: ${project.genre || 'unspecified'} | ${project.tracks.length} tracks`,
         tags: [
@@ -1533,7 +1547,7 @@ export function StudioDawWorkspace() {
           genre: project.genre,
           trackCount: project.tracks.length,
         },
-      });
+      }, 'media', ['private', 'public_view', 'social_post', 'public_listen', 'marketplace_sale']));
       const dtuRes = dtuResult as unknown as Record<string, unknown>;
       if (!dtuRes?.ok && !dtuRes?.id && !dtuRes?.dtu) {
         throw new Error('Failed to create project DTU');
@@ -1809,7 +1823,34 @@ export function StudioDawWorkspace() {
 
   // ---- Render: Active project ----
   return (
-    <>
+    <LensShell lensId="studio" asMain={false} disableAgentFab={true}>
+      <FirstRunTour lensId="studio" />
+      <DepthBadge lensId="studio" size="sm" className="ml-2" />
+      {/* Wave-4 studio-capability-map gap-closure: DawWorkbenchSection's project
+          list and StudioActionPanel's project-create both live under one
+          PipingProvider tree now, so creating a project auto-refreshes the
+          workbench list (see usePipeValue('studio.project') below). The
+          manual refresh button stays as the honest fallback.
+          Collapsed by default: this workbench used to sit permanently above
+          the fold, ahead of the actual DAW canvas below, on every visit. */}
+      <PipingProvider>
+      <div className="px-4 mt-2">
+        <ShellPreview lensId="studio" defaultOpen={true} />
+        <button
+          type="button"
+          onClick={() => setShowDawWorkbench((v) => !v)}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm font-medium text-gray-200 hover:text-white"
+          aria-expanded={showDawWorkbench}
+        >
+          <span>Project workbench (clips, MIDI, automation, presets, sends)</span>
+          {showDawWorkbench ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        {showDawWorkbench && (
+          <div className="mt-2">
+            <DawWorkbenchSection />
+          </div>
+        )}
+      </div>
     <div
       className="lens-studio h-full flex flex-col bg-gradient-to-b from-violet-950/20 via-black to-black"
       data-lens-theme="studio"

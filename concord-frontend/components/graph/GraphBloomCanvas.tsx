@@ -30,6 +30,7 @@ import { useLatticeStore } from '@/store/lattice';
 import { InteractiveGraph } from '@/components/graphs/InteractiveGraphCore';
 import { KnowledgeSpace3D } from '@/components/graphs/KnowledgeSpace3D';
 import { FractalEmpireExplorer } from '@/components/graphs/FractalEmpireExplorer';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 // --- Types ---
 
@@ -1023,11 +1024,11 @@ export function GraphBloomCanvas({ interactive = true }: { interactive?: boolean
     setShowAddNode(false);
     // Persist to backend via DTU create
     try {
-      await apiHelpers.dtus.create({
+      await apiHelpers.dtus.create(withContentLicense({
         title: newNode.label,
         content: newNode.label,
         tags: [addNodeType, 'graph-created'],
-      });
+      }, 'software', ['private']));
       // Also persist as a graph entity artifact
       await createEntity({
         title: newNode.label,

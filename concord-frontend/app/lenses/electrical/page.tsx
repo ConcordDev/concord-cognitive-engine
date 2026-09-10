@@ -1,10 +1,27 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+/**
+ * Electrical — one Jobber + Mike Holt NEC desk.
+ *
+ * Single view union. Inline Jobs/CRM/Certs/Codes CRUD extracted to
+ * ElectricalDeskPanel; trade-tool screens stay as existing panels.
+ * Page is a thin shell.
+ */
+
+import { useMemo, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import {
+  Award, BarChart3, Bolt, Calculator, ClipboardList, Cpu, DollarSign,
+  FileText, Receipt, ShieldCheck, Users, Wrench, Zap,
+} from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensPageShell } from '@/components/lens/LensPageShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { cn } from '@/lib/utils';
+import { ElectricalDeskPanel } from '@/components/electrical/ElectricalDeskPanel';
 import { OpenHardwarePulse } from '@/components/electrical/OpenHardwarePulse';
 import { NecCodeCalc } from '@/components/electrical/NecCodeCalc';
 import { NecCalculators } from '@/components/electrical/NecCalculators';
@@ -13,806 +30,138 @@ import { EstimateInvoiceFlow } from '@/components/electrical/EstimateInvoiceFlow
 import { OneLineDiagram } from '@/components/electrical/OneLineDiagram';
 import { InspectionChecklists } from '@/components/electrical/InspectionChecklists';
 import { MaterialPriceList } from '@/components/electrical/MaterialPriceList';
-import { motion } from 'framer-motion';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ds } from '@/lib/design-system';
-import { Icon as SvgIcon } from '@/components/icons/Icon';
-import { cn } from '@/lib/utils';
-import {
-  Zap,
-  Wrench,
-  ClipboardList,
-  DollarSign,
-  Users,
-  Plus,
-  Search,
-  X,
-  Trash2,
-  BarChart3,
-  CheckCircle2,
-  FileText,
-  Award,
-  Calculator,
-  Receipt,
-  ShieldCheck,
-  Bolt,
-  Cpu,
-} from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
+import { type ModeTab } from '@/components/electrical/electrical-shared';
 
-type ModeTab =
-  | 'dashboard'
-  | 'jobs'
-  | 'codes'
-  | 'clients'
-  | 'certs'
-  | 'panels'
-  | 'calculators'
-  | 'estimating'
-  | 'diagrams'
-  | 'checklists'
-  | 'pricelist'
-  | 'hardware'
-  | 'neccalc';
-type ArtifactType =
-  | 'Job'
-  | 'CodeRef'
-  | 'Client'
-  | 'Certification';
-type Status =
-  | 'scheduled'
-  | 'in_progress'
-  | 'completed'
-  | 'invoiced'
-  | 'paid'
-  | 'pending'
-  | 'failed'
-  | 'active';
-
-interface TradeArtifact {
-  name: string;
-  type: ArtifactType;
-  status: Status;
-  description: string;
-  notes: string;
-  client?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  scheduledDate?: string;
-  completedDate?: string;
-  laborHours?: number;
-  laborRate?: number;
-  materialCost?: number;
-  totalCost?: number;
-  codeReference?: string;
-  codeSection?: string;
-  jurisdiction?: string;
-  certType?: string;
-  certNumber?: string;
-  expiryDate?: string;
-  issuedBy?: string;
-}
-
-// Note: estimating/materials/invoicing/inspections used to also have generic
-// artifact-CRUD tabs here (Estimate / Material / Invoice / Inspection types).
-// They were removed (2026-07) because they were a disconnected duplicate of
-// the real NEC-aware Trade Tools below — a user filling in the generic
-// "Estimate" form got a flat labor/material total with no line items, no
-// price-list integration, and no path to a real invoice, while the actual
-// "Estimate→Invoice" tool a few tabs over does all of that against the real
-// electrical.estimate*/electrical.invoice* macros. Two same-named, non-
-// interoperating systems is a worse defect than fewer tabs. The four
-// remaining tabs below (Job / CodeRef / Client / Certification) have no
-// Trade Tool equivalent, so they stay as lightweight, honestly-scoped
-// tracking (real persisted records, not fabricated — just simpler than a
-// full dispatch/CRM/license-renewal engine, which is out of scope here).
-const MODE_TABS: { id: ModeTab; label: string; icon: typeof Zap; artifactType: ArtifactType }[] = [
-  { id: 'jobs', label: 'Jobs', icon: Wrench, artifactType: 'Job' },
-  { id: 'codes', label: 'NEC Code Notes', icon: FileText, artifactType: 'CodeRef' },
-  { id: 'clients', label: 'CRM', icon: Users, artifactType: 'Client' },
-  { id: 'certs', label: 'Certs', icon: Award, artifactType: 'Certification' },
-];
-
-// Trade-tool tabs — purpose-built calculators & workflows, not artifact CRUD.
-const TOOL_TABS: { id: ModeTab; label: string; icon: typeof Zap }[] = [
-  { id: 'panels', label: 'Panel Schedule', icon: Bolt },
-  { id: 'calculators', label: 'NEC Calculators', icon: Calculator },
-  { id: 'neccalc', label: 'Code Calc', icon: Calculator },
-  { id: 'estimating', label: 'Estimate→Invoice', icon: Receipt },
-  { id: 'diagrams', label: 'One-Line', icon: ShieldCheck },
-  { id: 'checklists', label: 'Inspections', icon: ClipboardList },
-  { id: 'pricelist', label: 'Price List', icon: DollarSign },
-  { id: 'hardware', label: 'Open Hardware', icon: Cpu },
-];
-const TOOL_TAB_IDS = TOOL_TABS.map((t) => t.id);
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Scheduled', color: 'blue-400' },
-  in_progress: { label: 'In Progress', color: 'cyan-400' },
-  completed: { label: 'Completed', color: 'green-400' },
-  invoiced: { label: 'Invoiced', color: 'purple-400' },
-  paid: { label: 'Paid', color: 'emerald-400' },
-  pending: { label: 'Pending', color: 'yellow-400' },
-  failed: { label: 'Failed', color: 'red-400' },
-  active: { label: 'Active', color: 'green-400' },
-};
-
-const ELECTRICAL_CERTS = [
-  'Master Electrician',
-  'Journeyman Electrician',
-  'Apprentice Electrician',
-  'Low Voltage License',
-  'Fire Alarm Certification',
-  'Solar PV Installer',
+const VIEWS: { id: ModeTab; label: string; keys: string; hint: string; icon: typeof Zap; group: 'desk' | 'tools' }[] = [
+  { id: 'dashboard', label: 'Dashboard', keys: 'd', hint: 'Ops overview', icon: BarChart3, group: 'desk' },
+  { id: 'jobs', label: 'Jobs', keys: 'j', hint: 'Job tracker', icon: Wrench, group: 'desk' },
+  { id: 'codes', label: 'NEC Notes', keys: 'c', hint: 'Code notes', icon: FileText, group: 'desk' },
+  { id: 'clients', label: 'CRM', keys: 'r', hint: 'Clients', icon: Users, group: 'desk' },
+  { id: 'certs', label: 'Certs', keys: 't', hint: 'Licenses', icon: Award, group: 'desk' },
+  { id: 'panels', label: 'Panel Schedule', keys: '1', hint: 'Panel builder', icon: Bolt, group: 'tools' },
+  { id: 'calculators', label: 'NEC Calculators', keys: '2', hint: 'Load · fill · drop', icon: Calculator, group: 'tools' },
+  { id: 'neccalc', label: 'Code Calc', keys: 'n', hint: 'NEC code calc', icon: Calculator, group: 'tools' },
+  { id: 'estimating', label: 'Estimate→Invoice', keys: '3', hint: 'Estimate flow', icon: Receipt, group: 'tools' },
+  { id: 'diagrams', label: 'One-Line', keys: '4', hint: 'One-line diagram', icon: ShieldCheck, group: 'tools' },
+  { id: 'checklists', label: 'Inspections', keys: '5', hint: 'Checklists', icon: ClipboardList, group: 'tools' },
+  { id: 'pricelist', label: 'Price List', keys: '6', hint: 'Materials', icon: DollarSign, group: 'tools' },
+  { id: 'hardware', label: 'Open Hardware', keys: 'h', hint: 'Hardware pulse', icon: Cpu, group: 'tools' },
 ];
 
 export default function ElectricalLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<LensItem<TradeArtifact> | null>(null);
-
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formStatus, setFormStatus] = useState<Status>('scheduled');
-  const [formNotes, setFormNotes] = useState('');
-  const [formClient, setFormClient] = useState('');
-  const [formAddress, setFormAddress] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formEmail, setFormEmail] = useState('');
-  const [formScheduledDate, setFormScheduledDate] = useState('');
-  const [formLaborHours, setFormLaborHours] = useState('');
-  const [formLaborRate, setFormLaborRate] = useState('');
-  const [formMaterialCost, setFormMaterialCost] = useState('');
-  const [formCertType, setFormCertType] = useState('Master Electrician');
-  const [formCertNumber, setFormCertNumber] = useState('');
-  const [formExpiryDate, setFormExpiryDate] = useState('');
-  const [formIssuedBy, setFormIssuedBy] = useState('');
-  const [formCodeReference, setFormCodeReference] = useState('');
-  const [formCodeSection, setFormCodeSection] = useState('');
-  const [formJurisdiction, setFormJurisdiction] = useState('');
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState<ModeTab>('jobs');
 
   useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-      { id: "tab-dashboard", keys: "d", description: "Dashboard", category: "navigation", action: () => setActiveTab('dashboard') },
-      { id: "tab-jobs", keys: "j", description: "Jobs", category: "navigation", action: () => setActiveTab('jobs') },
-      { id: "tab-neccalc", keys: "n", description: "NEC code calc", category: "navigation", action: () => setActiveTab('neccalc') },
-      { id: "tab-hardware", keys: "h", description: "Open hardware", category: "navigation", action: () => setActiveTab('hardware') },
-    ],
-    { lensId: "electrical" }
+    VIEWS.map((v) => ({
+      id: `view-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setActive(v.id),
+    })),
+    { lensId: 'electrical' },
   );
 
-  const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Job';
-  const { items, isLoading, isError, error, refetch, create, update, remove } =
-    useLensData<TradeArtifact>('electrical', activeArtifactType, { seed: [] });
-  const runAction = useRunArtifact('electrical');
-
-  const filtered = useMemo(() => {
-    let result = items;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) ||
-          (i.data as unknown as TradeArtifact).description?.toLowerCase().includes(q)
-      );
-    }
-    if (filterStatus !== 'all')
-      result = result.filter((i) => (i.data as unknown as TradeArtifact).status === filterStatus);
-    return result;
-  }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || filtered[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [filtered, runAction]
+  const motionProps = useMemo(
+    () => (reduceMotion
+      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -6 },
+          transition: { duration: 0.16 },
+        }),
+    [reduceMotion],
   );
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormName('');
-    setFormDescription('');
-    setFormStatus('scheduled');
-    setFormNotes('');
-    setFormClient('');
-    setFormAddress('');
-    setFormPhone('');
-    setFormEmail('');
-    setFormScheduledDate('');
-    setFormLaborHours('');
-    setFormLaborRate('');
-    setFormMaterialCost('');
-    setFormCertType('Master Electrician');
-    setFormCertNumber('');
-    setFormExpiryDate('');
-    setFormIssuedBy('');
-    setFormCodeReference('');
-    setFormCodeSection('');
-    setFormJurisdiction('');
-    setEditorOpen(true);
-  };
-  const openEdit = (item: LensItem<TradeArtifact>) => {
-    const d = item.data as unknown as TradeArtifact;
-    setEditingItem(item);
-    setFormName(d.name || '');
-    setFormDescription(d.description || '');
-    setFormStatus(d.status || 'scheduled');
-    setFormNotes(d.notes || '');
-    setFormClient(d.client || '');
-    setFormAddress(d.address || '');
-    setFormPhone(d.phone || '');
-    setFormEmail(d.email || '');
-    setFormScheduledDate(d.scheduledDate || '');
-    setFormLaborHours(d.laborHours?.toString() || '');
-    setFormLaborRate(d.laborRate?.toString() || '');
-    setFormMaterialCost(d.materialCost?.toString() || '');
-    setFormCertType(d.certType || 'Master Electrician');
-    setFormCertNumber(d.certNumber || '');
-    setFormExpiryDate(d.expiryDate || '');
-    setFormIssuedBy(d.issuedBy || '');
-    setFormCodeReference(d.codeReference || '');
-    setFormCodeSection(d.codeSection || '');
-    setFormJurisdiction(d.jurisdiction || '');
-    setEditorOpen(true);
-  };
-
-  const handleSave = async () => {
-    const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
-    const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
-    const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;
-    const data: Record<string, unknown> = {
-      name: formName,
-      type: activeArtifactType,
-      status: formStatus,
-      description: formDescription,
-      notes: formNotes,
-      client: formClient,
-      address: formAddress,
-      phone: formPhone,
-      email: formEmail,
-      scheduledDate: formScheduledDate,
-      laborHours: laborH,
-      laborRate: laborR,
-      materialCost: matC,
-      totalCost: (laborH && laborR ? laborH * laborR : 0) + (matC || 0) || undefined,
-      certType: formCertType,
-      certNumber: formCertNumber,
-      expiryDate: formExpiryDate,
-      issuedBy: formIssuedBy,
-      codeReference: formCodeReference,
-      codeSection: formCodeSection,
-      jurisdiction: formJurisdiction,
-    };
-    if (editingItem)
-      await update(editingItem.id, {
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    else
-      await create({
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    setEditorOpen(false);
-  };
-
-  const renderDashboard = () => {
-    const all = items.map((i) => i.data as unknown as TradeArtifact);
-    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || 0), 0);
-    return (
-      <div data-lens-theme="electrical" className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={ds.panel}>
-          <Wrench className="w-5 h-5 text-blue-400 mb-2" />
-          <p className={ds.textMuted}>Active Jobs</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'in_progress' || j.status === 'scheduled').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <DollarSign className="w-5 h-5 text-green-400 mb-2" />
-          <p className={ds.textMuted}>Revenue</p>
-          <p className="text-xl font-bold text-white">${totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className={ds.panel}>
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 mb-2" />
-          <p className={ds.textMuted}>Completed</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'completed' || j.status === 'paid').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <Receipt className="w-5 h-5 text-purple-400 mb-2" />
-          <p className={ds.textMuted}>Outstanding</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'invoiced').length}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditor = () => {
-    if (!editorOpen) return null;
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-        <div
-          className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={ds.heading3}>
-              {editingItem ? 'Edit' : 'New'} {activeArtifactType}
-            </h3>
-            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className={ds.label}>Name</label>
-              <input
-                className={ds.input}
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Description</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Status</label>
-              <select
-                className={ds.select}
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as Status)}
-              >
-                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {(activeArtifactType === 'Job' || activeArtifactType === 'Client') && (
-              <>
-                <div>
-                  <label className={ds.label}>Client</label>
-                  <input
-                    className={ds.input}
-                    value={formClient}
-                    onChange={(e) => setFormClient(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Address</label>
-                  <input
-                    className={ds.input}
-                    value={formAddress}
-                    onChange={(e) => setFormAddress(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Phone</label>
-                    <input
-                      className={ds.input}
-                      value={formPhone}
-                      onChange={(e) => setFormPhone(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Email</label>
-                    <input
-                      type="email"
-                      className={ds.input}
-                      value={formEmail}
-                      onChange={(e) => setFormEmail(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            {activeArtifactType === 'Job' && (
-              <>
-                <div>
-                  <label className={ds.label}>Scheduled Date</label>
-                  <input
-                    type="date"
-                    className={ds.input}
-                    value={formScheduledDate}
-                    onChange={(e) => setFormScheduledDate(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className={ds.label}>Labor Hours</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formLaborHours}
-                      onChange={(e) => setFormLaborHours(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Labor Rate</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formLaborRate}
-                      onChange={(e) => setFormLaborRate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Material Cost</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formMaterialCost}
-                      onChange={(e) => setFormMaterialCost(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <p className={cn(ds.textMuted, 'text-[10px]')}>
-                  For a real line-itemized bid with materials pulled from your price list, use the
-                  Estimate&rarr;Invoice trade tool below instead of a flat labor/material total here.
-                </p>
-              </>
-            )}
-            {activeArtifactType === 'CodeRef' && (
-              <>
-                <div>
-                  <label className={ds.label}>NEC Code Section</label>
-                  <input
-                    className={ds.input}
-                    placeholder="e.g. 210.8(A)"
-                    value={formCodeReference}
-                    onChange={(e) => setFormCodeReference(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Article / Chapter</label>
-                  <input
-                    className={ds.input}
-                    placeholder="e.g. Article 210 — Branch Circuits"
-                    value={formCodeSection}
-                    onChange={(e) => setFormCodeSection(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Jurisdiction (AHJ)</label>
-                  <input
-                    className={ds.input}
-                    placeholder="e.g. City of Austin — 2023 NEC w/ local amendments"
-                    value={formJurisdiction}
-                    onChange={(e) => setFormJurisdiction(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            {activeArtifactType === 'Certification' && (
-              <>
-                <div>
-                  <label className={ds.label}>Certification</label>
-                  <select
-                    className={ds.select}
-                    value={formCertType}
-                    onChange={(e) => setFormCertType(e.target.value)}
-                  >
-                    {ELECTRICAL_CERTS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>License / Cert Number</label>
-                    <input
-                      className={ds.input}
-                      value={formCertNumber}
-                      onChange={(e) => setFormCertNumber(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Expiry Date</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formExpiryDate}
-                      onChange={(e) => setFormExpiryDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className={ds.label}>Issued By</label>
-                  <input
-                    className={ds.input}
-                    placeholder="e.g. State Board of Electrical Examiners"
-                    value={formIssuedBy}
-                    onChange={(e) => setFormIssuedBy(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
-              Cancel
-            </button>
-            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLibrary = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            ref={searchInputRef}
-            className={cn(ds.input, 'pl-10')}
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <select
-          className={cn(ds.select, 'w-auto')}
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-        <button onClick={openCreate} className={ds.btnPrimary}>
-          <Plus className="w-4 h-4" /> New
-        </button>
-      </div>
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className={cn(ds.panel, 'text-center py-12')}>
-          <SvgIcon name="circuit-panel" size={48} className="text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
-          <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Create First
-          </button>
-        </div>
-      ) : (
-        filtered.map((item, index) => {
-          const d = item.data as unknown as TradeArtifact;
-          const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
-          return (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={ds.panelHover}
-              onClick={() => openEdit(item)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-yellow-400" />
-                  <div>
-                    <p className="text-white font-medium">{d.name || item.title}</p>
-                    <p className={ds.textMuted}>
-                      {d.client || ''} {d.address ? `- ${d.address}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!!d.totalCost && (
-                    <span className="text-xs text-green-400">
-                      ${d.totalCost.toLocaleString()}
-                    </span>
-                  )}
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}
-                  >
-                    {sc.label}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAction('analyze', item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Activate">
-                    <Zap className="w-4 h-4 text-neon-cyan" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })
-      )}
-    </div>
-  );
+  let body: ReactNode = null;
+  if (active === 'dashboard' || active === 'jobs' || active === 'codes' || active === 'clients' || active === 'certs') {
+    body = <ElectricalDeskPanel mode={active} />;
+  } else if (active === 'panels') {
+    body = <PanelScheduleBuilder />;
+  } else if (active === 'calculators') {
+    body = <NecCalculators />;
+  } else if (active === 'neccalc') {
+    body = <NecCodeCalc />;
+  } else if (active === 'estimating') {
+    body = <EstimateInvoiceFlow />;
+  } else if (active === 'diagrams') {
+    body = <OneLineDiagram />;
+  } else if (active === 'checklists') {
+    body = <InspectionChecklists />;
+  } else if (active === 'pricelist') {
+    body = <MaterialPriceList />;
+  } else {
+    body = <OpenHardwarePulse />;
+  }
 
   return (
     <LensShell lensId="electrical" asMain={false}>
-      <FirstRunTour lensId="electrical" />      <DepthBadge lensId="electrical" size="sm" className="ml-2" />
-    <LensPageShell
-      domain="electrical"
-      title="Electrical"
-      description="Jobs, code reference notes, client CRM, and certifications — plus the NEC-code trade tools below (panel schedules, load/conduit/box/wire calculators, estimate→invoice, one-line diagrams, inspection checklists, price list)"
-      headerIcon={<Zap className="w-6 h-6" />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
-      actions={
-        <>
-          {runAction.isPending && (
-            <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-          )}
-        </>
-      }
-    >
-      {/* Stats Row */}
-      {(() => {
-        const allItems = items.map((i) => i.data as unknown as TradeArtifact);
-        const activeJobs = allItems.filter(
-          (j) => j.status === 'in_progress' || j.status === 'scheduled'
-        ).length;
-        const certifiedCount = allItems.filter(
-          (j) => j.type === 'Certification' && j.status === 'active'
-        ).length;
-        const completedCount = allItems.filter(
-          (j) => j.status === 'completed' || j.status === 'paid'
-        ).length;
-        const safetyScore =
-          allItems.length > 0 ? ((completedCount / allItems.length) * 100).toFixed(0) : '100';
-        return (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Bolt className="w-5 h-5 text-yellow-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{activeJobs}</p>
-                <p className="text-xs text-gray-400">Active Jobs</p>
-              </div>
-            </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Award className="w-5 h-5 text-cyan-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{certifiedCount}</p>
-                <p className="text-xs text-gray-400">Certified</p>
-              </div>
-            </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-green-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{safetyScore}%</p>
-                <p className="text-xs text-gray-400">Safety Score</p>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <FirstRunTour lensId="electrical" />
+      <DepthBadge lensId="electrical" size="sm" className="ml-2" />
+      <LensPageShell
+        domain="electrical"
+        title="Electrical"
+        description="Jobs, NEC calculators, panel schedules, estimate→invoice, and inspections"
+        headerIcon={<Zap className="w-5 h-5 text-yellow-400" />}
+      >
+        <nav className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1" aria-label="Electrical desk">
+          {VIEWS.filter((v) => v.group === 'desk').map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                  on
+                    ? 'border-neon-blue text-neon-blue'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
+                )}
+                aria-current={on ? 'page' : undefined}
+              >
+                <Icon className="w-4 h-4" />
+                {v.label}
+              </button>
+            );
+          })}
+        </nav>
+        <nav className="flex items-center gap-2 border-b border-lattice-border pb-3 flex-wrap" aria-label="Electrical trade tools">
+          <span className="px-2 text-[10px] uppercase tracking-wider text-gray-400">Trade Tools</span>
+          {VIEWS.filter((v) => v.group === 'tools').map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap',
+                  on
+                    ? 'bg-yellow-500/20 text-yellow-300'
+                    : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
+                )}
+                aria-current={on ? 'page' : undefined}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {v.label}
+              </button>
+            );
+          })}
+        </nav>
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-2 flex-wrap" aria-label="Electrical views">
-        <button
-          type="button"
-          onClick={() => setActiveTab('dashboard')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-            activeTab === 'dashboard'
-              ? 'bg-neon-blue/20 text-neon-blue'
-              : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-          )}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Dashboard
-        </button>
-        {MODE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-              activeTab === tab.id
-                ? 'bg-neon-blue/20 text-neon-blue'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap" aria-label="Electrical trade tools">
-        <span className="px-2 text-[10px] uppercase tracking-wider text-gray-400">Trade Tools</span>
-        {TOOL_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap',
-              activeTab === tab.id
-                ? 'bg-yellow-500/20 text-yellow-300'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-            )}
-          >
-            <tab.icon className="w-3.5 h-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      {activeTab === 'dashboard' ? (
-        renderDashboard()
-      ) : TOOL_TAB_IDS.includes(activeTab) ? (
-        <div className="space-y-4">
-          {activeTab === 'panels' && <PanelScheduleBuilder />}
-          {activeTab === 'calculators' && <NecCalculators />}
-          {activeTab === 'neccalc' && <NecCodeCalc />}
-          {activeTab === 'estimating' && <EstimateInvoiceFlow />}
-          {activeTab === 'diagrams' && <OneLineDiagram />}
-          {activeTab === 'checklists' && <InspectionChecklists />}
-          {activeTab === 'pricelist' && <MaterialPriceList />}
-          {activeTab === 'hardware' && <OpenHardwarePulse />}
-        </div>
-      ) : (
-        renderLibrary()
-      )}
-      {renderEditor()}
-    </LensPageShell>
-    
-      <a href="#electrical-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to electrical content</a>          <CrossLensRecentsPanel lensId="electrical" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <AnimatePresence mode="wait">
+          <motion.div key={active} {...motionProps}>
+            {body}
+          </motion.div>
+        </AnimatePresence>
+      </LensPageShell>
+      <a href="#electrical-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to electrical content</a>
+      <CrossLensRecentsPanel lensId="electrical" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

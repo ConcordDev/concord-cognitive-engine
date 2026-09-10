@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Database, Search, Loader2, ExternalLink, Stamp, Check } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface Dataset { id: string; name: string; title: string; organization: string; notes: string; resourceCount: number; firstResourceUrl: string | null; firstResourceFormat: string | null; lastModified: string | null }
 
@@ -42,13 +43,13 @@ function IngestButton({ dataset }: { dataset: Dataset }) {
         record.firstResourceUrl ? `Primary resource: ${record.firstResourceUrl}` : null,
         provenance ? `Source: ${provenance.sourceUrl} · fetched ${provenance.fetchedAt} · sha256 ${provenance.contentSha256.slice(0, 16)}…` : null,
       ].filter(Boolean).join('\n');
-      const created = await lensRun('dtu', 'create', {
+      const created = await lensRun('dtu', 'create', withContentLicense({
         title: record.title || dtu.content.name,
         content: contentLines,
         tags: ['open-data', 'government', 'data.gov'],
         source: 'data.gov',
         meta: { provenance, ingestKind: dtu.content.ingestKind, sourceDatasetId: dataset.id },
-      });
+      }, 'dataset', ['private']));
       if (created.data?.ok === false) { setState('error'); setMessage(created.data?.error || 'dtu.create failed'); return; }
       setState('done'); setMessage('Saved as a provenance-stamped DTU.');
     } catch (e) {

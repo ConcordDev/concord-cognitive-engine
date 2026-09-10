@@ -25,28 +25,34 @@ export interface Note {
 export interface Template { id: string; title: string; body: string; }
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
+  /** When true, render inline (tab panel) instead of fixed drawer. */
+  embedded?: boolean;
 }
 
 type Tab = 'notes' | 'daily' | 'search' | 'templates' | 'graph' | 'review' | 'literature' | 'canvas';
 
-export function ResearchWorkbench({ open, onClose }: Props) {
+export function ResearchWorkbench({ open = true, onClose, embedded = false }: Props) {
   const [tab, setTab] = useState<Tab>('notes');
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
 
-  if (!open) return null;
+  if (!embedded && !open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[680px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-fuchsia-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className={embedded
+      ? "relative w-full min-h-[70vh] rounded-xl border border-fuchsia-500/20 bg-[#0d1117] overflow-hidden flex flex-col"
+      : "fixed inset-y-0 right-0 w-[680px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-fuchsia-500/20 shadow-2xl overflow-hidden flex flex-col"}>
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-fuchsia-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-fuchsia-400" />
           <span className="text-sm font-semibold text-gray-200">Research Workbench</span>
         </div>
-        <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-white/5 text-gray-400" aria-label="Close">
-          <X className="w-4 h-4" />
-        </button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-white/5 text-gray-400" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </header>
 
       <nav className="px-3 py-2 border-b border-white/10 flex items-center gap-1 flex-wrap">

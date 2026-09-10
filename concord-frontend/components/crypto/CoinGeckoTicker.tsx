@@ -65,6 +65,7 @@ export function CoinGeckoTicker() {
           </div>
           {list.length > 0 && (
             <SaveAsDtuButton
+              defaultContentClass="dataset"
               compact
               apiSource="coingecko"
               apiUrl={`https://api.coingecko.com/api/v3/coins/markets?vs_currency=${vs}`}

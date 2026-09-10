@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { LensShell } from '@/components/lens/LensShell';
-import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
-import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
-import { FirstRunTour } from '@/components/lens/FirstRunTour';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { MetMuseumPanel } from '@/components/art/MetMuseumPanel';
+/**
+ * ArtMarketDesk — gallery / canvas / marketplace / my-art commerce desk.
+ * Extracted from the welded art page-client; mode is owned by the page shell.
+ */
 
-import { useLensNav } from '@/hooks/useLensNav';
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, apiHelpers } from '@/lib/api/client';
@@ -51,7 +49,6 @@ import {
   Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Icon as SvgIcon } from '@/components/icons/Icon';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useLensDTUs } from '@/hooks/useLensDTUs';
 import type { DTU } from '@/lib/api/generated-types';
@@ -64,16 +61,10 @@ import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ArtExplorer } from '@/components/art/ArtExplorer';
-import { PaletteWorkshop } from '@/components/art/PaletteWorkshop';
-import { ArtActionPanel } from '@/components/art/ArtActionPanel';
-import { ArtStudioSection } from '@/components/art/ArtStudioSection';
-import { PipingProvider } from '@/components/panel-polish';
 import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
 import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
 import { FeedBanner } from '@/components/lens/FeedBanner';
 
-type ViewMode = 'gallery' | 'canvas' | 'marketplace' | 'my-art';
 type CanvasTool = 'brush' | 'eraser' | 'fill' | 'text' | 'shape-rect' | 'shape-circle' | 'eyedropper' | 'move' | 'pen' | 'rectangle' | 'circle' | 'line';
 
 interface ArtAsset {
@@ -110,17 +101,13 @@ const COLOR_PALETTE = [
   '#BB8FCE', '#85C1E9', '#82E0AA', '#F8C471', '#E74C3C', '#3498DB', '#2ECC71', '#9B59B6',
 ];
 
-export default function ArtLensPage() {
-  useLensNav('art');
+export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketplace' | 'my-art' }) {
   const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('art');
   const queryClient = useQueryClient();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
-  const [viewMode, setViewMode] = useState<ViewMode>('gallery');
-  const [showArtExplorer, setShowArtExplorer] = useState(false);
-  const [showPaletteWorkshop, setShowPaletteWorkshop] = useState(false);
-  const [showArtActionPanel, setShowArtActionPanel] = useState(false);
+  const viewMode = mode;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -132,10 +119,6 @@ export default function ArtLensPage() {
   // / focus search.
   useLensCommand(
     [
-      { id: 'view-gallery', keys: 'g', description: 'Gallery', category: 'navigation', action: () => setViewMode('gallery') },
-      { id: 'view-canvas', keys: 'c', description: 'Canvas', category: 'navigation', action: () => setViewMode('canvas') },
-      { id: 'view-marketplace', keys: 'm', description: 'Marketplace', category: 'navigation', action: () => setViewMode('marketplace') },
-      { id: 'view-myart', keys: 'a', description: 'My art', category: 'navigation', action: () => setViewMode('my-art') },
       { id: 'upload', keys: 'u', description: 'Upload artwork', category: 'actions', action: () => setShowUpload(true) },
       { id: 'list-piece', keys: 'l', description: 'List for sale', category: 'actions', action: () => setShowCreateListing(true) },
       { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
@@ -548,63 +531,6 @@ export default function ArtLensPage() {
     setListingTitle(`Artwork ${artId}`);
   }, []);
 
-  const renderNav = () => (
-    <div className="flex items-center justify-between border-b border-rose-900/15 px-6 py-3 bg-neutral-950/50">
-      <div className="flex items-center gap-2">
-        <SvgIcon name="artist-palette" size={24} className="text-rose-400" />
-        <h1 className="text-xl font-bold text-rose-50 tracking-tight">Art Studio</h1>
-        {dtusLoading ? (
-          <span className="ml-2 w-4 h-4 border-2 border-neon-pink border-t-transparent rounded-full animate-spin inline-block" />
-        ) : (
-          <span className="ml-2 text-xs text-gray-400">({domainDTUs.length} DTUs)</span>
-        )}
-      </div>
-
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="art" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        {(['gallery', 'canvas', 'marketplace', 'my-art'] as ViewMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={cn(
-              'px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize',
-              viewMode === mode ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white hover:bg-white/5'
-            )}
-          >
-            {mode === 'my-art' ? 'My Art' : mode}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2">
-        <VisionAnalyzeButton
-          domain="art"
-          prompt="Analyze this artwork image. Describe the style, medium, colors, composition, and mood. Suggest relevant tags for categorization."
-          onResult={(res) => {
-            setUploadDescription(res.analysis);
-            if (res.suggestedTags?.length) setUploadTags(res.suggestedTags.join(', '));
-          }}
-        />
-        <button onClick={() => setShowUpload(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink rounded-lg hover:bg-neon-pink/30 text-sm">
-          <Upload className="w-4 h-4" />
-          Upload
-        </button>
-        <button onClick={() => setViewMode('canvas')} className="flex items-center gap-2 px-4 py-2 bg-neon-purple/20 text-neon-purple rounded-lg hover:bg-neon-purple/30 text-sm">
-          <Brush className="w-4 h-4" />
-          Create
-        </button>
-      </div>
-    </div>
-  );
-
   const renderGallery = () => (
     <div className="p-6 space-y-6">
       <FeedBanner domain="art" />
@@ -984,7 +910,7 @@ export default function ArtLensPage() {
                 <p className="text-xs text-gray-400 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-neon-green font-bold">${[25, 50, 35, 75, 15, 100][i]}</span>
-                  <button onClick={() => setViewMode('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
+                  <button onClick={() => void ('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
                 </div>
               </div>
             </div>
@@ -1006,7 +932,7 @@ export default function ArtLensPage() {
 
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <button
-          onClick={() => setViewMode('canvas')}
+          onClick={() => void ('canvas')}
           className="aspect-square rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-neon-pink/50 hover:bg-neon-pink/5 transition-colors"
         >
           <Plus className="w-8 h-8 text-gray-400" />
@@ -1041,16 +967,8 @@ export default function ArtLensPage() {
     );
   }
   return (
-    <LensShell lensId="art" asMain={false}>
-      <FirstRunTour lensId="art" />
-      <DepthBadge lensId="art" size="sm" className="ml-2" />
-      <div className="px-4 mt-3">
-        <ArtStudioSection />
-      </div>
-      {/* Phase 4 — REAL MET Museum Open Access (CC0). */}
-      <MetMuseumPanel domain="art" className="mx-4 mt-2" />
     <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
-      {renderNav()}
+      {/* view tabs owned by page shell */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden">
           {viewMode === 'gallery' && <div className="h-full overflow-y-auto">{renderGallery()}{/* Image Artifacts from DTU Context */}
@@ -1176,62 +1094,6 @@ export default function ArtLensPage() {
           compact
         />
       )}
-
-
-      {/* Bespoke Met + Art Institute of Chicago artwork explorer with Save-as-DTU */}
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setShowArtExplorer(v => !v)}
-          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
-        >
-          {showArtExplorer ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          Museum Artwork Explorer (external reference)
-        </button>
-        {showArtExplorer && (
-          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <ArtExplorer />
-          </section>
-        )}
-      </div>
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setShowPaletteWorkshop(v => !v)}
-          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
-        >
-          {showPaletteWorkshop ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          Palette Workshop
-        </button>
-        {showPaletteWorkshop && (
-          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <PaletteWorkshop />
-          </section>
-        )}
-      </div>
-
-      {/* Met + Art Institute + Adobe Color-shape art workbench: harmony / composition / palette / style + actions */}
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setShowArtActionPanel(v => !v)}
-          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
-        >
-          {showArtActionPanel ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          Workbench (harmony / composition / palette / style)
-        </button>
-        {showArtActionPanel && (
-          <PipingProvider>
-            <section className="mt-3">
-              <ArtActionPanel />
-            </section>
-          </PipingProvider>
-        )}
-      </div>
     </div>
-          <RecentMineCard domain="art" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="art" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="art" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
-    </LensShell>
   );
 }

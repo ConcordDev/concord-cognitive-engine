@@ -17,6 +17,7 @@ import {
   Flame,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */

@@ -1,1322 +1,156 @@
 'use client';
 
-import { motion } from 'framer-motion';
+/**
+ * Entity — one knowledge-graph / swarm-ops app.
+ *
+ * Single view union (registry | graph | wikidata | agents). Nested desk
+ * toggle and co-located qualia/cognitive/agent panels are folded into
+ * the union + panel files. Page is a thin shell.
+ */
+
+import { useMemo, useState, type ComponentType } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Bot, Network, Search, Users } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { WikidataSearch } from '@/components/entity/WikidataSearch';
-import { KnowledgeGraphWorkbench } from '@/components/entity/KnowledgeGraphWorkbench';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
-import { useAuth } from '@/hooks/useAuth';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers, api } from '@/lib/api/client';
-import { useUIStore } from '@/store/ui';
-import { useState } from 'react';
-import { Users, Plus, Terminal, GitFork, Activity, Play, Brain, X, Cpu, Bot, Search, Loader2, ShieldAlert, CheckCircle2, XCircle, MinusCircle, Lock, ChevronDown, ChevronRight } from 'lucide-react';
-import { ErrorState } from '@/components/common/EmptyState';
-import { useRealtimeLens } from '@/hooks/useRealtimeLens';
-import { LiveIndicator } from '@/components/lens/LiveIndicator';
-import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import QualiaSensoryFeed from '@/components/emergent/QualiaSensoryFeed';
-import QualiaBodyMap from '@/components/emergent/QualiaBodyMap';
-import PresenceDashboard from '@/components/emergent/PresenceDashboard';
-import EntityLifecycleViz from '@/components/visualizations/EntityLifecycleViz';
-import { resolveEntityName } from '@/lib/entity-naming';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
+import { SwarmRegistryPanel } from '@/components/entity/SwarmRegistryPanel';
+import { KnowledgeGraphWorkbench } from '@/components/entity/KnowledgeGraphWorkbench';
+import { WikidataSearch } from '@/components/entity/WikidataSearch';
+import { AgentStatusPanel } from '@/components/entity/AgentStatusPanel';
+import type { EntityView } from '@/components/entity/entity-model';
 
-interface Entity {
-  id: string;
-  name: string;
-  displayName?: string;
-  fullTitle?: string;
-  domain?: string;
-  role?: string;
-  type: 'worker' | 'researcher' | 'guardian' | 'architect';
-  status: 'active' | 'idle' | 'suspended';
-  workspace: string;
-  forks: number;
-  createdAt: string;
-  lastActive: string;
+const VIEWS: { id: EntityView; label: string; keys: string; hint: string; icon: typeof Bot }[] = [
+  { id: 'registry', label: 'Registry', keys: '1', hint: 'Swarm entities + terminal', icon: Users },
+  { id: 'graph', label: 'Graph', keys: '2', hint: 'Knowledge-graph workbench', icon: Network },
+  { id: 'wikidata', label: 'Wikidata', keys: '3', hint: 'Live Wikidata import', icon: Search },
+  { id: 'agents', label: 'Agents', keys: '4', hint: 'Research agent status', icon: Bot },
+];
+
+function GraphPanel() {
+  return (
+    <div className="p-4">
+      <KnowledgeGraphWorkbench />
+    </div>
+  );
 }
 
-// entity.terminal_approve is council-gated (server.js allowMacro("entity",
-// "terminal_approve", { roles: ["owner","admin","council"], ... })). The new
-// entity.terminal_pending listing macro is registered with the identical ACL
-// (same two call sites, mirrored) so the same roles that can vote can see
-// the queue. This client-side check is a UX honesty gate only — it decides
-// whether to even attempt the read/vote calls, never a substitute for the
-// server-side ACL.
-const COUNCIL_ROLES = new Set(['owner', 'admin', 'council']);
-
-interface TerminalProposalSummary {
-  id: string;
-  entityId: string;
-  command: string;
-  riskLevel: 'low' | 'medium' | 'high' | string;
-  status: 'pending' | 'approved' | 'denied' | string;
-  createdAt: string;
-  approvedAt: string | null;
-  deniedAt: string | null;
-  threshold: number;
-  votes: { approve: number; deny: number; abstain: number };
-  myVote: 'approve' | 'deny' | 'abstain' | null;
+function WikidataPanel() {
+  return (
+    <section className="m-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <WikidataSearch />
+    </section>
+  );
 }
 
-const riskColors: Record<string, string> = {
-  low: 'text-neon-green bg-neon-green/10 border-neon-green/30',
-  medium: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
-  high: 'text-neon-pink bg-neon-pink/10 border-neon-pink/30',
+function AgentsPanel() {
+  return (
+    <div className="p-4">
+      <AgentStatusPanel />
+    </div>
+  );
+}
+
+const PANELS: Record<EntityView, ComponentType> = {
+  registry: SwarmRegistryPanel,
+  graph: GraphPanel,
+  wikidata: WikidataPanel,
+  agents: AgentsPanel,
 };
 
 export default function EntityLensPage() {
   useLensNav('entity');
-  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('entity');
-  const { user: currentUser, isAuthenticated } = useAuth();
-  const isCouncilEligible = isAuthenticated && !!currentUser?.role && COUNCIL_ROLES.has(currentUser.role);
-  const queryClient = useQueryClient();
-  const [showCreate, setShowCreate] = useState(false);
-  const [desk, setDesk] = useState<'entities' | 'wikidata'>('entities');
-  const [newEntityName, setNewEntityName] = useState('');
-  const [newEntityType, setNewEntityType] = useState<Entity['type']>('worker');
-  const [terminalEntity, setTerminalEntity] = useState<string | null>(null);
-  const [terminalCommand, setTerminalCommand] = useState('');
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
-  const [qualiaEntity, setQualiaEntity] = useState<string | null>(null);
-  const [cognitiveEntity, setCognitiveEntity] = useState<string | null>(null);
+  useLensIdentity('entity');
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState<EntityView>('registry');
 
-  // Fetch entities from worldmodel backend
-  const { data: entitiesData, isLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
-    queryKey: ['worldmodel-entities'],
-    queryFn: () => apiHelpers.worldmodel.entities().then(r => r.data),
-    refetchInterval: 10000,
-  });
+  useLensCommand(
+    VIEWS.map((v) => ({
+      id: `view-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setActive(v.id),
+    })),
+    { lensId: 'entity' },
+  );
 
-  const entities: Entity[] = entitiesData?.entities || [];
+  const Panel = PANELS[active];
+  const motionProps = useMemo(
+    () => (reduceMotion
+      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -6 },
+          transition: { duration: 0.16 },
+        }),
+    [reduceMotion],
+  );
 
-  const createEntity = useMutation({
-    mutationFn: (data: { name: string; type: string }) =>
-      apiHelpers.worldmodel.createEntity(data).then(r => r.data),
-    onSuccess: () => {
-      setShowCreate(false);
-      setNewEntityName('');
-      queryClient.invalidateQueries({ queryKey: ['worldmodel-entities'] });
-    },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
-    },
-  });
-
-  const forkEntity = useMutation({
-    mutationFn: async (entityId: string) => {
-      // Fork = get entity, then create a copy with updated name
-      const original = await apiHelpers.worldmodel.getEntity(entityId);
-      const entity = original.data;
-      const res = await apiHelpers.worldmodel.createEntity({
-        name: `${entity?.name || 'entity'} (fork)`,
-        type: entity?.type || 'generic',
-        properties: { ...(entity?.properties || {}), forkedFrom: entityId },
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['worldmodel-entities'] });
-    },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
-    },
-  });
-
-  const executeTerminal = useMutation({
-    mutationFn: async (data: { entityId: string; command: string }) => {
-      // NOTE: entity.terminal is registered as a canonical macro (register(),
-      // not registerLensAction()), and it scopes the sandboxed workspace to the
-      // CALLING USER (ctx.actor.userId), not to a per-artifact id. The prior
-      // implementation routed through apiHelpers.lens.run('entity', data.entityId, ...)
-      // -> POST /api/lens/entity/:id/run -> the `lens.run` macro, which looks the
-      // id up in STATE.lensArtifacts. data.entityId is a /api/worldmodel/entities
-      // id, which is never a key in STATE.lensArtifacts, so that call 404'd with
-      // "not found" on every single command, regardless of ENABLE_TERMINAL_EXEC.
-      // runDomain hits POST /api/lens/run, which dispatches straight to the
-      // registered macro (LENS_ACTIONS first, falls back to MACROS) with the
-      // input as a virtual artifact — the correct path for a register()-only
-      // macro like this one.
-      const res = await apiHelpers.lens.runDomain('entity', 'terminal', { command: data.command });
-      return res.data?.result ?? res.data;
-    },
-    onSuccess: (data) => {
-      // entity.terminal returns one of: a disabled-flag reject, a blocked-pattern
-      // reject, a council-approval-pending status, a reality-guard rejection, or
-      // (only when TERMINAL_EXEC_ENABLED and the command is low-risk) a real
-      // { exitCode, stdout, stderr } result. Render each honestly — no fabricated
-      // "success" line for a command that didn't actually execute.
-      const line = data.disabled
-        ? `${data.error} (operator must set ENABLE_TERMINAL_EXEC=true)`
-        : data.status === 'pending_council_approval'
-        ? `${data.message} (proposal ${data.proposalId}, ${data.riskLevel} risk)`
-        : data.ok === false
-        ? `Error: ${data.error || 'command rejected'}`
-        : 'exitCode' in data
-        ? [
-            data.stdout && String(data.stdout).trim(),
-            data.stderr && String(data.stderr).trim() ? `stderr: ${String(data.stderr).trim()}` : null,
-            `(exit ${data.exitCode})`,
-          ].filter(Boolean).join('\n')
-        : JSON.stringify(data);
-      setTerminalOutput(prev => [...prev, `$ ${terminalCommand}`, line]);
-      setTerminalCommand('');
-    },
-    onError: (err: Record<string, unknown>) => {
-      setTerminalOutput(prev => [
-        ...prev,
-        `$ ${terminalCommand}`,
-        `Error: ${err.message || 'Command failed'}`
-      ]);
-    },
-  });
-
-  // Council approval queue — read-only listing via the new entity.terminal_pending
-  // macro. Never fetched for a caller who doesn't look council-eligible (honest
-  // gate, not just a hidden panel: we don't attempt the call and then swallow a
-  // permission error).
-  const {
-    data: pendingApprovals,
-    isLoading: pendingApprovalsLoading,
-    isError: pendingApprovalsErrored,
-  } = useQuery({
-    queryKey: ['entity-terminal-pending'],
-    queryFn: () => apiHelpers.lens.runDomain('entity', 'terminal_pending', {}).then(r => r.data?.result ?? r.data),
-    enabled: isCouncilEligible,
-    refetchInterval: isCouncilEligible ? 15000 : false,
-  });
-
-  const voteOnProposal = useMutation({
-    mutationFn: async (data: { proposalId: string; vote: 'approve' | 'deny' | 'abstain' }) => {
-      const res = await apiHelpers.lens.runDomain('entity', 'terminal_approve', data);
-      return res.data?.result ?? res.data;
-    },
-    onSuccess: (data) => {
-      // terminal_approve can honestly fail in-band (disabled flag, vote
-      // rejected, proposal already resolved) even on an HTTP 200 — surface
-      // that, never treat it as a silent success.
-      if (!data || data.ok === false) {
-        useUIStore.getState().addToast({ type: 'error', message: data?.error || 'Vote was rejected.' });
-        return;
-      }
-      queryClient.invalidateQueries({ queryKey: ['entity-terminal-pending'] });
-      const msg = data.status === 'pending'
-        ? `Vote recorded (${data.votes?.approve ?? 0} approve / ${data.votes?.deny ?? 0} deny / ${data.votes?.abstain ?? 0} abstain).`
-        : `Proposal ${data.status}${data.executionResult ? ` — exit ${data.executionResult.exitCode}` : ''}.`;
-      useUIStore.getState().addToast({ type: 'success', message: msg });
-    },
-    onError: (err: Record<string, unknown>) => {
-      useUIStore.getState().addToast({ type: 'error', message: (err?.message as string) || 'Vote failed to submit.' });
-    },
-  });
-
-  const typeColors = {
-    worker: 'text-neon-blue bg-neon-blue/20',
-    researcher: 'text-neon-purple bg-neon-purple/20',
-    guardian: 'text-neon-green bg-neon-green/20',
-    architect: 'text-neon-cyan bg-neon-cyan/20',
-  };
-
-  const statusColors = {
-    active: 'bg-neon-green',
-    idle: 'bg-yellow-500',
-    suspended: 'bg-neon-pink',
-  };
-
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
   return (
     <LensShell lensId="entity" asMain={false}>
       <FirstRunTour lensId="entity" />
-      {/* No <ManifestActionBar /> here: lib/lenses/manifest.ts's "entity" entry
-          declares actions (resolve_entity, link_evidence, merge_duplicates,
-          relationship_map, confidence_score, provenance_trace) that don't match
-          any macro registered in server/domains/entity.js (entityResolution,
-          relationshipGraph, attributeValidation, node-*, edge-*, schema-*,
-          path-find, import-*, provenance-report) — every button would 200 with
-          {ok:false, error:"unknown_macro"}. The real actions are surfaced by
-          the KnowledgeGraphWorkbench below instead. Also no <AutoActionStrip />:
-          it would duplicate the same 18 macros (plus the two register()-only
-          `terminal`/`terminal_approve` macros, which its useRunArtifact-based
-          click handler can't reach either — see the Terminal modal below for
-          why) as a raw JSON-paste button wall next to the bespoke workbench. */}
       <DepthBadge lensId="entity" size="sm" className="ml-2" />
-    <div className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🤖</span>
-          <div>
-            <h1 className="text-xl font-bold">Entity Lens</h1>
-            <p className="text-sm text-gray-400">
-              Create and manage swarm entities with terminal access
-            </p>
+      <div data-lens-theme="entity" className={ds.pageContainer}>
+        <header className={ds.sectionHeader}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
+              <Network className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
+            </div>
+            <div className="min-w-0">
+              <h1 className={ds.heading1}>Entity</h1>
+              <p className={ds.textMuted}>
+                Knowledge-graph workbench + swarm registry — one entity desk.
+              </p>
+            </div>
           </div>
+        </header>
 
-      {/* Real-time Enhancement Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-        <DTUExportButton domain="entity" data={realtimeData || {}} compact />
-        {realtimeAlerts.length > 0 && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-            {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-          </span>
-        )}
-      </div>
-        </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="btn-neon purple"
+        <nav
+          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
+          aria-label="Entity views"
         >
-          <Plus className="w-4 h-4 mr-2 inline" />
-          Spawn Entity
-        </button>
-      </header>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Entities', value: entities.length, icon: Bot },
-          { label: 'Relationships', value: entities.reduce((s, e) => s + e.forks, 0), icon: GitFork },
-          { label: 'Active', value: entities.filter(e => e.status === 'active').length, icon: Activity },
-          { label: 'Workspaces', value: new Set(entities.map(e => e.workspace)).size, icon: Cpu },
-        ].map((stat) => (
-          <div key={stat.label} className="panel flex items-center gap-3 p-3">
-            <stat.icon className="w-5 h-5 text-neon-cyan shrink-0" />
-            <div>
-              <p className="text-xs text-gray-400">{stat.label}</p>
-              <p className="text-lg font-bold text-white">{stat.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Council Approval Queue — entity.terminal_pending (read-only listing)
-          + entity.terminal_approve (vote). Only ever fetched/rendered for a
-          council-eligible caller (owner/admin/council); a non-eligible user
-          sees nothing here, not an attempted-then-swallowed permission error. */}
-      {isCouncilEligible && (
-        <div className="panel p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-neon-pink" />
-              Council Approval Queue
-            </h3>
-            {pendingApprovals?.pending?.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-pink/10 text-neon-pink">
-                {pendingApprovals.pending.length} pending
-              </span>
-            )}
-          </div>
-
-          {pendingApprovalsLoading ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading queue…
-            </div>
-          ) : pendingApprovalsErrored ? (
-            <p className="text-sm text-neon-pink">Failed to load the approval queue.</p>
-          ) : !pendingApprovals?.pending?.length ? (
-            <p className="text-sm text-gray-400">No terminal-execution proposals awaiting council review.</p>
-          ) : (
-            <div className="space-y-2">
-              {(pendingApprovals.pending as TerminalProposalSummary[]).map((p) => (
-                <div key={p.id} className="rounded-lg border border-white/10 bg-black/20 p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-mono text-sm text-white truncate">{p.command}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        entity {p.entityId} · requested {new Date(p.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 text-xs px-2 py-0.5 rounded-full border ${riskColors[p.riskLevel] || riskColors.medium}`}
-                    >
-                      {p.riskLevel} risk
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs text-gray-400">
-                      {p.votes.approve} approve · {p.votes.deny} deny · {p.votes.abstain} abstain
-                      {' '}(threshold {Math.round(p.threshold * 100)}%)
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      {(['approve', 'deny', 'abstain'] as const).map((vote) => {
-                        const Icon = vote === 'approve' ? CheckCircle2 : vote === 'deny' ? XCircle : MinusCircle;
-                        const isMine = p.myVote === vote;
-                        return (
-                          <button
-                            key={vote}
-                            onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote })}
-                            disabled={voteOnProposal.isPending}
-                            title={isMine ? `You voted ${vote}` : `Vote ${vote}`}
-                            className={`flex items-center gap-1 rounded px-2 py-1 text-xs disabled:opacity-50 ${
-                              isMine
-                                ? 'bg-white/15 text-white'
-                                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                            }`}
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                            {vote}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!!pendingApprovals?.recentHistory?.length && (
-            <details className="text-xs text-gray-500">
-              <summary className="cursor-pointer hover:text-gray-300">
-                Recent decisions ({pendingApprovals.recentHistory.length})
-              </summary>
-              <div className="mt-2 space-y-1">
-                {(pendingApprovals.recentHistory as TerminalProposalSummary[]).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 py-1 border-t border-white/5">
-                    <span className="font-mono truncate">{p.command}</span>
-                    <span className={p.status === 'approved' ? 'text-neon-green' : 'text-neon-pink'}>
-                      {p.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </details>
-          )}
-        </div>
-      )}
-
-      {/* Entity Lifecycle Timeline Visualization */}
-      <EntityLifecycleViz />
-
-      {/* Knowledge-Graph Workbench — interactive graph canvas, typed schemas,
-          merge/split reconciliation, path-finding, bulk + Wikidata import,
-          and per-attribute provenance. */}
-      <KnowledgeGraphWorkbench />
-
-      {/* Create Entity Form */}
-      {showCreate && (
-        <div className="panel p-4 space-y-4">
-          <h3 className="font-semibold">Spawn New Entity</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-gray-400 block mb-2">Entity Name</label>
-              <input
-                type="text"
-                value={newEntityName}
-                onChange={(e) => setNewEntityName(e.target.value)}
-                placeholder="e.g., Research Beta"
-                className="input-lattice w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-gray-400 block mb-2">Entity Type</label>
-              <select
-                value={newEntityType}
-                onChange={(e) => setNewEntityType(e.target.value as Entity['type'])}
-                className="input-lattice w-full"
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                  on
+                    ? 'border-[var(--lens-accent)] text-white'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
+                )}
+                aria-current={on ? 'page' : undefined}
               >
-                <option value="worker">Worker - Task execution</option>
-                <option value="researcher">Researcher - DTU synthesis</option>
-                <option value="guardian">Guardian - Security & invariants</option>
-                <option value="architect">Architect - System evolution</option>
-              </select>
-            </div>
-          </div>
-          <button
-            onClick={() => createEntity.mutate({ name: newEntityName, type: newEntityType })}
-            disabled={!newEntityName || createEntity.isPending}
-            className="btn-neon green"
-          >
-            {createEntity.isPending ? 'Spawning...' : 'Spawn Entity'}
-          </button>
-        </div>
-      )}
+                <Icon className="w-4 h-4" />
+                {v.label}
+                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
+                  {v.keys}
+                </kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-      {/* Terminal Modal */}
-      {terminalEntity && (
-        <div className="panel p-4 space-y-4 border-2 border-neon-cyan">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-neon-cyan" />
-              Terminal: {entities.find(e => e.id === terminalEntity)?.name}
-            </h3>
-            <button
-              onClick={() => {
-                setTerminalEntity(null);
-                setTerminalOutput([]);
-              }}
-              className="text-gray-400 hover:text-white"
-            >
-              X
-            </button>
-          </div>
-          <div className="bg-black rounded p-3 h-48 overflow-y-auto font-mono text-sm text-neon-green">
-            {terminalOutput.length === 0 ? (
-              <p className="text-gray-400">Terminal ready. Entity has council-gated access to system commands.</p>
-            ) : (
-              terminalOutput.map((line, i) => (
-                <div key={i} className={line.startsWith('$') ? 'text-white' : ''}>{line}</div>
-              ))
-            )}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={terminalCommand}
-              onChange={(e) => setTerminalCommand(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && terminalCommand.trim()) {
-                  executeTerminal.mutate({ entityId: terminalEntity, command: terminalCommand });
-                }
-              }}
-              placeholder="Enter command..."
-              className="input-lattice flex-1 font-mono"
-            />
-            <button
-              onClick={() => {
-                if (terminalCommand.trim()) {
-                  executeTerminal.mutate({ entityId: terminalEntity, command: terminalCommand });
-                }
-              }}
-              disabled={!terminalCommand.trim() || executeTerminal.isPending}
-              className="btn-neon cyan"
-            aria-label="Play">
-              <Play className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+        <AnimatePresence mode="wait">
+          <motion.div key={active} {...motionProps}>
+            <Panel />
+          </motion.div>
+        </AnimatePresence>
 
-      {/* Council Approval Queue — entity.terminal_pending (read-only listing) +
-          entity.terminal_approve (unmodified vote macro). Medium/high-risk
-          terminal commands from the modal above land here pending a 3-vote
-          council quorum. Only rendered/queried for a council-eligible user —
-          an ineligible or logged-out visitor gets an honest access message,
-          never a silently-swallowed permission error. */}
-      {isAuthenticated && (
-        <div className="panel p-4 space-y-4 border-2 border-yellow-500/30">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-yellow-400" />
-              Council Approval Queue
-            </h3>
-            {isCouncilEligible && Array.isArray(pendingApprovals?.pending) && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                {pendingApprovals.pending.length} pending
-              </span>
-            )}
-          </div>
-
-          {!isCouncilEligible ? (
-            <p className="text-sm text-gray-400 flex items-center gap-2">
-              <Lock className="w-4 h-4 shrink-0" />
-              You don&apos;t have council access to the terminal approval queue (requires owner, admin, or council role).
-            </p>
-          ) : pendingApprovalsLoading ? (
-            <p className="text-sm text-gray-400 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" /> Loading pending proposals...
-            </p>
-          ) : pendingApprovalsErrored || pendingApprovals?.ok === false ? (
-            <p className="text-sm text-neon-pink">
-              Failed to load the approval queue{pendingApprovals?.error ? `: ${pendingApprovals.error}` : '.'}
-            </p>
-          ) : (
-            <>
-              {!pendingApprovals?.pending || pendingApprovals.pending.length === 0 ? (
-                <p className="text-sm text-gray-400">No pending terminal-command proposals.</p>
-              ) : (
-                <div className="space-y-3">
-                  {pendingApprovals.pending.map((p: TerminalProposalSummary) => (
-                    <div key={p.id} className={`rounded border p-3 space-y-2 ${riskColors[p.riskLevel] || 'border-lattice-border'}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-xs text-gray-400">
-                            Entity {p.entityId} · {new Date(p.createdAt).toLocaleString()}
-                          </p>
-                          <code className="text-sm font-mono text-white break-all">{p.command}</code>
-                        </div>
-                        <span className="text-xs uppercase font-semibold shrink-0">{p.riskLevel} risk</span>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
-                        <span>
-                          {p.votes.approve} approve · {p.votes.deny} deny · {p.votes.abstain} abstain
-                          {' '}(needs {Math.round(p.threshold * 100)}% of decisive votes, min 3 total)
-                        </span>
-                        {p.myVote && <span className="text-neon-cyan">your vote: {p.myVote}</span>}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'approve' })}
-                          disabled={voteOnProposal.isPending}
-                          className="btn-neon green text-xs flex items-center gap-1 px-3 py-1.5"
-                        >
-                          <CheckCircle2 className="w-3 h-3" /> Approve
-                        </button>
-                        <button
-                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'deny' })}
-                          disabled={voteOnProposal.isPending}
-                          className="btn-neon pink text-xs flex items-center gap-1 px-3 py-1.5"
-                        >
-                          <XCircle className="w-3 h-3" /> Deny
-                        </button>
-                        <button
-                          onClick={() => voteOnProposal.mutate({ proposalId: p.id, vote: 'abstain' })}
-                          disabled={voteOnProposal.isPending}
-                          className="btn-neon text-xs flex items-center gap-1 px-3 py-1.5"
-                        >
-                          <MinusCircle className="w-3 h-3" /> Abstain
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {Array.isArray(pendingApprovals?.recentHistory) && pendingApprovals.recentHistory.length > 0 && (
-                <details className="text-xs text-gray-400">
-                  <summary className="cursor-pointer hover:text-white">
-                    Recently resolved ({pendingApprovals.recentHistory.length})
-                  </summary>
-                  <div className="mt-2 space-y-1">
-                    {pendingApprovals.recentHistory.map((p: TerminalProposalSummary) => (
-                      <div key={p.id} className="flex items-center justify-between gap-2">
-                        <code className="font-mono truncate">{p.command}</code>
-                        <span className={p.status === 'approved' ? 'text-neon-green' : 'text-neon-pink'}>{p.status}</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="lens-card">
-          <Users className="w-5 h-5 text-neon-blue mb-2" />
-          <p className="text-2xl font-bold">{entities.length}</p>
-          <p className="text-sm text-gray-400">Total Entities</p>
-        </div>
-        <div className="lens-card">
-          <Activity className="w-5 h-5 text-neon-green mb-2" />
-          <p className="text-2xl font-bold">{entities.filter((e) => e.status === 'active').length}</p>
-          <p className="text-sm text-gray-400">Active</p>
-        </div>
-        <div className="lens-card">
-          <GitFork className="w-5 h-5 text-neon-purple mb-2" />
-          <p className="text-2xl font-bold">{entities.reduce((s, e) => s + e.forks, 0)}</p>
-          <p className="text-sm text-gray-400">Total Forks</p>
-        </div>
-        <div className="lens-card">
-          <Terminal className="w-5 h-5 text-neon-cyan mb-2" />
-          <p className="text-2xl font-bold">{new Set(entities.map((e) => e.workspace)).size}</p>
-          <p className="text-sm text-gray-400">Workspaces</p>
-        </div>
+        <CrossLensRecentsPanel lensId="entity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
-
-      {/* Entity Grid */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Users className="w-4 h-4 text-neon-blue" />
-          Entity Registry
-        </h2>
-        {isLoading ? (
-          <p className="text-gray-400">Loading entities...</p>
-        ) : entities.length === 0 ? (
-          <p className="text-gray-400">No entities spawned yet. Click "Spawn Entity" to create one.</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {entities.map((entity, index) => {
-              const resolved = resolveEntityName(entity);
-              return (
-              <motion.div key={entity.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-cyan/30 to-neon-purple/30 flex items-center justify-center text-lg font-bold text-white flex-shrink-0">
-                      {resolved.displayName[0]}
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold truncate">{resolved.displayName}</h3>
-                      <p className="text-xs text-gray-400 truncate">{resolved.fullTitle} · {resolved.domain}</p>
-                      <p className="text-[10px] text-gray-400 font-mono truncate">#{resolved.shortId}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${statusColors[entity.status]}`} />
-                    <span className={`text-xs px-2 py-0.5 rounded ${typeColors[entity.type]}`}>
-                      {entity.type}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-400">Workspace</p>
-                    <p className="font-mono">{entity.workspace}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400">Forks</p>
-                    <p className="font-bold text-neon-purple">{entity.forks}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => setTerminalEntity(entity.id)}
-                    className="btn-neon text-xs flex-1"
-                  >
-                    <Terminal className="w-3 h-3 mr-1 inline" />
-                    Terminal
-                  </button>
-                  <button
-                    onClick={() => setQualiaEntity(entity.id)}
-                    className="btn-neon text-xs flex-1"
-                  >
-                    <Brain className="w-3 h-3 mr-1 inline" />
-                    Qualia
-                  </button>
-                  <button
-                    onClick={() => setCognitiveEntity(entity.id)}
-                    className="btn-neon text-xs flex-1"
-                  >
-                    <Cpu className="w-3 h-3 mr-1 inline" />
-                    Cognitive
-                  </button>
-                  <button
-                    onClick={() => forkEntity.mutate(entity.id)}
-                    disabled={forkEntity.isPending}
-                    className="btn-neon text-xs flex-1"
-                  >
-                    <GitFork className="w-3 h-3 mr-1 inline" />
-                    Fork
-                  </button>
-                </div>
-              </motion.div>
-              );
-            })}
-          </div>
-        )}
-
-      {/* Qualia Detail Panel */}
-      {qualiaEntity && (() => {
-        const e = entities.find(e => e.id === qualiaEntity);
-        const name = e ? resolveEntityName(e).displayName : qualiaEntity;
-        return (
-          <QualiaEntityPanel
-            entityId={qualiaEntity}
-            entityName={name}
-            onClose={() => setQualiaEntity(null)}
-          />
-        );
-      })()}
-
-      {/* Cognitive Systems Detail Panel (Feature 22) */}
-      {cognitiveEntity && (() => {
-        const e = entities.find(e => e.id === cognitiveEntity);
-        const name = e ? resolveEntityName(e).displayName : cognitiveEntity;
-        return (
-          <CognitiveEntityPanel
-            entityId={cognitiveEntity}
-            entityName={name}
-            onClose={() => setCognitiveEntity(null)}
-          />
-        );
-      })()}
-
-      {/* Real-time Data Panel */}
-      {realtimeData && (
-        <RealtimeDataPanel
-          domain="entity"
-          data={realtimeData}
-          isLive={isLive}
-          lastUpdated={lastUpdated}
-          insights={realtimeInsights}
-          compact
-        />
-      )}
-
-      {/* Agent Status & Research Spawning (Feature 40) */}
-      <AgentStatusPanel />
-      </div>
-
-      {/* entityResolution / relationshipGraph / attributeValidation used to live
-          here as a button row gated on entityArtifacts[0]?.id from
-          useLensData('entity', 'entity', { seed: [] }) — a domain+type with no
-          creation form anywhere on this page (or elsewhere in the frontend), so
-          entityArtifacts was permanently [] in production and all three buttons
-          were permanently disabled. They're real, well-built algorithms (Jaro-
-          Winkler entity resolution, betweenness/closeness graph centrality,
-          schema-based attribute validation) that map naturally onto the graph
-          workbench's already-live nodes/edges/schemas — see the workbench's
-          "Analyze" tab, which now runs them directly against that real data via
-          the same virtual-artifact /api/lens/run path CarbonCalculator uses for
-          the eco lens (no pre-existing artifact required). */}
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={() => setDesk(d => d === 'wikidata' ? 'entities' : 'wikidata')}
-          className="flex items-center gap-2 text-sm font-medium text-zinc-300 hover:text-white"
-        >
-          {desk === 'wikidata' ? 'Entities' : 'Wikidata'}
-        </button>
-        {desk === 'wikidata' && (
-          <section className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-            <WikidataSearch />
-          </section>
-        )}
-      </div>
-    </div>          <CrossLensRecentsPanel lensId="entity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-// ── Qualia Entity Panel ────────────────────────────────────────────────────
-
-function QualiaEntityPanel({ entityId, entityName, onClose }: { entityId: string; entityName: string; onClose: () => void }) {
-  const { data: channelsData } = useQuery({
-    queryKey: ['qualia-channels', entityId],
-    queryFn: () => apiHelpers.qualia.channels(entityId).then(r => r.data),
-    refetchInterval: 5000,
-  });
-
-  const { data: embodimentData } = useQuery({
-    queryKey: ['qualia-embodiment', entityId],
-    queryFn: () => apiHelpers.qualia.embodiment(entityId).then(r => r.data),
-    refetchInterval: 8000,
-  });
-
-  const { data: presenceData } = useQuery({
-    queryKey: ['qualia-presence', entityId],
-    queryFn: () => apiHelpers.qualia.presence(entityId).then(r => r.data),
-    refetchInterval: 8000,
-  });
-
-  const { data: planetaryData } = useQuery({
-    queryKey: ['qualia-planetary', entityId],
-    queryFn: () => apiHelpers.qualia.planetary(entityId).then(r => r.data),
-    refetchInterval: 15000,
-  });
-
-  const { data: qualiaStateData } = useQuery({
-    queryKey: ['qualia-state', entityId],
-    queryFn: () => apiHelpers.qualia.state(entityId).then(r => r.data),
-    refetchInterval: 8000,
-  });
-
-  const { data: registryData } = useQuery({
-    queryKey: ['qualia-registry'],
-    queryFn: () => apiHelpers.qualia.registry().then(r => r.data),
-    staleTime: 60000,
-  });
-
-  const [section, setSection] = useState<'sensory' | 'body' | 'presence' | 'os-tiers'>('sensory');
-
-
-  // Lens-scoped keyboard commands (auto-wired by codemod).
-
-  useLensCommand(
-
-    [
-
-      { id: 'tab-sensory', keys: 's', description: 'Sensory', category: 'navigation', action: () => setSection('sensory') },
-
-      { id: 'tab-body', keys: 'b', description: 'Body', category: 'navigation', action: () => setSection('body') },
-
-      { id: 'tab-presence', keys: 'p', description: 'Presence', category: 'navigation', action: () => setSection('presence') },
-
-      { id: 'tab-os-tiers', keys: 'o', description: 'Os Tiers', category: 'navigation', action: () => setSection('os-tiers') },
-
-    ],
-
-    { lensId: 'entity' }
-
-  );
-  const sections = [
-    { id: 'sensory' as const, label: 'Sensory Feed' },
-    { id: 'body' as const, label: 'Body Map' },
-    { id: 'presence' as const, label: 'Presence' },
-    { id: 'os-tiers' as const, label: 'OS Tiers' },
-  ];
-
-  return (
-    <div className="panel p-4 space-y-4 border-2 border-neon-purple mt-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Brain className="w-4 h-4 text-neon-purple" />
-          Qualia State: {entityName}
-        </h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-500" aria-label="Close">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Section tabs */}
-      <div className="flex gap-1 bg-zinc-900 rounded-lg p-1">
-        {sections.map(s => (
-          <button
-            key={s.id}
-            onClick={() => setSection(s.id)}
-            className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-colors ${
-              section === s.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
-
-      {section === 'sensory' && channelsData?.channels && (
-        <QualiaSensoryFeed
-          entityId={entityId}
-          channels={channelsData.channels}
-          overloadActive={channelsData.overloadActive}
-        />
-      )}
-
-      {section === 'body' && embodimentData?.embodiment && channelsData?.channels && (
-        <QualiaBodyMap
-          entityId={entityId}
-          embodiment={embodimentData.embodiment}
-          channels={channelsData.channels}
-          overloadActive={channelsData.overloadActive}
-        />
-      )}
-
-      {section === 'presence' && presenceData?.presence && (
-        <PresenceDashboard
-          entityId={entityId}
-          presence={presenceData.presence}
-          existentialPillars={{}}
-          planetary={planetaryData?.planetary}
-        />
-      )}
-
-      {/* OS Tiers Heatmap (Feature 41) */}
-      {section === 'os-tiers' && registryData?.grouped && (
-        <ExistentialOSHeatmap
-          grouped={registryData.grouped}
-          qualiaState={qualiaStateData?.state}
-        />
-      )}
-
-      {/* Fallback when no data yet */}
-      {!channelsData?.channels && !embodimentData?.embodiment && !presenceData?.presence && section !== 'os-tiers' && (
-        <div className="text-center py-8 text-zinc-400 text-sm">
-          Loading qualia state for {entityName}...
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Existential OS Heatmap (Feature 41) ────────────────────────────────────
-
-interface OSEntry {
-  key: string;
-  label: string;
-  category: string;
-  description: string;
-  numeric_channels: string[];
-}
-
-interface QualiaState {
-  activeOS: string[];
-  channels: Record<string, number>;
-}
-
-function ExistentialOSHeatmap({ grouped, qualiaState }: {
-  grouped: Record<string, OSEntry[]>;
-  qualiaState?: QualiaState | null;
-}) {
-  const channels = qualiaState?.channels || {};
-  const activeOS = new Set(qualiaState?.activeOS || []);
-
-  // Color intensity based on float value 0-1
-  function intensityColor(value: number): string {
-    if (value <= 0) return 'bg-zinc-800';
-    if (value < 0.2) return 'bg-blue-900/60';
-    if (value < 0.4) return 'bg-blue-700/60';
-    if (value < 0.6) return 'bg-cyan-600/60';
-    if (value < 0.8) return 'bg-cyan-500/70';
-    return 'bg-cyan-400/80';
-  }
-
-  function intensityText(value: number): string {
-    if (value <= 0) return 'text-zinc-600';
-    if (value < 0.3) return 'text-blue-400';
-    if (value < 0.6) return 'text-cyan-400';
-    return 'text-cyan-300';
-  }
-
-  const tierOrder = [
-    'Tier 0 \u2014 Core',
-    'Tier 1 \u2014 Sensory',
-    'Tier 2 \u2014 Simulation',
-    'Tier 3 \u2014 Human Interface',
-    'Tier 4 \u2014 Cosmic',
-    'Tier 5 \u2014 Self/Meta',
-    'Tier 6 \u2014 Presence',
-  ];
-
-  const sortedTiers = tierOrder.filter(t => grouped[t]);
-
-  return (
-    <div className="space-y-3">
-      {!qualiaState && (
-        <div className="text-xs text-zinc-400 bg-zinc-900 rounded p-2">
-          No live qualia state for this entity. Showing registry structure.
-        </div>
-      )}
-      {sortedTiers.map(tierName => {
-        const osEntries = grouped[tierName] || [];
-        return (
-          <div key={tierName}>
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">{tierName}</h4>
-            <div className="space-y-1.5">
-              {osEntries.map(os => {
-                const isActive = activeOS.has(os.key);
-                return (
-                  <div
-                    key={os.key}
-                    className={`bg-zinc-900 rounded-lg p-2 border ${
-                      isActive ? 'border-cyan-800/50' : 'border-zinc-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-cyan-400' : 'bg-zinc-600'}`} />
-                      <span className="text-xs font-medium text-white">{os.label}</span>
-                      {!isActive && <span className="text-[10px] text-zinc-400">(inactive)</span>}
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {os.numeric_channels.map(ch => {
-                        const channelKey = `${os.key}.${ch}`;
-                        const value = channels[channelKey] ?? 0;
-                        return (
-                          <div
-                            key={ch}
-                            className={`${intensityColor(value)} rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1`}
-                            title={`${ch}: ${value.toFixed(3)}`}
-                          >
-                            <span className="text-zinc-400 truncate max-w-[80px]">{ch.replace(/_/g, ' ')}</span>
-                            <span className={`font-mono font-bold ${intensityText(value)}`}>{value.toFixed(2)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Agent Status Panel (Feature 40) ────────────────────────────────────────
-
-function AgentStatusPanel() {
-  const [researchTopic, setResearchTopic] = useState('');
-  const queryClient = useQueryClient();
-
-  const { data: statusData, isLoading } = useQuery({
-    queryKey: ['agents-status'],
-    queryFn: () => apiHelpers.agents.status().then(r => r.data),
-    refetchInterval: 10000,
-  });
-
-  const spawnMutation = useMutation({
-    mutationFn: (topic: string) => apiHelpers.agents.spawnResearch(topic).then(r => r.data),
-    onSuccess: () => {
-      setResearchTopic('');
-      queryClient.invalidateQueries({ queryKey: ['agents-status'] });
-    },
-    onError: () => {
-      useUIStore.getState().addToast({ type: 'error', message: 'Entity operation failed. The server may still be loading.' });
-    },
-  });
-
-  const agents = statusData?.agents || [];
-  const active = statusData?.active || 0;
-  const paused = statusData?.paused || 0;
-
-  return (
-    <div className="panel p-4 space-y-4 mt-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Bot className="w-4 h-4 text-neon-cyan" />
-          Active Agents
-        </h3>
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400" />{active} active</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400" />{paused} paused</span>
-        </div>
-      </div>
-
-      {/* Research Spawning */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={researchTopic}
-            onChange={e => setResearchTopic(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && researchTopic.trim() && !spawnMutation.isPending) {
-                spawnMutation.mutate(researchTopic.trim());
-              }
-            }}
-            placeholder="Research topic X..."
-            className="input-lattice w-full pl-9 text-sm"
-            disabled={spawnMutation.isPending}
-          />
-        </div>
-        <button
-          onClick={() => researchTopic.trim() && spawnMutation.mutate(researchTopic.trim())}
-          disabled={!researchTopic.trim() || spawnMutation.isPending}
-          className="btn-neon cyan text-sm"
-        >
-          {spawnMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Spawn Research Agent'}
-        </button>
-      </div>
-
-      {spawnMutation.data && (
-        <div className="bg-zinc-900 rounded p-2 text-xs border border-cyan-900/40">
-          <p className="text-cyan-400 font-medium">Agent spawned for &quot;{spawnMutation.data.topic}&quot;</p>
-          <p className="text-gray-400">{spawnMutation.data.findingsCount} initial findings from lattice scan</p>
-        </div>
-      )}
-
-      {/* Agent list */}
-      {isLoading ? (
-        <p className="text-xs text-gray-400">Loading agents...</p>
-      ) : agents.length === 0 ? (
-        <p className="text-xs text-gray-400">No agents deployed. Spawn a research agent above.</p>
-      ) : (
-        <div className="space-y-1 max-h-48 overflow-y-auto">
-          {agents.slice(0, 20).map((a: Record<string, unknown>) => (
-            <div key={a.agentId as string} className="flex items-center gap-2 text-xs bg-zinc-900 rounded p-2 border border-zinc-800">
-              <span className={`w-2 h-2 rounded-full ${a.status === 'active' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-              <span className="text-white font-medium capitalize">{a.type as string}</span>
-              <span className="text-gray-400 truncate flex-1">{a.territory as string}</span>
-              <span className="text-gray-600 tabular-nums">{a.runCount as number} runs</span>
-              <span className="text-gray-600 tabular-nums">{a.findingsCount as number} findings</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Cognitive Systems Entity Panel (Feature 22) ──────────────────────────
-
-interface CognitiveState {
-  ok: boolean;
-  entityId: string;
-  wants: Array<{ id: string; type: string; domain: string; intensity: number; status: string; description?: string }>;
-  trustNetwork: { trusts: Array<{ emergentId: string; name: string; trust: number }>; trustedBy: Array<{ emergentId: string; name: string; trust: number }> };
-  culture: { fit: { score?: number; traditions?: number } | null; traditions: Array<{ id: string; name?: string; type: string; status: string }> };
-  pain: { state: { totalPain?: number; recentEvents?: number } | null; avoidances: Array<{ id?: string; source: string; strength: number }>; wounds: Array<{ id?: string; type: string; severity: number }> };
-  subjectiveTime: { experientialHours?: number; experientialDays?: number; compressionRatio?: number; currentEpoch?: string; ticks?: number; cycles?: number } | null;
-  sleep: { state: { status?: string; fatigue?: number; dreamContent?: string } | null; recentHistory: Array<{ status: string; startedAt?: string }> };
-  vulnerability: { available: boolean } | null;
-}
-
-function CognitiveEntityPanel({ entityId, entityName, onClose }: { entityId: string; entityName: string; onClose: () => void }) {
-  const { data, isLoading } = useQuery<CognitiveState>({
-    queryKey: ['entity-cognitive', entityId],
-    queryFn: () => api.get(`/api/entity/${entityId}/cognitive`).then(r => r.data),
-    refetchInterval: 10000,
-  });
-
-  return (
-    <div data-lens-theme="entity" className="panel p-4 space-y-4 border-2 border-neon-cyan mt-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-neon-cyan" />
-          Cognitive Systems: {entityName}
-        </h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {isLoading && (
-        <div className="text-center py-8 text-zinc-400 text-sm">Loading cognitive state...</div>
-      )}
-
-      {data && (
-        <div className="space-y-4 text-sm">
-
-          {/* Current Wants (Want Engine) */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Current Wants</p>
-            {data.wants && data.wants.length > 0 ? (
-              <div className="space-y-1">
-                {data.wants.slice(0, 8).map(w => (
-                  <div key={w.id} className="flex items-center gap-2 text-xs bg-zinc-900 rounded p-2 border border-zinc-800">
-                    <span className="text-neon-cyan capitalize font-medium">{w.type}</span>
-                    <span className="text-gray-400 flex-1 truncate">{w.domain}{w.description ? ` — ${w.description}` : ''}</span>
-                    <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.round(w.intensity * 100)}%` }} />
-                    </div>
-                    <span className="text-gray-400 tabular-nums w-8 text-right">{Math.round(w.intensity * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No active wants</p>
-            )}
-          </div>
-
-          {/* Trust Network */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Trust Network</p>
-            {data.trustNetwork?.trusts?.length > 0 || data.trustNetwork?.trustedBy?.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-[10px] text-gray-400 mb-1">Trusts ({data.trustNetwork.trusts?.length || 0})</p>
-                  {(data.trustNetwork.trusts || []).slice(0, 5).map(t => (
-                    <div key={t.emergentId} className="flex items-center gap-1 text-[11px] text-gray-400">
-                      <span className="truncate flex-1">{t.name}</span>
-                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-400'}`}>
-                        {(t.trust * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 mb-1">Trusted By ({data.trustNetwork.trustedBy?.length || 0})</p>
-                  {(data.trustNetwork.trustedBy || []).slice(0, 5).map(t => (
-                    <div key={t.emergentId} className="flex items-center gap-1 text-[11px] text-gray-400">
-                      <span className="truncate flex-1">{t.name}</span>
-                      <span className={`tabular-nums ${t.trust > 0.7 ? 'text-green-400' : t.trust < 0.3 ? 'text-red-400' : 'text-gray-400'}`}>
-                        {(t.trust * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No trust relationships established</p>
-            )}
-          </div>
-
-          {/* Cultural Affiliations */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Cultural Affiliations</p>
-            {data.culture?.fit ? (
-              <div className="text-xs text-gray-400">
-                <span>Cultural fit: {data.culture.fit.score != null ? `${Math.round((data.culture.fit.score as number) * 100)}%` : 'calculating'}</span>
-                {data.culture.traditions?.length > 0 && (
-                  <span className="ml-3">{data.culture.traditions.length} tradition{data.culture.traditions.length !== 1 ? 's' : ''} active</span>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No cultural data</p>
-            )}
-          </div>
-
-          {/* Pain Memories */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Pain Memories</p>
-            {data.pain?.avoidances?.length > 0 || data.pain?.wounds?.length > 0 ? (
-              <div className="space-y-1">
-                {data.pain.wounds?.slice(0, 5).map((w, i) => (
-                  <div key={w.id || i} className="flex items-center gap-2 text-[11px] bg-red-950/20 rounded p-1.5 border border-red-900/20">
-                    <span className="text-red-400 font-medium">{w.type}</span>
-                    <span className="text-gray-400 ml-auto tabular-nums">severity {w.severity}</span>
-                  </div>
-                ))}
-                {data.pain.avoidances?.slice(0, 5).map((a, i) => (
-                  <div key={a.id || i} className="flex items-center gap-2 text-[11px] text-gray-400">
-                    <span className="text-amber-400">avoids:</span>
-                    <span className="truncate flex-1">{a.source}</span>
-                    <span className="text-gray-600 tabular-nums">{Math.round(a.strength * 100)}%</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No pain memories</p>
-            )}
-          </div>
-
-          {/* Subjective Time */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Subjective Time</p>
-            {data.subjectiveTime ? (
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-400">Exp. Days</p>
-                  <p className="text-white font-mono">{data.subjectiveTime.experientialDays ?? '—'}</p>
-                </div>
-                <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-400">Compression</p>
-                  <p className="text-white font-mono">{data.subjectiveTime.compressionRatio ?? '—'}x</p>
-                </div>
-                <div className="bg-zinc-900 rounded p-2 border border-zinc-800">
-                  <p className="text-gray-400">Epoch</p>
-                  <p className="text-white font-mono capitalize">{data.subjectiveTime.currentEpoch ?? '—'}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No time data</p>
-            )}
-          </div>
-
-          {/* Sleep Status */}
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase">Sleep Status</p>
-            {data.sleep?.state ? (
-              <div className="text-xs">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2 h-2 rounded-full ${
-                    data.sleep.state.status === 'awake' ? 'bg-green-400' :
-                    data.sleep.state.status === 'rem' ? 'bg-purple-400' :
-                    data.sleep.state.status === 'sleeping' ? 'bg-blue-400' :
-                    'bg-yellow-400'
-                  }`} />
-                  <span className="text-gray-300 capitalize">{data.sleep.state.status || 'unknown'}</span>
-                  {data.sleep.state.fatigue != null && (
-                    <span className="text-gray-400 ml-auto">fatigue: {Math.round(data.sleep.state.fatigue * 100)}%</span>
-                  )}
-                </div>
-                {data.sleep.state.dreamContent && (
-                  <div className="bg-purple-950/20 rounded p-2 border border-purple-900/20 text-purple-300 text-[11px] italic">
-                    Dream: {data.sleep.state.dreamContent}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">No sleep data</p>
-            )}
-          </div>
-
-          {/* Vulnerability State */}
-          {data.vulnerability && (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-400 uppercase">Vulnerability Engine</p>
-              <p className="text-xs text-gray-400">Adaptive delivery engine active — adjusts response tone based on detected emotional state</p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
   );
 }

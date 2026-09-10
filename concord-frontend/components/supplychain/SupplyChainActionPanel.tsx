@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -137,7 +138,7 @@ export function SupplyChainActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Ops — ${supResult?.topSupplier ?? 'pipeline'}`, tags: ['supplychain', 'ops', supResult?.topSupplier].filter((t): t is string => !!t), source: 'supplychain:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sc: { lead: leadResult, inv: invResult, sup: supResult, fore: foreResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Ops — ${supResult?.topSupplier ?? 'pipeline'}`, tags: ['supplychain', 'ops', supResult?.topSupplier].filter((t): t is string => !!t), source: 'supplychain:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, sc: { lead: leadResult, inv: invResult, sup: supResult, fore: foreResult } } }, 'dataset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('supplychain.mintedDtuId', id, { label: `Ops DTU ${id.slice(0, 8)}…` }); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -166,7 +167,7 @@ export function SupplyChainActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Supplier scorecard (anon)`, tags: ['supplychain', 'benchmark', 'public'], source: 'supplychain:scorecard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, supScorecard: supResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Supplier scorecard (anon)`, tags: ['supplychain', 'benchmark', 'public'], source: 'supplychain:scorecard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, supScorecard: supResult } }, 'dataset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

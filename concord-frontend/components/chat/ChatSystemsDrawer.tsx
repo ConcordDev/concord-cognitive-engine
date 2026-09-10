@@ -6,10 +6,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, X } from 'lucide-react';
 import { api } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
-import { ShieldCard } from '@/components/chat/ShieldCard';
-import { MeshStatusCard } from '@/components/chat/MeshStatusCard';
-import { IntelligenceCard } from '@/components/chat/IntelligenceCard';
-import { AtlasPrivacyMonitor } from '@/components/chat/AtlasPrivacyMonitor';
+import ShieldCard from '@/components/chat/ShieldCard';
+import MeshStatusCard from '@/components/chat/MeshStatusCard';
+import IntelligenceCard from '@/components/chat/IntelligenceCard';
+import AtlasPrivacyMonitor from '@/components/chat/AtlasPrivacyMonitor';
 import { InitiativeChip, type Initiative } from '@/components/chat/InitiativeChip';
 
 type SystemsTab = 'shield' | 'mesh' | 'intel' | 'privacy' | 'initiatives';

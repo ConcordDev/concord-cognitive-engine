@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import {
   Crosshair, Send, CheckCircle2, XCircle, Clock, Brain, Play, Loader2, ChevronDown, ChevronUp,
+  Target, BarChart3,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
@@ -347,7 +348,7 @@ export function PredictionsPanel() {
               </p>
             )}
           </div>
-        </div>
+
       <div className="panel p-4 space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
           <Brain className="w-4 h-4 text-neon-purple" />
@@ -418,5 +419,6 @@ export function PredictionsPanel() {
           </div>
         )}
       </div>
+        </div>
   );
 }

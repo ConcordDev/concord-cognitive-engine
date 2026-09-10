@@ -29,6 +29,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -200,7 +201,7 @@ export function LawEnforcementActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Beat report`, tags: ['law-enforcement', 'beat'], source: 'le:beat:mint', meta: { visibility: 'private', consent: { allowCitations: false }, le: { case: caseResult, patrol: patrolResult, report: reportResult, stats: statsResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Beat report`, tags: ['law-enforcement', 'beat'], source: 'le:beat:mint', meta: { visibility: 'private', consent: { allowCitations: false }, le: { case: caseResult, patrol: patrolResult, report: reportResult, stats: statsResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('le.mintedDtuId', id, { label: `Beat DTU ${id.slice(0, 8)}…` }); ok(`Beat DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -231,7 +232,7 @@ export function LawEnforcementActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Crime stats (anon)`, tags: ['law-enforcement', 'stats', 'public'], source: 'le:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, stats: statsResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Crime stats (anon)`, tags: ['law-enforcement', 'stats', 'public'], source: 'le:stats:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, stats: statsResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

@@ -4,7 +4,7 @@
  * IntrospectionPanel — introspectOnFailures + history of real pattern types.
  */
 import { useState } from 'react';
-import { Lightbulb, Brain, Activity, Clock } from 'lucide-react';
+import { Lightbulb, Brain, Activity, Clock, XCircle } from 'lucide-react';
 import { useMetacognitionDesk } from '@/components/metacognition/useMetacognitionDesk';
 import { formatTimestamp } from '@/components/metacognition/metacog-model';
 import { ErrorState } from '@/components/common/EmptyState';

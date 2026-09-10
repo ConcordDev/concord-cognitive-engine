@@ -23,6 +23,7 @@ import {
   RecallSlot,
   LoadFromSubstrate,
 } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -175,7 +176,7 @@ export function CollabActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Team session`, tags: ['collab', 'team', sessionResult?.balanceRating].filter((t): t is string => !!t), source: 'collab:team:mint', meta: { visibility: 'private', consent: { allowCitations: false }, team: { session: sessionResult, contrib: contribResult, cons: consResult, load: loadResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Team session`, tags: ['collab', 'team', sessionResult?.balanceRating].filter((t): t is string => !!t), source: 'collab:team:mint', meta: { visibility: 'private', consent: { allowCitations: false }, team: { session: sessionResult, contrib: contribResult, cons: consResult, load: loadResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) {
         setMintedDtuId(id);
@@ -210,7 +211,7 @@ export function CollabActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Team health card`, tags: ['collab', 'team', 'public'], source: 'collab:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, session: sessionResult, contrib: contribResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Team health card`, tags: ['collab', 'team', 'public'], source: 'collab:health:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, session: sessionResult, contrib: contribResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

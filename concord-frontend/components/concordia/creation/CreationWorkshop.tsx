@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '@/lib/api/client';
 import { modeManager } from '@/lib/concordia/mode-manager';
 import { emitEvent } from '@/lib/realtime/event-bus';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 const TIER_LABELS = ['Tier 0 — Bare Hands', 'Tier 1 — Basic Tools', 'Tier 2 — Crafted Tools', 'Tier 3 — Advanced Tools', 'Tier 4 — Legendary Forge'];
 const TIER_CAPS: Record<number, string> = {
@@ -216,7 +217,7 @@ export function CreationWorkshop({
     if (!preview || !validation?.passed) return;
     setLoading(true);
     try {
-      const res = await api.post('/api/dtus', {
+      const res = await api.post('/api/dtus', withContentLicense({
         title: preview.name,
         content: preview.description,
         tags: ['concordia_creation', preview.type],
@@ -231,7 +232,7 @@ export function CreationWorkshop({
           toolQuality,
         },
         parents: validation.derivedFrom,
-      });
+      }, 'world_asset', ['private']));
       const dtu = res.data?.dtu ?? res.data;
       if (dtu?.id) {
         emitEvent('creation:placed', { dtuId: dtu.id, score: validation.score });

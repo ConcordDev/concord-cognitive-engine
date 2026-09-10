@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -102,7 +103,7 @@ export function RetailActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Retail ops`, tags: ['retail', 'ops'], source: 'retail:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, retail: { reorder: reorderResult, pipe: pipeResult, ltv: ltvResult, sla: slaResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Retail ops`, tags: ['retail', 'ops'], source: 'retail:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, retail: { reorder: reorderResult, pipe: pipeResult, ltv: ltvResult, sla: slaResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('retail.mintedDtuId', id, { label: `Ops DTU ${id.slice(0, 8)}…` }); ok(`Ops DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -131,7 +132,7 @@ export function RetailActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Retail unit econ`, tags: ['retail', 'ltv', 'public'], source: 'retail:ltv:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, ltv: ltvResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

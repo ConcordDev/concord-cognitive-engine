@@ -100,6 +100,7 @@ export function ItunesSearch() {
                 {addedIds.has(p.collectionId) ? 'Added' : 'Add to Library'}
               </button>
               <SaveAsDtuButton
+                defaultContentClass="media"
                 compact
                 apiSource="itunes-podcasts"
                 apiUrl={p.collectionUrl}

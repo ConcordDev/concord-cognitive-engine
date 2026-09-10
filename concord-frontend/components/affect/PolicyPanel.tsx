@@ -4,6 +4,7 @@
  * PolicyPanel — derived ATS policy (read-only floats: style/cognition/memory/safety).
  */
 import { BarChart3 } from 'lucide-react';
+import { clamp } from '@/components/affect/affect-model';
 import { useAffectAts } from '@/components/affect/useAffectAts';
 import { ErrorState } from '@/components/common/EmptyState';
 

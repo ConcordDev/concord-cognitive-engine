@@ -28,6 +28,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -128,7 +129,7 @@ export function ChildBriefPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Snapshot — ${childName.trim()} (${ageYears || 0}y ${ageMonths || 0}m)`,
           tags: ['parenting', 'child-snapshot', `child:${childName.trim()}`],
           source: 'parenting:snapshot',
@@ -145,7 +146,7 @@ export function ChildBriefPanel() {
               routine: routineResult,
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -189,7 +190,7 @@ export function ChildBriefPanel() {
       // Anonymize: drop the child's name from the public DTU body.
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Growth journey ${ageYears || 0}y${ageMonths ? `-${ageMonths}m` : ''}`,
           tags: ['parenting', 'growth-journey', 'public', `age-months:${ageInMonths}`],
           source: 'parenting:journey:public',
@@ -203,7 +204,7 @@ export function ChildBriefPanel() {
               routine: routineResult,
             },
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

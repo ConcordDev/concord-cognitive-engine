@@ -32,6 +32,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 export interface PlaceLike {
   displayName: string;
@@ -146,7 +147,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
       const r = await lensRun({
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `${place.displayName.split(',').slice(0, 2).join(',')} — public place`,
           tags: ['atlas', 'place', 'public', place.category, place.type].filter(Boolean) as string[],
           source: 'atlas:place:publish',
@@ -164,7 +165,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
               permalink: osmPermalink(place),
             },
           },
-        },
+        }, 'world_asset', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -184,7 +185,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
       const r = await lensRun({
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: guideDtuId
             ? `Place added to guide: ${place.displayName.split(',')[0]}`
             : `My places — guide (${new Date().toISOString().slice(0, 10)})`,
@@ -203,7 +204,7 @@ export function PlaceShareSheet({ place, onClose }: PlaceShareSheetProps) {
               osm: place.osmType && place.osmId ? `${place.osmType}/${place.osmId}` : null,
             },
           },
-        },
+        }, 'world_asset', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

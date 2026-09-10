@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -99,7 +100,7 @@ export function EmergencyServicesActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EMS shift report`, tags: ['ems', 'dispatch', readyResult?.status].filter((t): t is string => !!t), source: 'ems:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ems: { triage: triageResult, disp: dispResult, log: logResult, ready: readyResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `EMS shift report`, tags: ['ems', 'dispatch', readyResult?.status].filter((t): t is string => !!t), source: 'ems:shift:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ems: { triage: triageResult, disp: dispResult, log: logResult, ready: readyResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('ems.mintedDtuId', id, { label: `Shift DTU ${id.slice(0, 8)}…` }); ok(`Shift DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -128,7 +129,7 @@ export function EmergencyServicesActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EMS volume report (anon)`, tags: ['ems', 'volume', 'public'], source: 'ems:volume:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, log: logResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `EMS volume report (anon)`, tags: ['ems', 'volume', 'public'], source: 'ems:volume:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, log: logResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

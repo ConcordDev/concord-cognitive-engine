@@ -43,6 +43,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -218,7 +219,7 @@ export function ArgumentWorkbench() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Reasoning — ${argument.trim().slice(0, 60)}${argument.length > 60 ? '…' : ''}`,
           tags: ['reasoning', 'derivation', validateResult?.validity === 'likely-valid' ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
           source: 'reasoning:mint',
@@ -231,7 +232,7 @@ export function ArgumentWorkbench() {
             fallacies: fallacyResult,
             premises: premiseResult,
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -281,7 +282,7 @@ export function ArgumentWorkbench() {
       const conclusion = extractedConclusion(premiseResult);
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Public proof — ${argument.trim().slice(0, 60)}${argument.length > 60 ? '…' : ''}`,
           tags: ['reasoning', 'proof', 'public', validateResult?.validity === 'likely-valid' ? 'validated' : 'unvalidated'].filter(Boolean) as string[],
           source: 'reasoning:proof:publish',
@@ -294,7 +295,7 @@ export function ArgumentWorkbench() {
             verdict: validateResult?.validity ?? null,
             fallacies: fallacyResult?.fallacies?.map(f => f.fallacy) ?? [],
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

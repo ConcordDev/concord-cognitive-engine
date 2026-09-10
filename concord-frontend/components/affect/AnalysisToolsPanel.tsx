@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import {
   Sparkles, Loader2, Search, MessageSquare, Activity, Hand,
   ArrowUpRight, ArrowDownRight, ArrowRight,
-  Heart, AlertTriangle, Clock, TrendingUp, TrendingDown, Users, Brain,
+  Heart, AlertTriangle, Clock, TrendingUp, TrendingDown, Users, Brain, RefreshCw,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 

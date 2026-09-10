@@ -1103,7 +1103,7 @@ export function PhysicsSandboxPanel() {
             </AnimatePresence>
           </div>
           <button
-            onClick={() => toggleSimulation(!isRunning)}
+            onClick={() => setIsRunning((v) => !v)}
             className={`btn-neon ${isRunning ? 'pink' : 'purple'}`}
           >
             {isRunning ? <Pause className="w-4 h-4 mr-2 inline" /> : <Play className="w-4 h-4 mr-2 inline" />}

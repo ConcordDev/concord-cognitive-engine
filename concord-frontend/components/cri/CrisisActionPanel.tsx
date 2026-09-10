@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -108,7 +109,7 @@ export function CrisisActionPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Crisis — ${crisisName.trim()}`,
           tags: ['cri', 'crisis', eventType, scope, severityResult?.severity ?? 'unassessed'],
           source: 'cri:crisis:mint',
@@ -116,7 +117,7 @@ export function CrisisActionPanel() {
             visibility: 'private', consent: { allowCitations: false },
             crisis: { name: crisisName.trim(), eventType, scope, affectedCount: parseInt(affectedCount, 10), durationHours: parseFloat(duration), assessment: severityResult, timeline: timelineResult, impact: impactResult },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -154,12 +155,12 @@ export function CrisisActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Public crisis brief — ${crisisName.trim()}`,
             tags: ['cri', 'crisis', 'public', severityResult?.severity ?? 'unassessed'],
             source: 'cri:crisis:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, crisis: { name: crisisName.trim(), eventType, scope, severity: severityResult?.severity, recommendation: severityResult?.recommendation, phases: timelineResult?.phases } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

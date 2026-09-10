@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface Prediction { time: string; height: number; type: 'high' | 'low' }
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
@@ -100,7 +101,7 @@ export function TideActionStack() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Tide window — ${stationName} — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['ocean', 'tides', 'noaa', `station:${stationId}`],
           source: 'ocean:tides:window',
@@ -109,7 +110,7 @@ export function TideActionStack() {
             consent: { allowCitations: false },
             tide: { stationId, stationName, predictions: preds, fetchedAt: new Date().toISOString() },
           },
-        },
+        }, 'dataset', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -138,7 +139,7 @@ export function TideActionStack() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Mariner brief — ${stationName} — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['ocean', 'tides', 'noaa', 'mariner-brief', 'public', `station:${stationId}`],
           source: 'ocean:tides:public',
@@ -147,7 +148,7 @@ export function TideActionStack() {
             consent: { allowCitations: true },
             tide: { stationId, stationName, predictions: preds },
           },
-        },
+        }, 'dataset', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

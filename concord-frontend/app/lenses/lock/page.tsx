@@ -1,873 +1,145 @@
 'use client';
 
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensCommand } from '@/hooks/useLensCommand';
+/**
+ * Lock — one sovereignty + concurrency-profiler app.
+ *
+ * Single view union (sovereignty | profiler | security). Profiler and
+ * SecurityRepos accordion folded into active. Page is a thin shell.
+ */
+
+import { useMemo, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { Lock, Activity, ShieldAlert } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { SecurityRepos } from '@/components/lock/SecurityRepos';
-import { use70Lock } from '@/hooks/use70Lock';
-import { useState } from 'react';
-import {
-  Lock,
-  Unlock,
-  Shield,
-  Eye,
-  AlertTriangle,
-  Check,
-  Key,
-  Loader2,
-  Gauge,
-  ShieldAlert,
-  Ban,
-  Activity,
-  Play,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { motion } from 'framer-motion';
-import { useLensData } from '@/lib/hooks/use-lens-data';
-import { apiHelpers } from '@/lib/api/client';
-import { useMutation } from '@tanstack/react-query';
-import { ErrorState } from '@/components/common/EmptyState';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
-import { ConnectiveTissueBar } from '@/components/lens/ConnectiveTissueBar';
-import { SovereigntyDashboard } from '@/components/sovereignty/SovereigntyDashboard';
-import { SovereigntySetup } from '@/components/sovereignty/SovereigntySetup';
-import { SovereigntyPrompt } from '@/components/sovereignty/SovereigntyPrompt';
-import { LockDashboard } from '@/components/sovereignty/LockDashboard';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
+import { SovereigntyPanel } from '@/components/lock/SovereigntyPanel';
 import { LockProfiler } from '@/components/lock/LockProfiler';
+import { SecurityRepos } from '@/components/lock/SecurityRepos';
 
-interface LockEventData {
-  event: string;
-  level: number;
-}
+type LockView = 'sovereignty' | 'profiler' | 'security';
 
-const LOCK_HISTORY_FALLBACK: {
-  title: string;
-  data: Record<string, unknown>;
-}[] = [];
+const VIEWS: { id: LockView; label: string; keys: string; hint: string; icon: typeof Lock }[] = [
+  { id: 'sovereignty', label: 'Sovereignty', keys: '1', hint: '70% lock + invariants', icon: Lock },
+  { id: 'profiler', label: 'Profiler', keys: '2', hint: 'Concurrency lock traces', icon: Activity },
+  { id: 'security', label: 'Security', keys: '3', hint: 'External tooling reference', icon: ShieldAlert },
+];
 
 export default function LockLensPage() {
   useLensNav('lock');
-  const {
-    latestData: realtimeData,
-    alerts: realtimeAlerts,
-    insights: realtimeInsights,
-    isLive,
-    lastUpdated,
-  } = useRealtimeLens('lock');
-  const { lockPercentage, invariants, isLocked, invariantSummary, recentEnforcement, enforcementStats } = use70Lock();
-  const [showSovereigntySetup, setShowSovereigntySetup] = useState(false);
-  const [showSecurityRepos, setShowSecurityRepos] = useState(false);
-  const [sovereigntyPromptMessage, setSovereigntyPromptMessage] = useState<{
-    message: string;
-    localCount: number;
-    globalCount: number;
-    globalDomains: string[];
-    globalDTUIds: string[];
-  } | null>(null);
-
-  const {
-    items: historyItems,
-    isLoading: historyLoading,
-    isError: isError,
-    error: error,
-    refetch: refetch,
-    create: addEvent,
-  } = useLensData<LockEventData>('lock', 'lock-event', {
-    seed: LOCK_HISTORY_FALLBACK,
-  });
-
-  const lockHistory = historyItems.map((item) => ({
-    date: item.title || new Date(item.createdAt).toLocaleDateString(),
-    event: item.data.event,
-    level: item.data.level,
-  }));
-
-  const runAction = useRunArtifact('lock');
-  const [actionResult, setActionResult] = useState<Record<string, unknown> | null>(null);
-  const [isRunning, setIsRunning] = useState<string | null>(null);
+  const { latestData: realtimeData, alerts: realtimeAlerts, isLive, lastUpdated } = useRealtimeLens('lock');
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState<LockView>('sovereignty');
 
   useLensCommand(
     [
-      { id: 'open-setup',     keys: 's', description: 'Open sovereignty setup', category: 'actions', action: () => setShowSovereigntySetup(true) },
-      { id: 'close-setup',    keys: 'esc', description: 'Close sovereignty setup', category: 'navigation', action: () => setShowSovereigntySetup(false) },
+      ...VIEWS.map((v) => ({
+        id: `view-${v.id}`,
+        keys: v.keys,
+        description: `${v.label} — ${v.hint}`,
+        category: 'navigation' as const,
+        action: () => setActive(v.id),
+      })),
+      { id: 'open-setup', keys: 's', description: 'Open sovereignty setup', category: 'actions' as const, action: () => setActive('sovereignty') },
     ],
-    { lensId: 'lock' }
+    { lensId: 'lock' },
   );
-  const handleAction = async (action: string) => {
-    const targetId = historyItems[0]?.id;
-    if (!targetId) {
-      setActionResult({ message: 'Run an audit first to create lock events.' });
-      return;
-    }
-    setIsRunning(action);
-    try {
-      const res = await runAction.mutateAsync({ id: targetId, action });
-      if (res.ok === false) {
-        setActionResult({
-          message: `Action failed: ${(res as Record<string, unknown>).error || 'Unknown error'}`,
-        });
-      } else {
-        setActionResult(res.result as Record<string, unknown>);
-      }
-    } catch (e) {
-      console.error(`Action ${action} failed:`, e);
-      setActionResult({
-        message: `Action failed: ${e instanceof Error ? e.message : 'Unknown error'}`,
-      });
-    } finally {
-      setIsRunning(null);
-    }
-  };
 
-  const runAudit = useMutation({
-    mutationFn: async () => {
-      const { data } = await apiHelpers.sovereignty.audit();
-      return data;
-    },
-    onSuccess: (data) => {
-      // POST /api/sovereignty/audit always returns the outer { ok: true, audit: {...} }
-      // envelope (server.js's route wraps its fallback-checks branch in ok:true too) --
-      // `data.ok` is never false, so it can't be read as the pass/fail signal. The real
-      // result is `data.audit.passed`, derived from the per-invariant `data.audit.checks`.
-      const audit = (data as { audit?: { passed?: boolean; checks?: { name: string; passed: boolean }[] } })?.audit;
-      const passed = audit?.passed ?? false;
-      const failedChecks = (audit?.checks || []).filter((c) => !c.passed).map((c) => c.name);
-      const event = passed
-        ? 'Audit passed'
-        : `Audit failed (${failedChecks.length ? failedChecks.join(', ') : 'no result'})`;
-      addEvent({
-        title: new Date().toISOString().split('T')[0],
-        data: { event, level: lockPercentage },
-      }).catch((err) =>
-        console.error('Failed to save audit event:', err instanceof Error ? err.message : err)
-      );
-    },
-    onError: (err) => console.error('runAudit failed:', err instanceof Error ? err.message : err),
-  });
+  const motionProps = useMemo(
+    () => (reduceMotion
+      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -6 },
+          transition: { duration: 0.16 },
+        }),
+    [reduceMotion],
+  );
 
-  if (historyLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  let body: ReactNode = null;
+  if (active === 'sovereignty') body = <SovereigntyPanel />;
+  else if (active === 'profiler') body = <LockProfiler />;
+  else body = <SecurityRepos />;
 
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
   return (
     <LensShell lensId="lock" asMain={false}>
-      <FirstRunTour lensId="lock" />      <DepthBadge lensId="lock" size="sm" className="ml-2" />
-    <div data-lens-theme="lock" className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🔐</span>
-          <div>
-            <h1 className="text-xl font-bold">Lock Lens</h1>
-            <p className="text-sm text-gray-400">
-              70% sovereignty lock deep-dive and invariant visualization
-            </p>
-          </div>
-
-          {/* Real-time Enhancement Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
-            <DTUExportButton domain="lock" data={realtimeData || {}} compact />
-            {realtimeAlerts.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
-                {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
-        <div
-          className={`sovereignty-lock lock-70 px-6 py-3 rounded-xl ${
-            isLocked ? 'border-sovereignty-locked' : 'border-sovereignty-danger'
-          }`}
-        >
-          <span className="text-3xl font-bold text-sovereignty-locked">{lockPercentage}%</span>
-        </div>
-      </header>
-
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="lens-card text-center"
-        >
-          <Lock className="w-5 h-5 text-neon-cyan mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-cyan">{invariants.length}</p>
-          <p className="text-sm text-gray-400">Total Invariants</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lens-card text-center"
-        >
-          <Key className="w-5 h-5 text-neon-purple mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-purple">{lockHistory.length}</p>
-          <p className="text-sm text-gray-400">Audit Events</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="lens-card text-center"
-        >
-          <Shield className="w-5 h-5 text-neon-green mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-green">100%</p>
-          <p className="text-sm text-gray-400">Enforcement Rate</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="lens-card text-center"
-        >
-          {isLocked ? (
-            <Lock className="w-5 h-5 text-neon-green mx-auto mb-2" />
-          ) : (
-            <Unlock className="w-5 h-5 text-neon-pink mx-auto mb-2" />
-          )}
-          <p className={`text-2xl font-bold ${isLocked ? 'text-neon-green' : 'text-neon-pink'}`}>
-            {isLocked ? 'Locked' : 'Open'}
-          </p>
-          <p className="text-sm text-gray-400">Lock State</p>
-        </motion.div>
-      </div>
-
-      {/* Lock Status Indicator */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.25 }}
-        className={`panel p-4 flex items-center gap-4 border-l-4 ${
-          isLocked
-            ? 'border-l-green-500 bg-green-500/5'
-            : lockPercentage >= 50
-              ? 'border-l-amber-500 bg-amber-500/5'
-              : 'border-l-red-500 bg-red-500/5'
-        }`}
-      >
-        <div
-          className={`w-12 h-12 rounded-full flex items-center justify-center ${
-            isLocked
-              ? 'bg-green-500/20'
-              : lockPercentage >= 50
-                ? 'bg-amber-500/20'
-                : 'bg-red-500/20'
-          }`}
-        >
-          {isLocked ? (
-            <Lock className="w-6 h-6 text-green-400" />
-          ) : (
-            <Unlock className="w-6 h-6 text-amber-400" />
-          )}
-        </div>
-        <div className="flex-1">
-          <p className="font-semibold">
-            {isLocked ? 'Sovereignty Locked' : 'Sovereignty Unlocked'}
-          </p>
-          <p className="text-xs text-gray-400">
-            {isLocked
-              ? 'All sovereignty invariants are enforced. System is protected.'
-              : `Lock percentage at ${lockPercentage}% -- below 70% threshold. Action required.`}
-          </p>
-        </div>
-        <span
-          className={`w-3 h-3 rounded-full animate-pulse ${
-            isLocked ? 'bg-green-500' : lockPercentage >= 50 ? 'bg-amber-500' : 'bg-red-500'
-          }`}
-        />
-      </motion.div>
-
-      {/* AI Actions */}
-      {/* Lock Gauge */}
-      <div className="panel p-6">
-        <div className="relative w-full h-12 bg-lattice-deep rounded-full overflow-hidden">
-          <div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-sovereignty-danger via-sovereignty-warning to-sovereignty-locked transition-all"
-            style={{ width: `${lockPercentage}%` }}
-          />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white font-bold text-lg drop-shadow">
-              {lockPercentage >= 70 ? 'SOVEREIGNTY LOCKED' : 'WARNING: Below Threshold'}
-            </span>
-          </div>
-          <div className="absolute top-0 bottom-0 w-0.5 bg-white" style={{ left: '70%' }} />
-        </div>
-        <div className="flex justify-between text-xs text-gray-400 mt-2">
-          <span>0%</span>
-          <span className="text-sovereignty-locked">70% Threshold</span>
-          <span>100%</span>
-        </div>
-      </div>
-
-      {/* Invariant Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="lens-card text-center"
-        >
-          <Check className="w-6 h-6 text-neon-green mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-green">{invariantSummary.enforced}</p>
-          <p className="text-sm text-gray-400">Enforced</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="lens-card text-center"
-        >
-          <AlertTriangle className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-          <p className="text-2xl font-bold text-yellow-500">{invariantSummary.warning}</p>
-          <p className="text-sm text-gray-400">Warning</p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="lens-card text-center"
-        >
-          <AlertTriangle className="w-6 h-6 text-neon-pink mx-auto mb-2" />
-          <p className="text-2xl font-bold text-neon-pink">{invariantSummary.violated}</p>
-          <p className="text-sm text-gray-400">Violated</p>
-        </motion.div>
-      </div>
-
-      {/* Active Invariants */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Shield className="w-4 h-4 text-neon-green" />
-          Active Invariants
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {invariants.map((inv, idx) => (
-            <motion.div
-              key={inv.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="flex items-center gap-3 p-3 bg-lattice-deep rounded-lg"
-            >
-              <span
-                className={`w-3 h-3 rounded-full ${
-                  inv.status === 'enforced'
-                    ? 'bg-neon-green'
-                    : inv.status === 'warning'
-                      ? 'bg-yellow-500'
-                      : 'bg-neon-pink'
-                }`}
-              />
-              <div className="flex-1">
-                <p className="font-mono text-sm">{inv.name}</p>
-                <p className="text-xs text-gray-400">{inv.description}</p>
-              </div>
-              <Lock className="w-4 h-4 text-gray-400" />
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Lock History */}
-      <div className="panel p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Key className="w-4 h-4 text-neon-purple" />
-            Lock History
-          </h2>
-          <button
-            onClick={() => runAudit.mutate()}
-            disabled={runAudit.isPending}
-            className="btn-neon text-sm"
-          >
-            {runAudit.isPending ? (
-              <>
-                <Loader2 className="w-3 h-3 mr-1 inline animate-spin" />
-                Auditing...
-              </>
-            ) : (
-              <>
-                <Shield className="w-3 h-3 mr-1 inline" />
-                Run Audit
-              </>
-            )}
-          </button>
-        </div>
-        {runAudit.isError && (
-          <div className="mb-3 px-3 py-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-300">
-            {(() => {
-              const err = runAudit.error as { response?: { data?: { error?: string } }; message?: string } | undefined;
-              const reason = err?.response?.data?.error || err?.message;
-              if (reason === 'sovereign_only') {
-                return 'Run Audit requires the sovereign role — your account does not currently hold it, regardless of any displayed title.';
-              }
-              return `Audit request failed${reason ? `: ${reason}` : ''}.`;
-            })()}
-          </div>
-        )}
-        {historyLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {lockHistory.map((entry, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex items-center justify-between p-3 bg-lattice-deep rounded-lg relative"
-              >
-                {/* Audit log timeline connector */}
-                {i < lockHistory.length - 1 && (
-                  <div className="absolute left-[27px] top-[42px] w-px h-[calc(100%-16px)] bg-gray-700" />
+      <FirstRunTour lensId="lock" />
+      <DepthBadge lensId="lock" size="sm" className="ml-2" />
+      <div data-lens-theme="lock" className={ds.pageContainer}>
+        <a href="#lock-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          Skip to lock content
+        </a>
+        <header className={ds.sectionHeader}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-lg border border-amber-500/40 bg-amber-500/10">
+              <Lock className="w-6 h-6 text-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className={ds.heading1}>Lock</h1>
+                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
+                <DTUExportButton domain="lock" data={realtimeData || {}} compact />
+                {realtimeAlerts.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400">
+                    {realtimeAlerts.length} alert{realtimeAlerts.length !== 1 ? 's' : ''}
+                  </span>
                 )}
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-lattice-surface flex items-center justify-center z-10">
-                    <Eye className="w-3 h-3 text-gray-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm">{entry.event}</p>
-                    <p className="text-xs text-gray-400">{entry.date}</p>
-                  </div>
-                </div>
-                <span className="text-sovereignty-locked font-mono">{entry.level}%</span>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {/* Real-time Data Panel */}
-        {realtimeData && (
-          <RealtimeDataPanel
-            domain="lock"
-            data={realtimeData}
-            isLive={isLive}
-            lastUpdated={lastUpdated}
-            insights={realtimeInsights}
-            compact
-          />
-        )}
-      </div>
-
-      {/* Sovereignty Monitor */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Gauge className="w-4 h-4 text-neon-cyan" />
-          Sovereignty Monitor
-        </h2>
-
-        {/* Ownership Verification Gauge */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400 flex items-center gap-2">
-              <Shield className="w-3.5 h-3.5 text-neon-purple" />
-              Ownership Verification
-            </span>
-            <span className="text-sm font-mono text-neon-green">{lockPercentage}%</span>
-          </div>
-          <div className="relative w-full h-8 bg-lattice-deep rounded-lg overflow-hidden">
-            <div
-              className="absolute inset-y-0 left-0 rounded-lg transition-all duration-700 ease-out"
-              style={{
-                width: `${lockPercentage}%`,
-                background:
-                  lockPercentage >= 70
-                    ? 'linear-gradient(90deg, rgba(0,255,200,0.3), rgba(0,255,200,0.6))'
-                    : 'linear-gradient(90deg, rgba(255,50,100,0.3), rgba(255,50,100,0.6))',
-              }}
-            />
-            <div className="absolute top-0 bottom-0 w-px bg-neon-cyan/60" style={{ left: '70%' }} />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span
-                className={`text-xs font-bold ${lockPercentage >= 70 ? 'text-neon-green' : 'text-neon-pink'}`}
-              >
-                {lockPercentage >= 70 ? 'VERIFIED' : 'BELOW THRESHOLD'}
-              </span>
-            </div>
-          </div>
-          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-            <span>0%</span>
-            <span className="text-neon-cyan">70% min</span>
-            <span>100%</span>
-          </div>
-        </div>
-
-        {/* Invariant Enforcement — derived from the real 70-lock invariants */}
-        <div className="bg-lattice-deep rounded-lg p-4 border border-white/5">
-          <div className="flex items-center gap-2 mb-3">
-            <Ban className="w-4 h-4 text-neon-cyan" />
-            <h3 className="text-sm font-semibold">Invariant Enforcement</h3>
-            <span className="text-xs text-gray-400">
-              {invariantSummary.enforced}/{invariants.length} enforced
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-            {invariants.map((rule) => (
-              <div key={rule.id} className="flex items-center gap-2">
-                <Lock className="w-3 h-3 text-gray-400" />
-                <span className="text-xs font-mono flex-1 truncate">{rule.name}</span>
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    rule.status === 'enforced'
-                      ? 'bg-neon-green animate-pulse'
-                      : rule.status === 'warning'
-                        ? 'bg-yellow-500'
-                        : 'bg-neon-pink'
-                  }`}
-                />
               </div>
-            ))}
-          </div>
-          <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-gray-400">Enforcement Rate</span>
-            <div className="flex items-center gap-2">
-              <div className="w-16 h-1.5 bg-lattice-void rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-neon-green rounded-full"
-                  style={{
-                    width: `${
-                      invariants.length > 0
-                        ? Math.round((invariantSummary.enforced / invariants.length) * 100)
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-              <span className="text-xs font-mono text-neon-green">
-                {invariants.length > 0
-                  ? Math.round((invariantSummary.enforced / invariants.length) * 100)
-                  : 0}
-                %
-              </span>
-            </div>
-          </div>
-
-          {/* Live Enforcement Feed — real enforceEthosInvariant() pass/blocked
-              events recorded server-side since process boot (bounded
-              in-memory ring buffer). Distinct from the static invariant list
-              above: that list is the frozen constant set; this feed is the
-              actual runtime history of enforcement checks firing. */}
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Activity className="w-3.5 h-3.5 text-neon-cyan" />
-                <h4 className="text-xs font-semibold">Live Enforcement</h4>
-              </div>
-              {enforcementStats && (
-                <span className="text-[10px] text-gray-500 font-mono">
-                  {enforcementStats.totalChecks} checks · {enforcementStats.totalBlocked} blocked · since boot
-                </span>
-              )}
-            </div>
-
-            {recentEnforcement.length === 0 ? (
-              <p className="text-xs text-gray-500 italic py-2">
-                No enforcement events since boot.
+              <p className={ds.textMuted}>
+                70% sovereignty lock + JFR-style concurrency profiler
               </p>
-            ) : (
-              <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                {[...recentEnforcement]
-                  .reverse()
-                  .slice(0, 25)
-                  .map((ev, idx) => (
-                    <div
-                      key={`${ev.at}-${idx}`}
-                      className="flex items-center gap-2 text-xs py-1 px-2 rounded bg-lattice-void/50"
-                    >
-                      {ev.result === 'blocked' ? (
-                        <Ban className="w-3 h-3 text-neon-pink flex-shrink-0" />
-                      ) : (
-                        <Check className="w-3 h-3 text-neon-green flex-shrink-0" />
-                      )}
-                      <span className="font-mono flex-1 truncate text-gray-300">{ev.action}</span>
-                      {ev.invariant && (
-                        <span className="text-[10px] font-mono text-neon-pink whitespace-nowrap">
-                          {ev.invariant}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
-                        {new Date(ev.at).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            )}
-            <p className="text-[10px] text-gray-600 mt-2">
-              Runtime, in-memory since boot{enforcementStats ? ` (${enforcementStats.bootAt ? new Date(enforcementStats.bootAt).toLocaleString() : 'unknown'})` : ''}
-              — not persisted, not a CI/detector result.
-            </p>
+            </div>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* Concurrency Lock Profiler — real macro-driven trace analysis */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-neon-cyan" />
-          Concurrency Lock Profiler
-        </h2>
-        <p className="text-xs text-gray-400 mb-4">
-          Record a lock trace and analyze it the way a JFR / lock profiler does —
-          live hold timeline, contention hotspots, lock-ordering pre-deadlock
-          detection, wait-for graph, blame attribution, and Amdahl/USL
-          throughput modeling.
-        </p>
-        <LockProfiler />
-      </div>
-
-      {/* Lock Dashboard -- visual invariant overview */}
-      <div className="panel p-4">
-        <LockDashboard
-          status={{
-            overallLock: lockPercentage,
-            invariants: invariants.map((inv) => ({
-              id: inv.id,
-              name: inv.name,
-              status: inv.status,
-              description: inv.description,
-            })),
-            lastAudit: lockHistory[0]?.date,
-          }}
-        />
-      </div>
-
-      {/* Sovereignty Dashboard -- full sovereignty status */}
-      <SovereigntyDashboard />
-
-      {/* Sovereignty Setup -- onboarding sovereignty mode picker */}
-      {showSovereigntySetup && (
-        <div className="panel p-4">
-          <SovereigntySetup onComplete={() => setShowSovereigntySetup(false)} />
-        </div>
-      )}
-
-      {/* Sovereignty Prompt -- inline consent prompt */}
-      {sovereigntyPromptMessage && (
-        <div className="panel p-4">
-          <SovereigntyPrompt
-            message={sovereigntyPromptMessage}
-            onResolve={(_choice, _remember) => {
-              setSovereigntyPromptMessage(null);
-            }}
-            isResolving={false}
-          />
-        </div>
-      )}
-
-      {/* Sovereignty Setup Trigger */}
-      {!showSovereigntySetup && (
-        <button
-          onClick={() => setShowSovereigntySetup(true)}
-          className="btn-secondary text-sm flex items-center gap-2"
+        <nav
+          id="lock-skip"
+          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
+          aria-label="Lock views"
         >
-          <Shield className="w-4 h-4" />
-          Re-run Sovereignty Setup
-        </button>
-      )}
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                  on
+                    ? 'border-amber-400 text-amber-200'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
+                )}
+                aria-current={on ? 'page' : undefined}
+              >
+                <Icon className="w-4 h-4" />
+                {v.label}
+                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
+                  {v.keys}
+                </kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-      {/* Backend Action Panel */}
-      <div className="panel p-4 space-y-3">
-        <h2 className="font-semibold flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-neon-cyan" />
-          Lock Analysis
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { action: 'deadlockDetect', label: 'Deadlock Detect' },
-            { action: 'contentionAnalysis', label: 'Contention Analysis' },
-            { action: 'fairnessScore', label: 'Fairness Score' },
-          ].map(({ action, label }) => (
-            <button
-              key={action}
-              onClick={() => handleAction(action)}
-              disabled={!!isRunning}
-              className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-            >
-              {isRunning === action ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Play className="w-3 h-3" />
-              )}
-              {label}
-            </button>
-          ))}
-        </div>
-        {actionResult && (
-          <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
-            {'deadlocked' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-lg font-bold ${actionResult.deadlocked ? 'text-red-400' : 'text-neon-green'}`}
-                  >
-                    {actionResult.deadlocked ? 'DEADLOCK DETECTED' : 'No Deadlock'}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    Cycles:{' '}
-                    <span className="text-neon-cyan">{String(actionResult.cycleCount || 0)}</span>
-                  </span>
-                </div>
-                {'deadlockSets' in actionResult &&
-                  Array.isArray(actionResult.deadlockSets) &&
-                  actionResult.deadlockSets.length > 0 && (
-                    <div>
-                      <p className="text-xs text-red-400 font-semibold mb-1">Deadlock Sets</p>
-                      {(actionResult.deadlockSets as Array<unknown[]>).map((set, i) => (
-                        <div
-                          key={i}
-                          className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-1 mb-1"
-                        >
-                          {(set as string[]).join(' → ')}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            )}
-            {'resources' in actionResult && Array.isArray(actionResult.resources) && (
-              <div className="space-y-2">
-                {'summary' in actionResult &&
-                  actionResult.summary !== null &&
-                  typeof actionResult.summary === 'object' && (
-                    <div className="flex flex-wrap gap-4 text-xs">
-                      {Object.entries(actionResult.summary as Record<string, unknown>).map(
-                        ([k, v]) => (
-                          <span key={k} className="text-gray-400">
-                            {k}: <span className="text-neon-cyan">{String(v)}</span>
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-                {'hotLocks' in actionResult &&
-                  Array.isArray(actionResult.hotLocks) &&
-                  actionResult.hotLocks.length > 0 && (
-                    <div>
-                      <p className="text-xs text-yellow-400 font-semibold mb-1">Hot Locks</p>
-                      {(actionResult.hotLocks as Array<Record<string, unknown>>).map((h, i) => (
-                        <div
-                          key={i}
-                          className="flex justify-between text-xs bg-yellow-400/10 border border-yellow-400/20 rounded px-2 py-1 mb-1"
-                        >
-                          <span className="text-yellow-400">{String(h.resource || h.name)}</span>
-                          <span className="text-gray-300">
-                            {String(h.contention || h.waiters || 0)} waiting
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                {'suggestions' in actionResult &&
-                  Array.isArray(actionResult.suggestions) &&
-                  actionResult.suggestions.length > 0 && (
-                    <div>
-                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
-                        Suggestions
-                      </p>
-                      {(
-                        actionResult.suggestions as Array<{
-                          resource: string;
-                          recommendation: string;
-                          reason: string;
-                        }>
-                      ).map((s, i) => (
-                        <p key={i} className="text-xs text-gray-300">
-                          • <span className="font-mono text-neon-cyan">{s.resource}</span>:{' '}
-                          {s.reason}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-              </div>
-            )}
-            {'jainsIndex' in actionResult && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-4">
-                  <span className="text-gray-400 text-xs">
-                    Jain&apos;s Index:{' '}
-                    <span className="text-neon-cyan font-bold text-lg">
-                      {String(actionResult.jainsIndex)}
-                    </span>
-                  </span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      actionResult.fairnessLevel === 'excellent' ||
-                      actionResult.fairnessLevel === 'good'
-                        ? 'bg-neon-green/20 text-neon-green'
-                        : actionResult.fairnessLevel === 'moderate'
-                          ? 'bg-yellow-400/20 text-yellow-400'
-                          : 'bg-red-400/20 text-red-400'
-                    }`}
-                  >
-                    {String(actionResult.fairnessLevel)}
-                  </span>
-                </div>
-                {'starvation' in actionResult &&
-                  actionResult.starvation !== null &&
-                  typeof actionResult.starvation === 'object' && (
-                    <div className="flex flex-wrap gap-3 text-xs">
-                      {Object.entries(actionResult.starvation as Record<string, unknown>).map(
-                        ([k, v]) => (
-                          <span key={k} className="text-gray-400">
-                            {k}: <span className="text-yellow-400">{String(v)}</span>
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-              </div>
-            )}
-            {'message' in actionResult && (
-              <p className="text-gray-400">{String(actionResult.message)}</p>
-            )}
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div key={active} {...motionProps} className="pt-4">
+            {body}
+          </motion.div>
+        </AnimatePresence>
+
+        <CrossLensRecentsPanel lensId="lock" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
-
-      <ConnectiveTissueBar lensId="lock" />
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowSecurityRepos(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Security tooling (external reference)</span>
-          {showSecurityRepos ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showSecurityRepos && (
-          <div className="mt-3">
-            <SecurityRepos />
-          </div>
-        )}
-      </section>
-    </div>
-
-      <a href="#lock-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to lock content</a>          <CrossLensRecentsPanel lensId="lock" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

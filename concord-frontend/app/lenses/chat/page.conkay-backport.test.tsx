@@ -91,6 +91,7 @@ vi.mock('@/components/chat/HackerNewsReference', () => ({ HackerNewsReference: (
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/hooks/useTilePush', () => ({ useTilePush: () => {} }));
 vi.mock('@/hooks/useLensNav', () => ({ useLensNav: () => {} }));
+vi.mock('@/hooks/useLensIdentity', () => ({ useLensIdentity: () => ({ accent: '#0ff', secondaryAccent: '#0aa', gradient: 'none' }) }));
 vi.mock('@/components/mobile/MobileTabBar', () => ({ MobileTabBar: () => null }));
 vi.mock('@/hooks/useLensDTUs', () => ({
   useLensDTUs: () => ({
@@ -255,6 +256,10 @@ describe('Chat lens — ConKay mode cockpit backport (Unit A5)', () => {
     // genuine 'foundry-worldspec' artifact — never a guessed/fabricated one.
     // foundry.preview's real result shape differs from the default lensRun mock's
     // inferred type — cast the mock's one-off return (test-only, real macro shape).
+    await openChatInConKayMode();
+    expect(useConkayHudStore.getState().lastArtifact).toBeNull();
+
+    // Install AFTER mount so cockpit's own lensRun reads don't consume the once.
     lensRunMock.mockImplementationOnce((async () => ({
       data: {
         ok: true,
@@ -267,9 +272,6 @@ describe('Chat lens — ConKay mode cockpit backport (Unit A5)', () => {
         error: null,
       },
     })) as any);
-
-    await openChatInConKayMode();
-    expect(useConkayHudStore.getState().lastArtifact).toBeNull();
 
     typeAndSend('run foundry.preview {"seed":"a"}');
 

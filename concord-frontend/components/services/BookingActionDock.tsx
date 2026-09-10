@@ -34,6 +34,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { useCreateArtifact, useUpdateArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface AppointmentDataLite {
   clientName?: string;
@@ -108,7 +109,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title,
           tags: ['services', kind, d.serviceType ?? 'service'].filter(Boolean) as string[],
           source: `services:${kind}`,
@@ -126,7 +127,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
             },
             ...extraMeta,
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       return dtu?.id ?? dtu?.dtuId ?? null;
@@ -438,7 +439,7 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Daily close — ${report.date} — $${report.totalRevenue.toFixed(2)}`,
           tags: ['services', 'daily_close', report.date],
           source: 'services:dailyClose',
@@ -447,7 +448,7 @@ export function EndOfDayClose({ allAppointments, tomorrowAppointments, onClose }
             consent: { allowCitations: false },
             dailyClose: report,
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
