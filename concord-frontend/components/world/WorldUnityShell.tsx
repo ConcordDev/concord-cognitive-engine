@@ -129,8 +129,9 @@ export default function WorldUnityShell() {
   }, [panel]);
 
   const leaveLens = useCallback(() => {
-    // /hub is the front door (the lens grid + destinations); /lenses has no
-    // index route (only /lenses/[lens]) so router.push('/lenses') 404s.
+    // Front door is /hub (lens grid + destinations). There is no bare lens
+    // index route — only the dynamic per-lens segment — so navigating to
+    // that bare path would 404.
     router.push('/hub');
   }, [router]);
 
