@@ -3,7 +3,10 @@
   "domain": "personas",
   "name": "install",
   "inputs": {
-    "personaId": { "type": "string", "maxLength": 120 }
+    "personaId": {
+      "type": "string",
+      "maxLength": 120
+    }
   },
   "invariants": [
     "typeof output === 'object' && output !== null",
@@ -11,7 +14,12 @@
     "output.ok === true || typeof output.reason === 'string' || typeof output.error === 'string'"
   ],
   "fuzz_cases": [
-    { "input": {}, "expect": { "ok": false, "reason": "roadmap" } }
+    {
+      "input": {},
+      "expect": {
+        "ok": false
+      }
+    }
   ],
-  "_note": "Live boot reality: the reachable personas.install is the Z4 roadmap stub — HONESTLY returns { ok:false, reason:'roadmap' } (not a fake success). The real install (increments installCount on a published persona, drives the royalty cascade) lives in the currently-unwired server/domains/personas.js. DO NOT assert ok:true until the wiring fix lands."
+  "_note": "personas.install now delegates to the real server/domains/personas.js LENS_ACTION (wired 9370fc2d6 \u2014 the Z4 roadmap stub is retired). With no authenticated actor it HONESTLY returns { ok:false, error:'no_actor' }; a real install (increments installCount on a published persona, drives the royalty cascade) needs a signed-in caller + a valid personaId."
 }
