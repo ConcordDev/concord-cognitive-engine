@@ -8171,6 +8171,7 @@ function authMiddleware(req, res, next) {
           req.authMethod = "cookie";
           // Update sliding idle timer so active sessions stay alive.
           if (decoded.jti) _SESSION_ACTIVITY.touch(decoded.jti);
+          try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
           return _sovereignGate();
         }
       }
@@ -8185,6 +8186,7 @@ function authMiddleware(req, res, next) {
           req.user = user;
           req.authMethod = "jwt";
           if (decoded.jti) _SESSION_ACTIVITY.touch(decoded.jti);
+          try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
           return _sovereignGate();
         }
       }
@@ -8221,6 +8223,7 @@ function authMiddleware(req, res, next) {
         req.apiKeyData = keyData;
         req.authMethod = "apiKey";
         auditLog("auth", "api_key_used", { userId: user.id, keyName: keyData.name, ip: req.ip });
+        try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
         return _sovereignGate();
       }
     }
