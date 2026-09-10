@@ -77,7 +77,7 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
-import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge } from "./lib/concurrency/shared-state.js";
+import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
@@ -2645,6 +2645,9 @@ const _macroRateLimits = new LruMap();
 let _macroRateBridge = null;
 let _sessionActivityBridge = null;
 let _apiRateBridge = null;
+let _chatSessionBridge = null;
+let _styleVectorBridge = null;
+let _socketRoomBridge = null;
 const EXPENSIVE_MACROS = new Map([
   ["scope.metrics", { maxPerMinute: 30, windowMs: 60000 }],
   ["system.autogen", { maxPerMinute: 10, windowMs: 60000 }],
@@ -4134,6 +4137,7 @@ function getSessionStyleVector(sessionId) {
   const v = STATE.styleVectors.get(sid) || defaultStyleVector();
   const nv = normalizeStyleVector(v);
   STATE.styleVectors.set(sid, nv);
+  try { _styleVectorBridge?.markDirty?.(sid); } catch (_e) { /* fail-soft */ }
   return nv;
 }
 
@@ -5949,6 +5953,36 @@ const STATE = {
 // Expose STATE for modules that use globalThis (e.g. repair-cortex.js,
 // server/domains/code.js snippet/snapshot writers).
 globalThis._concordSTATE = STATE;
+
+function installSharedStateWriteThrough() {
+  try {
+    if (STATE?.sessions && !STATE.sessions.__concordWriteThrough) {
+      installMapWriteThrough(STATE.sessions, {
+        onSet: (k, v) => { _chatSessionBridge?.writeBehindSession(k, v); },
+        onDelete: (k) => { _chatSessionBridge?.writeBehindClear(k); },
+      });
+    }
+    if (STATE?.styleVectors && !STATE.styleVectors.__concordWriteThrough) {
+      installMapWriteThrough(STATE.styleVectors, {
+        onSet: (k, v) => { _styleVectorBridge?.writeBehindStyle(k, v); },
+        onDelete: (k) => { _styleVectorBridge?.writeBehindClear(k); },
+      });
+    }
+    structuredLog("info", "shared_state_write_through_installed", {
+      sessions: !!STATE?.sessions?.__concordWriteThrough,
+      styleVectors: !!STATE?.styleVectors?.__concordWriteThrough,
+      bridges: {
+        chat: !!_chatSessionBridge,
+        style: !!_styleVectorBridge,
+        rooms: !!_socketRoomBridge,
+      },
+    });
+  } catch (e) {
+    structuredLog("warn", "shared_state_write_through_install_failed", { error: String(e?.message || e) });
+  }
+}
+// Bridges are assigned earlier in Wave-9; install Map hooks now that STATE exists.
+installSharedStateWriteThrough();
 
 // ============================================================================
 // WAVE 1: PRODUCTION READINESS
@@ -10527,6 +10561,7 @@ async function tryInitWebSockets(server) {
     // authenticated user without the client needing to subscribe explicitly.
     if (socket.data.userId) {
       socket.join(`user:${socket.data.userId}`);
+      try { _socketRoomBridge?.writeBehindJoin(`user:${socket.data.userId}`, socket.id); } catch (_e) { /* fail-soft */ }
       // V1.2 Wave A — lightweight groups: also auto-join the caller's
       // current party room (if any) so this socket receives
       // party:member-joined/left/disbanded scoped to that room instead of
@@ -10542,7 +10577,10 @@ async function tryInitWebSockets(server) {
         try {
           const { getMyParty } = await import("./lib/parties.js");
           const party = getMyParty(db, socket.data.userId);
-          if (party?.party_id) socket.join(`party:${party.party_id}`);
+          if (party?.party_id) {
+            socket.join(`party:${party.party_id}`);
+            try { _socketRoomBridge?.writeBehindJoin(`party:${party.party_id}`, socket.id); } catch (_e) { /* fail-soft */ }
+          }
         } catch { /* best-effort */ }
       })();
     }
@@ -10625,7 +10663,7 @@ async function tryInitWebSockets(server) {
         }
       }
 
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       // DET-C batch 8 (dead-event-listener sweep, re-confirmed 2026-07-23):
       // this still flags as `dead_socket_emit` because the detector's
       // SCAN_DIRS only walks concord-frontend/{app,components,lib,hooks} —
@@ -10641,7 +10679,7 @@ async function tryInitWebSockets(server) {
 
     socket.on("room:leave", ({ room }) => {
       if (room) {
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
         // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): the
         // `room:left` ack this used to fire had zero consumers — verified
         // via a full-tree grep across concord-frontend/, concord-mobile/,
@@ -10680,6 +10718,7 @@ async function tryInitWebSockets(server) {
           if (allowed) {
             c.sessionId = sessionId;
             socket.join(`session:${sessionId}`);
+            try { _socketRoomBridge?.writeBehindJoin(`session:${sessionId}`, socket.id); } catch (_e) { /* fail-soft */ }
           } else {
             socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to subscribe to this session' });
           }
@@ -10690,6 +10729,7 @@ async function tryInitWebSockets(server) {
         if (!userOrgId || userOrgId === orgId) {
           c.orgId = orgId;
           socket.join(`org:${orgId}`);
+          try { _socketRoomBridge?.writeBehindJoin(`org:${orgId}`, socket.id); } catch (_e) { /* fail-soft */ }
         } else {
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to subscribe to this org' });
         }
@@ -11806,7 +11846,7 @@ async function tryInitWebSockets(server) {
     // sat in "joining" forever and no peer connections ever formed.
     socket.on("voice:join", () => {
       const room = "voice";
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       // Tell existing peers a new one arrived
       socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
       // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
@@ -11838,7 +11878,7 @@ async function tryInitWebSockets(server) {
       const room = "voice";
       if (socket.rooms.has(room)) {
         socket.to(room).emit("voice:peer-left", { peerId: socket.id });
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
       }
     });
 
@@ -11851,7 +11891,7 @@ async function tryInitWebSockets(server) {
       const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
       if (!roomId) return;
       const room = `audio-room:${roomId}`;
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       socket.to(room).emit("audio-room:peer-joined", { peerId: socket.id, roomId });
       const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
       socket.emit("audio-room:room-state", { roomId, peers });
@@ -11874,7 +11914,7 @@ async function tryInitWebSockets(server) {
       const room = `audio-room:${roomId}`;
       if (socket.rooms.has(room)) {
         socket.to(room).emit("audio-room:peer-left", { peerId: socket.id, roomId });
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
       }
     });
 
@@ -12505,6 +12545,15 @@ function saveStateDebounced() {
   // signal available — the 5-min periodic safety-net reads it to skip a full
   // ~28 MB serialization when no mutation has occurred since its last pass.
   _stateMutationSeq++;
+  // Tier S write-through: flush in-place session/style mutations that did not
+  // go through Map.set (messages.push, lensHistory, etc.).
+  try {
+    _chatSessionBridge?.flushDirty?.(STATE.sessions);
+    _styleVectorBridge?.flushDirty?.(STATE.styleVectors);
+    // In-place mutations (messages.push) never hit Map.set — push recent tails.
+    _chatSessionBridge?.writeBehindRecent?.(STATE.sessions, 50);
+    _styleVectorBridge?.writeBehindRecent?.(STATE.styleVectors, 50);
+  } catch (_e) { /* fail-soft */ }
   // Expose to modules that can't reach this lexical scope (domain files
   // loaded from server/domains/*.js write directly to STATE.dtus for
   // snippets / snapshots; they need a save trigger).
@@ -56174,6 +56223,9 @@ let redisClient = null;
 _macroRateBridge = createMacroRateBridge(() => redisClient);
 _sessionActivityBridge = createSessionActivityBridge(() => redisClient);
 _apiRateBridge = createApiRateBridge(() => redisClient);
+_chatSessionBridge = createChatSessionBridge(() => redisClient);
+_styleVectorBridge = createStyleVectorBridge(() => redisClient);
+_socketRoomBridge = createSocketRoomBridge(() => redisClient);
 
 async function initRedis() {
   if (!REDIS_CONFIG.enabled) return { ok: false, reason: "Redis not configured" };
@@ -56261,6 +56313,7 @@ _unrefInTest(setTimeout(async () => {
     await initRedis();
     if (redisClient) await _TOKEN_BLACKLIST.syncFromRedis();
   }
+  try { installSharedStateWriteThrough(); } catch (_e) { /* fail-soft */ }
 }, 1000));
 
 structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations" });
