@@ -23,11 +23,62 @@ kept for provenance and should not be read as current counts.
 
 # CURRENT STATE — live run 2026-07-25T12:11:32Z
 
-> **SUPERSEDED (2026-09-08).** The live picture is the **2026-09-08
-> owner-authorized refresh** entry further down this file (search
-> "owner-authorized BASELINE + BUDGET refresh"): `BASELINE.json` 2026-09-08T21:35Z,
-> 565 fingerprints, 0 critical / 24 high / 71 medium / 29 low / 448 info (572);
-> `BUDGET.json` v14 `maxTotal` 620; `--diff --ci` green (added 0 / removed 0).
+> **SUPERSEDED (2026-09-10).** The live picture is the **2026-09-10
+> owner-authorized refresh** entry immediately below (`## 2026-09-10 —
+> owner-authorized refresh`): `BASELINE.json` 2026-09-10T15:20Z, **579
+> fingerprints, 0 critical / 24 high / 71 medium / 31 low / 460 info (586)**;
+> `BUDGET.json` v14 `maxTotal` 620 unchanged (586 < 620); `--diff --ci` green
+> (added 0 / removed 0). The 2026-09-08 entry ("owner-authorized BASELINE +
+> BUDGET refresh", 565 fingerprints / 572 total) it points to is now history.
+
+---
+
+## 2026-09-10 — owner-authorized refresh (branch `concurrency-refactor`)
+
+User instruction: "Do the remaining 3 things you flagged" — one of the three
+was "`audit/detectors/BASELINE.json` refresh for the new detector."
+
+**New since the 2026-09-08 baseline:** one new detector — `macro-stub`
+(`server/lib/detectors/macro-stub-detector.js`, added this branch): reads
+every `register()` / `registerLensAction()` handler body and flags stubs
+disguised as working (comment-form incompleteness markers, effectively-empty
+`return { ok: true }`) — inventories honest `{ ok:false, reason:'roadmap' }`
+stubs separately at info. It contributes **11 info fingerprints** (its
+summary row + the honest-roadmap-stub inventory: `mounts.*` x10, personas
+publish/install) and **0 high/medium/low** — the 3 real findings it first
+surfaced (`thread.best-time` hardcoded slots, `scope.overrides` permanent
+`[]`, `personas.versions` hardcoded) were all fixed before this capture (see
+commit `9370fc2d6` — thread.best-time now derives the user's real
+posting-time distribution or returns a labelled generic guideline; personas
+versions/publish/install delegate to the real `personas.js` LENS_ACTIONS;
+scope.overrides is a verified constant, `@macro-stub-ok`-annotated).
+
+**8 gate highs cleared before the refresh** (they were "new vs baseline"
+because the 2026-09-08 baseline predated ~2 weeks of `concurrency-refactor`
+work — the frontend thin-shell rebuild, the Unity-first world shell, and the
+ConKay tool-use work):
+
+| finding | disposition |
+|---|---|
+| 1× `performance-hotspot` / `perf_uncaught_sql_loop` @ `server/lib/chat-agent.js` | **FIXED.** The `callerRole` / `ctx` block (committed on this branch, `e5411c883`) sat inside the agent turn loop, re-running `SELECT role FROM users` every turn (≤ `AGENT_MAX_TURNS` = 5 per request). It is fully loop-invariant — hoisted to once before the loop (`291a355c8`). perf detector: 0 chat-agent highs after. |
+| 6× `lens-health` / `lens_no_default_export` (`code` / `council` / `crypto` / `fitness` / `game` / `music` pages) | **DETECTOR FALSE POSITIVE, fixed bidirectionally.** Those pages are thin-shell re-exports landed by the frontend thin-shell workstream — `export { default } from '@/…'`, `export { XWorkspace as default } from '@/…'`, `export * from '@/…'`. That IS a valid Next.js page default export; it just has no local `export default` token and no local JSX. `lens-health-detector.js` now recognises the re-export shape and skips both the default-export AND jsx-return checks for it. Pinning tests added (`lens-health-detector.test.js`): re-export shells pass, a genuinely-exportless page still fails high. |
+| 1× `ux-broken-link` / `broken_link` @ `concord-frontend/components/world/WorldUnityShell.tsx` | **REAL, fixed.** `router.push('/lenses')` — there is no bare `/lenses` index route (only the dynamic per-lens segment). Changed to `/hub` (the actual front door; onboarding routes there too). One follow-up self-inflicted flag: the explanatory comment then contained the literal `router.push('/lenses')` and `ux-broken-link` (raw text matching, no comment-awareness — CLAUDE.md documents this class) re-flagged it; comment reworded to prose (`a946ea667`). |
+
+**BUDGET.json** unchanged at v14 `maxTotal` 620 — the new total 586 sits
+comfortably under it (586 vs 620 = 5.5% headroom). The `perDetector` map in
+BUDGET.json remains stale-and-informational-only (the v14 rationale already
+notes this); `ciDecision` gates on `maxTotal` alone.
+
+**Baselined highs: still 24, the same reviewed FP / by-design set** documented
+in the 2026-09-08 entry — no NEW highs were baselined this cycle (the 8 above
+were all fixed or corrected, not blessed). Low went 29 → 31 (+2:
+`resource-leak` on a frontend timer-count sanity note + one `env-config-drift`
+line, both pre-existing drift, info-adjacent). Info went 448 → 460 (+12:
+macro-stub's 11 + one macro-usage telemetry line — that detector's info tier
+is documented as run-to-run volatile).
+
+Post-refresh verification: `node scripts/run-detectors.js --consumer
+code-quality --diff --ci` → `added 0 / removed 0`, gate green.
 > Everything below is a 2026-07-25 snapshot kept for provenance.
 
 Produced by exactly one invocation of `cd server && node scripts/run-detectors.js`
