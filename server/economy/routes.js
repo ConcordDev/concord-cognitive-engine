@@ -3,7 +3,7 @@
 // All routes are mounted under /api/economy and /api/stripe.
 
 import express from "express";
-import { getBalance, CREDIT_ROW_PREDICATE } from "./balances.js";
+import { getBalance, getBalancePreferSidecar, CREDIT_ROW_PREDICATE } from "./balances.js";
 import { getTransactions, getAllTransactions } from "./ledger.js";
 import { FEES, PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { executeTransfer, executePurchase, executeMarketplacePurchase, executeReversal } from "./transfer.js";

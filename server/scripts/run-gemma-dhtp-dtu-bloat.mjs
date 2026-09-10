@@ -292,7 +292,7 @@ async function main() {
   });
 
   let soft = {};
-  try { soft = JSON.parse(readFileSync(SOFT, "utf8")); } catch {}
+  try { soft = JSON.parse(readFileSync(SOFT, "utf8")); } catch { /* ignore */ }
 
   let agg = pickAggregates(bench);
   const succ = bench?.overall?.aggregatesSuccessfulOnly || {};

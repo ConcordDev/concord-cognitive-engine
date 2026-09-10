@@ -74,7 +74,7 @@ export function getSession(sessionId) {
           }));
         }
       }
-    } catch (e) { /* silent — table may not exist yet */ }
+    } catch { /* silent — table may not exist yet */ }
     sessions.set(sessionId, fresh);
   }
   const session = sessions.get(sessionId);
@@ -142,7 +142,7 @@ export function logEvent(sessionId, event) {
           JSON.stringify(E.meta || {}), eventWithMeta.ts, eventWithMeta.ts
       );
     }
-  } catch (e) { /* silent — non-fatal */ }
+  } catch { /* silent — non-fatal */ }
 }
 
 /**

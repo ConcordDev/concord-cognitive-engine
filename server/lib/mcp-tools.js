@@ -2138,7 +2138,7 @@ async function organCall(organPath, toolName, args, organLabel) {
                   return;
                 }
               }
-            } catch {}
+            } catch { /* noop */ }
           }
           resolve({ ok: false, error: organLabel + ": no valid response", raw: out.slice(0, 500), stderr: err.slice(0, 200), f0_trace_id: f0TraceId });
         } catch (e) {

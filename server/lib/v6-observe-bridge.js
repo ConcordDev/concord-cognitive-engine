@@ -147,7 +147,7 @@ export function challengeFallbackCall(prompt, priorAssistant) {
   const blob = `${q} ${claim}`.toLowerCase();
   // Prefer verify for factual/math claims; status organs for self/system;
   // web_search only when the claim needs external lookup.
-  if (/\b(\d+\s*[\+\-\*\/x×]\s*\d+|sqrt|integral|derivative|compute|calculate|math)\b/i.test(blob)) {
+  if (/\b(\d+\s*[+\-*/x×]\s*\d+|sqrt|integral|derivative|compute|calculate|math)\b/i.test(blob)) {
     return {
       tool: "concord.math",
       params: { expression: (claim || q).slice(0, 400) },
