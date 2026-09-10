@@ -32995,9 +32995,15 @@ register("settings", "status", (ctx, _input) => {
     }
   }, { description: "Member-safe scoped DTU listing (skips others' private)." });
 
+  // Concord has no runtime scope-override system — DTU scope is enforced
+  // purely by the three permission gates + per-DTU visibility. "List the
+  // scope overrides" therefore has exactly one honest answer: an empty list.
+  // Kept (frontend api.client exposes scope.overrides()) rather than removed,
+  // but it is genuinely a constant, not a half-built feature.
+  // @macro-stub-ok: constant-by-design — no override layer exists to read
   register("scope", "overrides", (_ctx, _input = {}) => {
-    return { ok: true, overrides: [], note: "No runtime scope overrides configured." };
-  }, { description: "Read-only scope overrides list (empty unless configured)." });
+    return { ok: true, overrides: [], configurable: false, note: "Concord enforces DTU scope via the permission gates + per-DTU visibility; there is no runtime override layer." };
+  }, { description: "Always [] — Concord has no scope-override layer." });
 
   register("guidance", "status", (_ctx, _input = {}) => {
     return { ok: true, status: "ok", layer: "guidance", note: "guidance.emitEvent substrate available server-side" };
@@ -42825,13 +42831,15 @@ register("persona", "delete", (ctx, input) => {
   }
 }
 
-// Phase Z4 — the personas lens calls 5 additional actions that don't exist on
-// the singular `persona` domain either: get/stats/versions/publish/install.
-// These belong to a persona-marketplace flow that's roadmap material. Until
-// that ships, expose minimum-viable stubs so the lens renders without
-// crashing — `get` + `stats` are thin wrappers on existing data; the rest
-// return a clean `{ok:false, reason:'roadmap'}` that the UI can render as
-// "coming soon" badges.
+// Phase Z4 (superseded 2026-06+) — server/domains/personas.js is now a full
+// 17-macro domain registered into LENS_ACTIONS, and /api/lens/run prefers
+// LENS_ACTIONS over these MACROS shadows, so frontend traffic already hits
+// the real handlers. These MACROS registrations only still matter for
+// non-lens callers: runMacro("personas", …) directly, the MCP server, and
+// the agent loop's MACROS path. `get` + `stats` stay as thin STATE wrappers
+// (harmless, read real state). `versions` / `publish` / `install` are no
+// longer roadmap — they exist for real in personas.js — so they now
+// DELEGATE to that LENS_ACTION at call time rather than returning a stub.
 register("personas", "get", (ctx, input = {}) => {
   const id = input.id;
   if (!id) return { ok: false, error: "missing_id" };
@@ -42856,17 +42864,21 @@ register("personas", "stats", (ctx, input = {}) => {
   };
 }, { note: "Z4 thin wrapper" });
 
-register("personas", "versions", (_ctx, input = {}) => {
-  return { ok: true, versions: [{ id: "v1", current: true, createdAt: null }], reason: "single_version_only" };
-}, { note: "Z4 roadmap stub" });
-
-register("personas", "publish", (_ctx, _input = {}) => {
-  return { ok: false, reason: "roadmap", message: "Persona marketplace publishing is roadmap." };
-}, { note: "Z4 roadmap stub" });
-
-register("personas", "install", (_ctx, _input = {}) => {
-  return { ok: false, reason: "roadmap", message: "Persona marketplace install is roadmap." };
-}, { note: "Z4 roadmap stub" });
+// versions / publish / install: delegate to the real personas.js LENS_ACTION
+// (resolved at call time so load order doesn't matter). Was a hardcoded
+// `{versions:[{id:"v1"}]}` / `{ok:false,reason:'roadmap'}` — both stale now
+// that personas.js implements them.
+for (const _pName of ["versions", "publish", "install"]) {
+  register("personas", _pName, async (ctx, input = {}) => {
+    const _la = (globalThis.__concordLensActions instanceof Map)
+      ? globalThis.__concordLensActions.get(`personas.${_pName}`)
+      : null;
+    if (typeof _la !== "function") {
+      return { ok: false, error: "personas_action_unavailable", detail: `personas.${_pName} not registered` };
+    }
+    return _la(ctx, { id: null, domain: "personas", type: "domain_action", data: input, meta: {} }, input);
+  }, { note: `delegates to the real personas.js LENS_ACTION personas.${_pName}` });
+}
 
 // ---- Admin Dashboard Endpoints ----
 // SECURITY: every admin macro runs through requireAdminRole() first so

@@ -346,17 +346,65 @@ export default function registerThreadActions(registerLensAction) {
     return { ok: true, result: { queue, count: queue.length } };
   });
 
-  // best-time — deterministic best-time-to-post heuristic (engagement
-  // peaks weekday mornings + early evenings).
-  registerLensAction("thread", "best-time", (_ctx, _a, _params = {}) => {
-    const slots = [
-      { day: "Tue", time: "09:00", score: 96 },
-      { day: "Wed", time: "12:00", score: 93 },
-      { day: "Thu", time: "17:00", score: 91 },
-      { day: "Mon", time: "08:00", score: 88 },
-      { day: "Fri", time: "11:00", score: 84 },
-    ];
-    return { ok: true, result: { recommended: slots[0], slots } };
+  // best-time — when to post. Concord has NO third-party engagement/analytics
+  // feed, so this can't return a personalised "your audience is most active
+  // at X" figure. What it CAN do honestly:
+  //   • if the user has ≥3 scheduled/published posts, derive their OWN
+  //     posting-time distribution from those real timestamps
+  //     (basis: "your_history")
+  //   • otherwise return a generic weekday-morning/early-evening guideline,
+  //     explicitly labelled as generic (basis: "generic_guideline") — never
+  //     dressed up as data about this user.
+  const _WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  registerLensAction("thread", "best-time", (ctx, _a, _params = {}) => {
+    const s = getThreadState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const drafts = trList(s, trActor(ctx));
+    const stamps = drafts
+      .map((d) => d.publishedAt || (d.status === "scheduled" ? d.scheduledAt : null))
+      .filter(Boolean)
+      .map((iso) => new Date(iso))
+      .filter((dt) => !Number.isNaN(dt.getTime()));
+
+    if (stamps.length >= 3) {
+      const buckets = new Map(); // "day|hour" -> count
+      for (const dt of stamps) {
+        const key = `${dt.getUTCDay()}|${dt.getUTCHours()}`;
+        buckets.set(key, (buckets.get(key) || 0) + 1);
+      }
+      const max = Math.max(...buckets.values());
+      const slots = [...buckets.entries()]
+        .map(([k, count]) => {
+          const [day, hour] = k.split("|").map(Number);
+          return { day: _WD[day], time: `${String(hour).padStart(2, "0")}:00`, count, score: Math.round((count / max) * 100) };
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      return {
+        ok: true,
+        result: {
+          basis: "your_history",
+          sampleSize: stamps.length,
+          note: "Derived from the times YOU have scheduled/published, not from audience-engagement data (Concord has no analytics feed).",
+          recommended: slots[0],
+          slots,
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      result: {
+        basis: "generic_guideline",
+        note: "Generic guidance — not personalised. Schedule/publish at least 3 posts and this will switch to your own posting-time distribution.",
+        slots: [
+          { day: "Tue", time: "09:00", rationale: "weekday morning" },
+          { day: "Wed", time: "12:00", rationale: "midday" },
+          { day: "Thu", time: "17:00", rationale: "early evening" },
+          { day: "Mon", time: "08:00", rationale: "start-of-week morning" },
+          { day: "Fri", time: "11:00", rationale: "late-week late-morning" },
+        ],
+      },
+    };
   });
 
   registerLensAction("thread", "thread-dashboard", (ctx, _a, _params = {}) => {
