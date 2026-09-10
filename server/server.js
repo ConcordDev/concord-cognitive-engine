@@ -19241,7 +19241,13 @@ async function callOllama(prompt, options = {}) {
 
   try {
     const useModel = options.model || model;
-    const _numCtx = _ollamaNumCtx(options.brainName || _brainNameForModel(useModel));
+    // num_ctx is sized to the MODEL actually loading, not options.brainName —
+    // callers sometimes pass brainName:"conscious" while the model resolves to
+    // OLLAMA_MODEL (the 14B on the shared-A40 deploy), and honoring the label
+    // over the model made ollama load the 14B blob at a 32k KV cache, churning
+    // against the 4k the real subconscious path asks for. To force a specific
+    // window, pass options.numCtx.
+    const _numCtx = options.numCtx || _ollamaNumCtx(_brainNameForModel(useModel));
     const systemContent = options.system || "";
     const useChat = !!systemContent;
     const payload = useChat
@@ -19301,13 +19307,10 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     options: {
       temperature: options.temperature || 0.7,
       num_predict: options.maxTokens || 1500,
-      // Streaming chat runs on the conscious brain unless the caller says
-      // otherwise — without num_ctx the assembled 32k-budget prompt was
-      // silently truncated at Ollama's small default. Fall back to the
-      // model's own brain slot (not a bare "conscious") when brainName is
-      // absent/unresolved, so a mislabelled call still sizes KV to the
-      // model actually running.
-      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || _brainNameForModel(model)),
+      // num_ctx is sized to the MODEL actually loading (see callOllama note) —
+      // not options.brainName, which can disagree with `model`. Pass
+      // options.numCtx to force a specific window.
+      num_ctx: options.numCtx || _ollamaNumCtx(_brainNameForModel(model)),
     },
   };
 
