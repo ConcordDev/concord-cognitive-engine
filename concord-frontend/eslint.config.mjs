@@ -75,7 +75,7 @@ const eslintConfig = [
     },
   },
   {
-    ignores: ['node_modules/', '.next/', 'out/', 'dist/', 'build/', 'coverage/', '*.min.js', 'public/unity-client/Build/'],
+    ignores: ['node_modules/', '.next/', 'out/', 'dist/', 'build/', 'coverage/', '*.min.js', 'public/**/Build/**', 'public/**/*.loader.js', 'public/**/*.framework.js'],
   },
   {
     files: ['server-proxy.js'],
