@@ -2,7 +2,7 @@
 //
 // world_buildings rows gain nullable `archetype`/`feature` columns once an
 // Asset-Studio-authored building is spawned (Unit 1's migration). This pins
-// that `mapWorldBuildingToRendererDTU` (app/lenses/world/page.tsx) threads
+// that `mapWorldBuildingToRendererDTU` (components/world/WorldOsSurface.tsx) threads
 // those two fields through onto the BuildingDTU object BuildingRenderer3D
 // consumes (it already reads `dtu.archetype`/`dtu.feature` at its
 // procedural-buildings path, BuildingRenderer3D.tsx:164/177) — WITHOUT
@@ -21,7 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // constraint documented in tests/world-page-wind-direction-threading.test.ts
 // and tests/power-clusters-layer.test.ts, and the same source-pin convention
 // they use is followed here.
-const src = readFileSync(path.resolve(__dirname, '..', 'page.tsx'), 'utf8');
+const src = readFileSync(path.resolve(__dirname, '../../../../components/world/WorldOsSurface.tsx'), 'utf8');
 
 /**
  * Re-derived, standalone copy of `mapWorldBuildingToRendererDTU`'s logic so

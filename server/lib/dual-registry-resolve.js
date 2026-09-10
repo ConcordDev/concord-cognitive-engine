@@ -34,18 +34,43 @@
 /**
  * @param {string} domain
  * @param {string} name
- * @param {{ lensActions?: Map<string, Function>, runMacro?: Function }} registries
+ * @param {{ lensActions?: Map<string, Function>, runMacro?: Function, macros?: Map }} registries
+ *        `macros` is the canonical MACROS registry (Map<domain, Map<name, entry>>).
+ *        When omitted, `globalThis._concordMACROS` (set by server.js) is used.
  * @returns {{ via: 'lens_action', handler: Function, key: string }
  *         | { via: 'macro', key: string }
- *         | { via: 'none', key: string }}
+ *         | { via: 'none', key: string, reason?: string }}
+ *
+ * `via: 'macro'` now means the (domain, name) pair is ACTUALLY registered in
+ * MACROS — not just "runMacro is callable". Previously this returned 'macro'
+ * for any pair as long as runMacro was a function, so a misnamed / never-
+ * registered (domain, action) — the exact thing ConKay guesses wrong — got
+ * `via: 'macro'`, and the caller's `runMacro()` then threw
+ * "macro not found: d.n", surfacing to the model as an opaque
+ * "lens action error" instead of a clean "unknown action, list_lens_actions
+ * for the real names". A caller can pass `strict: false` to opt back into the
+ * old permissive behavior if it genuinely wants to attempt the call.
  */
-export function resolveDualRegistry(domain, name, { lensActions, runMacro } = {}) {
+export function resolveDualRegistry(domain, name, { lensActions, runMacro, macros, strict = true } = {}) {
   const key = `${domain}.${name}`;
   const hasLensActions = !!(lensActions && typeof lensActions.get === "function");
   const lensHandler = hasLensActions ? lensActions.get(key) : null;
   if (lensHandler) return { via: "lens_action", handler: lensHandler, key };
-  if (typeof runMacro === "function") return { via: "macro", key };
-  return { via: "none", key };
+
+  if (typeof runMacro !== "function") return { via: "none", key, reason: "no_dispatcher" };
+
+  // Strict mode downgrades to via:"none" ONLY when we can POSITIVELY determine
+  // the pair is not registered — i.e. a real MACROS map is available and the
+  // lookup misses. With no map to consult (isolated unit contexts), or with
+  // strict:false, fall back to the permissive "attempt it via runMacro".
+  const macroMap = strict
+    ? (macros || (typeof globalThis !== "undefined" ? globalThis._concordMACROS : null))
+    : null;
+  if (macroMap && typeof macroMap.get === "function") {
+    const registered = !!macroMap.get(domain)?.get?.(name);
+    if (!registered) return { via: "none", key, reason: "not_registered" };
+  }
+  return { via: "macro", key };
 }
 
 export default resolveDualRegistry;

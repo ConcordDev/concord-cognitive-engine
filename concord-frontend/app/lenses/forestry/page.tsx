@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -19,7 +17,6 @@ import { ReplantingPanel } from '@/components/forestry/ReplantingPanel';
 import { CarbonCreditPanel } from '@/components/forestry/CarbonCreditPanel';
 import { GbifPanel } from '@/components/environment/GbifPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { cn } from '@/lib/utils';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import {
@@ -62,9 +59,7 @@ export default function ForestryLensPage() {
 
   return (
     <LensShell lensId="forestry" asMain={false}>
-      <FirstRunTour lensId="forestry" />
-      <ManifestActionBar />
-      <DepthBadge lensId="forestry" size="sm" className="ml-2" />
+      <FirstRunTour lensId="forestry" />      <DepthBadge lensId="forestry" size="sm" className="ml-2" />
       <LensPageShell
         domain="forestry"
         title="Forestry Management"
@@ -127,10 +122,7 @@ export default function ForestryLensPage() {
         </div>
       </LensPageShell>
 
-      <a href="#forestry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to forestry content</a>
-      <RecentMineCard domain="forestry" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="forestry" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="forestry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#forestry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to forestry content</a>      <CrossLensRecentsPanel lensId="forestry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

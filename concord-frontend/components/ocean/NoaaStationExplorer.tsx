@@ -102,6 +102,7 @@ export function NoaaStationExplorer() {
             <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Activity className="h-3 w-3" />Observed water level — {selected.name}</div>
             {waterLevel.latest && (
               <SaveAsDtuButton
+                defaultContentClass="dataset"
                 compact
                 apiSource="noaa-tides-and-currents"
                 title={`${selected.name} observed water level — ${waterLevel.latest.waterLevel}m (${waterLevel.datum})`}

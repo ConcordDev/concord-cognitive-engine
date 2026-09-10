@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { lensRun } from '@/lib/api/client';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 import { Search, Loader2, ExternalLink, History, Trash2, BookmarkPlus, Globe } from 'lucide-react';
 
 interface ResearchResult {
@@ -68,13 +69,13 @@ export function WebResearchTool() {
 
   const citeResult = useCallback(async (res: ResearchResult) => {
     setCiting(res.url);
-    const r = await lensRun<{ dtu?: { id?: string } }>('dtu', 'create', {
+    const r = await lensRun<{ dtu?: { id?: string } }>('dtu', 'create', withContentLicense({
       title: res.title.slice(0, 140),
       creti: `${res.snippet}\n\nSource: ${res.source} — ${res.url}`,
       tags: ['web-research', res.source.toLowerCase()],
       source: 'tools.research',
       meta: { sourceUrl: res.url, sourceName: res.source, query: payload?.query },
-    });
+    }, 'knowledge', ['private']));
     setCiting(null);
     const newId = r.data?.result?.dtu?.id;
     if (r.data?.ok && newId) {

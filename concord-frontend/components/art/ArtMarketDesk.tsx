@@ -1,0 +1,1099 @@
+'use client';
+
+/**
+ * ArtMarketDesk — gallery / canvas / marketplace / my-art commerce desk.
+ * Extracted from the welded art page-client; mode is owned by the page shell.
+ */
+
+
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, apiHelpers } from '@/lib/api/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useUIStore } from '@/store/ui';
+import {
+  Palette,
+  Image as ImageIcon,
+  Upload,
+  Plus,
+  Grid,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  Wand2,
+  Download,
+  Heart,
+  Share2,
+  Filter,
+  Search,
+  Eye,
+  ShoppingBag,
+  DollarSign,
+  X,
+  Brush,
+  Droplets,
+  Pen,
+  Square,
+  Circle,
+  Type,
+  Eraser,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Move,
+  Pipette,
+  Save,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/common/EmptyState';
+import { useLensDTUs } from '@/hooks/useLensDTUs';
+import type { DTU } from '@/lib/api/generated-types';
+import { LensContextPanel } from '@/components/lens/LensContextPanel';
+
+import { ArtifactRenderer } from '@/components/artifact/ArtifactRenderer';
+import { ArtifactUploader } from '@/components/artifact/ArtifactUploader';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
+import { useRealtimeLens } from '@/hooks/useRealtimeLens';
+import { LiveIndicator } from '@/components/lens/LiveIndicator';
+import { DTUExportButton } from '@/components/lens/DTUExportButton';
+import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
+import { VisionAnalyzeButton } from '@/components/common/VisionAnalyzeButton';
+import { PullToSubstrate } from '@/components/lens/PullToSubstrate';
+import { FeedBanner } from '@/components/lens/FeedBanner';
+
+type CanvasTool = 'brush' | 'eraser' | 'fill' | 'text' | 'shape-rect' | 'shape-circle' | 'eyedropper' | 'move' | 'pen' | 'rectangle' | 'circle' | 'line';
+
+interface ArtAsset {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  tags: string[];
+  ownerId: string;
+  likes: number;
+  plays: number;
+  createdAt: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface ArtListing {
+  id: string;
+  title: string;
+  artType: string;
+  style: string;
+  price: number;
+  tags: string[];
+  totalSales: number;
+  ownerId: string;
+  createdAt: number;
+}
+
+const ART_STYLES = ['Digital Painting', 'Pixel Art', 'Vector', 'Photo Manipulation', '3D Render', 'Abstract', 'Collage', 'Generative', 'Album Cover', 'Typography'];
+const ART_TYPES = ['cover-art', 'banner', 'logo', 'illustration', 'background', 'character', 'concept-art', 'poster', 'social-media', 'nft'];
+
+const COLOR_PALETTE = [
+  '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+  '#BB8FCE', '#85C1E9', '#82E0AA', '#F8C471', '#E74C3C', '#3498DB', '#2ECC71', '#9B59B6',
+];
+
+export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketplace' | 'my-art' }) {
+  const { latestData: realtimeData, alerts: realtimeAlerts, insights: realtimeInsights, isLive, lastUpdated } = useRealtimeLens('art');
+  const queryClient = useQueryClient();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+
+  const viewMode = mode;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [showCreateListing, setShowCreateListing] = useState(false);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Lens-scoped keyboard commands: g (gallery), c (canvas), m (marketplace), u upload, l list,
+  // / focus search.
+  useLensCommand(
+    [
+      { id: 'upload', keys: 'u', description: 'Upload artwork', category: 'actions', action: () => setShowUpload(true) },
+      { id: 'list-piece', keys: 'l', description: 'List for sale', category: 'actions', action: () => setShowCreateListing(true) },
+      { id: 'focus-search', keys: '/', description: 'Focus search', category: 'navigation', action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: 'art' }
+  );
+
+  // Canvas state
+  const [canvasTool, setCanvasTool] = useState<CanvasTool>('brush');
+  const [brushSize, setBrushSize] = useState(5);
+  const [brushColor, setBrushColor] = useState('#FFFFFF');
+  const [canvasZoom, setCanvasZoom] = useState(100);
+  const [canvasTitle, setCanvasTitle] = useState('Untitled Artwork');
+  const [artTypeFilter, setArtTypeFilter] = useState<string | null>(null);
+  const [myArtView, setMyArtView] = useState<'grid' | 'list'>('grid');
+
+  // Drawing state
+  const isDrawingRef = useRef(false);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const undoStackRef = useRef<ImageData[]>([]);
+  const redoStackRef = useRef<ImageData[]>([]);
+  const [brushOpacity, setBrushOpacity] = useState(100);
+
+  // Dynamic brush cursor — shows brush size circle
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const showBrushCursor = canvasTool === 'brush' || canvasTool === 'eraser';
+
+  // Keyboard shortcuts for tools — use refs for undo/redo to avoid stale closures
+  const undoFnRef = useRef<() => void>(() => {});
+  const redoFnRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const key = e.key.toLowerCase();
+      if (key === 'b') setCanvasTool('brush');
+      else if (key === 'e') setCanvasTool('eraser');
+      else if (key === 'g') setCanvasTool('fill');
+      else if (key === 'i') setCanvasTool('eyedropper');
+      else if (key === 't') setCanvasTool('text');
+      else if (key === 'r') setCanvasTool('rectangle');
+      else if (key === 'c') setCanvasTool('circle');
+      else if (key === 'l') setCanvasTool('line');
+      else if (key === '[') setBrushSize(s => Math.max(1, s - 2));
+      else if (key === ']') setBrushSize(s => Math.min(100, s + 2));
+      else if (e.ctrlKey && key === 'z' && !e.shiftKey) { e.preventDefault(); undoFnRef.current(); }
+      else if ((e.ctrlKey && key === 'z' && e.shiftKey) || (e.ctrlKey && key === 'y')) { e.preventDefault(); redoFnRef.current(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Initialize canvas with white background
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    undoStackRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+  }, []);
+
+  const saveToUndoStack = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    undoStackRef.current.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    if (undoStackRef.current.length > 50) undoStackRef.current.shift();
+    redoStackRef.current = [];
+  }, []);
+
+  const getCanvasPos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }, []);
+
+  const drawLine = useCallback((ctx: CanvasRenderingContext2D, from: { x: number; y: number }, to: { x: number; y: number }) => {
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+  }, []);
+
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pos = getCanvasPos(e);
+    isDrawingRef.current = true;
+    lastPosRef.current = pos;
+    saveToUndoStack();
+
+    if (canvasTool === 'fill') {
+      ctx.fillStyle = brushColor;
+      ctx.globalAlpha = brushOpacity / 100;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 1;
+      isDrawingRef.current = false;
+      return;
+    }
+
+    if (canvasTool === 'eyedropper') {
+      const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+      const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+      setBrushColor(hex);
+      isDrawingRef.current = false;
+      return;
+    }
+
+    if (canvasTool === 'text') {
+      const text = prompt('Enter text:');
+      if (text) {
+        ctx.fillStyle = brushColor;
+        ctx.globalAlpha = brushOpacity / 100;
+        ctx.font = `${brushSize * 3}px sans-serif`;
+        ctx.fillText(text, pos.x, pos.y);
+        ctx.globalAlpha = 1;
+      }
+      isDrawingRef.current = false;
+      return;
+    }
+
+    // Set up drawing context
+    ctx.lineWidth = brushSize;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = brushOpacity / 100;
+
+    if (canvasTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = brushColor;
+    }
+
+    // Draw a dot at click position
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = canvasTool === 'eraser' ? 'rgba(0,0,0,1)' : brushColor;
+    ctx.fill();
+  }, [canvasTool, brushColor, brushSize, brushOpacity, getCanvasPos, saveToUndoStack]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current || !lastPosRef.current) return;
+    if (canvasTool === 'move' || canvasTool === 'eyedropper' || canvasTool === 'fill' || canvasTool === 'text') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const pos = getCanvasPos(e);
+
+    if (canvasTool === 'shape-rect' || canvasTool === 'shape-circle') {
+      // Shapes preview on move — restore last saved state and draw shape
+      const lastState = undoStackRef.current[undoStackRef.current.length - 1];
+      if (lastState) ctx.putImageData(lastState, 0, 0);
+      ctx.strokeStyle = brushColor;
+      ctx.lineWidth = brushSize;
+      ctx.globalAlpha = brushOpacity / 100;
+      ctx.globalCompositeOperation = 'source-over';
+      const start = lastPosRef.current;
+      if (canvasTool === 'shape-rect') {
+        ctx.strokeRect(start.x, start.y, pos.x - start.x, pos.y - start.y);
+      } else {
+        const rx = Math.abs(pos.x - start.x) / 2;
+        const ry = Math.abs(pos.y - start.y) / 2;
+        const cx = (start.x + pos.x) / 2;
+        const cy = (start.y + pos.y) / 2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    drawLine(ctx, lastPosRef.current, pos);
+    lastPosRef.current = pos;
+  }, [canvasTool, brushColor, brushSize, brushOpacity, getCanvasPos, drawLine]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (isDrawingRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (ctx) {
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    }
+    isDrawingRef.current = false;
+    lastPosRef.current = null;
+  }, []);
+
+  // AI generation state
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Upload form
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadTags, setUploadTags] = useState('');
+  const [uploadStyle, setUploadStyle] = useState('Digital Painting');
+
+  // Listing form
+  const [listingTitle, setListingTitle] = useState('');
+  const [listingType, setListingType] = useState('cover-art');
+  const [listingStyle, setListingStyle] = useState('digital');
+  const [listingPrice, setListingPrice] = useState('50');
+  const [listingTags, setListingTags] = useState('');
+
+  const { data: artAssets, isLoading: assetsLoading, isError: isError, error: error, refetch: refetch,} = useQuery({
+    queryKey: ['art-assets', selectedStyle, searchQuery],
+    // Don't swallow the error: a thrown queryFn surfaces isError so the
+    // ErrorState + working Retry actually render (previously a `.catch(()=>[])`
+    // made isError permanently false and the error UI dead-code).
+    queryFn: () => apiHelpers.artistry.assets.list({ type: 'artwork', search: searchQuery || undefined })
+    .then(r => r.data?.assets || []),
+    initialData: [],
+  });
+
+  const { data: artListings, isError: isError2, error: error2, refetch: refetch2,} = useQuery({
+    queryKey: ['art-marketplace'],
+    queryFn: () => apiHelpers.artistry.marketplace.art.list().then(r => r.data?.artworks || []),
+    initialData: [],
+  });
+
+  // DTU context (v3.0 artifact support)
+  const {
+    contextDTUs, hyperDTUs, megaDTUs, regularDTUs, domainDTUs,
+    tierDistribution, publishToMarketplace: publishDTU,
+    isLoading: dtusLoading, refetch: refetchDTUs,
+  } = useLensDTUs({ lens: 'art' });
+
+  const imageArtifacts = contextDTUs.filter((d: DTU) => d.artifact?.type?.startsWith('image/'));
+
+  const uploadMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => apiHelpers.artistry.assets.create(data as { type: string; title?: string; description?: string; tags?: string[]; genre?: string; bpm?: number; key?: string; ownerId?: string; metadata?: Record<string, unknown> }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['art-assets'] });
+      setShowUpload(false);
+      setUploadTitle('');
+      setUploadDescription('');
+      setUploadTags('');
+    },
+    onError: (err) => {
+      console.error('Upload failed:', err instanceof Error ? err.message : err);
+    },
+  });
+
+  const createListingMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => apiHelpers.artistry.marketplace.art.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['art-marketplace'] });
+      setShowCreateListing(false);
+    },
+    onError: (err) => {
+      console.error('Failed to create listing:', err instanceof Error ? err.message : err);
+    },
+  });
+
+  const handleUpload = useCallback(() => {
+    uploadMutation.mutate({
+      type: 'artwork',
+      title: uploadTitle || 'Untitled',
+      description: uploadDescription,
+      tags: uploadTags.split(',').map(t => t.trim()).filter(Boolean),
+      metadata: { style: uploadStyle },
+    });
+  }, [uploadTitle, uploadDescription, uploadTags, uploadStyle, uploadMutation]);
+
+  const handleCreateListing = useCallback(() => {
+    createListingMutation.mutate({
+      title: listingTitle,
+      artType: listingType,
+      style: listingStyle,
+      price: Number(listingPrice),
+      tags: listingTags.split(',').map(t => t.trim()).filter(Boolean),
+    });
+  }, [listingTitle, listingType, listingStyle, listingPrice, listingTags, createListingMutation]);
+
+  const purchaseMutation = useMutation({
+    mutationFn: (listingId: string) => apiHelpers.artistry.marketplace.purchase({ buyerId: 'current-user', listingId, listingType: 'art' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['art-marketplace'] });
+      useUIStore.getState().addToast({ type: 'success', message: 'Purchase complete!' });
+    },
+    onError: () => {
+      useUIStore.getState().addToast({ type: 'error', message: 'Operation failed. Please try again.' });
+    },
+  });
+
+  const handleCanvasUndo = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (undoStackRef.current.length <= 1) return;
+    const current = undoStackRef.current.pop()!;
+    redoStackRef.current.push(current);
+    const prev = undoStackRef.current[undoStackRef.current.length - 1];
+    if (prev) ctx.putImageData(prev, 0, 0);
+  }, []);
+
+  const handleCanvasRedo = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (redoStackRef.current.length === 0) return;
+    const next = redoStackRef.current.pop()!;
+    undoStackRef.current.push(next);
+    ctx.putImageData(next, 0, 0);
+  }, []);
+
+  // Wire keyboard shortcut refs to actual handlers
+  undoFnRef.current = handleCanvasUndo;
+  redoFnRef.current = handleCanvasRedo;
+
+  const handleCanvasSave = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Upload as media with actual image data
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const base64Data = dataUrl.split(',')[1];
+      await api.post('/api/media/upload', {
+        title: canvasTitle || 'Untitled',
+        mediaType: 'image',
+        mimeType: 'image/png',
+        fileSize: Math.ceil(base64Data.length * 0.75),
+        originalFilename: `${canvasTitle.replace(/\s+/g, '-').toLowerCase()}.png`,
+        tags: ['art', 'canvas'],
+        data: base64Data,
+      });
+      useUIStore.getState().addToast({ type: 'success', message: 'Artwork saved!' });
+    } catch (err) {
+      console.error('Save failed:', err);
+      useUIStore.getState().addToast({ type: 'error', message: 'Failed to save artwork' });
+    }
+  }, [canvasTitle]);
+
+  const handleAiGenerate = useCallback(async () => {
+    if (!aiPrompt.trim()) return;
+    setAiGenerating(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const res = await api.post('/api/lens/run', {
+        domain: 'art',
+        action: 'generate',
+        input: { prompt: aiPrompt.trim(), type: 'text-to-image' },
+      });
+      const data = res.data;
+      const content = typeof data?.result === 'string'
+        ? data.result
+        : typeof data?.result?.content === 'string'
+          ? data.result.content
+          : typeof data?.result?.url === 'string'
+            ? data.result.url
+            : JSON.stringify(data?.result ?? data, null, 2);
+      setAiResult(content);
+      useUIStore.getState().addToast({ type: 'success', message: 'AI generation complete' });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Generation failed');
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt]);
+
+  const handleCanvasExport = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${canvasTitle.replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.click();
+  }, [canvasTitle]);
+
+  const handleShareArt = useCallback((artId: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/lenses/art?id=${artId}`);
+    useUIStore.getState().addToast({ type: 'success', message: 'Link copied to clipboard' });
+  }, []);
+
+  const handleDownloadArt = useCallback(async (artId: string) => {
+    try {
+      const resp = await apiHelpers.durableArtifacts.download(artId);
+      const url = URL.createObjectURL(resp.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `artwork-${artId}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      useUIStore.getState().addToast({ type: 'info', message: 'Download not available for this item' });
+    }
+  }, []);
+
+  const handleListArt = useCallback((artId: string) => {
+    setShowCreateListing(true);
+    setListingTitle(`Artwork ${artId}`);
+  }, []);
+
+  const renderGallery = () => (
+    <div className="p-6 space-y-6">
+      <FeedBanner domain="art" />
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search artwork…  /"
+            className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setSelectedStyle(null)}
+            className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', !selectedStyle ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}
+          >
+            All
+          </button>
+          {ART_STYLES.slice(0, 6).map(style => (
+            <button
+              key={style}
+              onClick={() => setSelectedStyle(selectedStyle === style ? null : style)}
+              className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap', selectedStyle === style ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}
+            >
+              {style}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Featured Section */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-bold">Featured Artwork</h2>
+          {assetsLoading && <span className="w-4 h-4 border-2 border-neon-pink border-t-transparent rounded-full animate-spin inline-block" />}
+        </div>
+        <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          {(artAssets as ArtAsset[]).length > 0 ? (artAssets as ArtAsset[]).map((art: ArtAsset) => (
+            <motion.div
+              key={art.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="group relative rounded-xl overflow-hidden bg-neutral-900/50 border border-neutral-800/30 hover:border-rose-400/30 transition-all duration-300 cursor-pointer break-inside-avoid mb-4 hover:shadow-xl hover:shadow-rose-900/10"
+            >
+              <div className="aspect-[3/4] bg-gradient-to-br from-rose-900/20 to-neutral-900/40 flex items-center justify-center">
+                <ImageIcon className="w-16 h-16 opacity-20 text-rose-300" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <p className="font-medium text-sm truncate text-rose-50">{art.title}</p>
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-rose-200/70">
+                    <span className="flex items-center gap-1"><Heart className="w-3 h-3 text-rose-400" />{art.likes}</span>
+                    <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{art.plays}</span>
+                    <PullToSubstrate domain="art" artifactId={art.id} compact />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )) : (
+            // Placeholder cards
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="rounded-xl overflow-hidden bg-white/5 border border-white/10">
+                <div className="aspect-square flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${i * 45}, 60%, 25%), hsl(${i * 45 + 60}, 60%, 20%))` }}>
+                  <ImageIcon className="w-12 h-12 opacity-20" />
+                </div>
+                <div className="p-3">
+                  <p className="font-medium text-sm text-gray-300">{['Neon Dreams', 'Digital Horizons', 'Abstract Flow', 'Cosmic Pulse', 'Neural Art', 'Pixel Paradise', 'Wave Form', 'Fractal Mind'][i]}</p>
+                  <p className="text-xs text-gray-400 mt-1">{ART_STYLES[i % ART_STYLES.length]}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* Trending */}
+      <section>
+        <h2 className="text-lg font-bold mb-4">Trending Styles</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {ART_STYLES.map((style, i) => (
+            <button
+              key={style}
+              onClick={() => setSelectedStyle(style)}
+              className="p-4 rounded-xl text-left text-sm font-bold overflow-hidden relative hover:scale-[1.02] transition-transform"
+              style={{ background: `linear-gradient(135deg, hsl(${i * 36}, 70%, 35%), hsl(${i * 36 + 40}, 60%, 25%))` }}
+            >
+              <Palette className="absolute top-2 right-2 w-8 h-8 opacity-20" />
+              {style}
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderCanvas = () => {
+    const tools: { id: CanvasTool; icon: React.ComponentType<{ className?: string; size?: number | string }>; label: string }[] = [
+      { id: 'brush', icon: Brush, label: 'Brush' },
+      { id: 'pen', icon: Pen, label: 'Pen' },
+      { id: 'eraser', icon: Eraser, label: 'Eraser' },
+      { id: 'fill', icon: Droplets, label: 'Fill' },
+      { id: 'text', icon: Type, label: 'Text' },
+      { id: 'shape-rect', icon: Square, label: 'Rectangle' },
+      { id: 'shape-circle', icon: Circle, label: 'Circle' },
+      { id: 'eyedropper', icon: Pipette, label: 'Eyedropper' },
+      { id: 'move', icon: Move, label: 'Move' },
+    ];
+
+    return (
+      <div className="flex h-full">
+        {/* Toolbar */}
+        <aside className="w-16 bg-black/40 border-r border-white/10 flex flex-col items-center py-4 gap-2">
+          {tools.map(tool => (
+            <button
+              key={tool.id}
+              onClick={() => setCanvasTool(tool.id)}
+              title={tool.label}
+              className={cn(
+                'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
+                canvasTool === tool.id ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white hover:bg-white/10'
+              )}
+            >
+              <tool.icon className="w-5 h-5" />
+            </button>
+          ))}
+          <div className="flex-1" />
+          <button onClick={handleCanvasUndo} title="Undo" className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10">
+            <Undo2 className="w-5 h-5" />
+          </button>
+          <button onClick={handleCanvasRedo} title="Redo" className="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10">
+            <Redo2 className="w-5 h-5" />
+          </button>
+        </aside>
+
+        {/* Canvas Area */}
+        <main className="flex-1 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-black/20">
+            <input
+              type="text"
+              value={canvasTitle}
+              onChange={e => setCanvasTitle(e.target.value)}
+              className="bg-transparent text-sm font-medium focus:outline-none"
+            />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCanvasZoom(Math.max(25, canvasZoom - 25))} className="p-1 text-gray-400 hover:text-white" aria-label="Zoom out"><ZoomOut className="w-4 h-4" /></button>
+                <span className="text-xs text-gray-400 w-10 text-center">{canvasZoom}%</span>
+                <button onClick={() => setCanvasZoom(Math.min(400, canvasZoom + 25))} className="p-1 text-gray-400 hover:text-white" aria-label="Zoom in"><ZoomIn className="w-4 h-4" /></button>
+              </div>
+              <button onClick={handleCanvasSave} className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-pink/20 text-neon-pink rounded text-xs hover:bg-neon-pink/30">
+                <Save className="w-3.5 h-3.5" />
+                Save
+              </button>
+              <button onClick={handleCanvasExport} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">
+                <Download className="w-3.5 h-3.5" />
+                Export
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center bg-[#1a1a2e] overflow-auto p-8 relative">
+            <div className="relative">
+              <canvas
+                ref={canvasRef}
+                width={1024}
+                height={768}
+                className="bg-white/10 border border-white/20 rounded shadow-2xl"
+                style={{
+                  width: `${1024 * canvasZoom / 100}px`,
+                  height: `${768 * canvasZoom / 100}px`,
+                  cursor: showBrushCursor ? 'none' : canvasTool === 'eyedropper' ? 'crosshair' : canvasTool === 'text' ? 'text' : 'crosshair',
+                }}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={(e) => {
+                  handleCanvasMouseMove(e);
+                  if (showBrushCursor) {
+                    const rect = canvasRef.current?.getBoundingClientRect();
+                    if (rect) setCursorPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                  }
+                }}
+                onMouseUp={handleCanvasMouseUp}
+                onMouseLeave={() => { handleCanvasMouseUp(); setCursorPos(null); }}
+                onMouseEnter={() => setCursorPos({ x: 0, y: 0 })}
+              />
+              {/* Dynamic brush cursor */}
+              {showBrushCursor && cursorPos && (
+                <div
+                  className="pointer-events-none absolute rounded-full border"
+                  style={{
+                    width: `${brushSize * canvasZoom / 100}px`,
+                    height: `${brushSize * canvasZoom / 100}px`,
+                    left: `${cursorPos.x - (brushSize * canvasZoom / 100) / 2}px`,
+                    top: `${cursorPos.y - (brushSize * canvasZoom / 100) / 2}px`,
+                    borderColor: canvasTool === 'eraser' ? 'rgba(255,255,255,0.5)' : brushColor,
+                    opacity: 0.8,
+                  }}
+                />
+              )}
+            </div>
+            {/* Keyboard shortcut hint */}
+            <div className="absolute bottom-4 left-4 text-xs text-gray-400 space-x-3 select-none">
+              <span title="Brush">B</span>
+              <span title="Eraser">E</span>
+              <span title="Fill">G</span>
+              <span title="Eyedropper">I</span>
+              <span title="Text">T</span>
+              <span title="Rectangle">R</span>
+              <span title="Circle">C</span>
+              <span title="Line">L</span>
+              <span className="text-gray-600">|</span>
+              <span title="Decrease brush size">[</span>
+              <span title="Increase brush size">]</span>
+              <span className="text-gray-600">|</span>
+              <span title="Undo">Ctrl+Z</span>
+            </div>
+          </div>
+        </main>
+
+        {/* Properties Panel */}
+        <aside className="w-64 bg-black/40 border-l border-white/10 p-4 space-y-6 overflow-y-auto">
+          <div>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">Brush Settings</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Size: {brushSize}px</label>
+                <input type="range" min="1" max="100" value={brushSize} onChange={e => setBrushSize(Number(e.target.value))} className="w-full accent-neon-pink" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Opacity: {brushOpacity}%</label>
+                <input type="range" min="1" max="100" value={brushOpacity} onChange={e => setBrushOpacity(Number(e.target.value))} className="w-full accent-neon-pink" />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">Color</h3>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-10 h-10 rounded-lg border border-white/20" style={{ backgroundColor: brushColor }} />
+              <input type="color" value={brushColor} onChange={e => setBrushColor(e.target.value)} className="w-8 h-8 cursor-pointer" />
+            </div>
+            <div className="grid grid-cols-6 gap-1.5">
+              {COLOR_PALETTE.map(color => (
+                <button
+                  key={color}
+                  onClick={() => setBrushColor(color)}
+                  className={cn('w-7 h-7 rounded-md border transition-transform hover:scale-110', brushColor === color ? 'border-white scale-110' : 'border-white/10')}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">Layers</h3>
+            <div className="space-y-1">
+              {['Background', 'Layer 1', 'Layer 2'].map((layer, i) => (
+                <div key={i} className={cn('flex items-center gap-2 px-2 py-1.5 rounded text-sm', i === 1 ? 'bg-white/10' : 'hover:bg-white/5')}>
+                  <Layers className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="flex-1 text-gray-300">{layer}</span>
+                  <Eye className="w-3.5 h-3.5 text-gray-400 cursor-pointer hover:text-white" />
+                </div>
+              ))}
+              <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Layer added' })} className="flex items-center gap-2 px-2 py-1.5 text-sm text-gray-400 hover:text-white w-full">
+                <Plus className="w-3.5 h-3.5" />
+                Add Layer
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase mb-3">AI Assist</h3>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAiGenerate()}
+                placeholder="Describe artwork to generate..."
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-xs focus:outline-none focus:border-neon-purple/50"
+              />
+              <button
+                onClick={handleAiGenerate}
+                disabled={aiGenerating || !aiPrompt.trim()}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-neon-purple/10 text-neon-purple rounded-lg text-xs hover:bg-neon-purple/20 disabled:opacity-50"
+              >
+                {aiGenerating ? (
+                  <span className="w-4 h-4 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4" />
+                )}
+                {aiGenerating ? 'Generating...' : 'Generate from Text'}
+              </button>
+              {aiError && (
+                <p className="text-xs text-red-400 px-1">{aiError}</p>
+              )}
+              {aiResult && (
+                <div className="p-2 rounded-lg bg-neon-purple/5 border border-neon-purple/20">
+                  <p className="text-xs text-gray-300 whitespace-pre-wrap max-h-32 overflow-auto">{aiResult}</p>
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([aiResult], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'ai-art-result.txt';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-1 mt-2 px-2 py-1 text-xs text-neon-purple hover:bg-neon-purple/10 rounded"
+                  >
+                    <Download className="w-3 h-3" /> Download
+                  </button>
+                </div>
+              )}
+              <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Style transfer initiated' })} className="w-full flex items-center gap-2 px-3 py-2 bg-white/5 text-gray-300 rounded-lg text-xs hover:bg-white/10">
+                <Palette className="w-4 h-4" />
+                Style Transfer
+              </button>
+              <button onClick={() => useUIStore.getState().addToast({ type: 'info', message: 'Auto-enhance applied' })} className="w-full flex items-center gap-2 px-3 py-2 bg-white/5 text-gray-300 rounded-lg text-xs hover:bg-white/10">
+                <Filter className="w-4 h-4" />
+                Auto-Enhance
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    );
+  };
+
+  const renderMarketplace = () => (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Art Marketplace</h2>
+        <button onClick={() => setShowCreateListing(true)} className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink rounded-lg text-sm">
+          <ShoppingBag className="w-4 h-4" />
+          List Artwork
+        </button>
+      </div>
+
+      <div className="flex gap-3 flex-wrap pb-2">
+        {ART_TYPES.map(type => (
+          <button key={type} onClick={() => setArtTypeFilter(artTypeFilter === type ? null : type)} className={cn('px-3 py-1.5 rounded-full text-xs whitespace-nowrap capitalize', artTypeFilter === type ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/5 text-gray-400 hover:text-white')}>
+            {type.replace('-', ' ')}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {(artListings as ArtListing[]).length > 0 ? (artListings as ArtListing[]).map((listing: ArtListing) => (
+          <div key={listing.id} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden hover:border-neon-pink/30 transition-colors">
+            <div className="aspect-[4/3] bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+              <ImageIcon className="w-12 h-12 opacity-20" />
+            </div>
+            <div className="p-4">
+              <h3 className="font-medium">{listing.title}</h3>
+              <p className="text-xs text-gray-400 mt-1 capitalize">{listing.artType} - {listing.style}</p>
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-neon-green font-bold">${listing.price}</span>
+                <span className="text-xs text-gray-400">{listing.totalSales} sold</span>
+              </div>
+              <button onClick={() => purchaseMutation.mutate(listing.id)} disabled={purchaseMutation.isPending} className="w-full mt-3 px-4 py-2 bg-neon-pink/20 text-neon-pink rounded-lg text-sm hover:bg-neon-pink/30 disabled:opacity-50">
+                {purchaseMutation.isPending ? 'Processing...' : 'Purchase'}
+              </button>
+            </div>
+          </div>
+        )) : (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="aspect-[4/3] flex items-center justify-center" style={{ background: `linear-gradient(135deg, hsl(${i * 60}, 50%, 20%), hsl(${i * 60 + 30}, 50%, 15%))` }}>
+                <ImageIcon className="w-10 h-10 opacity-20" />
+              </div>
+              <div className="p-4">
+                <h3 className="font-medium text-gray-300">{['Album Cover Pack', 'Neon Logo Kit', 'Abstract Backgrounds', 'Character Set', 'Social Media Kit', 'Poster Templates'][i]}</h3>
+                <p className="text-xs text-gray-400 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-neon-green font-bold">${[25, 50, 35, 75, 15, 100][i]}</span>
+                  <button onClick={() => void ('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const renderMyArt = () => (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">My Artwork</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setMyArtView('grid')} className={cn('p-2', myArtView === 'grid' ? 'text-white' : 'text-gray-400 hover:text-white')} aria-label="Grid view"><Grid className="w-5 h-5" /></button>
+          <button onClick={() => setMyArtView('list')} className={cn('p-2', myArtView === 'list' ? 'text-white' : 'text-gray-400 hover:text-white')} aria-label="Layers"><Layers className="w-5 h-5" /></button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <button
+          onClick={() => void ('canvas')}
+          className="aspect-square rounded-xl border-2 border-dashed border-white/20 flex flex-col items-center justify-center gap-2 hover:border-neon-pink/50 hover:bg-neon-pink/5 transition-colors"
+        >
+          <Plus className="w-8 h-8 text-gray-400" />
+          <span className="text-xs text-gray-400">New Artwork</span>
+        </button>
+        {(artAssets as ArtAsset[]).filter((a: ArtAsset) => a.type === 'artwork').map((art: ArtAsset) => (
+          <div key={art.id} className="aspect-square rounded-xl bg-white/5 border border-white/10 overflow-hidden group relative cursor-pointer hover:border-neon-pink/30">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+              <ImageIcon className="w-10 h-10 opacity-20" />
+            </div>
+            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+              <span className="text-sm font-medium">{art.title}</span>
+              <div className="flex gap-2">
+                <PullToSubstrate domain="art" artifactId={art.id} compact />
+                <button onClick={() => handleShareArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Share"><Share2 className="w-4 h-4" /></button>
+                <button onClick={() => handleDownloadArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Download"><Download className="w-4 h-4" /></button>
+                <button onClick={() => handleListArt(art.id)} className="p-1.5 bg-white/10 rounded hover:bg-white/20" aria-label="Dollar sign"><DollarSign className="w-4 h-4" /></button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+
+  if (isError || isError2) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); }} />
+      </div>
+    );
+  }
+  return (
+    <div data-lens-theme="art" className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-b from-rose-950/10 via-neutral-950 to-black">
+      {/* view tabs owned by page shell */}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'gallery' && <div className="h-full overflow-y-auto">{renderGallery()}{/* Image Artifacts from DTU Context */}
+            {imageArtifacts.length > 0 && (
+              <section className="px-6 pb-6 space-y-4">
+                <h2 className="text-lg font-bold">Image Artifacts</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {imageArtifacts.slice(0, 8).map((dtu: DTU) => (
+                    <div key={dtu.id} className="rounded-xl overflow-hidden bg-white/5 border border-white/10 hover:border-neon-pink/30 transition-colors">
+                      <ArtifactRenderer dtuId={dtu.id} artifact={dtu.artifact!} mode="thumbnail" />
+                      <div className="p-3">
+                        <p className="text-sm font-medium truncate">{dtu.title || dtu.human?.summary || 'Untitled'}</p>
+                        <FeedbackWidget targetType="dtu" targetId={dtu.id} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}</div>}
+          {viewMode === 'canvas' && renderCanvas()}
+          {viewMode === 'marketplace' && <div className="h-full overflow-y-auto">{renderMarketplace()}</div>}
+          {viewMode === 'my-art' && <div className="h-full overflow-y-auto">{renderMyArt()}</div>}
+        </div>
+        {/* DTU Context Sidebar */}
+        <aside className="w-72 shrink-0 hidden xl:block border-l border-white/10 bg-black/20 overflow-y-auto p-4 space-y-4">
+          <ArtifactUploader lens="art" acceptTypes="image/*" multi compact onUploadComplete={() => refetchDTUs()} />
+          <LensContextPanel
+            hyperDTUs={hyperDTUs}
+            megaDTUs={megaDTUs}
+            regularDTUs={regularDTUs}
+            tierDistribution={tierDistribution}
+            onPublish={(dtu) => publishDTU({ dtuId: dtu.id })}
+            title="Art DTUs"
+            className="!bg-transparent !border-0 !p-0"
+          />
+          <FeedbackWidget targetType="lens" targetId="art" />
+        </aside>
+      </div>
+
+      {/* Upload Modal */}
+      <AnimatePresence>
+        {showUpload && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-lattice-surface border border-white/10 rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">Upload Artwork</h3>
+                <button onClick={() => setShowUpload(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Title</label>
+                  <input type="text" value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50" placeholder="Artwork title" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Description</label>
+                  <DraftedTextarea lensId="art" draftKey="artwork-description" initial={uploadDescription} onValueChange={setUploadDescription} rows={3} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50 resize-none" placeholder="Describe your artwork" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Style</label>
+                  <select value={uploadStyle} onChange={e => setUploadStyle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none">
+                    {ART_STYLES.map(s => <option key={s} value={s} className="bg-lattice-surface">{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Tags (comma separated)</label>
+                  <input type="text" value={uploadTags} onChange={e => setUploadTags(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50" placeholder="abstract, neon, digital" />
+                </div>
+                <div className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center">
+                  <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-400">Drop files here or click to upload</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG, WebP up to 50MB</p>
+                </div>
+                <button onClick={handleUpload} disabled={uploadMutation.isPending} className="w-full py-2.5 bg-neon-pink text-white rounded-lg font-medium hover:bg-neon-pink/80 disabled:opacity-50">
+                  {uploadMutation.isPending ? 'Uploading...' : 'Upload Artwork'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Listing Modal */}
+      <AnimatePresence>
+        {showCreateListing && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-lattice-surface border border-white/10 rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold">List on Marketplace</h3>
+                <button onClick={() => setShowCreateListing(false)} className="text-gray-400 hover:text-white" aria-label="Close"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-4">
+                <input type="text" value={listingTitle} onChange={e => setListingTitle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none" placeholder="Listing title" />
+                <div className="grid grid-cols-2 gap-3">
+                  <select value={listingType} onChange={e => setListingType(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none">
+                    {ART_TYPES.map(t => <option key={t} value={t} className="bg-lattice-surface">{t.replace('-', ' ')}</option>)}
+                  </select>
+                  <input type="number" value={listingPrice} onChange={e => setListingPrice(e.target.value)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none" placeholder="Price ($)" />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400 block mb-1">Style</label>
+                  <select value={listingStyle} onChange={e => setListingStyle(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none">
+                    {ART_STYLES.map(s => <option key={s} value={s} className="bg-lattice-surface">{s}</option>)}
+                  </select>
+                </div>
+                <input type="text" value={listingTags} onChange={e => setListingTags(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none" placeholder="Tags (comma separated)" />
+                <button onClick={handleCreateListing} disabled={createListingMutation.isPending} className="w-full py-2.5 bg-neon-pink text-white rounded-lg font-medium hover:bg-neon-pink/80 disabled:opacity-50">
+                  {createListingMutation.isPending ? 'Creating...' : 'Create Listing'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Real-time Data Panel */}
+      {realtimeData && (
+        <RealtimeDataPanel
+          domain="art"
+          data={realtimeData}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+          insights={realtimeInsights}
+          compact
+        />
+      )}
+    </div>
+  );
+}

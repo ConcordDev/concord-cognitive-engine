@@ -297,6 +297,7 @@ function DetailCard({ kind, data, onClose }: { kind: Source; data: MetObject | A
           <ArrowLeft className="h-3 w-3" /> Back to results
         </button>
         <SaveAsDtuButton
+          defaultContentClass="media"
           apiSource={isMet ? 'met-museum' : 'art-institute-chicago'}
           apiUrl={externalUrl}
           title={dtuTitle}

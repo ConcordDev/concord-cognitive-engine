@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'factcheck' | 'credibility' | 'decompose' | 'mint' | 'dm' | 'publish' | 'agent';
@@ -148,7 +149,7 @@ export function ClaimVerificationPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Verification — ${claim.trim().slice(0, 60)}${claim.length > 60 ? '…' : ''}`,
           tags: ['grounding', 'verification', factResult?.verdict ?? 'unchecked'],
           source: 'grounding:verification:mint',
@@ -164,7 +165,7 @@ export function ClaimVerificationPanel() {
               checkedAt: new Date().toISOString(),
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -201,7 +202,7 @@ export function ClaimVerificationPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Reviewed claim — ${claim.trim().slice(0, 60)}…`,
           tags: ['grounding', 'reviewed-claim', 'public', factResult?.verdict ?? 'unverified'],
           source: 'grounding:reviewed:publish',
@@ -212,7 +213,7 @@ export function ClaimVerificationPanel() {
             verdict: factResult?.verdict,
             confidence: factResult?.confidence,
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

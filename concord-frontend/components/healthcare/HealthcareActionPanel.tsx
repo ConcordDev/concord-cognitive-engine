@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -93,7 +94,7 @@ export function HealthcareActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Health visit prep`, tags: ['healthcare', 'visit', triageResult?.severity].filter((t): t is string => !!t), source: 'healthcare:visit:mint', meta: { visibility: 'private', consent: { allowCitations: false }, health: { triage: triageResult, providers: providerResult, meds: medsResult, rx: rxResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Health visit prep`, tags: ['healthcare', 'visit', triageResult?.severity].filter((t): t is string => !!t), source: 'healthcare:visit:mint', meta: { visibility: 'private', consent: { allowCitations: false }, health: { triage: triageResult, providers: providerResult, meds: medsResult, rx: rxResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('healthcare.mintedDtuId', id, { label: `Visit DTU ${id.slice(0, 8)}…` }); ok(`Visit DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -123,7 +124,7 @@ export function HealthcareActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Provider directory — ${specialty} ${zip}`, tags: ['healthcare', 'providers', 'public', specialty.toLowerCase().replace(/\s/g, '-')], source: 'healthcare:providers:publish', meta: { visibility: 'public', consent: { allowCitations: true }, providers: providerResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

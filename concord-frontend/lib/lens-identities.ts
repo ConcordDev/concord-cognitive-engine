@@ -866,6 +866,16 @@ export const LENS_IDENTITIES: Record<string, LensIdentity> = {
     emptyState: "No creative works uploaded. Let your imagination run wild.",
     vibe: "adobe-creative",
   },
+  creator: {
+    accent: "#F5C518",
+    secondaryAccent: "#E11D48",
+    icon: "\u{1F3AC}",
+    gradient: "linear-gradient(135deg, #F5C51818, #E11D4814)",
+    contentLayout: "studio-rail",
+    cardStyle: "earning-row",
+    emptyState: "Nothing listed yet. Publish a DTU and the cascade starts here.",
+    vibe: "youtube-studio-meets-patreon",
+  },
   cri: {
     accent: "#B71C1C",
     secondaryAccent: "#880E4F",
@@ -1135,6 +1145,16 @@ export const LENS_IDENTITIES: Record<string, LensIdentity> = {
     cardStyle: "component",
     emptyState: "No offline data cached. Configure sync settings.",
     vibe: "offline-first",
+  },
+  "ops-telemetry": {
+    accent: "#F2495C",
+    secondaryAccent: "#FF9830",
+    icon: "📉",
+    gradient: "linear-gradient(135deg, #F2495C11, #FF983011)",
+    contentLayout: "dashboard",
+    cardStyle: "metric",
+    emptyState: "No samples yet. Heartbeats and worker pools report once the stack ticks.",
+    vibe: "grafana-ops",
   },
   organ: {
     accent: "#C62828",

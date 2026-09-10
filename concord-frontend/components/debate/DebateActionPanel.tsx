@@ -31,6 +31,7 @@ import { api } from '@/lib/api/client';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface ArgumentLike { author?: string; text: string; votes?: number }
 interface DebateLike {
@@ -157,7 +158,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Counter-argument — ${d.topic ?? debate.title} (${arg.side} #${arg.idx + 1})`,
           tags: ['debate', 'counter-argument', `side:${arg.side === 'pro' ? 'con' : 'pro'}`, `debate:${debate.id}`],
           source: 'debate:branch',
@@ -174,7 +175,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
               counterSide: arg.side === 'pro' ? 'con' : 'pro',
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -189,7 +190,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Debate snapshot — ${d.topic ?? debate.title}`,
           tags: ['debate', 'snapshot', d.format ?? 'open'],
           source: 'debate:snapshot',
@@ -209,7 +210,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
               capturedAt: new Date().toISOString(),
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -225,7 +226,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Debate for community review: ${d.topic ?? debate.title}`,
             tags: ['debate', 'public', 'community-review', d.format ?? 'open'],
             source: 'debate:publish',
@@ -238,7 +239,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
                 proVotes: d.proVotes, conVotes: d.conVotes,
               },
             },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

@@ -1,15 +1,12 @@
 'use client';
 
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { CodebaseScanner } from '@/components/legacy/CodebaseScanner';
 import { PortfolioAssessment } from '@/components/legacy/PortfolioAssessment';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensNav } from '@/hooks/useLensNav';
 import { FolderSearch } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -24,9 +21,7 @@ export default function LegacyLensPage() {
 
   return (
     <LensShell lensId="legacy" asMain={false}>
-      <FirstRunTour lensId="legacy" />
-      <ManifestActionBar />
-      <DepthBadge lensId="legacy" size="sm" className="ml-2" />
+      <FirstRunTour lensId="legacy" />      <DepthBadge lensId="legacy" size="sm" className="ml-2" />
       <LensVerticalHero lensId="legacy" className="mx-6 mt-4" />
     <div data-lens-theme="legacy" className="p-6 space-y-6">
       <header className="flex items-center gap-3 flex-wrap">
@@ -87,10 +82,7 @@ export default function LegacyLensPage() {
       <ConnectiveTissueBar lensId="legacy" />
     </div>
 
-      <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>
-          <RecentMineCard domain="legacy" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="legacy" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="legacy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#legacy-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to legacy content</a>          <CrossLensRecentsPanel lensId="legacy" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

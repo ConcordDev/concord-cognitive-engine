@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-// ConcordiaScene.tsx and app/lenses/world/page.tsx are large Three.js/DOM-
+// ConcordiaScene.tsx and components/world/WorldOsSurface.tsx are large Three.js/DOM-
 // heavy files (this repo's established pattern for such files is a
 // source-pinning regression test, see tests/world-page-*.test.ts). This
 // pins the click-to-gather wiring added 2026-07-21: a resource-node mesh
 // (real GLB or procedural fallback) is now a real, clickable game object,
 // not just a decorative shape with a disconnected 2D HUD list.
 const sceneSrc = readFileSync(join(process.cwd(), 'components/world-lens/ConcordiaScene.tsx'), 'utf8');
-const pageSrc = readFileSync(join(process.cwd(), 'app/lenses/world/page.tsx'), 'utf8');
+const pageSrc = readFileSync(join(process.cwd(), 'components/world/WorldOsSurface.tsx'), 'utf8');
 
 describe('ConcordiaScene — resource-node click raycast', () => {
   it('raycasts the infrastructure layer and filters for isResourceNode-tagged hits', () => {

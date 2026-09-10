@@ -6,7 +6,7 @@
 // world page's `SR_BRIDGE_EVENTS` array. It was missing, so the announcer
 // (proven live and correct by tests/components/ScreenReaderAnnouncer.test.tsx,
 // which fires `concordia:combat-kill` directly) never actually spoke a kill
-// in production. `app/lenses/world/page.tsx` is a very large, heavily-wired
+// in production. `components/world/WorldOsSurface.tsx` is a very large, heavily-wired
 // page component that isn't practical to fully render in a unit test — this
 // pins the bridge wiring at the source level instead, the same style used by
 // tests/roguelite-hud-wired.test.tsx and friends.

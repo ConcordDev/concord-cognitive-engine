@@ -15,6 +15,13 @@ blind to *architectural* incoherence.
 `scripts/detect-lens-stacking.mjs` measures the incoherence directly. Run it,
 read `audit/lens-stacking-report.md`.
 
+
+> **2026-09-09 refresh:** Grok/Dutch pass landed thin-shell consolidations for many
+> moderate lenses (`marketplace`, `wallet`, `aviation`, `collab`, `sim`, `whiteboard`,
+> `billing`, `calendar`, `creator`, `meta`, …) plus chrome de-dup across ~200 pages.
+> Re-run `node scripts/detect-lens-stacking.mjs` and prefer the live heavy/moderate
+> lists over the historical names in §3 when picking the next lens.
+
 ---
 
 ## 1. The two shapes

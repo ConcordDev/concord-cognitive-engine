@@ -12,12 +12,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ShieldAlert, MapPinned } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun, isForbidden } from '@/lib/api/client';
 import { AdminRequiredState } from '@/components/common/EmptyState';
@@ -93,9 +90,7 @@ export default function CrisisOpsPage() {
 
   return (
     <LensShell lensId="crisis-ops" asMain={false}>
-      <FirstRunTour lensId="crisis-ops" />
-      <ManifestActionBar />
-      <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
+      <FirstRunTour lensId="crisis-ops" />      <DepthBadge lensId="crisis-ops" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] text-gray-100 p-6">
         <header className="mb-5 flex items-center gap-3">
           <ShieldAlert className="h-8 w-8 text-rose-300" />
@@ -242,11 +237,7 @@ export default function CrisisOpsPage() {
         <section className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <FemaDisasters />
         </section>
-      </div>
-
-      <RecentMineCard domain="crisis-ops" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="crisis-ops" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="crisis-ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="crisis-ops" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

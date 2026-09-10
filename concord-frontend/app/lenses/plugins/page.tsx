@@ -21,7 +21,6 @@
  */
 
 import { LensShell } from '@/components/lens/LensShell';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { Package } from 'lucide-react';
@@ -31,9 +30,7 @@ export default function PluginsPage() {
   useLensCommand([], { lensId: 'plugins' });
 
   return (
-    <LensShell lensId="plugins" asMain={false}>
-      <ManifestActionBar />
-      <DepthBadge lensId="plugins" size="sm" className="ml-2" />
+    <LensShell lensId="plugins" asMain={false}>      <DepthBadge lensId="plugins" size="sm" className="ml-2" />
       <main
         aria-label="Plugin Gallery"
         className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100"

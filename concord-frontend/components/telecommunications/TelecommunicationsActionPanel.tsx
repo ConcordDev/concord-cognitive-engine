@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -101,7 +102,7 @@ export function TelecommunicationsActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Network — ${capResult?.status ?? 'ops'}`, tags: ['telecom', 'network', capResult?.status].filter((t): t is string => !!t), source: 'telecom:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, telecom: { cap: capResult, sig: sigResult, cov: covResult, cost: costResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Network — ${capResult?.status ?? 'ops'}`, tags: ['telecom', 'network', capResult?.status].filter((t): t is string => !!t), source: 'telecom:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, telecom: { cap: capResult, sig: sigResult, cov: covResult, cost: costResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('telecom.mintedDtuId', id, { label: `Network DTU ${id.slice(0, 8)}…` }); ok(`Network DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -130,7 +131,7 @@ export function TelecommunicationsActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Network performance card`, tags: ['telecom', 'performance', 'public'], source: 'telecom:perf:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, cap: capResult, sig: sigResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Network performance card`, tags: ['telecom', 'performance', 'public'], source: 'telecom:perf:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anon: true, cap: capResult, sig: sigResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

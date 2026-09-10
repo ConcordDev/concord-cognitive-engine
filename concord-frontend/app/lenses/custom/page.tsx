@@ -2,15 +2,12 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PublicGistGallery } from '@/components/custom/PublicGistGallery';
 import { CanvasBuilder, type CanvasBuilderStats } from '@/components/custom/CanvasBuilder';
 import { DataUtilities } from '@/components/custom/DataUtilities';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Wand2, Rocket, Link2, LayoutGrid, ChevronDown, ChevronRight } from 'lucide-react';
@@ -27,9 +24,7 @@ export default function CustomLensPage() {
 
   return (
     <LensShell lensId="custom" asMain={false}>
-      <FirstRunTour lensId="custom" />
-      <ManifestActionBar />
-      <DepthBadge lensId="custom" size="sm" className="ml-2" />
+      <FirstRunTour lensId="custom" />      <DepthBadge lensId="custom" size="sm" className="ml-2" />
     <div data-lens-theme="custom" className="p-6 space-y-6">
       <header className="flex items-center gap-3 flex-wrap">
         <span className="text-2xl">🔧</span>
@@ -116,10 +111,7 @@ export default function CustomLensPage() {
       </section>
     </div>
 
-      <a href="#custom-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to custom content</a>
-          <RecentMineCard domain="custom" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="custom" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="custom" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#custom-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to custom content</a>          <CrossLensRecentsPanel lensId="custom" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

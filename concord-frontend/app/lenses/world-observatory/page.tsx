@@ -28,7 +28,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
@@ -299,9 +298,7 @@ export default function WorldObservatoryPage() {
   }
 
   return (
-    <LensShell lensId="world-observatory" asMain={false}>
-      <ManifestActionBar />
-      <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
+    <LensShell lensId="world-observatory" asMain={false}>      <DepthBadge lensId="world-observatory" size="sm" className="ml-2" />
       <main
         aria-label="World Observatory"
         className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100"

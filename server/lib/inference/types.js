@@ -80,4 +80,6 @@
  * @property {string} url
  * @property {number} priority
  * @property {Function} chat - async (messages, opts) => { ok, text, toolCalls, tokensIn, tokensOut }
+ * @property {Function} [generate] - async (prompt, opts) => string|null — NPC/emergent path; routes through npc-prompt-coalescer
+ * @property {string} [callerId]
  */

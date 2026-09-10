@@ -2,16 +2,13 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { SessionRail } from '@/components/lens/SessionRail';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { VoteFeed } from '@/components/vote/VoteFeed';
 import { GovernanceWorkbench } from '@/components/vote/GovernanceWorkbench';
 import { BallotAnalysisLab } from '@/components/vote/BallotAnalysisLab';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 
@@ -79,9 +76,7 @@ export default function VoteLensPage() {
 
   return (
     <LensShell lensId="vote" asMain={false}>
-      <FirstRunTour lensId="vote" />
-      <ManifestActionBar />
-      <DepthBadge lensId="vote" size="sm" className="ml-2" />
+      <FirstRunTour lensId="vote" />      <DepthBadge lensId="vote" size="sm" className="ml-2" />
     <div className="p-6 space-y-6">
       {/* Header */}
       <header className="flex items-center justify-between flex-wrap gap-3">
@@ -176,10 +171,7 @@ export default function VoteLensPage() {
         <VoteFeed />
       </section>
     </div>
-          <SessionRail lensId="vote" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="vote" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="vote" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="vote" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <SessionRail lensId="vote" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="vote" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -18,8 +18,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -146,10 +144,7 @@ export default function CognitiveReplayPage() {
         <div role="status" aria-live="polite" className="p-8 text-zinc-400 flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin focus:ring-2 focus:outline-none sm:text-base" />
           Loading your cognitive timeline…
-        </div>
-        <RecentMineCard domain="cognitive-replay" limit={10} hideWhenEmpty className="mt-4" />
-        <AutoActionStrip domain="cognitive-replay" hideWhenEmpty className="mt-3" />
-        <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        </div>        <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </LensShell>
     );
   }
@@ -309,10 +304,7 @@ export default function CognitiveReplayPage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <TimelineExport />
         </section>
-
-        <RecentMineCard domain="cognitive-replay" limit={10} hideWhenEmpty />
-        <AutoActionStrip domain="cognitive-replay" hideWhenEmpty />
-        <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty />
+          <CrossLensRecentsPanel lensId="cognitive-replay" sinceDays={7} limit={6} hideWhenEmpty />
       </div>
 
       {jumpEventId && (

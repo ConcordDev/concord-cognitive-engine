@@ -403,8 +403,9 @@ function WithdrawFlow({
             <div className="flex items-start gap-2 text-xs text-gray-400">
               <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <span>
-                Min: {MIN_WITHDRAWAL} CC | Max daily: {MAX_DAILY_WITHDRAWAL.toLocaleString()} CC |
-                Withdrawals are reviewed and typically processed within 1-3 business days.
+                Min: {MIN_WITHDRAWAL} CC | Max daily: {MAX_DAILY_WITHDRAWAL.toLocaleString()} CC.
+                Earned-only: purchased CC cannot be cashed out. Newly earned credits have a 48-hour
+                hold. Withdrawals are reviewed and typically processed within 1-3 business days.
               </span>
             </div>
 

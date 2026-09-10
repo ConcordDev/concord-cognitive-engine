@@ -24,6 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 export interface MaterialLike {
   materialId: string;
@@ -87,7 +88,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Spec — ${material.formula} (${material.materialId})`,
           tags: ['materials', 'spec', `formula:${material.formula}`, material.crystalSystem ?? ''].filter(Boolean) as string[],
           source: 'materials:spec',
@@ -96,7 +97,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
             consent: { allowCitations: false },
             material: { ...material, mpUrl: `https://materialsproject.org/materials/${material.materialId}` },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -165,7 +166,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
       const r = await api.post('/api/lens/run', {
         domain: 'dtu',
         name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Datasheet — ${material.formula} (${material.materialId})`,
           tags: ['materials', 'datasheet', 'public', `formula:${material.formula}`],
           source: 'materials:datasheet:publish',
@@ -175,7 +176,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
             material,
             mpUrl: `https://materialsproject.org/materials/${material.materialId}`,
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

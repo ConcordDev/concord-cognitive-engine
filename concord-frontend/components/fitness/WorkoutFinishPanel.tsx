@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface LiftEntry {
   name: string;
@@ -182,7 +183,7 @@ export function WorkoutFinishPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Workout — ${title.trim() || new Date().toISOString().slice(0, 10)}`,
           tags: ['fitness', 'workout', isPr ? 'pr' : 'session', `volume:${Math.round(totalVolume)}kg`],
           source: 'fitness:workout:mint',
@@ -199,7 +200,7 @@ export function WorkoutFinishPanel() {
               avgHr: avgHr ? parseInt(avgHr, 10) : null,
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -244,7 +245,7 @@ export function WorkoutFinishPanel() {
       });
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `PR — ${topByLift[0]?.lift ?? 'Lift'} ${topByLift[0]?.weight}kg × ${topByLift[0]?.reps}`,
           tags: ['fitness', 'pr', 'public'],
           source: 'fitness:pr:publish',
@@ -253,7 +254,7 @@ export function WorkoutFinishPanel() {
             consent: { allowCitations: true },
             pr: { date: new Date().toISOString().slice(0, 10), topByLift, totalVolume },
           },
-        },
+        }, 'knowledge', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

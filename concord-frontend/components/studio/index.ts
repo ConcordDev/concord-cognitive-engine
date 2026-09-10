@@ -9,3 +9,4 @@ export { AudioEditor } from './AudioEditor';
 export { AutomationView } from './AutomationView';
 export { MasteringPanel } from './MasteringPanel';
 export { Soundboard } from './Soundboard';
+export { StudioDawWorkspace } from './StudioDawWorkspace';

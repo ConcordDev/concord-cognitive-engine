@@ -77,6 +77,8 @@ import { initAll as initLoaf } from "./loaf/index.js";
 import { init as initEmergent } from "./emergent/index.js";
 import { tickAllRegistered, registerHeartbeat } from "./emergent/heartbeat-registry.js";
 import * as presenceIdle from "./lib/presence-idle.js";
+import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
+import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 // Wave-4 gap-closure (privacy row) — shared recorder also used by the
@@ -1860,6 +1862,7 @@ import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSyste
 import configureMiddleware from "./middleware/index.js";
 import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue } from "./lib/llm-queue.js";
+import { bindNpcCoalescerQueue } from "./lib/npc-prompt-coalescer.js";
 import { getCurrentLagMs as getEventLoopLagMs } from "./lib/event-loop-pressure.js";
 import { createLoadSheddingMiddleware } from "./lib/request-admission.js";
 import * as goSidecar from "./lib/sidecars/go-sidecar-client.js"; // Concurrency Refactor Phase 1 — Whisper/Piper/sandbox off the event loop
@@ -2638,6 +2641,13 @@ try {
 
 // ---- Rate Limiting for Expensive Macros (Phase 5.2 + Phase 1-6 hardening) ----
 const _macroRateLimits = new LruMap();
+// Bridges assigned after redisClient init (Wave 9). Optional chaining keeps this safe pre-init.
+let _macroRateBridge = null;
+let _sessionActivityBridge = null;
+let _apiRateBridge = null;
+let _chatSessionBridge = null;
+let _styleVectorBridge = null;
+let _socketRoomBridge = null;
 const EXPENSIVE_MACROS = new Map([
   ["scope.metrics", { maxPerMinute: 30, windowMs: 60000 }],
   ["system.autogen", { maxPerMinute: 10, windowMs: 60000 }],
@@ -2703,6 +2713,8 @@ function checkMacroRateLimit(domain, name) {
 
   bucket.calls.push(now);
   _macroRateLimits.set(key, bucket);
+  // Multi-HTTP: write-behind shared counter (fail-soft; local Map remains authority for this node)
+  try { _macroRateBridge?.writeBehindHit(key, limit.windowMs); } catch (_e) { /* intentional */ }
   return true;
 }
 
@@ -3482,6 +3494,19 @@ const READ_REPLICA = process.env.CONCORD_READ_REPLICA === "1" || process.env.CON
 // as before. See engines/concord-read-router/RUNBOOK.md-style deploy notes in
 // docs/CONCURRENCY_CEILING_AUDIT.md §4 Tier 1.
 const HEARTBEAT_ONLY = process.env.CONCORD_HEARTBEAT_ONLY === "1" || process.env.CONCORD_HEARTBEAT_ONLY === "true";
+
+// Multi-instance heartbeat guard (launchd dual-HTTP / fork workers).
+// Unset or "0" → this process may run the emergent tick (single-process default
+// and primary instance). Any other NODE_APP_INSTANCE ("1","2",…) → skip the
+// tick so N HTTP workers do not N× the sim. Composes with the explicit
+// CONCORD_DISABLE_HEARTBEAT / CONCORD_HEARTBEAT_ONLY knobs (those still win).
+// See docs/MULTI_INSTANCE_LAUNCHD.md + infra/launchd/*.plist.example.
+const NODE_APP_INSTANCE_RAW = process.env.NODE_APP_INSTANCE;
+const IS_HEARTBEAT_NODE = (
+  NODE_APP_INSTANCE_RAW === undefined ||
+  NODE_APP_INSTANCE_RAW === "" ||
+  String(NODE_APP_INSTANCE_RAW) === "0"
+);
 const AUTH_MODE_VALUES = new Set(["public", "apikey", "jwt", "hybrid"]);
 const LEGACY_AUTH_ENABLED = String(process.env.AUTH_ENABLED || "true").toLowerCase() === "true";
 const AUTH_MODE_RAW = String(process.env.AUTH_MODE || "").toLowerCase().trim();
@@ -4112,6 +4137,7 @@ function getSessionStyleVector(sessionId) {
   const v = STATE.styleVectors.get(sid) || defaultStyleVector();
   const nv = normalizeStyleVector(v);
   STATE.styleVectors.set(sid, nv);
+  try { _styleVectorBridge?.markDirty?.(sid); } catch (_e) { /* fail-soft */ }
   return nv;
 }
 
@@ -5928,6 +5954,42 @@ const STATE = {
 // server/domains/code.js snippet/snapshot writers).
 globalThis._concordSTATE = STATE;
 
+function installSharedStateWriteThrough() {
+  try {
+    if (STATE?.sessions && !STATE.sessions.__concordWriteThrough) {
+      installMapWriteThrough(STATE.sessions, {
+        onSet: (k, v) => { _chatSessionBridge?.writeBehindSession(k, v); },
+        onDelete: (k) => { _chatSessionBridge?.writeBehindClear(k); },
+      });
+    }
+    if (STATE?.styleVectors && !STATE.styleVectors.__concordWriteThrough) {
+      installMapWriteThrough(STATE.styleVectors, {
+        onSet: (k, v) => { _styleVectorBridge?.writeBehindStyle(k, v); },
+        onDelete: (k) => { _styleVectorBridge?.writeBehindClear(k); },
+      });
+    }
+    structuredLog("info", "shared_state_write_through_installed", {
+      sessions: !!STATE?.sessions?.__concordWriteThrough,
+      styleVectors: !!STATE?.styleVectors?.__concordWriteThrough,
+      bridges: {
+        chat: !!_chatSessionBridge,
+        style: !!_styleVectorBridge,
+        rooms: !!_socketRoomBridge,
+      },
+    });
+  } catch (e) {
+    structuredLog("warn", "shared_state_write_through_install_failed", { error: String(e?.message || e) });
+  }
+}
+// Install the Map hooks now that STATE exists. The bridge singletons
+// (_chatSessionBridge etc.) are assigned much later — right after redisClient
+// is created — but the onSet/onDelete closures read those `let` bindings at
+// call time, so hooks installed here light up once boot reaches that point.
+// A second installSharedStateWriteThrough() runs after the bridges are
+// assigned (idempotent via the __concordWriteThrough guard) to emit the
+// "installed" log line with real bridge references.
+installSharedStateWriteThrough();
+
 // ============================================================================
 // WAVE 1: PRODUCTION READINESS
 // ============================================================================
@@ -6936,7 +6998,8 @@ const _SESSION_ACTIVITY = {
 
   touch(jti) {
     if (!jti) return;
-    this.lastSeen.set(jti, Date.now());
+    const ts = Date.now();
+    this.lastSeen.set(jti, ts);
     if (this.lastSeen.size > this.MAX_ENTRIES) {
       // Evict oldest entries
       const it = this.lastSeen.keys();
@@ -6944,6 +7007,9 @@ const _SESSION_ACTIVITY = {
         this.lastSeen.delete(it.next().value);
       }
     }
+    // Multi-HTTP write-behind (Redis) + optional sticky observability map
+    try { _sessionActivityBridge?.writeBehindTouch(jti, ts); } catch (_e) { /* intentional */ }
+    try { touchStickySession({ redisClient, prefix: REDIS_CONFIG?.prefix }, jti); } catch (_e) { /* intentional */ }
   },
 
   /**
@@ -6969,7 +7035,9 @@ const _SESSION_ACTIVITY = {
   },
 
   clear(jti) {
-    if (jti) this.lastSeen.delete(jti);
+    if (!jti) return;
+    this.lastSeen.delete(jti);
+    try { _sessionActivityBridge?.writeBehindClear(jti); } catch (_e) { /* intentional */ }
   },
 };
 
@@ -7165,6 +7233,30 @@ const _TOKEN_BLACKLIST = {
 
 // Cleanup in-memory blacklist every hour (Redis keys expire via TTL automatically)
 _unrefInTest(setInterval(() => _TOKEN_BLACKLIST.cleanup(), 3600000));
+
+// Session row lookup — prefer Rust sidecar when CONCORD_SESSION_SIDECAR effective (fail-soft).
+async function getSessionPreferSidecar(tokenHash) {
+  if (!tokenHash) return null;
+  try {
+    const sc = await import("./lib/sidecars/dtu-sidecar-client.js");
+    if (sc.SESSION_ENABLED) {
+      const r = await sc.sessionByTokenHash(tokenHash);
+      if (r && r.ok === true && r.session) {
+        return { ...r.session, via: "sidecar" };
+      }
+    }
+  } catch (_e) { /* fail soft */ }
+  if (!db) return null;
+  try {
+    const row = db.prepare(
+      "SELECT id, user_id as userId, token_hash as tokenHash, created_at as createdAt, expires_at as expiresAt, is_revoked as isRevoked FROM sessions WHERE token_hash = ?"
+    ).get(tokenHash);
+    return row ? { ...row, isRevoked: !!row.isRevoked, via: "sqlite" } : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
 
 // ---- Refresh Token Family Tracking (detects token theft via reuse) ----
 // SQLite-backed so theft detection survives server restarts.
@@ -10383,7 +10475,8 @@ async function tryInitWebSockets(server) {
       const subClient = pubClient.duplicate();
       await Promise.all([pubClient.connect(), subClient.connect()]);
       io.adapter(createAdapter(pubClient, subClient));
-      console.info("[Socket.IO] Redis adapter active —", process.env.REDIS_URL);
+      console.info("[Socket.IO] Redis adapter active");
+      structuredLog("info", "socketio_redis_adapter_active", { active: true });
     } catch (err) {
       console.warn("[Socket.IO] Redis adapter failed, falling back to in-memory:", err.message);
     }
@@ -10474,6 +10567,7 @@ async function tryInitWebSockets(server) {
     // authenticated user without the client needing to subscribe explicitly.
     if (socket.data.userId) {
       socket.join(`user:${socket.data.userId}`);
+      try { _socketRoomBridge?.writeBehindJoin(`user:${socket.data.userId}`, socket.id); } catch (_e) { /* fail-soft */ }
       // V1.2 Wave A — lightweight groups: also auto-join the caller's
       // current party room (if any) so this socket receives
       // party:member-joined/left/disbanded scoped to that room instead of
@@ -10489,7 +10583,10 @@ async function tryInitWebSockets(server) {
         try {
           const { getMyParty } = await import("./lib/parties.js");
           const party = getMyParty(db, socket.data.userId);
-          if (party?.party_id) socket.join(`party:${party.party_id}`);
+          if (party?.party_id) {
+            socket.join(`party:${party.party_id}`);
+            try { _socketRoomBridge?.writeBehindJoin(`party:${party.party_id}`, socket.id); } catch (_e) { /* fail-soft */ }
+          }
         } catch { /* best-effort */ }
       })();
     }
@@ -10572,7 +10669,7 @@ async function tryInitWebSockets(server) {
         }
       }
 
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       // DET-C batch 8 (dead-event-listener sweep, re-confirmed 2026-07-23):
       // this still flags as `dead_socket_emit` because the detector's
       // SCAN_DIRS only walks concord-frontend/{app,components,lib,hooks} —
@@ -10588,7 +10685,7 @@ async function tryInitWebSockets(server) {
 
     socket.on("room:leave", ({ room }) => {
       if (room) {
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
         // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): the
         // `room:left` ack this used to fire had zero consumers — verified
         // via a full-tree grep across concord-frontend/, concord-mobile/,
@@ -10627,6 +10724,7 @@ async function tryInitWebSockets(server) {
           if (allowed) {
             c.sessionId = sessionId;
             socket.join(`session:${sessionId}`);
+            try { _socketRoomBridge?.writeBehindJoin(`session:${sessionId}`, socket.id); } catch (_e) { /* fail-soft */ }
           } else {
             socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to subscribe to this session' });
           }
@@ -10637,6 +10735,7 @@ async function tryInitWebSockets(server) {
         if (!userOrgId || userOrgId === orgId) {
           c.orgId = orgId;
           socket.join(`org:${orgId}`);
+          try { _socketRoomBridge?.writeBehindJoin(`org:${orgId}`, socket.id); } catch (_e) { /* fail-soft */ }
         } else {
           socket.emit('error', { code: 'UNAUTHORIZED', message: 'Not authorized to subscribe to this org' });
         }
@@ -11753,7 +11852,7 @@ async function tryInitWebSockets(server) {
     // sat in "joining" forever and no peer connections ever formed.
     socket.on("voice:join", () => {
       const room = "voice";
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       // Tell existing peers a new one arrived
       socket.to(room).emit("voice:peer-joined", { peerId: socket.id });
       // DET-C batch 2 (dead-event-listener sweep, 2026-07-23): this used to
@@ -11785,7 +11884,7 @@ async function tryInitWebSockets(server) {
       const room = "voice";
       if (socket.rooms.has(room)) {
         socket.to(room).emit("voice:peer-left", { peerId: socket.id });
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
       }
     });
 
@@ -11798,7 +11897,7 @@ async function tryInitWebSockets(server) {
       const roomId = msg && typeof msg.roomId === "string" ? msg.roomId : null;
       if (!roomId) return;
       const room = `audio-room:${roomId}`;
-      socket.join(room);
+      socket.join(room); try { _socketRoomBridge?.writeBehindJoin(room, socket.id); } catch (_e) { /* fail-soft */ }
       socket.to(room).emit("audio-room:peer-joined", { peerId: socket.id, roomId });
       const peers = [...(io.sockets.adapter.rooms.get(room) || [])].filter((id) => id !== socket.id);
       socket.emit("audio-room:room-state", { roomId, peers });
@@ -11821,7 +11920,7 @@ async function tryInitWebSockets(server) {
       const room = `audio-room:${roomId}`;
       if (socket.rooms.has(room)) {
         socket.to(room).emit("audio-room:peer-left", { peerId: socket.id, roomId });
-        socket.leave(room);
+        socket.leave(room); try { _socketRoomBridge?.writeBehindLeave(room, socket.id); } catch (_e) { /* fail-soft */ }
       }
     });
 
@@ -12452,6 +12551,15 @@ function saveStateDebounced() {
   // signal available — the 5-min periodic safety-net reads it to skip a full
   // ~28 MB serialization when no mutation has occurred since its last pass.
   _stateMutationSeq++;
+  // Tier S write-through: flush in-place session/style mutations that did not
+  // go through Map.set (messages.push, lensHistory, etc.).
+  try {
+    _chatSessionBridge?.flushDirty?.(STATE.sessions);
+    _styleVectorBridge?.flushDirty?.(STATE.styleVectors);
+    // In-place mutations (messages.push) never hit Map.set — push recent tails.
+    _chatSessionBridge?.writeBehindRecent?.(STATE.sessions, 50);
+    _styleVectorBridge?.writeBehindRecent?.(STATE.styleVectors, 50);
+  } catch (_e) { /* fail-soft */ }
   // Expose to modules that can't reach this lexical scope (domain files
   // loaded from server/domains/*.js write directly to STATE.dtus for
   // snippets / snapshots; they need a save trigger).
@@ -19165,6 +19273,22 @@ function _ollamaNumCtx(brainName = "conscious") {
   return Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), win);
 }
 
+// Map an Ollama model tag to its brain slot so num_ctx / KV-cache sizing
+// matches the model ACTUALLY being called. A bare callOllama() uses
+// LLM_PIPELINE.providers.ollama.model (= OLLAMA_MODEL, often the 14B
+// subconscious on the shared-A40 deploy) — hardcoding _ollamaNumCtx("conscious")
+// there made the 14B request a 32k KV cache and fight the real subconscious
+// path's 4k requests, so ollama's model scheduler thrashed reloading the same
+// blob at 32768/8192/4096 in a loop and evicting the other resident models.
+function _brainNameForModel(modelTag) {
+  const m = String(modelTag || "").toLowerCase();
+  if (m.includes("conscious")) return "conscious";
+  if (m.includes("core-v6") || m.includes("subconscious") || /\b(7b|14b)\b/.test(m)) return "subconscious";
+  if (m.includes("utility") || /\b(2b|3b)\b/.test(m)) return "utility";
+  if (m.includes("repair") || /\b1\.5b\b/.test(m)) return "repair";
+  return "conscious";
+}
+
 // Call Ollama (local) — uses /api/chat with system message when provided
 async function callOllama(prompt, options = {}) {
   const { url, model } = LLM_PIPELINE.providers.ollama;
@@ -19172,6 +19296,13 @@ async function callOllama(prompt, options = {}) {
 
   try {
     const useModel = options.model || model;
+    // num_ctx is sized to the MODEL actually loading, not options.brainName —
+    // callers sometimes pass brainName:"conscious" while the model resolves to
+    // OLLAMA_MODEL (the 14B on the shared-A40 deploy), and honoring the label
+    // over the model made ollama load the 14B blob at a 32k KV cache, churning
+    // against the 4k the real subconscious path asks for. To force a specific
+    // window, pass options.numCtx.
+    const _numCtx = options.numCtx || _ollamaNumCtx(_brainNameForModel(useModel));
     const systemContent = options.system || "";
     const useChat = !!systemContent;
     const payload = useChat
@@ -19182,13 +19313,13 @@ async function callOllama(prompt, options = {}) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _numCtx },
         }
       : {
           model: useModel,
           prompt,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _numCtx },
         };
 
     const response = await fetch(`${url}/api/${useChat ? "chat" : "generate"}`, {
@@ -19231,10 +19362,10 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
     options: {
       temperature: options.temperature || 0.7,
       num_predict: options.maxTokens || 1500,
-      // Streaming chat runs on the conscious brain unless the caller says
-      // otherwise — without num_ctx the assembled 32k-budget prompt was
-      // silently truncated at Ollama's small default.
-      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || "conscious"),
+      // num_ctx is sized to the MODEL actually loading (see callOllama note) —
+      // not options.brainName, which can disagree with `model`. Pass
+      // options.numCtx to force a specific window.
+      num_ctx: options.numCtx || _ollamaNumCtx(_brainNameForModel(model)),
     },
   };
 
@@ -19388,6 +19519,16 @@ const _llmQueue = createLLMQueue({
     structuredLog("warn", "llm_queue_reject", { priority, reason });
   },
 });
+
+// NPC/emergent/ambient generate() coalescer — share `_llmQueue` at LOW for
+// background, CRITICAL for interactive bypass. Do NOT spin a third parallel
+// queue. Kill-switch: CONCORD_NPC_COALESCE=0. Default ON for background paths.
+// Does NOT enable A40 ollama-proxy cutover.
+try {
+  bindNpcCoalescerQueue(_llmQueue);
+} catch (e) {
+  structuredLog("warn", "npc_coalescer_bind_failed", { error: String(e?.message || e) });
+}
 
 const _breakers = createBreakerRegistry({
   onStateChange: (name, from, to) => {
@@ -32854,9 +32995,15 @@ register("settings", "status", (ctx, _input) => {
     }
   }, { description: "Member-safe scoped DTU listing (skips others' private)." });
 
+  // Concord has no runtime scope-override system — DTU scope is enforced
+  // purely by the three permission gates + per-DTU visibility. "List the
+  // scope overrides" therefore has exactly one honest answer: an empty list.
+  // Kept (frontend api.client exposes scope.overrides()) rather than removed,
+  // but it is genuinely a constant, not a half-built feature.
+  // @macro-stub-ok: constant-by-design — no override layer exists to read
   register("scope", "overrides", (_ctx, _input = {}) => {
-    return { ok: true, overrides: [], note: "No runtime scope overrides configured." };
-  }, { description: "Read-only scope overrides list (empty unless configured)." });
+    return { ok: true, overrides: [], configurable: false, note: "Concord enforces DTU scope via the permission gates + per-DTU visibility; there is no runtime override layer." };
+  }, { description: "Always [] — Concord has no scope-override layer." });
 
   register("guidance", "status", (_ctx, _input = {}) => {
     return { ok: true, status: "ok", layer: "guidance", note: "guidance.emitEvent substrate available server-side" };
@@ -37469,6 +37616,14 @@ function startHeartbeat() {
     structuredLog("info", "heartbeat_skipped_disabled_env", { mode: "http-only" });
     return;
   }
+  // Dual/multi HTTP: only NODE_APP_INSTANCE unset/0 owns the tick.
+  if (!IS_HEARTBEAT_NODE) {
+    structuredLog("info", "heartbeat_skipped_non_primary_instance", {
+      nodeAppInstance: String(NODE_APP_INSTANCE_RAW),
+      mode: "http-worker",
+    });
+    return;
+  }
   // Read-only replicas never simulate — the writer owns all emergent state +
   // every DB write. Without this guard a replica ran the full tick and spammed
   // `state_save_failed` / `[feed] DB write failed` / `persistEmergentName failed`
@@ -41920,6 +42075,7 @@ function _startGovernorHeartbeat() {
     // Layer 12.5 (cartographer): CONCORD_DISABLE_HEARTBEAT=true short-circuits
     // so runtime-introspect doesn't fire ticks during boot.
     if (process.env.CONCORD_DISABLE_HEARTBEAT === "true") return { ok:false, reason:"heartbeat_disabled_env" };
+    if (!IS_HEARTBEAT_NODE) return { ok:false, reason:"non_primary_instance", nodeAppInstance: String(NODE_APP_INSTANCE_RAW) };
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
     if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
@@ -42675,13 +42831,15 @@ register("persona", "delete", (ctx, input) => {
   }
 }
 
-// Phase Z4 — the personas lens calls 5 additional actions that don't exist on
-// the singular `persona` domain either: get/stats/versions/publish/install.
-// These belong to a persona-marketplace flow that's roadmap material. Until
-// that ships, expose minimum-viable stubs so the lens renders without
-// crashing — `get` + `stats` are thin wrappers on existing data; the rest
-// return a clean `{ok:false, reason:'roadmap'}` that the UI can render as
-// "coming soon" badges.
+// Phase Z4 (superseded 2026-06+) — server/domains/personas.js is now a full
+// 17-macro domain registered into LENS_ACTIONS, and /api/lens/run prefers
+// LENS_ACTIONS over these MACROS shadows, so frontend traffic already hits
+// the real handlers. These MACROS registrations only still matter for
+// non-lens callers: runMacro("personas", …) directly, the MCP server, and
+// the agent loop's MACROS path. `get` + `stats` stay as thin STATE wrappers
+// (harmless, read real state). `versions` / `publish` / `install` are no
+// longer roadmap — they exist for real in personas.js — so they now
+// DELEGATE to that LENS_ACTION at call time rather than returning a stub.
 register("personas", "get", (ctx, input = {}) => {
   const id = input.id;
   if (!id) return { ok: false, error: "missing_id" };
@@ -42706,17 +42864,21 @@ register("personas", "stats", (ctx, input = {}) => {
   };
 }, { note: "Z4 thin wrapper" });
 
-register("personas", "versions", (_ctx, input = {}) => {
-  return { ok: true, versions: [{ id: "v1", current: true, createdAt: null }], reason: "single_version_only" };
-}, { note: "Z4 roadmap stub" });
-
-register("personas", "publish", (_ctx, _input = {}) => {
-  return { ok: false, reason: "roadmap", message: "Persona marketplace publishing is roadmap." };
-}, { note: "Z4 roadmap stub" });
-
-register("personas", "install", (_ctx, _input = {}) => {
-  return { ok: false, reason: "roadmap", message: "Persona marketplace install is roadmap." };
-}, { note: "Z4 roadmap stub" });
+// versions / publish / install: delegate to the real personas.js LENS_ACTION
+// (resolved at call time so load order doesn't matter). Was a hardcoded
+// `{versions:[{id:"v1"}]}` / `{ok:false,reason:'roadmap'}` — both stale now
+// that personas.js implements them.
+for (const _pName of ["versions", "publish", "install"]) {
+  register("personas", _pName, async (ctx, input = {}) => {
+    const _la = (globalThis.__concordLensActions instanceof Map)
+      ? globalThis.__concordLensActions.get(`personas.${_pName}`)
+      : null;
+    if (typeof _la !== "function") {
+      return { ok: false, error: "personas_action_unavailable", detail: `personas.${_pName} not registered` };
+    }
+    return _la(ctx, { id: null, domain: "personas", type: "domain_action", data: input, meta: {} }, input);
+  }, { note: `delegates to the real personas.js LENS_ACTION personas.${_pName}` });
+}
 
 // ---- Admin Dashboard Endpoints ----
 // SECURITY: every admin macro runs through requireAdminRole() first so
@@ -46721,13 +46883,21 @@ function _billLensDispatch(domain, name, result, startedAt, ctx) {
 
 async function runMcpTool(domain, name, input, ctx) {
   const _t0 = Date.now();
-  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro });
+  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro, macros: MACROS });
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
     const result = await resolved.handler(ctx, virtualArtifact, data);
     _billLensDispatch(domain, name, result, _t0, ctx);
     return result;
+  }
+  if (resolved.via === "none") {
+    // Misnamed / never-registered (domain, name) — return a clean structured
+    // error instead of letting runMacro() throw an opaque "macro not found".
+    return {
+      ok: false, error: "unknown_tool", reason: resolved.reason || "not_registered",
+      detail: `no registered macro or lens-action for ${domain}.${name}`,
+    };
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
@@ -56076,6 +56246,12 @@ register("db", "syncToPostgres", async (ctx, input) => {
 
 const REDIS_CONFIG = { enabled: !!process.env.REDIS_URL, url: process.env.REDIS_URL || null, prefix: process.env.REDIS_PREFIX || "concord:", ttl: Number(process.env.REDIS_TTL) || 300 };
 let redisClient = null;
+_macroRateBridge = createMacroRateBridge(() => redisClient);
+_sessionActivityBridge = createSessionActivityBridge(() => redisClient);
+_apiRateBridge = createApiRateBridge(() => redisClient);
+_chatSessionBridge = createChatSessionBridge(() => redisClient);
+_styleVectorBridge = createStyleVectorBridge(() => redisClient);
+_socketRoomBridge = createSocketRoomBridge(() => redisClient);
 
 async function initRedis() {
   if (!REDIS_CONFIG.enabled) return { ok: false, reason: "Redis not configured" };
@@ -56163,6 +56339,7 @@ _unrefInTest(setTimeout(async () => {
     await initRedis();
     if (redisClient) await _TOKEN_BLACKLIST.syncFromRedis();
   }
+  try { installSharedStateWriteThrough(); } catch (_e) { /* fail-soft */ }
 }, 1000));
 
 structuredLog("info", "module_loaded", { module: "Wave 9: Database Integrations" });
@@ -84799,9 +84976,41 @@ async function runBackup() {
     // materializes a second multi-GB copy of the DB in the Node heap the
     // way the buffered version did, which matters more now that the DB
     // itself is several times larger than earlier in this codebase's life.
+    //
+    // 2026-09-10: use SQLite's ONLINE backup API, not a raw file stream.
+    // `fs.createReadStream(DB_PATH)` copies the live database file byte-for-
+    // byte while the backend is writing it (WAL mode) — a torn read produces
+    // a CORRUPT .gz (pages from before + after a concurrent write). A
+    // Concord server that hung mid-`runBackup` (heap-limit heapsnapshot),
+    // left in uninterruptible state holding that read handle while a new
+    // backend instance started and also opened the DB RW, is what corrupted
+    // the live DB on 2026-09-08. `better-sqlite3`'s db.backup() copies
+    // page-by-page under a read transaction and yields a consistent, valid
+    // database even under concurrent writes. Snapshot to a temp file, gzip
+    // that, delete it.
     try {
-      if (fs.existsSync(DB_PATH)) {
-        const gzipPath = `${backupDir}/concord.db.gz`;
+      const _db = STATE?.db || globalThis._concordDB;
+      const gzipPath = `${backupDir}/concord.db.gz`;
+      if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot`;
+        try {
+          await _db.backup(snapPath);
+          await pipeline(
+            fs.createReadStream(snapPath),
+            zlib.createGzip({ level: 6 }),
+            fs.createWriteStream(gzipPath),
+          );
+          const { size: sourceBytes } = await fs.promises.stat(snapPath);
+          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          structuredLog("info", "backup_db_captured", {
+            source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
+          });
+        } finally {
+          await fs.promises.rm(snapPath, { force: true }).catch(() => {});
+        }
+      } else if (fs.existsSync(DB_PATH)) {
+        // JSON-fallback deploy (no better-sqlite3) — the file IS the DB and
+        // nothing writes it concurrently, so a stream copy is safe here.
         await pipeline(
           fs.createReadStream(DB_PATH),
           zlib.createGzip({ level: 6 }),
@@ -84810,12 +85019,11 @@ async function runBackup() {
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
         const { size: compressedBytes } = await fs.promises.stat(gzipPath);
         structuredLog("info", "backup_db_captured", {
-          source: DB_PATH, bytes: sourceBytes, compressedBytes,
+          source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
       } else {
         structuredLog("warn", "backup_db_missing", {
-          expectedAt: DB_PATH,
-          note: "database not backed up — verify DB_PATH",
+          expectedAt: DB_PATH, note: "database not backed up — verify DB_PATH",
         });
       }
     } catch (e) {

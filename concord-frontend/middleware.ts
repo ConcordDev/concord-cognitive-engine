@@ -39,8 +39,8 @@ import type { NextRequest } from 'next/server';
  */
 
 function buildCsp(nonce: string, opts?: { frameAncestors?: "'none'" | "'self'" }): string {
-  // Default document policy is frame-ancestors 'none'. /unity-client/ is the
-  // one same-origin iframe exception (world lens → Unity WebGL).
+  // Default document policy is frame-ancestors 'none'. /unity-client/ and
+  // /concordia-webgl/ are the same-origin iframe exceptions (world lens → Unity WebGL).
   const frameAncestors = opts?.frameAncestors ?? "'none'";
   const directives = [
     `default-src 'self'`,
@@ -265,11 +265,15 @@ export function middleware(request: NextRequest) {
   // of a random UUID, the standard pattern (128 bits of entropy, never
   // reused across requests).
   const nonce = btoa(crypto.randomUUID());
-  // /unity-client/ is the world-lens iframe document. frame-ancestors 'none'
-  // (and X-Frame-Options DENY) would refuse even a same-origin embed.
+  // /unity-client/ and /concordia-webgl/ are world-lens iframe documents.
+  // frame-ancestors 'none' (and X-Frame-Options DENY) would refuse even a
+  // same-origin embed — pass frameAncestors into buildCsp (not only a later
+  // string-replace) so the CSP is correct from the start.
   const csp = buildCsp(
     nonce,
-    pathname.startsWith('/unity-client/') ? { frameAncestors: "'self'" } : undefined,
+    pathname.startsWith('/unity-client/') || pathname.startsWith('/concordia-webgl/')
+      ? { frameAncestors: "'self'" }
+      : undefined,
   );
 
   // Propagate the nonce to Server Components via a request header (read

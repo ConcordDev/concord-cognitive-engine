@@ -30,6 +30,7 @@ import {
   useRecallableAction,
   RecallSlot,
 } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -225,7 +226,7 @@ export function CommonsenseActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Commonsense — ${concept || 'kg'}`, tags: ['commonsense', 'kg', concept].filter(Boolean), source: 'commonsense:kg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cs: { edges: edgesResult, rel: relResult, plaus: plausResult, analog: analogResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Commonsense — ${concept || 'kg'}`, tags: ['commonsense', 'kg', concept].filter(Boolean), source: 'commonsense:kg:mint', meta: { visibility: 'private', consent: { allowCitations: false }, cs: { edges: edgesResult, rel: relResult, plaus: plausResult, analog: analogResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('commonsense.mintedDtuId', id, { label: `KG DTU ${id.slice(0, 8)}…` }); ok(`KG DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -254,7 +255,7 @@ export function CommonsenseActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `KG card — ${concept || 'kg'}`, tags: ['commonsense', 'public'], source: 'commonsense:kg:publish', meta: { visibility: 'public', consent: { allowCitations: true }, edges: edgesResult, analog: analogResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `KG card — ${concept || 'kg'}`, tags: ['commonsense', 'public'], source: 'commonsense:kg:publish', meta: { visibility: 'public', consent: { allowCitations: true }, edges: edgesResult, analog: analogResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

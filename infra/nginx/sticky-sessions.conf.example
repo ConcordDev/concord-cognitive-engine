@@ -1,0 +1,51 @@
+# Concord — sticky upstream for multi-instance HTTP (A40 / RAM-rich boxes only).
+# Copy fragments into the live nginx site; do NOT enable a second backend on the
+# 16 GB Mac self-host. Companion: docs/REDIS_STICKY_SESSIONS.md
+#               docs/MULTI_INSTANCE_LAUNCHD.md
+
+upstream concord_backend {
+    # least_conn;  # optional
+    server 127.0.0.1:5050;          # NODE_APP_INSTANCE=0 (heartbeat owner)
+    server 127.0.0.1:5051;          # NODE_APP_INSTANCE=1
+    # Requires nginx sticky module (or swap for: ip_hash;)
+    sticky cookie concord_upstream expires=1d path=/ httponly secure samesite=lax;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name concord.example;
+
+    # Non-sticky: health + static can hit either node.
+    location = /api/system/health {
+        proxy_pass http://concord_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    # Sticky: chat, sockets, lens POSTs that touch process-local STATE.
+    location /api/chat/ {
+        proxy_pass http://concord_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
+    }
+
+    location /socket.io/ {
+        proxy_pass http://concord_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;
+    }
+
+    location / {
+        proxy_pass http://concord_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}

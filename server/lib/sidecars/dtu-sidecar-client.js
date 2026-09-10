@@ -101,3 +101,40 @@ export async function recent({ limit = 50, scope, tier, source } = {}) {
 }
 
 export const socketPath = SOCK;
+
+// ── Phase 3b: generalized hot reads (same UDS, fail-soft) ──
+// CONCORD_WALLET_SIDECAR / CONCORD_SESSION_SIDECAR default ON when
+// CONCORD_DTU_SIDECAR=1 (explicit =0 disables). Same socket as DTU.
+
+// When DTU sidecar is already opted in, wallet/session reads default ON
+// (same socket, fail-soft). Explicit CONCORD_*=0 disables.
+function _sidecarFlag(name, { defaultOnWhenDtu = false } = {}) {
+  const raw = process.env[name];
+  if (raw === "0" || raw === "false") return false;
+  if (raw === "1" || raw === "true") return true;
+  return defaultOnWhenDtu && ENABLED;
+}
+export const WALLET_ENABLED = _sidecarFlag("CONCORD_WALLET_SIDECAR", { defaultOnWhenDtu: true });
+export const SESSION_ENABLED = _sidecarFlag("CONCORD_SESSION_SIDECAR", { defaultOnWhenDtu: true });
+
+/**
+ * Wallet balance — mirrors economy/balances.js#getBalance.
+ * @param {string} userId
+ * @returns {Promise<{ ok, userId?, balance?, totalCredits?, totalDebits?, error? }>}
+ */
+export async function walletBalance(userId) {
+  if (!userId) return { ok: false, error: "user_required" };
+  const r = await get(`/v1/wallet/balance?user=${encodeURIComponent(userId)}`, { timeoutMs: 3_000 });
+  return r.body || { ok: false, error: "empty_response" };
+}
+
+/**
+ * Auth session by token_hash / JTI.
+ * @param {string} tokenHash
+ * @returns {Promise<{ ok, session?, error? }>}
+ */
+export async function sessionByTokenHash(tokenHash) {
+  if (!tokenHash) return { ok: false, error: "tokenHash_required" };
+  const r = await get(`/v1/session?tokenHash=${encodeURIComponent(tokenHash)}`, { timeoutMs: 2_000 });
+  return r.body || { ok: false, error: "empty_response" };
+}

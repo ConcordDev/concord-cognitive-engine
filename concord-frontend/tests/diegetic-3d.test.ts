@@ -24,7 +24,7 @@ describe('world-event 3D beacons', () => {
     expect(src).toMatch(/positionForEvent/);
   });
   it('is mounted in the world lens 3D view', () => {
-    const page = read('app/lenses/world/page.tsx');
+    const page = read('components/world/WorldOsSurface.tsx');
     expect(page).toMatch(/import\('@\/components\/world\/WorldEventBeacons'\)/);
     expect(page).toMatch(/<WorldEventBeacons worldId=/);
   });

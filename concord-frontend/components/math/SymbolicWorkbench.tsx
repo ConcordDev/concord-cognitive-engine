@@ -45,12 +45,12 @@ export function SymbolicWorkbench() {
   const [panel, setPanel] = useState<Panel>('nlquery');
 
   return (
-    <div className="rounded-xl border border-indigo-500/20 bg-zinc-950/60 p-4 space-y-4">
-      <header className="flex items-center gap-2 border-b border-indigo-500/10 pb-2">
-        <FunctionSquare className="h-4 w-4 text-indigo-400" />
-        <h3 className="text-sm font-semibold text-white">Computational Math Engine</h3>
+    <div className="rounded-xl border border-[color:var(--lens-accent)]/25 bg-zinc-950/70 p-3 space-y-3">
+      <header className="flex items-center gap-2 border-b border-white/5 pb-2">
+        <FunctionSquare className="h-4 w-4" style={{ color: 'var(--lens-accent)' }} />
+        <h3 className="text-sm font-semibold text-white">CAS</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          CAS
+          symbolic · plot · solve
         </span>
       </header>
 
@@ -624,8 +624,17 @@ function HistoryPanel({ active }: { active: boolean }) {
     setBusy(false);
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { if (active) load(); }, [active]);
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    void (async () => {
+      const r = await runMath('casHistory', { action: 'list', limit: 50 });
+      if (cancelled) return;
+      if (r.ok) setEntries(r.result?.history || []);
+      else setErr(r.error || 'Could not load history.');
+    })();
+    return () => { cancelled = true; };
+  }, [active]);
 
   return (
     <div className="space-y-3">

@@ -165,27 +165,25 @@ export async function runEvoGlbToWorld(opts: {
   let glbLoadedPayload: Record<string, unknown> | null = null;
 
   await new Promise<void>((resolve) => {
-    const t0 = Date.now();
+    // Real completion is the Unity `glb_loaded` event; `deadline` only bounds
+    // the wait so a silent Unity never hangs the caller. No polling, no motion.
+    const deadline = setTimeout(() => {
+      off();
+      resolve();
+    }, waitMs);
     const off = onUnityEvent((msg) => {
       if (msg.event === 'glb_loaded') {
         glbLoaded = true;
         glbLoadedPayload = (msg.payload as Record<string, unknown>) || null;
+        clearTimeout(deadline);
         off();
         resolve();
       } else if (msg.event === 'error' && (!msg.id || msg.id === loadId)) {
+        clearTimeout(deadline);
         off();
         resolve();
       }
     });
-    const tick = () => {
-      if (glbLoaded || Date.now() - t0 >= waitMs) {
-        off();
-        resolve();
-        return;
-      }
-      setTimeout(tick, 200);
-    };
-    tick();
   });
 
   return {

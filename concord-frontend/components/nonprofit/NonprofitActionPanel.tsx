@@ -34,6 +34,7 @@ import { api, apiHelpers } from '@/lib/api/client';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -185,7 +186,7 @@ export function NonprofitActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `NPO — ${orgName.trim() || 'analysis'}`, tags: ['nonprofit'], source: 'nonprofit:org:mint', meta: { visibility: 'private', consent: { allowCitations: false }, npo: { orgName, retention: retentionResult, grant: grantResult, campaign: campaignResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `NPO — ${orgName.trim() || 'analysis'}`, tags: ['nonprofit'], source: 'nonprofit:org:mint', meta: { visibility: 'private', consent: { allowCitations: false }, npo: { orgName, retention: retentionResult, grant: grantResult, campaign: campaignResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('nonprofit.mintedDtuId', id, { label: `org ${id.slice(0, 8)}` }); ok(`NPO DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -208,7 +209,7 @@ export function NonprofitActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Campaign — ${orgName.trim() || 'public'}`, tags: ['nonprofit', 'campaign', 'public'], source: 'nonprofit:campaign:publish', meta: { visibility: 'public', consent: { allowCitations: true }, campaign: campaignResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Campaign — ${orgName.trim() || 'public'}`, tags: ['nonprofit', 'campaign', 'public'], source: 'nonprofit:campaign:publish', meta: { visibility: 'public', consent: { allowCitations: true }, campaign: campaignResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

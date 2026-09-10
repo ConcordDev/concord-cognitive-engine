@@ -24,7 +24,6 @@ import MarketsWorkbench from '@/components/markets/MarketsWorkbench';
 import { MarketsQuoteDetail } from '@/components/markets/MarketsQuoteDetail';
 import PredictionMarkets from '@/components/markets/PredictionMarkets';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
 
 interface Market {
   id: number;
@@ -267,9 +266,7 @@ export default function MarketsPage() {
       >
         Markets Workbench
       </button>
-      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
-          <RecentMineCard domain="markets" limit={10} hideWhenEmpty className="mt-4" />
-          <CrossLensRecentsPanel lensId="markets" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
+      <MarketsWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />          <CrossLensRecentsPanel lensId="markets" sinceDays={7} limit={6} hideWhenEmpty className="mt-4" />
     </LensShell>
   );
 }

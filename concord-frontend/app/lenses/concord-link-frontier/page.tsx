@@ -28,7 +28,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { Globe, Coins, RefreshCcw, AlertTriangle, Radio } from 'lucide-react';
@@ -175,9 +174,7 @@ export default function ConcordLinkFrontierPage() {
   }
 
   return (
-    <LensShell lensId="concord-link-frontier" asMain={false}>
-      <ManifestActionBar />
-      <DepthBadge lensId="concord-link-frontier" size="sm" className="ml-2" />
+    <LensShell lensId="concord-link-frontier" asMain={false}>      <DepthBadge lensId="concord-link-frontier" size="sm" className="ml-2" />
       <main
         aria-label="Concord Link Frontier"
         className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-cyan-950/10 text-slate-100"

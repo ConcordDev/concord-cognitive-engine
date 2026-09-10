@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -142,7 +143,7 @@ export function ActivityActionPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `${sport} snapshot — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['sports', sport, level, `weekly-hrs:${weeklyHours}`],
           source: 'sports:snapshot:mint',
@@ -151,7 +152,7 @@ export function ActivityActionPanel() {
             consent: { allowCitations: false },
             snapshot: { sport, level, daysPerWeek: parseInt(daysPerWeek, 10), weeklyHours: parseFloat(weeklyHours), restDays: parseInt(restDays, 10), age: parseInt(age, 10), sleepHours: parseFloat(sleepHours), stats: statsArray, results: { performance: statsResult, plan: planResult, risk: riskResult } },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -189,12 +190,12 @@ export function ActivityActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `${sport} race report — ${new Date().toISOString().slice(0, 10)}`,
             tags: ['sports', sport, 'race-report', 'public'],
             source: 'sports:report:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, race: { sport, level, stats: statsArray, trend: statsResult?.trend, plan: planResult } },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

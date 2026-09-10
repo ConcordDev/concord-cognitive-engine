@@ -1,4 +1,4 @@
-// DET-C batch 3 — dead-event-listener resolutions in app/lenses/world/page.tsx.
+// DET-C batch 3 — dead-event-listener resolutions in components/world/WorldOsSurface.tsx.
 //
 // Three real dead listeners the detector's own maintainer comment names
 // explicitly (server/lib/detectors/dead-event-listener-detector.js) get
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pageSrc = readFileSync(
-  path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'),
+  path.resolve(__dirname, '..', 'components/world/WorldOsSurface.tsx'),
   'utf8'
 );
 

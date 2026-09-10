@@ -3,8 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -20,7 +18,6 @@ import { AutoMLPanel } from '@/components/ml/AutoMLPanel';
 import { DeploymentsPanel } from '@/components/ml/DeploymentsPanel';
 import { SpacesPanel } from '@/components/ml/SpacesPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState } from 'react';
 import {
   Brain, TestTube, Beaker, Database, Trophy, Wand2, Rocket, Sparkles,
@@ -74,9 +71,7 @@ export default function MLLensPage() {
 
   return (
     <LensShell lensId="ml" asMain={false}>
-      <FirstRunTour lensId="ml" />
-      <ManifestActionBar />
-      <DepthBadge lensId="ml" size="sm" className="ml-2" />
+      <FirstRunTour lensId="ml" />      <DepthBadge lensId="ml" size="sm" className="ml-2" />
       <div data-lens-theme="ml" className="p-6 space-y-6">
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
@@ -169,11 +164,7 @@ export default function MLLensPage() {
             </div>
           )}
         </section>
-      </div>
-
-      <RecentMineCard domain="ml" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="ml" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="ml" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="ml" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

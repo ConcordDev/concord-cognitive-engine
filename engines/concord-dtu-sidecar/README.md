@@ -72,6 +72,8 @@ load and is noise.
 | GET | `/v1/dtu?id=` | `{ok, dtu}` / 404 |
 | GET | `/v1/dtus/list?viewer=&scope=&tier=&q=&mine=&limit=&offset=&viewerRegional=&viewerNational=` | `{ok, dtus, total, limit, offset}` |
 | GET | `/v1/dtus/recent?limit=&scope=&tier=&source=` | `{ok, count, dtus}` |
+| GET | `/v1/wallet/balance?user=` | `{ok, userId, balance, totalCredits, totalDebits}` |
+| GET | `/v1/session?tokenHash=` | `{ok, session}` / 404 |
 
 ## Build
 
@@ -97,3 +99,17 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.concord.dtu-sidecar.
 
 Kill-switch: unset `CONCORD_DTU_SIDECAR` (or set `0`) and restart the backend —
 the macros go straight back to the in-memory filter.
+
+
+## Phase 3b — generalized hot reads (wallet + session)
+
+Same binary / socket. Node opt-in (independent of `CONCORD_DTU_SIDECAR`):
+
+| Env | Effect |
+|---|---|
+| `CONCORD_WALLET_SIDECAR=1` | `/api/economy/balance` prefers Rust ledger sums (`getBalancePreferSidecar`) |
+| `CONCORD_SESSION_SIDECAR=1` | reserved for auth session lookup client (`sessionByTokenHash`) |
+
+Fail-soft: any UDS/JSON error → sync SQLite / in-process path. Proof:
+`engines/concord-dtu-sidecar/proof/run-wallet-session-proof.mjs` →
+`~/.zuko/remaining-work/concord-wallet-session-sidecar-proof.json`.

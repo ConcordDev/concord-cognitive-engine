@@ -1,788 +1,135 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+/**
+ * HVAC — one ServiceTitan / Manual-J field desk.
+ *
+ * Single view union. Inline Jobs/CRM/Estimates/etc CRUD extracted to
+ * HvacDeskPanel; Field Service / Feed / Manual J folded into the active
+ * union (no accordion booleans). Page is a thin shell.
+ */
+
+import { useMemo, useState, type ReactNode } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import {
+  Award, BarChart3, Calculator, CalendarDays, ClipboardList, FileText,
+  MessageSquare, Receipt, Thermometer, Users, Wrench,
+} from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LensPageShell } from '@/components/lens/LensPageShell';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { cn } from '@/lib/utils';
+import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { HvacDeskPanel } from '@/components/hvac/HvacDeskPanel';
+import { FieldService } from '@/components/hvac/FieldService';
 import { HvacFeed } from '@/components/hvac/HvacFeed';
 import { ManualJCalc } from '@/components/hvac/ManualJCalc';
-import { FieldService } from '@/components/hvac/FieldService';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion } from 'framer-motion';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ds } from '@/lib/design-system';
-import { cn } from '@/lib/utils';
-import {
-  Thermometer,
-  Wrench,
-  ClipboardList,
-  DollarSign,
-  Users,
-  Plus,
-  Search,
-  X,
-  Trash2,
-  BarChart3,
-  CheckCircle2,
-  FileText,
-  Award,
-  Calculator,
-  Receipt,
-  Fan,
-  Gauge,
-  Zap,
-  CalendarDays,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
-import { Icon as SvgIcon } from '@/components/icons/Icon';
+import { type HvacView, type ModeTab } from '@/components/hvac/hvac-shared';
 
-type ModeTab =
-  | 'jobs'
-  | 'estimates'
-  | 'codes'
-  | 'materials'
-  | 'clients'
-  | 'invoices'
-  | 'inspections'
-  | 'certs';
-type ArtifactType =
-  | 'Job'
-  | 'Estimate'
-  | 'CodeRef'
-  | 'Material'
-  | 'Client'
-  | 'Invoice'
-  | 'Inspection'
-  | 'Certification';
-type Status =
-  | 'scheduled'
-  | 'in_progress'
-  | 'completed'
-  | 'invoiced'
-  | 'paid'
-  | 'pending'
-  | 'failed'
-  | 'active';
-
-interface TradeArtifact {
-  name: string;
-  type: ArtifactType;
-  status: Status;
-  description: string;
-  notes: string;
-  client?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  scheduledDate?: string;
-  completedDate?: string;
-  laborHours?: number;
-  laborRate?: number;
-  materialCost?: number;
-  totalCost?: number;
-  codeReference?: string;
-  codeSection?: string;
-  jurisdiction?: string;
-  material?: string;
-  quantity?: number;
-  unit?: string;
-  unitPrice?: number;
-  supplier?: string;
-  invoiceNumber?: string;
-  dueDate?: string;
-  paidDate?: string;
-  amount?: number;
-  inspector?: string;
-  result?: string;
-  deficiencies?: string;
-  certType?: string;
-  certNumber?: string;
-  expiryDate?: string;
-  issuedBy?: string;
-}
-
-const MODE_TABS: {
-  id: ModeTab;
-  label: string;
-  icon: typeof Thermometer;
-  artifactType: ArtifactType;
-}[] = [
-  { id: 'jobs', label: 'Jobs', icon: Wrench, artifactType: 'Job' },
-  { id: 'estimates', label: 'Estimates', icon: Calculator, artifactType: 'Estimate' },
-  { id: 'codes', label: 'Codes', icon: FileText, artifactType: 'CodeRef' },
-  { id: 'materials', label: 'Materials', icon: Thermometer, artifactType: 'Material' },
-  { id: 'clients', label: 'CRM', icon: Users, artifactType: 'Client' },
-  { id: 'invoices', label: 'Invoices', icon: Receipt, artifactType: 'Invoice' },
-  { id: 'inspections', label: 'Inspections', icon: ClipboardList, artifactType: 'Inspection' },
-  { id: 'certs', label: 'Certs', icon: Award, artifactType: 'Certification' },
+const VIEWS: { id: HvacView; label: string; keys: string; hint: string; icon: typeof Thermometer }[] = [
+  { id: 'jobs', label: 'Jobs', keys: '1', hint: 'Job tracker', icon: Wrench },
+  { id: 'estimates', label: 'Estimates', keys: '2', hint: 'Estimates', icon: Calculator },
+  { id: 'codes', label: 'Codes', keys: '3', hint: 'Code refs', icon: FileText },
+  { id: 'materials', label: 'Materials', keys: '4', hint: 'Materials', icon: Thermometer },
+  { id: 'clients', label: 'CRM', keys: '5', hint: 'Clients', icon: Users },
+  { id: 'invoices', label: 'Invoices', keys: '6', hint: 'Invoices', icon: Receipt },
+  { id: 'inspections', label: 'Inspections', keys: '7', hint: 'Inspections', icon: ClipboardList },
+  { id: 'certs', label: 'Certs', keys: '8', hint: 'Certifications', icon: Award },
+  { id: 'dashboard', label: 'Dashboard', keys: 'd', hint: 'Ops overview', icon: BarChart3 },
+  { id: 'field', label: 'Field Service', keys: 'f', hint: 'Dispatch board', icon: CalendarDays },
+  { id: 'feed', label: 'Discussion', keys: 'h', hint: 'HVAC discussion', icon: MessageSquare },
+  { id: 'manualj', label: 'Manual J', keys: 'j', hint: 'Load calculator', icon: Calculator },
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  scheduled: { label: 'Scheduled', color: 'blue-400' },
-  in_progress: { label: 'In Progress', color: 'cyan-400' },
-  completed: { label: 'Completed', color: 'green-400' },
-  invoiced: { label: 'Invoiced', color: 'purple-400' },
-  paid: { label: 'Paid', color: 'emerald-400' },
-  pending: { label: 'Pending', color: 'yellow-400' },
-  failed: { label: 'Failed', color: 'red-400' },
-  active: { label: 'Active', color: 'green-400' },
-};
-
-const TRADE_MATERIALS = [
-  'Ductwork',
-  'Refrigerant R-410A',
-  'Condenser Unit',
-  'Evaporator Coil',
-  'Compressor',
-  'Thermostat',
-  'Air Handler',
-  'Furnace',
-  'Heat Pump',
-  'Mini Split',
-  'Filter',
-  'Damper',
-  'Line Set',
-];
-const TRADE_CERTS = [
-  'EPA 608 Universal',
-  'EPA 608 Type I',
-  'EPA 608 Type II',
-  'NATE Certification',
-  'R-410A Safety',
-  'HVAC Excellence',
-];
+const DESK_MODES = new Set<HvacView>([
+  'jobs', 'estimates', 'codes', 'materials', 'clients', 'invoices', 'inspections', 'certs', 'dashboard',
+]);
 
 export default function HVACLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState<HvacView>('jobs');
+
   useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-    ],
-    { lensId: "hvac" }
+    VIEWS.map((v) => ({
+      id: `view-${v.id}`,
+      keys: v.keys,
+      description: `${v.label} — ${v.hint}`,
+      category: 'navigation' as const,
+      action: () => setActive(v.id),
+    })),
+    { lensId: 'hvac' },
   );
 
-  const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<LensItem<TradeArtifact> | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
-  const [showFieldService, setShowFieldService] = useState(false);
-  const [showHvacFeed, setShowHvacFeed] = useState(false);
-  const [showManualJCalc, setShowManualJCalc] = useState(false);
-
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formStatus, setFormStatus] = useState<Status>('scheduled');
-  const [formNotes, setFormNotes] = useState('');
-  const [formClient, setFormClient] = useState('');
-  const [formAddress, setFormAddress] = useState('');
-  const [formPhone, setFormPhone] = useState('');
-  const [formScheduledDate, setFormScheduledDate] = useState('');
-  const [formLaborHours, setFormLaborHours] = useState('');
-  const [formLaborRate, setFormLaborRate] = useState('');
-  const [formMaterialCost, setFormMaterialCost] = useState('');
-  const [formMaterial, setFormMaterial] = useState(TRADE_MATERIALS[0] || '');
-  const [formQuantity, setFormQuantity] = useState('');
-  const [formCertType, setFormCertType] = useState(TRADE_CERTS[0] || '');
-  const [formAmount, setFormAmount] = useState('');
-
-  const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Job';
-  const { items, isLoading, isError, error, refetch, create, update, remove } =
-    useLensData<TradeArtifact>('hvac', activeArtifactType, { seed: [] });
-  const runAction = useRunArtifact('hvac');
-
-  const filtered = useMemo(() => {
-    let result = items;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) ||
-          (i.data as unknown as TradeArtifact).description?.toLowerCase().includes(q)
-      );
-    }
-    if (filterStatus !== 'all')
-      result = result.filter((i) => (i.data as unknown as TradeArtifact).status === filterStatus);
-    return result;
-  }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || filtered[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [filtered, runAction]
+  const motionProps = useMemo(
+    () => (reduceMotion
+      ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y: 8 },
+          animate: { opacity: 1, y: 0 },
+          exit: { opacity: 0, y: -6 },
+          transition: { duration: 0.16 },
+        }),
+    [reduceMotion],
   );
 
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormName('');
-    setFormDescription('');
-    setFormStatus('scheduled');
-    setFormNotes('');
-    setFormClient('');
-    setFormAddress('');
-    setFormPhone('');
-    setFormScheduledDate('');
-    setFormLaborHours('');
-    setFormLaborRate('');
-    setFormMaterialCost('');
-    setFormMaterial(TRADE_MATERIALS[0] || '');
-    setFormQuantity('');
-    setFormCertType(TRADE_CERTS[0] || '');
-    setFormAmount('');
-    setEditorOpen(true);
-  };
-  const openEdit = (item: LensItem<TradeArtifact>) => {
-    const d = item.data as unknown as TradeArtifact;
-    setEditingItem(item);
-    setFormName(d.name || '');
-    setFormDescription(d.description || '');
-    setFormStatus(d.status || 'scheduled');
-    setFormNotes(d.notes || '');
-    setFormClient(d.client || '');
-    setFormAddress(d.address || '');
-    setFormPhone(d.phone || '');
-    setFormScheduledDate(d.scheduledDate || '');
-    setFormLaborHours(d.laborHours?.toString() || '');
-    setFormLaborRate(d.laborRate?.toString() || '');
-    setFormMaterialCost(d.materialCost?.toString() || '');
-    setFormMaterial(d.material || TRADE_MATERIALS[0] || '');
-    setFormQuantity(d.quantity?.toString() || '');
-    setFormCertType(d.certType || TRADE_CERTS[0] || '');
-    setFormAmount(d.amount?.toString() || '');
-    setEditorOpen(true);
-  };
-
-  const handleSave = async () => {
-    const laborH = formLaborHours ? parseFloat(formLaborHours) : undefined;
-    const laborR = formLaborRate ? parseFloat(formLaborRate) : undefined;
-    const matC = formMaterialCost ? parseFloat(formMaterialCost) : undefined;
-    const data: Record<string, unknown> = {
-      name: formName,
-      type: activeArtifactType,
-      status: formStatus,
-      description: formDescription,
-      notes: formNotes,
-      client: formClient,
-      address: formAddress,
-      phone: formPhone,
-      scheduledDate: formScheduledDate,
-      laborHours: laborH,
-      laborRate: laborR,
-      materialCost: matC,
-      totalCost: (laborH && laborR ? laborH * laborR : 0) + (matC || 0) || undefined,
-      material: formMaterial,
-      quantity: formQuantity ? parseFloat(formQuantity) : undefined,
-      certType: formCertType,
-      amount: formAmount ? parseFloat(formAmount) : undefined,
-    };
-    if (editingItem)
-      await update(editingItem.id, {
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    else
-      await create({
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    setEditorOpen(false);
-  };
-
-  const renderDashboard = () => {
-    const all = items.map((i) => i.data as unknown as TradeArtifact);
-    const totalRevenue = all.reduce((s, j) => s + (j.totalCost || j.amount || 0), 0);
-    return (
-      <div data-lens-theme="hvac" className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={ds.panel}>
-          <Wrench className="w-5 h-5 text-blue-400 mb-2" />
-          <p className={ds.textMuted}>Active Jobs</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'in_progress' || j.status === 'scheduled').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <DollarSign className="w-5 h-5 text-green-400 mb-2" />
-          <p className={ds.textMuted}>Revenue</p>
-          <p className="text-xl font-bold text-white">${totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className={ds.panel}>
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 mb-2" />
-          <p className={ds.textMuted}>Completed</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'completed' || j.status === 'paid').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <Receipt className="w-5 h-5 text-purple-400 mb-2" />
-          <p className={ds.textMuted}>Outstanding</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'invoiced').length}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditor = () => {
-    if (!editorOpen) return null;
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-        <div
-          className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={ds.heading3}>
-              {editingItem ? 'Edit' : 'New'} {activeArtifactType}
-            </h3>
-            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className={ds.label}>Name</label>
-              <input
-                className={ds.input}
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Description</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Status</label>
-              <select
-                className={ds.select}
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as Status)}
-              >
-                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {(activeArtifactType === 'Job' ||
-              activeArtifactType === 'Estimate' ||
-              activeArtifactType === 'Client') && (
-              <>
-                <div>
-                  <label className={ds.label}>Client</label>
-                  <input
-                    className={ds.input}
-                    value={formClient}
-                    onChange={(e) => setFormClient(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Address</label>
-                  <input
-                    className={ds.input}
-                    value={formAddress}
-                    onChange={(e) => setFormAddress(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Phone</label>
-                  <input
-                    className={ds.input}
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            {(activeArtifactType === 'Job' || activeArtifactType === 'Estimate') && (
-              <>
-                <div>
-                  <label className={ds.label}>Scheduled Date</label>
-                  <input
-                    type="date"
-                    className={ds.input}
-                    value={formScheduledDate}
-                    onChange={(e) => setFormScheduledDate(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className={ds.label}>Labor Hrs</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formLaborHours}
-                      onChange={(e) => setFormLaborHours(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Rate</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formLaborRate}
-                      onChange={(e) => setFormLaborRate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>Material $</label>
-                    <input
-                      type="number"
-                      className={ds.input}
-                      value={formMaterialCost}
-                      onChange={(e) => setFormMaterialCost(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            {activeArtifactType === 'Material' && (
-              <>
-                <div>
-                  <label className={ds.label}>Material</label>
-                  <select
-                    className={ds.select}
-                    value={formMaterial}
-                    onChange={(e) => setFormMaterial(e.target.value)}
-                  >
-                    {TRADE_MATERIALS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={ds.label}>Quantity</label>
-                  <input
-                    type="number"
-                    className={ds.input}
-                    value={formQuantity}
-                    onChange={(e) => setFormQuantity(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            {activeArtifactType === 'Invoice' && (
-              <div>
-                <label className={ds.label}>Amount</label>
-                <input
-                  type="number"
-                  className={ds.input}
-                  value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
-                />
-              </div>
-            )}
-            {activeArtifactType === 'Certification' && (
-              <div>
-                <label className={ds.label}>Certification</label>
-                <select
-                  className={ds.select}
-                  value={formCertType}
-                  onChange={(e) => setFormCertType(e.target.value)}
-                >
-                  {TRADE_CERTS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
-              Cancel
-            </button>
-            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLibrary = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className={cn(ds.input, 'pl-10')}
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <select
-          className={cn(ds.select, 'w-auto')}
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-        <button onClick={openCreate} className={ds.btnPrimary}>
-          <Plus className="w-4 h-4" /> New
-        </button>
-      </div>
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className={cn(ds.panel, 'text-center py-12')}>
-          <Thermometer className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
-          <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Create First
-          </button>
-        </div>
-      ) : (
-        filtered.map((item, index) => {
-          const d = item.data as unknown as TradeArtifact;
-          const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
-          return (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={ds.panelHover}
-              onClick={() => openEdit(item)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Thermometer className="w-5 h-5 text-neon-cyan" />
-                  <div>
-                    <p className="text-white font-medium">{d.name || item.title}</p>
-                    <p className={ds.textMuted}>
-                      {d.client || ''} {d.address ? `- ${d.address}` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(d.totalCost || d.amount) && (
-                    <span className="text-xs text-green-400">
-                      ${(d.totalCost || d.amount || 0).toLocaleString()}
-                    </span>
-                  )}
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}
-                  >
-                    {sc.label}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAction('analyze', item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Activate">
-                    <Zap className="w-4 h-4 text-neon-cyan" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })
-      )}
-    </div>
-  );
+  let body: ReactNode = null;
+  if (DESK_MODES.has(active)) {
+    body = <HvacDeskPanel mode={active as ModeTab | 'dashboard'} />;
+  } else if (active === 'field') {
+    body = <FieldService />;
+  } else if (active === 'feed') {
+    body = <HvacFeed />;
+  } else {
+    body = <ManualJCalc />;
+  }
 
   return (
     <LensShell lensId="hvac" asMain={false}>
       <FirstRunTour lensId="hvac" />
-      <ManifestActionBar />
       <DepthBadge lensId="hvac" size="sm" className="ml-2" />
-    <LensPageShell
-      domain="hvac"
-      title="HVAC"
-      description="Jobs, estimates, codes, materials, CRM, invoicing, inspections, and certifications"
-      headerIcon={<SvgIcon name="hvac-duct" size={24} />}
-      isLoading={isLoading}
-      isError={isError}
-      error={error}
-      onRetry={refetch}
-      actions={
-        <>
-          {runAction.isPending && (
-            <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-          )}
-          <button
-            onClick={() => {
-              setShowFieldService((v) => !v);
-              setShowDashboard(false);
-            }}
-            className={cn(showFieldService ? ds.btnPrimary : ds.btnSecondary)}
-          >
-            <CalendarDays className="w-4 h-4" /> Field Service
-          </button>
-          <button
-            onClick={() => {
-              setShowDashboard(!showDashboard);
-              setShowFieldService(false);
-            }}
-            className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}
-          >
-            <BarChart3 className="w-4 h-4" /> Dashboard
-          </button>
-        </>
-      }
-    >
-      {/* Stats Row */}
-      {(() => {
-        const allItems = items.map((i) => i.data as unknown as TradeArtifact);
-        const systemCount = allItems.length;
-        const maintenanceDue = allItems.filter(
-          (j) => j.status === 'scheduled' || j.status === 'pending'
-        ).length;
-        const completedCount = allItems.filter(
-          (j) => j.status === 'completed' || j.status === 'paid'
-        ).length;
-        const efficiencyAvg =
-          systemCount > 0 ? ((completedCount / systemCount) * 100).toFixed(0) : '0';
-        return (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Fan className="w-5 h-5 text-cyan-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{systemCount}</p>
-                <p className="text-xs text-gray-400">Systems</p>
-              </div>
-            </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Wrench className="w-5 h-5 text-yellow-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{maintenanceDue}</p>
-                <p className="text-xs text-gray-400">Maintenance Due</p>
-              </div>
-            </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Gauge className="w-5 h-5 text-green-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{efficiencyAvg}%</p>
-                <p className="text-xs text-gray-400">Efficiency Avg</p>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {showFieldService ? (
-        <FieldService />
-      ) : (
-        <>
-          <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-            {MODE_TABS.map((tab) => (
+      <LensPageShell
+        domain="hvac"
+        title="HVAC"
+        description="Jobs, estimates, codes, materials, CRM, invoicing, inspections, and certifications"
+        headerIcon={<SvgIcon name="hvac-duct" size={24} />}
+      >
+        <nav
+          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto pb-1"
+          aria-label="HVAC views"
+        >
+          {VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
               <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  setShowDashboard(false);
-                }}
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-                  activeTab === tab.id && !showDashboard
-                    ? 'bg-neon-blue/20 text-neon-blue'
-                    : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                  on
+                    ? 'border-neon-blue text-neon-blue'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
                 )}
+                aria-current={on ? 'page' : undefined}
               >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
+                <Icon className="w-4 h-4" />
+                {v.label}
               </button>
-            ))}
-          </nav>
-          {showDashboard ? renderDashboard() : renderLibrary()}
-          {renderEditor()}
-        </>
-      )}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowHvacFeed(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>HVAC discussion (external reference)</span>
-          {showHvacFeed ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showHvacFeed && (
-          <div className="mt-3">
-            <HvacFeed />
-          </div>
-        )}
-      </section>
+            );
+          })}
+        </nav>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowManualJCalc(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Manual J load calculator</span>
-          {showManualJCalc ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showManualJCalc && (
-          <div className="mt-3">
-            <ManualJCalc />
-          </div>
-        )}
-      </section>
-    </LensPageShell>
-    
+        <AnimatePresence mode="wait">
+          <motion.div key={active} {...motionProps}>
+            {body}
+          </motion.div>
+        </AnimatePresence>
+      </LensPageShell>
       <a href="#hvac-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to hvac content</a>
-          <RecentMineCard domain="hvac" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="hvac" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="hvac" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="hvac" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

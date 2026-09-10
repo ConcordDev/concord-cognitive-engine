@@ -110,6 +110,11 @@ comment). The table option also survives a node-0 restart.
 | `_macroRateLimits` (module-level) | grep | per-user macro rate limit windows |
 | `_apiRateWindows` / `_apiUsage` (`STATE._*`) | 2+2 sites | API rate/usage accounting |
 
+**Update 2026-09-09:** Redis write-behind landed for `_SESSION_ACTIVITY` and
+`_macroRateLimits` via `server/lib/concurrency/shared-state.js` (fail-soft).
+`STATE.sessions` chat buffers remain **sticky-required**. `STATE.qualia` /
+`STATE.shadowDtus` stay per-node (derived/evictable).
+
 **Recommended:** socket.io already has `@socket.io/redis-adapter` wired
 (`server.js:10240`). Add nginx sticky sessions (cookie or `ip_hash`) so a
 chat/WebSocket client stays on one node — then `STATE.sessions` is correct

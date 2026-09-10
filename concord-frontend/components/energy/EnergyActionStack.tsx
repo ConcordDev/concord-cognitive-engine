@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface RateResult {
   state: string; sector: string;
@@ -95,7 +96,7 @@ export function EnergyActionStack() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Energy snapshot — ${state} ${sector} — ${rate.latest.period}`,
           tags: ['energy', 'eia', 'bill', `state:${state}`, `sector:${sector}`],
           source: 'energy:bill:snapshot',
@@ -112,7 +113,7 @@ export function EnergyActionStack() {
               monthlySeries: rate.monthlySeries,
             },
           },
-        },
+        }, 'dataset', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -142,7 +143,7 @@ export function EnergyActionStack() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `${state} efficiency tips — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['energy', 'eia', 'efficiency-tips', 'public', `state:${state}`],
           source: 'energy:tips:public',
@@ -157,7 +158,7 @@ export function EnergyActionStack() {
             },
             tipsStructure: ['HVAC schedule', 'water heater', 'lighting', 'standby loads', 'peak shifting'],
           },
-        },
+        }, 'dataset', ['private', 'public_view', 'social_post']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;

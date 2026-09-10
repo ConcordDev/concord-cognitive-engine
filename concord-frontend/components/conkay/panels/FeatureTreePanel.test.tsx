@@ -11,11 +11,15 @@ describe('FeatureTreePanel source contract', () => {
       'ck-feature-tree-panel',
       'ck-feature-tree-list',
       'ck-feature-tree-add-form',
+      'ck-feature-tree-params-grid',
       'ck-feature-tree-type',
       'ck-feature-tree-add',
       'ck-feature-tree-undo',
       'ck-feature-tree-rebuild',
       'ck-feature-tree-rebuild-stats',
+      'ck-feature-tree-rebuild-feedback',
+      'ck-feature-tree-rebuild-phase',
+      'ck-feature-tree-selection',
       'ck-feature-tree-honesty',
     ]) {
       expect(text).toContain(`data-testid="${id}"`);
@@ -23,6 +27,8 @@ describe('FeatureTreePanel source contract', () => {
     for (const t of ['box', 'cylinder', 'extrude', 'cut', 'fillet', 'chamfer', 'shell', 'revolve', 'pattern', 'union']) {
       expect(text).toContain(`'${t}'`);
     }
+    expect(text).toMatch(/PARAM_META/);
+    expect(text).toMatch(/onSelectFeature/);
     expect(text).toMatch(/mintConkayArtifactDtu/);
     expect(text).toMatch(/not SolidWorks/i);
   });

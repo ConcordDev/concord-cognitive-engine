@@ -7,7 +7,7 @@ import { describe, test, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const CHAT_PATH    = path.resolve(__dirname, '..', 'app/lenses/chat/page.tsx');
+const CHAT_PATH    = path.resolve(__dirname, '..', 'components/chat/ChatWorkspacePanel.tsx');
 const AGENT_PATH   = path.resolve(__dirname, '..', 'components/chat/AgentModePanel.tsx');
 const BELL_PATH    = path.resolve(__dirname, '..', 'components/chat/InitiativeBell.tsx');
 
@@ -84,7 +84,7 @@ describe('Sprint 11B — Chat lens mounts both', () => {
   });
 
   test('Agent Mode launcher button is bottom-right', () => {
-    expect(CHAT_SRC).toMatch(/bottom-6 right-6/);
+    expect(CHAT_SRC).toMatch(/sm:bottom-6 sm:right-6/);
   });
 
   test('agentPanelOpen state controls panel visibility', () => {

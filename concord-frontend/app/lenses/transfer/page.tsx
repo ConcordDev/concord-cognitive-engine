@@ -3,15 +3,12 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TransferRepos } from '@/components/transfer/TransferRepos';
 import { EtlWorkbench } from '@/components/transfer/EtlWorkbench';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
 import { useState, useMemo, useRef } from 'react';
@@ -90,9 +87,7 @@ export default function TransferLensPage() {
   }
   return (
     <LensShell lensId="transfer" asMain={false}>
-      <FirstRunTour lensId="transfer" />
-      <ManifestActionBar />
-      <DepthBadge lensId="transfer" size="sm" className="ml-2" />
+      <FirstRunTour lensId="transfer" />      <DepthBadge lensId="transfer" size="sm" className="ml-2" />
       <LensVerticalHero lensId="transfer" className="mx-6 mt-4" />
     <div data-lens-theme="transfer" className="p-6 space-y-6">
       <header className="flex items-center gap-3">
@@ -287,10 +282,7 @@ export default function TransferLensPage() {
       </section>
     </div>
 
-      <a href="#transfer-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to transfer content</a>
-          <RecentMineCard domain="transfer" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="transfer" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="transfer" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#transfer-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to transfer content</a>          <CrossLensRecentsPanel lensId="transfer" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

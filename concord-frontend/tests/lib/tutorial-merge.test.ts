@@ -93,7 +93,7 @@ describe('tutorialManager — merged step content', () => {
 });
 
 // DET-C batch 4 — closes a real dead-event-listener finding: TutorialHighlight
-// (app/lenses/world/page.tsx) has a genuine `concordia:tutorial-highlight`
+// (components/world/WorldOsSurface.tsx) has a genuine `concordia:tutorial-highlight`
 // listener with zero dispatchers anywhere in the frontend. tutorialManager is
 // now the single real dispatcher, keyed off the same step-advance/replay/skip
 // transitions that already drive the hint toast — never a fabricated token

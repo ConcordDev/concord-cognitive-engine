@@ -14,8 +14,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -23,7 +21,6 @@ import { TelcoRepos } from '@/components/telecommunications/TelcoRepos';
 import { TelecommunicationsActionPanel } from '@/components/telecommunications/TelecommunicationsActionPanel';
 import { RFPlanner, RF_PLANNER_TABS } from '@/components/telecommunications/RFPlanner';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { LensPageShell } from '@/components/lens/LensPageShell';
 import { lensRun } from '@/lib/api/client';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -90,9 +87,7 @@ export default function TelecommunicationsLensPage() {
 
   return (
     <LensShell lensId="telecommunications" asMain={false}>
-      <FirstRunTour lensId="telecommunications" />
-      <ManifestActionBar />
-      <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
+      <FirstRunTour lensId="telecommunications" />      <DepthBadge lensId="telecommunications" size="sm" className="ml-2" />
       <LensPageShell
         domain="telecommunications"
         title="Telecommunications"
@@ -154,11 +149,7 @@ export default function TelecommunicationsLensPage() {
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <TelcoRepos />
         </section>
-      </LensPageShell>
-
-      <RecentMineCard domain="telecommunications" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="telecommunications" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="telecommunications" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </LensPageShell>      <CrossLensRecentsPanel lensId="telecommunications" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

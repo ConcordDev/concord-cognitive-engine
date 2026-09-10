@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -105,7 +106,7 @@ export function LinguisticsActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lexicon — ${word.trim() || 'analysis'}`, tags: ['linguistics', 'lexicon', dictResult ? 'definition' : null].filter((t): t is string => t !== null), source: 'linguistics:lex:mint', meta: { visibility: 'private', consent: { allowCitations: false }, lex: { word, dict: dictResult, datamuse: datamuseWords, textStats: textResult, sentiment: sentimentResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Lexicon — ${word.trim() || 'analysis'}`, tags: ['linguistics', 'lexicon', dictResult ? 'definition' : null].filter((t): t is string => t !== null), source: 'linguistics:lex:mint', meta: { visibility: 'private', consent: { allowCitations: false }, lex: { word, dict: dictResult, datamuse: datamuseWords, textStats: textResult, sentiment: sentimentResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('linguistics.mintedDtuId', id, { label: `lex ${id.slice(0, 8)}` }); ok(`Lex DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -129,7 +130,7 @@ export function LinguisticsActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Lexicon entry — ${word}`, tags: ['linguistics', 'lexicon', 'public'], source: 'linguistics:lex:publish', meta: { visibility: 'public', consent: { allowCitations: true }, dict: dictResult, datamuse: datamuseWords, textStats: textResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Lexicon entry — ${word}`, tags: ['linguistics', 'lexicon', 'public'], source: 'linguistics:lex:publish', meta: { visibility: 'public', consent: { allowCitations: true }, dict: dictResult, datamuse: datamuseWords, textStats: textResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

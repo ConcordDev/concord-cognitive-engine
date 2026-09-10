@@ -27,15 +27,12 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { SessionRail } from '@/components/lens/SessionRail';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
 import { TemplateCatalogue } from '@/components/forge/TemplateCatalogue';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { Hammer, Sparkles, Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import ForgeWorkbench from '@/components/forge/ForgeWorkbench';
@@ -65,9 +62,7 @@ export default function ForgeLensPage() {
 
   return (
     <LensShell lensId="forge" asMain={false}>
-      <FirstRunTour lensId="forge" />
-      <ManifestActionBar />
-      <DepthBadge lensId="forge" size="sm" className="ml-2" />
+      <FirstRunTour lensId="forge" />      <DepthBadge lensId="forge" size="sm" className="ml-2" />
       <LensVerticalHero lensId="forge" className="mx-6 mt-4" />
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-zinc-950 to-amber-950/10 text-slate-100">
       <motion.header
@@ -152,10 +147,7 @@ export default function ForgeLensPage() {
       </section>
     </main>
 
-          <SessionRail lensId="forge" hideWhenEmpty className="mt-4" />
-          <RecentMineCard domain="forge" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="forge" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="forge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          <SessionRail lensId="forge" hideWhenEmpty className="mt-4" />          <CrossLensRecentsPanel lensId="forge" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -115,7 +116,7 @@ export function NeuroActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind, 'synthetic'], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, synthetic: true, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult, synthetic: true } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Neuro — ${signalKind} (${channels.length}ch)`, tags: ['neuro', 'eeg', signalKind, 'synthetic'], source: 'neuro:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, synthetic: true, neuro: { kind: signalKind, freq: freqResult, conn: connResult, erp: erpResult, synthetic: true } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('neuro.mintedDtuId', id, { label: `bench ${id.slice(0, 8)}` }); ok(`Neuro DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -139,7 +140,7 @@ export function NeuroActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `EEG dataset — ${signalKind} (synthetic demo)`, tags: ['neuro', 'eeg', 'public', 'synthetic'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, synthetic: true, freq: freqResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `EEG dataset — ${signalKind} (synthetic demo)`, tags: ['neuro', 'eeg', 'public', 'synthetic'], source: 'neuro:dataset:publish', meta: { visibility: 'public', consent: { allowCitations: true }, synthetic: true, freq: freqResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

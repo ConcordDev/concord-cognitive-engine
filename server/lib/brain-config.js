@@ -138,7 +138,13 @@ export const BRAIN_CONFIG = Object.freeze({
     model: _resolveBrainModel(process.env.BRAIN_CONSCIOUS_MODEL, "concord-conscious:latest", _conscious_urls),
     role: "chat, deep reasoning, council deliberation, user-facing interactions",
     temperature: 0.7,
-    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 45000, // GPU inference; override per-deployment
+    // 180s (2026-09-09): on the A40 the conscious 30B blob lives on MooseFS
+    // network storage — a COLD load runs 45-120s, and a shorter timeout
+    // aborts it mid-load, which cancels the llama-server start and wedges
+    // ollama's scheduler into a retry loop that never seats the model.
+    // Once warm (keep_alive:-1) a call is fast; this only bites the first
+    // request after an ollama restart. Override per-deployment.
+    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 180000,
     priority: 1,       // CRITICAL — user-facing
     // Bumped 3 → 8 to match OLLAMA_NUM_PARALLEL=8 on the conscious
     // service. Anything lower bottlenecks the JS queue while the GPU
@@ -147,11 +153,19 @@ export const BRAIN_CONFIG = Object.freeze({
     // High context for conscious brain — handles chat history, reasoning chains,
     // and complex user queries. This is the brain users interact with directly.
     // Conscious is USER-FACING — needs full conversation memory.
-// 8192 = ~5GB KV cache max, still leaves 3GB cushion on 48GB A40
-// when combined with the low-cap background brains.
-// (Bumped back up 2026-08-15 from 4096 — background brains stay capped
-// at 2048-4096 to keep total KV cache headroom under ~6GB.)
-contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 8192, 8192),
+    //
+    // 32768 (2026-09-09): conscious is the ONLY brain that needs a large
+    // window — it carries the live conversation, reasoning chains and cited
+    // context a person is actually reading. The background brains
+    // (subconscious 4096 / utility 2048 / repair 2048) each run one
+    // autonomous task at a time with a fresh, task-scoped prompt, so they
+    // stay deliberately small. On the A40 (46GB) the KV budget with
+    // OLLAMA_KV_CACHE_TYPE=q8_0 is ~5-6GB for conscious@32k on the 30B-A3B
+    // (GQA) + <2GB combined for the three background brains — leaves the
+    // 30B+14B+2B weights (~32GB) comfortably resident with MAX_LOADED_MODELS=3.
+    // Raise past 32k per-deployment with BRAIN_CONSCIOUS_CONTEXT (also bump
+    // CONCORD_NUM_CTX_CAP — server.js#_ollamaNumCtx clamps to it).
+contextWindow: Math.min(Number(process.env.BRAIN_CONSCIOUS_CONTEXT) || 32768, 65536),
     maxTokens: 4096,   // Full output — let it think
   },
   subconscious: {

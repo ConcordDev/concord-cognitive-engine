@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -126,7 +127,7 @@ export function CouncilActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Council session — ${motionText.trim().slice(0, 60) || 'meeting'}`, tags: ['council', 'governance', voteResult?.passed ? 'passed' : 'pending'], source: 'council:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, council: { motion: motionText, members: members.split('\n').filter(Boolean), positions: parsePositions(), deliberate: deliberateResult, vote: voteResult, minutes: minutesResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Council session — ${motionText.trim().slice(0, 60) || 'meeting'}`, tags: ['council', 'governance', voteResult?.passed ? 'passed' : 'pending'], source: 'council:session:mint', meta: { visibility: 'private', consent: { allowCitations: false }, council: { motion: motionText, members: members.split('\n').filter(Boolean), positions: parsePositions(), deliberate: deliberateResult, vote: voteResult, minutes: minutesResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('council.mintedDtuId', id, { label: `Session DTU ${id.slice(0, 8)}…` }); ok(`Session DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -154,7 +155,7 @@ export function CouncilActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public minutes — ${motionText.slice(0, 60)}`, tags: ['council', 'minutes', 'public'], source: 'council:minutes:publish', meta: { visibility: 'public', consent: { allowCitations: true }, minutes: { motion: motionText, decisions: minutesResult.decisions, actionItems: minutesResult.actionItems, voteOutcome: voteResult?.passed ? 'passed' : 'failed' } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

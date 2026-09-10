@@ -147,3 +147,37 @@ export function getSystemBalanceSummary(db) {
     },
   };
 }
+
+
+/**
+ * Fail-soft sidecar prefer for wallet reads (Concurrency Phase 3b).
+ * Opt-in via CONCORD_WALLET_SIDECAR=1. On any transport/parse error, falls
+ * through to the sync SQLite getBalance — Node remains correct alone.
+ *
+ * Sync call sites (validators, transfer guards) keep using getBalance(db, …).
+ * HTTP / async paths should prefer this when the env flag is set.
+ *
+ * @param {object} db
+ * @param {string} userId
+ * @returns {Promise<{ balance: number, totalCredits: number, totalDebits: number, via: string }>}
+ */
+export async function getBalancePreferSidecar(db, userId) {
+  try {
+    const sc = await import("../lib/sidecars/dtu-sidecar-client.js");
+    // WALLET_ENABLED defaults ON when CONCORD_DTU_SIDECAR=1 (explicit =0 disables)
+    if (sc.WALLET_ENABLED) {
+      const r = await sc.walletBalance(userId);
+      if (r && r.ok === true && typeof r.balance === "number") {
+        return {
+          balance: r.balance,
+          totalCredits: r.totalCredits,
+          totalDebits: r.totalDebits,
+          via: "sidecar",
+        };
+      }
+    }
+  } catch {
+    /* fail soft */
+  }
+  return { ...getBalance(db, userId), via: "sqlite" };
+}

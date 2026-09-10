@@ -38,7 +38,7 @@ export function SettingsHealth() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Settings className="h-5 w-5 text-zinc-300" /><h2 className="text-sm font-semibold text-white">Concord runtime status</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">/api/system/health · live</span></div>
-        {d.status && <SaveAsDtuButton compact apiSource="concord-settings-health" title={`Concord runtime — ${d.status} · uptime ${uptimeHrs}h`} content={`Status: ${d.status}\nUptime: ${uptimeHrs}h\nMemory: ${memoryMB ?? '—'} MB\nDTUs: ${d.dtuCount ?? '—'}\nSessions: ${d.sessionCount ?? '—'}`} extraTags={['settings', 'system-health', 'concord']} rawData={d as unknown as Record<string, unknown>} />}
+        {d.status && <SaveAsDtuButton compact apiSource="concord-settings-health" title={`Concord runtime — ${d.status} · uptime ${uptimeHrs}h`} content={`Status: ${d.status}\nUptime: ${uptimeHrs}h\nMemory: ${memoryMB ?? '—'} MB\nDTUs: ${d.dtuCount ?? '—'}\nSessions: ${d.sessionCount ?? '—'}`} extraTags={['settings', 'system-health', 'concord']} rawData={d as unknown as Record<string, unknown>} defaultContentClass="dataset" />}
       </header>
       {h.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">/api/system/health unreachable.</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

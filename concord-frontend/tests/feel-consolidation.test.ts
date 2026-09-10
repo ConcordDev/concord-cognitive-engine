@@ -99,7 +99,7 @@ describe('Chunk-1 combat polish (T2.2/T2.3/T2.6/T2.11)', () => {
 
   it('T2.6 — dead AnimationManager is deleted + unmounted', () => {
     expect(() => read('components/world-lens/AnimationManager.tsx')).toThrow();
-    const page = read('app/lenses/world/page.tsx');
+    const page = read('components/world/WorldOsSurface.tsx');
     expect(page).not.toMatch(/<AnimationManager>/);
     expect(page).not.toMatch(/import\('@\/components\/world-lens\/AnimationManager'\)/);
   });

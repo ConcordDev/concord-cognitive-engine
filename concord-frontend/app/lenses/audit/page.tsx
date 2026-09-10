@@ -3,12 +3,9 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from "@/hooks/useLensCommand";
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useState, useRef } from 'react';
@@ -120,9 +117,7 @@ export default function AuditLensPage() {
   }
   return (
     <LensShell lensId="audit" asMain={false}>
-      <FirstRunTour lensId="audit" />
-      <ManifestActionBar />
-      <DepthBadge lensId="audit" size="sm" className="ml-2" />
+      <FirstRunTour lensId="audit" />      <DepthBadge lensId="audit" size="sm" className="ml-2" />
     <div data-lens-theme="audit" className="p-6 space-y-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -374,10 +369,7 @@ export default function AuditLensPage() {
       </section>
     </div>
 
-      <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>
-          <RecentMineCard domain="audit" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="audit" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="audit" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#audit-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to audit content</a>          <CrossLensRecentsPanel lensId="audit" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

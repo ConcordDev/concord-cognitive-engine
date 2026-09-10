@@ -6,7 +6,7 @@
  * Honesty: ERP-shaped BOM export LIVE — NOT SAP/Oracle integration.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createAssembly,
   downloadErpBomCsv,
@@ -72,6 +72,10 @@ export function ErpBomPanel() {
   const [bom, setBom] = useState<ErpBom | null>(null);
   const [status, setStatus] = useState('Idle — load ERP BOM for an assembly');
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [loadMs, setLoadMs] = useState<number | null>(null);
+  const [sortKey, setSortKey] = useState<'partNumber' | 'qty' | 'massKg' | 'extendedCostUsd'>('partNumber');
 
   const load = useCallback(async (aid?: string) => {
     const id = (aid ?? assemblyId).trim();
@@ -80,17 +84,22 @@ export function ErpBomPanel() {
       return;
     }
     setBusy(true);
+    const t0 = Date.now();
     setStatus('Loading ERP BOM…');
     try {
       const data = (await fetchErpBom(id)) as ErpBom;
+      const elapsed = Date.now() - t0;
+      setLoadMs(elapsed);
       if (!data?.ok) {
         setBom(null);
-        setStatus(`ERP BOM failed — ${data?.reason || data?.error || 'unknown'}`);
+        setSelectedIdx(null);
+        setStatus(`ERP BOM failed — ${data?.reason || data?.error || 'unknown'} (${elapsed}ms)`);
         return;
       }
       setBom(data);
+      setSelectedIdx(null);
       setStatus(
-        `ERP BOM LIVE — ${data.totalParts ?? data.lines?.length ?? 0} parts · rollup $${fmt(data.rollup?.rollupCostUsd, 2)} (not SAP/Oracle)`,
+        `ERP BOM LIVE — ${data.totalParts ?? data.lines?.length ?? 0} parts · rollup $${fmt(data.rollup?.rollupCostUsd, 2)} · ${elapsed}ms (not SAP/Oracle)`,
       );
       void mintConkayArtifactDtu({
         title: 'ERP BOM load',
@@ -204,6 +213,28 @@ export function ErpBomPanel() {
     }
   };
 
+  const lines = useMemo(() => {
+    const raw = bom?.lines || [];
+    const q = filter.trim().toLowerCase();
+    let list = !q
+      ? raw
+      : raw.filter((l) => {
+          const hay = `${l.partNumber || ''} ${l.name || ''} ${l.material || ''} ${l.vendorId || ''}`.toLowerCase();
+          return hay.includes(q);
+        });
+    const sorted = [...list].sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (typeof av === 'string' || typeof bv === 'string') {
+        return String(av || '').localeCompare(String(bv || ''));
+      }
+      return (Number(av) || 0) - (Number(bv) || 0);
+    });
+    return sorted;
+  }, [bom?.lines, filter, sortKey]);
+
+  const selected = selectedIdx != null ? lines[selectedIdx] : null;
+
   return (
     <div
       data-testid="ck-erp-bom-panel"
@@ -262,6 +293,30 @@ export function ErpBomPanel() {
         </button>
       </div>
 
+      <div className="mb-2 grid grid-cols-[1fr_auto] gap-2">
+        <input
+          data-testid="ck-erp-bom-filter"
+          className="rounded border border-white/10 bg-black/40 px-2 py-1 text-[10px] text-white/80"
+          placeholder="Filter PN / material / vendor…"
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setSelectedIdx(null);
+          }}
+        />
+        <select
+          data-testid="ck-erp-bom-sort"
+          className="rounded border border-white/10 bg-black/40 px-2 py-1 text-[10px]"
+          value={sortKey}
+          onChange={(e) => setSortKey(e.target.value as typeof sortKey)}
+        >
+          <option value="partNumber">Sort: PN</option>
+          <option value="qty">Sort: Qty</option>
+          <option value="massKg">Sort: Mass</option>
+          <option value="extendedCostUsd">Sort: Ext $</option>
+        </select>
+      </div>
+
       {bom?.rollup ? (
         <div
           data-testid="ck-erp-bom-rollup"
@@ -276,11 +331,13 @@ export function ErpBomPanel() {
 
       <div
         data-testid="ck-erp-bom-table"
-        className="mb-2 max-h-48 overflow-auto rounded border border-white/10 bg-black/25"
+        className="mb-2 max-h-52 overflow-auto rounded border border-white/10 bg-black/25"
       >
-        {!bom?.lines?.length ? (
+        {!lines.length ? (
           <div data-testid="ck-erp-bom-empty" className="px-2 py-3 text-white/35">
-            No ERP BOM lines yet.
+            {bom?.lines?.length
+              ? 'No lines match filter — clear filter to see all.'
+              : 'No ERP BOM lines yet — create/select an assembly with parts, then Reload.'}
           </div>
         ) : (
           <table className="w-full border-collapse text-left">
@@ -296,26 +353,61 @@ export function ErpBomPanel() {
               </tr>
             </thead>
             <tbody>
-              {bom.lines.map((l, i) => (
-                <tr
-                  key={l.partId || i}
-                  data-testid={`ck-erp-bom-row-${i}`}
-                  className="border-t border-white/5 font-mono text-[10px]"
-                >
-                  <td className="px-2 py-1 text-cyan-100">{l.partNumber}</td>
-                  <td className="px-2 py-1">{l.revision}</td>
-                  <td className="px-2 py-1">{l.qty}</td>
-                  <td className="px-2 py-1">{l.material}</td>
-                  <td className="px-2 py-1" title={l.volumeSource || ''}>
-                    {fmt(l.massKg, 3)}
-                  </td>
-                  <td className="px-2 py-1 text-white/50">{l.vendorId}</td>
-                  <td className="px-2 py-1">{fmt(l.extendedCostUsd, 2)}</td>
-                </tr>
-              ))}
+              {lines.map((l, i) => {
+                const active = selectedIdx === i;
+                return (
+                  <tr
+                    key={l.partId || i}
+                    data-testid={`ck-erp-bom-row-${i}`}
+                    data-selected={active ? 'true' : 'false'}
+                    onClick={() => setSelectedIdx(i)}
+                    className={`cursor-pointer border-t border-white/5 font-mono text-[10px] ${
+                      active ? 'bg-cyan-400/15 text-cyan-50' : 'hover:bg-white/5'
+                    }`}
+                  >
+                    <td className="px-2 py-1 text-cyan-100">{l.partNumber}</td>
+                    <td className="px-2 py-1">{l.revision}</td>
+                    <td className="px-2 py-1">{l.qty}</td>
+                    <td className="px-2 py-1">{l.material}</td>
+                    <td className="px-2 py-1" title={l.volumeSource || ''}>
+                      {fmt(l.massKg, 3)}
+                    </td>
+                    <td className="px-2 py-1 text-white/50">{l.vendorId}</td>
+                    <td className="px-2 py-1">{fmt(l.extendedCostUsd, 2)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
+      </div>
+
+      {selected ? (
+        <div
+          data-testid="ck-erp-bom-selection"
+          className="mb-2 rounded border border-cyan-400/20 bg-cyan-400/5 px-2 py-1.5 text-[10px] text-cyan-100/85"
+        >
+          <div className="font-mono">
+            {selected.partNumber} rev {selected.revision} · qty {selected.qty} · {selected.materialName || selected.material}
+          </div>
+          <div className="mt-0.5 text-white/45">
+            vendor {selected.vendorName || selected.vendorId || '—'} · lead {selected.leadTimeDays ?? '—'}d ·
+            mass {fmt(selected.massKg, 3)} kg · vol {fmt(selected.volumeM3, 6)} m³ · unit $
+            {fmt(selected.unitCostUsd, 2)}
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        data-testid="ck-erp-bom-load-feedback"
+        className="mb-1 flex flex-wrap gap-2 px-1 text-[9px] uppercase tracking-wide text-white/35"
+      >
+        <span>Rows {lines.length}{bom?.lines ? ` / ${bom.lines.length}` : ''}</span>
+        {loadMs != null ? (
+          <span data-testid="ck-erp-bom-load-ms" className="font-mono normal-case">
+            last load {loadMs}ms
+          </span>
+        ) : null}
       </div>
 
       <div data-testid="ck-erp-bom-status" className="px-1 text-[10px] text-white/50">

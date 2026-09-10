@@ -45,11 +45,15 @@ function summarizeVerticalJson(label: string, json: Record<string, unknown>) {
       indicesCount: Array.isArray(mesh.indices) ? mesh.indices.length : undefined,
     };
   }
-  // Keep a small generic preview without megabyte bodies
+  // Keep a small generic preview without megabyte bodies.
+  // Never JSON.stringify full mesh positions/indices — that freezes the UI
+  // thread and delays/skips the subsequent mint POST.
   try {
-    const raw = JSON.stringify(json);
+    const { mesh: _meshOmit, ...rest } = json as Record<string, unknown> & { mesh?: unknown };
+    const slim = summary.mesh ? { ...rest, mesh: summary.mesh } : rest;
+    const raw = JSON.stringify(slim);
     summary.previewBytes = raw.length;
-    if (raw.length <= 2500) summary.result = json;
+    if (raw.length <= 2500) summary.result = slim;
     else summary.resultPreview = raw.slice(0, 1500);
   } catch {
     /* ignore */

@@ -377,6 +377,7 @@ function ArtistHero({ artist, releases }: { artist: ArtistHit; releases: Release
           </div>
         </div>
         <SaveAsDtuButton
+          defaultContentClass="media"
           apiSource="musicbrainz"
           apiUrl={`https://musicbrainz.org/ws/2/artist/${artist.mbid}`}
           title={`${artist.name} — MusicBrainz artist`}
@@ -457,6 +458,7 @@ function ReleaseRow({ release, artistName }: { release: Release; artistName: str
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <SaveAsDtuButton
+          defaultContentClass="media"
           compact
           apiSource="musicbrainz"
           apiUrl={`https://musicbrainz.org/ws/2/release/${release.mbid}`}

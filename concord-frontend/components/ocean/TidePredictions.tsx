@@ -63,6 +63,7 @@ export function TidePredictions() {
         </button>
         {preds.length > 0 && (
           <SaveAsDtuButton
+            defaultContentClass="dataset"
             compact
             apiSource="noaa-tides"
             title={`Tide predictions — station ${stationId} (${preds.length} entries)`}

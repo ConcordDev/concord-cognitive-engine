@@ -74,7 +74,7 @@ describe.each(LENSES_TO_CHECK)('Sprint 15 — %s lens mounts LensAgentFab', (len
 
 describe('Sprint 15 — Lighthouse bundle fix', () => {
   test('chat lens uses dynamic import for AgentModePanel + InitiativeBell', () => {
-    const chatPath = path.resolve(__dirname, '..', 'app/lenses/chat/page.tsx');
+    const chatPath = path.resolve(__dirname, '..', 'components/chat/ChatWorkspacePanel.tsx');
     const src = fs.readFileSync(chatPath, 'utf8');
     // Should NOT have static `import AgentModePanel from` anymore — only
     // dynamic via next/dynamic.

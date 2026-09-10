@@ -32,6 +32,8 @@ import { AcSalesTaxPanel } from './AcSalesTaxPanel';
 import { AcPurchaseOrdersPanel } from './AcPurchaseOrdersPanel';
 import { AcRatiosPanel } from './AcRatiosPanel';
 import { StripeInvoicePanel } from './StripeInvoicePanel';
+import { AccountingActionPanel } from './AccountingActionPanel';
+import { PipingProvider } from '@/components/panel-polish';
 
 export interface BooksSectionProps {
   /** Controlled nav — pass together with onNavChange to drive the section
@@ -71,6 +73,11 @@ export function BooksSection({ nav: controlledNav, onNavChange }: BooksSectionPr
       askBar={<AccountingAskBar />}
     >
       {nav === 'dashboard' && <AccountingDashboard onJumpTo={(n) => setNav(n as BooksNav)} />}
+      {nav === 'actions'   && (
+        <PipingProvider>
+          <AccountingActionPanel />
+        </PipingProvider>
+      )}
       {nav === 'banking'   && <BankFeedsInbox />}
       {nav === 'invoices'  && <StripeInvoicePanel />}
       {nav === 'estimates' && <EstimatesPanel />}

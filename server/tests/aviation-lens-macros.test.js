@@ -2,7 +2,7 @@
 //
 // These macros run on the artifact-run dispatch path (POST /api/lens/:domain/:id/run
 // → handler(ctx, artifact, params)), reading the PERSISTED artifact.data the
-// editors in app/lenses/aviation/page.tsx actually write. The 3-arg dispatch
+// editors in components/aviation/aviation-editors.tsx actually write. The 3-arg dispatch
 // is reproduced exactly: every call passes a virtual artifact whose `.data`
 // is the precise object the component persists, plus the same object as params.
 //
@@ -41,7 +41,7 @@ beforeEach(() => {
   globalThis.fetch = async () => { throw new Error("network disabled"); };
 });
 
-// The EXACT flat W&B shape app/lenses/aviation/page.tsx#renderWBEditor persists.
+// The EXACT flat W&B shape WeightBalanceEditor persists.
 function wbEditorData() {
   return {
     aircraft: "C172S", tailNumber: "N12345",
@@ -150,7 +150,7 @@ describe("aviation.validate-wb (W&B envelope check — flat editor shape)", () =
 });
 
 describe("aviation.weatherCheck (flat windDirection/windSpeed editor shape)", () => {
-  // EXACT shape app/lenses/aviation/page.tsx#renderWeatherEditor persists.
+  // EXACT shape WeatherOpsEditor persists.
   function wxEditorData() {
     return {
       stationId: "KJFK", windDirection: 270, windSpeed: 15, windGust: 25,

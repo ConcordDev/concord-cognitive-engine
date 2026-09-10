@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -12,7 +10,6 @@ import { WorldBankPanel } from '@/components/global/WorldBankPanel';
 import { DataExplorer } from '@/components/global/DataExplorer';
 import { DevelopmentIndex } from '@/components/global/DevelopmentIndex';
 import { IndicatorCorrelations } from '@/components/global/IndicatorCorrelations';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, ChevronsLeft, ChevronsRight, RefreshCw, Globe, TrendingUp, Map, Award, GitBranch, Compass, Loader2, Bookmark } from 'lucide-react';
@@ -160,9 +157,7 @@ export default function GlobalLensPage() {
 
   return (
     <LensShell lensId="global" asMain={false}>
-      <FirstRunTour lensId="global" />
-      <ManifestActionBar />
-      <DepthBadge lensId="global" size="sm" className="ml-2" />
+      <FirstRunTour lensId="global" />      <DepthBadge lensId="global" size="sm" className="ml-2" />
     <div data-lens-theme="global" className="p-6 space-y-5">
       {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
       <WorldBankPanel domain="global" />
@@ -442,10 +437,7 @@ export default function GlobalLensPage() {
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <CountryAtlas />
       </section>
-    </div>
-          <RecentMineCard domain="global" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="global" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="global" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+    </div>          <CrossLensRecentsPanel lensId="global" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

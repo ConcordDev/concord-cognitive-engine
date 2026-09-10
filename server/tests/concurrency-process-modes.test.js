@@ -51,3 +51,23 @@ test("the boot-time startHeartbeat + governor kick still run for a non-replica n
   assert.match(SRC, /setTimeout\(\(\)\s*=>\s*startHeartbeat\(\),\s*45_?000\)/);
   assert.match(SRC, /_startGovernorHeartbeat\(\)/);
 });
+
+test("IS_HEARTBEAT_NODE is derived from NODE_APP_INSTANCE (unset/0 = primary)", () => {
+  assert.match(SRC, /const NODE_APP_INSTANCE_RAW\s*=\s*process\.env\.NODE_APP_INSTANCE/);
+  assert.match(SRC, /const IS_HEARTBEAT_NODE\s*=/);
+  assert.match(SRC, /String\(NODE_APP_INSTANCE_RAW\)\s*===\s*"0"/);
+});
+
+test("startHeartbeat() early-returns on non-primary NODE_APP_INSTANCE", () => {
+  const m = SRC.match(/function startHeartbeat\(\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(m, "startHeartbeat() body found");
+  const head = m[1].slice(0, 1400);
+  assert.match(head, /!IS_HEARTBEAT_NODE[\s\S]*?heartbeat_skipped_non_primary_instance/,
+    "startHeartbeat skips the tick on NODE_APP_INSTANCE != 0");
+});
+
+test("_startGovernorHeartbeat self-gates on !IS_HEARTBEAT_NODE", () => {
+  const m = SRC.match(/function _startGovernorHeartbeat\(\)\s*\{([\s\S]*?)\n\}/);
+  assert.ok(m);
+  assert.match(m[1], /!IS_HEARTBEAT_NODE[\s\S]*?non_primary_instance/);
+});

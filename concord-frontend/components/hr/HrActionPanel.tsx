@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -110,7 +111,7 @@ export function HrActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `HR snapshot — ${role || 'team'}`, tags: ['hr', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, hr: { role, location, comp: compResult, turnover: turnoverResult, interview: interviewResult, pto: ptoResult } } } });
+      const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `HR snapshot — ${role || 'team'}`, tags: ['hr', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:snapshot:mint', meta: { visibility: 'private', consent: { allowCitations: false }, hr: { role, location, comp: compResult, turnover: turnoverResult, interview: interviewResult, pto: ptoResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('hr.mintedDtuId', id, { label: `HR DTU ${id.slice(0, 8)}…` }); ok(`HR DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -138,7 +139,7 @@ export function HrActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await lensRun({ domain: 'dtu', name: 'create', input: { title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } } });
+        const r = await lensRun({ domain: 'dtu', name: 'create', input: withContentLicense({ title: `Public comp data — ${role} (${location})`, tags: ['hr', 'comp', 'public', role.toLowerCase().replace(/\s/g, '-')], source: 'hr:comp:publish', meta: { visibility: 'public', consent: { allowCitations: true }, anonymized: true, comp: { role, location, market50: compResult.market50, market75: compResult.market75 } } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

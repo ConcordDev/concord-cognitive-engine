@@ -12,7 +12,7 @@
 import React, { useState } from 'react';
 import {
   Home, Banknote, FileText, Receipt, BookOpen, ScrollText, Users, Truck,
-  PieChart as PieIcon, Calendar, Sparkles, Menu, X,
+  PieChart as PieIcon, Calendar, Sparkles, Menu, X, Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +40,8 @@ export type BooksNav =
   | 'inventory'
   | 'salestax'
   | 'purchaseorders'
-  | 'ratios';
+  | 'ratios'
+  | 'actions';
 
 interface NavItem {
   id: BooksNav;
@@ -63,6 +64,7 @@ export interface BooksShellProps {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard',   icon: Home,     group: 'core' },
   { id: 'banking',   label: 'Banking',     icon: Banknote, group: 'core' },
+  { id: 'actions',   label: 'Bench',       icon: Calculator, group: 'core' },
   { id: 'invoices',  label: 'Invoices',    icon: FileText, group: 'sales' },
   { id: 'estimates', label: 'Estimates',   icon: ScrollText, group: 'sales' },
   { id: 'recurring', label: 'Recurring',   icon: Calendar, group: 'sales' },

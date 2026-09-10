@@ -10,12 +10,9 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { PoliceFeed } from '@/components/law-enforcement/PoliceFeed';
 import { LawEnforcementActionPanel } from '@/components/law-enforcement/LawEnforcementActionPanel';
 import { RmsCadConsole } from '@/components/law-enforcement/RmsCadConsole';
@@ -67,9 +64,7 @@ export default function LawEnforcementLensPage() {
 
   return (
     <LensShell lensId="law-enforcement" asMain={false}>
-      <FirstRunTour lensId="law-enforcement" />
-      <ManifestActionBar />
-      <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
+      <FirstRunTour lensId="law-enforcement" />      <DepthBadge lensId="law-enforcement" size="sm" className="ml-2" />
       <div data-lens-theme="law-enforcement" className={ds.pageContainer}>
         <header className={ds.sectionHeader}>
           <div className="flex items-center gap-3">
@@ -115,10 +110,7 @@ export default function LawEnforcementLensPage() {
         )}
       </div>
 
-      <a href="#law-enforcement-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to law-enforcement content</a>
-      <RecentMineCard domain="law-enforcement" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="law-enforcement" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="law-enforcement" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#law-enforcement-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to law-enforcement content</a>      <CrossLensRecentsPanel lensId="law-enforcement" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

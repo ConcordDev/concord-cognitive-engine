@@ -55,3 +55,68 @@ test("resolveDualRegistry prefers lens_action over macro when both could resolve
   assert.equal(result.via, "lens_action");
   assert.equal(result.handler, handler);
 });
+
+// ── strict registration check (2026-09-10) ──────────────────────────────────
+// The "prefer LENS_ACTIONS, then MACROS" resolver used to return via:"macro"
+// for ANY pair as long as runMacro was a function — so a misnamed/nonexistent
+// (domain, action), the exact thing ConKay guesses wrong, resolved as a
+// "macro" and the caller's runMacro() then threw an opaque "macro not found".
+// With a real MACROS map to consult, an unregistered pair now returns
+// via:"none" so the caller can surface an actionable "wrong name, list the
+// real ones" error.
+
+function fakeMacros(pairs) {
+  // pairs: ["domain.name", ...] -> Map<domain, Map<name, entry>>
+  const m = new Map();
+  for (const p of pairs) {
+    const [d, n] = p.split(".");
+    if (!m.has(d)) m.set(d, new Map());
+    m.get(d).set(n, { fn: async () => ({ ok: true }) });
+  }
+  return m;
+}
+
+test("strict: a MACROS-registered pair resolves via:macro", () => {
+  const r = resolveDualRegistry("physics", "power", {
+    lensActions: new Map(), runMacro: async () => ({ ok: true }),
+    macros: fakeMacros(["physics.power", "physics.ohmsLaw"]),
+  });
+  assert.equal(r.via, "macro");
+  assert.equal(r.key, "physics.power");
+});
+
+test("strict: an UNregistered pair resolves via:none with reason not_registered", () => {
+  const r = resolveDualRegistry("physics", "teleport", {
+    lensActions: new Map(), runMacro: async () => ({ ok: true }),
+    macros: fakeMacros(["physics.power"]),
+  });
+  assert.equal(r.via, "none");
+  assert.equal(r.reason, "not_registered");
+});
+
+test("strict: LENS_ACTIONS still wins over a MACROS miss", () => {
+  const handler = async () => ({ ok: true });
+  const r = resolveDualRegistry("code", "exec", {
+    lensActions: new Map([["code.exec", handler]]),
+    runMacro: async () => ({ ok: true }),
+    macros: fakeMacros([]), // not in MACROS
+  });
+  assert.equal(r.via, "lens_action");
+  assert.equal(r.handler, handler);
+});
+
+test("strict:false opts back into permissive via:macro even with a MACROS miss", () => {
+  const r = resolveDualRegistry("physics", "teleport", {
+    lensActions: new Map(), runMacro: async () => ({ ok: true }),
+    macros: fakeMacros(["physics.power"]), strict: false,
+  });
+  assert.equal(r.via, "macro");
+});
+
+test("no MACROS map available (isolated unit context) stays permissive via:macro", () => {
+  const r = resolveDualRegistry("plugin_demo", "compute", {
+    lensActions: new Map(), runMacro: async () => ({ ok: true }),
+    // no `macros`, and globalThis._concordMACROS is unset in this test process
+  });
+  assert.equal(r.via, "macro");
+});

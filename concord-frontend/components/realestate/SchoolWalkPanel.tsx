@@ -13,8 +13,8 @@ interface Schools {
 interface Walk { walkScore: number; walkDesc: string; transitScore: number; transitDesc: string; bikeScore: number; bikeDesc: string }
 interface Commute { minutes: number; distanceMi: number; mode: string; rushHourMinutes: number }
 
-export function SchoolWalkPanel() {
-  const [address, setAddress] = useState('');
+export function SchoolWalkPanel({ initialAddress }: { initialAddress?: string }) {
+  const [address, setAddress] = useState(initialAddress ?? '');
   const [commuteTo, setCommuteTo] = useState('');
   const [commuteMode, setCommuteMode] = useState<'drive' | 'transit' | 'bike' | 'walk'>('drive');
   const [schools, setSchools] = useState<Schools | null>(null);

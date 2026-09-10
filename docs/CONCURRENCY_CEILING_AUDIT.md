@@ -236,12 +236,14 @@ The two entries are coupled — adding the `concord-heartbeat` app WITHOUT the
 `CONCORD_DISABLE_HEARTBEAT` flag on `concord-backend` runs the sim twice (2× work
 + races). Never one without the other.
 
-**launchd (the current 16 GB Mac) — not viable there.** Two full Node processes
-+ the sidecar + Ollama on a swap-maxed 16 GB box will thrash. This is an A40-box
-step. On the A40: `cp` a `com.concord.heartbeat.plist` (mirror
-`com.concord.backend.plist` with `CONCORD_HEARTBEAT_ONLY=1`, no port), add
-`CONCORD_DISABLE_HEARTBEAT=true` + `CONCORD_DTU_SIDECAR=1` to the backend plist,
-`launchctl kickstart -k` both.
+**launchd scaffold (2026-09-09) — landed, not activated on the 16 GB Mac.**
+Two full Node processes + sidecar + Ollama on a swap-maxed 16 GB box will thrash;
+this remains an A40-box step. Templates (placeholders only, no secrets):
+`infra/launchd/com.concord.backend.plist.example`,
+`com.concord.backend-i1.plist.example` (dual HTTP + `NODE_APP_INSTANCE` heartbeat
+guard), and `com.concord.heartbeat.plist.example` (Tier 1 D sim-only). Runbook:
+`docs/MULTI_INSTANCE_LAUNCHD.md`. Do **not** `pm2 stop`/`delete`/`cluster` — Mac
+self-host stays launchd.
 
 **Rollback:** unset both env vars, restart the one process. Instant.
 

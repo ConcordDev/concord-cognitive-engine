@@ -7,7 +7,7 @@
 // template, but nothing listened, so the actual THREE.js camera never
 // moved through a triggered sequence; (2) it dispatches
 // concordia:cinematic-start/-end (consumed by the letterbox UI), but
-// nothing ever switched app/lenses/world/page.tsx's cameraMode state to
+// nothing ever switched components/world/WorldOsSurface.tsx's cameraMode state to
 // 'cinematic', so ConcordiaScene.tsx's per-frame camera code (gated on
 // cameraMode !== 'cinematic') never even ran for a director-triggered
 // sequence — only for a user manually picking "Cinematic" from the
@@ -38,7 +38,7 @@ const sceneSrc = readFileSync(
   'utf8'
 );
 const pageSrc = readFileSync(
-  path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'),
+  path.resolve(__dirname, '..', 'components/world/WorldOsSurface.tsx'),
   'utf8'
 );
 

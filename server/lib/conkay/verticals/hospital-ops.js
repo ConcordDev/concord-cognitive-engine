@@ -10,8 +10,12 @@ const CHIEFS = [
   'chest_pain', 'shortness_of_breath', 'abdominal_pain', 'fever', 'fall',
   'laceration', 'headache', 'syncope', 'nausea', 'back_pain', 'ankle_sprain',
   'allergic_reaction', 'palpitations', 'confusion', 'wound_check',
+  'dizziness', 'cough', 'rash', 'urinary_symptom', 'eye_injury',
 ];
 const ESI = [1, 2, 3, 4, 5];
+const ARRIVAL = ['walk_in', 'ambulance', 'transfer', 'referral'];
+const ZONES = ['A', 'B', 'C', 'fast_track', 'obs'];
+const CHIEF_CODE = Object.fromEntries(CHIEFS.map((c, i) => [c, i]));
 
 function seededRng(seed) {
   let s = seed >>> 0;
@@ -35,16 +39,29 @@ export function generateSyntheticIntakeBatch({ n = 200, seed = 42 } = {}) {
     const spo2 = 88 + Math.floor(rnd() * 12);
     const tempC = 36 + rnd() * 3.2;
     const esiHint = ESI[Math.floor(rnd() * ESI.length)];
+    const rr = 10 + Math.floor(rnd() * 22);
+    const gcs = rnd() < 0.92 ? 15 : 9 + Math.floor(rnd() * 6);
+    const dbp = Math.max(40, sbp - 30 - Math.floor(rnd() * 25));
+    const arrivalMode = ARRIVAL[Math.floor(rnd() * ARRIVAL.length)];
+    const zone = ZONES[Math.floor(rnd() * ZONES.length)];
+    const painScore = Math.floor(rnd() * 11);
     patients.push({
       id: `SYN-${String(i + 1).padStart(5, '0')}`,
       synthetic: true,
+      schemaVersion: 'hospital.synthetic.v2',
       age,
       sex,
       chiefComplaint: chief,
-      vitals: { hr, sbp, spo2, tempC: Number(tempC.toFixed(1)) },
+      vitals: {
+        hr, sbp, dbp, spo2, tempC: Number(tempC.toFixed(1)), rr, gcs,
+      },
       arrivalMinAgo: Math.floor(rnd() * 240),
+      arrivalMode,
+      zone,
+      painScore,
       esiHint,
-      comorbidities: rnd() < 0.35 ? ['htn'] : rnd() < 0.5 ? ['dm2'] : [],
+      comorbidities: rnd() < 0.35 ? ['htn'] : rnd() < 0.5 ? ['dm2'] : rnd() < 0.3 ? ['asthma'] : [],
+      acuityNotes: rnd() < 0.2 ? 'synthetic_flag_escalate' : null,
     });
   }
   return {
@@ -70,23 +87,46 @@ export function compressHospitalPackets(batch, { preferDhtp = true, concordLive 
   const rawJson = JSON.stringify(patients);
   const originalBytes = Buffer.byteLength(rawJson, 'utf8');
 
-  // Local DHTP-style packetizer: keep risk features + ids, drop verbose vitals dump
+  // Local DHTP-style packetizer v2: enum-coded chief + compact vitals, drop verbose prose
   const packets = patients.map((p) => ({
-    id: p.id,
+    id: p.id.replace(/^SYN-/, ''), // shorter id
     a: p.age,
-    s: p.sex,
-    cc: p.chiefComplaint,
+    s: p.sex === 'F' ? 0 : 1,
+    cc: CHIEF_CODE[p.chiefComplaint] ?? p.chiefComplaint,
     esi: p.esiHint,
     hr: p.vitals?.hr,
     sbp: p.vitals?.sbp,
+    dbp: p.vitals?.dbp,
     spo2: p.vitals?.spo2,
     t: p.vitals?.tempC,
+    rr: p.vitals?.rr,
+    gcs: p.vitals?.gcs,
     wait: p.arrivalMinAgo,
-    cx: (p.comorbidities || []).join(','),
+    am: ARRIVAL.indexOf(p.arrivalMode) >= 0 ? ARRIVAL.indexOf(p.arrivalMode) : p.arrivalMode,
+    z: ZONES.indexOf(p.zone) >= 0 ? ZONES.indexOf(p.zone) : p.zone,
+    pain: p.painScore,
+    cx: (p.comorbidities || []).map((c) => ({ htn: 1, dm2: 2, asthma: 3 }[c] || c)),
   }));
   const packetJson = JSON.stringify(packets);
   const packetBytes = Buffer.byteLength(packetJson, 'utf8');
   const localRatio = originalBytes / Math.max(packetBytes, 1);
+  const ids = new Set(packets.map((x) => x.id));
+  const fieldCoverage = {
+    vitalsHr: packets.filter((x) => Number.isFinite(x.hr)).length / Math.max(packets.length, 1),
+    vitalsSpo2: packets.filter((x) => Number.isFinite(x.spo2)).length / Math.max(packets.length, 1),
+    chiefCoded: packets.filter((x) => typeof x.cc === 'number').length / Math.max(packets.length, 1),
+    arrivalCoded: packets.filter((x) => typeof x.am === 'number').length / Math.max(packets.length, 1),
+    gcs: packets.filter((x) => Number.isFinite(x.gcs)).length / Math.max(packets.length, 1),
+  };
+  const packetQuality = {
+    schemaVersion: 'hospital.packet.v2',
+    uniqueIds: ids.size,
+    uniqueIdRatio: ids.size / Math.max(packets.length, 1),
+    avgBytesPerPatientRaw: originalBytes / Math.max(patients.length, 1),
+    avgBytesPerPatientPacket: packetBytes / Math.max(packets.length, 1),
+    fieldCoverage,
+    richerThanV1: true,
+  };
 
   // Measured brotli ratios (synthetic JSON → feature packets) — real byte ratios
   let brotli = null;
@@ -149,6 +189,7 @@ export function compressHospitalPackets(batch, { preferDhtp = true, concordLive 
     localCompressionRatio: localRatio,
     brotli,
     packets,
+    packetQuality,
     packetFingerprint: createHash('sha256').update(packetJson).digest('hex').slice(0, 16),
     dhtp,
     // Prefer measured local ratio for hospital payload; DHTP ratio is HASH-DTU path (different denominator)
@@ -160,7 +201,7 @@ export function compressHospitalPackets(batch, { preferDhtp = true, concordLive 
     ms,
     honesty: {
       syntheticOnly: true,
-      note: 'Compression measured on SYNTHETIC intake JSON→feature packets (+ brotli). DHTP HASH refs reported separately — do not conflate with 10×–129× marketing claims',
+      note: 'SYNTHETIC v2 intake JSON→enum feature packets (+ brotli). DHTP HASH refs reported separately — do not conflate with 10×–129× marketing claims',
     },
   };
 }
@@ -267,6 +308,7 @@ export function runHospitalOpsCert({ n = 200, beds = 40, samples = 7, concordLiv
     originalBytes: last.compressed.originalBytes,
     packetBytes: last.compressed.packetBytes,
     compressionPath: last.compressed.compressionPath,
+    packetQuality: last.compressed.packetQuality,
     concordLive: !!concordLive,
     triage: {
       occupancy: last.triage.occupancy,

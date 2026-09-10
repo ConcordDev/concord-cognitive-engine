@@ -11,12 +11,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { BaseCampAlmanac } from '@/components/expedition-journal/BaseCampAlmanac';
 import { StageCard, type StageView } from '@/components/expedition-journal/StageCard';
 import { ExpeditionSummary, type SummaryData, type Badge } from '@/components/expedition-journal/ExpeditionSummary';
@@ -115,9 +112,7 @@ export default function ExpeditionJournalPage() {
 
   return (
     <LensShell lensId="expedition-journal" asMain={false}>
-      <FirstRunTour lensId="expedition-journal" />
-      <ManifestActionBar />
-      <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
+      <FirstRunTour lensId="expedition-journal" />      <DepthBadge lensId="expedition-journal" size="sm" className="ml-2" />
       <div className="min-h-screen bg-[#0b0f17] p-6 text-gray-100">
         <header className="mb-5">
           <h1 className="text-3xl font-semibold text-emerald-300">Expedition Journal</h1>
@@ -238,10 +233,7 @@ export default function ExpeditionJournalPage() {
         )}
 
         {!loading && !error && worlds.length > 0 && tab === 'summary' && <ExpeditionSummary data={summary} badges={badges} />}
-      </div>
-      <RecentMineCard domain="expedition-journal" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="expedition-journal" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="expedition-journal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="expedition-journal" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

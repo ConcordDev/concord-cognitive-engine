@@ -40,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pageSrc = readFileSync(
-  path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'),
+  path.resolve(__dirname, '..', 'components/world/WorldOsSurface.tsx'),
   'utf8'
 );
 

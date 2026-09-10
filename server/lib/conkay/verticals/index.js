@@ -1,5 +1,5 @@
 // server/lib/conkay/verticals/index.js
-export { buildMolecularCad, parseMolecularIntent, relaxMdProxy, forcesProxy } from './molecular-cad.js';
+export { buildMolecularCad, parseMolecularIntent, relaxMdProxy, forcesProxy, angleBendProxy } from './molecular-cad.js';
 export {
   generateSyntheticIntakeBatch,
   compressHospitalPackets,

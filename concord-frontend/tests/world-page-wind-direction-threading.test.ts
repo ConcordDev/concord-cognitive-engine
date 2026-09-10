@@ -1,7 +1,7 @@
 // Fix 3 follow-on (verification audit, 2026-07-05) — real wind direction
 // threading in the world lens.
 //
-// `app/lenses/world/page.tsx` mounted SkyWeatherRenderer, FactionBanners, and
+// `components/world/WorldOsSurface.tsx` mounted SkyWeatherRenderer, FactionBanners, and
 // InstancedGrass with `windDirection={0}` hardcoded at every site instead of
 // reading live wind data from the server's `world:weather` event
 // (server/lib/weather.js), even though the page already had a `weatherData`

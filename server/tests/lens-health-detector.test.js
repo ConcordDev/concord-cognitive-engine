@@ -102,3 +102,38 @@ describe("lens-health-detector — domain discovery", () => {
     } finally { teardown(root); }
   });
 });
+
+describe("lens-health-detector — thin-shell re-export pages (2026-09-10)", () => {
+  it("does NOT flag a `export { default } from` re-export page", async () => {
+    const root = withFixture({
+      "server/server.js": `register("code", "run", () => {});`,
+      "concord-frontend/app/lenses/code/page.tsx":
+        `'use client';\nexport { default } from '@/components/code/CodeApp';\n`,
+      "concord-frontend/app/lenses/music/page.tsx":
+        `'use client';\nexport { MusicWorkspace as default } from '@/components/music/MusicWorkspace';\n`,
+      "concord-frontend/app/lenses/atlas/page.tsx":
+        `'use client';\nexport * from '@/components/atlas/AtlasApp';\n`,
+    });
+    try {
+      const r = await runLensHealthDetector({ root });
+      const noDefault = r.findings.filter(f => f.id === "lens_no_default_export");
+      const noJsx = r.findings.filter(f => f.id === "lens_no_jsx_return");
+      assert.equal(noDefault.length, 0, `re-export shells must not be flagged for missing default export: ${JSON.stringify(noDefault)}`);
+      assert.equal(noJsx.length, 0, `re-export shells legitimately have no local JSX: ${JSON.stringify(noJsx)}`);
+    } finally { teardown(root); }
+  });
+
+  it("STILL flags a page with genuinely no default export and no JSX", async () => {
+    const root = withFixture({
+      "server/server.js": "",
+      "concord-frontend/app/lenses/broken/page.tsx":
+        `'use client';\nconst x = 1;\nexport const meta = { title: 'broken' };\n`,
+    });
+    try {
+      const r = await runLensHealthDetector({ root });
+      const noDefault = r.findings.filter(f => f.id === "lens_no_default_export");
+      assert.equal(noDefault.length, 1, "a page that is not a re-export and has no default export must still be flagged");
+      assert.equal(noDefault[0].severity, "high");
+    } finally { teardown(root); }
+  });
+});

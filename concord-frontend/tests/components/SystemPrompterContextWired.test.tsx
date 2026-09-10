@@ -5,13 +5,13 @@
 // detector.js's reverse-direction pass). The world lens page now publishes
 // a real PlayerContext (nearBuilding/nearNpc/inCombat/inWater), each field
 // read from state the page already tracks for other real purposes (see
-// app/lenses/world/page.tsx's own comment on the new effect). This file
+// components/world/WorldOsSurface.tsx's own comment on the new effect). This file
 // pins two things:
 //   1. SystemPrompter genuinely reacts to the event (component-level render).
 //   2. The world page's dispatch site is real — source-string pin, the same
 //      pattern tests/station-router-wired.test.tsx uses for the sibling
 //      concordia:building-interact wiring, since fully rendering
-//      app/lenses/world/page.tsx needs a live WebGL scene graph jsdom can't
+//      components/world/WorldOsSurface.tsx needs a live WebGL scene graph jsdom can't
 //      provide.
 
 import { describe, it, expect, afterEach } from 'vitest';

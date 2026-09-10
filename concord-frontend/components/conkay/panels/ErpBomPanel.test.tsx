@@ -13,6 +13,10 @@ describe('ErpBomPanel source contract', () => {
       'ck-erp-bom-export-csv',
       'ck-erp-bom-table',
       'ck-erp-bom-rollup',
+      'ck-erp-bom-filter',
+      'ck-erp-bom-sort',
+      'ck-erp-bom-selection',
+      'ck-erp-bom-load-feedback',
       'ck-erp-bom-honesty',
     ]) {
       expect(text).toContain(`data-testid="${id}"`);

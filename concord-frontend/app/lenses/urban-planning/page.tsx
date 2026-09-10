@@ -32,13 +32,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { LensVerticalHero } from '@/components/lens/LensVerticalHero';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion } from 'framer-motion';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
@@ -165,9 +162,7 @@ export default function UrbanPlanningLensPage() {
 
   return (
     <LensShell lensId="urban-planning" asMain={false}>
-      <FirstRunTour lensId="urban-planning" />
-      <ManifestActionBar />
-      <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
+      <FirstRunTour lensId="urban-planning" />      <DepthBadge lensId="urban-planning" size="sm" className="ml-2" />
       <LensVerticalHero lensId="urban-planning" className="mx-6 mt-4" />
       <LensPageShell
         domain="urban-planning"
@@ -310,10 +305,7 @@ export default function UrbanPlanningLensPage() {
         className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none"
       >
         Skip to urban-planning content
-      </a>
-      <RecentMineCard domain="urban-planning" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="urban-planning" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="urban-planning" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </a>      <CrossLensRecentsPanel lensId="urban-planning" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

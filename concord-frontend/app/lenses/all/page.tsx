@@ -2,13 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { useArtifacts, useCreateArtifact } from '@/lib/hooks/use-lens-artifacts';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Star, Command } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -120,9 +117,7 @@ export default function AllLensesPage() {
 
   return (
     <LensShell lensId="all" asMain={false}>
-      <FirstRunTour lensId="all" />
-      <ManifestActionBar />
-      <DepthBadge lensId="all" size="sm" className="ml-2" />
+      <FirstRunTour lensId="all" />      <DepthBadge lensId="all" size="sm" className="ml-2" />
     <div data-lens-theme="all" className="p-6 space-y-5">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div>
@@ -227,10 +222,7 @@ export default function AllLensesPage() {
 
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-      <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>
-          <RecentMineCard domain="all" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="all" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="all" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#all-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to all content</a>          <CrossLensRecentsPanel lensId="all" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

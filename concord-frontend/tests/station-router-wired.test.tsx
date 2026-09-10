@@ -43,7 +43,7 @@ describe('Phase DA2 — Station interaction router', () => {
   });
 
   // Was a source-string pin only. The world page's raycaster building-click
-  // handler (`handleConcordiaBuildingClick`, app/lenses/world/page.tsx) had
+  // handler (`handleConcordiaBuildingClick`, components/world/WorldOsSurface.tsx) had
   // its dispatch pulled out into a small, real, exported function
   // (`dispatchBuildingInteractEvent`, lib/world-lens/building-interact-
   // dispatch.ts) with byte-identical behavior to what was inline before —

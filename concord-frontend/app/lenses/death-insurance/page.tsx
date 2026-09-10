@@ -22,8 +22,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -55,7 +53,7 @@ interface PayoutHistoryResult {
 }
 
 export default function DeathInsurancePage() {
-  const [showChatter, setShowChatter] = useState(false);
+  const [desk, setDesk] = useState<'pacts' | 'community'>('pacts');
   const [written, setWritten] = useState<Pact[]>([]);
   const [beneficiaryOf, setBeneficiaryOf] = useState<Pact[]>([]);
   const [notifications, setNotifications] = useState<PactNotification[]>([]);
@@ -205,23 +203,18 @@ export default function DeathInsurancePage() {
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <button
             type="button"
-            onClick={() => setShowChatter(v => !v)}
+            onClick={() => setDesk(d => d === 'community' ? 'pacts' : 'community')}
             className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
           >
-            <span>Community discussion (Reddit)</span>
-            {showChatter ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <span>{desk === 'community' ? 'Back to pacts' : 'Community'}</span>
           </button>
-          {showChatter && (
+          {desk === 'community' && (
             <div className="mt-3">
               <InsuranceChatter />
             </div>
           )}
         </section>
-      </div>
-
-      <RecentMineCard domain="death-insurance" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="death-insurance" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="death-insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="death-insurance" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

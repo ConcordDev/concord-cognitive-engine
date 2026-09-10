@@ -217,6 +217,29 @@ for (const r of HEAVY) {
   md.push('');
 }
 
+
+md.push('## Moderate — next consolidations (score 7–12)');
+md.push('');
+if (MODERATE.length === 0) {
+  md.push('_None right now._');
+  md.push('');
+} else {
+  for (const r of MODERATE) {
+    md.push(`- \`${r.lens}\` — score ${r.stackingScore}, ${r.loc} LOC, ${r.viewStateMachines} view-SM, ${r.inlineBloat} inline-bloat`);
+  }
+  md.push('');
+}
+
+md.push('## Honest gaps (leave listed)');
+md.push('');
+md.push('- Detector is static AST/heuristics — a thin page that re-implements a second app inside one panel file will look clean while still being welded.');
+md.push('- `world` is a game client, not one app; do not treat its score as a routine consolidation ticket (see `docs/LENS_CONSOLIDATION_PLAYBOOK.md` §3).');
+md.push('- Macro-preservation (`lensRun` / `useLensData` parity) is **not** automated here — Step 5 of the playbook still requires a grepped contract check per lens.');
+md.push('- Chrome de-dup (RecentMineCard / AutoActionStrip stacked under LensFeedButton) can leave odd JSX whitespace; formatting cleanup is separate from score.');
+md.push('- Heavy lenses (`chat`, `healthcare`, `trades`, `studio`, `education`, `fitness`, `crypto`, `council`, `game`, `music`, `code`) still need full extract-to-panels passes — chrome strips alone do not drop them below 12.');
+md.push('- Baseline ratchet (`audit/lens-stacking-baseline.json`) is recommended but not wired into CI yet.');
+md.push('');
+
 fs.mkdirSync(path.join(ROOT, 'audit'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'audit', 'lens-stacking-report.md'), md.join('\n'));
 fs.writeFileSync(path.join(ROOT, 'audit', 'lens-stacking.json'), JSON.stringify({ generatedAt: new Date().toISOString(), rows }, null, 2));

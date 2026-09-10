@@ -3,15 +3,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MasonryFeed } from '@/components/masonry/MasonryFeed';
 import { MasonStuff } from '@/components/masonry/MasonStuff';
 import { ContractorSuite } from '@/components/masonry/ContractorSuite';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -80,9 +77,7 @@ export default function MasonryLensPage() {
 
   return (
     <LensShell lensId="masonry" asMain={false}>
-      <FirstRunTour lensId="masonry" />
-      <ManifestActionBar />
-      <DepthBadge lensId="masonry" size="sm" className="ml-2" />
+      <FirstRunTour lensId="masonry" />      <DepthBadge lensId="masonry" size="sm" className="ml-2" />
       <LensPageShell
         domain="masonry"
         title="Masonry"
@@ -145,10 +140,7 @@ export default function MasonryLensPage() {
         </section>
       </LensPageShell>
 
-      <a href="#masonry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to masonry content</a>
-      <RecentMineCard domain="masonry" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="masonry" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="masonry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#masonry-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to masonry content</a>      <CrossLensRecentsPanel lensId="masonry" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

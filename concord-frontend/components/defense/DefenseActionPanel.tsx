@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -105,7 +106,7 @@ export function DefenseActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Sec ops — ${readyResult?.status ?? threatResult?.overallThreatLevel ?? 'briefing'}`, tags: ['defense', 'security', readyResult?.status].filter((t): t is string => !!t), source: 'defense:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, def: { threats: threatResult, ready: readyResult, inc: incResult, spend: spendResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Sec ops — ${readyResult?.status ?? threatResult?.overallThreatLevel ?? 'briefing'}`, tags: ['defense', 'security', readyResult?.status].filter((t): t is string => !!t), source: 'defense:ops:mint', meta: { visibility: 'private', consent: { allowCitations: false }, def: { threats: threatResult, ready: readyResult, inc: incResult, spend: spendResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('defense.mintedDtuId', id, { label: `Sec DTU ${id.slice(0, 8)}…` }); ok(`Sec DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -134,7 +135,7 @@ export function DefenseActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `DoD contract briefing — ${contractKeyword}`, tags: ['defense', 'contracts', 'usaspending', 'public', contractKeyword], source: 'defense:contracts:publish', meta: { visibility: 'public', consent: { allowCitations: true }, contracts: spendResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `DoD contract briefing — ${contractKeyword}`, tags: ['defense', 'contracts', 'usaspending', 'public', contractKeyword], source: 'defense:contracts:publish', meta: { visibility: 'public', consent: { allowCitations: true }, contracts: spendResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

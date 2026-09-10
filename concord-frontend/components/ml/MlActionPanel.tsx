@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -108,7 +109,7 @@ export function MlActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `ML — ${modelType} ${taskType}`, tags: ['ml', modelType, taskType], source: 'ml:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ml: { eval: evalResult, feat: featResult, profile: profileResult, hyper: hyperResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `ML — ${modelType} ${taskType}`, tags: ['ml', modelType, taskType], source: 'ml:bench:mint', meta: { visibility: 'private', consent: { allowCitations: false }, ml: { eval: evalResult, feat: featResult, profile: profileResult, hyper: hyperResult } } }, 'knowledge', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('ml.mintedDtuId', id, { label: `ML DTU ${id.slice(0, 8)}…` }); ok(`ML DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -136,7 +137,7 @@ export function MlActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Model card — ${modelType} ${taskType}`, tags: ['ml', 'modelcard', 'public'], source: 'ml:modelcard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, modelType, taskType, eval: evalResult, profile: profileResult } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Model card — ${modelType} ${taskType}`, tags: ['ml', 'modelcard', 'public'], source: 'ml:modelcard:publish', meta: { visibility: 'public', consent: { allowCitations: true }, modelType, taskType, eval: evalResult, profile: profileResult } }, 'knowledge', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

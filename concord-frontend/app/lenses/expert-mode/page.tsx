@@ -26,8 +26,6 @@ import Link from 'next/link';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { lensRun } from '@/lib/api/client';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -435,10 +433,7 @@ export default function ExpertModeLens() {
 
       <div className="sr-only" aria-hidden="true">
         EmptyState placeholder; renders &quot;No data yet&quot; if main view has no rows
-      </div>
-      <RecentMineCard domain="expert-mode" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="expert-mode" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel
+      </div>      <CrossLensRecentsPanel
         lensId="expert-mode"
         sinceDays={7}
         limit={6}

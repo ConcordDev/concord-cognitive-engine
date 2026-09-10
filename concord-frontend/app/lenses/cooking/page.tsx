@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -14,7 +12,6 @@ import { NutritionExplorer } from '@/components/cooking/NutritionExplorer';
 import { UsdaFoodSearch } from '@/components/cooking/UsdaFoodSearch';
 import { CookingActionPanel } from '@/components/cooking/CookingActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -22,7 +19,7 @@ import { lensRun } from '@/lib/api/client';
 import { ds } from '@/lib/design-system';
 import {
   ChefHat, Timer, BookOpen, CalendarCheck, ShoppingBasket, Package, FolderHeart,
-  ChevronDown, ChevronRight,
+  Flame, Apple, UtensilsCrossed,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorState } from '@/components/common/EmptyState';
@@ -144,19 +141,32 @@ function CookingTimer() {
   );
 }
 
+type CookingView = 'recipes' | 'kitchen' | 'nutrition' | 'timer' | 'bench';
+
+const COOKING_TABS: { id: CookingView; label: string; icon: typeof BookOpen; keys: string }[] = [
+  { id: 'recipes', label: 'Recipes', icon: BookOpen, keys: 'r' },
+  { id: 'kitchen', label: 'Cook', icon: Flame, keys: 'k' },
+  { id: 'nutrition', label: 'Nutrition', icon: Apple, keys: 'n' },
+  { id: 'timer', label: 'Timer', icon: Timer, keys: 't' },
+  { id: 'bench', label: 'Bench', icon: UtensilsCrossed, keys: 'b' },
+];
+
 export default function CookingLensPage() {
   useLensNav('cooking');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('cooking');
-  const [showTimer, setShowTimer] = useState(false);
+  const [activeView, setActiveView] = useState<CookingView>('recipes');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [showActionPanel, setShowActionPanel] = useState(false);
 
   useLensCommand(
-    [
-      { id: 'toggle-timer', keys: 't', description: 'Toggle kitchen timer', category: 'view', action: () => setShowTimer((v) => !v) },
-    ],
+    COOKING_TABS.map((t) => ({
+      id: `tab-${t.id}`,
+      keys: t.keys,
+      description: t.label,
+      category: 'navigation' as const,
+      action: () => setActiveView(t.id),
+    })),
     { lensId: 'cooking' }
   );
 
@@ -180,9 +190,7 @@ export default function CookingLensPage() {
 
   return (
     <LensShell lensId="cooking" asMain={false}>
-      <FirstRunTour lensId="cooking" />
-      <ManifestActionBar />
-      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
+      <FirstRunTour lensId="cooking" />      <DepthBadge lensId="cooking" size="sm" className="ml-2" />
       <div data-lens-theme="cooking" className="p-6 space-y-6">
         <header className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -194,18 +202,7 @@ export default function CookingLensPage() {
             <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} compact />
             <DTUExportButton domain="cooking" data={realtimeData || {}} compact />
           </div>
-          <button onClick={() => setShowTimer(t => !t)} className={cn('btn-neon', showTimer && 'bg-orange-500/20 border-orange-500/40')}>
-            <Timer className="w-4 h-4 mr-1 inline" /> Timer <kbd className="text-[9px] opacity-60 ml-1">t</kbd>
-          </button>
         </header>
-
-        <AnimatePresence>
-          {showTimer && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              <CookingTimer />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {dashboardError && !summary && (
           <div role="alert">
@@ -214,51 +211,60 @@ export default function CookingLensPage() {
         )}
         <KitchenDashboardStrip summary={summary} />
 
-        {/* Paprika 3 + Samsung Food + Plan to Eat parity: recipe box,
-            scaling, meal-plan calendar, aisle-grouped shopping list,
-            pantry + cook suggestions, AI meal planner, recipe folders. */}
-        <RecipeBoxSection />
+        <nav className="flex items-center gap-1 border-b border-orange-900/40 pb-px overflow-x-auto" aria-label="Cooking views">
+          {COOKING_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveView(t.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t border-b-2 transition-colors',
+                activeView === t.id
+                  ? 'border-orange-400 text-orange-300 bg-orange-500/10'
+                  : 'border-transparent text-gray-400 hover:text-orange-200 hover:bg-orange-950/30',
+              )}
+            >
+              <t.icon className="w-4 h-4" />
+              {t.label}
+              <kbd className="text-[9px] opacity-50 ml-0.5">{t.keys}</kbd>
+            </button>
+          ))}
+        </nav>
 
-        {/* Paprika 3 + Samsung Food gap-closing surface: URL/photo
-            import, full-screen cook mode, ratings + made-it log,
-            USDA-linked nutrition, multi-store shopping, printable export. */}
-        <RecipeKitchen />
-
-        {/* Real USDA FoodData Central search */}
-        <UsdaFoodSearch domain="cooking" />
-
-        {/* Bespoke USDA FDC nutrition explorer with 3-tier collapsible card + Save-as-DTU */}
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <NutritionExplorer />
-        </section>
-
-        {/* Home-cook bench: scale/nutrition-estimate/substitution against a
-            structured ingredient editor, USDA lookups, pipe publish/DM/mint/agent. */}
-        <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeView}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-4"
           >
-            <span>Home-cook bench</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && (
-            <div className="mt-3">
-              <PipingProvider>
-                <CookingActionPanel />
-              </PipingProvider>
-            </div>
-          )}
-        </section>
+            {activeView === 'recipes' && <RecipeBoxSection />}
+            {activeView === 'kitchen' && <RecipeKitchen />}
+            {activeView === 'nutrition' && (
+              <>
+                <UsdaFoodSearch domain="cooking" />
+                <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                  <NutritionExplorer />
+                </section>
+              </>
+            )}
+            {activeView === 'timer' && <CookingTimer />}
+            {activeView === 'bench' && (
+              <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <PipingProvider>
+                  <CookingActionPanel />
+                </PipingProvider>
+              </section>
+            )}
+          </motion.div>
+        </AnimatePresence>
 
         <RealtimeDataPanel domain="cooking" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
       </div>
       <section className="mt-4 px-4"><LensFeedButton domain="cooking" label="Live recipe feed" /></section>
-      <div className="px-4">
-        <RecentMineCard domain="cooking" limit={10} hideWhenEmpty className="mt-4" />
-        <AutoActionStrip domain="cooking" hideWhenEmpty className="mt-3" title="More actions" />
-        <CrossLensRecentsPanel lensId="cooking" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <div className="px-4">        <CrossLensRecentsPanel lensId="cooking" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
   );

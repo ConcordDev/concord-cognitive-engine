@@ -25,7 +25,7 @@ describe('skill radial wheel wiring', () => {
     expect(src).toMatch(/skill:evolved|concordia:skill-learned/);
   });
   it('replaces the hardcoded skill wheel in the world lens', () => {
-    const page = read('app/lenses/world/page.tsx');
+    const page = read('components/world/WorldOsSurface.tsx');
     expect(page).toMatch(/SkillWheelMount/);
     expect(page).toMatch(/<ConcordiaHUD\.SkillWheel \/>/);
     // the bare hardcoded skill wheel is gone

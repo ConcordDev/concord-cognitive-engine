@@ -3,7 +3,7 @@
 // construction, physics character registration, 8 combat/death/knockback
 // listener registrations) used to depend on `playerAvatar`/`otherPlayers`/
 // `npcs`/`onMove`/`onEmote` where `npcs`/`onMove`/`onEmote` were fresh
-// references built inline on every render of app/lenses/world/page.tsx, and
+// references built inline on every render of components/world/WorldOsSurface.tsx, and
 // `playerAvatar` itself changed identity on every movement frame (`onMove`
 // calls `setPlayerAvatar`, which — because `onMove` fires from INSIDE the
 // effect's own per-frame movement loop — fed back into the effect's own
@@ -11,7 +11,7 @@
 // registration tore down and rebuilt on nearly every render, potentially
 // dozens of times per second during sustained movement.
 //
-// AvatarSystem3D.tsx and app/lenses/world/page.tsx both pull in Three.js
+// AvatarSystem3D.tsx and components/world/WorldOsSurface.tsx both pull in Three.js
 // scene construction, Rapier physics, and dozens of world-lens libraries that
 // aren't mountable in a jsdom test environment — the codebase's own existing
 // tests for these two files (tests/combat-prediction-camera-punch.test.ts,
@@ -38,7 +38,7 @@ const read = (rel: string) => readFileSync(path.resolve(__dirname, '..', rel), '
 
 describe('Part 1 — static pins on the production fix (source-text, matches this repo\'s established pattern for AvatarSystem3D.tsx/ConcordiaScene.tsx)', () => {
   const avatarSrc = read('components/world-lens/AvatarSystem3D.tsx');
-  const pageSrc = read('app/lenses/world/page.tsx');
+  const pageSrc = read('components/world/WorldOsSurface.tsx');
 
   it('AvatarSystem3D setup effect depends on narrow playerAvatar fields, not the whole (position-churning) object', () => {
     // The dependency array must reference the identity-relevant fields...
@@ -131,7 +131,7 @@ describe('Part 2 — behavioral proof: unstable vs. stabilized callback identity
     function BuggyParent() {
       const [, setPos] = useState(0);
       // Inline closure + fresh array literal every render — exactly the
-      // pre-fix app/lenses/world/page.tsx shape.
+      // pre-fix components/world/WorldOsSurface.tsx shape.
       const onMove = (p: number) => setPos(p);
       const npcs = [1, 2, 3];
       return <ChildWithConstructionEffect onMove={onMove} npcs={npcs} onConstruct={constructSpy} />;
@@ -158,7 +158,7 @@ describe('Part 2 — behavioral proof: unstable vs. stabilized callback identity
     expect(constructSpy).toHaveBeenCalledTimes(6); // mount + 5 re-renders, self-feeding
   });
 
-  it('FIXED shape: ref-stored volatile values + useCallback with stable deps keep the child effect from rerunning across repeated moves (the actual technique used in app/lenses/world/page.tsx)', () => {
+  it('FIXED shape: ref-stored volatile values + useCallback with stable deps keep the child effect from rerunning across repeated moves (the actual technique used in components/world/WorldOsSurface.tsx)', () => {
     const constructSpy = vi.fn();
     const positionsSeen: number[] = [];
     let capturedOnMove: ((p: number) => void) | null = null;

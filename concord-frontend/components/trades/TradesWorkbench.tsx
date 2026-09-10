@@ -41,6 +41,8 @@ export interface Contract {
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** When true, render as an in-flow panel instead of a fixed right drawer. */
+  inline?: boolean;
 }
 
 type Tab = 'jobs' | 'customers' | 'contracts';
@@ -62,21 +64,27 @@ const STATUS_COLOR: Record<Job['status'], string> = {
   cancelled: 'bg-rose-500/15 text-rose-300',
 };
 
-export function TradesWorkbench({ open, onClose }: Props) {
+export function TradesWorkbench({ open, onClose, inline = false }: Props) {
   const [tab, setTab] = useState<Tab>('jobs');
 
   if (!open) return null;
 
+  const shellClass = inline
+    ? 'w-full h-full min-h-[32rem] bg-[#0d1117] overflow-hidden flex flex-col'
+    : 'fixed inset-y-0 right-0 w-[640px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-amber-500/20 shadow-2xl overflow-hidden flex flex-col';
+
   return (
-    <div className="fixed inset-y-0 right-0 w-[640px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-amber-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className={shellClass}>
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-amber-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <Wrench className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Trades Workbench</span>
         </div>
-        <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-white/5 text-gray-400" aria-label="Close">
-          <X className="w-4 h-4" />
-        </button>
+        {!inline && (
+          <button type="button" onClick={onClose} className="p-1 rounded-md hover:bg-white/5 text-gray-400" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </header>
 
       <nav className="px-3 py-2 border-b border-white/10 flex items-center gap-1">

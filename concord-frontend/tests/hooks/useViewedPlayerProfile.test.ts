@@ -4,7 +4,7 @@ import { useViewedPlayerProfile } from '@/hooks/useViewedPlayerProfile';
 
 // V1.2 Wave A ("Society & Presence") — the dead-wire fix. Previously
 // PlayerPresence.tsx's "View Profile" button dispatched
-// `concordia:view-player-profile` (via app/lenses/world/page.tsx's
+// `concordia:view-player-profile` (via components/world/WorldOsSurface.tsx's
 // onViewProfile callback) but NOTHING captured the target playerId — the
 // profile panel always rendered the caller's own profile regardless of
 // which player was clicked. This hook is the fix: it subscribes to the real

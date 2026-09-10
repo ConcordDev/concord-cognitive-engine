@@ -45,7 +45,7 @@ export function ResearchArxiv() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
         <div className="flex items-center gap-2"><Microscope className="h-5 w-5 text-emerald-400" /><h2 className="text-sm font-semibold text-white">arXiv research search</h2><span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">arxiv · live</span></div>
-        {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-research" apiUrl={`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(q)}`} title={`arXiv research — "${q}" (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['research', 'arxiv', q.toLowerCase().replace(/\s+/g, '-')]} rawData={{ query: q, papers: list }} />}
+        {list.length > 0 && <SaveAsDtuButton compact apiSource="arxiv-research" apiUrl={`https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(q)}`} title={`arXiv research — "${q}" (${list.length})`} content={list.slice(0, 15).map((p, i) => `${i + 1}. ${p.title}\n   ${p.authors.slice(0, 3).join(', ')} · ${p.published.slice(0, 10)}\n   ${p.link}`).join('\n\n')} extraTags={['research', 'arxiv', q.toLowerCase().replace(/\s+/g, '-')]} rawData={{ query: q, papers: list }} defaultContentClass="knowledge" />}
       </header>
       <form onSubmit={(e) => { e.preventDefault(); setQ(draft.trim()); }} className="flex items-center gap-2">
         <div className="relative flex-1">

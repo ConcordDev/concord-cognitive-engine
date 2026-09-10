@@ -3,8 +3,6 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -20,7 +18,6 @@ import { UrdfViewer } from '@/components/robotics/UrdfViewer';
 import { TeleopConsole } from '@/components/robotics/TeleopConsole';
 import { SensorLogPanel } from '@/components/robotics/SensorLogPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useState, useEffect, useCallback } from 'react';
 import { Bot } from 'lucide-react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -83,9 +80,7 @@ export default function RoboticsLensPage() {
 
   return (
     <LensShell lensId="robotics" asMain={false}>
-      <FirstRunTour lensId="robotics" />
-      <ManifestActionBar />
-      <DepthBadge lensId="robotics" size="sm" className="ml-2" />
+      <FirstRunTour lensId="robotics" />      <DepthBadge lensId="robotics" size="sm" className="ml-2" />
       <div data-lens-theme="robotics" className="p-6 space-y-6">
         <ArxivPanel domain="robotics" title="arXiv · Robotics (cs.RO)" />
 
@@ -173,10 +168,7 @@ export default function RoboticsLensPage() {
         <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <RoboticsRepos />
         </section>
-      </div>
-      <RecentMineCard domain="robotics" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="robotics" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="robotics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="robotics" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -143,7 +144,7 @@ export function ObserveActionPanel() {
     try {
       const r = await api.post('/api/lens/run', {
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Observability snapshot — ${new Date().toISOString().slice(0, 10)}`,
           tags: ['observe', 'snapshot', sloResult?.status ?? 'unknown'],
           source: 'observe:snapshot:mint',
@@ -152,7 +153,7 @@ export function ObserveActionPanel() {
             consent: { allowCitations: false },
             observability: { logs: logResult, alerts: alertResult, slo: sloResult, incident: incidentResult },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -191,12 +192,12 @@ export function ObserveActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await api.post('/api/lens/run', {
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Public SLO report — ${new Date().toISOString().slice(0, 10)}`,
             tags: ['observe', 'slo', 'public', sloResult?.status ?? 'unknown'],
             source: 'observe:slo:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, slo: sloResult },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

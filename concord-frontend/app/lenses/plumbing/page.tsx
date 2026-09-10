@@ -2,15 +2,12 @@
 
 import { useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { PlumbingFeed } from '@/components/plumbing/PlumbingFeed';
 import { PlumbCalc } from '@/components/plumbing/PlumbCalc';
 import { FieldServiceConsole } from '@/components/plumbing/FieldServiceConsole';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
@@ -80,9 +77,7 @@ export default function PlumbingLensPage() {
 
   return (
     <LensShell lensId="plumbing" asMain={false}>
-      <FirstRunTour lensId="plumbing" />
-      <ManifestActionBar />
-      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
+      <FirstRunTour lensId="plumbing" />      <DepthBadge lensId="plumbing" size="sm" className="ml-2" />
       <LensPageShell
         domain="plumbing"
         title="Plumbing"
@@ -132,10 +127,7 @@ export default function PlumbingLensPage() {
         )}
       </LensPageShell>
 
-      <a href="#plumbing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to plumbing content</a>
-      <RecentMineCard domain="plumbing" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="plumbing" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="plumbing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#plumbing-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to plumbing content</a>      <CrossLensRecentsPanel lensId="plumbing" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

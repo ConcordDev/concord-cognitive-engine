@@ -64,6 +64,7 @@ export function PexelsBrowser() {
                 <div className="flex items-center justify-between text-zinc-400">
                   <span>{p.photographer}</span>
                   <SaveAsDtuButton
+                    defaultContentClass="media"
                     compact
                     apiSource="pexels"
                     apiUrl={p.pexelsUrl}

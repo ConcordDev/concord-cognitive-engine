@@ -3,7 +3,7 @@ import { reportFrontendError } from '@/lib/report-frontend-error';
 
 /**
  * Regression pin for the World Lens crash-visibility fix: the inner
- * ErrorBoundary wrapping <ConcordiaScene> (app/lenses/world/page.tsx) used
+ * ErrorBoundary wrapping <ConcordiaScene> (components/world/WorldOsSurface.tsx) used
  * to swallow every 3D-scene crash via `fallback={null}` + a silent
  * `setViewMode('concordia')` — the crash never reached the layout-level
  * RepairBoundary (React error boundaries only bubble on throw, and this one

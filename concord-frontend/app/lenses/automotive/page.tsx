@@ -25,8 +25,6 @@
 import { useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { LensFeedButton } from '@/components/lens/LensFeedButton';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -37,7 +35,6 @@ import { FuelRepairPanel } from '@/components/automotive/FuelRepairPanel';
 import { VehicleHistory } from '@/components/automotive/VehicleHistory';
 import { AutomotiveActionPanel } from '@/components/automotive/AutomotiveActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { lensRun } from '@/lib/api/client';
 import { Car, Gauge, DollarSign, AlertTriangle, Shield, ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -100,9 +97,7 @@ export default function AutomotiveLensPage() {
 
   return (
     <LensShell lensId="automotive" asMain={false}>
-      <FirstRunTour lensId="automotive" />
-      <ManifestActionBar />
-      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
+      <FirstRunTour lensId="automotive" />      <DepthBadge lensId="automotive" size="sm" className="ml-2" />
       <div data-lens-theme="automotive" className="p-4 space-y-4">
         <header className="flex items-center gap-3">
           <Car className="w-6 h-6 text-neon-cyan" />
@@ -222,10 +217,7 @@ export default function AutomotiveLensPage() {
         </section>
       </div>
 
-      <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>
-      <RecentMineCard domain="automotive" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="automotive" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="automotive" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <a href="#automotive-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to automotive content</a>      <CrossLensRecentsPanel lensId="automotive" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -51,7 +51,7 @@ describe('T3.3 — sun disk resolver', () => {
 
 describe('T3.3 — world lens wires the new identity', () => {
   const page = fs.readFileSync(
-    path.resolve(__dirname, '..', 'app/lenses/world/page.tsx'), 'utf8',
+    path.resolve(__dirname, '..', 'components/world/WorldOsSurface.tsx'), 'utf8',
   );
   test('sun disk is passed to SkyWeatherRenderer', () => {
     expect(page).toMatch(/sunDisk=\{sunDiskForWorld\(/);

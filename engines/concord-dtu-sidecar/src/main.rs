@@ -13,6 +13,8 @@
 //!   GET /v1/dtus/list?viewer=&scope=&tier=&q=&mine=&owner=&limit=&offset=
 //!                    &viewerRegional=&viewerNational=
 //!   GET /v1/dtus/recent?limit=&scope=&tier=&source=
+//!   GET /v1/wallet/balance?user=...   (Phase 3b — economy ledger sums off-loop)
+//!   GET /v1/session?tokenHash=...     (Phase 3b — auth sessions row lookup)
 //!
 //! The `list` filter is a faithful port of server.js `userVisibleDTUs` +
 //! `dtu.list`, filtering an in-memory parsed cache (refreshed every ~2.5s) by
@@ -534,6 +536,56 @@ fn respond(stream: &mut UnixStream, status: u16, body: &[u8]) {
     let _ = stream.flush();
 }
 
+
+/// Mirrors server/economy/balances.js CREDIT_ROW_PREDICATE + getBalance.
+/// Credits = SUM(net) for to_user_id rows that are NOT the redundant debit-half
+/// of TRANSFER/MARKETPLACE_PURCHASE/BOUNTY_ESCROW/BOUNTY_CLAIM split batches.
+/// Debits  = SUM(amount) for from_user_id complete rows.
+fn wallet_balance(conn: &Connection, user_id: &str) -> rusqlite::Result<(f64, f64, f64)> {
+    const CREDIT_PRED: &str = "NOT (from_user_id IS NOT NULL AND type IN ('TRANSFER','MARKETPLACE_PURCHASE','BOUNTY_ESCROW','BOUNTY_CLAIM'))";
+    let credits_cents: i64 = conn.query_row(
+        &format!(
+            "SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0)
+             FROM economy_ledger
+             WHERE to_user_id = ?1 AND status = 'complete' AND {CREDIT_PRED}"
+        ),
+        [user_id],
+        |r| r.get(0),
+    )?;
+    let debits_cents: i64 = conn.query_row(
+        "SELECT COALESCE(SUM(CAST(ROUND(amount * 100) AS INTEGER)), 0)
+         FROM economy_ledger
+         WHERE from_user_id = ?1 AND status = 'complete'",
+        [user_id],
+        |r| r.get(0),
+    )?;
+    let bal = (credits_cents - debits_cents) as f64 / 100.0;
+    Ok((bal, credits_cents as f64 / 100.0, debits_cents as f64 / 100.0))
+}
+
+/// Auth `sessions` row by token_hash (JTI). Read-only; Node remains the writer.
+fn session_by_token_hash(conn: &Connection, token_hash: &str) -> rusqlite::Result<Option<Value>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, token_hash, created_at, expires_at, ip_address, user_agent, is_revoked
+         FROM sessions WHERE token_hash = ?1 LIMIT 1",
+    )?;
+    let mut rows = stmt.query([token_hash])?;
+    if let Some(r) = rows.next()? {
+        Ok(Some(json!({
+            "id": r.get::<_, String>(0)?,
+            "userId": r.get::<_, String>(1)?,
+            "tokenHash": r.get::<_, String>(2)?,
+            "createdAt": r.get::<_, String>(3)?,
+            "expiresAt": r.get::<_, String>(4)?,
+            "ipAddress": r.get::<_, Option<String>>(5)?,
+            "userAgent": r.get::<_, Option<String>>(6)?,
+            "isRevoked": r.get::<_, i64>(7)? != 0,
+        })))
+    } else {
+        Ok(None)
+    }
+}
+
 fn handle(stream: &mut UnixStream, conn: &Connection, cache: &Cache, served: &AtomicU64) {
     let mut reader = BufReader::new(match stream.try_clone() {
         Ok(s) => s,
@@ -612,6 +664,27 @@ fn handle(stream: &mut UnixStream, conn: &Connection, cache: &Cache, served: &At
                 Err(e) => (500, json!({"ok": false, "error": e.to_string()})),
             }
         }
+        "/v1/wallet/balance" => match qp.get("user").filter(|s| !s.is_empty()) {
+            None => (400, json!({"ok": false, "error": "user required"})),
+            Some(uid) => match wallet_balance(conn, uid) {
+                Ok((balance, total_credits, total_debits)) => (200, json!({
+                    "ok": true,
+                    "userId": uid,
+                    "balance": balance,
+                    "totalCredits": total_credits,
+                    "totalDebits": total_debits,
+                })),
+                Err(e) => (500, json!({"ok": false, "error": e.to_string()})),
+            },
+        },
+        "/v1/session" => match qp.get("tokenHash").filter(|s| !s.is_empty()) {
+            None => (400, json!({"ok": false, "error": "tokenHash required"})),
+            Some(th) => match session_by_token_hash(conn, th) {
+                Ok(Some(s)) => (200, json!({"ok": true, "session": s})),
+                Ok(None) => (404, json!({"ok": false, "error": "session_not_found"})),
+                Err(e) => (500, json!({"ok": false, "error": e.to_string()})),
+            },
+        },
         _ => (404, json!({"ok": false, "error": "not_found"})),
     };
 

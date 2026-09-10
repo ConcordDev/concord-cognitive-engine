@@ -53,8 +53,11 @@ export interface FlightPlan {
 }
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  /** Drawer mode: when false the overlay is not rendered. Ignored when `embedded`. */
+  open?: boolean;
+  onClose?: () => void;
+  /** Inline first-class EFB pane (no overlay, no close chrome). */
+  embedded?: boolean;
 }
 
 const FLIGHT_CAT_COLOR: Record<MetarReport['flightCategory'], string> = {
@@ -67,24 +70,31 @@ const FLIGHT_CAT_COLOR: Record<MetarReport['flightCategory'], string> = {
 
 type Tab = 'weather' | 'airports' | 'perf' | 'plans';
 
-export function AviationWorkbench({ open, onClose }: Props) {
+export function AviationWorkbench({ open = true, onClose, embedded = false }: Props) {
   const [tab, setTab] = useState<Tab>('weather');
 
-  if (!open) return null;
+  if (!embedded && !open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[600px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-sky-500/20 shadow-2xl overflow-hidden flex flex-col">
+    <div className={cn(
+      'bg-[#0d1117] overflow-hidden flex flex-col',
+      embedded
+        ? 'rounded-xl border border-sky-500/20 min-h-[520px]'
+        : 'fixed inset-y-0 right-0 w-[600px] max-w-[100vw] z-40 border-l border-sky-500/20 shadow-2xl',
+    )}>
       <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-sky-950/40 to-transparent">
         <div className="flex items-center gap-2">
           <Plane className="w-4 h-4 text-sky-400" />
           <span className="text-sm font-semibold text-gray-200">Aviation Workbench</span>
         </div>
-        <button type="button" onClick={onClose}
-          className="p-1 rounded-md hover:bg-white/5 text-gray-400"
-          aria-label="Close workbench"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {!embedded && onClose && (
+          <button type="button" onClick={onClose}
+            className="p-1 rounded-md hover:bg-white/5 text-gray-400"
+            aria-label="Close workbench"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </header>
 
       <nav className="px-3 py-2 border-b border-white/10 flex items-center gap-1 overflow-x-auto">

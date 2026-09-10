@@ -1,5 +1,5 @@
 // Regression coverage for two unstable-prop-identity bugs in
-// app/lenses/world/page.tsx, both found chasing a live "no game, just
+// components/world/WorldOsSurface.tsx, both found chasing a live "no game, just
 // panels" report: the World Lens's WorldEntryOverlay never reached
 // `sceneReady` because the page kept re-triggering child effects that
 // exist to run once (or on genuine data change), driving React's

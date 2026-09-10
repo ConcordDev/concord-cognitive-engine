@@ -65,12 +65,13 @@ export function registerEconomyRoutes(app, db, opts = {}) {
 
   // ── Balance ────────────────────────────────────────────────────────────────
 
-  app.get("/api/economy/balance", (req, res) => {
+  app.get("/api/economy/balance", async (req, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) return res.status(401).json({ ok: false, error: "unauthorized" });
 
-      const result = getBalance(db, userId);
+      // CONCORD_WALLET_SIDECAR=1 → Rust UDS sums; else sync SQLite (fail-soft).
+      const result = await getBalancePreferSidecar(db, userId);
       res.json({ ok: true, userId, ...result });
     } catch (err) {
       log("error", "economy_balance_fetch_failed", { error: err.message });

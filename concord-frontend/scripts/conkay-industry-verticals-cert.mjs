@@ -120,9 +120,11 @@ const overclaimsRejected = [
   const samples = [];
   let last = null;
   let caffeine = null;
-  for (const text of ['H2O', 'C2H6O', 'PEG n=12', 'water', 'caffeine', 'C6H6']) {
+  let c60 = null;
+  let sucrose = null;
+  for (const text of ['H2O', 'C2H6O', 'PEG n=24', 'water', 'caffeine', 'C6H6', 'sucrose', 'C60']) {
     const t0 = Date.now();
-    const r = buildMolecularCad({ text, relaxSteps: 48 });
+    const r = buildMolecularCad({ text, relaxSteps: 96 });
     const e2e = Date.now() - t0;
     samples.push({
       text,
@@ -137,13 +139,15 @@ const overclaimsRejected = [
     });
     if (r.ok) last = r;
     if (text === 'caffeine' && r.ok) caffeine = r;
+    if (text === 'C60' && r.ok) c60 = r;
+    if (text === 'sucrose' && r.ok) sucrose = r;
   }
   const msList = samples.filter((s) => s.ok).map((s) => s.e2eMs).sort((a, b) => a - b);
   const apiToken = await tryLogin();
   let api = null;
   if (apiToken) {
     try {
-      api = await apiPost(apiToken, '/api/conkay/molecular/build', { text: 'caffeine', relaxSteps: 48 });
+      api = await apiPost(apiToken, '/api/conkay/molecular/build', { text: 'C60', relaxSteps: 96 });
     } catch (e) {
       api = { error: e?.message || String(e) };
     }
@@ -156,9 +160,11 @@ const overclaimsRejected = [
     last.proxy?.label === 'PROXY' &&
     msList.length >= 4 &&
     !!last.proxy?.mdRelax &&
-    last.proxy.mdRelax.steps >= 24 &&
+    last.proxy.mdRelax.steps >= 64 &&
     (caffeine?.atoms?.length || 0) >= 20 &&
-    (caffeine?.bonds?.length || 0) >= 20;
+    (caffeine?.bonds?.length || 0) >= 20 &&
+    (c60?.atoms?.length || 0) >= 60 &&
+    (sucrose?.atoms?.length || 0) >= 40;
   gates.V1 = {
     name: 'Molecular CAD (physics geometry PROXY + MD relax)',
     pass,
@@ -174,6 +180,10 @@ const overclaimsRejected = [
       mdRelax: last?.proxy?.mdRelax ?? null,
       caffeineAtoms: caffeine?.atoms?.length ?? null,
       caffeineBonds: caffeine?.bonds?.length ?? null,
+      c60Atoms: c60?.atoms?.length ?? null,
+      c60Bonds: c60?.bonds?.length ?? null,
+      sucroseAtoms: sucrose?.atoms?.length ?? null,
+      angleBend: last?.proxy?.angleBend ?? null,
       meshVertexCount: last?.mesh?.vertexCount ?? null,
       meshTriangleCount: last?.mesh?.triangleCount ?? null,
       apiLive: !!(api?.json?.ok),
@@ -184,7 +194,7 @@ const overclaimsRejected = [
     route: 'POST /api/conkay/molecular/build',
     honesty: last?.honesty || null,
   };
-  fs.writeFileSync(path.join(PROOF_DIR, 'v1-molecular.json'), JSON.stringify({ last, samples, caffeine, api }, null, 2));
+  fs.writeFileSync(path.join(PROOF_DIR, 'v1-molecular.json'), JSON.stringify({ last, samples, caffeine, c60, sucrose, api }, null, 2));
 }
 
 // ── V2 Hospital ───────────────────────────────────────────────
@@ -211,7 +221,10 @@ const overclaimsRejected = [
     Number.isFinite(hosp.latencyMs?.p50) &&
     Number.isFinite(hosp.latencyMs?.p95) &&
     hosp.honesty?.syntheticOnly === true &&
-    hosp.dhtpOk === true;
+    hosp.dhtpOk === true &&
+    hosp.packetQuality?.schemaVersion === 'hospital.packet.v2' &&
+    (hosp.packetQuality?.fieldCoverage?.chiefCoded || 0) >= 0.9 &&
+    (hosp.packetQuality?.uniqueIdRatio || 0) >= 0.99;
   gates.V2 = {
     name: 'Hospital ops packets + triage (SYNTHETIC ONLY)',
     pass,
@@ -228,6 +241,7 @@ const overclaimsRejected = [
       dhtpConcordLive: hosp.dhtpConcordLive,
       concordLive,
       compressionPath: hosp.compressionPath,
+      packetQuality: hosp.packetQuality,
       note: 'Hospital gate uses local feature-packet + brotli ratios. DHTP HASH DTU ref ratio is reported separately and MUST NOT be quoted as EHR compression.',
       triage: hosp.triage,
       latencyMs: hosp.latencyMs,
@@ -326,8 +340,10 @@ const overclaimsRejected = [
     Array.isArray(last.pressureMap) &&
     last.pressureMap.length >= 32 &&
     Array.isArray(last.alphaCurve) &&
-    last.alphaCurve.length >= 8 &&
-    (last.coefficients?.panelCount || 0) >= 200;
+    last.alphaCurve.length >= 12 &&
+    (last.coefficients?.panelCount || 0) >= 2000 &&
+    (last.pressureMap?.length || 0) >= 64 &&
+    (last.coefficients?.chordPts || 0) >= 48;
   gates.V5 = {
     name: 'Aerodynamics panel CFD PROXY (multi-α)',
     pass,
@@ -347,6 +363,9 @@ const overclaimsRejected = [
       pressureMapCount: last.pressureMap?.length,
       meshVerts: last.mesh?.vertexCount,
       meshTris: last.mesh?.triangleCount,
+      chordPts: last.coefficients?.chordPts,
+      spanPts: last.coefficients?.spanPts,
+      camber: last.coefficients?.camber,
     },
     honesty: last.honesty,
   };

@@ -10,8 +10,6 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -19,7 +17,6 @@ import { ToolsRepos } from '@/components/tools/ToolsRepos';
 import { WebResearchTool } from '@/components/tools/WebResearchTool';
 import { CompileTool } from '@/components/tools/CompileTool';
 import { ESignatureTool } from '@/components/tools/ESignatureTool';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -50,9 +47,7 @@ export default function ToolsLensPage() {
 
   return (
     <LensShell lensId="tools" asMain={false}>
-      <FirstRunTour lensId="tools" />
-      <ManifestActionBar />
-      <DepthBadge lensId="tools" size="sm" className="ml-2" />
+      <FirstRunTour lensId="tools" />      <DepthBadge lensId="tools" size="sm" className="ml-2" />
       <div className="min-h-screen bg-black pb-12 text-yellow-50">
         <header className="sticky top-0 z-10 border-b border-yellow-900/50 bg-black/95 px-4 py-3 backdrop-blur md:px-8">
           <div className="mx-auto flex max-w-7xl items-center gap-3">
@@ -116,11 +111,7 @@ export default function ToolsLensPage() {
             </div>
           )}
         </section>
-      </div>
-
-      <RecentMineCard domain="tools" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="tools" hideWhenEmpty className="mt-3" />
-      <CrossLensRecentsPanel lensId="tools" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      </div>      <CrossLensRecentsPanel lensId="tools" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

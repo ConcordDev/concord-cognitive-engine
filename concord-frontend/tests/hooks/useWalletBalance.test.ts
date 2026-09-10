@@ -10,7 +10,7 @@ import { useWalletBalance } from '@/hooks/useWalletBalance';
 // Regression coverage: HUDOverlay's bottom-bar currency readout used to
 // pass a literal `{ concordCoin: 0 }` regardless of the player's real
 // balance (a "zero demo content" violation — see the HUD-honesty fix in
-// app/lenses/world/page.tsx). This hook is the shared real source both
+// components/world/WorldOsSurface.tsx). This hook is the shared real source both
 // CurrencyHUD and HUDOverlay now read from instead of each maintaining
 // (or, in HUDOverlay's case, fabricating) their own copy.
 describe('useWalletBalance', () => {

@@ -194,3 +194,28 @@ export function buildContentLicensePayload(
     },
   };
 }
+
+/**
+ * Wrap a dtu.create input with contentClass + license scopes.
+ * Preserves existing title/tags/source/meta; merges contentClass into meta.
+ */
+export function withContentLicense<T extends Record<string, unknown>>(
+  input: T,
+  contentClass: string,
+  licenseScopes: string[],
+): T {
+  const payload = buildContentLicensePayload(
+    contentClass,
+    licenseScopes,
+    (input.meta as Record<string, unknown>) || undefined,
+  );
+  return {
+    ...input,
+    contentClass: payload.contentClass,
+    licenseScopes: payload.licenseScopes,
+    scopes: payload.scopes,
+    license: payload.license,
+    meta: payload.meta,
+  } as T;
+}
+

@@ -1,0 +1,2217 @@
+'use client';
+
+/**
+ * EditorPanel — Overleaf-shaped manuscript + research-pipeline workspace.
+ * Owns papers / hypotheses / evidence / experiments / synthesis / bibliography
+ * and every live useLensData / runArtifact / readability / citationAnalyze wire
+ * that used to sit inline in app/lenses/paper/page.tsx.
+ */
+
+import { motion } from 'framer-motion';
+import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { showToast } from '@/components/common/Toasts';
+import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
+import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import {
+  FileText, Plus, Search, Calendar, FlaskConical, CheckCircle, AlertTriangle,
+  BookOpen, Lightbulb, Beaker, Brain, Library, ChevronDown, ChevronRight,
+  X, Trash2, Edit3, Save, Download, BarChart3, Clock,
+  Link2, ArrowUpDown, Copy, FileDown, Quote, Hash, Target,
+  TrendingUp, TrendingDown, ListTree, PanelRightClose,
+  RefreshCw, Sparkles, ShieldCheck, AlertCircle, type LucideIcon
+} from 'lucide-react';
+import { ErrorState } from '@/components/common/EmptyState';
+import { useMutation } from '@tanstack/react-query';
+import { apiHelpers } from '@/lib/api/client';
+import { ds } from '@/lib/design-system';
+import { cn } from '@/lib/utils';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type ModeTab = 'papers' | 'hypotheses' | 'evidence' | 'experiments' | 'synthesis' | 'bibliography';
+
+interface PaperData {
+  excerpt?: string;
+  wordCount?: number;
+  content?: string;
+  sections?: PaperSection[];
+  doi?: string;
+}
+
+interface PaperSection {
+  heading: string;
+  body: string;
+}
+
+interface HypothesisData {
+  statement?: string;
+  status?: 'proposed' | 'testing' | 'supported' | 'refuted';
+  confidence?: number;
+  linkedEvidence?: string[];
+  linkedExperiments?: string[];
+  rationale?: string;
+}
+
+interface EvidenceData {
+  source?: string;
+  strength?: 'weak' | 'moderate' | 'strong';
+  type?: 'empirical' | 'theoretical' | 'anecdotal';
+  summary?: string;
+  linkedHypotheses?: string[];
+}
+
+interface ExperimentData {
+  status?: 'planned' | 'running' | 'completed' | 'failed';
+  methodology?: string;
+  results?: string;
+  conclusions?: string;
+  linkedHypothesis?: string;
+  linkedEvidence?: string[];
+  startDate?: string;
+  endDate?: string;
+}
+
+interface CitationData {
+  doi?: string;
+  authors?: string;
+  year?: number;
+  journal?: string;
+  volume?: string;
+  pages?: string;
+  url?: string;
+  citedByCount?: number;
+  style?: 'apa' | 'mla' | 'chicago';
+}
+
+type _AnyData = PaperData | HypothesisData | EvidenceData | ExperimentData | CitationData;
+
+// Helper type-safe data accessor
+function getData<T>(item: LensItem): T {
+  return (item.data ?? {}) as T;
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MODE_TABS: { key: ModeTab; label: string; icon: LucideIcon }[] = [
+  { key: 'papers', label: 'Papers', icon: FileText },
+  { key: 'hypotheses', label: 'Hypotheses', icon: Lightbulb },
+  { key: 'evidence', label: 'Evidence', icon: ShieldCheck },
+  { key: 'experiments', label: 'Experiments', icon: Beaker },
+  { key: 'synthesis', label: 'Synthesis', icon: Brain },
+  { key: 'bibliography', label: 'Bibliography', icon: Library },
+];
+
+const PAPER_SECTIONS = [
+  'Abstract', 'Introduction', 'Literature Review', 'Methods', 'Results', 'Discussion', 'Conclusion',
+];
+
+const HYPOTHESIS_STATUSES: HypothesisData['status'][] = ['proposed', 'testing', 'supported', 'refuted'];
+const EVIDENCE_STRENGTHS: EvidenceData['strength'][] = ['weak', 'moderate', 'strong'];
+const EVIDENCE_TYPES: EvidenceData['type'][] = ['empirical', 'theoretical', 'anecdotal'];
+const EXPERIMENT_STATUSES: ExperimentData['status'][] = ['planned', 'running', 'completed', 'failed'];
+const CITATION_STYLES: CitationData['style'][] = ['apa', 'mla', 'chicago'];
+
+const STATUS_COLORS: Record<string, string> = {
+  proposed: 'neon-blue',
+  testing: 'neon-cyan',
+  supported: 'neon-green',
+  refuted: 'red-400',
+  planned: 'gray-400',
+  running: 'neon-cyan',
+  completed: 'neon-green',
+  failed: 'red-400',
+  weak: 'red-400',
+  moderate: 'yellow-400',
+  strong: 'neon-green',
+  empirical: 'neon-blue',
+  theoretical: 'neon-purple',
+  anecdotal: 'gray-400',
+};
+
+// ---------------------------------------------------------------------------
+// Helper: Citation Formatters
+// ---------------------------------------------------------------------------
+
+function formatAPA(c: CitationData & { title?: string }): string {
+  const authors = c.authors || 'Unknown';
+  const year = c.year || 'n.d.';
+  const title = c.title || 'Untitled';
+  const journal = c.journal ? ` ${c.journal}` : '';
+  const vol = c.volume ? `, ${c.volume}` : '';
+  const pages = c.pages ? `, ${c.pages}` : '';
+  return `${authors} (${year}). ${title}.${journal}${vol}${pages}.`;
+}
+
+function formatMLA(c: CitationData & { title?: string }): string {
+  const authors = c.authors || 'Unknown';
+  const title = c.title || 'Untitled';
+  const journal = c.journal || '';
+  const vol = c.volume ? ` ${c.volume}` : '';
+  const year = c.year || 'n.d.';
+  const pages = c.pages ? `: ${c.pages}` : '';
+  return `${authors}. "${title}." ${journal}${vol} (${year})${pages}.`;
+}
+
+function formatChicago(c: CitationData & { title?: string }): string {
+  const authors = c.authors || 'Unknown';
+  const title = c.title || 'Untitled';
+  const journal = c.journal ? ` ${c.journal}` : '';
+  const vol = c.volume ? ` ${c.volume}` : '';
+  const year = c.year || 'n.d.';
+  const pages = c.pages ? `: ${c.pages}` : '';
+  return `${authors}. "${title}."${journal}${vol} (${year})${pages}.`;
+}
+
+function formatCitation(c: CitationData & { title?: string }, style: CitationData['style']): string {
+  switch (style) {
+    case 'mla': return formatMLA(c);
+    case 'chicago': return formatChicago(c);
+    default: return formatAPA(c);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function EditorPanel() {
+  // ---- State ----
+  const [activeTab, setActiveTab] = useState<ModeTab>('papers');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+
+  // Lens-scoped keyboard commands. Zotero / Mendeley idiom: single
+  // letters jump between research-pipeline modes.
+  useLensCommand(
+    [
+      { id: 'mode-papers', keys: 'p', description: 'Papers', category: 'navigation', action: () => setActiveTab('papers') },
+      { id: 'mode-hypotheses', keys: 'h', description: 'Hypotheses', category: 'navigation', action: () => setActiveTab('hypotheses') },
+      { id: 'mode-evidence', keys: 'e', description: 'Evidence', category: 'navigation', action: () => setActiveTab('evidence') },
+      { id: 'mode-experiments', keys: 'x', description: 'Experiments', category: 'navigation', action: () => setActiveTab('experiments') },
+      { id: 'mode-synthesis', keys: 's', description: 'Synthesis', category: 'navigation', action: () => setActiveTab('synthesis') },
+      { id: 'mode-bib', keys: 'b', description: 'Bibliography', category: 'navigation', action: () => setActiveTab('bibliography') },
+    ],
+    { lensId: 'paper' }
+  );
+
+  // ── ⌘K command palette + ⌘N new + / focus search (Notion idiom) ───
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIdx, setPaletteIdx] = useState(0);
+  const paletteInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useLensCommand(
+    [
+      { id: 'palette',     keys: 'mod+k',     description: 'Quick search (across all types)', category: 'navigation', action: () => { setPaletteIdx(0); setPaletteOpen(true); }, global: true },
+      { id: 'new-item',    keys: 'mod+n',     description: 'New item in current tab',         category: 'actions',    action: () => { resetCreateForm(); setCreateModalOpen(true); }, global: true },
+      { id: 'focus-search', keys: '/',         description: 'Focus search',                    category: 'navigation', action: () => searchInputRef.current?.focus() },
+    ],
+    { lensId: 'paper' }
+  );
+
+  useEffect(() => {
+    if (paletteOpen) {
+      requestAnimationFrame(() => paletteInputRef.current?.focus());
+    }
+  }, [paletteOpen]);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorContent, setEditorContent] = useState('');
+  const [editorTitle, setEditorTitle] = useState('');
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Abstract']));
+  const [sortField, setSortField] = useState<'updatedAt' | 'title'>('updatedAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [citationStyle, setCitationStyle] = useState<CitationData['style']>('apa');
+
+  // ---- Modal state for creating items ----
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newStatement, setNewStatement] = useState('');
+  const [newSource, setNewSource] = useState('');
+  const [newStrength, setNewStrength] = useState<EvidenceData['strength']>('moderate');
+  const [newEvidenceType, setNewEvidenceType] = useState<EvidenceData['type']>('empirical');
+  const [newMethodology, setNewMethodology] = useState('');
+  const [newDoi, setNewDoi] = useState('');
+  const [newAuthors, setNewAuthors] = useState('');
+  const [newYear, setNewYear] = useState('');
+  const [newJournal, setNewJournal] = useState('');
+
+  // ---- Synthesis state ----
+  const [synthesisResult, setSynthesisResult] = useState<string | null>(null);
+
+  // ---- Readability (paper.readabilityScore) — computed on demand while
+  // drafting; separate from synthesisResult so it survives a tab switch. ----
+  const [readability, setReadability] = useState<{
+    fleschKincaidGrade: number; fleschReadingEase: number; gunningFog: number; readingLevel: string;
+    stats: { words: number; sentences: number; avgWordsPerSentence: number; avgSyllablesPerWord: number; complexWordRate: number };
+    message?: string;
+  } | null>(null);
+  const [checkingReadability, setCheckingReadability] = useState(false);
+  const checkReadability = useCallback(async () => {
+    if (editorContent.trim().length < 50) { showToast('info', 'Write at least 50 characters to score readability.'); return; }
+    setCheckingReadability(true);
+    try {
+      const res = await apiHelpers.lens.runDomain('paper', 'readabilityScore', { input: { text: editorContent } });
+      const result = (res as { data?: { ok: boolean; result?: typeof readability } }).data?.result;
+      setReadability(result || null);
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Readability check failed');
+    } finally {
+      setCheckingReadability(false);
+    }
+  }, [editorContent]);
+
+  // ---- Artifact type mapping for each tab ----
+  const typeForTab: Record<ModeTab, string> = useMemo(() => ({
+    papers: 'project',
+    hypotheses: 'hypothesis',
+    evidence: 'evidence',
+    experiments: 'experiment',
+    synthesis: 'project',
+    bibliography: 'citation',
+  }), []);
+
+  // ---- Data hooks ----
+  const {
+    isLoading, isError, error, refetch, items: paperItems,
+    create: createArtifact, update: updateArtifact, remove: removeArtifact,
+  } = useLensData('paper', typeForTab[activeTab], {
+    search: searchQuery || undefined,
+    tags: selectedTag ? [selectedTag] : undefined,
+    status: statusFilter || undefined,
+  });
+
+  // Fetch all types for dashboard stats
+  const { items: allPapers } = useLensData('paper', 'project', { noSeed: true });
+  const { items: allHypotheses } = useLensData('paper', 'hypothesis', { noSeed: true });
+  const { items: allEvidence } = useLensData('paper', 'evidence', { noSeed: true });
+  const { items: allExperiments } = useLensData('paper', 'experiment', { noSeed: true });
+  const { items: allCitations } = useLensData('paper', 'citation', { noSeed: true });
+
+  const runArtifact = useRunArtifact('paper');
+
+  // ---- Validation mutation (existing pattern) ----
+  const [validationResults, setValidationResults] = useState<Record<string, { passRate: number; issueCount: number; claimsChecked: number }>>({});
+  const validateMutation = useMutation({
+    mutationFn: async (artifact: { id: string; title: string; data: Record<string, unknown> }) => {
+      const res = await apiHelpers.bridge.lensValidate(artifact);
+      return { id: artifact.id, result: res.data };
+    },
+    onSuccess: (data) => {
+      if (data.result?.ok) {
+        setValidationResults(prev => ({
+          ...prev,
+          [data.id]: {
+            passRate: data.result.passRate ?? 1,
+            issueCount: data.result.issueCount ?? 0,
+            claimsChecked: data.result.claimsChecked ?? 0,
+          },
+        }));
+      }
+    },
+    onError: (err) => {
+      console.error('Validation failed:', err instanceof Error ? err.message : err);
+    },
+  });
+
+  // ---- Derived data ----
+  const allTags = useMemo(
+    () => Array.from(new Set(paperItems.flatMap(item => item.meta?.tags || []))),
+    [paperItems]
+  );
+
+  const selectedItem = useMemo(
+    () => paperItems.find(i => i.id === selectedItemId) || null,
+    [paperItems, selectedItemId]
+  );
+
+  const sortedItems = useMemo(() => {
+    const clone = [...paperItems];
+    clone.sort((a, b) => {
+      const va = sortField === 'title' ? a.title : a.updatedAt;
+      const vb = sortField === 'title' ? b.title : b.updatedAt;
+      const cmp = String(va).localeCompare(String(vb));
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return clone;
+  }, [paperItems, sortField, sortDir]);
+
+  // ---- Stat counts ----
+  const stats = useMemo(() => ({
+    papers: allPapers.length,
+    hypotheses: allHypotheses.filter(h => {
+      const d = getData<HypothesisData>(h);
+      return d.status === 'proposed' || d.status === 'testing';
+    }).length,
+    evidence: allEvidence.length,
+    experiments: allExperiments.filter(e => getData<ExperimentData>(e).status === 'completed').length,
+  }), [allPapers, allHypotheses, allEvidence, allExperiments]);
+
+  // ---- Callbacks ----
+  const toggleSection = useCallback((s: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(s)) { next.delete(s); } else { next.add(s); }
+      return next;
+    });
+  }, []);
+
+  const wordCount = useMemo(() => editorContent.split(/\s+/).filter(Boolean).length, [editorContent]);
+  const readingTime = useMemo(() => Math.max(1, Math.ceil(wordCount / 250)), [wordCount]);
+
+  const openEditor = useCallback((item: LensItem) => {
+    const d = getData<PaperData>(item);
+    setEditorTitle(item.title);
+    setEditorContent(d.content || d.excerpt || '');
+    setSelectedItemId(item.id);
+    setEditorOpen(true);
+    setReadability(null);
+  }, []);
+
+  const saveEditor = useCallback(async () => {
+    if (!selectedItemId) return;
+    await updateArtifact(selectedItemId, {
+      title: editorTitle,
+      data: {
+        content: editorContent,
+        excerpt: editorContent.slice(0, 200),
+        wordCount,
+      },
+    });
+    setEditorOpen(false);
+  }, [selectedItemId, editorTitle, editorContent, wordCount, updateArtifact]);
+
+  const openDetail = useCallback((item: LensItem) => {
+    setSelectedItemId(item.id);
+    setDetailOpen(true);
+  }, []);
+
+  const handleCreate = useCallback(async () => {
+    try {
+      switch (activeTab) {
+        case 'papers':
+          await createArtifact({ title: newTitle || 'Untitled Paper', data: { wordCount: 0, excerpt: '', content: '', sections: PAPER_SECTIONS.map(h => ({ heading: h, body: '' })) }, meta: { tags: [] } });
+          break;
+        case 'hypotheses':
+          await createArtifact({ title: newTitle || 'Untitled Hypothesis', data: { statement: newStatement, status: 'proposed', confidence: 50, linkedEvidence: [], linkedExperiments: [], rationale: '' }, meta: { tags: [] } });
+          break;
+        case 'evidence':
+          await createArtifact({ title: newTitle || 'Untitled Evidence', data: { source: newSource, strength: newStrength, type: newEvidenceType, summary: '', linkedHypotheses: [] }, meta: { tags: [] } });
+          break;
+        case 'experiments':
+          await createArtifact({ title: newTitle || 'Untitled Experiment', data: { status: 'planned', methodology: newMethodology, results: '', conclusions: '', linkedHypothesis: '', linkedEvidence: [] }, meta: { tags: [] } });
+          break;
+        case 'bibliography':
+          await createArtifact({ title: newTitle || 'Untitled Citation', data: { doi: newDoi, authors: newAuthors, year: parseInt(newYear) || undefined, journal: newJournal, citedByCount: 0 }, meta: { tags: [] } });
+          break;
+        default:
+          break;
+      }
+      setCreateModalOpen(false);
+      resetCreateForm();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to create item');
+    }
+  }, [activeTab, newTitle, newStatement, newSource, newStrength, newEvidenceType, newMethodology, newDoi, newAuthors, newYear, newJournal, createArtifact]);
+
+  const resetCreateForm = () => {
+    setNewTitle('');
+    setNewStatement('');
+    setNewSource('');
+    setNewStrength('moderate');
+    setNewEvidenceType('empirical');
+    setNewMethodology('');
+    setNewDoi('');
+    setNewAuthors('');
+    setNewYear('');
+    setNewJournal('');
+  };
+
+  // Extract the item's own real text into a flat claims list so the
+  // 'validate' macro (paper.js empirical-gate bridge, which only ever reads
+  // artifact.data.claims) has something real to check — the create forms
+  // above never populate .claims, so without this every Validate click
+  // silently reported "0 claims" no matter how much real content the item
+  // held. Every string here is the user's own text; nothing is invented.
+  const claimsFromItem = useCallback((item: LensItem, tab: ModeTab): string[] => {
+    const d = item.data as Record<string, unknown>;
+    const pick = (...vals: unknown[]) => vals.filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
+    switch (tab) {
+      case 'papers': return pick(d.excerpt, d.content);
+      case 'hypotheses': return pick(d.statement, d.rationale);
+      case 'evidence': return pick(d.summary, d.source);
+      case 'experiments': return pick(d.methodology, d.results, d.conclusions);
+      default: return [];
+    }
+  }, []);
+
+  const handleDomainAction = useCallback(async (action: string) => {
+    if (!selectedItemId || !selectedItem) return;
+    try {
+      // Give the empirical validator real content to check (see claimsFromItem
+      // above) before running it — a no-op "validated 0 claims" click is a
+      // dead feature, not an honest result.
+      if (action === 'validate') {
+        const existing = ((selectedItem.data as Record<string, unknown>)?.claims as unknown[]) || [];
+        if (existing.length === 0) {
+          const texts = claimsFromItem(selectedItem, activeTab);
+          if (texts.length > 0) {
+            await updateArtifact(selectedItemId, { data: { ...selectedItem.data, claims: texts.map((text, i) => ({ id: `c${i}`, text })) } });
+          }
+        }
+      }
+      // register("lens","run") on the server always answers with an outer
+      // { ok:true, result }, even when the domain handler itself reported
+      // failure — the handler's own ok/error lives inside `result`. Check
+      // both layers so a real failure never silently reads as success.
+      const response = await runArtifact.mutateAsync({ id: selectedItemId, action });
+      const inner = (response?.result ?? null) as Record<string, unknown> | null;
+      const failed = response?.ok === false || (inner && typeof inner === 'object' && inner.ok === false);
+      if (failed) {
+        const msg = String((response as Record<string, unknown>)?.error || inner?.error || inner?.message || 'Unknown error');
+        setSynthesisResult(`Action failed: ${msg}`);
+        showToast('error', `${action} failed: ${msg}`);
+        return;
+      }
+      if (action === 'validate') {
+        const emp = inner?.empirical as { passRate?: number; issueCount?: number; claimsChecked?: number } | null | undefined;
+        const validated = Number(inner?.validated ?? 0);
+        if (emp) {
+          setValidationResults(prev => ({ ...prev, [selectedItemId]: { passRate: emp.passRate ?? 1, issueCount: emp.issueCount ?? 0, claimsChecked: emp.claimsChecked ?? 0 } }));
+          showToast(emp.issueCount ? 'warning' : 'success', `Validated ${validated} claim${validated === 1 ? '' : 's'} — ${Math.round((emp.passRate ?? 1) * 100)}% pass, ${emp.issueCount ?? 0} issue${(emp.issueCount ?? 0) === 1 ? '' : 's'}.`);
+        } else {
+          showToast('info', validated > 0 ? `Validated ${validated} claim(s); empirical gate unavailable.` : 'No claims to validate on this item.');
+        }
+      } else if (action === 'detect-contradictions') {
+        const count = Number(inner?.count ?? 0);
+        setSynthesisResult(count > 0 ? JSON.stringify(inner?.contradictions, null, 2) : 'No contradictions detected among this item’s claims.');
+        showToast(count > 0 ? 'warning' : 'success', count > 0 ? `Found ${count} contradiction${count === 1 ? '' : 's'}.` : 'No contradictions detected.');
+      } else if (action === 'abstractSummarize' || action === 'generate_abstract') {
+        const summary = inner?.summary as string | undefined;
+        if (summary) {
+          const keywords = (inner?.keywords as string[] | undefined) || [];
+          setSynthesisResult(`${summary}\n\nKeywords: ${keywords.length ? keywords.join(', ') : '—'}`);
+          showToast('success', 'Abstract generated — see the Synthesis tab.');
+        } else {
+          showToast('info', String(inner?.message || 'Add more text to this item before generating an abstract.'));
+        }
+      } else if (action === 'synthesize') {
+        const synthesis = inner?.synthesis as { narrative?: string } | undefined;
+        setSynthesisResult(synthesis?.narrative ? synthesis.narrative : (typeof inner === 'string' ? inner : JSON.stringify(inner, null, 2)));
+      } else if (action === 'export_pdf') {
+        const exp = inner as { filename?: string; content?: string } | undefined;
+        if (exp?.content) {
+          const blob = new Blob([exp.content], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = exp.filename || 'paper.txt'; a.click();
+          URL.revokeObjectURL(url);
+          setSynthesisResult(`Exported ${exp.filename || 'paper.txt'} (${exp.content.length} chars).`);
+          showToast('success', `Exported ${exp.filename || 'paper.txt'}.`);
+        }
+      }
+    } catch (e) {
+      console.error(`Paper action ${action} failed:`, e);
+      showToast('error', e instanceof Error ? e.message : `Action ${action} failed`);
+    }
+  }, [selectedItemId, selectedItem, activeTab, runArtifact, updateArtifact, claimsFromItem]);
+
+  const handleExportCSV = useCallback(() => {
+    const headers = ['Title', 'Type', 'Tags', 'Status', 'Updated'];
+    const rows = paperItems.map(i => [
+      i.title,
+      typeForTab[activeTab],
+      (i.meta?.tags || []).join('; '),
+      i.meta?.status || '',
+      i.updatedAt,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `paper-lens-${activeTab}-export.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [paperItems, activeTab, typeForTab]);
+
+  const handleExportBibTeX = useCallback(() => {
+    const entries = allCitations.map((c, idx) => {
+      const d = getData<CitationData>(c);
+      const key = `ref${idx + 1}`;
+      return `@article{${key},\n  author = {${d.authors || ''}},\n  title = {${c.title}},\n  journal = {${d.journal || ''}},\n  year = {${d.year || ''}},\n  doi = {${d.doi || ''}}\n}`;
+    });
+    const bibtex = entries.join('\n\n');
+    const blob = new Blob([bibtex], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'bibliography.bib';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [allCitations]);
+
+  const handleExportLaTeX = useCallback(() => {
+    if (!selectedItem) return;
+    const d = getData<PaperData>(selectedItem);
+    const sections = d.sections || PAPER_SECTIONS.map(h => ({ heading: h, body: '' }));
+    const latex = [
+      '\\documentclass{article}',
+      '\\usepackage[utf8]{inputenc}',
+      `\\title{${selectedItem.title}}`,
+      '\\author{}',
+      '\\date{\\today}',
+      '\\begin{document}',
+      '\\maketitle',
+      ...sections.map(s => `\\section{${s.heading}}\n${s.body || ''}`),
+      '\\end{document}',
+    ].join('\n\n');
+    const blob = new Blob([latex], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedItem.title.replace(/\s+/g, '_')}.tex`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [selectedItem]);
+
+  // ---- Loading state ----
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Error state ----
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <ErrorState error={error?.message} onRetry={refetch} />
+      </div>
+    );
+  }
+
+  // ====================================================================
+  // RENDER
+  // ====================================================================
+
+  return (
+    <>
+    <div className="space-y-4">
+      {/* ---- Manuscript header ---- */}
+      <header className={ds.sectionHeader}>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-[var(--lens-accent)]/20 border border-[var(--lens-accent)]/30">
+            <FileText className="w-6 h-6 text-[var(--lens-accent)]" />
+          </div>
+          <div>
+            <h2 className={ds.heading2}>Manuscript</h2>
+            <p className={ds.textMuted}>
+              Overleaf-shaped editor — papers, hypotheses, evidence, experiments, synthesis, bibliography
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExportCSV} className={cn(ds.btnGhost, ds.btnSmall)} title="Export CSV">
+            <Download className="w-4 h-4" /> CSV
+          </button>
+          <button onClick={handleExportBibTeX} className={cn(ds.btnGhost, ds.btnSmall)} title="Export BibTeX">
+            <FileDown className="w-4 h-4" /> BibTeX
+          </button>
+          {selectedItem && activeTab === 'papers' && (
+            <button onClick={handleExportLaTeX} className={cn(ds.btnGhost, ds.btnSmall)} title="Export LaTeX">
+              <FileDown className="w-4 h-4" /> LaTeX
+            </button>
+          )}
+          <button
+            onClick={() => { resetCreateForm(); setCreateModalOpen(true); }}
+            className={ds.btnPrimary}
+          >
+            <Plus className="w-4 h-4" />
+            New {activeTab === 'bibliography' ? 'Citation' : activeTab.slice(0, -1).replace(/^./, c => c.toUpperCase())}
+          </button>
+        </div>
+      </header>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Papers', value: stats.papers, icon: FileText },
+          { label: 'Citations', value: allCitations.length, icon: Link2 },
+          { label: 'Hypotheses', value: stats.hypotheses, icon: Lightbulb },
+          { label: 'Experiments', value: stats.experiments, icon: Beaker },
+        ].map((stat) => (
+          <div key={stat.label} className={ds.panel + ' flex items-center gap-3 p-3'}>
+            <stat.icon className="w-5 h-5 text-neon-purple shrink-0" />
+            <div>
+              <p className="text-xs text-gray-400">{stat.label}</p>
+              <p className="text-lg font-bold text-white">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ---- Dashboard Stats ---- */}
+      <div className={ds.grid4}>
+        <StatCard icon={FileText} label="Total Papers" value={stats.papers} color="neon-purple" />
+        <StatCard icon={Lightbulb} label="Active Hypotheses" value={stats.hypotheses} color="neon-blue" />
+        <StatCard icon={ShieldCheck} label="Evidence Items" value={stats.evidence} color="neon-cyan" />
+        <StatCard icon={Beaker} label="Experiments Run" value={stats.experiments} color="neon-green" />
+      </div>
+
+      {/* ---- Mode Tabs ---- */}
+      <div className="flex items-center gap-1 border-b border-lattice-border pb-0 flex-wrap">
+        {MODE_TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setSelectedItemId(null); setDetailOpen(false); setEditorOpen(false); }}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                isActive
+                  ? 'border-neon-purple text-neon-purple'
+                  : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+              <span className={cn(
+                'text-xs px-1.5 py-0.5 rounded-full',
+                isActive ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'
+              )}>
+                {activeTab === tab.key ? sortedItems.length : '--'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ---- Search & Filters ---- */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[220px] relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={`Search ${activeTab}…  (⌘K = all types)`}
+            className={cn(ds.input, 'pl-10 pr-16')}
+          />
+          <kbd className="hidden sm:inline-block absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono pointer-events-none">/</kbd>
+        </div>
+        <select value={selectedTag || ''} onChange={e => setSelectedTag(e.target.value || null)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
+          <option value="">All Tags</option>
+          {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+        </select>
+        {(activeTab === 'hypotheses' || activeTab === 'experiments') && (
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={cn(ds.select, 'w-auto min-w-[140px]')}>
+            <option value="">All Statuses</option>
+            {(activeTab === 'hypotheses' ? HYPOTHESIS_STATUSES : EXPERIMENT_STATUSES).map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        )}
+        <button
+          onClick={() => { setSortDir(d => d === 'asc' ? 'desc' : 'asc'); }}
+          className={cn(ds.btnGhost, ds.btnSmall)}
+          title={`Sort ${sortDir === 'asc' ? 'descending' : 'ascending'}`}
+        >
+          <ArrowUpDown className="w-4 h-4" />
+        </button>
+        <button onClick={() => setSortField(f => f === 'title' ? 'updatedAt' : 'title')} className={cn(ds.btnGhost, ds.btnSmall)}>
+          {sortField === 'title' ? 'By Date' : 'By Name'}
+        </button>
+      </div>
+
+      {/* ---- Domain Actions Bar ---- */}
+      {selectedItemId && (
+        <div className={cn(ds.panel, 'flex flex-wrap items-center gap-2')}>
+          <span className={ds.textMuted}>Actions:</span>
+          <button onClick={() => handleDomainAction('validate')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+            <FlaskConical className="w-3.5 h-3.5" /> Validate Claims
+          </button>
+          <button onClick={() => handleDomainAction('detect-contradictions')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+            <ShieldCheck className="w-3.5 h-3.5" /> Check Consistency
+          </button>
+          <button onClick={() => handleDomainAction('abstractSummarize')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+            <Sparkles className="w-3.5 h-3.5" /> Generate Abstract
+          </button>
+          <button onClick={() => handleDomainAction('export_pdf')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+            <FileDown className="w-3.5 h-3.5" /> Export PDF
+          </button>
+          {runArtifact.isPending && <RefreshCw className="w-4 h-4 text-neon-cyan animate-spin" />}
+        </div>
+      )}
+
+      {/* ---- Main Content Area ---- */}
+      <div className="flex gap-4 min-h-[500px]">
+        {/* Left: Items list / Editor left panel */}
+        <div className={cn('flex-1 space-y-4', detailOpen && 'max-w-[65%]')}>
+          {/* ---- Editor Split View (Papers tab) ---- */}
+          {editorOpen && activeTab === 'papers' && (
+            <div className="grid grid-cols-[240px_1fr] gap-4 mb-4">
+              {/* Document Outline */}
+              <div className={cn(ds.panel, 'space-y-1 max-h-[600px] overflow-y-auto')}>
+                <h3 className={cn(ds.heading3, 'text-sm mb-2 flex items-center gap-2')}>
+                  <ListTree className="w-4 h-4 text-neon-purple" /> Outline
+                </h3>
+                {PAPER_SECTIONS.map(section => (
+                  <button
+                    key={section}
+                    onClick={() => toggleSection(section)}
+                    className={cn(
+                      'w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors',
+                      expandedSections.has(section)
+                        ? 'bg-neon-purple/10 text-neon-purple'
+                        : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
+                    )}
+                  >
+                    {expandedSections.has(section) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    {section}
+                  </button>
+                ))}
+              </div>
+
+              {/* Editor Panel */}
+              <div className={cn(ds.panel, 'space-y-3')}>
+                <div className="flex items-center justify-between">
+                  <input
+                    type="text"
+                    value={editorTitle}
+                    onChange={e => setEditorTitle(e.target.value)}
+                    className={cn(ds.input, 'text-lg font-semibold bg-transparent border-none focus:ring-0 p-0')}
+                    placeholder="Paper title..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                      <Hash className="w-3 h-3" /> {wordCount} words
+                    </span>
+                    <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                      <Clock className="w-3 h-3" /> {readingTime} min read
+                    </span>
+                  </div>
+                </div>
+                {/* Section navigation */}
+                <div className="flex flex-wrap gap-1">
+                  {PAPER_SECTIONS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => toggleSection(s)}
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full transition-colors',
+                        expandedSections.has(s) ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <PaperComposer
+                  content={editorContent}
+                  onChange={setEditorContent}
+                  allPapers={allPapers}
+                  allHypotheses={allHypotheses}
+                  allEvidence={allEvidence}
+                  allExperiments={allExperiments}
+                />
+                {readability && (
+                  <div className={cn(ds.panel, 'flex flex-wrap items-center gap-4 py-2')}>
+                    {readability.message ? (
+                      <span className={ds.textMuted}>{readability.message}</span>
+                    ) : (
+                      <>
+                        <div>
+                          <span className={ds.textMuted}>Reading level</span>
+                          <p className="text-sm font-semibold text-white">{readability.readingLevel}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Flesch-Kincaid grade</span>
+                          <p className="text-sm font-semibold text-white">{readability.fleschKincaidGrade}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Reading ease</span>
+                          <p className="text-sm font-semibold text-white">{readability.fleschReadingEase}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Gunning Fog</span>
+                          <p className="text-sm font-semibold text-white">{readability.gunningFog}</p>
+                        </div>
+                        <div>
+                          <span className={ds.textMuted}>Complex words</span>
+                          <p className="text-sm font-semibold text-white">{readability.stats.complexWordRate}%</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setEditorOpen(false)} className={cn(ds.btnGhost, ds.btnSmall)}>
+                      <X className="w-4 h-4" /> Cancel
+                    </button>
+                    <button onClick={checkReadability} disabled={checkingReadability} className={cn(ds.btnSecondary, ds.btnSmall)}>
+                      {checkingReadability ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+                      Check Readability
+                    </button>
+                  </div>
+                  <button onClick={saveEditor} className={cn(ds.btnPrimary, ds.btnSmall)}>
+                    <Save className="w-4 h-4" /> Save Paper
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ---- Tab-Specific Content ---- */}
+          {activeTab === 'papers' && !editorOpen && <PapersGrid items={sortedItems} onEdit={openEditor} onSelect={openDetail} onValidate={(item) => validateMutation.mutate({ id: item.id, title: item.title, data: item.data as Record<string, unknown> })} validationResults={validationResults} isValidating={validateMutation.isPending} />}
+          {activeTab === 'hypotheses' && <HypothesesList items={sortedItems} onSelect={openDetail} allEvidence={allEvidence} />}
+          {activeTab === 'evidence' && <EvidenceBoard items={sortedItems} onSelect={openDetail} />}
+          {activeTab === 'experiments' && <ExperimentLog items={sortedItems} onSelect={openDetail} />}
+          {activeTab === 'synthesis' && <SynthesisEngine items={sortedItems} allHypotheses={allHypotheses} allEvidence={allEvidence} allExperiments={allExperiments} synthesisResult={synthesisResult} onRunSynthesize={() => { if (sortedItems[0]) { setSelectedItemId(sortedItems[0].id); handleDomainAction('synthesize'); } }} isPending={runArtifact.isPending} />}
+          {activeTab === 'bibliography' && <BibliographyManager items={sortedItems} onSelect={openDetail} citationStyle={citationStyle} onStyleChange={setCitationStyle} />}
+
+          {sortedItems.length === 0 && !editorOpen && (
+            <div className={cn(ds.panel, 'text-center py-16')}>
+              <BookOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className={ds.heading3}>No {activeTab} found</p>
+              <p className={cn(ds.textMuted, 'mt-2')}>Create your first {activeTab === 'bibliography' ? 'citation' : activeTab.slice(0, -1)} to get started.</p>
+              <button onClick={() => { resetCreateForm(); setCreateModalOpen(true); }} className={cn(ds.btnPrimary, 'mt-4')}>
+                <Plus className="w-4 h-4" /> Create
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* ---- Detail Side Panel ---- */}
+        {detailOpen && selectedItem && (
+          <div className={cn(ds.panel, 'w-[35%] min-w-[300px] max-h-[calc(100vh-200px)] overflow-y-auto space-y-4 sticky top-6')}>
+            <div className="flex items-center justify-between">
+              <h3 className={ds.heading3}>Detail</h3>
+              <button onClick={() => setDetailOpen(false)} className={ds.btnGhost} aria-label="Panel right close">
+                <PanelRightClose className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <span className={ds.label}>Title</span>
+                <p className="text-white font-medium">{selectedItem.title}</p>
+              </div>
+
+              <div>
+                <span className={ds.label}>Type</span>
+                <p className={ds.textMono}>{typeForTab[activeTab]}</p>
+              </div>
+
+              <div>
+                <span className={ds.label}>Tags</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(selectedItem.meta?.tags || []).length > 0
+                    ? selectedItem.meta.tags.map((t: string) => (
+                        <span key={t} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{t}</span>
+                      ))
+                    : <span className={ds.textMuted}>No tags</span>
+                  }
+                </div>
+              </div>
+
+              <div>
+                <span className={ds.label}>Last Updated</span>
+                <p className={cn(ds.textMuted, 'flex items-center gap-1')}>
+                  <Calendar className="w-3 h-3" /> {new Date(selectedItem.updatedAt).toLocaleString()}
+                </p>
+              </div>
+
+              <div>
+                <span className={ds.label}>Version</span>
+                <p className={ds.textMono}>v{selectedItem.version}</p>
+              </div>
+
+              {/* Tab-specific detail fields */}
+              {activeTab === 'papers' && <PaperDetailFields item={selectedItem} />}
+              {activeTab === 'hypotheses' && <HypothesisDetailFields item={selectedItem} allEvidence={allEvidence} />}
+              {activeTab === 'evidence' && <EvidenceDetailFields item={selectedItem} />}
+              {activeTab === 'experiments' && <ExperimentDetailFields item={selectedItem} />}
+              {activeTab === 'bibliography' && <CitationDetailFields item={selectedItem} citationStyle={citationStyle} />}
+
+              {/* Validation results in detail */}
+              {validationResults[selectedItem.id] && (
+                <div className="space-y-1">
+                  <span className={ds.label}>Validation</span>
+                  <div className={cn('p-2 rounded-lg', validationResults[selectedItem.id].passRate >= 0.8 ? 'bg-neon-green/10' : 'bg-red-500/10')}>
+                    <p className="text-sm text-white">Pass Rate: {Math.round(validationResults[selectedItem.id].passRate * 100)}%</p>
+                    <p className={ds.textMuted}>{validationResults[selectedItem.id].claimsChecked} claims checked, {validationResults[selectedItem.id].issueCount} issues</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Version History Placeholder */}
+              <div>
+                <span className={ds.label}>Version History</span>
+                <div className="space-y-1 mt-1">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Clock className="w-3 h-3" />
+                    <span>v{selectedItem.version} -- {new Date(selectedItem.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                  {selectedItem.version > 1 && (
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Clock className="w-3 h-3" />
+                      <span>v1 -- {new Date(selectedItem.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t border-lattice-border">
+                {activeTab === 'papers' && (
+                  <button onClick={() => openEditor(selectedItem)} className={cn(ds.btnSecondary, ds.btnSmall)}>
+                    <Edit3 className="w-3.5 h-3.5" /> Edit
+                  </button>
+                )}
+                <button
+                  onClick={async () => {
+                    await removeArtifact(selectedItem.id);
+                    setDetailOpen(false);
+                    setSelectedItemId(null);
+                  }}
+                  className={cn(ds.btnDanger, ds.btnSmall)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ---- Create Modal ---- */}
+      {createModalOpen && (
+        <>
+          <div className={ds.modalBackdrop} onClick={() => setCreateModalOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
+          <div className={ds.modalContainer}>
+            <div className={cn(ds.modalPanel, 'max-w-lg p-6 space-y-4')}>
+              <div className="flex items-center justify-between">
+                <h2 className={ds.heading2}>
+                  New {activeTab === 'bibliography' ? 'Citation' : activeTab.slice(0, -1).replace(/^./, c => c.toUpperCase())}
+                </h2>
+                <button onClick={() => setCreateModalOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className={ds.label}>Title</label>
+                  <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} className={ds.input} placeholder="Enter title..." />
+                </div>
+
+                {activeTab === 'hypotheses' && (
+                  <div>
+                    <label className={ds.label}>Hypothesis Statement</label>
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newHypothesisStatement"
+                      initial=""
+                      onValueChange={setNewStatement}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="State your hypothesis..."
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'evidence' && (
+                  <>
+                    <div>
+                      <label className={ds.label}>Source</label>
+                      <input type="text" value={newSource} onChange={e => setNewSource(e.target.value)} className={ds.input} placeholder="Source of evidence..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={ds.label}>Strength</label>
+                        <select value={newStrength} onChange={e => setNewStrength(e.target.value as EvidenceData['strength'])} className={ds.select}>
+                          {EVIDENCE_STRENGTHS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className={ds.label}>Type</label>
+                        <select value={newEvidenceType} onChange={e => setNewEvidenceType(e.target.value as EvidenceData['type'])} className={ds.select}>
+                          {EVIDENCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'experiments' && (
+                  <div>
+                    <label className={ds.label}>Methodology</label>
+                    <DraftedTextarea
+                      lensId="paper"
+                      draftKey="newExperimentMethodology"
+                      initial=""
+                      onValueChange={setNewMethodology}
+                      className={cn(ds.textarea, 'min-h-[80px]')}
+                      placeholder="Describe methodology..."
+                    />
+                  </div>
+                )}
+
+                {activeTab === 'bibliography' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className={ds.label}>DOI</label>
+                        <input type="text" value={newDoi} onChange={e => setNewDoi(e.target.value)} className={ds.input} placeholder="10.xxxx/xxxxx" />
+                      </div>
+                      <div>
+                        <label className={ds.label}>Year</label>
+                        <input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} className={ds.input} placeholder="2024" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className={ds.label}>Authors</label>
+                      <input type="text" value={newAuthors} onChange={e => setNewAuthors(e.target.value)} className={ds.input} placeholder="Last, F. M. & Last, F. M." />
+                    </div>
+                    <div>
+                      <label className={ds.label}>Journal</label>
+                      <input type="text" value={newJournal} onChange={e => setNewJournal(e.target.value)} className={ds.input} placeholder="Journal of..." />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button onClick={() => setCreateModalOpen(false)} className={ds.btnSecondary}>Cancel</button>
+                <button onClick={handleCreate} className={ds.btnPrimary}>
+                  <Plus className="w-4 h-4" /> Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+
+    {/* ── ⌘K command palette — searches across all 6 artifact types ── */}
+    {paletteOpen && (() => {
+      // Build a unified, type-tagged list of every paper artifact.
+      const sources: { items: LensItem[]; tab: ModeTab; label: string; }[] = [
+        { items: allPapers,      tab: 'papers',       label: 'paper' },
+        { items: allHypotheses,  tab: 'hypotheses',   label: 'hypothesis' },
+        { items: allEvidence,    tab: 'evidence',     label: 'evidence' },
+        { items: allExperiments, tab: 'experiments',  label: 'experiment' },
+        { items: allCitations,   tab: 'bibliography', label: 'citation' },
+      ];
+      const q = paletteQuery.trim().toLowerCase();
+      const all = sources.flatMap((s) =>
+        s.items.map((it) => ({ id: `${s.tab}:${it.id}`, item: it, tab: s.tab, label: s.label }))
+      );
+      const filtered = q
+        ? all.filter((r) => r.item.title?.toLowerCase().includes(q))
+        : all.slice(0, 50);
+      const top = filtered.slice(0, 50);
+
+      const choose = (r: typeof top[number]) => {
+        setActiveTab(r.tab);
+        setSelectedItemId(r.item.id);
+        setDetailOpen(true);
+        setPaletteOpen(false);
+        setPaletteQuery('');
+      };
+
+      return (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
+          onClick={() => setPaletteOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Quick search" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div
+            className="bg-[#0d1117] border border-violet-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+              <Search className="w-4 h-4 text-violet-400" />
+              <input
+                ref={paletteInputRef}
+                value={paletteQuery}
+                onChange={(e) => { setPaletteQuery(e.target.value); setPaletteIdx(0); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setPaletteOpen(false); return; }
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.min(i + 1, top.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setPaletteIdx((i) => Math.max(i - 1, 0));
+                  } else if (e.key === 'Enter' && top[paletteIdx]) {
+                    e.preventDefault();
+                    choose(top[paletteIdx]);
+                  }
+                }}
+                placeholder="Search papers, hypotheses, evidence, experiments, citations…"
+                className="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-white/30"
+              />
+              <kbd className="text-[10px] text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 font-mono">esc</kbd>
+            </div>
+            <ul className="max-h-[50vh] overflow-y-auto py-1">
+              {top.length === 0 ? (
+                <li className="px-4 py-3 text-xs text-white/40 italic">No matches.</li>
+              ) : top.map((r, i) => (
+                <li
+                  key={r.id}
+                  onMouseEnter={() => setPaletteIdx(i)}
+                  onClick={() => choose(r)}
+                  className={`px-4 py-2 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                    i === paletteIdx ? 'bg-violet-500/10 border-l-2 border-violet-400' : 'border-l-2 border-transparent hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-sm text-white truncate flex-1 min-w-0">{r.item.title || r.item.id.slice(0, 24)}</span>
+                  <span className="text-[10px] text-violet-300 shrink-0 font-mono uppercase tracking-wide">{r.label}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="px-4 py-2 border-t border-white/10 text-[10px] text-white/40 flex items-center justify-between">
+              <span>↑↓ navigate · ↵ open · ⌘N new</span>
+              <span>{top.length} {top.length === 1 ? 'result' : 'results'}</span>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+    </>
+  );
+}
+
+// ===========================================================================
+// Sub-components
+// ===========================================================================
+
+// ---- Paper Composer (Notion/Roam-flavoured editor) ----
+// Slash menu (`/` at line start) inserts markdown blocks; `[[` opens a
+// wikilink picker that completes from papers/hypotheses/evidence/experiments;
+// a togglable preview pane renders rendered markdown next to the source.
+type Suggestable = { id: string; title: string; kind: string };
+
+function PaperComposer({
+  content,
+  onChange,
+  allPapers,
+  allHypotheses,
+  allEvidence,
+  allExperiments,
+}: {
+  content: string;
+  onChange: (next: string) => void;
+  allPapers: LensItem[];
+  allHypotheses: LensItem[];
+  allEvidence: LensItem[];
+  allExperiments: LensItem[];
+}) {
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Composer popups (slash menu + wikilink picker) ------------------
+  const [popup, setPopup] = useState<null | { kind: 'slash' | 'wiki'; query: string; from: number; to: number; idx: number }>(null);
+
+  const SLASH: Array<{ id: string; label: string; hint: string; insert: string }> = useMemo(() => [
+    { id: 'h1',     label: 'Heading 1',      hint: '# ',                       insert: '# ' },
+    { id: 'h2',     label: 'Heading 2',      hint: '## ',                      insert: '## ' },
+    { id: 'h3',     label: 'Heading 3',      hint: '### ',                     insert: '### ' },
+    { id: 'quote',  label: 'Quote',          hint: '> ',                       insert: '> ' },
+    { id: 'code',   label: 'Code block',     hint: '```lang',                  insert: '```\n\n```\n' },
+    { id: 'list',   label: 'Bulleted list',  hint: '- ',                       insert: '- ' },
+    { id: 'ol',     label: 'Numbered list',  hint: '1. ',                      insert: '1. ' },
+    { id: 'todo',   label: 'Task',           hint: '- [ ]',                    insert: '- [ ] ' },
+    { id: 'cite',   label: 'Citation',       hint: '[@key]',                   insert: '[@cite-key]' },
+    { id: 'hr',     label: 'Divider',        hint: '---',                      insert: '\n---\n' },
+    { id: 'figure', label: 'Figure',         hint: '![caption](url)',          insert: '![caption](url)' },
+    { id: 'table',  label: 'Table',          hint: '| col | col |',            insert: '| Header | Header |\n| --- | --- |\n| cell | cell |\n' },
+    { id: 'wiki',   label: 'Wikilink',       hint: '[[title]]',                insert: '[[]]' },
+  ], []);
+
+  const corpus: Suggestable[] = useMemo(() => {
+    const tag = (kind: string) => (it: LensItem) => ({ id: it.id, title: it.title, kind });
+    return [
+      ...allPapers.map(tag('paper')),
+      ...allHypotheses.map(tag('hypothesis')),
+      ...allEvidence.map(tag('evidence')),
+      ...allExperiments.map(tag('experiment')),
+    ];
+  }, [allPapers, allHypotheses, allEvidence, allExperiments]);
+
+  const slashFiltered = useMemo(() => {
+    if (!popup || popup.kind !== 'slash') return [] as typeof SLASH;
+    const q = popup.query.toLowerCase();
+    return q ? SLASH.filter((s) => s.id.includes(q) || s.label.toLowerCase().includes(q)) : SLASH;
+  }, [popup, SLASH]);
+
+  const wikiFiltered = useMemo(() => {
+    if (!popup || popup.kind !== 'wiki') return [] as Suggestable[];
+    const q = popup.query.toLowerCase().trim();
+    const out = q
+      ? corpus.filter((c) => c.title.toLowerCase().includes(q))
+      : corpus;
+    return out.slice(0, 12);
+  }, [popup, corpus]);
+
+  // Detect composer triggers from the textarea's caret position --------
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const next = e.target.value;
+    onChange(next);
+    const pos = e.target.selectionStart ?? next.length;
+    // Wikilink trigger: scan back to nearest `[[` on the same line
+    const lineStart = next.lastIndexOf('\n', pos - 1) + 1;
+    const lineSoFar = next.slice(lineStart, pos);
+    const wikiOpen = lineSoFar.lastIndexOf('[[');
+    const wikiClose = lineSoFar.lastIndexOf(']]');
+    if (wikiOpen >= 0 && wikiOpen > wikiClose) {
+      const query = lineSoFar.slice(wikiOpen + 2);
+      setPopup({ kind: 'wiki', query, from: lineStart + wikiOpen, to: pos, idx: 0 });
+      return;
+    }
+    // Slash trigger: `/foo` at line start (or after whitespace)
+    const slashMatch = lineSoFar.match(/(^|\s)\/(\w*)$/);
+    if (slashMatch) {
+      const triggerStart = lineStart + (slashMatch.index || 0) + (slashMatch[1] ? slashMatch[1].length : 0);
+      setPopup({ kind: 'slash', query: slashMatch[2], from: triggerStart, to: pos, idx: 0 });
+      return;
+    }
+    setPopup(null);
+  }, [onChange]);
+
+  const applySuggestion = useCallback((sugg: { kind: 'slash' | 'wiki'; insertText: string }) => {
+    if (!popup || !taRef.current) return;
+    const ta = taRef.current;
+    const before = content.slice(0, popup.from);
+    const after = content.slice(popup.to);
+    const inserted = sugg.insertText;
+    let caretOffset = inserted.length;
+    if (sugg.kind === 'slash' && inserted.includes('```\n\n```')) {
+      caretOffset = inserted.indexOf('\n\n') + 1;
+    }
+    if (sugg.kind === 'wiki' && inserted.startsWith('[[') && inserted.endsWith(']]')) {
+      caretOffset = inserted.length;
+    }
+    const next = before + inserted + after;
+    onChange(next);
+    setPopup(null);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = before.length + caretOffset;
+      ta.setSelectionRange(pos, pos);
+    });
+  }, [content, popup, onChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!popup) return;
+    const list = popup.kind === 'slash' ? slashFiltered : wikiFiltered;
+    if (!list.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setPopup({ ...popup, idx: (popup.idx + 1) % list.length }); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setPopup({ ...popup, idx: (popup.idx - 1 + list.length) % list.length }); return; }
+    if (e.key === 'Escape')    { e.preventDefault(); setPopup(null); return; }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (popup.kind === 'slash') {
+        const cmd = slashFiltered[popup.idx];
+        if (cmd) applySuggestion({ kind: 'slash', insertText: cmd.insert });
+      } else {
+        const wl = wikiFiltered[popup.idx];
+        if (wl) applySuggestion({ kind: 'wiki', insertText: `[[${wl.title}]]` });
+      }
+    }
+  }, [popup, slashFiltered, wikiFiltered, applySuggestion]);
+
+  // Lightweight markdown render (just enough for a confidence-checking
+  // preview — keeps the lens self-contained without a markdown lib).
+  const renderedHtml = useMemo(() => {
+    const esc = (s: string) => s.replace(/[&<>]/g, (ch) => ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : '&gt;');
+    let html = esc(content);
+    html = html.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (_m, _l, body) => `<pre class="bg-lattice-deep border border-lattice-border rounded p-3 overflow-x-auto"><code class="text-xs text-neon-cyan">${body}</code></pre>`);
+    html = html.replace(/\[\[([^\]]+)\]\]/g, (_m, t: string) => `<a class="text-neon-purple underline decoration-neon-purple/40 hover:decoration-neon-purple">${t}</a>`);
+    html = html.replace(/^###### (.+)$/gm, '<h6 class="text-xs font-semibold text-gray-400 mt-2">$1</h6>');
+    html = html.replace(/^##### (.+)$/gm, '<h5 class="text-xs font-semibold text-gray-300 mt-2">$1</h5>');
+    html = html.replace(/^#### (.+)$/gm, '<h4 class="text-sm font-semibold text-gray-200 mt-3">$1</h4>');
+    html = html.replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-neon-cyan mt-4">$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-neon-purple mt-5">$1</h2>');
+    html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-white mt-6">$1</h1>');
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-2 border-neon-cyan/50 pl-3 italic text-gray-400 my-2">$1</blockquote>');
+    html = html.replace(/^- \[ \] (.+)$/gm, '<div class="flex items-start gap-2 my-1"><input type="checkbox" disabled class="mt-1" />$1</div>');
+    html = html.replace(/^- \[x\] (.+)$/gim, '<div class="flex items-start gap-2 my-1 line-through text-gray-400"><input type="checkbox" disabled checked class="mt-1" />$1</div>');
+    html = html.replace(/^- (.+)$/gm, '<li class="ml-5 list-disc text-gray-200">$1</li>');
+    html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-200">$1</li>');
+    html = html.replace(/^---+$/gm, '<hr class="border-lattice-border my-4" />');
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white">$1</strong>');
+    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    html = html.replace(/`([^`]+)`/g, '<code class="px-1 rounded bg-lattice-deep text-xs text-neon-cyan">$1</code>');
+    html = html.replace(/\[@([\w-]+)\]/g, '<sup class="text-neon-yellow">[@$1]</sup>');
+    html = html.replace(/\n\n+/g, '</p><p class="my-2 text-gray-200 leading-relaxed">');
+    return `<p class="my-2 text-gray-200 leading-relaxed">${html}</p>`;
+  }, [content]);
+
+  // Caret coords for popup positioning -------------------------------
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  useEffect(() => {
+    if (!popup || !taRef.current) return;
+    const ta = taRef.current;
+    const value = ta.value.slice(0, popup.to);
+    const lines = value.split('\n');
+    const lineHeight = 22;
+    const top = Math.min((lines.length) * lineHeight + 8, ta.clientHeight - 12);
+    const lastLine = lines[lines.length - 1];
+    const left = Math.min(lastLine.length * 7 + 12, ta.clientWidth - 240);
+    setPopupPos({ top, left });
+  }, [popup]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
+          <span>/&nbsp;commands</span>
+          <span>·</span>
+          <span>[[wikilink]]</span>
+          <span>·</span>
+          <span>**bold**</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowPreview((v) => !v)}
+            className={cn('text-xs px-2 py-1 rounded transition-colors flex items-center gap-1', showPreview ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}
+            title="Toggle preview"
+          >
+            <BookOpen className="w-3 h-3" /> Preview
+          </button>
+        </div>
+      </div>
+      <div className={cn('grid gap-3 relative', showPreview ? 'grid-cols-2' : 'grid-cols-1')}>
+        <div className="relative">
+          <textarea
+            ref={taRef}
+            value={content}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onBlur={() => setTimeout(() => setPopup(null), 120)}
+            className={cn(ds.textarea, 'min-h-[400px] font-mono text-sm leading-relaxed')}
+            placeholder="Begin writing your paper… (try /h2 or [[ to link another paper)"
+          />
+          {popup && popup.kind === 'slash' && slashFiltered.length > 0 && (
+            <div className="absolute z-30 w-56 bg-[#0d1117] border border-neon-cyan/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 border-b border-lattice-border bg-lattice-deep">block</div>
+              {slashFiltered.map((s, i) => (
+                <button
+                  key={s.id}
+                  onMouseDown={(e) => { e.preventDefault(); applySuggestion({ kind: 'slash', insertText: s.insert }); }}
+                  className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors', i === popup.idx ? 'bg-neon-cyan/15 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
+                >
+                  <span>{s.label}</span>
+                  <code className="text-[10px] text-gray-400 font-mono">{s.hint}</code>
+                </button>
+              ))}
+            </div>
+          )}
+          {popup && popup.kind === 'wiki' && (
+            <div className="absolute z-30 w-72 bg-[#0d1117] border border-neon-purple/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 border-b border-lattice-border bg-lattice-deep flex justify-between">
+                <span>link to…</span>
+                <span>{wikiFiltered.length} match{wikiFiltered.length === 1 ? '' : 'es'}</span>
+              </div>
+              {wikiFiltered.length === 0 && (
+                <div className="px-3 py-3 text-xs text-gray-400">
+                  No match. Press <kbd className="text-[10px]">enter</kbd> to insert as a placeholder anyway.
+                </div>
+              )}
+              {wikiFiltered.map((w, i) => (
+                <button
+                  key={`${w.kind}:${w.id}`}
+                  onMouseDown={(e) => { e.preventDefault(); applySuggestion({ kind: 'wiki', insertText: `[[${w.title}]]` }); }}
+                  className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors', i === popup.idx ? 'bg-neon-purple/20 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
+                >
+                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono w-14 flex-shrink-0">{w.kind}</span>
+                  <span className="truncate">{w.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {showPreview && (
+          <div className="bg-lattice-deep border border-lattice-border rounded p-4 overflow-y-auto min-h-[400px] max-h-[600px] prose prose-invert max-w-none">
+            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- Stat Card ----
+function StatCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number; color: string }) {
+  return (
+    <div className={cn(ds.panel, 'flex items-center gap-3')}>
+      <div className={`p-2 rounded-lg bg-${color}/20`}>
+        <Icon className={`w-5 h-5 text-${color}`} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-white">{value}</p>
+        <p className={ds.textMuted}>{label}</p>
+      </div>
+    </div>
+  );
+}
+
+// ---- Papers Grid ----
+function PapersGrid({ items, onEdit, onSelect, onValidate, validationResults, isValidating }: {
+  items: LensItem[];
+  onEdit: (item: LensItem) => void;
+  onSelect: (item: LensItem) => void;
+  onValidate: (item: LensItem) => void;
+  validationResults: Record<string, { passRate: number; issueCount: number; claimsChecked: number }>;
+  isValidating?: boolean;
+}) {
+  return (
+    <div className={ds.grid3}>
+      {items.map((item, index) => {
+        const d = getData<PaperData>(item);
+        const vr = validationResults[item.id];
+        return (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}
+            className={cn(ds.panelHover, 'space-y-3')}
+            onClick={() => onSelect(item)}
+          >
+            <div className="flex items-start justify-between">
+              <FileText className="w-6 h-6 text-neon-purple" />
+              <span className={cn(ds.textMuted, 'text-xs')}>{d.wordCount || 0} words</span>
+            </div>
+            <h3 className="font-semibold text-white line-clamp-2">{item.title}</h3>
+            <p className={cn(ds.textMuted, 'line-clamp-3 text-sm')}>
+              {d.excerpt || 'No content yet...'}
+            </p>
+            {vr && (
+              <div className={cn('flex items-center gap-2 px-2 py-1 rounded-md text-xs', vr.passRate >= 0.8 ? 'bg-neon-green/10 text-neon-green' : 'bg-red-500/10 text-red-400')}>
+                {vr.passRate >= 0.8 ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                {Math.round(vr.passRate * 100)}% pass ({vr.claimsChecked} claims)
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1">
+              {(item.meta?.tags || []).slice(0, 3).map((tag: string) => (
+                <span key={tag} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{tag}</span>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
+              <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                <Calendar className="w-3 h-3" /> {new Date(item.updatedAt).toLocaleDateString()}
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={e => { e.stopPropagation(); onValidate(item); }} disabled={isValidating} className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5 disabled:opacity-50 disabled:cursor-not-allowed')} title="Validate">
+                  <FlaskConical className={`w-3 h-3 text-neon-green ${isValidating ? 'animate-pulse' : ''}`} />
+                </button>
+                <button onClick={e => { e.stopPropagation(); onEdit(item); }} className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5')} title="Edit">
+                  <Edit3 className="w-3 h-3 text-neon-cyan" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Hypotheses List ----
+function HypothesesList({ items, onSelect, allEvidence: _allEvidence }: { items: LensItem[]; onSelect: (item: LensItem) => void; allEvidence: LensItem[] }) {
+  return (
+    <div className="space-y-3">
+      {items.map(item => {
+        const d = getData<HypothesisData>(item);
+        const confidence = d.confidence ?? 50;
+        const linkedCount = (d.linkedEvidence || []).length;
+        const statusColor = STATUS_COLORS[d.status || 'proposed'] || 'gray-400';
+        return (
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className="flex items-start gap-4">
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className={`w-5 h-5 text-${statusColor}`} />
+                  <h3 className="font-semibold text-white">{item.title}</h3>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${statusColor}/20 text-${statusColor}`)}>
+                    {d.status || 'proposed'}
+                  </span>
+                </div>
+                {d.statement && <p className={cn(ds.textMuted, 'text-sm')}>{d.statement}</p>}
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 max-w-[200px]">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className={ds.textMuted}>Confidence</span>
+                      <span className="text-white font-medium">{confidence}%</span>
+                    </div>
+                    <div className="h-2 bg-lattice-surface rounded-full overflow-hidden">
+                      <div
+                        className={cn('h-full rounded-full transition-all', confidence >= 70 ? 'bg-neon-green' : confidence >= 40 ? 'bg-yellow-400' : 'bg-red-400')}
+                        style={{ width: `${confidence}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                    <Link2 className="w-3 h-3" /> {linkedCount} evidence
+                  </span>
+                  <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                    <Calendar className="w-3 h-3" /> {new Date(item.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center">
+                {d.status === 'supported' && <TrendingUp className="w-5 h-5 text-neon-green" />}
+                {d.status === 'refuted' && <TrendingDown className="w-5 h-5 text-red-400" />}
+                {d.status === 'testing' && <RefreshCw className="w-5 h-5 text-neon-cyan" />}
+                {d.status === 'proposed' && <Target className="w-5 h-5 text-neon-blue" />}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Evidence Board ----
+function EvidenceBoard({ items, onSelect }: { items: LensItem[]; onSelect: (item: LensItem) => void }) {
+  const grouped = useMemo(() => {
+    const groups: Record<string, LensItem[]> = { strong: [], moderate: [], weak: [] };
+    items.forEach(item => {
+      const d = getData<EvidenceData>(item);
+      const k = d.strength || 'moderate';
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(item);
+    });
+    return groups;
+  }, [items]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {EVIDENCE_STRENGTHS.map(strength => {
+        const color = STATUS_COLORS[strength || 'moderate'];
+        const groupItems = grouped[strength || 'moderate'] || [];
+        return (
+          <div key={strength} className="space-y-2">
+            <div className={cn('flex items-center gap-2 mb-3')}>
+              <div className={`w-3 h-3 rounded-full bg-${color}`} />
+              <h3 className={cn(ds.heading3, 'text-sm uppercase tracking-wide')}>{strength}</h3>
+              <span className={cn(ds.textMuted, 'text-xs')}>({groupItems.length})</span>
+            </div>
+            {groupItems.map(item => {
+              const d = getData<EvidenceData>(item);
+              const typeColor = STATUS_COLORS[d.type || 'empirical'];
+              return (
+                <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+                  <h4 className="text-sm font-medium text-white">{item.title}</h4>
+                  {d.summary && <p className={cn(ds.textMuted, 'text-xs line-clamp-2')}>{d.summary}</p>}
+                  <div className="flex items-center gap-2">
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full capitalize', `bg-${typeColor}/20 text-${typeColor}`)}>
+                      {d.type || 'empirical'}
+                    </span>
+                    {d.source && (
+                      <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1 truncate max-w-[120px]')}>
+                        <Quote className="w-3 h-3" /> {d.source}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Link2 className="w-3 h-3 text-gray-400" />
+                    <span className={cn(ds.textMuted, 'text-xs')}>{(d.linkedHypotheses || []).length} hypotheses</span>
+                  </div>
+                </div>
+              );
+            })}
+            {groupItems.length === 0 && (
+              <div className={cn(ds.panel, 'text-center py-6')}>
+                <p className={cn(ds.textMuted, 'text-xs')}>No {strength} evidence</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Experiment Log ----
+function ExperimentLog({ items, onSelect }: { items: LensItem[]; onSelect: (item: LensItem) => void }) {
+  return (
+    <div className="space-y-3">
+      {items.map(item => {
+        const d = getData<ExperimentData>(item);
+        const statusColor = STATUS_COLORS[d.status || 'planned'];
+        return (
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <div className="flex items-start gap-4">
+              <div className={cn('p-2 rounded-lg', `bg-${statusColor}/20`)}>
+                <Beaker className={`w-5 h-5 text-${statusColor}`} />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-white">{item.title}</h3>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${statusColor}/20 text-${statusColor}`)}>
+                    {d.status || 'planned'}
+                  </span>
+                </div>
+                {d.methodology && (
+                  <p className={cn(ds.textMuted, 'text-sm line-clamp-2')}>
+                    <strong className="text-gray-300">Method:</strong> {d.methodology}
+                  </p>
+                )}
+                {d.results && (
+                  <p className={cn(ds.textMuted, 'text-sm line-clamp-2')}>
+                    <strong className="text-gray-300">Results:</strong> {d.results}
+                  </p>
+                )}
+                {d.conclusions && (
+                  <p className={cn(ds.textMuted, 'text-sm line-clamp-1')}>
+                    <strong className="text-gray-300">Conclusion:</strong> {d.conclusions}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 pt-1">
+                  {d.linkedHypothesis && (
+                    <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                      <Lightbulb className="w-3 h-3" /> Linked hypothesis
+                    </span>
+                  )}
+                  <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                    <Link2 className="w-3 h-3" /> {(d.linkedEvidence || []).length} evidence
+                  </span>
+                  <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                    <Calendar className="w-3 h-3" /> {new Date(item.updatedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Synthesis Engine ----
+function SynthesisEngine({ items, allHypotheses, allEvidence, allExperiments, synthesisResult, onRunSynthesize, isPending }: {
+  items: LensItem[];
+  allHypotheses: LensItem[];
+  allEvidence: LensItem[];
+  allExperiments: LensItem[];
+  synthesisResult: string | null;
+  onRunSynthesize: () => void;
+  isPending: boolean;
+}) {
+  // Cross-reference analysis
+  const supportedHypotheses = allHypotheses.filter(h => getData<HypothesisData>(h).status === 'supported');
+  const refutedHypotheses = allHypotheses.filter(h => getData<HypothesisData>(h).status === 'refuted');
+  const strongEvidence = allEvidence.filter(e => getData<EvidenceData>(e).strength === 'strong');
+  const completedExperiments = allExperiments.filter(e => getData<ExperimentData>(e).status === 'completed');
+
+  // Find potential contradictions: hypotheses with conflicting statuses sharing evidence
+  const contradictions = useMemo(() => {
+    const results: { a: LensItem; b: LensItem; sharedEvidence: string[] }[] = [];
+    for (let i = 0; i < allHypotheses.length; i++) {
+      for (let j = i + 1; j < allHypotheses.length; j++) {
+        const da = getData<HypothesisData>(allHypotheses[i]);
+        const db = getData<HypothesisData>(allHypotheses[j]);
+        if (da.status && db.status && da.status !== db.status) {
+          const shared = (da.linkedEvidence || []).filter(e => (db.linkedEvidence || []).includes(e));
+          if (shared.length > 0) {
+            results.push({ a: allHypotheses[i], b: allHypotheses[j], sharedEvidence: shared });
+          }
+        }
+      }
+    }
+    return results;
+  }, [allHypotheses]);
+
+  return (
+    <div className="space-y-4">
+      {/* Cross-reference summary */}
+      <div className={ds.grid2}>
+        <div className={cn(ds.panel, 'space-y-2')}>
+          <h3 className={cn(ds.heading3, 'text-sm flex items-center gap-2')}>
+            <BarChart3 className="w-4 h-4 text-neon-cyan" /> Research Summary
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-neon-green/10 rounded-lg">
+              <p className="text-lg font-bold text-neon-green">{supportedHypotheses.length}</p>
+              <p className={cn(ds.textMuted, 'text-xs')}>Supported</p>
+            </div>
+            <div className="text-center p-2 bg-red-500/10 rounded-lg">
+              <p className="text-lg font-bold text-red-400">{refutedHypotheses.length}</p>
+              <p className={cn(ds.textMuted, 'text-xs')}>Refuted</p>
+            </div>
+            <div className="text-center p-2 bg-neon-blue/10 rounded-lg">
+              <p className="text-lg font-bold text-neon-blue">{strongEvidence.length}</p>
+              <p className={cn(ds.textMuted, 'text-xs')}>Strong Evidence</p>
+            </div>
+            <div className="text-center p-2 bg-neon-cyan/10 rounded-lg">
+              <p className="text-lg font-bold text-neon-cyan">{completedExperiments.length}</p>
+              <p className={cn(ds.textMuted, 'text-xs')}>Completed Exp.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className={cn(ds.panel, 'space-y-2')}>
+          <h3 className={cn(ds.heading3, 'text-sm flex items-center gap-2')}>
+            <AlertCircle className="w-4 h-4 text-yellow-400" /> Contradictions Detected
+          </h3>
+          {contradictions.length === 0 ? (
+            <p className={cn(ds.textMuted, 'text-sm')}>No contradictions found among current hypotheses.</p>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {contradictions.map((c, idx) => (
+                <div key={idx} className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm">
+                  <p className="text-yellow-400 font-medium">
+                    &quot;{c.a.title}&quot; vs &quot;{c.b.title}&quot;
+                  </p>
+                  <p className={ds.textMuted}>{c.sharedEvidence.length} shared evidence item(s)</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Generate Synthesis */}
+      <div className={cn(ds.panel, 'space-y-3')}>
+        <div className="flex items-center justify-between">
+          <h3 className={cn(ds.heading3, 'text-sm flex items-center gap-2')}>
+            <Brain className="w-4 h-4 text-neon-purple" /> AI Synthesis
+          </h3>
+          <button onClick={onRunSynthesize} className={cn(ds.btnPrimary, ds.btnSmall)} disabled={isPending || items.length === 0}>
+            {isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Generate Synthesis
+          </button>
+        </div>
+        {synthesisResult ? (
+          <div className="p-3 bg-lattice-elevated rounded-lg">
+            <pre className={cn(ds.textMono, 'whitespace-pre-wrap text-gray-300')}>{synthesisResult}</pre>
+          </div>
+        ) : (
+          <p className={ds.textMuted}>Select a paper and click &quot;Generate Synthesis&quot; to cross-reference all findings.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- Bibliography Manager ----
+interface CitationAnalysis {
+  totalCitations: number;
+  byType: Record<string, number>;
+  byYear: Record<string, number>;
+  selfCitations: number;
+  selfCitationRate: number;
+  medianYear: number;
+  recencyIndex: number;
+  recentCount: number;
+  oldestYear: number | null;
+  newestYear: number | null;
+  avgAge: number | null;
+  message?: string;
+}
+
+function BibliographyManager({ items, onSelect, citationStyle, onStyleChange }: {
+  items: LensItem[];
+  onSelect: (item: LensItem) => void;
+  citationStyle: CitationData['style'];
+  onStyleChange: (s: CitationData['style']) => void;
+}) {
+  const [analysis, setAnalysis] = useState<CitationAnalysis | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const runAnalysis = useCallback(async () => {
+    setAnalyzing(true);
+    try {
+      // paper.citationAnalyze reads artifact.data.citations — build that
+      // list from the real saved bibliography entries (each a separate
+      // 'citation' artifact) rather than requiring one artifact to hold
+      // them all. /api/lens/run builds a virtual artifact from the input
+      // body directly, so no persisted wrapper artifact is needed.
+      const citations = items.map(it => {
+        const d = getData<CitationData>(it);
+        return { authors: d.authors || '', year: d.year, journal: d.journal, url: d.url, type: d.journal ? 'journal' : d.url ? 'web' : 'other' };
+      });
+      const res = await apiHelpers.lens.runDomain('paper', 'citationAnalyze', { input: { citations } });
+      const result = (res as { data?: { ok: boolean; result?: CitationAnalysis } }).data?.result;
+      if (result) setAnalysis(result);
+      else showToast('error', 'Citation analysis failed');
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Citation analysis failed');
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [items]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <label className={ds.label}>Citation Style:</label>
+          {CITATION_STYLES.map(s => (
+            <button
+              key={s}
+              onClick={() => onStyleChange(s)}
+              className={cn(
+                'text-xs px-3 py-1 rounded-full font-medium uppercase transition-colors',
+                citationStyle === s
+                  ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
+                  : 'bg-lattice-surface text-gray-400 hover:text-white border border-lattice-border'
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={runAnalysis}
+          disabled={analyzing || items.length === 0}
+          className={cn(ds.btnSecondary, ds.btnSmall)}
+        >
+          {analyzing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <BarChart3 className="w-3.5 h-3.5" />}
+          Analyze Bibliography
+        </button>
+      </div>
+
+      {analysis && (
+        <div className={cn(ds.panel, 'space-y-2')}>
+          {analysis.message ? (
+            <p className={ds.textMuted}>{analysis.message}</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <p className={ds.textMuted}>Self-citation rate</p>
+                  <p className="text-lg font-bold text-white">{analysis.selfCitationRate}%</p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Recency index (5yr)</p>
+                  <p className="text-lg font-bold text-white flex items-center gap-1">
+                    {analysis.recencyIndex}%
+                    {analysis.recencyIndex >= 50 ? <TrendingUp className="w-3.5 h-3.5 text-neon-green" /> : <TrendingDown className="w-3.5 h-3.5 text-yellow-400" />}
+                  </p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Median year</p>
+                  <p className="text-lg font-bold text-white">{analysis.medianYear}</p>
+                </div>
+                <div>
+                  <p className={ds.textMuted}>Avg age</p>
+                  <p className="text-lg font-bold text-white">{analysis.avgAge != null ? `${analysis.avgAge}y` : '—'}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {Object.entries(analysis.byType).map(([type, count]) => (
+                  <span key={type} className="text-[10px] px-2 py-0.5 rounded-full bg-lattice-surface text-gray-300 capitalize">{type}: {count}</span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {items.map(item => {
+          const d = getData<CitationData>(item);
+          const formatted = formatCitation({ ...d, title: item.title }, citationStyle);
+          return (
+            <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+              <div className="flex items-start gap-3">
+                <Library className="w-5 h-5 text-neon-purple mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  <h4 className="text-sm font-medium text-white">{item.title}</h4>
+                  <p className={cn(ds.textMuted, 'text-xs italic')}>{formatted}</p>
+                  <div className="flex items-center gap-3">
+                    {d.doi && (
+                      <span className={cn(ds.textMono, 'text-xs text-neon-blue')}>DOI: {d.doi}</span>
+                    )}
+                    {d.year && (
+                      <span className={cn(ds.textMuted, 'text-xs')}>{d.year}</span>
+                    )}
+                    {d.citedByCount !== undefined && d.citedByCount > 0 && (
+                      <span className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                        <Quote className="w-3 h-3" /> {d.citedByCount} citations
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(formatted);
+                  }}
+                  className={cn(ds.btnGhost, 'text-xs px-1.5 py-0.5')}
+                  title="Copy citation"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ===========================================================================
+// Detail Field Components
+// ===========================================================================
+
+function PaperDetailFields({ item }: { item: LensItem }) {
+  const d = getData<PaperData>(item);
+  return (
+    <>
+      <div>
+        <span className={ds.label}>Word Count</span>
+        <p className={ds.textMono}>{d.wordCount || 0}</p>
+      </div>
+      {d.doi && (
+        <div>
+          <span className={ds.label}>DOI</span>
+          <p className={cn(ds.textMono, 'text-neon-blue')}>{d.doi}</p>
+        </div>
+      )}
+      {d.sections && d.sections.length > 0 && (
+        <div>
+          <span className={ds.label}>Sections</span>
+          <ul className="space-y-1 mt-1">
+            {d.sections.map((s, i) => (
+              <li key={i} className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+                <ChevronRight className="w-3 h-3" /> {s.heading} {s.body ? `(${s.body.split(/\s+/).length} words)` : '(empty)'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
+function HypothesisDetailFields({ item, allEvidence }: { item: LensItem; allEvidence: LensItem[] }) {
+  const d = getData<HypothesisData>(item);
+  const confidence = d.confidence ?? 50;
+  const statusColor = STATUS_COLORS[d.status || 'proposed'];
+  return (
+    <>
+      <div>
+        <span className={ds.label}>Status</span>
+        <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${statusColor}/20 text-${statusColor}`)}>
+          {d.status || 'proposed'}
+        </span>
+      </div>
+      {d.statement && (
+        <div>
+          <span className={ds.label}>Statement</span>
+          <p className="text-sm text-gray-300">{d.statement}</p>
+        </div>
+      )}
+      <div>
+        <span className={ds.label}>Confidence</span>
+        <div className="flex items-center gap-2 mt-1">
+          <div className="flex-1 h-3 bg-lattice-surface rounded-full overflow-hidden">
+            <div
+              className={cn('h-full rounded-full', confidence >= 70 ? 'bg-neon-green' : confidence >= 40 ? 'bg-yellow-400' : 'bg-red-400')}
+              style={{ width: `${confidence}%` }}
+            />
+          </div>
+          <span className="text-sm font-bold text-white">{confidence}%</span>
+        </div>
+      </div>
+      {d.rationale && (
+        <div>
+          <span className={ds.label}>Rationale</span>
+          <p className="text-sm text-gray-300">{d.rationale}</p>
+        </div>
+      )}
+      <div>
+        <span className={ds.label}>Linked Evidence ({(d.linkedEvidence || []).length})</span>
+        <div className="space-y-1 mt-1">
+          {(d.linkedEvidence || []).map(eid => {
+            const ev = allEvidence.find(e => e.id === eid);
+            return (
+              <div key={eid} className="text-xs text-gray-400 flex items-center gap-1">
+                <Link2 className="w-3 h-3" /> {ev ? ev.title : eid}
+              </div>
+            );
+          })}
+          {(d.linkedEvidence || []).length === 0 && <p className={cn(ds.textMuted, 'text-xs')}>No linked evidence</p>}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function EvidenceDetailFields({ item }: { item: LensItem }) {
+  const d = getData<EvidenceData>(item);
+  const strengthColor = STATUS_COLORS[d.strength || 'moderate'];
+  const typeColor = STATUS_COLORS[d.type || 'empirical'];
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <div>
+          <span className={ds.label}>Strength</span>
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${strengthColor}/20 text-${strengthColor}`)}>
+            {d.strength || 'moderate'}
+          </span>
+        </div>
+        <div>
+          <span className={ds.label}>Type</span>
+          <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${typeColor}/20 text-${typeColor}`)}>
+            {d.type || 'empirical'}
+          </span>
+        </div>
+      </div>
+      {d.source && (
+        <div>
+          <span className={ds.label}>Source</span>
+          <p className="text-sm text-gray-300">{d.source}</p>
+        </div>
+      )}
+      {d.summary && (
+        <div>
+          <span className={ds.label}>Summary</span>
+          <p className="text-sm text-gray-300">{d.summary}</p>
+        </div>
+      )}
+      <div>
+        <span className={ds.label}>Linked Hypotheses ({(d.linkedHypotheses || []).length})</span>
+        {(d.linkedHypotheses || []).length === 0 && <p className={cn(ds.textMuted, 'text-xs')}>No linked hypotheses</p>}
+      </div>
+    </>
+  );
+}
+
+function ExperimentDetailFields({ item }: { item: LensItem }) {
+  const d = getData<ExperimentData>(item);
+  const statusColor = STATUS_COLORS[d.status || 'planned'];
+  return (
+    <>
+      <div>
+        <span className={ds.label}>Status</span>
+        <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium capitalize', `bg-${statusColor}/20 text-${statusColor}`)}>
+          {d.status || 'planned'}
+        </span>
+      </div>
+      {d.methodology && (
+        <div>
+          <span className={ds.label}>Methodology</span>
+          <p className="text-sm text-gray-300">{d.methodology}</p>
+        </div>
+      )}
+      {d.results && (
+        <div>
+          <span className={ds.label}>Results</span>
+          <p className="text-sm text-gray-300">{d.results}</p>
+        </div>
+      )}
+      {d.conclusions && (
+        <div>
+          <span className={ds.label}>Conclusions</span>
+          <p className="text-sm text-gray-300">{d.conclusions}</p>
+        </div>
+      )}
+      <div className="flex items-center gap-4">
+        {d.startDate && (
+          <div>
+            <span className={ds.label}>Start</span>
+            <p className={cn(ds.textMuted, 'text-xs')}>{d.startDate}</p>
+          </div>
+        )}
+        {d.endDate && (
+          <div>
+            <span className={ds.label}>End</span>
+            <p className={cn(ds.textMuted, 'text-xs')}>{d.endDate}</p>
+          </div>
+        )}
+      </div>
+      {d.linkedHypothesis && (
+        <div>
+          <span className={ds.label}>Linked Hypothesis</span>
+          <p className={cn(ds.textMuted, 'text-xs flex items-center gap-1')}>
+            <Lightbulb className="w-3 h-3" /> {d.linkedHypothesis}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+function CitationDetailFields({ item, citationStyle }: { item: LensItem; citationStyle: CitationData['style'] }) {
+  const d = getData<CitationData>(item);
+  const formatted = formatCitation({ ...d, title: item.title }, citationStyle);
+  return (
+    <>
+      <div data-lens-theme="paper">
+        <span className={ds.label}>Formatted Citation ({citationStyle?.toUpperCase()})</span>
+        <p className="text-sm text-gray-300 italic mt-1">{formatted}</p>
+      </div>
+      {d.authors && (
+        <div>
+          <span className={ds.label}>Authors</span>
+          <p className="text-sm text-gray-300">{d.authors}</p>
+        </div>
+      )}
+      {d.year && (
+        <div>
+          <span className={ds.label}>Year</span>
+          <p className={ds.textMono}>{d.year}</p>
+        </div>
+      )}
+      {d.journal && (
+        <div>
+          <span className={ds.label}>Journal</span>
+          <p className="text-sm text-gray-300">{d.journal}</p>
+        </div>
+      )}
+      {d.doi && (
+        <div>
+          <span className={ds.label}>DOI</span>
+          <p className={cn(ds.textMono, 'text-neon-blue')}>{d.doi}</p>
+        </div>
+      )}
+      {d.volume && (
+        <div>
+          <span className={ds.label}>Volume</span>
+          <p className={ds.textMono}>{d.volume}</p>
+        </div>
+      )}
+      {d.pages && (
+        <div>
+          <span className={ds.label}>Pages</span>
+          <p className={ds.textMono}>{d.pages}</p>
+        </div>
+      )}
+      {d.url && (
+        <div>
+          <span className={ds.label}>URL</span>
+          <p className={cn(ds.textMono, 'text-neon-blue text-xs break-all')}>{d.url}</p>
+        </div>
+      )}
+      {d.citedByCount !== undefined && (
+        <div>
+          <span className={ds.label}>Cited By</span>
+          <p className={ds.textMono}>{d.citedByCount}</p>
+        </div>
+      )}
+    </>
+  );
+}

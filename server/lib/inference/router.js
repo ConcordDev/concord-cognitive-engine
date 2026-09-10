@@ -41,15 +41,17 @@ async function checkAvailability(brainName) {
  * @returns {Promise<{handle: import('./types.js').BrainHandle, fallbacksUsed: string[]}>}
  */
 export async function selectBrain(role, opts = {}) {
+  const callerId = opts.callerId || "";
+  const handleOpts = { callerId, envFingerprint: opts.envFingerprint || "" };
+
   if (opts.brainOverride && BRAIN_CONFIG[opts.brainOverride]) {
     return {
-      handle: makeBrainHandle(opts.brainOverride),
+      handle: makeBrainHandle(opts.brainOverride, handleOpts),
       fallbacksUsed: [],
     };
   }
 
   // Enforce conscious-only for chat callers — no silent fallback to other brains
-  const callerId = opts.callerId || "";
   const isChatCaller = CHAT_CALLER_PREFIXES.some(prefix => callerId.startsWith(prefix));
   if ((role === "conscious" || isChatCaller) && !opts.skipAvailabilityCheck) {
     const available = await checkAvailability("conscious");
@@ -63,7 +65,7 @@ export async function selectBrain(role, opts = {}) {
       err.callerId = callerId;
       throw err;
     }
-    return { handle: makeBrainHandle("conscious"), fallbacksUsed: [] };
+    return { handle: makeBrainHandle("conscious", handleOpts), fallbacksUsed: [] };
   }
 
   const chain = ROLE_CHAIN[role] || ROLE_CHAIN.conscious;
@@ -74,12 +76,12 @@ export async function selectBrain(role, opts = {}) {
     if (!BRAIN_CONFIG[brainName]) continue;
 
     if (opts.skipAvailabilityCheck) {
-      return { handle: makeBrainHandle(brainName), fallbacksUsed };
+      return { handle: makeBrainHandle(brainName, handleOpts), fallbacksUsed };
     }
 
     const available = await checkAvailability(brainName);
     if (available) {
-      return { handle: makeBrainHandle(brainName), fallbacksUsed };
+      return { handle: makeBrainHandle(brainName, handleOpts), fallbacksUsed };
     }
 
     if (i > 0) fallbacksUsed.push(chain[i - 1]);
@@ -88,7 +90,7 @@ export async function selectBrain(role, opts = {}) {
   // All brains in chain unavailable — return primary anyway (will fail at call time)
   const primary = chain[0];
   return {
-    handle: makeBrainHandle(primary),
+    handle: makeBrainHandle(primary, handleOpts),
     fallbacksUsed: chain.slice(0, -1),
   };
 }

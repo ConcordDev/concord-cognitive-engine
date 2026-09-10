@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string; reason?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -113,12 +114,12 @@ export function MarketplaceActionPanel() {
     try {
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: `Listing — ${listingTitle.trim()}`,
           tags: ['marketplace', 'listing', category, `price:${listingPrice}`],
           source: 'marketplace:listing:mint',
           meta: { visibility: 'private', consent: { allowCitations: false }, listing: { title: listingTitle, description: listingDesc, price: parseFloat(listingPrice), category, tags: listingTags.split(',').map(t => t.trim()).filter(Boolean), score: scoreResult, priceOpt: priceResult } },
-        },
+        }, 'generic', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -154,12 +155,12 @@ export function MarketplaceActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `For sale — ${listingTitle.trim()}`,
             tags: ['marketplace', 'listing', 'public', 'for-sale', category],
             source: 'marketplace:listing:publish',
             meta: { visibility: 'public', consent: { allowCitations: true }, listing: { title: listingTitle, description: listingDesc, price: parseFloat(listingPrice), category, tags: listingTags.split(',').map(t => t.trim()).filter(Boolean) } },
-          },
+          }, 'generic', ['private', 'public_view', 'social_post', 'marketplace_sale']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

@@ -23,12 +23,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Notebook, Keyboard, Code2 as Github } from 'lucide-react';
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import {
   ProductivityTaskSection,
   PRODUCTIVITY_TABS,
@@ -103,9 +100,7 @@ export default function ProductivityLensPage() {
               <span>
                 Press <kbd className="rounded border border-zinc-700 px-1 font-mono text-[10px]">g</kbd> then a view key
               </span>
-            </span>
-            <ManifestActionBar />
-          </div>
+            </span>          </div>
         </header>
 
         <main className="mx-auto max-w-6xl px-4 py-5 md:px-6">
@@ -136,10 +131,7 @@ export default function ProductivityLensPage() {
       </div>
 
       {/* Production-grade polish sentinels — cross-lens surfaces, kept
-          out of the primary flow (accessibility-only). */}
-      <RecentMineCard domain="productivity" limit={10} hideWhenEmpty className="mt-4" />
-      <AutoActionStrip domain="productivity" hideWhenEmpty className="mt-3" title="More actions" />
-      <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+          out of the primary flow (accessibility-only). */}      <CrossLensRecentsPanel lensId="productivity" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );
 }

@@ -20,20 +20,27 @@ export interface Listing {
   status: 'for_sale' | 'pending' | 'sold' | 'off_market';
   daysOnMarket: number;
   imageUrl?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
-interface Filters {
+export interface ListingFilters {
   minPrice?: number; maxPrice?: number;
   minBeds?: number; minBaths?: number; minSqft?: number;
   kinds?: string[]; city?: string; status?: string;
 }
+type Filters = ListingFilters;
 
 export function ListingsBrowser({
-  onSelect, onPickForCompare, comparePicks = [],
+  onSelect, onPickForCompare, comparePicks = [], onListingsChange, appliedFilters,
+  selectedId,
 }: {
   onSelect?: (l: Listing) => void;
   onPickForCompare?: (id: string) => void;
   comparePicks?: string[];
+  onListingsChange?: (listings: Listing[]) => void;
+  appliedFilters?: Filters;
+  selectedId?: string | null;
 }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [favIds, setFavIds] = useState<string[]>([]);
@@ -48,8 +55,8 @@ export function ListingsBrowser({
     setLoading(true);
     try {
       const [a, b] = await Promise.all([
-        Object.keys(filters).length > 0
-          ? lensRun({ domain: 'realestate', action: 'listings-search', input: { filters } })
+        Object.keys(appliedFilters ?? filters).length > 0
+          ? lensRun({ domain: 'realestate', action: 'listings-search', input: { filters: appliedFilters ?? filters } })
           : lensRun({ domain: 'realestate', action: 'listings-list', input: { sortBy } }),
         lensRun({ domain: 'realestate', action: 'favourites-list', input: {} }),
       ]);
@@ -58,9 +65,13 @@ export function ListingsBrowser({
       setFavIds((b.data?.result?.ids || []) as string[]);
     } catch (e) { console.error('[Listings] refresh failed', e); }
     finally { setLoading(false); }
-  }, [filters, sortBy]);
+  }, [filters, sortBy, appliedFilters]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    onListingsChange?.(listings);
+  }, [listings, onListingsChange]);
 
   async function add() {
     if (!form.address.trim() || !form.price) return;
@@ -155,7 +166,7 @@ export function ListingsBrowser({
               const fav = favIds.includes(l.id);
               const picked = comparePicks.includes(l.id);
               return (
-                <li key={l.id} className={cn('px-3 py-3 hover:bg-white/[0.03] group flex items-center gap-3', picked && 'bg-cyan-500/5')}>
+                <li key={l.id} className={cn('px-3 py-3 hover:bg-white/[0.03] group flex items-center gap-3', picked && 'bg-cyan-500/5', selectedId === l.id && 'bg-[var(--lens-accent)]/10 ring-1 ring-[var(--lens-accent)]/40')}>
                   <div className="w-20 h-16 bg-gradient-to-br from-emerald-900/30 to-cyan-900/20 rounded flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-6 h-6 text-cyan-500/40" />
                   </div>

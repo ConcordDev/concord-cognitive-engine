@@ -11,7 +11,7 @@ import { join } from 'path';
 // into the SAME tool-swing + dust-particle feedback the player's own
 // click-to-gather already gets, so NPCs gathering resources is now a
 // real, watchable action instead of an invisible macro call.
-const src = readFileSync(join(process.cwd(), 'app/lenses/world/page.tsx'), 'utf8');
+const src = readFileSync(join(process.cwd(), 'components/world/WorldOsSurface.tsx'), 'utf8');
 
 describe('world/page.tsx — NPC gather visibility (world:npc-gather)', () => {
   it('subscribes to world:npc-gather on the world socket, with matching cleanup', () => {

@@ -121,7 +121,15 @@ export async function mintConkayArtifactDtu(
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: title.startsWith('ConKay') ? title : `ConKay · ${title}`.slice(0, 120),
+        // source:user — toolbar clicks are user-initiated; skips exact-title
+        // duplicate_blocked gate in pipelineCommitDTU (system-only dedup).
+        // Unique suffix keeps remints honest even if source is stripped.
+        source: 'user',
+        title: (() => {
+          const baseTitle = title.startsWith('ConKay') ? title : `ConKay · ${title}`;
+          const stamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+          return `${baseTitle} · ${stamp}`.slice(0, 120);
+        })(),
         content: `**ConKay task artifact**\n\n\`\`\`json\n${JSON.stringify(work, null, 2)}\n\`\`\``,
         tags,
         kind: 'conkay_artifact',

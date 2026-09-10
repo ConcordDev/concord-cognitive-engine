@@ -9,7 +9,7 @@
 //       1. components/world-lens/TerrainRenderer.tsx#generatePoughkeepsieHeightmap
 //          — CANONICAL: confirmed live, mounted via `dynamic(() =>
 //          import('@/components/world-lens/TerrainRenderer'))` in
-//          app/lenses/world/page.tsx, drives the real mesh + collision
+//          components/world/WorldOsSurface.tsx, drives the real mesh + collision
 //          heightfield + `window.__concordiaSampleGroundY` ground sampler
 //          every other scene entity (NPCs, other players, creatures) reads.
 //       2. lib/world-lens/concordia-city.ts#generateConcordiaHeightmap —

@@ -1,12 +1,15 @@
 'use client';
 
+/**
+ * Market Lens — DTU marketplace + competitive intel.
+ * Thin shell + one `active` union; panels own listings / analysis / heatmaps.
+ */
+
 import { useLensNav } from '@/hooks/useLensNav';
 import MarketHeatmap from '@/components/market/MarketHeatmap';
 import Watchlist from '@/components/market/Watchlist';
-import { useLensCommand } from "@/hooks/useLensCommand";
+import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
@@ -14,592 +17,100 @@ import { SectorHeatmapPanel } from '@/components/market/SectorHeatmap';
 import { CompetitorTracker } from '@/components/market/CompetitorTracker';
 import { CompetitiveIntelligence } from '@/components/market/CompetitiveIntelligence';
 import { MarketAnalysisWorkbench } from '@/components/market/MarketAnalysisWorkbench';
-import { useState, useMemo, useRef} from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiHelpers } from '@/lib/api/client';
-import { MarketEmpireListing } from '@/components/market/MarketEmpireListing';
-import {
-  Store, TrendingUp, Package, Coins, Search, Filter, X,
-  ShoppingCart, Tag, ArrowUpRight, ArrowDownRight,
-  RefreshCw, DollarSign, BarChart3,
-  ChevronDown, ChevronRight,
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-import { ErrorState } from '@/components/common/EmptyState';
+import { MarketListingsPanel } from '@/components/market/MarketListingsPanel';
+import { useState } from 'react';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
 import { RealtimeDataPanel } from '@/components/lens/RealtimeDataPanel';
 import SectorHeatmap, { type SectorHeatmapQuote } from '@/components/lens/SectorHeatmap';
+import { cn } from '@/lib/utils';
 
-interface MarketListingItem {
-  id: string;
-  title?: string;
-  description?: string;
-  price?: number;
-  seller?: string;
-  createdAt?: string;
-  tags?: string[];
-  type?: string;
-  rating?: number;
-  purchases?: number;
-}
+type MarketView = 'listings' | 'analysis' | 'heatmaps' | 'competitors' | 'intel';
 
-type SortField = 'newest' | 'price-asc' | 'price-desc' | 'popular';
-type ListingType = 'all' | 'template' | 'component' | 'dataset' | 'artwork';
+const TABS: { id: MarketView; label: string }[] = [
+  { id: 'listings', label: 'Listings' },
+  { id: 'analysis', label: 'Analysis' },
+  { id: 'heatmaps', label: 'Heatmaps' },
+  { id: 'competitors', label: 'Competitors' },
+  { id: 'intel', label: 'Intel' },
+];
 
 export default function MarketLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-    ],
-    { lensId: "market" }
-  );
-
   useLensNav('market');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('market');
-  const queryClient = useQueryClient();
-  const [showCreate, setShowCreate] = useState(false);
-  const [showAnalysisWorkbench, setShowAnalysisWorkbench] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newPrice, setNewPrice] = useState('');
-  const [newType, setNewType] = useState('beat');
-  const [newTags, setNewTags] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<ListingType>('all');
-  const [sortBy, setSortBy] = useState<SortField>('newest');
-  const [purchasingId, setPurchasingId] = useState<string | null>(null);
-  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState<MarketListingItem | null>(null);
+  const [active, setActive] = useState<MarketView>('listings');
 
-  // Backend: GET /api/marketplace/listings
-  const { data: listings, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['marketplace-listings'],
-    queryFn: () => apiHelpers.marketplace.listings().then((r) => r.data),
-  });
-
-  // Backend: GET /api/economy/balance
-  const { data: wallet } = useQuery({
-    queryKey: ['economy-balance'],
-    queryFn: () => apiHelpers.economy.balance().then((r) => r.data),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (payload: { title: string; description: string; price: number; type: string }) =>
-      apiHelpers.marketplace.submit(payload as unknown as { name: string; githubUrl: string; description?: string; category?: string }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] });
-      setShowCreate(false);
-      setNewTitle('');
-      setNewDescription('');
-      setNewPrice('');
-      setNewType('beat');
-      setNewTags('');
-    },
-    onError: (err) => console.error('createMutation failed:', err instanceof Error ? err.message : err),
-  });
-
-  const purchaseMutation = useMutation({
-    mutationFn: (listingId: string) =>
-      apiHelpers.durableMarketplace.purchase(listingId, 'me'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['marketplace-listings'] });
-      queryClient.invalidateQueries({ queryKey: ['economy-balance'] });
-      setShowPurchaseConfirm(null);
-      setPurchasingId(null);
-    },
-    onError: (err) => {
-      console.error('purchaseMutation failed:', err instanceof Error ? err.message : err);
-      setPurchasingId(null);
-    },
-  });
-
-  // Filter and sort listings
-  const filteredListings = useMemo(() => {
-    const raw: MarketListingItem[] = listings?.listings || [];
-    let result = raw;
-
-    // Filter by type
-    if (filterType !== 'all') {
-      result = result.filter((l) => l.type === filterType);
-    }
-
-    // Filter by search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (l) =>
-          l.title?.toLowerCase().includes(q) ||
-          l.description?.toLowerCase().includes(q) ||
-          l.tags?.some((t) => t.toLowerCase().includes(q))
-      );
-    }
-
-    // Sort
-    switch (sortBy) {
-      case 'price-asc':
-        result = [...result].sort((a, b) => (a.price || 0) - (b.price || 0));
-        break;
-      case 'price-desc':
-        result = [...result].sort((a, b) => (b.price || 0) - (a.price || 0));
-        break;
-      case 'popular':
-        result = [...result].sort((a, b) => (b.purchases || 0) - (a.purchases || 0));
-        break;
-      case 'newest':
-      default:
-        result = [...result].sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
-    }
-
-    return result;
-  }, [listings, filterType, searchQuery, sortBy]);
-
-  const totalVolume = listings?.volume ?? 0;
-  const totalTransactions = listings?.transactions ?? 0;
-  const totalListings = listings?.listings?.length || 0;
-  const libraryCount = listings?.library?.length ?? 0;
-
-  const handlePurchase = (listing: MarketListingItem) => {
-    setShowPurchaseConfirm(listing);
-  };
-
-  const confirmPurchase = () => {
-    if (!showPurchaseConfirm) return;
-    setPurchasingId(showPurchaseConfirm.id);
-    purchaseMutation.mutate(showPurchaseConfirm.id);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-gray-400 animate-pulse">Loading marketplace data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message} onRetry={refetch} />
-      </div>
-    );
-  }
+  useLensCommand(
+    [
+      { id: 'tab-listings', keys: 'l', description: 'Listings', category: 'navigation', action: () => setActive('listings') },
+      { id: 'tab-analysis', keys: 'a', description: 'Analysis workbench', category: 'navigation', action: () => setActive('analysis') },
+      { id: 'tab-heatmaps', keys: 'h', description: 'Heatmaps', category: 'navigation', action: () => setActive('heatmaps') },
+      { id: 'tab-competitors', keys: 'c', description: 'Competitors', category: 'navigation', action: () => setActive('competitors') },
+      { id: 'tab-intel', keys: 'i', description: 'Competitive intel', category: 'navigation', action: () => setActive('intel') },
+    ],
+    { lensId: 'market' },
+  );
 
   return (
     <LensShell lensId="market" asMain={false}>
       <FirstRunTour lensId="market" />
       <DepthBadge lensId="market" size="sm" className="ml-2" />
-    <div className="p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🏪</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">Market Lens</h1>
-              <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
-            </div>
-            <p className="text-sm text-gray-400">
-              DTU marketplace, listings, and economy simulation
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <DTUExportButton domain="market" data={{}} compact />
-          <button className="px-3 py-2 text-sm bg-lattice-surface rounded-lg text-gray-400 hover:text-white transition-colors" onClick={() => refetch()} aria-label="Refresh">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button className="btn-neon purple" onClick={() => setShowCreate(!showCreate)}>
-            <Store className="w-4 h-4 mr-2 inline" />
-            Create Listing
-          </button>
-        </div>
-      </header>
-
-      {/* Yahoo Finance Markets-style heatmap — colored tile per index */}
-      <SectorHeatmap
-        quotes={(realtimeData as { quotes?: SectorHeatmapQuote[] } | null)?.quotes}
-        isLive={isLive}
-        lastUpdated={lastUpdated}
-      />
-
-      <RealtimeDataPanel domain="market" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
-
-      {/* Wallet Banner */}
-      {wallet && (
-        <div className="panel p-3 flex items-center justify-between bg-gradient-to-r from-neon-purple/5 to-neon-cyan/5">
+      <div className="p-6 space-y-6">
+        <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Coins className="w-5 h-5 text-neon-cyan" />
-            <span className="text-sm text-gray-300">Your Balance</span>
+            <span className="text-2xl">🏪</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">Market Lens</h1>
+                <LiveIndicator isLive={isLive} lastUpdated={lastUpdated} />
+              </div>
+              <p className="text-sm text-gray-400">DTU marketplace, listings, and economy simulation</p>
+            </div>
           </div>
-          <span className="text-lg font-bold text-neon-cyan">{wallet.balance ?? 0} CC</span>
-        </div>
-      )}
+          <DTUExportButton domain="market" data={{}} compact />
+        </header>
 
-      {/* Create Listing Form */}
-      {showCreate && (
-        <div className="panel p-4 space-y-3 border border-neon-purple/20">
-          <h2 className="font-semibold flex items-center gap-2">
-            <Store className="w-4 h-4 text-neon-purple" />
-            New Listing
-          </h2>
-          <input
-            className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none"
-            placeholder="Title"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-          />
-          <textarea
-            className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none resize-none"
-            placeholder="Description"
-            rows={3}
-            value={newDescription}
-            onChange={(e) => setNewDescription(e.target.value)}
-          />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none"
-              placeholder="Price (CC)"
-              type="number"
-              min="0"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value)}
-            />
-            <select
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm"
-              value={newType}
-              onChange={(e) => setNewType(e.target.value)}
-            >
-              <option value="template">Template</option>
-              <option value="component">Component</option>
-              <option value="dataset">Dataset</option>
-              <option value="artwork">Artwork</option>
-            </select>
-            <input
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none"
-              placeholder="Tags (comma-separated)"
-              value={newTags}
-              onChange={(e) => setNewTags(e.target.value)}
-            />
-          </div>
-          {createMutation.isError && (
-            <p className="text-xs text-red-400">
-              {createMutation.error instanceof Error ? createMutation.error.message : 'Failed to create listing'}
-            </p>
-          )}
-          <div className="flex gap-2 justify-end">
+        <SectorHeatmap
+          quotes={(realtimeData as { quotes?: SectorHeatmapQuote[] } | null)?.quotes}
+          isLive={isLive}
+          lastUpdated={lastUpdated}
+        />
+        <RealtimeDataPanel domain="market" data={realtimeData} isLive={isLive} lastUpdated={lastUpdated} insights={insights} compact />
+
+        <nav aria-label="Market views" className="flex gap-1 overflow-x-auto border-b border-lattice-border pb-2">
+          {TABS.map((t) => (
             <button
-              className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-              onClick={() => setShowCreate(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="btn-neon purple text-sm"
-              disabled={!newTitle.trim() || createMutation.isPending}
-              onClick={() =>
-                createMutation.mutate({
-                  title: newTitle.trim(),
-                  description: newDescription.trim(),
-                  price: Number(newPrice) || 0,
-                  type: newType,
-                })
-              }
-            >
-              {createMutation.isPending ? 'Creating...' : 'Submit Listing'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <Store className="w-5 h-5 text-neon-green" />
-          <div>
-            <p className="text-lg font-bold">{totalListings}</p>
-            <p className="text-xs text-gray-400">Listings</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <DollarSign className="w-5 h-5 text-neon-cyan" />
-          <div>
-            <p className="text-lg font-bold">{totalVolume} CC</p>
-            <p className="text-xs text-gray-400">Volume</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <BarChart3 className="w-5 h-5 text-neon-purple" />
-          <div>
-            <p className="text-lg font-bold">{totalTransactions}</p>
-            <p className="text-xs text-gray-400">Transactions</p>
-          </div>
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
-          <TrendingUp className="w-5 h-5 text-neon-blue" />
-          <div>
-            <p className="text-lg font-bold">{filteredListings.length > 0 ? `${((filteredListings.reduce((a, l) => a + (l.price || 0), 0) / filteredListings.length) || 0).toFixed(0)} CC` : '--'}</p>
-            <p className="text-xs text-gray-400">Avg Price</p>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Market Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={<Store className="w-5 h-5" />} label="Active Listings" value={totalListings} trend={totalListings > 0 ? '+' : undefined} />
-        <StatCard icon={<Package className="w-5 h-5" />} label="Your Library" value={libraryCount} />
-        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Transactions" value={totalTransactions} trend={totalTransactions > 0 ? '+' : undefined} />
-        <StatCard icon={<Coins className="w-5 h-5" />} label="Volume" value={`${totalVolume} CC`} />
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div className="panel p-4">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              className="w-full pl-10 pr-8 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none"
-              placeholder="Search listings by title, description, or tag..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-              aria-label="Close">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <select
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-gray-300"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as ListingType)}
-            >
-              <option value="all">All Types</option>
-              <option value="template">Templates</option>
-              <option value="component">Components</option>
-              <option value="dataset">Datasets</option>
-              <option value="artwork">Artwork</option>
-            </select>
-            <select
-              className="px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm text-gray-300"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortField)}
-            >
-              <option value="newest">Newest</option>
-              <option value="price-asc">Price: Low-High</option>
-              <option value="price-desc">Price: High-Low</option>
-              <option value="popular">Most Popular</option>
-            </select>
-          </div>
-        </div>
-        {(searchQuery || filterType !== 'all') && (
-          <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
-            <Filter className="w-3 h-3" />
-            <span>
-              Showing {filteredListings.length} of {totalListings} listings
-            </span>
-            {filterType !== 'all' && (
-              <span className="px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded flex items-center gap-1">
-                <Tag className="w-3 h-3" />
-                {filterType}
-                <button onClick={() => setFilterType('all')} aria-label="Close">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Listings Grid */}
-      <div className="panel p-4">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-neon-green" />
-          Active Listings
-          <span className="text-xs text-gray-400 font-normal">({filteredListings.length})</span>
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredListings.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-              <p className="text-gray-400 mb-2">
-                {searchQuery || filterType !== 'all'
-                  ? 'No listings match your filters'
-                  : 'No listings yet. Create the first marketplace listing!'}
-              </p>
-              {(searchQuery || filterType !== 'all') && (
-                <button
-                  onClick={() => { setSearchQuery(''); setFilterType('all'); }}
-                  className="text-sm text-neon-purple hover:underline"
-                >
-                  Clear filters
-                </button>
+              key={t.id}
+              type="button"
+              onClick={() => setActive(t.id)}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
+                active === t.id
+                  ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
+                  : 'text-gray-400 hover:text-violet-300 border border-transparent',
               )}
-            </div>
-          ) : (
-            filteredListings.map((listing: MarketListingItem, index: number) => (
-              <motion.div key={listing.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="relative">
-                {purchasingId === listing.id && (
-                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 rounded-xl backdrop-blur-sm">
-                    <div className="w-6 h-6 border-2 border-neon-purple border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-                <MarketEmpireListing
-                  listing={listing}
-                  onPurchase={() => handlePurchase(listing)}
-                />
-              </motion.div>
-            ))
-          )}
-        </div>
-      </div>
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-      {/* Market Analysis workbench — real bespoke forms for trendAnalysis /
-          competitorMatrix / priceElasticity, called directly via lensRun
-          (virtual-artifact path) instead of the dead persisted-artifact
-          action strip that used to sit here. */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowAnalysisWorkbench(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Market analysis workbench</span>
-          {showAnalysisWorkbench ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showAnalysisWorkbench && (
-          <div className="mt-3">
-            <MarketAnalysisWorkbench />
+        {active === 'listings' && <MarketListingsPanel />}
+        {active === 'analysis' && <MarketAnalysisWorkbench />}
+        {active === 'heatmaps' && (
+          <div className="space-y-4">
+            <MarketHeatmap />
+            <Watchlist />
+            <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+              <SectorHeatmapPanel />
+            </section>
           </div>
         )}
-      </section>
-
-      {/* Purchase Confirmation Modal */}
-      {showPurchaseConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="panel p-6 max-w-md w-full space-y-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-neon-green" />
-              Confirm Purchase
-            </h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Item</span>
-                <span className="font-medium">{showPurchaseConfirm.title || 'Untitled'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Type</span>
-                <span className="text-xs px-2 py-0.5 bg-neon-green/20 text-neon-green rounded">
-                  {showPurchaseConfirm.type || 'DTU'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Price</span>
-                <span className="text-lg font-bold text-neon-cyan">
-                  {showPurchaseConfirm.price || 0} CC
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Your Balance</span>
-                <span className={`font-mono ${(wallet?.balance || 0) >= (showPurchaseConfirm.price || 0) ? 'text-neon-green' : 'text-red-400'}`}>
-                  {wallet?.balance ?? 0} CC
-                </span>
-              </div>
-            </div>
-            {(wallet?.balance || 0) < (showPurchaseConfirm.price || 0) && (
-              <p className="text-xs text-red-400 bg-red-400/10 p-2 rounded">
-                Insufficient balance. You need {(showPurchaseConfirm.price || 0) - (wallet?.balance || 0)} more CC.
-              </p>
-            )}
-            {purchaseMutation.isError && (
-              <p className="text-xs text-red-400">
-                {purchaseMutation.error instanceof Error ? purchaseMutation.error.message : 'Purchase failed'}
-              </p>
-            )}
-            <div className="flex gap-2 justify-end pt-2">
-              <button
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-                onClick={() => { setShowPurchaseConfirm(null); setPurchasingId(null); }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-neon text-sm"
-                disabled={
-                  purchaseMutation.isPending ||
-                  (wallet?.balance || 0) < (showPurchaseConfirm.price || 0)
-                }
-                onClick={confirmPurchase}
-              >
-                {purchaseMutation.isPending ? 'Processing...' : 'Confirm Purchase'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Parity-sprint surfaces ── */}
-      <div className="space-y-4 mt-6">
-        <MarketHeatmap />
-        <Watchlist />
+        {active === 'competitors' && <CompetitorTracker />}
+        {active === 'intel' && <CompetitiveIntelligence />}
       </div>
-
-      {/* Bespoke SPDR sector heatmap with Save-as-DTU */}
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <SectorHeatmapPanel />
-      </section>
-
-      {/* Market-research workbench: competitor CRUD + SWOT + dashboard */}
-      <section className="mt-4">
-        <CompetitorTracker />
-      </section>
-
-      {/* Competitive-intelligence parity: news, battlecards, win/loss,
-          web-change tracking, TAM/SAM/SOM, landscape quadrant */}
-      <section className="mt-4">
-        <CompetitiveIntelligence />
-      </section>
-    </div>
-          <RecentMineCard domain="market" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="market" hideWhenEmpty className="mt-3" />
-          <CrossLensRecentsPanel lensId="market" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+      <CrossLensRecentsPanel lensId="market" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  trend,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  trend?: '+' | '-';
-}) {
-  return (
-    <div data-lens-theme="market" className="lens-card">
-      <div className="flex items-center justify-between">
-        <span className="text-neon-green">{icon}</span>
-        <div className="flex items-center gap-1">
-          <span className="text-2xl font-bold">{value}</span>
-          {trend === '+' && <ArrowUpRight className="w-4 h-4 text-neon-green" />}
-          {trend === '-' && <ArrowDownRight className="w-4 h-4 text-neon-pink" />}
-        </div>
-
-      {/* Real-time Data Panel */}
-      </div>
-      <p className="text-sm text-gray-400 mt-2">{label}</p>
-    </div>
   );
 }

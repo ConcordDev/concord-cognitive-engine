@@ -22,7 +22,7 @@ describe('QuestPanel — real quests, honest empty state (no demo seed)', () => 
     expect(src).toMatch(/useState<Quest\[\]>\(questsProp \?\? \[\]\)/);
   });
   it('is mounted with a worldId', () => {
-    expect(read('app/lenses/world/page.tsx')).toMatch(/<QuestPanel worldId=/);
+    expect(read('components/world/WorldOsSurface.tsx')).toMatch(/<QuestPanel worldId=/);
   });
 });
 
@@ -36,7 +36,7 @@ describe('world-tint — orphaned event now has a consumer', () => {
     expect(src).toMatch(/TTL_MS/);
   });
   it('is mounted in the world lens', () => {
-    expect(read('app/lenses/world/page.tsx')).toMatch(/<WorldTintOverlay \/>/);
+    expect(read('components/world/WorldOsSurface.tsx')).toMatch(/<WorldTintOverlay \/>/);
   });
 });
 

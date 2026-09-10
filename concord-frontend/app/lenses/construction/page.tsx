@@ -1,887 +1,163 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef} from 'react';
+/**
+ * Construction — one Procore-shaped GC ops desk.
+ *
+ * Single `active` union. Accordion booleans for Field/OSHA/Procore/Workbench
+ * folded into the union. Project registry extracted to ProjectRegistryPanel.
+ * Page is a thin shell (paper/government gold).
+ */
+
+import { useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { HardHat } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
-import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
-import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
-import { useLensCommand } from "@/hooks/useLensCommand";
-import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
+import { PipingProvider } from '@/components/panel-polish';
+import { useLensNav } from '@/hooks/useLensNav';
+import { useLensCommand } from '@/hooks/useLensCommand';
+import { useLensIdentity } from '@/hooks/useLensIdentity';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
-import {
-  HardHat,
-  ClipboardList,
-  DollarSign,
-  Users,
-  Plus,
-  Search,
-  X,
-  Trash2,
-  BarChart3,
-  AlertTriangle,
-  Truck,
-  FileText,
-  Shield,
-  Building2,
-  Map,
-  Percent,
-  Hammer,
-  Zap,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
-import { LensPageShell } from '@/components/lens/LensPageShell';
 import { OshaIncidentSearch } from '@/components/construction/OshaIncidentSearch';
 import { ProcorePanel } from '@/components/construction/ProcorePanel';
 import { ConstructionActionPanel } from '@/components/construction/ConstructionActionPanel';
 import { FieldManagementPanel } from '@/components/construction/FieldManagementPanel';
-import { PipingProvider } from '@/components/panel-polish';
+import { ProjectRegistryPanel } from '@/components/construction/ProjectRegistryPanel';
+import {
+  SHELL_VIEWS,
+  type ConstrView,
+  type RegistryMode,
+} from '@/components/construction/construction-types';
 
-const MapView = dynamic(() => import('@/components/common/MapView'), { ssr: false });
+const REGISTRY_MODES = new Set<ConstrView>([
+  'dashboard',
+  'jobs',
+  'estimates',
+  'materials',
+  'inspections',
+  'safety',
+  'crew',
+  'documents',
+  'map',
+]);
 
-type ModeTab =
-  | 'jobs'
-  | 'estimates'
-  | 'materials'
-  | 'inspections'
-  | 'safety'
-  | 'crew'
-  | 'documents'
-  | 'map';
-type ArtifactType =
-  | 'Job'
-  | 'Estimate'
-  | 'MaterialTakeoff'
-  | 'Inspection'
-  | 'SafetyReport'
-  | 'CrewAssignment'
-  | 'Document';
-type Status =
-  | 'planned'
-  | 'bidding'
-  | 'awarded'
-  | 'in_progress'
-  | 'inspection'
-  | 'punch_list'
-  | 'completed'
-  | 'on_hold';
-
-interface ConstructionArtifact {
-  name: string;
-  type: ArtifactType;
-  status: Status;
-  description: string;
-  notes: string;
-  // Job
-  jobNumber?: string;
-  client?: string;
-  address?: string;
-  startDate?: string;
-  endDate?: string;
-  contractValue?: number;
-  changeOrders?: number;
-  projectType?: string;
-  lat?: number;
-  lng?: number;
-  // Estimate
-  laborCost?: number;
-  materialCost?: number;
-  overhead?: number;
-  profit?: number;
-  totalEstimate?: number;
-  // Materials
-  material?: string;
-  quantity?: number;
-  unit?: string;
-  unitCost?: number;
-  supplier?: string;
-  deliveryDate?: string;
-  onSite?: boolean;
-  // Inspection
-  inspector?: string;
-  inspectionType?: string;
-  result?: string;
-  deficiencies?: string;
-  reinspectionDate?: string;
-  codeReference?: string;
-  // Safety
-  incidentType?: string;
-  severity?: string;
-  actionTaken?: string;
-  followUp?: string;
-  // Crew
-  foreman?: string;
-  crewSize?: number;
-  trade?: string;
-  shift?: string;
+function isRegistry(v: ConstrView): v is RegistryMode {
+  return REGISTRY_MODES.has(v);
 }
 
-const MODE_TABS: {
-  id: ModeTab;
-  label: string;
-  icon: typeof HardHat;
-  artifactType: ArtifactType;
-}[] = [
-  { id: 'jobs', label: 'Jobs', icon: Building2, artifactType: 'Job' },
-  { id: 'estimates', label: 'Estimates', icon: DollarSign, artifactType: 'Estimate' },
-  { id: 'materials', label: 'Materials', icon: Truck, artifactType: 'MaterialTakeoff' },
-  { id: 'inspections', label: 'Inspections', icon: ClipboardList, artifactType: 'Inspection' },
-  { id: 'safety', label: 'Safety', icon: Shield, artifactType: 'SafetyReport' },
-  { id: 'crew', label: 'Crew', icon: Users, artifactType: 'CrewAssignment' },
-  { id: 'documents', label: 'Documents', icon: FileText, artifactType: 'Document' },
-  { id: 'map', label: 'Map', icon: Map, artifactType: 'Job' },
-];
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  planned: { label: 'Planned', color: 'gray-400' },
-  bidding: { label: 'Bidding', color: 'blue-400' },
-  awarded: { label: 'Awarded', color: 'cyan-400' },
-  in_progress: { label: 'In Progress', color: 'green-400' },
-  inspection: { label: 'Inspection', color: 'yellow-400' },
-  punch_list: { label: 'Punch List', color: 'orange-400' },
-  completed: { label: 'Completed', color: 'emerald-400' },
-  on_hold: { label: 'On Hold', color: 'red-400' },
-};
-
-const PROJECT_TYPES = [
-  'Residential New',
-  'Residential Remodel',
-  'Commercial',
-  'Industrial',
-  'Infrastructure',
-  'Multi-Family',
-  'Mixed-Use',
-  'Tenant Improvement',
-];
-const INSPECTION_TYPES = [
-  'Foundation',
-  'Framing',
-  'Rough-In',
-  'Insulation',
-  'Drywall',
-  'Final',
-  'Fire',
-  'Electrical',
-  'Plumbing',
-  'Mechanical',
-];
-const TRADES = [
-  'General',
-  'Electrical',
-  'Plumbing',
-  'HVAC',
-  'Framing',
-  'Concrete',
-  'Roofing',
-  'Drywall',
-  'Painting',
-  'Flooring',
-  'Masonry',
-  'Welding',
-  'Excavation',
-];
-
 export default function ConstructionLensPage() {
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLensNav('construction');
+  useLensIdentity('construction');
+  const reduceMotion = useReducedMotion();
+  const [active, setActive] = useState<ConstrView>('jobs');
+
   useLensCommand(
-    [
-      { id: "focus-search", keys: "/", description: "Focus search", category: "navigation", action: () => searchInputRef.current?.focus() },
-    ],
-    { lensId: "construction" }
+    SHELL_VIEWS.map((v) => ({
+      id: `view-${v.id}`,
+      keys: v.keys,
+      description: v.label,
+      category: 'navigation' as const,
+      action: () => setActive(v.id),
+    })),
+    { lensId: 'construction' },
   );
 
-  const [activeTab, setActiveTab] = useState<ModeTab>('jobs');
-  const [showFieldMgmt, setShowFieldMgmt] = useState(false);
-  const [showOsha, setShowOsha] = useState(false);
-  const [showProcore, setShowProcore] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<LensItem<ConstructionArtifact> | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
-
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formStatus, setFormStatus] = useState<Status>('planned');
-  const [formNotes, setFormNotes] = useState('');
-  const [formClient, setFormClient] = useState('');
-  const [formAddress, setFormAddress] = useState('');
-  const [formStartDate, setFormStartDate] = useState('');
-  const [formEndDate, setFormEndDate] = useState('');
-  const [formContractValue, setFormContractValue] = useState('');
-  const [formProjectType, setFormProjectType] = useState('Residential New');
-  const [formLaborCost, setFormLaborCost] = useState('');
-  const [formMaterialCost, setFormMaterialCost] = useState('');
-  const [formTrade, setFormTrade] = useState('General');
-  const [formInspectionType, setFormInspectionType] = useState('Foundation');
-  const [formForeman, setFormForeman] = useState('');
-  const [formCrewSize, setFormCrewSize] = useState('');
-
-  const activeArtifactType = MODE_TABS.find((t) => t.id === activeTab)?.artifactType || 'Job';
-  const { items, isLoading, isError, error, refetch, create, update, remove } =
-    useLensData<ConstructionArtifact>('construction', activeArtifactType, { seed: [] });
-  const runAction = useRunArtifact('construction');
-
-  const filtered = useMemo(() => {
-    let result = items;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (i) =>
-          i.title.toLowerCase().includes(q) ||
-          (i.data as unknown as ConstructionArtifact).description?.toLowerCase().includes(q)
-      );
-    }
-    if (filterStatus !== 'all')
-      result = result.filter(
-        (i) => (i.data as unknown as ConstructionArtifact).status === filterStatus
-      );
-    return result;
-  }, [items, searchQuery, filterStatus]);
-
-  const handleAction = useCallback(
-    async (action: string, artifactId?: string) => {
-      const targetId = artifactId || filtered[0]?.id;
-      if (!targetId) return;
-      try {
-        await runAction.mutateAsync({ id: targetId, action });
-      } catch (err) {
-        console.error('Action failed:', err);
-      }
-    },
-    [filtered, runAction]
+  const motionProps = useMemo(
+    () =>
+      reduceMotion
+        ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 }, transition: { duration: 0 } }
+        : {
+            initial: { opacity: 0, y: 8 },
+            animate: { opacity: 1, y: 0 },
+            exit: { opacity: 0, y: -6 },
+            transition: { duration: 0.16 },
+          },
+    [reduceMotion],
   );
-
-  const openCreate = () => {
-    setEditingItem(null);
-    setFormName('');
-    setFormDescription('');
-    setFormStatus('planned');
-    setFormNotes('');
-    setFormClient('');
-    setFormAddress('');
-    setFormStartDate('');
-    setFormEndDate('');
-    setFormContractValue('');
-    setFormProjectType('Residential New');
-    setFormLaborCost('');
-    setFormMaterialCost('');
-    setFormTrade('General');
-    setFormInspectionType('Foundation');
-    setFormForeman('');
-    setFormCrewSize('');
-    setEditorOpen(true);
-  };
-  const openEdit = (item: LensItem<ConstructionArtifact>) => {
-    const d = item.data as unknown as ConstructionArtifact;
-    setEditingItem(item);
-    setFormName(d.name || '');
-    setFormDescription(d.description || '');
-    setFormStatus(d.status || 'planned');
-    setFormNotes(d.notes || '');
-    setFormClient(d.client || '');
-    setFormAddress(d.address || '');
-    setFormStartDate(d.startDate || '');
-    setFormEndDate(d.endDate || '');
-    setFormContractValue(d.contractValue?.toString() || '');
-    setFormProjectType(d.projectType || 'Residential New');
-    setFormLaborCost(d.laborCost?.toString() || '');
-    setFormMaterialCost(d.materialCost?.toString() || '');
-    setFormTrade(d.trade || 'General');
-    setFormInspectionType(d.inspectionType || 'Foundation');
-    setFormForeman(d.foreman || '');
-    setFormCrewSize(d.crewSize?.toString() || '');
-    setEditorOpen(true);
-  };
-
-  const handleSave = async () => {
-    const data: Record<string, unknown> = {
-      name: formName,
-      type: activeArtifactType,
-      status: formStatus,
-      description: formDescription,
-      notes: formNotes,
-      client: formClient,
-      address: formAddress,
-      startDate: formStartDate,
-      endDate: formEndDate,
-      contractValue: formContractValue ? parseFloat(formContractValue) : undefined,
-      projectType: formProjectType,
-      laborCost: formLaborCost ? parseFloat(formLaborCost) : undefined,
-      materialCost: formMaterialCost ? parseFloat(formMaterialCost) : undefined,
-      trade: formTrade,
-      inspectionType: formInspectionType,
-      foreman: formForeman,
-      crewSize: formCrewSize ? parseInt(formCrewSize) : undefined,
-    };
-    if (editingItem)
-      await update(editingItem.id, {
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    else
-      await create({
-        title: formName,
-        data,
-        meta: { tags: [], status: formStatus, visibility: 'private' },
-      });
-    setEditorOpen(false);
-  };
-
-  const renderDashboard = () => {
-    const all = items.map((i) => i.data as unknown as ConstructionArtifact);
-    const totalContract = all.reduce((s, j) => s + (j.contractValue || 0), 0);
-    return (
-      <div data-lens-theme="construction" className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className={ds.panel}>
-          <Building2 className="w-5 h-5 text-blue-400 mb-2" />
-          <p className={ds.textMuted}>Active Jobs</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'in_progress').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <DollarSign className="w-5 h-5 text-green-400 mb-2" />
-          <p className={ds.textMuted}>Contract Value</p>
-          <p className="text-xl font-bold text-white">${totalContract.toLocaleString()}</p>
-        </div>
-        <div className={ds.panel}>
-          <ClipboardList className="w-5 h-5 text-yellow-400 mb-2" />
-          <p className={ds.textMuted}>Pending Inspections</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'inspection').length}
-          </p>
-        </div>
-        <div className={ds.panel}>
-          <AlertTriangle className="w-5 h-5 text-red-400 mb-2" />
-          <p className={ds.textMuted}>Safety Issues</p>
-          <p className="text-xl font-bold text-white">
-            {all.filter((j) => j.status === 'on_hold').length}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditor = () => {
-    if (!editorOpen) return null;
-    return (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-        onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-        <div
-          className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')}
-          onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={ds.heading3}>
-              {editingItem ? 'Edit' : 'New'} {activeArtifactType}
-            </h3>
-            <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className={ds.label}>Name</label>
-              <input
-                className={ds.input}
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Description</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className={ds.label}>Status</label>
-              <select
-                className={ds.select}
-                value={formStatus}
-                onChange={(e) => setFormStatus(e.target.value as Status)}
-              >
-                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {activeArtifactType === 'Job' && (
-              <>
-                <div>
-                  <label className={ds.label}>Client</label>
-                  <input
-                    className={ds.input}
-                    value={formClient}
-                    onChange={(e) => setFormClient(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Address</label>
-                  <input
-                    className={ds.input}
-                    value={formAddress}
-                    onChange={(e) => setFormAddress(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Project Type</label>
-                  <select
-                    className={ds.select}
-                    value={formProjectType}
-                    onChange={(e) => setFormProjectType(e.target.value)}
-                  >
-                    {PROJECT_TYPES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={ds.label}>Contract Value</label>
-                  <input
-                    type="number"
-                    className={ds.input}
-                    value={formContractValue}
-                    onChange={(e) => setFormContractValue(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={ds.label}>Start</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formStartDate}
-                      onChange={(e) => setFormStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className={ds.label}>End</label>
-                    <input
-                      type="date"
-                      className={ds.input}
-                      value={formEndDate}
-                      onChange={(e) => setFormEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            {activeArtifactType === 'Estimate' && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={ds.label}>Labor Cost</label>
-                  <input
-                    type="number"
-                    className={ds.input}
-                    value={formLaborCost}
-                    onChange={(e) => setFormLaborCost(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Material Cost</label>
-                  <input
-                    type="number"
-                    className={ds.input}
-                    value={formMaterialCost}
-                    onChange={(e) => setFormMaterialCost(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-            {activeArtifactType === 'Inspection' && (
-              <div>
-                <label className={ds.label}>Inspection Type</label>
-                <select
-                  className={ds.select}
-                  value={formInspectionType}
-                  onChange={(e) => setFormInspectionType(e.target.value)}
-                >
-                  {INSPECTION_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {activeArtifactType === 'CrewAssignment' && (
-              <>
-                <div>
-                  <label className={ds.label}>Trade</label>
-                  <select
-                    className={ds.select}
-                    value={formTrade}
-                    onChange={(e) => setFormTrade(e.target.value)}
-                  >
-                    {TRADES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={ds.label}>Foreman</label>
-                  <input
-                    className={ds.input}
-                    value={formForeman}
-                    onChange={(e) => setFormForeman(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={ds.label}>Crew Size</label>
-                  <input
-                    type="number"
-                    className={ds.input}
-                    value={formCrewSize}
-                    onChange={(e) => setFormCrewSize(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            <div>
-              <label className={ds.label}>Notes</label>
-              <textarea
-                className={ds.textarea}
-                rows={2}
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <button onClick={() => setEditorOpen(false)} className={ds.btnSecondary}>
-              Cancel
-            </button>
-            <button onClick={handleSave} className={ds.btnPrimary} disabled={!formName.trim()}>
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderLibrary = () => (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            className={cn(ds.input, 'pl-10')}
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <select
-          className={cn(ds.select, 'w-auto')}
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="all">All Status</option>
-          {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
-        </select>
-        <button onClick={openCreate} className={ds.btnPrimary}>
-          <Plus className="w-4 h-4" /> New
-        </button>
-      </div>
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
-          <div className="w-6 h-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-          <span className="sr-only">Loading construction data…</span>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className={cn(ds.panel, 'text-center py-12')}>
-          <HardHat className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className={ds.textMuted}>No {activeArtifactType} items yet</p>
-          <button onClick={openCreate} className={cn(ds.btnPrimary, 'mt-3')}>
-            <Plus className="w-4 h-4" /> Create First
-          </button>
-        </div>
-      ) : (
-        filtered.map((item, index) => {
-          const d = item.data as unknown as ConstructionArtifact;
-          const sc = STATUS_CONFIG[d.status] || STATUS_CONFIG.planned;
-          return (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={ds.panelHover}
-              onClick={() => openEdit(item)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <HardHat className="w-5 h-5 text-neon-cyan" />
-                  <div>
-                    <p className="text-white font-medium">{d.name || item.title}</p>
-                    <p className={ds.textMuted}>
-                      {d.client || ''} {d.address ? `- ${d.address}` : ''}{' '}
-                      {d.trade ? `[${d.trade}]` : ''}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {d.contractValue && (
-                    <span className="text-xs text-green-400">
-                      ${d.contractValue.toLocaleString()}
-                    </span>
-                  )}
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full bg-${sc.color}/20 text-${sc.color}`}
-                  >
-                    {sc.label}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAction('analyze', item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Activate">
-                    <Zap className="w-4 h-4 text-neon-cyan" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      remove(item.id);
-                    }}
-                    className={ds.btnGhost}
-                  aria-label="Delete">
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })
-      )}
-    </div>
-  );
-
-  // ── Four UX states: loading / error own page-level surfaces so they carry
-  // genuine a11y roles (role=status / role=alert) and a WORKING Retry that
-  // re-fetches the real /api/lens/construction feed. LensPageShell's shared
-  // Loading/ErrorState don't expose these roles, so we render error here and
-  // don't hand isLoading/isError to the shell — loading (role=status), empty
-  // (CTA) and populated render through renderLibrary below. This closes the
-  // swallowed-fetch → silent-empty defect: a failed feed shows role=alert +
-  // Retry, never a blank "No items yet" page.
-  if (isError) {
-    return (
-      <LensShell lensId="construction" asMain={false}>
-        <div role="alert" className={cn(ds.panel, 'mx-auto mt-12 max-w-md border-red-500/40 text-center')}>
-          <X className="w-10 h-10 text-red-400 mx-auto mb-3" />
-          <p className="text-red-300 font-medium">Couldn&apos;t load construction data</p>
-          {error?.message && <p className="mt-1 text-xs text-red-400/80">{error.message}</p>}
-          <button onClick={() => refetch()} className={cn(ds.btnPrimary, 'mt-4')}>
-            Retry
-          </button>
-        </div>
-      </LensShell>
-    );
-  }
 
   return (
     <LensShell lensId="construction" asMain={false}>
       <FirstRunTour lensId="construction" />
-      <ManifestActionBar />
       <DepthBadge lensId="construction" size="sm" className="ml-2" />
-    <LensPageShell
-      domain="construction"
-      title="Construction"
-      description="Jobs, estimates, materials, inspections, safety, and crew management"
-      headerIcon={<HardHat className="w-6 h-6" />}
-      actions={
-        <>
-          {runAction.isPending && (
-            <span className="text-xs text-neon-cyan animate-pulse">AI processing...</span>
-          )}
-          <button
-            onClick={() => setShowDashboard(!showDashboard)}
-            className={cn(showDashboard ? ds.btnPrimary : ds.btnSecondary)}
-          >
-            <BarChart3 className="w-4 h-4" /> Dashboard
-          </button>
-        </>
-      }
-    >
-      {/* Stats Row */}
-      {(() => {
-        const allJobs = items.map((i) => i.data as unknown as ConstructionArtifact);
-        const activeCount = allJobs.filter((j) => j.status === 'in_progress').length;
-        const budgetTotal = allJobs.reduce((s, j) => s + (j.contractValue || 0), 0);
-        const completedCount = allJobs.filter((j) => j.status === 'completed').length;
-        const completionRate =
-          allJobs.length > 0 ? ((completedCount / allJobs.length) * 100).toFixed(0) : '0';
-        return (
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Hammer className="w-5 h-5 text-orange-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{activeCount}</p>
-                <p className="text-xs text-gray-400">Active Projects</p>
-              </div>
+      <div data-lens-theme="construction" className={ds.pageContainer}>
+        <a
+          href="#construction-main"
+          className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none"
+        >
+          Skip to construction content
+        </a>
+
+        <header className={ds.sectionHeader}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 rounded-lg border border-[var(--lens-accent)]/40 bg-[var(--lens-gradient)]">
+              <HardHat className="w-6 h-6" style={{ color: 'var(--lens-accent)' }} />
             </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <DollarSign className="w-5 h-5 text-green-400" />
-              <div>
-                <p className="text-lg font-bold text-white">${budgetTotal.toLocaleString()}</p>
-                <p className="text-xs text-gray-400">Budget Total</p>
-              </div>
-            </div>
-            <div className="p-3 bg-lattice-elevated rounded-lg border border-lattice-border flex items-center gap-3">
-              <Percent className="w-5 h-5 text-cyan-400" />
-              <div>
-                <p className="text-lg font-bold text-white">{completionRate}%</p>
-                <p className="text-xs text-gray-400">Completion Rate</p>
-              </div>
+            <div className="min-w-0">
+              <h1 className={ds.heading1}>Construction</h1>
+              <p className={ds.textMuted}>
+                Jobs, field paperwork, Procore controls — one GC desk.
+              </p>
             </div>
           </div>
-        );
-      })()}
+        </header>
 
-      <nav className="flex items-center gap-2 border-b border-lattice-border pb-4 flex-wrap">
-        {MODE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id);
-              setShowDashboard(false);
-            }}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap',
-              activeTab === tab.id && !showDashboard
-                ? 'bg-neon-blue/20 text-neon-blue'
-                : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-      {activeTab === 'map' ? (
-        <div className={cn(ds.panel, 'p-4')}>
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <Map className="w-4 h-4 text-neon-cyan" /> Job Site Locations
-          </h3>
-          <MapView
-            markers={items
-              .filter((i) => {
-                const d = i.data as unknown as ConstructionArtifact;
-                return d.lat && d.lng;
-              })
-              .map((i) => {
-                const d = i.data as unknown as ConstructionArtifact;
-                return {
-                  lat: d.lat!,
-                  lng: d.lng!,
-                  label: d.name || i.title,
-                  popup: `${d.address || ''} - ${d.status || ''}`,
-                };
-              })}
-            className="h-[500px]"
-          />
-        </div>
-      ) : showDashboard ? (
-        renderDashboard()
-      ) : (
-        renderLibrary()
-      )}
-      {renderEditor()}
-
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowFieldMgmt(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
+        <nav
+          className="flex items-center gap-1 border-b border-lattice-border overflow-x-auto"
+          aria-label="Construction views"
         >
-          <span>Field management</span>
-          {showFieldMgmt ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showFieldMgmt && (
-          <div className="mt-3">
-            <FieldManagementPanel />
-          </div>
-        )}
-      </section>
+          {SHELL_VIEWS.map((v) => {
+            const Icon = v.icon;
+            const on = active === v.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setActive(v.id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                  on
+                    ? 'border-[var(--lens-accent)] text-white'
+                    : 'border-transparent text-gray-400 hover:text-white hover:border-gray-600',
+                )}
+                aria-current={on ? 'page' : undefined}
+              >
+                <Icon className="w-4 h-4" />
+                {v.label}
+                <kbd className="hidden sm:inline-block text-[10px] text-white/30 bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">
+                  {v.keys}
+                </kbd>
+              </button>
+            );
+          })}
+        </nav>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowOsha(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>OSHA incident search (external reference)</span>
-          {showOsha ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showOsha && (
-          <div className="mt-3">
-            <OshaIncidentSearch />
-          </div>
-        )}
-      </section>
+        <main id="construction-main" className="pt-4 min-w-0">
+          <AnimatePresence mode="wait">
+            <motion.div key={active} {...motionProps}>
+              {isRegistry(active) && <ProjectRegistryPanel mode={active} />}
+              {active === 'field' && <FieldManagementPanel />}
+              {active === 'osha' && <OshaIncidentSearch />}
+              {active === 'procore' && <ProcorePanel />}
+              {active === 'tools' && (
+                <PipingProvider>
+                  <ConstructionActionPanel />
+                </PipingProvider>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
-      <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-        <button
-          type="button"
-          onClick={() => setShowProcore(v => !v)}
-          className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-        >
-          <span>Procore-style project controls</span>
-          {showProcore ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-        {showProcore && (
-          <div className="mt-3">
-            <ProcorePanel />
-          </div>
-        )}
-      </section>
-
-      <PipingProvider>
-        <section className="mt-6 max-w-7xl mx-auto px-4 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-          <button
-            type="button"
-            onClick={() => setShowActionPanel(v => !v)}
-            className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-          >
-            <span>Construction workbench</span>
-            {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-          {showActionPanel && <div className="mt-3"><ConstructionActionPanel /></div>}
-        </section>
-      </PipingProvider>
-    </LensPageShell>
-    
-      <a href="#construction-skip" className="sr-only focus:not-sr-only focus:ring-2 focus:ring-amber-500 focus:outline-none">Skip to construction content</a>
-          <RecentMineCard domain="construction" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="construction" hideWhenEmpty className="mt-3" title="More actions" />
-          <CrossLensRecentsPanel lensId="construction" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <CrossLensRecentsPanel
+          lensId="construction"
+          sinceDays={7}
+          limit={6}
+          hideWhenEmpty
+          className="mt-3"
+        />
+      </div>
     </LensShell>
   );
 }

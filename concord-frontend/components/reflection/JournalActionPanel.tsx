@@ -35,6 +35,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 type Feedback = { kind: 'ok' | 'err'; text: string } | null;
 type ActionId = 'save' | 'dm' | 'publish' | 'agent';
@@ -83,7 +84,7 @@ export function JournalActionPanel() {
       const today = new Date().toISOString().slice(0, 10);
       const r = await lensRun({
         domain: 'dtu', name: 'create',
-        input: {
+        input: withContentLicense({
           title: entryTitle.trim() || `Journal — ${today}`,
           tags: ['reflection', 'journal', 'entry', `mood:${mood}`, `date:${today}`],
           source: 'reflection:journal:save',
@@ -97,7 +98,7 @@ export function JournalActionPanel() {
               entry: entryBody.trim(),
             },
           },
-        },
+        }, 'knowledge', ['private']),
       });
       const dtu = r.data?.result?.dtu ?? r.data?.result;
       const id = dtu?.id ?? dtu?.dtuId;
@@ -136,7 +137,7 @@ export function JournalActionPanel() {
       const id = await publishRecall.run(async () => {
         const r = await lensRun({
           domain: 'dtu', name: 'create',
-          input: {
+          input: withContentLicense({
             title: `Gratitude — ${entryTitle.trim() || new Date().toISOString().slice(0, 10)}`,
             tags: ['reflection', 'gratitude', 'public'],
             source: 'reflection:gratitude:publish',
@@ -149,7 +150,7 @@ export function JournalActionPanel() {
                 body: entryBody.trim().slice(0, 2000),
               },
             },
-          },
+          }, 'knowledge', ['private', 'public_view', 'social_post']),
         });
         const dtu = r.data?.result?.dtu ?? r.data?.result;
         const newId = dtu?.id ?? dtu?.dtuId;

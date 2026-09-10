@@ -2,27 +2,52 @@
 // Simple panel/CFD PROXY — coarse lift/drag + pressure map.
 // Honesty: NOT ANSYS/Fluent class.
 
-/** Build a coarse body mesh (NACA-ish airfoil extruded) if none provided. */
-export function buildDefaultAirfoilMesh({ chord = 1, span = 2, thickness = 0.12, chordPts = 41, spanPts = 9 } = {}) {
+/** Build a richer body mesh (NACA 2412-ish cambered airfoil extruded) if none provided. */
+export function buildDefaultAirfoilMesh({
+  chord = 1,
+  span = 2,
+  thickness = 0.12,
+  camber = 0.02,
+  camberPos = 0.4,
+  chordPts = 61,
+  spanPts = 13,
+} = {}) {
   const positions = [];
   const indices = [];
-  // 2D NACA 00xx approx → extrude in Z
-  function nacaY(x) {
+  // NACA 4-digit PROXY: thickness + mean camber → upper/lower (NOT ANSYS mesh)
+  function nacaYt(x) {
     const t = thickness;
-    const yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1015 * x ** 4);
-    return yt;
+    return 5 * t * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x ** 3 - 0.1015 * x ** 4);
+  }
+  function nacaCamber(x) {
+    const m = camber, p = camberPos;
+    if (x < p) return (m / (p * p)) * (2 * p * x - x * x);
+    return (m / ((1 - p) * (1 - p))) * ((1 - 2 * p) + 2 * p * x - x * x);
+  }
+  function nacaCamberSlope(x) {
+    const m = camber, p = camberPos;
+    if (x < p) return (2 * m / (p * p)) * (p - x);
+    return (2 * m / ((1 - p) * (1 - p))) * (p - x);
   }
   for (let s = 0; s < spanPts; s++) {
     const z = (s / (spanPts - 1) - 0.5) * span;
     for (let i = 0; i < chordPts; i++) {
       const x = (i / (chordPts - 1)) * chord;
-      const y = nacaY(Math.max(1e-6, x / chord)) * chord;
-      positions.push(x, y, z); // upper
+      const xc = Math.max(1e-6, x / chord);
+      const yt = nacaYt(xc) * chord;
+      const yc = nacaCamber(xc) * chord;
+      const th = Math.atan(nacaCamberSlope(xc));
+      const yu = yc + yt * Math.cos(th);
+      positions.push(x - yt * Math.sin(th), yu, z); // upper
     }
     for (let i = chordPts - 1; i >= 0; i--) {
       const x = (i / (chordPts - 1)) * chord;
-      const y = -nacaY(Math.max(1e-6, x / chord)) * chord;
-      positions.push(x, y, z); // lower
+      const xc = Math.max(1e-6, x / chord);
+      const yt = nacaYt(xc) * chord;
+      const yc = nacaCamber(xc) * chord;
+      const th = Math.atan(nacaCamberSlope(xc));
+      const yl = yc - yt * Math.cos(th);
+      positions.push(x + yt * Math.sin(th), yl, z); // lower
     }
   }
   const ring = chordPts * 2;
@@ -40,8 +65,8 @@ export function buildDefaultAirfoilMesh({ chord = 1, span = 2, thickness = 0.12,
     indices,
     vertexCount: positions.length / 3,
     triangleCount: indices.length / 3,
-    id: 'airfoil-proxy',
-    params: { chord, span, thickness },
+    id: 'airfoil-proxy-naca2412',
+    params: { chord, span, thickness, camber, camberPos, chordPts, spanPts, panelRichness: (chordPts * 2 - 1) * (spanPts - 1) },
   };
 }
 
@@ -69,14 +94,22 @@ export function aeroPanelProxy(meshInput = {}, { alphaDeg = 5, U = 1, rho = 1.22
     const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
     const chord = mesh.params?.chord || 1;
     const xc = Math.max(0, Math.min(1, x / chord));
-    // local slope proxy from NACA thickness derivative-ish
+    // local slope from thickness + camber PROXY (NACA-ish)
     const thick = mesh.params?.thickness || 0.12;
-    const dyc = thick * (0.14845 / Math.sqrt(Math.max(xc, 1e-4)) - 0.126 - 0.7032 * xc + 0.8529 * xc * xc - 0.406 * xc ** 3);
-    const vLocal = uInf - vInf * dyc * 0.5 + (y >= 0 ? 0.15 : -0.15) * U * Math.sqrt(Math.max(0, xc * (1 - xc)));
+    const m = mesh.params?.camber || 0.02;
+    const camberPos = mesh.params?.camberPos || 0.4;
+    const dycThick = thick * (0.14845 / Math.sqrt(Math.max(xc, 1e-4)) - 0.126 - 0.7032 * xc + 0.8529 * xc * xc - 0.406 * xc ** 3);
+    const dycCamber = xc < camberPos
+      ? (2 * m / (camberPos * camberPos)) * (camberPos - xc)
+      : (2 * m / ((1 - camberPos) * (1 - camberPos))) * (camberPos - xc);
+    const dyc = dycThick * 0.35 + dycCamber;
+    const circ = 2 * U * (alpha + dycCamber * 0.5) * Math.sqrt(Math.max(0, xc * (1 - xc))); // thin-airfoil circ PROXY
+    const vLocal = uInf - vInf * dyc * 0.5 + (y >= 0 ? 1 : -1) * 0.5 * circ
+      + (y >= 0 ? 0.12 : -0.12) * U * Math.sqrt(Math.max(0, xc * (1 - xc)));
     const speedRatio = vLocal / Math.max(U, 1e-6);
     const Cp = 1 - speedRatio * speedRatio;
-    const p = 0.5 * rho * U * U * Cp;
-    pressureMap.push({ i, x, y, z, Cp: Number(Cp.toFixed(4)), p: Number(p.toFixed(4)) });
+    const pStatic = 0.5 * rho * U * U * Cp;
+    pressureMap.push({ i, x, y, z, Cp: Number(Cp.toFixed(4)), p: Number(pStatic.toFixed(4)) });
   }
 
   // Integrate on triangles for force PROXY
@@ -112,31 +145,36 @@ export function aeroPanelProxy(meshInput = {}, { alphaDeg = 5, U = 1, rho = 1.22
   const CdPress = Math.max(0.004, CdSum / (q * S));
   const CdInd = 0.04 * Cl * Cl;
   const Cd = CdPress + CdInd;
-  // Pitching moment PROXY about quarter-chord
+  // Pitching moment PROXY about quarter-chord using 3D panel forces (fix: XY-area was ~0 on extruded mesh)
   let CmSum = 0;
   const chord = mesh.params?.chord || 1;
   const xRef = 0.25 * chord;
   for (let t = 0; t < idx.length; t += 3) {
     const i0 = idx[t], i1 = idx[t + 1], i2 = idx[t + 2];
-    const ax = pos[i0 * 3], ay = pos[i0 * 3 + 1];
-    const bx = pos[i1 * 3], by = pos[i1 * 3 + 1];
-    const cx_ = pos[i2 * 3], cy_ = pos[i2 * 3 + 1];
-    const abx = bx - ax, aby = by - ay;
-    const acx = cx_ - ax, acy = cy_ - ay;
-    const nz = abx * acy - aby * acx; // 2D-ish panel area proxy in XY
-    const a2 = 0.5 * Math.abs(nz);
+    const ax = pos[i0 * 3], ay = pos[i0 * 3 + 1], az = pos[i0 * 3 + 2];
+    const bx = pos[i1 * 3], by = pos[i1 * 3 + 1], bz = pos[i1 * 3 + 2];
+    const cx_ = pos[i2 * 3], cy_ = pos[i2 * 3 + 1], cz_ = pos[i2 * 3 + 2];
+    const abx = bx - ax, aby = by - ay, abz = bz - az;
+    const acx = cx_ - ax, acy = cy_ - ay, acz = cz_ - az;
+    const nx = aby * acz - abz * acy;
+    const ny = abz * acx - abx * acz;
+    const nz = abx * acy - aby * acx;
+    const mag = Math.hypot(nx, ny, nz) || 1;
+    const a2 = 0.5 * mag;
     const Cp = (pressureMap[i0].Cp + pressureMap[i1].Cp + pressureMap[i2].Cp) / 3;
     const xbar = (ax + bx + cx_) / 3;
     const ybar = (ay + by + cy_) / 3;
-    const fy = -Cp * q * (nz >= 0 ? 1 : -1) * a2; // normal force proxy
-    CmSum += -fy * (xbar - xRef) / Math.max(chord, 1e-6);
+    const fx = -Cp * q * (nx / mag) * a2;
+    const fy = -Cp * q * (ny / mag) * a2;
+    // Mz about quarter-chord (pitch) PROXY
+    CmSum += -(fy * (xbar - xRef) - fx * ybar);
   }
   const Cm = CmSum / (q * S * Math.max(chord, 1e-6));
   const ms = Date.now() - t0;
   const panelCount = Math.floor(idx.length / 3);
 
-  // Richer pressure grid (up to 128 samples)
-  const grid = pressureMap.filter((_, i) => i % Math.max(1, Math.floor(nVerts / 128)) === 0).slice(0, 128);
+  // Richer pressure grid (up to 256 samples)
+  const grid = pressureMap.filter((_, i) => i % Math.max(1, Math.floor(nVerts / 256)) === 0).slice(0, 256);
 
   return {
     ok: true,
@@ -153,6 +191,9 @@ export function aeroPanelProxy(meshInput = {}, { alphaDeg = 5, U = 1, rho = 1.22
       rho,
       area: Number(area.toFixed(4)),
       panelCount,
+      chordPts: mesh.params?.chordPts ?? null,
+      spanPts: mesh.params?.spanPts ?? null,
+      camber: mesh.params?.camber ?? null,
     },
     pressureMap: grid,
     mesh: {
@@ -165,7 +206,7 @@ export function aeroPanelProxy(meshInput = {}, { alphaDeg = 5, U = 1, rho = 1.22
     },
     ms,
     honesty: {
-      note: 'Richer panel/Cp + induced-drag/Cm PROXY — NOT ANSYS/Fluent/RANS/LES class CFD',
+      note: 'Cambered multi-α panel/Cp + induced-drag/Cm PROXY (denser mesh) — NOT ANSYS/Fluent/RANS/LES class CFD',
       ansys: false,
       fluent: false,
     },
@@ -177,7 +218,7 @@ export function aeroPanelProxy(meshInput = {}, { alphaDeg = 5, U = 1, rho = 1.22
  * Honesty: still PROXY — not ANSYS/Fluent polar.
  */
 export function aeroAlphaCurve(meshInput = {}, {
-  alphasDeg = [-4, -2, 0, 2, 4, 5, 6, 8, 10, 12],
+  alphasDeg = [-6, -4, -2, 0, 2, 4, 5, 6, 8, 10, 12, 14, 16],
   U = 1,
   rho = 1.225,
 } = {}) {
@@ -225,7 +266,7 @@ export function aeroAlphaCurve(meshInput = {}, {
 export function runAeroCert(opts = {}) {
   const mesh = buildDefaultAirfoilMesh(opts.mesh || {});
   const single = aeroPanelProxy(mesh, opts);
-  const alphas = opts.alphasDeg || [-4, -2, 0, 2, 4, 5, 6, 8, 10, 12];
+  const alphas = opts.alphasDeg || [-6, -4, -2, 0, 2, 4, 5, 6, 8, 10, 12, 14, 16];
   const sweep = aeroAlphaCurve(mesh, { alphasDeg: alphas, U: opts.U, rho: opts.rho });
   return {
     ...single,

@@ -28,7 +28,7 @@ describe('link-scan contextual overlay', () => {
     expect(src).toMatch(/Noise/);
   });
   it('is mounted in the world lens', () => {
-    const page = read('app/lenses/world/page.tsx');
+    const page = read('components/world/WorldOsSurface.tsx');
     expect(page).toMatch(/import\('@\/components\/world\/LinkScanOverlay'\)/);
     expect(page).toMatch(/<LinkScanOverlay worldId=/);
   });

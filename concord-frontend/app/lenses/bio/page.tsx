@@ -2,14 +2,11 @@
 
 import { useLensNav } from '@/hooks/useLensNav';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ArxivPanel } from '@/components/research/ArxivPanel';
 import { PubMedPanel } from '@/components/research/PubMedPanel';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
 import { apiHelpers } from '@/lib/api/client';
@@ -22,7 +19,7 @@ import { BioResearchPanel } from '@/components/bio/BioResearchPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug, ChevronDown, ChevronRight } from 'lucide-react';
+import { Dna, Activity, Heart, Brain, Microscope, AlertTriangle, Bug, Wand2 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
 import { LiveIndicator } from '@/components/lens/LiveIndicator';
@@ -46,9 +43,7 @@ export default function BioLensPage() {
 
   const [selectedSystem, setSelectedSystem] = useState('homeostasis');
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
-  const [showSequenceAnalyzer, setShowSequenceAnalyzer] = useState(false);
-  const [showActionPanel, setShowActionPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences'>('organisms');
+  const [activeTab, setActiveTab] = useState<'organisms' | 'experiments' | 'sequences' | 'analyzer' | 'actions'>('organisms');
   const { latestData: realtimeData, isLive, lastUpdated, insights } = useRealtimeLens('bio');
 
   useLensCommand(
@@ -56,6 +51,8 @@ export default function BioLensPage() {
       { id: 'tab-organisms', keys: 'o', description: 'Organisms', category: 'navigation', action: () => setActiveTab('organisms') },
       { id: 'tab-experiments', keys: 'e', description: 'Experiments', category: 'navigation', action: () => setActiveTab('experiments') },
       { id: 'tab-sequences', keys: 's', description: 'Sequences', category: 'navigation', action: () => setActiveTab('sequences') },
+      { id: 'tab-analyzer', keys: 'a', description: 'Sequence analyzer', category: 'navigation', action: () => setActiveTab('analyzer') },
+      { id: 'tab-actions', keys: 't', description: 'Bio actions', category: 'navigation', action: () => setActiveTab('actions') },
     ],
     { lensId: 'bio' }
   );
@@ -105,9 +102,7 @@ export default function BioLensPage() {
   }
   return (
     <LensShell lensId="bio" asMain={false}>
-      <FirstRunTour lensId="bio" />
-      <ManifestActionBar />
-      <DepthBadge lensId="bio" size="sm" className="ml-2" />
+      <FirstRunTour lensId="bio" />      <DepthBadge lensId="bio" size="sm" className="ml-2" />
     <div data-lens-theme="bio" className="p-6 space-y-6">
       {/* Phase 4 — REAL arXiv q-bio feed. */}
       <ArxivPanel domain="bio" title="arXiv · Quantitative Biology" />
@@ -166,6 +161,8 @@ export default function BioLensPage() {
           { key: 'organisms' as const, label: 'Organisms', icon: Bug },
           { key: 'experiments' as const, label: 'Experiments', icon: Microscope },
           { key: 'sequences' as const, label: 'Sequences', icon: Dna },
+          { key: 'analyzer' as const, label: 'Analyzer', icon: Dna },
+          { key: 'actions' as const, label: 'Actions', icon: Wand2 },
         ]).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center ${
@@ -232,6 +229,20 @@ export default function BioLensPage() {
               ORF/translation, BLAST homology, CRISPR guide design, lab notebook.
               Every panel is wired to a real bio.* macro. */}
           <MolecularWorkbench />
+        </motion.div>
+      )}
+
+      {activeTab === 'analyzer' && (
+        <motion.div key="analyzer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <SequenceAnalyzer />
+        </motion.div>
+      )}
+
+      {activeTab === 'actions' && (
+        <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <PipingProvider>
+            <BioActionPanel />
+          </PipingProvider>
         </motion.div>
       )}
       </AnimatePresence>
@@ -340,42 +351,6 @@ export default function BioLensPage() {
     </button>
     <BioWorkbench open={workbenchOpen} onClose={() => setWorkbenchOpen(false)} />
 
-    {/* Bespoke sequence analyzer + primer + pairwise alignment with Save-as-DTU */}
-    <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <button
-        type="button"
-        onClick={() => setShowSequenceAnalyzer(v => !v)}
-        className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-      >
-        <span>Sequence analyzer (primer + pairwise alignment)</span>
-        {showSequenceAnalyzer ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </button>
-      {showSequenceAnalyzer && (
-        <div className="mt-3">
-          <SequenceAnalyzer />
-        </div>
-      )}
-    </section>
-
-    <section className="mx-auto mt-6 max-w-6xl rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-      <button
-        type="button"
-        onClick={() => setShowActionPanel(v => !v)}
-        className="flex w-full items-center justify-between text-left text-sm font-semibold text-white"
-      >
-        <span>Bio actions</span>
-        {showActionPanel ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-      </button>
-      {showActionPanel && (
-        <div className="mt-3">
-          <PipingProvider>
-            <BioActionPanel />
-          </PipingProvider>
-        </div>
-      )}
-    </section>
-          <RecentMineCard domain="bio" limit={10} hideWhenEmpty className="mt-4" />
-          <AutoActionStrip domain="bio" hideWhenEmpty className="mt-3" title="More actions" />
           <CrossLensRecentsPanel lensId="bio" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
     </LensShell>
   );

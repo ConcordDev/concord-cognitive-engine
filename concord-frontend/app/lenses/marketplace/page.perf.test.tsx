@@ -188,9 +188,9 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     // be present on the very first synchronous render, before any query has
     // had a chance to resolve (there has been no `await`/tick yet).
     expect(screen.getByText('Creative Marketplace')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Browse/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /My Shop/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Cart/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Browse$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Sell$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Cart$/i })).toBeInTheDocument();
   });
 
   it('does NOT mount ShopfrontSection (seller dashboard: 6 backend calls) on the default Browse tab', async () => {
@@ -198,21 +198,21 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
   });
 
-  it('mounts ShopfrontSection only once the user navigates to My Shop', async () => {
+  it('mounts ShopfrontSection only once the user navigates to Sell', async () => {
     await renderPage();
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /My Shop/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Sell$/i }));
 
     expect(screen.getByTestId('shopfront-section')).toBeInTheDocument();
   });
 
   it('does not mount ShopfrontSection on the Cart or Purchases tabs either', async () => {
     await renderPage();
-    fireEvent.click(screen.getByRole('button', { name: /^Cart/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cart$/i }));
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Purchases/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Purchases$/i }));
     expect(screen.queryByTestId('shopfront-section')).not.toBeInTheDocument();
   });
 
@@ -223,8 +223,6 @@ describe('Marketplace lens — perceived-latency fixes', () => {
     // widgets have mounted yet — their queries have not fired.
     expect(screen.queryByTestId('trending-listings')).not.toBeInTheDocument();
     expect(screen.queryByTestId('session-rail')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('recent-mine-card')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('auto-action-strip')).not.toBeInTheDocument();
     expect(screen.queryByTestId('cross-lens-recents')).not.toBeInTheDocument();
 
     // jsdom has no requestIdleCallback, so useDeferredMount falls back to a
@@ -236,8 +234,6 @@ describe('Marketplace lens — perceived-latency fixes', () => {
 
     expect(screen.getByTestId('trending-listings')).toBeInTheDocument();
     expect(screen.getByTestId('session-rail')).toBeInTheDocument();
-    expect(screen.getByTestId('recent-mine-card')).toBeInTheDocument();
-    expect(screen.getByTestId('auto-action-strip')).toBeInTheDocument();
     expect(screen.getByTestId('cross-lens-recents')).toBeInTheDocument();
   });
 });

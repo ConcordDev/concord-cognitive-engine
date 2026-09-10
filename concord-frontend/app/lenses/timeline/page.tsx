@@ -12,12 +12,9 @@ import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useAuth } from '@/hooks/useAuth';
 import { LensShell } from '@/components/lens/LensShell';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
-import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { TimelineWiki } from '@/components/timeline/TimelineWiki';
 import { PostComposer } from '@/components/timeline/PostComposer';
 import { PostCard } from '@/components/timeline/PostCard';
@@ -155,9 +152,7 @@ export default function TimelineLensPage() {
 
   return (
     <LensShell lensId="timeline" asMain={false}>
-      <FirstRunTour lensId="timeline" />
-      <ManifestActionBar />
-      <DepthBadge lensId="timeline" size="sm" className="ml-2" />
+      <FirstRunTour lensId="timeline" />      <DepthBadge lensId="timeline" size="sm" className="ml-2" />
 
       <div data-lens-theme="timeline" className="min-h-full bg-[#18191a]">
         {/* Header */}
@@ -287,11 +282,7 @@ export default function TimelineLensPage() {
             <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
               <TimelineWiki />
             </section>
-          )}
-
-          <RecentMineCard domain="timeline" limit={10} hideWhenEmpty />
-          <AutoActionStrip domain="timeline" hideWhenEmpty />
-          <CrossLensRecentsPanel lensId="timeline" sinceDays={7} limit={6} hideWhenEmpty />
+          )}          <CrossLensRecentsPanel lensId="timeline" sinceDays={7} limit={6} hideWhenEmpty />
         </div>
       </div>
     </LensShell>

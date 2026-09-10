@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { api, apiHelpers } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { usePipe, useRecallableAction, RecallSlot } from '@/components/panel-polish';
+import { withContentLicense } from '@/components/dtu/ContentClassLicenseFields';
 
 interface MacroEnvelope<T> { ok: boolean; result?: T; error?: string }
 async function callMacro<T>(action: string, input: Record<string, unknown>): Promise<MacroEnvelope<T>> {
@@ -98,7 +99,7 @@ export function ForestryActionPanel() {
   async function actMint() {
     setBusy('mint'); setFeedback(null);
     try {
-      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Forest stand — ${standName.trim() || species}`, tags: ['forestry', species], source: 'forestry:stand:mint', meta: { visibility: 'private', consent: { allowCitations: false }, stand: { name: standName, species, acres: parseFloat(acres), volume: volumeResult, risk: riskResult, harvest: harvestResult, carbon: carbonResult } } } });
+      const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Forest stand — ${standName.trim() || species}`, tags: ['forestry', species], source: 'forestry:stand:mint', meta: { visibility: 'private', consent: { allowCitations: false }, stand: { name: standName, species, acres: parseFloat(acres), volume: volumeResult, risk: riskResult, harvest: harvestResult, carbon: carbonResult } } }, 'dataset', ['private']) });
       const id = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
       if (id) { setMintedDtuId(id); pipe.publish('forestry.mintedDtuId', id, { label: `Stand DTU ${id.slice(0, 8)}…` }); ok(`Stand DTU ${id.slice(0, 8)}…`); } else err('No DTU id.');
     } catch (e) { err(pickMessage(e)); } finally { setBusy(null); }
@@ -126,7 +127,7 @@ export function ForestryActionPanel() {
     setBusy('publish'); setFeedback(null);
     try {
       const id = await publishRecall.run(async () => {
-        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: { title: `Carbon record — ${species} ${acres}ac`, tags: ['forestry', 'carbon', 'public'], source: 'forestry:carbon:publish', meta: { visibility: 'public', consent: { allowCitations: true }, carbon: carbonResult, species, acres: parseFloat(acres) } } });
+        const r = await api.post('/api/lens/run', { domain: 'dtu', name: 'create', input: withContentLicense({ title: `Carbon record — ${species} ${acres}ac`, tags: ['forestry', 'carbon', 'public'], source: 'forestry:carbon:publish', meta: { visibility: 'public', consent: { allowCitations: true }, carbon: carbonResult, species, acres: parseFloat(acres) } }, 'dataset', ['private', 'public_view', 'social_post']) });
         const newId = r.data?.result?.dtu?.id ?? r.data?.dtu?.id ?? r.data?.result?.id;
         if (!newId) throw new Error('No DTU id.');
         const pub = await api.post(`/api/dtus/${encodeURIComponent(newId)}/publish`);

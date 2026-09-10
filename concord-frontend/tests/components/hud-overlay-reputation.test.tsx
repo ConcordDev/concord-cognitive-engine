@@ -1,7 +1,7 @@
 /**
  * HUDOverlay's "Profession + Reputation" sub-block used to render
  * unconditionally with a hardcoded `reputationLevel={1}` at its one call
- * site (app/lenses/world/page.tsx) — a plausible-looking fake "Lv.1" shown
+ * site (components/world/WorldOsSurface.tsx) — a plausible-looking fake "Lv.1" shown
  * regardless of the real player's state, since no World Lens page fetches
  * a real per-player reputation signal today. Both props are now optional;
  * the block hides entirely when reputationLevel is omitted rather than

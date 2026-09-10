@@ -10,7 +10,7 @@ import React from 'react';
 import {
   LayoutDashboard, Users, Calendar, ClipboardList, Mail, Pill,
   Activity, FileSearch, Stethoscope, Sparkles, Database, FlaskConical, HeartPulse,
-  Video, Watch, ShieldCheck, ShieldAlert, Share2, BookOpen,
+  Video, Watch, ShieldCheck, ShieldAlert, Share2, BookOpen, Archive, Syringe, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,13 +34,16 @@ export type EpicNav =
   | 'scribe'
   | 'smartphrases'
   | 'codes'
-  | 'reports';
+  | 'reports'
+  | 'artifacts'
+  | 'immunizations'
+  | 'actions';
 
 interface NavItem {
   id: EpicNav;
   label: string;
   icon: typeof LayoutDashboard;
-  group: 'home' | 'clinical' | 'patient' | 'communications' | 'tools';
+  group: 'home' | 'clinical' | 'patient' | 'communications' | 'tools' | 'ops';
 }
 
 const NAV: NavItem[] = [
@@ -64,9 +67,12 @@ const NAV: NavItem[] = [
   { id: 'smartphrases', label: 'SmartPhrases', icon: FileSearch,      group: 'tools' },
   { id: 'codes',        label: 'ICD-10 / CPT', icon: Database,        group: 'tools' },
   { id: 'reports',      label: 'Reports',      icon: Activity,        group: 'tools' },
+  { id: 'artifacts',    label: 'Records desk', icon: Archive,         group: 'ops' },
+  { id: 'immunizations',label: 'Immunizations',icon: Syringe,         group: 'ops' },
+  { id: 'actions',      label: 'Lookups',      icon: Zap,             group: 'ops' },
 ];
 
-const GROUP_LABELS = { home: '', clinical: 'Clinical', patient: 'Patient Portal', communications: 'Inbox', tools: 'Tools' } as const;
+const GROUP_LABELS = { home: '', clinical: 'Clinical', patient: 'Patient Portal', communications: 'Inbox', tools: 'Tools', ops: 'Ops desk' } as const;
 
 export interface EpicShellProps {
   activeNav: EpicNav;
@@ -77,7 +83,7 @@ export interface EpicShellProps {
 }
 
 export function EpicShell({ activeNav, onNavChange, badges = {}, children, askBar }: EpicShellProps) {
-  const groups: NavItem['group'][] = ['home', 'clinical', 'patient', 'communications', 'tools'];
+  const groups: NavItem['group'][] = ['home', 'clinical', 'patient', 'communications', 'tools', 'ops'];
   return (
     <div className="flex h-[calc(100vh-180px)] min-h-[640px] bg-lattice-deep border border-cyan-500/15 rounded-lg overflow-hidden">
       <aside className="w-44 bg-lattice-void border-r border-white/5 flex flex-col flex-shrink-0">

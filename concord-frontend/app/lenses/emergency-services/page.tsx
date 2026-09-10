@@ -59,8 +59,6 @@ import { LensShell } from '@/components/lens/LensShell';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { DTUExportButton } from '@/components/lens/DTUExportButton';
-import { RecentMineCard } from '@/components/lens/RecentMineCard';
-import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
@@ -185,11 +183,7 @@ export default function EmergencyServicesLensPage() {
           })}
         </nav>
 
-        <div className="min-h-[240px]">{renderTab()}</div>
-
-        <RecentMineCard domain="emergency-services" limit={10} hideWhenEmpty className="mt-2" />
-        <AutoActionStrip domain="emergency-services" hideWhenEmpty className="mt-3" title="More actions" />
-        <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
+        <div className="min-h-[240px]">{renderTab()}</div>        <CrossLensRecentsPanel lensId="emergency-services" sinceDays={7} limit={6} hideWhenEmpty className="mt-3" />
       </div>
     </LensShell>
   );

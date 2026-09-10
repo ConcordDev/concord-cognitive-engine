@@ -79,7 +79,9 @@ const nextConfig = {
       {
         // Unity WebGL gzip builds: browser must see Content-Encoding: gzip
         // so it decompresses .wasm.gz / .framework.js.gz / .data.gz.
-        source: '/concordia-webgl/Build/concordia-webgl-out.wasm.gz',
+        // Filename prefix changes per editor export (e.g. …-editor-20260909-real);
+        // match any Build/*.gz so Content-Encoding survives renames.
+        source: '/concordia-webgl/Build/:file*.wasm.gz',
         headers: [
           { key: 'Content-Type', value: 'application/wasm' },
           { key: 'Content-Encoding', value: 'gzip' },
@@ -87,7 +89,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/concordia-webgl/Build/concordia-webgl-out.framework.js.gz',
+        source: '/concordia-webgl/Build/:file*.framework.js.gz',
         headers: [
           { key: 'Content-Type', value: 'application/javascript' },
           { key: 'Content-Encoding', value: 'gzip' },
@@ -95,7 +97,7 @@ const nextConfig = {
         ],
       },
       {
-        source: '/concordia-webgl/Build/concordia-webgl-out.data.gz',
+        source: '/concordia-webgl/Build/:file*.data.gz',
         headers: [
           { key: 'Content-Type', value: 'application/octet-stream' },
           { key: 'Content-Encoding', value: 'gzip' },
@@ -156,16 +158,24 @@ const nextConfig = {
         ],
       },
       {
-        // Clickjacking: DENY everywhere except the Unity WebGL player, which
-        // /lenses/world iframes same-origin. `/(.*)` used to set DENY globally
-        // and that refused the embed even from the world lens.
-        source: '/((?!unity-client/).*)',
+        // Clickjacking: DENY everywhere except the Unity WebGL player paths,
+        // which /lenses/world iframes same-origin. `/(.*)` used to set DENY
+        // globally and that refused the embed even from the world lens.
+        // Both /unity-client/ and /concordia-webgl/ are carve-outs (env points
+        // at /concordia-webgl/index.html).
+        source: '/((?!unity-client/|concordia-webgl/).*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
         ],
       },
       {
         source: '/unity-client/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      },
+      {
+        source: '/concordia-webgl/:path*',
         headers: [
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
         ],
