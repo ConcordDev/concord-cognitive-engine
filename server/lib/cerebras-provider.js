@@ -13,6 +13,11 @@ import { scanMessagesForLeaks } from "./outbound-content-guard.js";
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
+function tryParse(s) {
+  if (typeof s !== "string") return s;
+  try { return JSON.parse(s); } catch { return null; }
+}
+
 async function cerebrasChat({ apiKey, modelId, messages, opts = {} }) {
   const body = {
     model: modelId || "llama-3.3-70b",

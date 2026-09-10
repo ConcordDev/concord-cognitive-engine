@@ -431,7 +431,7 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
     if (!part) return res.status(404).json({ ok: false, error: 'part_not_found', code: 'NOT_FOUND' });
     const stl = exportPartStl(part);
     if (!stl.ok) return res.status(422).json(stl);
-    const filename = `conkay-part-${part.name || part.id}.stl`.replace(/[^\w.\-]+/g, '_');
+    const filename = `conkay-part-${part.name || part.id}.stl`.replace(/[^\w.-]+/g, '_');
     res.setHeader('Content-Type', 'model/stl');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-ConKay-Triangle-Count', String(stl.triangleCount));
@@ -463,7 +463,7 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
     if (kernel === 'occ' || kernel === 'brep' || kernel === 'ocp') {
       const step = await exportPartBrepStep(part);
       if (!step.ok) return res.status(422).json(step);
-      const filename = `conkay-part-${part.name || part.id}-brep.step`.replace(/[^\w.\-]+/g, '_');
+      const filename = `conkay-part-${part.name || part.id}-brep.step`.replace(/[^\w.-]+/g, '_');
       res.setHeader('Content-Type', 'application/step');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('X-ConKay-STEP-Format', 'occ-advanced-brep');
@@ -473,7 +473,7 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
     }
     const step = exportPartStep(part);
     if (!step.ok) return res.status(422).json(step);
-    const filename = `conkay-part-${part.name || part.id}.step`.replace(/[^\w.\-]+/g, '_');
+    const filename = `conkay-part-${part.name || part.id}.step`.replace(/[^\w.-]+/g, '_');
     res.setHeader('Content-Type', 'application/step');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('X-ConKay-Triangle-Count', String(step.triangleCount));
@@ -808,7 +808,7 @@ export default function createConkayAssemblyRouter({ requireAuth, db }) {
     if (!part) return res.status(404).json({ ok: false, reason: 'part_not_found' });
     const drawing = exportPartDrawing(part);
     if (!drawing.ok) return res.status(422).json(drawing);
-    const filename = `conkay-part-${(part.name || part.id).slice(0, 24)}-drawing.svg`.replace(/[^\w.\-]+/g, '_');
+    const filename = `conkay-part-${(part.name || part.id).slice(0, 24)}-drawing.svg`.replace(/[^\w.-]+/g, '_');
     res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.send(drawing.svg);

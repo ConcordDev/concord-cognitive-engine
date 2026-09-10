@@ -146,7 +146,7 @@ async function proveEphemeralCombatGateway() {
       }
     },
   });
-  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  await new Promise((r) => { server.listen(0, "127.0.0.1", r); });
   const port = server.address().port;
   const ws = new WebSocket(`ws://127.0.0.1:${port}/unity-ws`);
   try {
@@ -181,7 +181,7 @@ async function proveEphemeralCombatGateway() {
   } finally {
     try { ws.close(); } catch { /* */ }
     try { gateway.close(); } catch { /* */ }
-    await new Promise((r) => server.close(r));
+    await new Promise((r) => { server.close(r); });
   }
 }
 

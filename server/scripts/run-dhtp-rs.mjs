@@ -437,7 +437,7 @@ async function cmdRunAll(opts) {
   }
 
   for (const stepId of EXECUTION_ORDER) {
-    let state = loadAgentState(RESULTS_DIR);
+    const state = loadAgentState(RESULTS_DIR);
     const step = state.steps?.[stepId];
     if (step?.status === "complete") {
       console.log(`Skipping ${stepId} (complete)`);

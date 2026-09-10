@@ -50,7 +50,7 @@ function getToolsList() {
           if (msg.id === 2 && msg.result?.tools) {
             for (const t of msg.result.tools) tools.push(t.name);
           }
-        } catch {}
+        } catch { /* noop */ }
       }
       resolve(tools);
     });
