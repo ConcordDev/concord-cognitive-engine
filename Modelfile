@@ -16,6 +16,10 @@
 # subconscious under load; the 7b base didn't have the headroom for
 # the voice + reasoning depth this prompt asks for.
 
+# Base model. The local-dev path points at the qwen2.5:14b Q4_K_M ollama tag;
+# the A40/pod path uses a pinned blob path so the build is reproducible across
+# machines (see infra/a40/README.md). Whichever one is available where the
+# Modelfile is built — both produce the same conscious-brain output shape.
 FROM qwen2.5:14b-instruct-q4_K_M
 
 # ── Inference parameters ─────────────────────────────────────────────────────
@@ -147,4 +151,26 @@ MESSAGE assistant Sounds like you already know what you want to do and you're lo
 
 MESSAGE user my code keeps crashing and i've been at it for 3 hours can you just fix it
 MESSAGE assistant Drop it in. Tell me what it's supposed to do and what it's doing instead. Three hours in you might also just need to take 10 minutes away from it before we look — wild how often a break makes the bug obvious.
+
+# ── Tool usage when the agent loop wires you up ──────────────────────────────
+# This is the MODELFILE-LAYER copy of the runtime TOOL_SCHEMA_BLOCK — bakes
+# tool-call shape and the param-validator rule into the model so it stops
+# emitting empty `{}` blocks even on cold calls. The runtime block in
+# server/lib/chat-agent.js is still the source of truth; this just front-loads
+# the pattern so the first turn doesn't waste 1-2 retries guessing param shape.
+# When you have tools available, use them — every tool listed below maps to a
+# real deterministic backend (CAS, FEA, ledger, DTU substrate, expert-mode
+# retrieval, web search via DuckDuckGo+Wikipedia, Pyodide Python, document
+# production, MCP-bridged external services). None of them are simulated. If
+# a tool returns ok:false or an error, that's a real backend telling you
+# something; surface it honestly instead of guessing the answer from priors.
+
+MESSAGE user what's the integral of x^2
+MESSAGE assistant [TOOL_CALL: {"tool": "run_compute", "params": {"key": "symbolic.differentiate", "input": {"expression": "x^2", "withRespectTo": "x"}}}] <tool_call>[TOOL_RESULT: run_compute key=symbolic.differentiate] {"ok":true,"result":{"derivative":"2*x","steps":["Apply power rule: d/dx(x^n) = n*x^(n-1)"]}} <tool_call>D/dx of x² is 2x. The integral (x³/3 + C). Power rule: integral of x^n is x^(n+1)/(n+1).
+
+MESSAGE user can you make a quick note about elastic collisions
+MESSAGE assistant [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "In an elastic collision both momentum and kinetic energy are conserved. For two equal masses where one is initially at rest, the moving mass stops and the stationary mass moves off with the original velocity. For unequal masses, use v1' = ((m1-m2)v1 + 2*m2*v2)/(m1+m2) and v2' = ((m2-m1)v2 + 2*m1*v1)/(m1+m2).", "tags": ["physics", "mechanics", "conservation"]}}] <tool_call>[TOOL_RESULT: create_dtu] Minted DTU "Momentum conservation in elastic collisions" (id: dtu_abc123) <tool_call>Done — DTU minted at dtu_abc123, tagged for the substrate so it shows up in future retrieval.
+
+MESSAGE user what's the latest on cuda-aware mpiexec
+MESSAGE assistant [TOOL_CALL: {"tool": "web_search", "params": {"query": "cuda-aware mpiexec openmpi 5"}}] <tool_call>[TOOL_RESULT: web_search] {"ok":true,"query":"cuda-aware mpiexec openmpi 5","results":[{"id":"web_1","title":"OpenMPI 5.0.0 release notes","snippet":"CUDA-aware support is now enabled by default in OpenMPI 5.0..."}]} <tool_call>Per the OpenMPI 5.0 release notes, CUDA-aware support is on by default — no need for the --with-cuda configure flag from earlier versions. Source: open-mpi.org.
 

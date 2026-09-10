@@ -44,6 +44,69 @@ import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
 
+// Per-tool required-param schema. When the model emits a tool call missing
+// required fields, the validator intercepts BEFORE the macro call and returns
+// a surgical error naming the missing param + a worked example. The brain
+// sees this on the next turn and self-corrects — no human-in-the-loop, no
+// wasted macro invocation, no "tool failed" fallback to LLM guesswork.
+//
+// Order: this map is the source of truth for what's REQUIRED, not for the
+// full param shape. Optional params are documented in TOOL_SCHEMA_BLOCK but
+// not enforced here. Keep this list in sync with TOOL_SCHEMA_BLOCK.
+const TOOL_REQUIRED_PARAMS = {
+  web_search:        ["query"],
+  run_compute:       ["key", "input"],
+  run_python:        ["code"],
+  browse_url:        ["url"],
+  run_lens_action:   ["domain", "action"],
+  list_lens_actions: ["domain"],
+  create_dtu:        ["title"],
+  create_document:   ["title"],
+  export_dtu:        ["dtuId", "format"],
+  read_zip:          ["dtuId"],
+  expert_mode:       ["query"],
+  generate_image:    ["prompt"],
+  mcp_connect:       ["serverId", "url"],
+  mcp_call:          ["serverId", "toolName"],
+  // mcp_list and browser_act and run_authored_tool accept empty input.
+};
+
+/**
+ * Validate a tool call's params against TOOL_REQUIRED_PARAMS. Returns
+ *   { ok: true }  if all required fields are present and non-empty, OR
+ *   { ok: false, reason, missing, example }
+ * The error includes a copy-paste-able example of the marker in the exact
+ * shape the agent loop expects, so the model can self-correct on the next
+ * turn. The example uses a domain the caller's context almost certainly
+ * has — dtu.search for run_lens_action, the tool's own params for the
+ * simpler ones.
+ */
+function _validateToolCall(call) {
+  const required = TOOL_REQUIRED_PARAMS[call.tool];
+  if (!required) return { ok: true };
+  const params = call.params || {};
+  const missing = required.filter((k) => {
+    const v = params[k];
+    if (v === undefined || v === null) return true;
+    if (typeof v === "string" && v.trim() === "") return true;
+    if (Array.isArray(v) && v.length === 0) return true;
+    if (typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0) return true;
+    return false;
+  });
+  if (missing.length === 0) return { ok: true };
+
+  // Build a worked example the model can copy.
+  const exParams = {};
+  for (const k of required) exParams[k] = `<${k}>`;
+  const example = `[TOOL_CALL: {"tool": "${call.tool}", "params": ${JSON.stringify(exParams)}}]`;
+  return {
+    ok: false,
+    reason: `missing required param(s): ${missing.join(", ")}`,
+    missing,
+    example,
+  };
+}
+
 // Grounding-audit gap fix (2026-07-24) — tool-preference tally. One
 // initiative-engine instance per db handle (WeakMap keyed on the db object
 // itself, same shape as prompt-registry.js's _styleEngineByDb) so recording
@@ -61,21 +124,41 @@ function _getStyleEngine(db) {
 const TOOL_SCHEMA_BLOCK = `You have access to the following tools. To use one, include a marker in your response EXACTLY like this (one per line, multiple allowed):
 [TOOL_CALL: {"tool": "tool_name", "params": {...}}]
 
-Available tools:
+PARAM-VALIDATOR RULE: Every tool has REQUIRED params. If you emit a marker
+with empty {} or a missing required field, the tool returns an error
+naming the missing field and a copy-pasteable example marker. Use the
+example to self-correct next turn — do not stop, do not fall back to
+guessing the answer from training data.
+
+Available tools (with one working example each):
 - web_search: Search the web for current information. Params: {"query": "search terms"}
+  Example: [TOOL_CALL: {"tool": "web_search", "params": {"query": "concord cognitive engine"}}]
 - run_compute: Run a math/physics/chemistry/quantum/engineering calculation. Params: {"key": "module.function", "input": {...}}
+  Example: [TOOL_CALL: {"tool": "run_compute", "params": {"key": "physics.power", "input": {"force": 100, "velocity": 5}}}]
 - run_python: Run real Python code (via Pyodide/WebAssembly, in an isolated worker — real network and real filesystem access are both blocked by design) for data wrangling, string/list/dict manipulation, quick scripting, or stitching together results from other tool calls. Not needed for math you can already do via run_compute — use this for general-purpose scripting instead. Output (stdout/stderr/return value) is captured and returned; there is a short wall-clock timeout, so this is for quick scripts, not long-running jobs. Optional "packages" param loads real numpy/pandas/matplotlib/scipy/sympy for numerical arrays, dataframes, plotting (matplotlib figures come back as real image attachments — never invent a description of a chart, they're genuinely rendered), calculus/ODEs/symbolic math — if a requested package isn't available in this deployment you'll get an honest error naming exactly what's missing, never a silent fallback. Params: {"code": "python source", "packages": ["numpy", "pandas"]}
+  Example: [TOOL_CALL: {"tool": "run_python", "params": {"code": "print(sum(i*i for i in range(1, 101)))"}}]
 - browse_url: Fetch and read a web page. Params: {"url": "https://...", "selector": "optional css selector"}
+  Example: [TOOL_CALL: {"tool": "browse_url", "params": {"url": "https://example.com"}}]
 - run_lens_action: Invoke ANY of Concord's 200+ lens domain actions. Params: {"domain": "domain_name", "action": "action_name", "params": {...}}
+  Example: [TOOL_CALL: {"tool": "run_lens_action", "params": {"domain": "dtu", "action": "search", "params": {"query": "test"}}}]
 - list_lens_actions: Look up the REAL action names (and, where documented, their input fields) registered for a domain — use this before run_lens_action when you're not certain of the exact action name/params, instead of guessing. Params: {"domain": "domain_name"}
+  Example: [TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "dtu"}}]
 - create_dtu: Mint a new DTU from the conversation. Params: {"title": "DTU title", "summary": "brief", "tags": ["tag1"]}
+  Example: [TOOL_CALL: {"tool": "create_dtu", "params": {"title": "Momentum conservation in elastic collisions", "summary": "Short note", "tags": ["physics", "conservation"]}}]
 - create_document: Produce a REAL downloadable file (a spec, blueprint, report) — never just describe one in prose. Formats: pdf, md, json, csv, txt, zip. For zip, pass files. Params: {"title": "...", "format": "pdf", "summary": "...", "claims": ["..."], "files": [{"name": "a.md", "content": "..."}]}
+  Example: [TOOL_CALL: {"tool": "create_document", "params": {"title": "Q4 spec", "format": "md", "summary": "Quarterly plan"}}]
 - export_dtu: Convert an EXISTING DTU into a real file in whatever format is requested. Params: {"dtuId": "dtu_...", "format": "pdf"}
+  Example: [TOOL_CALL: {"tool": "export_dtu", "params": {"dtuId": "dtu_abc123", "format": "pdf"}}]
 - read_zip: Open and see the contents of a zip file already stored as a DTU artifact — list entries, or read one entry's text. Params: {"dtuId": "dtu_...", "entryName": "optional/path/in/zip.md"}
+  Example: [TOOL_CALL: {"tool": "read_zip", "params": {"dtuId": "dtu_abc123"}}]
 - expert_mode: Run a Perplexity-style cited answer over the global corpus. Params: {"query": "your question"}
+  Example: [TOOL_CALL: {"tool": "expert_mode", "params": {"query": "what does the substrate say about X?"}}]
 - generate_image: Generate an image. Params: {"prompt": "describe the image", "size": "1024x1024", "quality": "standard"}
+  Example: [TOOL_CALL: {"tool": "generate_image", "params": {"prompt": "a blue circle on a white background"}}]
 - mcp_connect: Connect to ANY remote MCP server over HTTP so its tools become callable (the public MCP ecosystem — GitHub, Linear, Cloudflare docs, custom internal servers, thousands more). Params: {"serverId": "a short id you choose", "url": "https://..."}. After connecting, use mcp_list to see its tools, then mcp_call to use them. Local/stdio MCP servers are not connectable this way (admin-only, separate path).
+  Example: [TOOL_CALL: {"tool": "mcp_connect", "params": {"serverId": "github", "url": "https://mcp.github.com/http"}}]
 - mcp_call: Invoke a tool on a connected external MCP server (filesystem, GitHub, Slack, etc.). Params: {"serverId": "filesystem", "toolName": "read_file", "args": {...}}
+  Example: [TOOL_CALL: {"tool": "mcp_call", "params": {"serverId": "github", "toolName": "list_repos", "args": {"owner": "dutch"}}}]
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
 - run_authored_tool: Invoke one of YOUR OWN previously human-approved authored tools (a saved, named DSL program or sandboxed code a human proposed and approved for autonomous use). Params: {"toolId": "...", "input": {...}}
@@ -125,17 +208,37 @@ export function stripToolCalls(text) {
  * @returns {Promise<{tool, ok, result?, error?, artifact?}>}
  */
 export async function executeToolCall(ctx, runMacro, lensActions, call) {
+  // Param-validator gate (R-concay-tools-3): catch empty `{}` blocks the
+  // model emits before they reach the macro router. The brain sees the
+  // surgical error on the next turn and self-corrects — no LLM guesswork
+  // fallback, no wasted slot from `calls.slice(0, 5)`.
+  const v = _validateToolCall(call);
+  if (!v.ok) {
+    return {
+      tool: call.tool, ok: false,
+      error: v.reason,
+      missing: v.missing,
+      retryHint: v.example,
+    };
+  }
   try {
     switch (call.tool) {
       case "web_search": {
-        const r = await runMacro("tools", "web_search", {
+        // Route through expert_mode.web_search (live web sources via
+        // DuckDuckGo/Wikipedia/Brave) instead of the legacy "tools" macro
+        // which only returns "session tools opt-in required" — that macro
+        // never actually wired the search backend, so every agent call
+        // silently failed. The expert_mode one is the real, working
+        // implementation (domains/expert-mode.js#L357).
+        const r = await runMacro("expert_mode", "web_search", {
           query: String(call.params.query || ""),
+          limit: Number(call.params.limit) || 5,
         }, ctx);
-        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.error || "web_search failed" };
+        if (!r?.ok) return { tool: call.tool, ok: false, error: r?.reason || r?.error || "web_search failed" };
         return {
           tool: call.tool, ok: true,
           query: call.params.query,
-          result: (r.summary || r.text || "").slice(0, MAX_TOOL_RESULT_LEN),
+          result: r,
         };
       }
       case "run_compute": {
@@ -165,7 +268,17 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // passes the request through; an unknown or not-yet-vendored
         // package comes back as a real, legible error, never fabricated.
         const packages = Array.isArray(call.params.packages) ? call.params.packages.map(String) : [];
-        const r = await runMacro("code", "exec", { code, language: "python", packages }, ctx);
+        const actionInput = { code, language: "python", packages };
+        // Use the same dual-registry resolution run_lens_action uses:
+        // code.exec is registered with registerLensAction (newer API), not
+        // plain register() — calling runMacro() directly misses it. The
+        // resolver hits LENS_ACTIONS first, then MACROS, with the same
+        // precedence server.js's /api/lens/run uses.
+        const resolved = resolveDualRegistry("code", "exec", { lensActions, runMacro });
+        if (resolved.via === "none") return { tool: call.tool, ok: false, error: "code.exec macro unavailable" };
+        const r = resolved.via === "lens_action"
+          ? await resolved.handler(ctx, null, actionInput)
+          : await runMacro("code", "exec", actionInput, ctx);
         if (!r?.ok) {
           return {
             tool: call.tool, ok: false,
@@ -259,28 +372,72 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         // them via run_lens_action, instead of guessing from training-data
         // priors. Mirrors the introspection GET /api/lens-actions/:domain
         // already does for the frontend's AutoActionStrip (server.js), just
-        // done in-process against the SAME lensActions map run_lens_action
+        // done in-process against the SAME registries run_lens_action
         // itself resolves against — no new HTTP round-trip, no new global
-        // wiring. Scoped to LENS_ACTIONS (registerLensAction) only — the
-        // dominant modern registration pattern; legacy MACROS-only domains
-        // aren't enumerable here since executeToolCall isn't given that map.
+        // wiring. Resolves BOTH registries (lensActions AND legacy MACROS
+        // via runMacro's introspection) — previously only lensActions was
+        // scanned, so any domain registered with plain register() (e.g.
+        // legacy plugins, or the dtu domain's many actions) was invisible
+        // to ConKay's own tool-calling loop even though it was reachable
+        // through run_lens_action. See dual-registry-resolve.js for the
+        // shared resolution logic.
         const domain = String(call.params.domain || "");
         if (!domain) return { tool: call.tool, ok: false, error: "domain required" };
         if (!lensActions || typeof lensActions.keys !== "function") {
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
-        const actions = [];
+        const actions = new Map(); // action name → { action, fields? }
         for (const key of lensActions.keys()) {
           const [d, ...rest] = key.split(".");
           if (d !== domain) continue;
           const action = rest.join(".");
           const fields = MACRO_INPUT_HINTS[key];
-          actions.push({ action, ...(fields ? { fields } : {}) });
+          actions.set(action, { action, ...(fields ? { fields } : {}) });
         }
-        actions.sort((a, b) => a.action.localeCompare(b.action));
-        return { tool: call.tool, ok: true, domain, total: actions.length, actions };
+        // Also scan legacy MACROS registry via runMacro's introspection.
+        // The /api/lens-actions/:domain endpoint does this through
+        // MACRO_REGISTRY (the global register() map); do the same here.
+        try {
+          const { MACRO_REGISTRY } = await import("./macro-reflection.js");
+          for (const key of (MACRO_REGISTRY?.keys?.() || [])) {
+            const [d, ...rest] = key.split(".");
+            if (d !== domain) continue;
+            const action = rest.join(".");
+            if (!actions.has(action)) {
+              const fields = MACRO_INPUT_HINTS[key];
+              actions.set(action, { action, ...(fields ? { fields } : {}) });
+            }
+          }
+        } catch { /* macro-registry not loaded — keep lensActions-only result */ }
+        const sorted = [...actions.values()].sort((a, b) => a.action.localeCompare(b.action));
+        return { tool: call.tool, ok: true, domain, total: sorted.length, actions: sorted };
       }
       case "create_dtu": {
+        // The dtu.create macro is gated by councilGate() — a content-quality
+        // check that requires a minimum "score" before the DTU is accepted.
+        // The agent loop's create_dtu is the entry point for Kay and other
+        // agent-mode callers minting DTUs from conversation context. The
+        // council gate normally requires actorRole in ["owner","founder"] or
+        // ctx.actor.internal=true to honor skipCouncilGate — neither of which
+        // is true for a regular "member" user. Two paths here:
+        //   1. If the caller's role IS owner/founder, set skipCouncilGate=true
+        //      and source="agent_tool" so the council still sees the DTU in
+        //      audit but doesn't block creation.
+        //   2. Otherwise (regular member), use source="agent_tool" which gets
+        //      the LOWER personal-save threshold inside dtuScoreAdmission
+        //      (1 structured field instead of 2) so legitimate user-driven
+        //      Kay conversations can still mint DTUs. The council gate is
+        //      still consulted but at the lower bar.
+        // User-initiated direct writes via /api/dtu/forge from the frontend
+        // keep the strict default (source="user"/"forge" triggers the
+        // user-initiated path which is even more permissive — but those go
+        // through a different code path that doesn't set source="agent_tool").
+        // Only honor skipCouncilGate for elevated actors; regular members
+        // still pass the gate, just at the personal-save threshold.
+        // Pass callerRole via ctx.actor (already set above) — the dtu.create
+        // macro reads ctx.actor.role and checks it against
+        // ["owner","founder"]/ctx.actor.internal itself, so we don't need to
+        // pass a separate skipCouncilGate flag here.
         const r = await runMacro("dtu", "create", {
           title: String(call.params.title || "Untitled"),
           human: { summary: String(call.params.summary || ""), bullets: [] },
@@ -523,8 +680,20 @@ function _screenUntrusted(label, source, text, fallbackFmt) {
 /** Format tool results into a system-style follow-up message for the next turn. */
 export function formatToolResults(results) {
   return results.map(r => {
-    if (!r.ok) return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
-    if (r.tool === "web_search") return _screenUntrusted("web_search", "web_search", r.result, (t) => `[TOOL_RESULT: web_search] ${t}`);
+    if (!r.ok) {
+      // Param-validator error: include the worked example so the model
+      // self-corrects next turn instead of giving up.
+      if (r.retryHint) {
+        return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}. Retry with the marker below (replace <placeholders> with real values):\n${r.retryHint}`;
+      }
+      return `[TOOL_RESULT: ${r.tool}] Error: ${r.error}`;
+    }
+    if (r.tool === "web_search") {
+      // r.result is a structured object {ok, query, results:[{title,snippet,url,...}]}
+      // — stringify it for the fallback formatter so the model can read it.
+      const webText = typeof r.result === "string" ? r.result : JSON.stringify(r.result || {});
+      return _screenUntrusted("web_search", "web_search", webText, (t) => `[TOOL_RESULT: web_search] ${t}`);
+    }
     if (r.tool === "run_compute")  return `[TOOL_RESULT: run_compute key=${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "run_python") {
       const parts = [];
@@ -536,6 +705,15 @@ export function formatToolResults(results) {
     }
     if (r.tool === "browse_url")   return _screenUntrusted(`browse_url ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browse_url ${r.url}] title="${r.title}"\n${t}`);
     if (r.tool === "run_lens_action") return `[TOOL_RESULT: ${r.key}] ${JSON.stringify(r.result).slice(0, 4000)}`;
+    if (r.tool === "list_lens_actions") {
+      // Don't dump the full action manifest into the model — too much token
+      // waste for what is usually a discoverability call. Summarize: total
+      // count + first ~30 action names so the model knows what's available
+      // and can read the rest on demand.
+      const names = (r.actions || []).map(a => a.action || a).slice(0, 30);
+      const more = (r.actions || []).length > names.length ? ` (+${(r.actions || []).length - names.length} more)` : "";
+      return `[TOOL_RESULT: list_lens_actions ${r.domain}] ${r.total || names.length} actions: ${names.join(", ")}${more}`;
+    }
     if (r.tool === "create_dtu")   return `[TOOL_RESULT: create_dtu] Minted DTU "${r.title}" (id: ${r.dtuId})`;
     if (r.tool === "create_document") return `[TOOL_RESULT: create_document] Created ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}. Tell the user the file is ready — do not describe its contents as if it were only text.`;
     if (r.tool === "export_dtu")   return `[TOOL_RESULT: export_dtu] Exported ${r.sourceDtuId} as ${r.filename} (${r.mimeType}, ${r.sizeBytes} bytes). Download: ${r.downloadUrl}.`;
@@ -687,8 +865,58 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       break;
     }
 
-    // Execute calls and feed results back as the next turn's user msg.
-    const ctx = { db, actor: { userId } };
+    // Resolve the caller's role once and inject into ctx.actor.role so
+    // permissioned macros (dtu.create's skipCouncilGate check, scope-gated
+    // detector registrations, council votes) see the right ACL context.
+    // Falls back to "member" (the most common non-system role) when the
+    // user lookup fails — a deliberate fail-open that prefers letting Kay
+    // do the user's work over silent permission denials. For the
+    // founder/owner-self-edit case, the DB lookup returns the actual role
+    // string from the users table.
+    let callerRole = "member";
+    try {
+      const roleRow = db.prepare(`SELECT role FROM users WHERE id = ?`).get(userId);
+      if (roleRow?.role) callerRole = String(roleRow.role);
+    } catch { /* table may not exist in some test contexts — keep member */ }
+    const ctx = {
+      db,
+      actor: {
+        userId,
+        sessionId: opts.sessionId || null,
+        role: callerRole,
+        // The dtu.create skipCouncilGate path also checks ctx.actor.internal.
+        // Mirror it on a per-call basis so the macro can do `if (internal ||
+        // ["owner","founder"].includes(role)) bypass()`. The user_role path
+        // covers the explicit role; internal=true is the admin/system path.
+        internal: callerRole === "owner" || callerRole === "founder",
+      },
+      // The session-flag macros (chicken3.session_optin family) read session
+      // via ctx.reqMeta.sessionId first. Pass it through so per-session opt-ins
+      // for multimodal/voice/tools/cloud are honored when Kay invokes those
+      // tools — without this, multimodal.image_generate and friends always
+      // return "session multimodal opt-in required" even after the user has
+      // legitimately opted in.
+      reqMeta: { sessionId: opts.sessionId || null },
+      // Several macros (dtu.create, detectors, scope-gated registrations)
+      // call ctx.log(event, payload). The server.js runMacro wrapper usually
+      // provides this, but when the chat-agent-loop calls runMacro directly
+      // (via the resolveDualRegistry path or the LENS_ACTIONS handler bypass
+      // for run_lens_action) the ctx passed in here may not have it. Add a
+      // no-op-by-default that can be overridden by opts.log if the caller
+      // wants structured events. Without this, dtu.create throws
+      // "ctx.log is not a function" and the agent loop's create_dtu case
+      // returns ok:false even when the call is otherwise valid.
+      log: typeof opts.log === "function"
+        ? opts.log
+        : (event, payload) => {
+            try {
+              const safePayload = payload && typeof payload === "object"
+                ? JSON.stringify(payload).slice(0, 1000)
+                : String(payload ?? "").slice(0, 1000);
+              console.log(`[runMacro] ${event} ${safePayload}`);
+            } catch { /* log is best-effort, never throw */ }
+          },
+    };
     const results = [];
     for (const call of calls.slice(0, 5)) {
       // Opt-in governance hook (never set by ordinary chat_agent.do calls —
