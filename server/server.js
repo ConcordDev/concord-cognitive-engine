@@ -19218,6 +19218,22 @@ function _ollamaNumCtx(brainName = "conscious") {
   return Math.min(Number(process.env.CONCORD_NUM_CTX_CAP || 32768), win);
 }
 
+// Map an Ollama model tag to its brain slot so num_ctx / KV-cache sizing
+// matches the model ACTUALLY being called. A bare callOllama() uses
+// LLM_PIPELINE.providers.ollama.model (= OLLAMA_MODEL, often the 14B
+// subconscious on the shared-A40 deploy) — hardcoding _ollamaNumCtx("conscious")
+// there made the 14B request a 32k KV cache and fight the real subconscious
+// path's 4k requests, so ollama's model scheduler thrashed reloading the same
+// blob at 32768/8192/4096 in a loop and evicting the other resident models.
+function _brainNameForModel(modelTag) {
+  const m = String(modelTag || "").toLowerCase();
+  if (m.includes("conscious")) return "conscious";
+  if (m.includes("core-v6") || m.includes("subconscious") || /\b(7b|14b)\b/.test(m)) return "subconscious";
+  if (m.includes("utility") || /\b(2b|3b)\b/.test(m)) return "utility";
+  if (m.includes("repair") || /\b1\.5b\b/.test(m)) return "repair";
+  return "conscious";
+}
+
 // Call Ollama (local) — uses /api/chat with system message when provided
 async function callOllama(prompt, options = {}) {
   const { url, model } = LLM_PIPELINE.providers.ollama;
@@ -19225,6 +19241,7 @@ async function callOllama(prompt, options = {}) {
 
   try {
     const useModel = options.model || model;
+    const _numCtx = _ollamaNumCtx(options.brainName || _brainNameForModel(useModel));
     const systemContent = options.system || "";
     const useChat = !!systemContent;
     const payload = useChat
@@ -19235,13 +19252,13 @@ async function callOllama(prompt, options = {}) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _numCtx },
         }
       : {
           model: useModel,
           prompt,
           stream: false,
-          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _ollamaNumCtx("conscious") },
+          options: { temperature: options.temperature || 0.7, num_predict: options.maxTokens || 500, num_ctx: _numCtx },
         };
 
     const response = await fetch(`${url}/api/${useChat ? "chat" : "generate"}`, {
@@ -19286,8 +19303,11 @@ async function callOllamaStreaming(brainUrl, model, messages, systemPrompt, onTo
       num_predict: options.maxTokens || 1500,
       // Streaming chat runs on the conscious brain unless the caller says
       // otherwise — without num_ctx the assembled 32k-budget prompt was
-      // silently truncated at Ollama's small default.
-      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || "conscious"),
+      // silently truncated at Ollama's small default. Fall back to the
+      // model's own brain slot (not a bare "conscious") when brainName is
+      // absent/unresolved, so a mislabelled call still sizes KV to the
+      // model actually running.
+      num_ctx: options.numCtx || _ollamaNumCtx(options.brainName || _brainNameForModel(model)),
     },
   };
 
