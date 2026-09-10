@@ -84976,9 +84976,41 @@ async function runBackup() {
     // materializes a second multi-GB copy of the DB in the Node heap the
     // way the buffered version did, which matters more now that the DB
     // itself is several times larger than earlier in this codebase's life.
+    //
+    // 2026-09-10: use SQLite's ONLINE backup API, not a raw file stream.
+    // `fs.createReadStream(DB_PATH)` copies the live database file byte-for-
+    // byte while the backend is writing it (WAL mode) — a torn read produces
+    // a CORRUPT .gz (pages from before + after a concurrent write). A
+    // Concord server that hung mid-`runBackup` (heap-limit heapsnapshot),
+    // left in uninterruptible state holding that read handle while a new
+    // backend instance started and also opened the DB RW, is what corrupted
+    // the live DB on 2026-09-08. `better-sqlite3`'s db.backup() copies
+    // page-by-page under a read transaction and yields a consistent, valid
+    // database even under concurrent writes. Snapshot to a temp file, gzip
+    // that, delete it.
     try {
-      if (fs.existsSync(DB_PATH)) {
-        const gzipPath = `${backupDir}/concord.db.gz`;
+      const _db = STATE?.db || globalThis._concordDB;
+      const gzipPath = `${backupDir}/concord.db.gz`;
+      if (_db && typeof _db.backup === "function") {
+        const snapPath = `${backupDir}/.concord.db.snapshot`;
+        try {
+          await _db.backup(snapPath);
+          await pipeline(
+            fs.createReadStream(snapPath),
+            zlib.createGzip({ level: 6 }),
+            fs.createWriteStream(gzipPath),
+          );
+          const { size: sourceBytes } = await fs.promises.stat(snapPath);
+          const { size: compressedBytes } = await fs.promises.stat(gzipPath);
+          structuredLog("info", "backup_db_captured", {
+            source: DB_PATH, method: "sqlite_online_backup", bytes: sourceBytes, compressedBytes,
+          });
+        } finally {
+          await fs.promises.rm(snapPath, { force: true }).catch(() => {});
+        }
+      } else if (fs.existsSync(DB_PATH)) {
+        // JSON-fallback deploy (no better-sqlite3) — the file IS the DB and
+        // nothing writes it concurrently, so a stream copy is safe here.
         await pipeline(
           fs.createReadStream(DB_PATH),
           zlib.createGzip({ level: 6 }),
@@ -84987,12 +85019,11 @@ async function runBackup() {
         const { size: sourceBytes } = await fs.promises.stat(DB_PATH);
         const { size: compressedBytes } = await fs.promises.stat(gzipPath);
         structuredLog("info", "backup_db_captured", {
-          source: DB_PATH, bytes: sourceBytes, compressedBytes,
+          source: DB_PATH, method: "file_stream_fallback", bytes: sourceBytes, compressedBytes,
         });
       } else {
         structuredLog("warn", "backup_db_missing", {
-          expectedAt: DB_PATH,
-          note: "database not backed up — verify DB_PATH",
+          expectedAt: DB_PATH, note: "database not backed up — verify DB_PATH",
         });
       }
     } catch (e) {
