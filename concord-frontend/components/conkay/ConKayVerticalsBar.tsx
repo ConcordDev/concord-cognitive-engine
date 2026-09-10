@@ -101,7 +101,7 @@ export function ConKayVerticalsBar({ setWorkStatus }: Props) {
                   : json.shot
                     ? ` shot=${json.shot.archetype}`
                     : '';
-        let line = `${label} OK${extra} (${json.ms ?? json.latencyMs?.p50 ?? '?'}ms) — PROXY/synthetic`;
+        const line = `${label} OK${extra} (${json.ms ?? json.latencyMs?.p50 ?? '?'}ms) — PROXY/synthetic`;
         status(line);
         const mint = await mintConkayArtifactDtu({
           title: `Vertical · ${label}`,
