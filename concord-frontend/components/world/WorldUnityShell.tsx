@@ -129,7 +129,9 @@ export default function WorldUnityShell() {
   }, [panel]);
 
   const leaveLens = useCallback(() => {
-    router.push('/lenses');
+    // /hub is the front door (the lens grid + destinations); /lenses has no
+    // index route (only /lenses/[lens]) so router.push('/lenses') 404s.
+    router.push('/hub');
   }, [router]);
 
   const openAdvanced = useCallback(() => {

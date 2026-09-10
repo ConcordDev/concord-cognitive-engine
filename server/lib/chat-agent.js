@@ -890,6 +890,61 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   // real, reproducible source of ConKay "not completing its sentences."
   let ranOutOfTurnsWithPendingCalls = false;
 
+  // Resolve the caller's role ONCE (loop-invariant) and build the ctx the
+  // per-turn tool executor uses. Previously this sat inside the turn loop and
+  // re-ran `SELECT role FROM users` on every turn (up to AGENT_MAX_TURNS) —
+  // a per-request N+1 the perf detector flagged (chat-agent.js:893).
+  //
+  // Fail-open to "member" (signed off, 2026-09-10): a users-table read that
+  // throws, or a userId with no row, resolves to "member" so Kay can still do
+  // the user's work rather than hard-denying. SAFE because escalation is gated
+  // the other way — `internal` (and any council-gate bypass) is granted ONLY
+  // when we positively READ "owner"/"founder" from the DB, never on the
+  // fallback. Worst case of a failed lookup: under-privilege, never over.
+  // Abnormal paths (query threw / user not found) are logged.
+  let callerRole = "member";
+  let _roleResolved = false;
+  try {
+    const roleRow = db.prepare(`SELECT role FROM users WHERE id = ?`).get(userId);
+    if (roleRow?.role) { callerRole = String(roleRow.role); _roleResolved = true; }
+    else if (!roleRow) {
+      try { console.warn(`[chat-agent] role lookup: no users row for ${userId} — treating as member`); } catch { /* noop */ }
+    }
+  } catch (e) {
+    try { console.warn(`[chat-agent] role lookup threw (${e?.message || e}) — fail-open to member`); } catch { /* noop */ }
+  }
+  const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
+  const ctx = {
+    db,
+    actor: {
+      userId,
+      sessionId: opts.sessionId || null,
+      role: callerRole,
+      // dtu.create's skipCouncilGate path checks ctx.actor.internal. Grant it
+      // ONLY for a DB-confirmed owner/founder — a fallback "member" (or a
+      // "member" from a failed lookup) never bypasses the gate.
+      internal: _elevated,
+    },
+    // chicken3.session_optin family reads session via ctx.reqMeta.sessionId —
+    // pass it so per-session multimodal/voice/tools/cloud opt-ins are honored
+    // when Kay invokes those tools.
+    reqMeta: { sessionId: opts.sessionId || null },
+    // dtu.create / detectors / scope-gated registrations call ctx.log(event,
+    // payload). server.js's runMacro wrapper usually provides it, but the
+    // agent loop's direct runMacro / LENS_ACTIONS-bypass paths don't — without
+    // this, dtu.create throws "ctx.log is not a function".
+    log: typeof opts.log === "function"
+      ? opts.log
+      : (event, payload) => {
+          try {
+            const safePayload = payload && typeof payload === "object"
+              ? JSON.stringify(payload).slice(0, 1000)
+              : String(payload ?? "").slice(0, 1000);
+            console.log(`[runMacro] ${event} ${safePayload}`);
+          } catch { /* log is best-effort, never throw */ }
+        },
+  };
+
   for (let turn = 0; turn < maxTurns; turn++) {
     turnsTaken++;
     emit("turn_start", { turn: turnsTaken });
@@ -931,69 +986,6 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
       break;
     }
 
-    // Resolve the caller's role once and inject into ctx.actor.role so
-    // permissioned macros (dtu.create's skipCouncilGate check, scope-gated
-    // detector registrations, council votes) see the right ACL context.
-    //
-    // Fail-open to "member" (signed off, 2026-09-10): a users-table read
-    // that throws, or a userId with no row, resolves to "member" so Kay can
-    // still do the user's work rather than hard-denying. The fail-open is
-    // SAFE because escalation is gated the other way — `internal` (and thus
-    // any council-gate bypass) is granted ONLY when we positively READ
-    // "owner"/"founder" from the DB, never on the fallback. So the worst a
-    // failed lookup does is under-privilege, never over-privilege.
-    // The abnormal paths (query threw / user not found) are logged so a
-    // misconfigured deploy doesn't silently downgrade every caller forever.
-    let callerRole = "member";
-    let _roleResolved = false;
-    try {
-      const roleRow = db.prepare(`SELECT role FROM users WHERE id = ?`).get(userId);
-      if (roleRow?.role) { callerRole = String(roleRow.role); _roleResolved = true; }
-      else if (!roleRow) {
-        try { console.warn(`[chat-agent] role lookup: no users row for ${userId} — treating as member`); } catch { /* noop */ }
-      }
-    } catch (e) {
-      try { console.warn(`[chat-agent] role lookup threw (${e?.message || e}) — fail-open to member`); } catch { /* noop */ }
-    }
-    const _elevated = _roleResolved && (callerRole === "owner" || callerRole === "founder");
-    const ctx = {
-      db,
-      actor: {
-        userId,
-        sessionId: opts.sessionId || null,
-        role: callerRole,
-        // dtu.create's skipCouncilGate path checks ctx.actor.internal. Grant it
-        // ONLY for a DB-confirmed owner/founder — a fallback "member" (or a
-        // "member" from a failed lookup) never bypasses the gate.
-        internal: _elevated,
-      },
-      // The session-flag macros (chicken3.session_optin family) read session
-      // via ctx.reqMeta.sessionId first. Pass it through so per-session opt-ins
-      // for multimodal/voice/tools/cloud are honored when Kay invokes those
-      // tools — without this, multimodal.image_generate and friends always
-      // return "session multimodal opt-in required" even after the user has
-      // legitimately opted in.
-      reqMeta: { sessionId: opts.sessionId || null },
-      // Several macros (dtu.create, detectors, scope-gated registrations)
-      // call ctx.log(event, payload). The server.js runMacro wrapper usually
-      // provides this, but when the chat-agent-loop calls runMacro directly
-      // (via the resolveDualRegistry path or the LENS_ACTIONS handler bypass
-      // for run_lens_action) the ctx passed in here may not have it. Add a
-      // no-op-by-default that can be overridden by opts.log if the caller
-      // wants structured events. Without this, dtu.create throws
-      // "ctx.log is not a function" and the agent loop's create_dtu case
-      // returns ok:false even when the call is otherwise valid.
-      log: typeof opts.log === "function"
-        ? opts.log
-        : (event, payload) => {
-            try {
-              const safePayload = payload && typeof payload === "object"
-                ? JSON.stringify(payload).slice(0, 1000)
-                : String(payload ?? "").slice(0, 1000);
-              console.log(`[runMacro] ${event} ${safePayload}`);
-            } catch { /* log is best-effort, never throw */ }
-          },
-    };
     const results = [];
     for (const call of calls.slice(0, 5)) {
       // Opt-in governance hook (never set by ordinary chat_agent.do calls —
