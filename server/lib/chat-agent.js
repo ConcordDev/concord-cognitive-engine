@@ -399,18 +399,23 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const domain = String(call.params.domain || "");
         const action = String(call.params.action || "");
         const actionInput = call.params.params || {};
-        // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS
-        // (runMacro) — the same precedence server.js's runMcpTool already
-        // uses for the MCP server / /api/lens/run. Before this fix, this
-        // tool checked ONLY lensActions, so any macro registered via plain
-        // register() (e.g. a loaded plugin's macro) was unreachable through
-        // ConKay's own tool-calling loop even though the identical
-        // (domain, action) pair worked through runMcpTool. See
-        // dual-registry-resolve.js for the shared resolution logic.
+        // Resolve against BOTH registries — LENS_ACTIONS first, then MACROS —
+        // the same precedence server.js's runMcpTool / /api/lens/run use.
+        // `strict` (default) verifies the pair is ACTUALLY registered: a
+        // misnamed/nonexistent (domain, action) — what the model most often
+        // guesses wrong — returns via:"none" with an actionable error instead
+        // of firing runMacro() (which throws an opaque "macro not found") or,
+        // worse, being masked as a plausible result. See dual-registry-resolve.js.
         const resolved = resolveDualRegistry(domain, action, { lensActions, runMacro });
         if (resolved.via === "none") {
-          // Neither registry usable at all (nothing injected); surface a
-          // hint rather than throw.
+          if (resolved.reason === "not_registered") {
+            return {
+              tool: call.tool, ok: false,
+              error: `no lens action "${domain}.${action}" — the name is wrong or it isn't registered`,
+              retryHint: `[TOOL_CALL: {"tool": "list_lens_actions", "params": {"domain": "${domain}"}}]`,
+            };
+          }
+          // Registry genuinely not injected (nothing to dispatch against).
           return { tool: call.tool, ok: false, error: "lens_actions_unavailable" };
         }
         try {

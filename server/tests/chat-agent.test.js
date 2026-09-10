@@ -504,3 +504,37 @@ test("browse_url rejects non-http URLs", async () => {
   assert.equal(result.ok, false);
   assert.match(result.error, /valid http/);
 });
+
+test("run_lens_action returns an actionable error for a misnamed action (strict registry check)", async () => {
+  // MACROS map with only one real pair; the model guesses a wrong action name.
+  const macros = new Map([["physics", new Map([["power", { fn: async () => ({ ok: true }) }]])]]);
+  globalThis._concordMACROS = macros;
+  try {
+    const fakeRunMacro = async () => { throw new Error("should not be called for an unregistered pair"); };
+    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+      tool: "run_lens_action", params: { domain: "physics", action: "teleport" },
+    });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /no lens action "physics\.teleport"/);
+    assert.match(result.retryHint, /list_lens_actions/);
+  } finally {
+    delete globalThis._concordMACROS;
+  }
+});
+
+test("run_lens_action still runs a real MACROS-registered pair", async () => {
+  const macros = new Map([["physics", new Map([["power", { fn: async () => ({ ok: true }) }]])]]);
+  globalThis._concordMACROS = macros;
+  try {
+    let called = false;
+    const fakeRunMacro = async (d, n) => { called = true; return { ok: true, d, n, watts: 36 }; };
+    const result = await executeToolCall({}, fakeRunMacro, new Map(), {
+      tool: "run_lens_action", params: { domain: "physics", action: "power", params: { v: 12, i: 3 } },
+    });
+    assert.equal(called, true);
+    assert.equal(result.ok, true);
+    assert.equal(result.result.watts, 36);
+  } finally {
+    delete globalThis._concordMACROS;
+  }
+});

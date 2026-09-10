@@ -46871,13 +46871,21 @@ function _billLensDispatch(domain, name, result, startedAt, ctx) {
 
 async function runMcpTool(domain, name, input, ctx) {
   const _t0 = Date.now();
-  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro });
+  const resolved = _resolveDualRegistry(domain, name, { lensActions: LENS_ACTIONS, runMacro, macros: MACROS });
   if (resolved.via === "lens_action") {
     const data = _peelRedundantArtifactWrapper(input || {});
     const virtualArtifact = { id: null, domain, type: "domain_action", data, meta: {} };
     const result = await resolved.handler(ctx, virtualArtifact, data);
     _billLensDispatch(domain, name, result, _t0, ctx);
     return result;
+  }
+  if (resolved.via === "none") {
+    // Misnamed / never-registered (domain, name) — return a clean structured
+    // error instead of letting runMacro() throw an opaque "macro not found".
+    return {
+      ok: false, error: "unknown_tool", reason: resolved.reason || "not_registered",
+      detail: `no registered macro or lens-action for ${domain}.${name}`,
+    };
   }
   return await runMacro(domain, name, input || {}, ctx);
 }
