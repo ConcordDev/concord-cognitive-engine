@@ -668,6 +668,12 @@ export default function createAuthRouter({
   // isn't a failed *attempt* in the sense the limiter exists to catch) and
   // cheaper (skips the limiter's bookkeeping for what is, in practice, the
   // single most common call this route ever receives).
+  // The auth here is the httpOnly refresh-token COOKIE itself (same pattern as
+  // the reset-token routes below): the inline guard rejects a missing cookie
+  // with 401, and the handler calls verifyRefreshToken() before issuing a new
+  // access token. There is no session to present at refresh time — that is the
+  // point of the endpoint.
+  // AUTH: token
   router.post("/refresh", (req, res, next) => {
     if (!req.cookies?.[REFRESH_TOKEN_COOKIE]) {
       return res.status(401).json({ ok: false, error: "No refresh token provided", code: "REFRESH_MISSING" });
