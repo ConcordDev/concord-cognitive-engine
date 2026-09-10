@@ -1,6 +1,6 @@
 # Lens stacked-UI report
 
-Generated 2026-09-10T20:21:16.489Z · `node scripts/detect-lens-stacking.mjs`
+Generated 2026-09-10T21:16:14.957Z · `node scripts/detect-lens-stacking.mjs`
 
 266 lenses scanned. **0 heavy** (score ≥ 12) · **0 moderate** (7–12) · 266 clean.
 
@@ -8,9 +8,8 @@ Generated 2026-09-10T20:21:16.489Z · `node scripts/detect-lens-stacking.mjs`
 
 | lens | score | LOC | inlineBloat | feat-cmp | view-SM | render-strat | useState | useEffect | screen-br | dead-view | dup-act |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| `translation` | 2.05 | 446 | 46 | 0 | 0 | 0 | 16 | 1 | 0 | 0 | 0 |
-| `genesis` | 2 | 481 | 0 | 7 | 0 | 1 | 14 | 2 | 6 | 0 | 0 |
 | `fishing` | 1.83 | 331 | 0 | 5 | 0 | 0 | 14 | 5 | 0 | 0 | 0 |
+| `genesis` | 1.83 | 276 | 0 | 8 | 0 | 1 | 14 | 2 | 4 | 0 | 0 |
 | `careers` | 1.75 | 357 | 0 | 3 | 0 | 0 | 14 | 2 | 3 | 0 | 0 |
 | `civic-bonds` | 1.5 | 367 | 0 | 0 | 0 | 0 | 14 | 3 | 0 | 0 | 0 |
 | `mental-health` | 1.5 | 304 | 0 | 4 | 0 | 0 | 12 | 0 | 6 | 0 | 0 |
@@ -26,7 +25,6 @@ Generated 2026-09-10T20:21:16.489Z · `node scripts/detect-lens-stacking.mjs`
 | `platform` | 1.17 | 444 | 0 | 8 | 1 | 0 | 3 | 0 | 14 | 0 | 0 |
 | `veterinary` | 1.17 | 219 | 0 | 12 | 1 | 0 | 2 | 1 | 14 | 0 | 0 |
 | `ghost-tracker` | 1.08 | 343 | 0 | 6 | 0 | 0 | 12 | 2 | 1 | 0 | 0 |
-| `ledger` | 1.08 | 474 | 74 | 0 | 0 | 0 | 12 | 1 | 0 | 0 | 0 |
 | `code-quality` | 1 | 469 | 0 | 8 | 0 | 0 | 12 | 1 | 0 | 0 | 0 |
 | `expert-mode` | 1 | 446 | 0 | 7 | 0 | 0 | 11 | 2 | 3 | 0 | 0 |
 | `federation` | 1 | 226 | 0 | 11 | 0 | 0 | 6 | 1 | 12 | 0 | 0 |
@@ -128,6 +126,7 @@ Generated 2026-09-10T20:21:16.489Z · `node scripts/detect-lens-stacking.mjs`
 | `fractal` | 0.17 | 81 | 0 | 2 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | `game-design` | 0.17 | 96 | 0 | 2 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | `housing` | 0.17 | 101 | 0 | 2 | 0 | 0 | 2 | 0 | 2 | 0 | 0 |
+| `ledger` | 0.17 | 268 | 0 | 2 | 0 | 0 | 6 | 1 | 2 | 0 | 0 |
 | `mail` | 0.17 | 105 | 0 | 3 | 0 | 0 | 1 | 1 | 2 | 0 | 0 |
 | `masonry` | 0.17 | 147 | 0 | 3 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | `materials` | 0.17 | 160 | 0 | 7 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
@@ -140,6 +139,7 @@ Generated 2026-09-10T20:21:16.489Z · `node scripts/detect-lens-stacking.mjs`
 | `system` | 0.17 | 199 | 0 | 4 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | `tools` | 0.17 | 118 | 0 | 4 | 1 | 0 | 2 | 0 | 2 | 0 | 0 |
 | `tournaments` | 0.17 | 127 | 0 | 5 | 0 | 0 | 0 | 0 | 2 | 0 | 0 |
+| `translation` | 0.17 | 161 | 0 | 1 | 0 | 0 | 7 | 1 | 2 | 0 | 0 |
 | `welding` | 0.17 | 81 | 0 | 3 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | `affect` | 0.08 | 169 | 0 | 8 | 0 | 0 | 1 | 0 | 1 | 0 | 0 |
 | `agents` | 0.08 | 152 | 0 | 4 | 1 | 1 | 1 | 0 | 1 | 0 | 0 |

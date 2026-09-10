@@ -1,42 +1,6 @@
 {
-  "generatedAt": "2026-09-10T20:21:16.492Z",
+  "generatedAt": "2026-09-10T21:16:14.959Z",
   "rows": [
-    {
-      "lens": "translation",
-      "loc": 446,
-      "inlineBloat": 46,
-      "featureImports": 0,
-      "sharedImports": 1,
-      "coLocatedImports": 0,
-      "useStateCount": 16,
-      "useEffectCount": 1,
-      "viewStateMachines": 0,
-      "renderStrategies": 0,
-      "screenBranches": 0,
-      "deadViewValues": 0,
-      "deadViewList": [],
-      "dupActionPaths": 0,
-      "domainComponentCount": 0,
-      "stackingScore": 2.05
-    },
-    {
-      "lens": "genesis",
-      "loc": 481,
-      "inlineBloat": 0,
-      "featureImports": 7,
-      "sharedImports": 5,
-      "coLocatedImports": 0,
-      "useStateCount": 14,
-      "useEffectCount": 2,
-      "viewStateMachines": 0,
-      "renderStrategies": 1,
-      "screenBranches": 6,
-      "deadViewValues": 0,
-      "deadViewList": [],
-      "dupActionPaths": 0,
-      "domainComponentCount": 7,
-      "stackingScore": 2
-    },
     {
       "lens": "fishing",
       "loc": 331,
@@ -53,6 +17,24 @@
       "deadViewList": [],
       "dupActionPaths": 0,
       "domainComponentCount": 3,
+      "stackingScore": 1.83
+    },
+    {
+      "lens": "genesis",
+      "loc": 276,
+      "inlineBloat": 0,
+      "featureImports": 8,
+      "sharedImports": 5,
+      "coLocatedImports": 0,
+      "useStateCount": 14,
+      "useEffectCount": 2,
+      "viewStateMachines": 0,
+      "renderStrategies": 1,
+      "screenBranches": 4,
+      "deadViewValues": 0,
+      "deadViewList": [],
+      "dupActionPaths": 0,
+      "domainComponentCount": 8,
       "stackingScore": 1.83
     },
     {
@@ -323,24 +305,6 @@
       "deadViewList": [],
       "dupActionPaths": 0,
       "domainComponentCount": 6,
-      "stackingScore": 1.08
-    },
-    {
-      "lens": "ledger",
-      "loc": 474,
-      "inlineBloat": 74,
-      "featureImports": 0,
-      "sharedImports": 1,
-      "coLocatedImports": 0,
-      "useStateCount": 12,
-      "useEffectCount": 1,
-      "viewStateMachines": 0,
-      "renderStrategies": 0,
-      "screenBranches": 0,
-      "deadViewValues": 0,
-      "deadViewList": [],
-      "dupActionPaths": 0,
-      "domainComponentCount": 0,
       "stackingScore": 1.08
     },
     {
@@ -2162,6 +2126,24 @@
       "stackingScore": 0.17
     },
     {
+      "lens": "ledger",
+      "loc": 268,
+      "inlineBloat": 0,
+      "featureImports": 2,
+      "sharedImports": 1,
+      "coLocatedImports": 0,
+      "useStateCount": 6,
+      "useEffectCount": 1,
+      "viewStateMachines": 0,
+      "renderStrategies": 0,
+      "screenBranches": 2,
+      "deadViewValues": 0,
+      "deadViewList": [],
+      "dupActionPaths": 0,
+      "domainComponentCount": 1,
+      "stackingScore": 0.17
+    },
+    {
       "lens": "mail",
       "loc": 105,
       "inlineBloat": 0,
@@ -2375,6 +2357,24 @@
       "deadViewList": [],
       "dupActionPaths": 0,
       "domainComponentCount": 9,
+      "stackingScore": 0.17
+    },
+    {
+      "lens": "translation",
+      "loc": 161,
+      "inlineBloat": 0,
+      "featureImports": 1,
+      "sharedImports": 1,
+      "coLocatedImports": 0,
+      "useStateCount": 7,
+      "useEffectCount": 1,
+      "viewStateMachines": 0,
+      "renderStrategies": 0,
+      "screenBranches": 2,
+      "deadViewValues": 0,
+      "deadViewList": [],
+      "dupActionPaths": 0,
+      "domainComponentCount": 1,
       "stackingScore": 0.17
     },
     {
