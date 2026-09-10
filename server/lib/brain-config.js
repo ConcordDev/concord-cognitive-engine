@@ -138,7 +138,13 @@ export const BRAIN_CONFIG = Object.freeze({
     model: _resolveBrainModel(process.env.BRAIN_CONSCIOUS_MODEL, "concord-conscious:latest", _conscious_urls),
     role: "chat, deep reasoning, council deliberation, user-facing interactions",
     temperature: 0.7,
-    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 45000, // GPU inference; override per-deployment
+    // 180s (2026-09-09): on the A40 the conscious 30B blob lives on MooseFS
+    // network storage — a COLD load runs 45-120s, and a shorter timeout
+    // aborts it mid-load, which cancels the llama-server start and wedges
+    // ollama's scheduler into a retry loop that never seats the model.
+    // Once warm (keep_alive:-1) a call is fast; this only bites the first
+    // request after an ollama restart. Override per-deployment.
+    timeout: Number(process.env.BRAIN_CONSCIOUS_TIMEOUT_MS) || 180000,
     priority: 1,       // CRITICAL — user-facing
     // Bumped 3 → 8 to match OLLAMA_NUM_PARALLEL=8 on the conscious
     // service. Anything lower bottlenecks the JS queue while the GPU
