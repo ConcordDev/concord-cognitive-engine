@@ -128,7 +128,7 @@ describe('ShipmentsMap', () => {
   });
 
   it('takes the setData branch on a repeat draw against the same map instance', () => {
-    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
       const map = makeMockMap();
       map.isStyleLoaded.mockReturnValue(false);
       return map;

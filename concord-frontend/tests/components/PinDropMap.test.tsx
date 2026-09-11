@@ -125,7 +125,7 @@ describe('PinDropMap', () => {
   });
 
   it('defers existing-marker sync and pin placement to the load event when the style is not yet loaded', () => {
-    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
       const map = makeMockMap();
       map.isStyleLoaded.mockReturnValue(false);
       return map;
