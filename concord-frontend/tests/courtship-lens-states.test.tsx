@@ -19,9 +19,33 @@ import { render, act, fireEvent, waitFor } from '@testing-library/react';
 
 // The lens does not call lensRun directly (it uses fetch), but the polish
 // recipe mocks the api client for parity with the canonical template.
+//
+// useCourtshipDesk's interact/propose/wed actions go through `api.post`
+// (an axios instance), NOT the page's own raw `fetch()` calls used for the
+// initial courtships/marriages load — mocking only `lensRun` here left
+// `api` undefined, so every action silently threw
+// "Cannot read properties of undefined (reading 'post')" inside its own
+// try/catch (swallowed, no test-visible crash) and the interact/propose/wed
+// fetch call this file asserts on never happened. Route api.post through
+// the same mocked global.fetch so per-test URL assertions keep working
+// unchanged.
 const lensRunMock = vi.fn();
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
+  api: {
+    post: async (url: string, body?: unknown) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { data: await res.json(), status: res.status };
+    },
+    get: async (url: string) => {
+      const res = await fetch(url);
+      return { data: await res.json(), status: res.status };
+    },
+  },
 }));
 
 // Toast slice — capture error toasts so we can assert the ERROR path fires one.
@@ -102,9 +126,12 @@ describe('courtship lens — UX states', () => {
     await act(async () => { view = render(<CourtshipLensPage />); });
     await waitFor(() => expect(view!.getByTestId('courtship-empty')).toBeInTheDocument());
     expect(view!.getByTestId('courtship-empty').textContent).toMatch(/no active courtships/i);
-    // Honest empty sub-sections render too.
-    expect(view!.getByText(/no active marriages/i)).toBeInTheDocument();
-    expect(view!.getByText(/no children/i)).toBeInTheDocument();
+    // Honest empty sub-sections render too — Marriages and Family are
+    // separate tabs from the default Courtships view.
+    await act(async () => { fireEvent.click(view!.getByText('Marriages')); });
+    await waitFor(() => expect(view!.getByText(/no active marriages/i)).toBeInTheDocument());
+    await act(async () => { fireEvent.click(view!.getByText('Family')); });
+    await waitFor(() => expect(view!.getByText(/no children/i)).toBeInTheDocument());
   });
 
   it('POPULATED: renders real courtships, marriages, children + accessible action buttons', async () => {
@@ -132,9 +159,12 @@ describe('courtship lens — UX states', () => {
     expect(view!.getByLabelText('Interact positively with npc_alice_0001')).toBeInTheDocument();
     expect(view!.getByLabelText('Propose to npc_alice_0001')).toBeInTheDocument();
 
-    // marriage + child rows render real data
-    expect(view!.getByText(/npc:npc_bob_0002/)).toBeInTheDocument();
-    expect(view!.getByText('Iris')).toBeInTheDocument();
+    // marriage row renders real data — separate "Marriages" tab.
+    await act(async () => { fireEvent.click(view!.getByText('Marriages')); });
+    await waitFor(() => expect(view!.getByText(/npc:npc_bob_0002/)).toBeInTheDocument());
+    // child row renders real data — separate "Family" tab.
+    await act(async () => { fireEvent.click(view!.getByText('Family')); });
+    await waitFor(() => expect(view!.getByText('Iris')).toBeInTheDocument());
   });
 
   it('ACTION: Interact POSTs to /api/courtship/interact and re-refreshes', async () => {
