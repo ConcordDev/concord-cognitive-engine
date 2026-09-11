@@ -236,6 +236,34 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
       body: JSON.stringify({ ok: true, balance: walletBalance, sparks: walletBalance }),
     })
   );
+
+  // Root-cause fix (2026-09-11) for the "navigate to /lenses/* then
+  // redirected to /login mid-test" class of E2E Core failure (navigation
+  // Topbar-menu spec + wallet-journey spec both hit this): EVERY lens's
+  // initial data load goes through `lensRun()` (lib/api/client.ts), which
+  // is a POST to /api/lens/run regardless of whether the macro itself is a
+  // read or a write — this endpoint was the one major gap in this helper's
+  // otherwise-comprehensive mock coverage. Unmocked, it hits the REAL
+  // backend (E2E Core boots one — see ci.yml's E2E Core job) with this
+  // mock's fake `concord_refresh` cookie, which the real server correctly
+  // rejects as invalid → 401. Because it's a POST (not a GET), the axios
+  // interceptor's "don't redirect on background GET fetches" carve-out
+  // (lib/api/client.ts) does NOT apply, so after the mocked
+  // /api/auth/refresh "succeeds" (200, but grants no real new cookie) and
+  // the replayed request 401s again, the interceptor hard-navigates to
+  // /login — killing whatever lens the test was on. A generic honest-empty
+  // envelope is enough for chrome-level tests (Topbar/Sidebar/menu
+  // presence) that don't assert on real lens data; a test that DOES need
+  // real macro output should add its own more specific `page.route` for
+  // that call, which still overrides this one (Playwright matches routes
+  // last-registered-first).
+  await page.route('**/api/lens/run', (route) =>
+    corsFulfill(route, {
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, result: { ok: true, result: {} } }),
+    })
+  );
 }
 
 /**
