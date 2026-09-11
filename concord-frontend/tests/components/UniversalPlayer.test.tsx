@@ -61,6 +61,8 @@ vi.mock('framer-motion', () => {
     return Comp;
   };
   return {
+    useReducedMotion: () => false,
+    MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
     motion: {
       div: createMotionComponent('div'),
       span: createMotionComponent('span'),

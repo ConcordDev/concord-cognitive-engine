@@ -74,10 +74,10 @@ function makeMockMarker() {
 // `typeof m.Map === 'function'`). MapView.tsx does `import * as maplibregl`
 // and reads maplibregl.Map directly, so the mock must match that shape.
 vi.mock('maplibre-gl', () => ({
-  Map: vi.fn().mockImplementation(() => makeMockMap()),
-  Marker: vi.fn().mockImplementation(() => makeMockMarker()),
-  Popup: vi.fn().mockImplementation(() => ({ setHTML: vi.fn().mockReturnThis() })),
-  NavigationControl: vi.fn().mockImplementation(() => ({})),
+  Map: vi.fn().mockImplementation(function () { return makeMockMap(); }),
+  Marker: vi.fn().mockImplementation(function () { return makeMockMarker(); }),
+  Popup: vi.fn().mockImplementation(function () { return { setHTML: vi.fn().mockReturnThis() }; }),
+  NavigationControl: vi.fn().mockImplementation(function () { return {}; }),
 }));
 
 // next/dynamic → real React.lazy + Suspense passthrough so the real MapView

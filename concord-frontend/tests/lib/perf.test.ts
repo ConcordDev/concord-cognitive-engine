@@ -115,10 +115,10 @@ describe('perf utilities', () => {
 
     it('creates observers when PerformanceObserver is available', () => {
       const observeFn = vi.fn();
-      const mockObserver = vi.fn().mockImplementation(() => ({
+      const mockObserver = vi.fn().mockImplementation(function () { return {
         observe: observeFn,
         disconnect: vi.fn(),
-      }));
+      }; });
 
       const originalPO = window.PerformanceObserver;
       window.PerformanceObserver = mockObserver as unknown as typeof PerformanceObserver;
@@ -142,7 +142,7 @@ describe('perf utilities', () => {
 
       // Track callbacks by the type passed to observe()
       const callbacksByType: Record<string, (list: { getEntries: () => unknown[] }) => void> = {};
-      const mockObserver = vi.fn().mockImplementation((cb: (list: { getEntries: () => unknown[] }) => void) => {
+      const mockObserver = vi.fn().mockImplementation(function (cb: (list: { getEntries: () => unknown[] }) => void) {
         return {
           observe: vi.fn().mockImplementation((opts: { type: string }) => {
             callbacksByType[opts.type] = cb;
@@ -180,10 +180,10 @@ describe('perf utilities', () => {
       setMetricReporter(reporter);
 
       const observeFn = vi.fn();
-      const mockObserver = vi.fn().mockImplementation(() => ({
+      const mockObserver = vi.fn().mockImplementation(function () { return {
         observe: observeFn,
         disconnect: vi.fn(),
-      }));
+      }; });
 
       const originalPO = window.PerformanceObserver;
       window.PerformanceObserver = mockObserver as unknown as typeof PerformanceObserver;
@@ -208,7 +208,7 @@ describe('perf utilities', () => {
     });
 
     it('handles errors in observer creation gracefully', () => {
-      const mockObserver = vi.fn().mockImplementation(() => {
+      const mockObserver = vi.fn().mockImplementation(function () {
         throw new Error('Not supported');
       });
 
@@ -232,7 +232,7 @@ describe('perf utilities', () => {
       setMetricReporter(reporter);
 
       const callbacksByType: Record<string, (list: { getEntries: () => unknown[] }) => void> = {};
-      const mockObserver = vi.fn().mockImplementation((cb: (list: { getEntries: () => unknown[] }) => void) => {
+      const mockObserver = vi.fn().mockImplementation(function (cb: (list: { getEntries: () => unknown[] }) => void) {
         return {
           observe: vi.fn().mockImplementation((opts: { type: string }) => {
             callbacksByType[opts.type] = cb;
@@ -271,7 +271,7 @@ describe('perf utilities', () => {
       setMetricReporter(reporter);
 
       const callbacksByType: Record<string, (list: { getEntries: () => unknown[] }) => void> = {};
-      const mockObserver = vi.fn().mockImplementation((cb: (list: { getEntries: () => unknown[] }) => void) => {
+      const mockObserver = vi.fn().mockImplementation(function (cb: (list: { getEntries: () => unknown[] }) => void) {
         return {
           observe: vi.fn().mockImplementation((opts: { type: string }) => {
             callbacksByType[opts.type] = cb;

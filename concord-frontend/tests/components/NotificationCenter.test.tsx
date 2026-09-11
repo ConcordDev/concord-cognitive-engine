@@ -46,6 +46,8 @@ vi.mock('framer-motion', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
   return {
+    useReducedMotion: () => false,
+    MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
     motion: {
       // eslint-disable-next-line react/display-name
       div: React.forwardRef(({ children }: Record<string, unknown>, ref: unknown) =>
