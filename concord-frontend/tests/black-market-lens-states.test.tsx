@@ -40,6 +40,16 @@ vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   useCreateArtifact: () => ({ mutate: () => {} }),
 }));
 
+// The page's `buy()` goes through `api.post` (an axios instance), NOT the
+// page's raw `fetch()` calls used for listings/reputation — stubbing global
+// `fetch` alone never reaches the purchase leg (a real axios call under
+// jsdom either network-errors or hangs). Mock the client's `post` directly
+// so purchase tests control that response independently of the fetch mock.
+const purchaseMock = vi.fn();
+vi.mock('@/lib/api/client', () => ({
+  api: { post: (...args: unknown[]) => purchaseMock(...args) },
+}));
+
 // Import AFTER mocks are registered.
 import BlackMarketPage from '@/app/lenses/black-market/page';
 
@@ -84,6 +94,7 @@ function routeFetch(handlers: {
 
 beforeEach(() => {
   vi.unstubAllGlobals();
+  purchaseMock.mockReset();
 });
 
 describe('black-market lens — four UX states', () => {
@@ -166,16 +177,18 @@ describe('black-market lens — four UX states', () => {
       sent_at: 1,
     };
     let bought = false;
-    const fetchMock = vi.fn((url: string, opts?: { method?: string }) => {
-      if (opts?.method === 'POST' || /\/purchase$/.test(url)) {
-        bought = true;
-        return jsonOk({ ok: true, sparksSpent: 158, message: reveal });
-      }
+    const fetchMock = vi.fn((url: string) => {
       if (/\/reputation$/.test(url)) return jsonOk({ ok: true, reputation: [REP] });
       // after a buy the listing is sold → market goes empty
       return jsonOk({ ok: true, listings: bought ? [] : [LISTING] });
     });
     vi.stubGlobal('fetch', fetchMock);
+    // the purchase leg itself goes through api.post, not fetch — see the
+    // @/lib/api/client mock above.
+    purchaseMock.mockImplementation(() => {
+      bought = true;
+      return Promise.resolve({ data: { ok: true, sparksSpent: 158, message: reveal } });
+    });
     const { getByText, container } = render(<BlackMarketPage />);
     await waitFor(() => expect(getByText(/Buy for 180 sparks/)).toBeInTheDocument());
 
@@ -183,23 +196,21 @@ describe('black-market lens — four UX states', () => {
 
     // the revealed plaintext surfaces (proves the payload came back from the buy)
     await waitFor(() => expect(getByText(reveal.payload)).toBeInTheDocument());
-    expect(fetchMock.mock.calls.some((c) => /\/purchase$/.test(String(c[0])))).toBe(true);
+    expect(purchaseMock).toHaveBeenCalledWith(expect.stringMatching(/\/purchase$/));
     expect(container.textContent).toMatch(/concordia → fantasy/);
   });
 
   it('BUY → insufficient sparks: surfaces the honest price/have error (role=alert), no reveal', async () => {
-    const fetchMock = vi.fn((url: string, opts?: { method?: string }) => {
-      if (opts?.method === 'POST' || /\/purchase$/.test(url)) {
-        return Promise.resolve({
-          ok: false,
-          status: 402,
-          json: () => Promise.resolve({ ok: false, reason: 'insufficient_sparks', price: 158, have: 40 }),
-        });
-      }
+    const fetchMock = vi.fn((url: string) => {
       if (/\/reputation$/.test(url)) return jsonOk({ ok: true, reputation: [] });
       return jsonOk({ ok: true, listings: [LISTING] });
     });
     vi.stubGlobal('fetch', fetchMock);
+    // The real backend can return this shape either as a 200 with ok:false or
+    // as a non-2xx that axios throws for (the page's catch block unwraps
+    // e.response.data for that case) — resolving here exercises the same
+    // `if (!json.ok)` branch the component actually runs on either path.
+    purchaseMock.mockResolvedValue({ data: { ok: false, reason: 'insufficient_sparks', price: 158, have: 40 } });
     const { getByText, container } = render(<BlackMarketPage />);
     await waitFor(() => expect(getByText(/Buy for 180 sparks/)).toBeInTheDocument());
 
