@@ -64,11 +64,15 @@ export const BENCHMARK_SCENARIOS = Object.freeze([
   },
   {
     id: "coding_loop_planner",
-    description: "Planner routes implement/refactor goals to coding_loop template",
+    description: "Planner routes implement/refactor goals to the coding_loop_closed template",
     run: async ({ db }) => {
+      // mission-planner.js routes edit/implement/refactor/fix-bug/patch goals
+      // to `coding_loop_closed` (the PCE-based closed loop: repo_graph_index
+      // -> pce_execute -> coding_loop_verify). The legacy 5-step `coding_loop`
+      // (concordia-assemble path) is no longer a deterministic routing target.
       const plan = planDeterministic("implement refactor for mission runtime");
       return {
-        passed: plan.ok && plan.template === "coding_loop" && plan.steps.some((s) => s.tool === "coding_loop_search"),
+        passed: plan.ok && plan.template === "coding_loop_closed" && plan.steps.some((s) => s.tool === "coding_loop_verify"),
         details: { template: plan.template, tools: plan.steps?.map((s) => s.tool) },
       };
     },
