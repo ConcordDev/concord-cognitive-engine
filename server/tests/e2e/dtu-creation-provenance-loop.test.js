@@ -77,7 +77,11 @@ before(async () => {
 describe("Create artifact → DTU E2E loop — Stage 1: authorship + citation", () => {
   it("aria mints a real, public DTU via the production dtu.create macro", async () => {
     const r = await runMacro("dtu", "create", {
-      title: "Cold Stance — Fighting Style Recipe",
+      // Not "...Recipe" — lib/dtu-content-classes.js's FORMULA_HINTS regex
+      // (formula|recipe|composition|chem|molecule|alloy|blend) misclassifies
+      // that word as contentClass:"formula", which then requires a
+      // `composition` field this fighting-style DTU has no business having.
+      title: "Cold Stance — Fighting Style Technique",
       source: "user",
       visibility: "public",
       core: { definitions: ["a defensive fighting stance"], claims: ["reduces incoming damage by channeling cold affinity"] },
