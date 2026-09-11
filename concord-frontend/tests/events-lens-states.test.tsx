@@ -248,10 +248,11 @@ describe('events lens — four UX states (Events + Dashboard real-engine wiring)
 
   it('POPULATED: renders the real event on the Events tab (no fake fields, real derived ticket rollup)', async () => {
     setBackend({ events: [BACKEND_EVENT] });
-    const { getByText, getAllByText } = render(<EventsLensPage />);
-    // Switch to the Events tab.
-    await waitFor(() => expect(getByText('Events')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(getByText('Events')); });
+    const { getByRole, getAllByText } = render(<EventsLensPage />);
+    // Switch to the Events tab (the page's <h1> is also literally "Events",
+    // so match the nav tab specifically by role rather than by bare text).
+    await waitFor(() => expect(getByRole('button', { name: 'Events' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Events' })); });
     await waitFor(() => expect(getAllByText(/Quarterly Launch Party/).length).toBeGreaterThan(0));
     // Real venue field round-tripped from the engine.
     expect(getAllByText(/The Grand Hall/).length).toBeGreaterThan(0);
@@ -276,9 +277,10 @@ describe('events lens — four UX states (Events + Dashboard real-engine wiring)
 
   it('DELETE: removing an event calls events.event-delete and re-fetches via event-list', async () => {
     setBackend({ events: [BACKEND_EVENT] });
-    const { getByText } = render(<EventsLensPage />);
-    await waitFor(() => expect(getByText('Events')).toBeInTheDocument());
-    await act(async () => { fireEvent.click(getByText('Events')); });
+    const { getByText, getByRole } = render(<EventsLensPage />);
+    // The page's <h1> is also literally "Events" — match the nav tab by role.
+    await waitFor(() => expect(getByRole('button', { name: 'Events' })).toBeInTheDocument());
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Events' })); });
     await waitFor(() => expect(getByText('Quarterly Launch Party')).toBeInTheDocument());
 
     const before = lensRunMock.mock.calls.filter((c) => actionOf(c as unknown[]) === 'event-list').length;
