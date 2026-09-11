@@ -15,14 +15,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, act, fireEvent, waitFor } from '@testing-library/react';
 
 const addToastMock = vi.fn();
+// useLensNav() reads state.setActiveLens off this same store — include a
+// no-op or its effect throws "setActiveLens is not a function".
 vi.mock('@/store/ui', () => ({
-  useUIStore: (selector: (s: { addToast: typeof addToastMock }) => unknown) =>
-    selector({ addToast: addToastMock }),
+  useUIStore: (selector: (s: { addToast: typeof addToastMock; setActiveLens: () => void }) => unknown) =>
+    selector({ addToast: addToastMock, setActiveLens: vi.fn() }),
 }));
 
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 import CourtshipLensPage from '@/app/lenses/courtship/page';
 

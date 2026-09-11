@@ -20,6 +20,10 @@ import { render, act, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => <div data-testid="manifest-action-bar" />,
 }));

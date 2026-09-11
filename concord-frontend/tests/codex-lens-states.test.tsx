@@ -30,6 +30,10 @@ vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 // Bookmark store is irrelevant to the four read-states — stub it empty.
 vi.mock('@/lib/hooks/use-lens-data', () => ({
   useLensData: () => ({ items: [], create: vi.fn(), remove: vi.fn() }),

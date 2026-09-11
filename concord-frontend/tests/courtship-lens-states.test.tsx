@@ -26,15 +26,21 @@ vi.mock('@/lib/api/client', () => ({
 
 // Toast slice — capture error toasts so we can assert the ERROR path fires one.
 const addToastMock = vi.fn();
+// useLensNav() reads state.setActiveLens off this same store — include a
+// no-op or its effect throws "setActiveLens is not a function".
 vi.mock('@/store/ui', () => ({
-  useUIStore: (selector: (s: { addToast: typeof addToastMock }) => unknown) =>
-    selector({ addToast: addToastMock }),
+  useUIStore: (selector: (s: { addToast: typeof addToastMock; setActiveLens: () => void }) => unknown) =>
+    selector({ addToast: addToastMock, setActiveLens: vi.fn() }),
 }));
 
 // LensShell is a presentational wrapper — stub to keep the render focused.
 vi.mock('@/components/lens/LensShell', () => ({
   LensShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 import CourtshipLensPage from '@/app/lenses/courtship/page';
 
