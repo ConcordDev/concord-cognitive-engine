@@ -9,6 +9,11 @@ vi.mock('@/components/lens/LensShell', () => ({
     React.createElement('div', { 'data-testid': 'lens-shell' }, children),
 }));
 
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+
 vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
   useRouter: vi.fn(() => ({ push: vi.fn(), replace: vi.fn() })),

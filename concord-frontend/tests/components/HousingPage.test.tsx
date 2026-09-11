@@ -12,6 +12,10 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => <div data-testid="manifest-action-bar" />,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 // A house row + detail the populated state asserts against.
 const HOUSE_ROW = {
