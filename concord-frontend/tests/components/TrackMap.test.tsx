@@ -122,7 +122,7 @@ describe('TrackMap', () => {
     // callback twice against the same style-not-loaded map, which is the
     // one legitimate way maplibre's own event contract could invoke it more
     // than once (a style can reload after a `styledata` change upstream).
-    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
       const map = makeMockMap();
       map.isStyleLoaded.mockReturnValue(false);
       return map;
@@ -137,7 +137,7 @@ describe('TrackMap', () => {
   });
 
   it('defers the draw to the load event when the style is not yet loaded', () => {
-    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(() => {
+    (maplibregl.Map as unknown as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
       const map = makeMockMap();
       map.isStyleLoaded.mockReturnValue(false);
       return map;

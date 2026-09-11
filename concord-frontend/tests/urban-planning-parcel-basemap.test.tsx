@@ -40,6 +40,8 @@ const markerInstances: any[] = [];
 
 function makeMockMap() {
   const listeners: Record<string, (() => void)[]> = {};
+  let routeSource: { setData: ReturnType<typeof vi.fn> } | null = null;
+  let routeLayerAdded = false;
   const map = {
     addControl: vi.fn(),
     remove: vi.fn(),
@@ -50,6 +52,19 @@ function makeMockMap() {
     easeTo: vi.fn(),
     fitBounds: vi.fn(),
     _fireOnce: (evt: string) => listeners[evt]?.forEach((fn) => fn()),
+    // Route-line source/layer — real MapLibre GL API, minimally stubbed so
+    // MapView's route effect (getSource/addSource/addLayer/getLayer/
+    // removeLayer/removeSource) can run without a real GL context (mirrors
+    // tests/components/MapView.test.tsx's makeMockMap).
+    getSource: vi.fn(() => routeSource),
+    addSource: vi.fn((_id: string, spec: { data: unknown }) => {
+      routeSource = { setData: vi.fn() };
+      (map as any)._lastSourceData = spec.data;
+    }),
+    addLayer: vi.fn(() => { routeLayerAdded = true; }),
+    getLayer: vi.fn(() => routeLayerAdded || undefined),
+    removeLayer: vi.fn(() => { routeLayerAdded = false; }),
+    removeSource: vi.fn(() => { routeSource = null; }),
   };
   mapInstances.push(map);
   return map;
