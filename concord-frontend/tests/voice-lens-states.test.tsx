@@ -8,8 +8,8 @@
  * to any other id resolves to NO backend receiver for transcriptAnalyze /
  * speakerDiarize / sentimentScore / keywordSpot).
  *
- * a11y: loading is role=status, error is role=alert with a working "Try again"
- * (the page wraps ErrorState's Retry → refetch). This closes the
+ * a11y: loading is role=status, error is role=alert with a working "Retry"
+ * (components/ui/ErrorState's default retry label, wired to refetch). This closes the
  * swallowed-fetch → silent-empty defect: a failed voice feed surfaces
  * role=alert + a recovering Retry, NOT a blank "No takes yet" booth. No
  * fabricated data — every state is driven by a mocked useLensData standing in
@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, fireEvent, waitFor, act, within } from '@testing-library/react';
 import React from 'react';
 
 // ── main list channel: useLensData (controls loading/error/empty/populated) ──
@@ -58,6 +58,11 @@ vi.mock('@/lib/hooks/use-lens-artifacts', () => ({
   },
 }));
 
+// The compute-action runner: VoiceActionPanel (the 'analyze' tab) calls
+// apiHelpers.lens.runDomain('voice', <action>, ...) directly — this rebuilt
+// lens has no useRunArtifact('voice') call anywhere, so the WIRING test spies
+// on this instead.
+const runDomainSpy = vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } }));
 vi.mock('@/lib/api/client', () => ({
   api: {
     get: vi.fn(() => Promise.resolve({ data: null })),
@@ -66,7 +71,7 @@ vi.mock('@/lib/api/client', () => ({
     put: vi.fn(() => Promise.resolve({ data: {} })),
   },
   apiHelpers: {
-    lens: { runDomain: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })) },
+    lens: { runDomain: (...a: unknown[]) => runDomainSpy(...a) },
     voice: { transcribe: vi.fn(() => Promise.resolve({ data: {} })), ingest: vi.fn(() => Promise.resolve({ data: {} })) },
   },
   lensRun: vi.fn(() => Promise.resolve({ data: { ok: true, result: {} } })),
@@ -113,9 +118,10 @@ vi.mock('@/components/panel-polish', () => ({
   RecallSlot: () => null,
 }));
 // heavy voice children (their own backend macros are covered by the
-// voice-lens-macros server test) → inert here.
+// voice-lens-macros server test) → inert here. VoiceActionPanel is the
+// exception — it's the actual WIRING surface under test (see below), so it
+// is deliberately left un-mocked.
 vi.mock('@/components/voice/VoiceRepos', () => ({ VoiceRepos: () => null }));
-vi.mock('@/components/voice/VoiceActionPanel', () => ({ VoiceActionPanel: () => null }));
 vi.mock('@/components/voice/VoiceTranscripts', () => ({ VoiceTranscripts: () => null }));
 vi.mock('@/components/voice/VoiceOtterSuite', () => ({ VoiceOtterSuite: () => null }));
 vi.mock('@/components/voice/VoiceRecorder', () => ({ VoiceRecorder: () => null }));
@@ -171,9 +177,30 @@ beforeEach(() => {
 });
 
 describe('voice lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the voice domain', () => {
-    render(<VoiceLensPage />);
-    expect(useRunArtifactSpy).toHaveBeenCalledWith('voice');
+  it('WIRING: the action runner is constructed on the voice domain', async () => {
+    // The compute actions (transcriptAnalyze/speakerDiarize/sentimentScore/
+    // keywordSpot) live on the Analyze tab (VoiceActionPanel), not the
+    // default Booth tab — switch tabs, then fire one action and confirm it
+    // dispatches through apiHelpers.lens.runDomain('voice', ...), the real
+    // mechanism this rebuilt lens uses (no useRunArtifact hook call exists
+    // anywhere in this lens's components).
+    const { getByRole, getByText, container } = render(<VoiceLensPage />);
+    // The nav tab and the in-panel action button are both literally labeled
+    // "Analyze" — scope the tab click to the nav landmark to disambiguate.
+    const nav = getByRole('navigation', { name: 'Voice views' });
+    await act(async () => { fireEvent.click(within(nav).getByText(/Analyze/i)); });
+    await waitFor(() => expect(getByText('transcriptAnalyze')).toBeInTheDocument());
+    // actAnalyze() no-ops (honest validation, not a fake success) without a
+    // non-empty transcript.
+    const textarea = container.querySelector('textarea');
+    expect(textarea).toBeTruthy();
+    await act(async () => {
+      fireEvent.change(textarea as HTMLTextAreaElement, { target: { value: 'Hello there, this is a test transcript.' } });
+    });
+    const analyzeBtn = getByText('transcriptAnalyze').closest('button');
+    expect(analyzeBtn).toBeTruthy();
+    await act(async () => { fireEvent.click(analyzeBtn as HTMLElement); });
+    await waitFor(() => expect(runDomainSpy).toHaveBeenCalledWith('voice', 'transcriptAnalyze', expect.anything()));
   });
 
   it('LOADING: an in-flight feed shows a role=status indicator', async () => {
@@ -200,8 +227,11 @@ describe('voice lens — four UX states', () => {
     // a silent-empty page would show the "No takes yet" prompt instead — it must NOT.
     expect(() => getByText(/No takes yet/i)).toThrow();
 
-    // Retry ("Try again") must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Try again')); });
+    // Retry must re-invoke the backend fetch (refetch), not be a dead button.
+    // VoiceBoothPanel renders its error via components/ui/ErrorState (like
+    // the security lens, distinct from the hvac/electrical common/EmptyState
+    // preset) whose default retry label is literally "Retry".
+    await act(async () => { fireEvent.click(getByText('Retry')); });
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 
