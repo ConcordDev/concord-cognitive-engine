@@ -60,6 +60,20 @@ function emitSocketEvent(event: string, data: unknown) {
 describe('useRealtimeLens', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Neither vi.clearAllMocks() (clears calls, not implementation) nor
+    // vi.restoreAllMocks() (a no-op on implementation for a plain vi.fn(),
+    // as opposed to a vi.spyOn()) undoes a `mockReturnValue` override from a
+    // prior test — restore useSocket()'s default here explicitly so the
+    // "isConnected: false" test below can't leak into every test after it.
+    vi.mocked(useSocket).mockReturnValue({
+      socket: mockSocket,
+      isConnected: true,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      emit: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    } as unknown as ReturnType<typeof useSocket>);
     // Clear all listeners
     Object.keys(socketListeners).forEach((key) => {
       delete socketListeners[key];

@@ -9,6 +9,20 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}', 'components/**/*.test.{ts,tsx}', 'app/**/*.test.{ts,tsx}'],
+    // perf-urban-hub-playwright.test.ts imports `test`/`expect` from
+    // @playwright/test, not vitest — it's a real browser Playwright spec that
+    // happens to match the *.test.ts include glob. It has its own internal
+    // `test.skip(!process.env.PLAYWRIGHT, ...)` gate and is meant to run under
+    // `npx playwright test`, never under `vitest run` (Playwright's `test()`
+    // throws "did not expect test() to be called here" outside its own runner).
+    // Vitest's own defaults are re-listed here (setting `exclude` replaces
+    // them rather than appending) so node_modules/dist/etc. stay excluded too.
+    exclude: [
+      '**/node_modules/**', '**/dist/**', '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
+      'tests/perf-urban-hub-playwright.test.ts',
+    ],
     pool: 'forks',
     poolOptions: {
       forks: {

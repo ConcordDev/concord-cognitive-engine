@@ -72,10 +72,16 @@ describe('household lens (ChoreBoard) — wiring', () => {
 
 describe('household lens (ChoreBoard) — four UX states', () => {
   it('LOADING: shows a role=status indicator while the board is in flight', async () => {
-    // never-resolving lensRun → stays in initial loading.
+    // never-resolving lensRun → stays in initial loading. `mockImplementationOnce`
+    // (not `mockImplementation`) so this only stalls ChoreBoard's own 4-call
+    // Promise.all (which then never settles, keeping this render in loading) —
+    // a permanent `mockImplementation` override here would leak into every
+    // later test's shared `lensRun` mock, since neither `vi.clearAllMocks()`
+    // nor `vi.restoreAllMocks()` resets a vi.fn()'s implementation back to the
+    // vi.mock() factory's original.
     const { lensRun } = await import('@/lib/api/client');
-    (lensRun as unknown as { mockImplementation: (f: () => Promise<unknown>) => void })
-      .mockImplementation(() => new Promise(() => {}));
+    (lensRun as unknown as { mockImplementationOnce: (f: () => Promise<unknown>) => void })
+      .mockImplementationOnce(() => new Promise(() => {}));
     const { getByRole } = render(<ChoreBoard />);
     await waitFor(() => expect(getByRole('status')).toBeTruthy());
     expect(getByRole('status').getAttribute('aria-busy')).toBe('true');
