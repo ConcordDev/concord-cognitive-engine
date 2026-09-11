@@ -104,8 +104,19 @@ function HomeClient() {
     setFullPageMode(!isEntered);
 
     // Session cookies (httpOnly) can exist without concord_entered — API
-    // register/login never set that flag. Always probe /api/auth/me.
-    if (!authCheckRef.current) {
+    // register/login never set that flag. Always probe /api/auth/me for a
+    // brand-new/never-entered visitor (isEntered false) — an httpOnly-cookie
+    // session with success routes them straight to /hub. This must stay
+    // scoped to `!isEntered`: `authCheckRef.current` is set true here and
+    // never reset, so if this ran unconditionally it would permanently
+    // short-circuit the `isEntered` branch below — which is the ONLY path
+    // that verifies a RETURNING user's session is still valid and redirects
+    // to /login (with a 5s just-logged-in grace-window retry) on failure.
+    // That branch checks `!authCheckRef.current` too, so it would silently
+    // never run again for the lifetime of the component — a returning user
+    // whose session had expired would see the full home page forever
+    // instead of being redirected to log back in.
+    if (!isEntered && !authCheckRef.current) {
       authCheckRef.current = true;
       const timeout = new Promise<'timeout'>((resolve) =>
         setTimeout(() => resolve('timeout'), 8_000)
