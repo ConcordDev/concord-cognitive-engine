@@ -343,12 +343,14 @@ describe('ResponseActions', () => {
 
   it('renders without crashing', () => {
     render(<ResponseActions {...defaultProps} />);
-    expect(screen.getByText('Save as DTU')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeInTheDocument();
   });
 
   it('shows assist mode actions', () => {
+    // "Create DTU from this" was consolidated into the shared SaveAsDtuButton
+    // ("Save as DTU") — assist mode's own action list now has only "What's next?".
     render(<ResponseActions {...defaultProps} mode="assist" />);
-    expect(screen.getByText('Create DTU from this')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeInTheDocument();
     expect(screen.getByText("What's next?")).toBeInTheDocument();
   });
 
@@ -363,15 +365,17 @@ describe('ResponseActions', () => {
     expect(screen.getByText('Share this')).toBeInTheDocument();
   });
 
-  it('fires onSendMessage when action button is clicked', () => {
+  it('Save as DTU opens the real confirm modal (SaveAsDtuButton saves directly, not via a chat message)', () => {
+    // SaveAsDtuButton (components/dtu/SaveAsDtuButton.tsx) manages its own
+    // save mutation — it never took/called an onSendMessage prop. Mounted
+    // here with `confirm`, so a click opens its confirm modal (real submit
+    // button "Save DTU") rather than firing any message.
     const onSendMessage = vi.fn();
     render(<ResponseActions {...defaultProps} onSendMessage={onSendMessage} />);
 
-    fireEvent.click(screen.getByText('Save as DTU'));
-    expect(onSendMessage).toHaveBeenCalledTimes(1);
-    expect(onSendMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Save this as a DTU')
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save as DTU' }));
+    expect(screen.getByRole('button', { name: /save dtu/i })).toBeInTheDocument();
+    expect(onSendMessage).not.toHaveBeenCalled();
   });
 });
 
@@ -385,11 +389,11 @@ describe('MessageActions', () => {
         onSendMessage={vi.fn()}
       />
     );
-    expect(screen.getByText('Save as DTU')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeInTheDocument();
     expect(screen.getByText('Explore deeper')).toBeInTheDocument();
   });
 
-  it('fires onSendMessage with save prompt when Save as DTU is clicked', () => {
+  it('Save as DTU opens the real confirm modal (SaveAsDtuButton saves directly, not via a chat message)', () => {
     const onSendMessage = vi.fn();
     render(
       <MessageActions
@@ -398,10 +402,9 @@ describe('MessageActions', () => {
       />
     );
 
-    fireEvent.click(screen.getByText('Save as DTU'));
-    expect(onSendMessage).toHaveBeenCalledWith(
-      expect.stringContaining('Save this as a DTU')
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save as DTU' }));
+    expect(screen.getByRole('button', { name: /save dtu/i })).toBeInTheDocument();
+    expect(onSendMessage).not.toHaveBeenCalled();
   });
 
   it('fires onSendMessage with explore prompt when Explore deeper is clicked', () => {
