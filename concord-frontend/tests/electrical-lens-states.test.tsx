@@ -194,7 +194,13 @@ describe('electrical lens — four UX states', () => {
     expect(() => getByText(/No .* items yet/i)).toThrow();
 
     // Retry must re-invoke the backend fetch (refetch), not be a dead button.
-    await act(async () => { fireEvent.click(getByText('Retry')); });
+    // ElectricalDeskPanel renders its own error state via the shared
+    // ErrorState preset (components/common/EmptyState.tsx), whose retry
+    // button says "Try again" — the LensPageShell mock above (with its own
+    // "Retry" label) is a faithful stub for OTHER lenses that feed
+    // isLoading/isError into LensPageShell itself, but electrical doesn't:
+    // each tab panel (ElectricalDeskPanel) owns its own data + error UI.
+    await act(async () => { fireEvent.click(getByText(/try again/i)); });
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 

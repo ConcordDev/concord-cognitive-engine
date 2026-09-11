@@ -11,6 +11,7 @@ import { useLensData, LensItem } from '@/lib/hooks/use-lens-data';
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { ds } from '@/lib/design-system';
 import { cn } from '@/lib/utils';
+import { ErrorState } from '@/components/common/EmptyState';
 import {
   Thermometer, Wrench, ClipboardList, DollarSign, Users, Plus, Search, X, Trash2,
   BarChart3, CheckCircle2, FileText, Award, Calculator, Receipt, Fan, Gauge, Zap,
@@ -58,7 +59,7 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
 
   const deskMode = mode === 'dashboard' ? 'jobs' : mode;
   const activeArtifactType = MODE_TABS.find((t) => t.id === deskMode)?.artifactType || 'Job';
-  const { items, isLoading, create, update, remove } =
+  const { items, isLoading, isError, error, refetch, create, update, remove } =
     useLensData<TradeArtifact>('hvac', activeArtifactType, { seed: [] });
   const runAction = useRunArtifact('hvac');
 
@@ -348,9 +349,12 @@ export function HvacDeskPanel({ mode }: { mode: ModeTab | 'dashboard' }) {
         </button>
       </div>
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
           <div className="w-6 h-6 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+          <span className="sr-only">Loading…</span>
         </div>
+      ) : isError ? (
+        <ErrorState error={(error as Error)?.message} onRetry={() => refetch()} />
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
           <Thermometer className="w-12 h-12 text-gray-600 mx-auto mb-3" />

@@ -477,8 +477,9 @@ export function ElectricalDeskPanel({ mode }: { mode: 'dashboard' | 'jobs' | 'co
         </button>
       </div>
       {isLoading ? (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" role="status" aria-live="polite">
           <div className="w-6 h-6 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          <span className="sr-only">Loading…</span>
         </div>
       ) : filtered.length === 0 ? (
         <div className={cn(ds.panel, 'text-center py-12')}>
