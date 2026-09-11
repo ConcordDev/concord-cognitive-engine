@@ -101,6 +101,8 @@ vi.mock('@/components/security/VulnManager', () => ({ VulnManager: () => null })
 vi.mock('@/components/security/SOCConsole', () => ({ SOCConsole: () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
 }));
 vi.mock('lucide-react', async (importOriginal) => {

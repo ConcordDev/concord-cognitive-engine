@@ -114,6 +114,8 @@ vi.mock('@/components/hvac/ManualJCalc', () => ({ ManualJCalc: () => null }));
 vi.mock('@/components/hvac/FieldService', () => ({ FieldService: () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
 }));
 vi.mock('lucide-react', async (importOriginal) => {
