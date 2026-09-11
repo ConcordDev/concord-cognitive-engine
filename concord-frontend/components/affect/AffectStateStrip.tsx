@@ -8,7 +8,6 @@ import { motion } from 'framer-motion';
 import { Shield, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAffectAts } from '@/components/affect/useAffectAts';
 import { dimColor, dimBgColor } from '@/components/affect/affect-model';
-import { ErrorState } from '@/components/common/EmptyState';
 
 export function AffectStateStrip() {
   const {
@@ -21,8 +20,6 @@ export function AffectStateStrip() {
     resetAffect,
     isLoading,
     isError,
-    errorMessage,
-    refetchAll,
   } = useAffectAts();
 
   if (isLoading) {
@@ -35,7 +32,22 @@ export function AffectStateStrip() {
   }
 
   if (isError) {
-    return <ErrorState error={errorMessage} onRetry={refetchAll} />;
+    // Compact inline banner, not the full-page ErrorState — this strip is
+    // ALWAYS mounted (every tab), and the active panel below already renders
+    // its own full ErrorState with the specific error message + Retry for
+    // the same shared useAffectAts() failure. Two elements both showing the
+    // literal error text was a real duplicate-surface defect
+    // (`TestingLibraryElementError: Found multiple elements` on
+    // affect-lens-states.test.tsx's ERROR case) — this strip's job is just
+    // to keep a persistent "something's wrong" signal visible across every
+    // tab; the panel below is the one authoritative place for the actual
+    // reason + retry action.
+    return (
+      <div role="status" className="p-3 rounded-lg border bg-red-500/10 border-red-500/30 text-red-400 flex items-center gap-2 text-sm">
+        <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
+        <span>ATS connection issue — see below for details.</span>
+      </div>
+    );
   }
 
   return (
