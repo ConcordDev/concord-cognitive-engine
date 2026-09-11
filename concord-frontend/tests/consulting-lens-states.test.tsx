@@ -99,6 +99,8 @@ vi.mock('framer-motion', () => ({
   useReducedMotion: () => false,
   MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
+  AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 import ConsultingLens from '@/app/lenses/consulting/page';

@@ -88,6 +88,8 @@ vi.mock('framer-motion', () => ({
     {},
     { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) },
   ),
+  AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 import AgricultureLens from '@/app/lenses/agriculture/page';
