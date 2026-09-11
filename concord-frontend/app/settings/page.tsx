@@ -34,13 +34,12 @@ const STORAGE_KEY = 'concord:settings';
 // keeps the type loose enough to round-trip through localStorage without
 // dragging the full interface into this file.
 type SettingsPanelSettings = Parameters<typeof SettingsPanel>[0]['settings'];
-// The real SettingsPanel component's declared Settings type has no
-// privacy/worldVisibility field (it was never actually built into that
-// component's UI) — but this page's DEFAULT_SETTINGS constant below is
-// force-cast to include one anyway, and that extra field really does
-// flow through at runtime (JS doesn't strip excess properties). This
-// local, read-only widening matches that real runtime shape honestly
-// instead of force-casting at every read site.
+// SettingsPanel's `Settings.privacy.worldVisibility` (added alongside its
+// real "Privacy" section + "World Visible to Others" toggle) already covers
+// this — this widened alias is now redundant with the real field but kept
+// as a narrow, explicitly-optional read-only view for the two `as` casts
+// below, so a future SettingsPanel refactor can't silently reintroduce the
+// old force-cast-past-the-type-checker gap this used to paper over.
 type SettingsWithPrivacy = SettingsPanelSettings & { privacy?: { worldVisibility?: boolean } };
 
 const DEFAULT_SETTINGS: SettingsPanelSettings = {
