@@ -57,7 +57,25 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       include: ['components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}', 'hooks/**/*.{ts,tsx}'],
-      exclude: ['**/*.d.ts', '**/node_modules/**', '**/*.test.{ts,tsx}'],
+      // lib/p2p-dtu.ts: excluded 2026-09-11 after it crashed the ENTIRE
+      // coverage step in real CI (not just locally), taking 982 passing test
+      // files / 8002 passing tests down with it. It's already a known
+      // exception one level up — tests/smoke/import-smoke-allowlist.json has
+      // carried it for the same root cause (`import ... from 'wrtc'`, a
+      // native module with no browser/jsdom resolution) since before this
+      // fix. The crash site is different: this file has zero tests
+      // exercising it, so V8CoverageProvider.getCoverageMapForUncoveredFiles
+      // parses its raw source directly to emit a 0%-coverage entry, and
+      // rolldown's parser (parseAstAsync, JS-only mode for that path) chokes
+      // on the file's TypeScript `interface P2PDTUOptions { ... }` block —
+      // `Error [RolldownError]: Parse failed... Expected a semicolon` — an
+      // unhandled error that fails the whole `vitest run --coverage`
+      // process, independent of and after every real test already passed.
+      // Not a coverage-number exemption (the file was already sitting at
+      // genuine 0%, uncounted either way against the thresholds below) —
+      // purely unblocking a tool crash on an untestable-in-jsdom native-WebRTC
+      // module.
+      exclude: ['**/*.d.ts', '**/node_modules/**', '**/*.test.{ts,tsx}', 'lib/p2p-dtu.ts'],
       // Thresholds anchored at "no regression below current" — current
       // baseline is ~22% statements/lines, ~80% branches, ~41% functions
       // across components/ + lib/ + hooks/ at sprint Phase F.
