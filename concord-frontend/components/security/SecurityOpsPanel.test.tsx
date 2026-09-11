@@ -21,7 +21,8 @@ const create = vi.fn(() => Promise.resolve({}));
 const update = vi.fn(() => Promise.resolve({}));
 const remove = vi.fn(() => Promise.resolve({}));
 const refetch = vi.fn();
-const runMutateAsync = vi.fn(() => Promise.resolve({ ok: true, result: {} }));
+type ActionResponse = { ok: boolean; result?: unknown; error?: string };
+const runMutateAsync = vi.fn<() => Promise<ActionResponse>>(() => Promise.resolve({ ok: true, result: {} }));
 
 vi.mock('@/lib/hooks/use-lens-data', () => ({
   useLensData: (_domain: string, type: string) => {
