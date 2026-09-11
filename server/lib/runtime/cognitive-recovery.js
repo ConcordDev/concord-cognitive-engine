@@ -81,14 +81,20 @@ export function recompileField(compiled, pointer, { ir, policyFn } = {}) {
     return { ok: false, reason: "missing_inputs" };
   }
 
-  const entry = Object.entries(compiled.recoveryContracts)
-    .find(([, c]) => c.recovery_pointer === pointer);
+  // Delegate to resolveRecoveryPointer (below) rather than a plain exact
+  // match against `recovery_pointer` — a real model-issued request can come
+  // in as a direct contract key, an exact recovery_pointer, or a shorthand
+  // like "REF_81" that only fuzzy-matches by field name or hash prefix (see
+  // that function's own doc comment). This entry point is exactly the "model
+  // request" case it describes, so it should use the same resolver — a
+  // duplicated exact-only match here silently rejected the shorthand form.
+  const resolved = resolveRecoveryPointer(pointer, compiled.recoveryContracts);
 
-  if (!entry) {
+  if (!resolved) {
     return { ok: false, reason: "pointer_not_found", pointer };
   }
 
-  const [field] = entry;
+  const { field } = resolved;
   const value = ir[field];
   if (value == null) {
     return { ok: false, reason: "field_missing", field };

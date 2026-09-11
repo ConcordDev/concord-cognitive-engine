@@ -59116,6 +59116,26 @@ app.get("/api/runtime/dila/config", requireRole("owner", "admin", "sovereign", "
   res.json({ ok: true, entries: listConfig(db, req.query.prefix || "") });
 }));
 
+// Deployment profile — local / cloud-hybrid / air-gapped (lib/runtime/deployment-profiles.js).
+// Built alongside the DILA runtime config surface above but never wired into
+// a route (wiring-gate connection-debt fix): an operator had no way to
+// actually switch profiles short of hand-editing CONCORD_DEPLOYMENT_PROFILE
+// and restarting. GET mirrors the read-only summary; POST applies one of the
+// three frozen PROFILES (local/hybrid/airgapped), which persists the choice
+// via runtime-config and — for the current process — flips
+// CONCORD_DILA_WORKER_ALLOWLIST immediately.
+app.get("/api/runtime/dila/deployment-profile", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { profileSummary } = await import("./lib/runtime/deployment-profiles.js");
+  res.json(profileSummary(db));
+}));
+
+app.post("/api/runtime/dila/deployment-profile", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { applyDeploymentProfile } = await import("./lib/runtime/deployment-profiles.js");
+  const result = applyDeploymentProfile(db, req.body?.profileId || "local");
+  if (!result.ok) return res.status(400).json(result);
+  res.json(result);
+}));
+
 app.get("/api/runtime/dila/improvements", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
   const { listImprovementProposals } = await import("./lib/runtime/self-improvement.js");
   res.json({ ok: true, proposals: listImprovementProposals(db, parseInt(req.query.limit, 10) || 20) });
