@@ -6408,7 +6408,12 @@ const AUTH = {
 // security-critical mutations (is_active=0, password change) call
 // `bustUserCache()` explicitly for immediate effect.
 const _userCache = new LruMap(50_000);
-const _USER_CACHE_TTL_MS = Number(process.env.CONCORD_USER_CACHE_TTL_MS) || 5_000;
+// `|| 5_000` would silently ignore an explicit `CONCORD_USER_CACHE_TTL_MS=0`
+// (0 is falsy in JS) and fall back to the 5s default anyway — an operator
+// or test trying to disable the cache outright would have no way to. Only
+// fall back when the value is genuinely unset/non-numeric.
+const _parsedUserCacheTtlMs = Number(process.env.CONCORD_USER_CACHE_TTL_MS);
+const _USER_CACHE_TTL_MS = Number.isFinite(_parsedUserCacheTtlMs) ? _parsedUserCacheTtlMs : 5_000;
 function bustUserCache(userId) {
   if (userId) _userCache.delete(String(userId));
   else _userCache.clear();

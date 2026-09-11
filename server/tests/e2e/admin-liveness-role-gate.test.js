@@ -99,6 +99,19 @@ function spawnServer(port, dataDir, extraEnv, timeoutMs) {
       // Disable shedding for e2e spawns; they exist to test real behaviour,
       // not admission control.
       CONCORD_LOAD_SHED_ENABLED: '0',
+      // AuthDB.getUser() carries a 5s per-request cache (server.js, the
+      // Concurrency Refactor's request-admission perf work) so a role/scope
+      // change made through the app takes effect within 5s without an
+      // explicit bustUserCache() call. Test (c) below flips `role` via a
+      // RAW SQL UPDATE on a second, direct sqlite connection — no app code
+      // path runs, so nothing busts the cache — and re-requests with the
+      // SAME token immediately after. Disabling the cache for this spawn
+      // (TTL=0) makes every request read the role fresh, which is exactly
+      // what this test needs to verify: the requireRole() gate's own logic
+      // against the CURRENT role, independent of the cache's freshness
+      // window (a real, separate performance/consistency trade-off that
+      // isn't what this test is about).
+      CONCORD_USER_CACHE_TTL_MS: '0',
       DATA_DIR: dataDir,
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',
