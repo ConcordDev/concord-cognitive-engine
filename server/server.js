@@ -73577,7 +73577,23 @@ if (server) {
   try {
     const godotGatewayHandle = mountGodotGateway(server, {
       verifyToken,
-      getUser: AuthDB.getUser,
+      // MUST stay wrapped, never `getUser: AuthDB.getUser` — that detaches the
+      // method from its receiver, and `AuthDB.getUser` calls
+      // `this._getUserUncached(userId)` on a cache MISS. Detached in strict-mode
+      // ESM `this` is undefined, so the miss path throws
+      // `TypeError: Cannot read properties of undefined (reading '_getUserUncached')`,
+      // which godot-gateway.js#tryAuth swallows in its `catch { user = null }`
+      // and reports as the misleading `auth:error{reason:"user_not_found"}` —
+      // for a user that genuinely exists and just registered.
+      //
+      // This read as a years-long "flake" because the bug is cache-shaped: the
+      // HTTP register that mints the token calls AuthDB.getUser correctly bound
+      // and warms `_userCache`, and getUser's cache branch returns EARLY without
+      // ever touching `this`. So a fast register→WS-auth round trip hits the warm
+      // cache and passes; once the 5s TTL lapses (full-suite CI contention) the
+      // miss path runs and every handshake fails. `CONCORD_USER_CACHE_TTL_MS=0`
+      // makes it fail 100% of the time. Verified with a standalone repro.
+      getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
@@ -73598,7 +73614,11 @@ if (server) {
   try {
     const unityGatewayHandle = mountUnityGateway(server, {
       verifyToken,
-      getUser: AuthDB.getUser,
+      // Same detachment hazard as the Godot mount above — see that comment.
+      // This site matters just as much: lib/unity-bridge.js extends
+      // godot-gateway.js, so an unbound getUser here breaks Unity client auth
+      // on /unity-ws for exactly the same cache-miss reason.
+      getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
