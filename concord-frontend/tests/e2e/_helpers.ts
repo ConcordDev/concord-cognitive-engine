@@ -264,6 +264,24 @@ export async function mockAuthSuccess(page: Page, opts: AuthMockOptions = {}) {
       body: JSON.stringify({ ok: true, result: { ok: true, result: {} } }),
     })
   );
+
+  // Same root cause as /api/lens/run above, different endpoint: the chat
+  // lens (ScheduledTasksPanel / initiative-engine calls / emergent-pipeline
+  // helpers in lib/api/client.ts) POSTs to /api/macros/run — a second,
+  // distinct macro-dispatch RPC that isn't just a variant path of
+  // /api/lens/run. Confirmed via a real Playwright trace: with only
+  // /api/lens/run mocked, `POST /api/macros/run` still reached the real
+  // backend and 401'd, which is what was still killing the Topbar
+  // user-menu-click spec (`/api/lens/run` alone fixed the 404 page and
+  // wallet-journey specs, not this one) — the redirect trigger is a POST,
+  // same mechanism as the comment above.
+  await page.route('**/api/macros/run', (route) =>
+    corsFulfill(route, {
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ ok: true, result: {} }),
+    })
+  );
 }
 
 /**
