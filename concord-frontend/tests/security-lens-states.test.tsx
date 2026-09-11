@@ -16,8 +16,13 @@
  * No fabricated data — every state is driven by a mocked useLensData standing in
  * for the real backend in the exact shape it returns.
  *
- * The page boots in 'Dashboard' mode (no list CTA there); EMPTY/POPULATED switch
- * to the Incidents tab to exercise the real list branch.
+ * The page is a view union (SOC / Cases / Advisories / Scanner / Vulns) — the
+ * artifact-CRUD surface under test (SecurityOpsPanel, with the useRunArtifact
+ * wiring + loading/error/empty/populated states) lives behind the "Cases" tab,
+ * not the default "SOC" view. SecurityOpsPanel then boots in its own internal
+ * 'Dashboard' mode (no list CTA, no loading/error surface there — it's a pure
+ * stats view), so every test below clicks "Cases" then "Incidents" to reach
+ * the real list branch.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -141,38 +146,64 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+// Every case must first switch the page off its default "SOC" view onto
+// "Cases" (mounts SecurityOpsPanel, which owns the useRunArtifact wiring +
+// the useLensData-driven states) then, for the states that only render
+// outside SecurityOpsPanel's own internal 'Dashboard' mode, onto "Incidents".
+async function goToCases(getAllByText: (text: string) => HTMLElement[]) {
+  await act(async () => { fireEvent.click(getAllByText('Cases')[0]); });
+}
+async function goToIncidents(getAllByText: (text: string) => HTMLElement[]) {
+  await act(async () => { fireEvent.click(getAllByText('Incidents')[0]); });
+}
+
 describe('security lens — four UX states', () => {
-  it('WIRING: the action runner is constructed on the security domain', () => {
-    render(<SecurityLensPage />);
+  it('WIRING: the action runner is constructed on the security domain', async () => {
+    const { getAllByText } = render(<SecurityLensPage />);
+    await goToCases(getAllByText);
     expect(useRunArtifactSpy).toHaveBeenCalledWith('security');
   });
 
   it('LOADING: an in-flight feed shows a role=status indicator', async () => {
     lensDataState.isLoading = true;
-    const { container } = render(<SecurityLensPage />);
+    const { container, getAllByText } = render(<SecurityLensPage />);
+    await goToCases(getAllByText);
+    // SecurityOpsPanel's own 'Dashboard' mode is a pure stats view with no
+    // loading surface — the role=status indicator lives behind its
+    // "Incidents" mode tab, the same de-stacking shape as every other tab.
+    await goToIncidents(getAllByText);
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
   });
 
   it('ERROR: a failed feed shows role=alert + a working Retry that re-fetches (not a silent empty page)', async () => {
     lensDataState.isError = true;
     lensDataState.error = new Error('security store offline');
-    const { container, getByText } = render(<SecurityLensPage />);
+    const { container, getByText, getAllByText } = render(<SecurityLensPage />);
+    await goToCases(getAllByText);
+    // SecurityOpsPanel gates its role=alert render on `mode !== 'Dashboard'`
+    // (Dashboard ignores isError entirely) — switch tabs to reach it, same
+    // as LOADING above.
+    await goToIncidents(getAllByText);
 
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/security store offline/i)).toBeInTheDocument();
     // a silent-empty page would show a "No … found" CTA instead — it must NOT.
     expect(() => getByText(/No .* found/i)).toThrow();
 
-    // Retry ("Try again") must re-invoke the backend fetch (refetch), not be dead.
-    await act(async () => { fireEvent.click(getByText(/Try again/i)); });
+    // Retry must re-invoke the backend fetch (refetch), not be dead. SecurityOpsPanel
+    // renders its error via components/ui/ErrorState (distinct from the
+    // hvac/electrical common/EmptyState preset) whose default retry label is
+    // literally "Retry" — not "Try again".
+    await act(async () => { fireEvent.click(getByText(/^Retry$/i)); });
     await waitFor(() => expect(refetch).toHaveBeenCalled());
   });
 
   it('EMPTY: an empty Incidents feed shows the honest "No Incidents found" CTA', async () => {
     lensDataState.items = [];
     const { getByText, getAllByText } = render(<SecurityLensPage />);
+    await goToCases(getAllByText);
     // switch off the Dashboard onto a list tab where the empty CTA lives
-    await act(async () => { fireEvent.click(getAllByText('Incidents')[0]); });
+    await goToIncidents(getAllByText);
     await waitFor(() => expect(getByText(/No Incidents found/i)).toBeInTheDocument());
     // the CTA is a real create affordance, not a dead label
     expect(getByText(/Create one to get started/i)).toBeInTheDocument();
@@ -182,7 +213,8 @@ describe('security lens — four UX states', () => {
   it('POPULATED: a real incident artifact renders with its title in the Incidents tab', async () => {
     lensDataState.items = [INCIDENT];
     const { getByText, getAllByText } = render(<SecurityLensPage />);
-    await act(async () => { fireEvent.click(getAllByText('Incidents')[0]); });
+    await goToCases(getAllByText);
+    await goToIncidents(getAllByText);
     await waitFor(() => expect(getByText('Phishing wave Q2')).toBeInTheDocument());
     // the real description from the artifact renders in the card
     expect(getByText(/Spoofed payroll email/i)).toBeInTheDocument();

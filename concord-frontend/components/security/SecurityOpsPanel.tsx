@@ -1086,8 +1086,9 @@ export function SecurityOpsPanel() {
       {mode === 'Dashboard' ? renderDashboard() : (
         <>
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex items-center justify-center py-20" role="status" aria-live="polite">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-red-400" />
+              <span className="sr-only">Loading…</span>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-20">
