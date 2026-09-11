@@ -91,7 +91,19 @@ jobs:
             node scripts/crud-update-invariants.mjs
           }
           for attempt in 1 2 3; do
-            run_harnesses; rc=$?
+            # `run_harnesses; rc=$?` is a bug under this step's default shell
+            # (GitHub Actions' `run:` steps use `bash -eo pipefail` unless
+            # overridden): a bare `cmd; rc=$?` sequence does NOT exempt `cmd`
+            # from `-e` — the moment run_harnesses returns non-zero (which is
+            # every single time this retry logic is meant to fire), `-e`
+            # terminates the whole script on that line, before `rc=$?` is
+            # even reached, and definitely before the `-le 128` retry check
+            # below. The entire loop was silently dead code; every crash
+            # (retryable or not) hard-failed the step on attempt 1. `cmd ||
+            # rc=$?` is the standard idiom that survives `-e`: a command on
+            # the left of `||` is exempt from triggering errexit.
+            rc=0
+            run_harnesses || rc=$?
             if [ "$rc" -eq 0 ]; then exit 0; fi
             if [ "$rc" -le 128 ]; then
               echo "::error::value-assertion harness real failure (exit $rc)"; exit "$rc"
