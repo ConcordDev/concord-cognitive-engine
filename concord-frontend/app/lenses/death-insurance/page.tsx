@@ -80,7 +80,18 @@ export default function DeathInsurancePage() {
       if (!list.data?.ok) {
         setError(list.data?.error || 'Could not load your inheritance pacts. Try refreshing.');
       } else if (list.data.result) {
-        setWritten(list.data.result.written || []);
+        // Defensive normalization: PactCard + InheritanceGraph both index into
+        // pact.beneficiaries directly (filter/map/length) with no guard of
+        // their own — a pact record missing the array (a degraded backend
+        // response, or a brand-new pact created before any beneficiary was
+        // added) would otherwise throw and blank the whole page. Never
+        // fabricates data — just fills the honest empty case the type
+        // already allows for "no beneficiaries yet".
+        const normalizedWritten = (list.data.result.written || []).map((p) => ({
+          ...p,
+          beneficiaries: p.beneficiaries || [],
+        }));
+        setWritten(normalizedWritten);
         setBeneficiaryOf(list.data.result.beneficiaryOf || []);
       }
       if (notif.data?.ok && notif.data.result) {
