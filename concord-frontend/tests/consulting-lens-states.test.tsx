@@ -181,8 +181,11 @@ describe('consulting lens — Engagement Records vs Engagement Tracker disambigu
 
   it('shows a subtitle distinguishing engagement records from the live Engagement Tracker', () => {
     const { getByText } = render(<ConsultingLens />);
+    // De-stacked architecture: Tracker is a sibling tab, not a stacked panel
+    // "below" — the subtitle's wording follows that (was "panel below" prior
+    // to the lens de-stacking rebuild).
     expect(
-      getByText(/for live engagement status\s+and time tracking, see the Engagement Tracker panel below/i)
+      getByText(/for live engagement status\s+and time tracking, see the Engagement Tracker tab/i)
     ).toBeInTheDocument();
   });
 });
