@@ -13,6 +13,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage --exclude='**/tests/smoke/**'",
+    "test:coverage:ci": "node scripts/ci-test-coverage-tolerant.mjs",
     "test:smoke": "vitest run tests/smoke/",
     "test:e2e": "playwright test",
     "test:e2e:core": "playwright test --config=playwright.config.ts",
