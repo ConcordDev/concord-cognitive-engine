@@ -16,6 +16,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/react';
 
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op (matches the
+// convention in tests/components/WalletPage.test.tsx).
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
+
 // Capturing socket mock — lets a test fire the real server event names and
 // assert the page's `subscribe('auction:bid-placed'|'auction:settled', ...)`
 // handlers (not dead `window.addEventListener` calls) actually re-fetch.

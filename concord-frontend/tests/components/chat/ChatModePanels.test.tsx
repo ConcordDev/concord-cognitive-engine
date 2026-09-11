@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   WelcomePanel,
   AssistPanel,
@@ -12,6 +14,14 @@ import {
   ProactiveChip,
   MessageActions,
 } from '@/components/chat/ChatModePanels';
+
+// ExplorePanel mounts SaveAsDtuButton, which calls useQueryClient() — needs a
+// QueryClientProvider ancestor. Wrap every render() in this file with one
+// rather than touching each call site individually.
+function render(ui: ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 // ── WelcomePanel ──────────────────────────────────────────────────────────────
 
