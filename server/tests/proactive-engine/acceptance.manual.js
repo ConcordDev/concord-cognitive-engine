@@ -1,8 +1,8 @@
-// server/tests/proactive-engine/acceptance.test.js
+// server/tests/proactive-engine/acceptance.manual.js
 //
 // C.5.5 — Independent evaluator for Proactive Engine organ.
 //
-// Run with: node server/tests/proactive-engine/acceptance.test.js
+// Run with: node server/tests/proactive-engine/acceptance.manual.js
 
 import assert from "node:assert/strict";
 

@@ -1,8 +1,8 @@
-// server/tests/trace-fabric/acceptance.test.js
+// server/tests/trace-fabric/acceptance.manual.js
 //
 // F3.4 — Independent evaluator for Trace Fabric organ.
 //
-// Run with: node server/tests/trace-fabric/acceptance.test.js
+// Run with: node server/tests/trace-fabric/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

@@ -1,8 +1,8 @@
-// server/tests/incident-engine/acceptance.test.js
+// server/tests/incident-engine/acceptance.manual.js
 //
 // B.5 — Independent evaluator for Incident Engine organ.
 //
-// Run with: node server/tests/incident-engine/acceptance.test.js
+// Run with: node server/tests/incident-engine/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

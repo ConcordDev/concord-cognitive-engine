@@ -1,8 +1,8 @@
-// server/tests/economic-controller/acceptance.test.js
+// server/tests/economic-controller/acceptance.manual.js
 //
 // E.5 — Independent evaluator for Economic Controller organ.
 //
-// Run with: node server/tests/economic-controller/acceptance.test.js
+// Run with: node server/tests/economic-controller/acceptance.manual.js
 
 import assert from "node:assert/strict";
 

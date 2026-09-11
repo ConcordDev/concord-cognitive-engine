@@ -1,8 +1,8 @@
-// server/tests/capability-forge/acceptance.test.js
+// server/tests/capability-forge/acceptance.manual.js
 //
 // F.5.5 — Independent evaluator for Capability Forge organ.
 //
-// Run with: node server/tests/capability-forge/acceptance.test.js
+// Run with: node server/tests/capability-forge/acceptance.manual.js
 
 import assert from "node:assert/strict";
 

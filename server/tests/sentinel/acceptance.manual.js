@@ -1,4 +1,4 @@
-// server/tests/sentinel/acceptance.test.js
+// server/tests/sentinel/acceptance.manual.js
 //
 // A.5 — Independent evaluator for Sentinel organ.
 //
@@ -7,7 +7,7 @@
 // then use sentinel_review_alerts / sentinel_health_snapshot / sentinel_gate_diff
 // for the fast checks.
 //
-// Run with: node server/tests/sentinel/acceptance.test.js
+// Run with: node server/tests/sentinel/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
