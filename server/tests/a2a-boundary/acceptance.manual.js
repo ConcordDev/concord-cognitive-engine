@@ -1,8 +1,8 @@
-// server/tests/a2a-boundary/acceptance.test.js
+// server/tests/a2a-boundary/acceptance.manual.js
 //
 // G.5 — Independent evaluator for A2A Boundary organ.
 //
-// Run with: node server/tests/a2a-boundary/acceptance.test.js
+// Run with: node server/tests/a2a-boundary/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import crypto from "node:crypto";

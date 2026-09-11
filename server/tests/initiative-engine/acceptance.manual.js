@@ -1,8 +1,8 @@
-// server/tests/initiative-engine/acceptance.test.js
+// server/tests/initiative-engine/acceptance.manual.js
 //
 // F.5 — Independent evaluator for Initiative Engine organ.
 //
-// Run with: node server/tests/initiative-engine/acceptance.test.js
+// Run with: node server/tests/initiative-engine/acceptance.manual.js
 
 import assert from "node:assert/strict";
 

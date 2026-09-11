@@ -1,8 +1,8 @@
-// server/tests/opportunity-engine/acceptance.test.js
+// server/tests/opportunity-engine/acceptance.manual.js
 //
 // C.5 — Independent evaluator for Opportunity Engine organ.
 //
-// Run with: node server/tests/opportunity-engine/acceptance.test.js
+// Run with: node server/tests/opportunity-engine/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

@@ -1,10 +1,10 @@
-// server/tests/auth-gate/acceptance.test.js
+// server/tests/auth-gate/acceptance.manual.js
 //
 // F0.6 — Independent evaluator. Tests the 14 acceptance criteria WITHOUT
 // importing auth-gate's own code. Calls AuthGate via the HTTP dispatch
 // path so the test exercises the real wiring.
 //
-// Run with: node server/tests/auth-gate/acceptance.test.js
+// Run with: node server/tests/auth-gate/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { buildEnvelope, hasAllEnvelopeFields, applyDecision } from "../../lib/auth-gate/envelope.js";

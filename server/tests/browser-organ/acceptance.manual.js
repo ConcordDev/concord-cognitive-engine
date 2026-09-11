@@ -1,4 +1,4 @@
-// server/tests/browser-organ/acceptance.test.js
+// server/tests/browser-organ/acceptance.manual.js
 //
 // O001.6 — Independent evaluator for the Browser Organ.
 //
@@ -8,7 +8,7 @@
 //   - F0 auth-gate trace_id is propagated end-to-end
 //   - Alert routing works (no fabrication; only sends when threshold crossed)
 //
-// Run with: node server/tests/browser-organ/acceptance.test.js
+// Run with: node server/tests/browser-organ/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

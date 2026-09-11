@@ -1,8 +1,8 @@
-// server/tests/experience-learner/acceptance.test.js
+// server/tests/experience-learner/acceptance.manual.js
 //
 // H.5 — Independent evaluator for Experience-to-Learning organ.
 //
-// Run with: node server/tests/experience-learner/acceptance.test.js
+// Run with: node server/tests/experience-learner/acceptance.manual.js
 
 import assert from "node:assert/strict";
 
