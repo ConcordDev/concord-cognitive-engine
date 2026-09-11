@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 
 // LensShell pulls in next/dynamic + the UI store + a11y hooks; stub it to a
@@ -84,8 +84,12 @@ describe('CourtshipLensPage — four UX states', () => {
     await waitFor(() => {
       expect(screen.getByText(/no active courtships yet/i)).toBeInTheDocument();
     });
-    expect(screen.getByText(/no active marriages/i)).toBeInTheDocument();
-    expect(screen.getByText(/no children/i)).toBeInTheDocument();
+    // Marriages/family content lives under separate tabs (the page is a
+    // single-view-union shell: courtships | marriages | family | past).
+    fireEvent.click(screen.getByRole('button', { name: /marriages/i }));
+    await waitFor(() => expect(screen.getByText(/no active marriages/i)).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^family/i }));
+    await waitFor(() => expect(screen.getByText(/no pregnancies or children yet/i)).toBeInTheDocument());
     // It is NOT in loading or error state.
     expect(screen.queryByText(/loading your courtships/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/couldn't load courtships/i)).not.toBeInTheDocument();
@@ -121,8 +125,12 @@ describe('CourtshipLensPage — four UX states', () => {
     expect(screen.getByLabelText(/affinity 90 percent/i)).toBeInTheDocument();
     // Engaged + above marry threshold → a Wed button is offered.
     expect(screen.getByRole('button', { name: /wed/i })).toBeInTheDocument();
-    // Marriage + child surfaced.
-    expect(screen.getByText(/marriages \(1\)/i)).toBeInTheDocument();
-    expect(screen.getByText('Asbir')).toBeInTheDocument();
+    // Marriage surfaced under the "Marriages" tab (marriages/mine resolves
+    // on its own async fetch inside useCourtshipDesk — wait for it).
+    fireEvent.click(screen.getByRole('button', { name: /marriages/i }));
+    await waitFor(() => expect(screen.getByText(/marriages \(1\)/i)).toBeInTheDocument());
+    // Child surfaced under the "Family" tab.
+    fireEvent.click(screen.getByRole('button', { name: /^family/i }));
+    await waitFor(() => expect(screen.getByText('Asbir')).toBeInTheDocument());
   });
 });
