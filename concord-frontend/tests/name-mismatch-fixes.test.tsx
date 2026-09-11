@@ -22,7 +22,7 @@ describe('AdaptiveMusicBridge — npc:scheme-resolved (was npc:scheme_revealed, 
 });
 
 describe('world lens — concordia:terrain-deformed (was world:deformation, never emitted)', () => {
-  const src = readFileSync(path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx'), 'utf8');
+  const src = readFileSync(path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx'), 'utf8');
 
   it('subscribes to and unsubscribes from the real event name', () => {
     expect(src).toMatch(/worldSocket\.on\('concordia:terrain-deformed'/);

@@ -12,9 +12,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 const read = (...p: string[]) => readFileSync(path.resolve(root, ...p), 'utf8');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport shell; this wiring lives in components/world/WorldOsSurface.tsx.
 
 describe('spell-cast — was dispatched by two sources, only consumer was a no-op stub', () => {
-  const world = read('app', 'lenses', 'world', 'page.tsx');
+  const world = read('components', 'world', 'WorldOsSurface.tsx');
 
   it('the world lens now LISTENS for concordia:spell-cast (the missing consumer)', () => {
     expect(world).toMatch(/addEventListener\(\s*['"]concordia:spell-cast['"]/);
@@ -38,7 +40,7 @@ describe('spell-cast — was dispatched by two sources, only consumer was a no-o
 });
 
 describe('quest markers — ConcordiaScene mounted QuestMarker3D but was never fed objectives', () => {
-  const world = read('app', 'lenses', 'world', 'page.tsx');
+  const world = read('components', 'world', 'WorldOsSurface.tsx');
 
   it('the world lens builds questObjectives and passes them to ConcordiaScene', () => {
     expect(world).toMatch(/setQuestObjectives/);
@@ -59,7 +61,7 @@ describe('quest markers — ConcordiaScene mounted QuestMarker3D but was never f
 });
 
 describe('faction war banner — listener waited on a CustomEvent bridged from a phantom socket name', () => {
-  const world = read('app', 'lenses', 'world', 'page.tsx');
+  const world = read('components', 'world', 'WorldOsSurface.tsx');
 
   it('the SR bridge subscribes to the REAL server event faction:war-declared', () => {
     expect(world).toMatch(/['"]faction:war-declared['"]/);
@@ -71,7 +73,7 @@ describe('faction war banner — listener waited on a CustomEvent bridged from a
 });
 
 describe('combat:npc-attack-evaded — DET-C batch 5: real server broadcast (routes/worlds.js i-frame path), zero frontend consumer', () => {
-  const world = read('app', 'lenses', 'world', 'page.tsx');
+  const world = read('components', 'world', 'WorldOsSurface.tsx');
 
   it('the world lens now LISTENS for combat:npc-attack-evaded (the missing consumer)', () => {
     expect(world).toMatch(/worldSocket\.on\(\s*['"]combat:npc-attack-evaded['"]/);

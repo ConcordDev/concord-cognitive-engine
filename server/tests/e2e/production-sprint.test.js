@@ -18,7 +18,12 @@ function readFile(p) {
   return readFileSync(path.resolve(ROOT, p), "utf8");
 }
 
-const WORLD = readFile("concord-frontend/app/lenses/world/page.tsx");
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport-first shell (WorldUnityShell); every component this file
+// pins moved to the former ~7.6k LOC HUD/OS monolith at
+// concord-frontend/components/world/WorldOsSurface.tsx (opened via Menu ->
+// Advanced OS tools or ?surface=os, still inside /lenses/world).
+const WORLD = readFile("concord-frontend/components/world/WorldOsSurface.tsx");
 const SERVER = readFile("server/server.js");
 
 describe("Phase D — Production sprint structural", () => {
@@ -109,9 +114,14 @@ describe("Phase D — Production sprint structural", () => {
 
   it("DC1 sports leagues live components", () => {
     const sports = readFile("concord-frontend/app/lenses/sports/page.tsx");
-    assert.match(sports, /LeagueStandings/);
-    assert.match(sports, /MatchSimulator/);
+    // Sports lens de-stacking (2026-09): the 'leagues' tab still lives in
+    // page.tsx, but its content is now SportsLeaguesPanel, which is what
+    // actually mounts LeagueStandings + MatchSimulator.
+    const leaguesPanel = readFile("concord-frontend/components/sports/SportsLeaguesPanel.tsx");
     assert.match(sports, /'leagues'/);
+    assert.match(sports, /SportsLeaguesPanel/);
+    assert.match(leaguesPanel, /LeagueStandings/);
+    assert.match(leaguesPanel, /MatchSimulator/);
   });
 
   it("DC2 courtship lens + overlay + routes", () => {

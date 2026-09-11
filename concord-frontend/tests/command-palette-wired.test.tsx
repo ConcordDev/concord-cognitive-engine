@@ -31,7 +31,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SHIM = path.resolve(__dirname, '..', 'components', 'world', 'CommandPalette.tsx');
 const COMMON = path.resolve(__dirname, '..', 'components', 'common', 'CommandPalette.tsx');
-const WORLD = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport-first shell (WorldUnityShell); the former ~7.6k LOC HUD/OS
+// monolith — where this component actually mounts — moved to
+// components/world/WorldOsSurface.tsx (opened via Menu -> Advanced OS tools
+// or ?surface=os, still inside /lenses/world).
+const WORLD = path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx');
 
 // Mock scrollIntoView which jsdom doesn't implement (CommandPalette scrolls
 // the selected option into view on every ArrowUp/ArrowDown).
