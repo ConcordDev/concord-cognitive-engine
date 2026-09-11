@@ -210,6 +210,12 @@ describe('auction lens — four UX states', () => {
     }));
     let view: ReturnType<typeof render>;
     await act(async () => { view = render(<AuctionLensPage />); });
+    // Buy-order content lives under the "Buy orders" tab (the page is a
+    // single-view-union shell: board | market | buy-orders). Regex, not an
+    // exact string: the tab button's accessible text includes a trailing
+    // <kbd> keyboard hint ("Buy orders3") since jsdom applies no real
+    // stylesheet to hide it.
+    await act(async () => { fireEvent.click(view!.getByText(/buy orders/i)); });
     await waitFor(() => expect(view!.getByText('rare_herb')).toBeInTheDocument());
 
     // Fill the remaining 8.
