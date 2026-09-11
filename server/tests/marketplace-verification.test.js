@@ -200,6 +200,16 @@ describe("getListingVerification — real end-to-end against the actual mint/lis
       // this classifier, just what it takes to mint a real, committed DTU.
       core: { definitions: ["a lofi track"], claims: ["produced independently"] },
       human: { summary: "A track." },
+      // dtu.create doesn't grant marketplace_sale by default — a fresh DTU
+      // defaults to license.scopes = ["private"] (lib/dtu-licenses.js) —
+      // so marketplace.list's dtuAssertScope(dtu, "marketplace_sale") gate
+      // refuses it unless the caller explicitly requests the scope. This
+      // is the same explicit step the real frontend takes (see
+      // concord-frontend/components/marketplace/MarketplaceActionPanel.tsx's
+      // withContentLicense(..., ['private', ..., 'marketplace_sale']) call)
+      // and the same pattern lib/asset-gen/asset-marketplace.js applies for
+      // the FEA-verified/failed fixtures above in this same file.
+      scopes: ["private", "marketplace_sale"],
     }, ctx);
     assert.equal(created.ok, true, `dtu.create must succeed: ${JSON.stringify(created)}`);
     // Mirror the same personal-scope step asset-marketplace.js documents
