@@ -86,7 +86,9 @@ describe('AuctionLensPage — four UX states', () => {
     }));
     render(<AuctionLensPage />);
     expect(await screen.findByText(/no active auctions/i)).toBeInTheDocument();
-    expect(screen.getByText(/no open buy orders/i)).toBeInTheDocument();
+    // Buy-order content lives under its own tab (board | market | buy-orders).
+    fireEvent.click(screen.getByText(/buy orders/i));
+    expect(await screen.findByText(/no open buy orders/i)).toBeInTheDocument();
   });
 
   it('POPULATED: renders a real auction card from backend data', async () => {
