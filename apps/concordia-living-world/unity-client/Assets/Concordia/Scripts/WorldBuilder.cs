@@ -774,5 +774,34 @@ namespace Concordia
             var r = go.GetComponent<Renderer>();
             if (!r || r.sharedMaterial == null) Tint(go, c);
         }
+
+        /// <summary>
+        /// Live kernel buildings from scene:data. Local Kenney dressing stays;
+        /// this overlay is which buildings exist right now, not how the hub looks.
+        /// </summary>
+        public static void ClearKernelLive()
+        {
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var old = world.transform.Find("KernelLive");
+            if (old) Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelBuilding(string id, string type, Vector3 pos, float yawRad, float maxDim)
+        {
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var holder = world.transform.Find("KernelLive");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelLive");
+                goHolder.transform.SetParent(world.transform, false);
+                holder = goHolder.transform;
+            }
+            if (maxDim < 1.6f) maxDim = 3.2f;
+            var stem = Houses[Mathf.Abs((id ?? type ?? "b").GetHashCode()) % Houses.Length];
+            var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
+            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+        }
     }
 }

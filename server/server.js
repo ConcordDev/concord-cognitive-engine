@@ -9903,6 +9903,28 @@ let _godotGatewayEmitter = null;
 // same stream Godot already gets.
 let _unityGatewayEmitter = null;
 
+// Gateway-only fan-out for modules that still call `REALTIME.io.emit` directly
+// (world:clock, world:weather, npc:quest-*, world:crisis-resolved). Those
+// cannot switch to realtimeEmit without double-firing socket.io. Assigned
+// immediately so a heartbeat that fires before the WS mounts no-ops instead
+// of throwing. Pinned by tests/invariants/gateway-realtime-mirror-parity.test.js.
+function _mirrorRealtimeToGateways(event, payload, { worldId = "", userId = "" } = {}) {
+  const data = payload && typeof payload === "object" ? payload : {};
+  if (userId) {
+    try { _godotGatewayEmitter?.emitToRoom(`user:${userId}`, event, data); } catch { /* survive */ }
+    try { _unityGatewayEmitter?.emitToRoom(`user:${userId}`, event, data); } catch { /* survive */ }
+    return;
+  }
+  if (worldId) {
+    try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, data); } catch { /* survive */ }
+    try { _unityGatewayEmitter?.emitToRoom(`world:${worldId}`, event, data); } catch { /* survive */ }
+    return;
+  }
+  try { _godotGatewayEmitter?.broadcast(event, data); } catch { /* survive */ }
+  try { _unityGatewayEmitter?.broadcast(event, data); } catch { /* survive */ }
+}
+globalThis._concordGatewayMirror = _mirrorRealtimeToGateways;
+
 // Per-user emit helper — uses the user:${userId} room joined on socket auth
 // (see io.on("connection") handler). Established in Phase 3 of polish-to-ten;
 // reused by trade, party, and any emergent system that needs to push to one

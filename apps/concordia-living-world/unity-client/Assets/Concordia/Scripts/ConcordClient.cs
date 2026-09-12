@@ -41,6 +41,9 @@ namespace Concordia
         public static int PartyCount { get; private set; } = 1;
         public static string DungeonLine { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
+        string _userId = "";
+        readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
+            new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
         public string WorldId => worldId;
 
@@ -52,6 +55,21 @@ namespace Concordia
                 gameObject.name = "ConcordClient";
             Live = this;
             ApplyPageConfig();
+        }
+
+        void Update()
+        {
+            System.Action a;
+            while (_main.TryDequeue(out a))
+            {
+                try { a(); }
+                catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
+            }
+        }
+
+        void RunMain(System.Action a)
+        {
+            if (a != null) _main.Enqueue(a);
         }
 
         void OnDestroy()
@@ -215,6 +233,7 @@ namespace Concordia
                 await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                 await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
@@ -241,11 +260,111 @@ namespace Concordia
 
         void HandleFrame(string evt, string text)
         {
+            if (evt == "hello")
+            {
+                var uid = JsonString(text, "userId");
+                if (!string.IsNullOrEmpty(uid)) _userId = uid;
+                return;
+            }
             if (evt == "kingdom:data")
             {
                 ApplyKingdom(text);
                 return;
             }
+            if (evt == "scene:data")
+            {
+                RunMain(() => ApplyScene(text));
+                return;
+            }
+            if (evt == "world:snapshot")
+            {
+                RunMain(() => ApplyWorldSnapshot(text));
+                return;
+            }
+            if (evt == "world:clock")
+            {
+                var phase = JsonFloat(text, "phase", WorldClock.Hour / 24f);
+                var segment = JsonString(text, "segment");
+                RunMain(() => WorldClock.BindKernelClock(phase, segment));
+                return;
+            }
+            if (evt == "world:weather" || evt == "weather:update")
+            {
+                var w = JsonString(text, "type");
+                if (string.IsNullOrEmpty(w)) w = JsonString(text, "weather");
+                RunMain(() =>
+                {
+                    WorldClock.BindKernelWeather(w);
+                    if (!string.IsNullOrEmpty(w)) WorldClock.NoteAct("weather · " + w);
+                });
+                return;
+            }
+            if (evt == "combat:hit" || evt == "combat:impact")
+            {
+                RunMain(() => ApplyCombatFeel(text, evt == "combat:impact"));
+                return;
+            }
+            if (evt == "combat:kill")
+            {
+                var who = JsonString(text, "targetId");
+                if (string.IsNullOrEmpty(who)) who = JsonString(text, "targetName");
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct(string.IsNullOrEmpty(who) ? "a death" : who + " fell");
+                    ConcordiaHUD.Announce("Fell", string.IsNullOrEmpty(who) ? "someone died" : who);
+                });
+                return;
+            }
+            if (evt == "combat:telegraph")
+            {
+                var kind = JsonString(text, "kind");
+                if (string.IsNullOrEmpty(kind)) kind = JsonString(text, "style");
+                RunMain(() => { if (!string.IsNullOrEmpty(kind)) Hostile.TelegraphKind = kind; });
+                return;
+            }
+            if (evt == "world:crisis" || evt == "world:plague-declared")
+            {
+                var kind = JsonString(text, "type");
+                if (string.IsNullOrEmpty(kind)) kind = evt == "world:plague-declared" ? "plague" : "crisis";
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct("crisis · " + kind);
+                    ConcordiaHUD.Announce("Crisis", kind);
+                });
+                return;
+            }
+            if (evt == "world:crisis-resolved")
+            {
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct("the crisis broke");
+                    ConcordiaHUD.Announce("Resolved", "the crisis broke");
+                });
+                return;
+            }
+            if (evt == "quest:completed" || evt == "npc:quest-completed")
+            {
+                var q = JsonString(text, "questId");
+                RunMain(() => WorldClock.NoteAct(string.IsNullOrEmpty(q) ? "a quest closed" : "quest closed · " + q));
+                return;
+            }
+            if (evt == "npc:quest-accepted")
+            {
+                RunMain(() => WorldClock.NoteAct("someone took a quest"));
+                return;
+            }
+            if (evt == "npc:level-up")
+            {
+                RunMain(() => WorldClock.NoteAct("someone grew"));
+                return;
+            }
+            if (evt == "world:npc-gather")
+            {
+                RunMain(() => WorldClock.NoteAct("a gathering"));
+                return;
+            }
+            if (evt == "lens:result")
+                return;
             if (evt == "dialogue:data")
             {
                 ApplyDialogue(text);
@@ -404,6 +523,70 @@ namespace Concordia
                 + (n == 0 ? " · The Court is the city" : " · " + n + " settlements");
         }
 
+        void ApplyWorldSnapshot(string json)
+        {
+            if (JsonFlagFalse(json, "ok")) return;
+            WorldClock.BindKernelClock(JsonFloat(json, "phase", WorldClock.Hour / 24f), JsonNestedString(json, "segment"));
+            var w = JsonNestedString(json, "type");
+            if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
+            WorldClock.BindKernelWeather(w);
+        }
+
+        void ApplyCombatFeel(string json, bool impact)
+        {
+            var target = JsonString(json, "targetId");
+            var atk = JsonString(json, "attackerId");
+            var dmg = JsonFloat(json, "damage", JsonFloat(json, "amount", 8f));
+            var player = ConcordiaPlayer.Live;
+            if (player && !string.IsNullOrEmpty(_userId) && target == _userId)
+                player.TakeHit(Mathf.Max(1f, dmg), string.IsNullOrEmpty(atk) ? "a blow" : atk);
+            else
+            {
+                var feel = player ? player.GetComponent<CombatFeel>() : null;
+                feel?.Strike(impact, true);
+            }
+            if (impact)
+                WorldClock.NoteAct("steel");
+        }
+
+        /// <summary>
+        /// Consume scene:data for live kernel buildings. Hub look stays local
+        /// (FreePacks / WorldBuilder). Empty nodes stay empty — never fabricated.
+        /// The hub portal list in enrichScene is Three.js-scale scaffold and
+        /// must not stomp the authored Ring of Doors.
+        /// </summary>
+        void ApplyScene(string json)
+        {
+            if (JsonFlagFalse(json, "ok"))
+            {
+                var reason = JsonString(json, "reason");
+                if (!string.IsNullOrEmpty(reason) && string.IsNullOrEmpty(HudLine))
+                    LastReason = reason;
+                return;
+            }
+            WorldBuilder.ClearKernelLive();
+            var n = JsonArrayCount(json, "nodes");
+            if (n <= 0) return;
+            ForEachArrayObject(json, "nodes", node =>
+            {
+                var id = JsonString(node, "id");
+                var type = JsonString(node, "type");
+                var pos = JsonVec3(node, "translation");
+                var yaw = JsonFloat(node, "rotationY", 0f);
+                var scale = JsonVec3(node, "scale");
+                var maxDim = Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
+                WorldBuilder.PlaceKernelBuilding(id, type, pos, yaw, maxDim);
+            });
+        }
+
+        public Task LensRun(string domain, string name, string inputJson = "{}")
+        {
+            var body = "{\"domain\":\"" + Escape(domain)
+                + "\",\"name\":\"" + Escape(name)
+                + "\",\"input\":" + (string.IsNullOrEmpty(inputJson) ? "{}" : inputJson) + "}";
+            return SendEvt("lens:run", body);
+        }
+
         public Task RequestKingdom(string nextWorldId)
         {
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
@@ -417,6 +600,7 @@ namespace Concordia
             await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
             await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+            await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
         public Task SendMove(float x, float y, float z, string cityId) =>
@@ -576,6 +760,54 @@ namespace Concordia
                 else if (c == '{' && depth == 1) n++;
             }
             return n;
+        }
+
+        static void ForEachArrayObject(string json, string key, System.Action<string> each)
+        {
+            if (string.IsNullOrEmpty(json) || each == null) return;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return;
+            var start = json.IndexOf('[', i + needle.Length);
+            if (start < 0) return;
+            int depth = 0, objStart = -1;
+            bool inStr = false;
+            for (int p = start; p < json.Length; p++)
+            {
+                char c = json[p];
+                if (c == '"' && (p == 0 || json[p - 1] != '\\')) inStr = !inStr;
+                if (inStr) continue;
+                if (c == '[') depth++;
+                else if (c == ']')
+                {
+                    depth--;
+                    if (depth == 0) break;
+                }
+                else if (c == '{' && depth == 1) objStart = p;
+                else if (c == '}' && depth == 1 && objStart >= 0)
+                {
+                    each(json.Substring(objStart, p - objStart + 1));
+                    objStart = -1;
+                }
+            }
+        }
+
+        static Vector3 JsonVec3(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return Vector3.zero;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return Vector3.zero;
+            var start = json.IndexOf('[', i + needle.Length);
+            if (start < 0) return Vector3.zero;
+            var end = json.IndexOf(']', start);
+            if (end <= start) return Vector3.zero;
+            var inner = json.Substring(start + 1, end - start - 1).Split(',');
+            float x = 0, y = 0, z = 0;
+            if (inner.Length > 0) float.TryParse(inner[0].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out x);
+            if (inner.Length > 1) float.TryParse(inner[1].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out y);
+            if (inner.Length > 2) float.TryParse(inner[2].Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out z);
+            return new Vector3(x, y, z);
         }
 
         static string Escape(string s) => (s ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"");

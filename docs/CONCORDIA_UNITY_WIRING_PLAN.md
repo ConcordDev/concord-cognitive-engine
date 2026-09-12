@@ -57,6 +57,30 @@ The gateway does **not** reimplement Gate 2 or Gate 3 — those stay inside
 `runMacro`. Missing dep → honest `lens_run_unavailable`. A thrown `forbidden`
 stays `{ok:false}`. Pinned by `server/tests/unity-lens-run.test.js`.
 
+**Phase 2 server shipped.** Combat/quest events that already used `realtimeEmit`
+now reach `/unity-ws` via the Unity emitter. Clock/weather/npc-quest/crisis
+were `REALTIME.io.emit` only (socket.io) — they now also call
+`mirrorToGateways` (`globalThis._concordGatewayMirror`), a gateway-only hook
+so socket.io is not double-fired. `world:snapshot` returns the live
+`getWorldPhase` + `getWeather` engines. Pinned by
+`tests/unity-world-spine.test.js` + the mirror-parity invariant.
+
+**Phase 4 decision: consume `scene:data`.** Unity applies live `nodes`
+(real `world_buildings` rows) as a `KernelLive` overlay dressed with local
+packs. Empty nodes stay empty. The hub `portals` array in `enrichScene` is
+Three.js-scale scaffold and must not stomp the authored Ring of Doors —
+those gates stay Canon. `toUnityScene` / `getUnityAssetList` remain for the
+Three.js path until that renderer is actually retired; they are no longer
+the Unity client's world.
+
+**Phase 3 buckets (judgment, engines kept either way):**
+- Native 3D (wire): arena, coop/raids, extraction, horde, farming, factory,
+  mounts, auctions, crafting, parties — reach the kernel via `lens:run` plus
+  the play verbs already on the socket (party, dungeon, gift, dodge).
+- In-world terminals later: hacking, trivia, mahjong, karaoke, code-puzzle —
+  engines stay; no page port.
+- Stay web: genuine dashboards.
+
 ---
 
 ## Phase 1 — the keystone: one `lens:run` gateway verb

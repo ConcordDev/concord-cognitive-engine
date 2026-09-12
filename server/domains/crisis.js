@@ -24,6 +24,7 @@
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { triggerCrisis, CRISIS_TYPES } from "../lib/world-crisis.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 
 // Fail-CLOSED numeric guard (parity with server/domains/literary.js):
 // returns the first poisoned key (NaN/Infinity/1e308/negative/over-cap) or
@@ -231,7 +232,9 @@ export default function registerCrisisMacros(register) {
       } catch { /* best effort */ }
       try {
         if (globalThis?.__CONCORD_REALTIME__?.io) {
-          globalThis.__CONCORD_REALTIME__.io.emit("world:crisis-resolved", { crisisId, userId });
+          const payload = { crisisId, userId };
+          globalThis.__CONCORD_REALTIME__.io.emit("world:crisis-resolved", payload);
+          mirrorToGateways("world:crisis-resolved", payload);
         }
       } catch { /* sockets optional */ }
       return { ok: true, crisisId, resolvedBy: userId };
@@ -259,6 +262,7 @@ export default function registerCrisisMacros(register) {
     try {
       const emit = (name, payload) => {
         try { globalThis?.__CONCORD_REALTIME__?.io?.emit?.(name, payload); } catch { /* sockets optional */ }
+        mirrorToGateways(name, payload, { worldId: wid });
       };
       const res = triggerCrisis(db, type, wid, emit);
       if (!res?.ok) return { ok: false, reason: res?.error || "declare_failed", id: res?.id };

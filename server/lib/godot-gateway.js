@@ -33,6 +33,8 @@ import {
   handleDodge,
   handleDungeonOpen,
 } from "./concordia-play.js";
+import { getWeather } from "./weather.js";
+import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -452,6 +454,47 @@ function isBinaryMovePayload(p) {
       case "dungeon:open": {
         const result = handleDungeonOpen(db, client.userId, data);
         send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "world:snapshot": {
+        // Phase 2 — clock + weather reads that never go through runMacro.
+        // Same public-read surface as GET /api/world/clock and
+        // GET /api/world/weather/:worldId (Gate 1 allowlisted). Authenticated
+        // WS is stricter-or-equal. Missing worldId is an honest failure, never
+        // a fabricated climate.
+        const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        if (!worldId) {
+          send(client.ws, "world:snapshot", { ok: false, reason: "missing_world" });
+          return;
+        }
+        try {
+          const phase = getWorldPhase();
+          const weather = getWeather(worldId);
+          send(client.ws, "world:snapshot", {
+            ok: true,
+            worldId,
+            clock: {
+              phase,
+              segment: getDayPhase(phase),
+              dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs,
+            },
+            weather: weather && typeof weather === "object"
+              ? {
+                  type: weather.type,
+                  intensity: weather.intensity,
+                  windDirection: weather.windDirection,
+                  since: weather.since,
+                }
+              : null,
+          });
+        } catch (e) {
+          send(client.ws, "world:snapshot", {
+            ok: false,
+            reason: "snapshot_failed",
+            error: String(e?.message || e),
+          });
+        }
         return;
       }
 

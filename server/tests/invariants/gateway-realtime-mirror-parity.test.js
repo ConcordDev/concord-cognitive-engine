@@ -117,3 +117,16 @@ test("each mirror call is individually try/catch-guarded", () => {
     );
   }
 });
+
+test("io.emit-only modules have a gateway-only mirror hook (clock/weather do not go through realtimeEmit)", () => {
+  assert.match(
+    src,
+    /globalThis\._concordGatewayMirror\s*=\s*_mirrorRealtimeToGateways/,
+    "server.js must assign globalThis._concordGatewayMirror so weather/clock/npc-quest " +
+    "io.emit paths can reach /unity-ws without double-firing socket.io via realtimeEmit",
+  );
+  const weather = readFileSync(join(import.meta.dirname, "..", "..", "lib", "weather.js"), "utf8");
+  const clock = readFileSync(join(import.meta.dirname, "..", "..", "lib", "world-clock.js"), "utf8");
+  assert.match(weather, /mirrorToGateways\(\s*"world:weather"/);
+  assert.match(clock, /mirrorToGateways\(\s*"world:clock"/);
+});
