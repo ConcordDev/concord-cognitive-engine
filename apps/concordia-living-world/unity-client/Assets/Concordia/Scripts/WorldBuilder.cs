@@ -33,49 +33,77 @@ namespace Concordia
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
+            PurgeNamed("Megaworld");
             CityAtlas.Invalidate();
-            root = new GameObject("World").transform;
-            ModularPerson.CastingWorld = world;
             FreePacks.Reindex();
-            var w = Canon.Get(world);
-            BuildGround(w);
-            DressSky(w);
-            DressAudio(w);
-            if (world == WorldId.Hub) BuildHub();
-            else BuildRealm(w);
-            SpawnFauna(w);
+            var stream = ContinentStream.Bind(this);
+            stream.Boot(world);
             HubLook.UpgradeStandardMaterials();
             try
             {
                 System.IO.File.WriteAllText("/tmp/concordia-atlas.txt",
-                    System.DateTime.Now.ToString("o") + " world=" + world + "\n" + CityAtlas.Dump());
+                    System.DateTime.Now.ToString("o") + " world=" + world
+                    + " travel=" + ContinentStream.TravelMode + "\n" + CityAtlas.Dump());
             }
             catch { }
         }
 
+        /// <summary>
+        /// Build one civilization at local origin. ContinentStream then parks
+        /// the chunk at MegaworldMap.Present(id). Do not purge other chunks.
+        /// </summary>
+        public Transform BuildChunk(WorldId world, Transform continent)
+        {
+            ModularPerson.CastingWorld = world;
+            var holder = new GameObject("Chunk_" + world).transform;
+            holder.SetParent(continent, false);
+            holder.position = Vector3.zero;
+            root = holder;
+            var w = Canon.Get(world);
+            if (world == WorldId.Hub) BuildHub();
+            else
+            {
+                BuildGround(w);
+                DressAudio(w);
+                BuildRealm(w);
+            }
+            SpawnFauna(w);
+            return holder;
+        }
+
+        public void DressChunkSky(WorldId id)
+        {
+            var prev = root;
+            var chunk = ContinentStream.Live ? ContinentStream.Live.ChunkOf(id) : null;
+            if (chunk) root = chunk;
+            DressSky(Canon.Get(id));
+            if (prev) root = prev;
+        }
+
         static void PurgeWorldRoots()
+        {
+            PurgeNamed("World");
+        }
+
+        static void PurgeNamed(string name)
         {
             var found = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < found.Length; i++)
             {
                 var t = found[i];
                 if (!t || t.parent != null) continue;
-                if (t.name != "World") continue;
+                if (t.name != name) continue;
                 Object.DestroyImmediate(t.gameObject);
             }
         }
 
         void BuildGround(WorldDef w)
         {
-            if (w.id == WorldId.Hub)
-            {
-                HubLook.MakeSun(root, new Color(1f, 0.94f, 0.82f), 1.18f, new Vector3(42f, -38f, 0f));
-                return;
-            }
+            if (w.id == WorldId.Hub) return;
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
             g.name = "Ground";
             g.transform.SetParent(root, false);
-            g.transform.localScale = Vector3.one * 22;
+            g.transform.localScale = Vector3.one * 6;
             var pbrStem = w.id switch
             {
                 WorldId.Ruins => "ash_soil",
@@ -92,21 +120,6 @@ namespace Concordia
             var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
             var gr0 = g.GetComponent<Renderer>();
             if (gr0) gr0.sharedMaterial = pbr;
-
-            var sun = w.id switch
-            {
-                WorldId.Hub => (new Color(1f, 0.84f, 0.58f), 2.05f, new Vector3(18f, 204f, 0f)),
-                WorldId.Ruins => (new Color(0.72f, 0.68f, 0.62f), 0.72f, new Vector3(48f, 40f, 0f)),
-                WorldId.Tunya => (new Color(1f, 0.94f, 0.72f), 1.45f, new Vector3(58f, 30f, 0f)),
-                WorldId.Fantasy => (new Color(1f, 0.55f, 0.28f), 1.55f, new Vector3(8f, 168f, 0f)),
-                WorldId.Crime => (new Color(0.55f, 0.42f, 0.62f), 0.42f, new Vector3(12f, 130f, 0f)),
-                WorldId.Cyber => (new Color(0.55f, 0.18f, 0.85f), 0.85f, new Vector3(22f, 210f, 0f)),
-                WorldId.Frontier => (new Color(1f, 0.88f, 0.55f), 1.85f, new Vector3(38f, 24f, 0f)),
-                WorldId.Superhero => (new Color(1f, 0.62f, 0.38f), 1.7f, new Vector3(6f, 92f, 0f)),
-                WorldId.Sere => (new Color(0.82f, 0.62f, 0.38f), 0.55f, new Vector3(18f, 140f, 0f)),
-                _ => (new Color(0.25f, 1f, 0.85f), 1.2f, new Vector3(28f, 80f, 0f))
-            };
-            HubLook.MakeSun(root, sun.Item1, sun.Item2, sun.Item3);
         }
 
         void DressSky(WorldDef w)
@@ -694,44 +707,58 @@ namespace Concordia
 
         void SpawnFauna(WorldDef w)
         {
-            if (w.id != WorldId.Hub)
+            if (w.id == WorldId.Hub)
             {
-                if (w.fauna == null) return;
-                for (int i = 0; i < Mathf.Min(6, w.fauna.Length * 2); i++)
+                var bird = FreePacks.Bird();
+                if (string.IsNullOrEmpty(bird)) return;
+                for (int i = 0; i < 8; i++)
                 {
-                    var a = i / 6f * Mathf.PI * 2f;
-                    var p = new Vector3(Mathf.Cos(a) * 18f, 0f, Mathf.Sin(a) * 18f);
-                    var stem = i % 2 == 0 ? "rabbit" : "dog";
-                    if (!FreePacks.Spawn(stem, root, p, a * Mathf.Rad2Deg, 1.2f))
+                    var go = CreatureCompiler.Compile(root, new CreatureCard
                     {
-                        var go = HubLook.Prim(root, PrimitiveType.Sphere, p + Vector3.up * 0.35f, Vector3.one * 0.45f,
-                            HubLook.Lit(new Color(0.45f, 0.35f, 0.25f)), "Beast" + i);
-                        go.AddComponent<CourtBird>().height = 0.4f;
-                    }
+                        id = "hub-flock-" + i,
+                        speciesId = bird,
+                        topology = "winged_biped",
+                        generation = 0,
+                        fly = true,
+                        lifestyle = "omnivore",
+                    }, Vector3.zero, w);
+                    if (!go) break;
+                    var orbit = go.GetComponent<FlockOrbit>() ?? go.AddComponent<FlockOrbit>();
+                    orbit.radius = 10f + (i % 5) * 3.2f;
+                    orbit.height = 6.5f + (i % 4) * 1.4f;
                 }
-                DressGroveBirds(w);
                 return;
             }
-            for (int i = 0; i < 24; i++)
+            if (w.fauna == null) return;
+            int n = 0;
+            for (int i = 0; i < w.fauna.Length && n < 6; i++)
             {
-                var go = new GameObject("Dove" + i);
-                go.transform.SetParent(root, false);
-                var bird = go.AddComponent<CourtBird>();
-                bird.seed = 40 + i * 13;
-                bird.radius = 10f + (i % 5) * 3.2f;
-                bird.height = 6.5f + (i % 4) * 1.4f;
+                var kind = w.fauna[i];
+                if (string.IsNullOrEmpty(kind)) continue;
+                var a = n / 6f * Mathf.PI * 2f;
+                var p = new Vector3(Mathf.Cos(a) * 18f, 0f, Mathf.Sin(a) * 18f);
+                var go = CreatureCompiler.FromKind(root, kind, p, w);
+                if (go) n++;
             }
+            DressGroveBirds(w);
         }
 
         void DressGroveBirds(WorldDef w)
         {
-            if (w.id != WorldId.Tunya && w.id != WorldId.Fantasy) return;
-            var bird = DressVocab.Bird();
+            var bird = FreePacks.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {
                 float a = i / 3f * Mathf.PI * 2f + 0.3f;
-                FreePacks.Spawn(bird, root, new Vector3(Mathf.Cos(a) * 9f, 0f, Mathf.Sin(a) * 9f), a * Mathf.Rad2Deg, 0.28f);
+                var p = new Vector3(Mathf.Cos(a) * 9f, 0f, Mathf.Sin(a) * 9f);
+                CreatureCompiler.Compile(root, new CreatureCard
+                {
+                    id = w.id + "-grove-bird-" + i,
+                    speciesId = bird,
+                    topology = "winged_biped",
+                    generation = 0,
+                    fly = true,
+                }, p, w);
             }
         }
 
