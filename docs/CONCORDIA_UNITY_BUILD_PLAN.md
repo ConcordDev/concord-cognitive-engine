@@ -6,6 +6,8 @@
 
 **Unity client lives in this repo:** `apps/concordia-living-world/unity-client/`. Open `concord.code-workspace` so Unity Concordia sits next to Godot, frontend, server, and mobile. Do not copy the project out of the tree. `Library/` is gitignored and regenerates in Unity Hub.
 
+**🔴 Playable Slice gate (2026-09-12):** the Unity client is a living-world simulator in a prototype costume with a puppet walk. Until [`docs/CONCORDIA_PLAYABLE_SLICE.md`](CONCORDIA_PLAYABLE_SLICE.md) is GREEN, do **not** add megaworld / organism / chronicle / ConKay features to this client. Clip locomotion + planted feet + pack Hub first. Pinned by `server/tests/concordia-playable-slice.test.js`.
+
 Owner spec (this session): Concordia is **not a bigger Skyrim**. It is a **systemic civilization** that keeps living when the player looks away. Unity is the **full standalone AAA client**. Asset Store is authorized as the evo/procedural corpus. Server sim + DTUs stay the moat.
 
 ---
