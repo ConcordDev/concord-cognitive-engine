@@ -13,7 +13,7 @@ Do not rebuild `settlements`, `world_chronicle`, `world_consequences`, `npc_memo
 
 Wherever the player walks, something can happen — and if people stay, the place acquires a past.
 
-Unity **reveals** kernel state. It does not invent towns, mourners, species, or founding myths. Empty stays empty. Abandoned stays in the row.
+World identity is a **spatial field**, not a door to another map. Walking changes the physics. Unity **reveals** kernel state. It does not invent towns, mourners, species, founding myths, or a “−42% Magic Damage” sticker standing in for the field. Empty stays empty. Abandoned stays in the row.
 
 ---
 
@@ -35,6 +35,8 @@ Unity **reveals** kernel state. It does not invent towns, mourners, species, or 
 14. **The world is queryable.** “Why is this town here?” / “Why is this ruin abandoned?” traces real rows, or returns honest emptiness.
 15. **LOD never erases history.** L0 vicinity full sim, L1 nearby detailed, L2 regional aggregate, L3 distant statistical. A distant village summarized as `population: 817` still has its chronicle when the player arrives.
 16. **Cold-start and 100-hour tests are acceptance**, not slogans. They are named below. They are **not yet run** as live certification.
+17. **World identity is a spatial field, not a separate map.** Every point on the megaworld has overlapping civilization influences (`fantasyInfluence`, `crimeInfluence`, …). Local rules are derived from those values. Hard borders are a presentation bug. Pinned: `server/lib/concordia-world-field.js`.
+18. **Geographic effectiveness is physics, not a player debuff.** Native strength × local physics × distance from origin × environmental adaptation. The same formula applies to a player, an NPC, a boss, a dragon, a summon, a faction army, and equipment. Location is a gameplay stat because the world-field is different there.
 
 ---
 
@@ -60,6 +62,30 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 | 14 Query | Chronicle macros, realm health, consequence list. | No `whyPlace(settlementId)` until this spine. Must not invent a spring/road story when beats are empty. |
 | 15 LOD | Unity `SimLod { Real, Bulk, Virtual }` at 28m / 70m. World shards + `PER_WORLD_WRITE_TABLES`. | No L2/L3 **historical** aggregate. Distant Virtual NPCs rewind to home; they do not keep a summarized village ledger. |
 | 16 Tests | Heartbeats exist; world continues in `WorldMemory` slices (“The world continued while you were away”). | 7-day / 1-year / 50-year cold-start **not run**. 100-hour return test **not run**. Do not claim them. |
+| 17 WorldField | Kernel `fieldAt(x,z)` on one plane. Gate bearings copied from Unity `Canon.Gates`. Authored `content/world/*/meta.json` `skill_affinity` is the blend at each center. Hub is a suppression well (Flower Law + steel dead). Discrete `crossWorldPotency` / `effectivenessMultiplier` remain the **live combat** path (WorldId). | Unity still region-rebuilds; combat has a WorldId, not a megaworld (x,z). `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). That is the discrete leftover — the field degrades, it does not forbid. |
+| 18 Geographic effectiveness | `geographicEffectiveness` is actor-kind-blind. Adaptation raises a floor without beating home. | Not wired into `/combat/attack`. Bosses do not yet retreat toward their home field. No Unity presentation of weakening (and when it lands, it must read the kernel, not a fake HUD modifier). |
+
+---
+
+## 2.1 WorldField (continuous physics)
+
+```
+WorldField { hub, fantasy, crime, cyber, superhero, frontier, tunya, sovereign, lattice, sere }
+```
+
+Hub at the origin. Gated civilizations sit on the Canon ring (`MEGAWORLD_KM.civilizationRadius`). Sere has **no Link gate** — off-ring, still a field center. Influences are gaussians. Adjacent civs share a **transition band**. Opposite civs (Fantasy ↔ Crime) do not share a border; the walk crosses neighbors and the Hub well. That is the ring, not a missing feature.
+
+```
+native strength
+  × local physics     (blend of authored skill_affinity, sharpened so cores stay themselves)
+  × home-field presence
+  × adaptation floor
+= effective
+```
+
+`explainGeographicEffectiveness` speaks in physics (“local magic is 0.12; you trained in fantasy”). It does not mint a combat-log debuff.
+
+Live combat keeps `cross-world-potency.js` until W3 gives coordinates and W7 samples `fieldAt`. Do not swap the route early and pretend Unity is already walking a supercontinent.
 
 ---
 
@@ -134,7 +160,9 @@ WORLD SIMULATION  →  WORLD STATE  →  CONSEQUENCE GRAPH
 
 `presentationForSettlement` reads identity + chronicle + live NPC count. It does not spawn a town because the function was called. Unity dresses **that** payload: buildings, damage, banners, graves, crowds, abandoned structures, construction, wildlife.
 
-Current Unity `Travel` is a **region rebuild**. The destination is streaming continuous geography with Link gates as the only teleport. Until then, every `Travel` call is labeled `currentTravelMode = region_rebuild` so we cannot accidentally claim overland.
+When W7 lands, Unity also dresses **the field**: magic density, tech density, transition weather, faction banners, weakening of *every* combatant. The renderer still does not invent the number.
+
+Current Unity `Travel` is a **region rebuild**. The destination is streaming continuous geography with Link gates as the only teleport, and with WorldField sampled at the feet. Until then, every `Travel` call is labeled `currentTravelMode = region_rebuild` so we cannot accidentally claim overland.
 
 ---
 
@@ -156,12 +184,14 @@ Aggregation must store `population / food / wealth / stability / war_risk` **and
 | Wave | Exit | Status |
 |---|---|---|
 | **W0** | Laws in code. Settlement status + abandon-not-delete. Place chronicle. `whyPlace`. `settle`/`abandon` consequences. Unity Travel labeled region-rebuild. Tests. This doc. | **This PR** |
+| **W0-field** | `fieldAt(x,z)`. Hub well. Geographic effectiveness, actor-kind-blind. Authored affinities. Canon bearings. Discrete potency left as live combat. | **This PR** |
 | **W1** | `spawnSettlementForRegion` founds or joins a `settlements` row (no second identity). Population counted from NPCs. | open |
 | **W2** | Unity presents `status` (active vs abandoned ruins remain). No despawn of the settlement id. | open |
-| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. | open |
+| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | open |
 | **W4** | L2/L3 aggregates that retain chronicle ids. | open |
 | **W5** | Cold-start: new seed, run sim 7 days (then 1 month / 1 year as capacity allows). Inspect settlements, deaths, abandonments **without authored history**. Walk it. | not run |
 | **W6** | **Come back 100 hours later.** Help a farmer, leave, return. The place continued. Memories and buildings match the ledger. | not run |
+| **W7** | Combat, NPCs, bosses, summons, faction armies sample `geographicEffectiveness`. A boss far from home is weaker too, and may retreat toward its field. Unity presents the field (no fake percent sticker). | open |
 
 Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 
@@ -178,12 +208,19 @@ Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 - Dropping 30 NPCs as “a town” (`procgen-settlements` current spawn is the known offender — wrap it in W1, do not enlarge it).
 - Flower Law outside the Hub.
 - Claiming the 100-hour test passed because WorldMemory has a JSON slice.
+- Treating a named WorldId as a disconnected game map.
+- A player-only magic debuff. If the field does not hit a boss, it is not the field.
+- A second skill-affinity table next to `content/world/*/meta.json`.
+- Wiring `geographicEffectiveness` into combat and claiming Unity already walks the supercontinent.
+- A HUD sticker (“−42% Magic Damage”) as a substitute for local physics.
 
 ---
 
 ## 10. Pins
 
 - Topology + Flower Law + abandon-not-delete + whyPlace emptiness: `server/tests/concordia-megaworld.test.js`
+- WorldField + geographic effectiveness (actor-kind-blind, Hub well, authored affinities): `server/tests/concordia-world-field.test.js`
+- Discrete WorldId potency (live combat, still): `server/tests/cross-world-potency.test.js`
 - Consequence graph (existing): `server/tests/world-consequence.test.js`
 - Settlement composition / vacancy (existing): `server/tests/settlements.test.js`
 - Procgen NPC tombstone (existing decay path): same megaworld test file

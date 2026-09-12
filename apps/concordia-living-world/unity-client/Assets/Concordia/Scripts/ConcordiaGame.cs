@@ -408,8 +408,9 @@ namespace Concordia
 
         /// <summary>
         /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
-        /// topology is one continuous universe; Link gates are the only fast
-        /// travel. Flower Law is Hub-only. See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
+        /// topology is one continuous universe with overlapping WorldFields;
+        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
         /// </summary>
         public void Travel(WorldId next)
         {

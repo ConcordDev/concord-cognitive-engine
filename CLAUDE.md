@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **DHTP Representation Sufficiency (cloud agents):** If the task is the DHTP-RS benchmark, read **`docs/DHTP_RS_CLOUD_AGENT.md`** first. Entry point: `node server/scripts/run-dhtp-rs.mjs resume` (auto-loads keys from `.env.runpod` / `server/.env`). Status: `node server/scripts/run-dhtp-rs.mjs status`. Phase 1 complete; **Phase 2 pending** (6 probes × 20 trials).
 
-**Concordia persistent megaworld:** `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` — one continuous universe; worlds are regions; Hub is Flower Law only; abandon ≠ delete. Spine pinned by `server/tests/concordia-megaworld.test.js`.
+**Concordia persistent megaworld:** `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` — one continuous universe; worlds are regions; Hub is Flower Law only; abandon ≠ delete; world identity is a spatial field. Spine pinned by `server/tests/concordia-megaworld.test.js` and `server/tests/concordia-world-field.test.js`.
 
 The v1 release arc is merged (PR #841, 2026-07-02). The live arc is now
 **`docs/NEXT_ARC_PLAN.md`** (the "🟢 HANDOFF — start here" block at the top): Wave 1 =

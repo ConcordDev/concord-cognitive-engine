@@ -58,6 +58,11 @@ namespace Concordia
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
 
+        /// <summary>
+        /// MEGAWORLD: these angles are civilization field centers on one
+        /// supercontinent (kernel: concordia-world-field.js), not portals to
+        /// disconnected maps. Travel() still region-rebuilds until W3.
+        /// </summary>
         public static readonly GateDef[] Gates =
         {
             new GateDef { world = WorldId.Cyber, shortName = "CYBER", name = "The Grid", refusal = "Refusal of Numbers", theNo = "I will not be counted.", color = Hex("3dffa0"), angle = 0 },

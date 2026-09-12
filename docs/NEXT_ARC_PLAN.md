@@ -3,11 +3,14 @@
 ## 🟢 HANDOFF — start here
 
 **Concordia live architecture (2026-09-12):** one continuous megaworld —
-settlements as historical objects, place memory, consequence→Unity presentation.
-Read **`docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` first** for Concordia work.
-Spine pinned by `server/tests/concordia-megaworld.test.js`. Do not rebuild
-`settlements` / `world_consequences` / `world_chronicle`. W5/W6 (cold-start and
-100-hour return) are named and **not yet run**.
+settlements as historical objects, place memory, consequence→Unity presentation,
+and **world identity as a spatial field** (not nine portal maps). Read
+**`docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` first** for Concordia work.
+Spine pinned by `server/tests/concordia-megaworld.test.js` and
+`server/tests/concordia-world-field.test.js`. Do not rebuild
+`settlements` / `world_consequences` / `world_chronicle` / `cross-world-potency`.
+W5/W6 (cold-start and 100-hour return) and W7 (combat samples the field) are
+named and **not yet run / not yet wired**.
 
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —

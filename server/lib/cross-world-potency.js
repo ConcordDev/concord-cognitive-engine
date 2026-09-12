@@ -14,6 +14,10 @@
 //
 // Pure functions, reuse skill-domains' NEUTRAL_AFFINITY. Kill-switch
 // CONCORD_CROSS_WORLD_POTENCY=0 → potency always 1.0 (disabled).
+//
+// Continuous-megaworld law lives in lib/concordia-world-field.js (WorldField
+// at (x,z), same formula for every actor kind). This file stays the discrete
+// WorldId approximation used by live combat until W3 streams coordinates.
 
 import { NEUTRAL_AFFINITY, isKnownDomain } from "./skill-domains.js";
 
