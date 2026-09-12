@@ -32,6 +32,11 @@ namespace Concordia
         Renderer[] _rend;
         bool _hidden;
         GameObject _carry;
+        string _coping;
+        float _walkMul = 1f;
+        bool _withdrawn;
+        Vector3 _headFor;
+        float _headForT;
 
         void Start()
         {
@@ -57,6 +62,37 @@ namespace Concordia
         {
             _regard = whom;
             _pause = Mathf.Max(_pause, seconds);
+        }
+
+        /// <summary>
+        /// Kernel coping_trait from npc:stress-break. Uses jobs and Notice
+        /// that already exist — no second AI.
+        /// </summary>
+        public void Cope(string trait)
+        {
+            _coping = trait ?? "";
+            if (_coping == "drink") job = Job.Sit;
+            else if (_coping == "withdraw") _withdrawn = true;
+            else if (_coping == "reckless") _walkMul = 1.55f;
+            else if (_coping == "paranoid") NoticePlayer(12f);
+            else if (_coping == "cruel")
+            {
+                GuestNpc nearest = null;
+                float best = 9f;
+                foreach (var n in FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+                {
+                    if (!n || n.gameObject == gameObject) continue;
+                    var d = Vector3.Distance(transform.position, n.transform.position);
+                    if (d < best) { best = d; nearest = n; }
+                }
+                if (nearest) Notice(nearest.transform, 8f);
+            }
+        }
+
+        public void HeadFor(Vector3 dest, float seconds = 10f)
+        {
+            _headFor = dest;
+            _headForT = seconds;
         }
 
         public void BindWorkplace(Vector3 pos) => workplace = pos;
@@ -92,6 +128,15 @@ namespace Concordia
                 }
                 else
                     Hold();
+                return;
+            }
+
+            if (_headForT > 0f)
+            {
+                _headForT -= Time.deltaTime;
+                act = "deliver";
+                Show(true);
+                Walk(_headFor, 2.8f);
                 return;
             }
 
@@ -226,6 +271,7 @@ namespace Concordia
 
         bool TrySocial(SimLod lod)
         {
+            if (_withdrawn) return false;
             if (lod != SimLod.Real) return false;
             if (IsWalkingJob) return false;
             if (Time.time < _socialAt) return false;
@@ -310,6 +356,7 @@ namespace Concordia
 
         void Walk(Vector3 dest, float speed)
         {
+            speed *= _walkMul;
             var to = dest - transform.position;
             to.y = 0f;
             if (to.magnitude < 0.7f) { Hold(); _person?.SetGait(0f, true); return; }
@@ -363,7 +410,8 @@ namespace Concordia
         Vector3 EveningDest()
         {
             if (job == Job.Watch) return post;
-            if (job == Job.Sit)
+            if (_withdrawn) return home;
+            if (job == Job.Sit || _coping == "drink")
             {
                 var tavern = BuildingPlace.Nearest(home, "tavern");
                 if (tavern) return tavern.door;

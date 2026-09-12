@@ -5,6 +5,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { WebSocket } from "ws";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
 import { getWeather } from "../lib/weather.js";
@@ -107,6 +109,14 @@ describe("world:snapshot", () => {
       assert.equal(frame.data.tombs.length, 0);
       ws.close();
     } finally { await h.stop(); }
+  });
+});
+
+describe("gossip snapshot ids", () => {
+  it("gateway maps npc_a_id / npc_b_id onto npcA / npcB for 3D overheard", () => {
+    const src = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+    assert.match(src, /npcA: r\.npc_a_id/);
+    assert.match(src, /npcB: r\.npc_b_id/);
   });
 });
 

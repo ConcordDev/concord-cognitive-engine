@@ -66,6 +66,7 @@ namespace Concordia
                 try { a(); }
                 catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
             }
+            AdaptiveScore.Tick();
         }
 
         void RunMain(System.Action a)
@@ -336,6 +337,7 @@ namespace Concordia
                 {
                     WorldClock.NoteAct("crisis · " + kind);
                     ConcordiaHUD.Announce("Crisis", kind);
+                    AdaptiveScore.Apply("world:crisis");
                 });
                 return;
             }
@@ -345,6 +347,7 @@ namespace Concordia
                 {
                     WorldClock.NoteAct("the crisis broke");
                     ConcordiaHUD.Announce("Resolved", "the crisis broke");
+                    AdaptiveScore.Apply("world:crisis-resolved");
                 });
                 return;
             }
@@ -449,6 +452,7 @@ namespace Concordia
                 {
                     WorldClock.NoteAct("scheme closed — " + line);
                     ConcordiaHUD.Announce("Scheme", line);
+                    AdaptiveScore.Apply("npc:scheme-resolved", outcome);
                 });
                 return;
             }
@@ -521,6 +525,12 @@ namespace Concordia
                 if (!string.IsNullOrEmpty(move) && move == "RAID" && string.IsNullOrEmpty(summary))
                     line = string.IsNullOrEmpty(a) ? "a raid" : a + " raids" + (string.IsNullOrEmpty(b) ? "" : " " + b);
                 Consequence("faction", "War", line, true, 0.12f);
+                RunMain(() =>
+                {
+                    RealmFill.MarkWar(a);
+                    RealmFill.MarkWar(b);
+                    AdaptiveScore.Apply("faction:war-declared");
+                });
                 return;
             }
             if (evt == "faction:alliance-formed")
@@ -532,6 +542,7 @@ namespace Concordia
                 if (string.IsNullOrEmpty(line))
                     line = string.IsNullOrEmpty(a) ? "an alliance formed" : a + " allied" + (string.IsNullOrEmpty(b) ? "" : " with " + b);
                 Consequence("faction", "Alliance", line, true, -0.06f);
+                RunMain(() => AdaptiveScore.Apply("faction:alliance-formed"));
                 return;
             }
             if (evt == "faction:truce-sought")
@@ -571,6 +582,13 @@ namespace Concordia
                 var line = n + (n == 1 ? " soul gathered" : " souls gathered");
                 if (!string.IsNullOrEmpty(loc)) line += " · " + loc;
                 Consequence("social", "Gathering", line, true, 0f);
+                RunMain(() =>
+                {
+                    ForEachArrayObject(text, "gatherings", g =>
+                    {
+                        GatheringTell.Place(JsonFloat(g, "x", 0f), JsonFloat(g, "y", 0f), JsonFloat(g, "z", 0f));
+                    });
+                });
                 return;
             }
             if (evt == "world:boss-spawn")
@@ -619,6 +637,24 @@ namespace Concordia
                 var line = string.IsNullOrEmpty(trait) ? "someone broke" : "broke · " + trait;
                 if (!string.IsNullOrEmpty(who)) line += " · " + who;
                 Consequence("npc", "Broke", line, true, 0f);
+                RunMain(() =>
+                {
+                    var guest = WorldPresence.FindGuest(who);
+                    var life = guest ? guest.GetComponent<NpcLife>() : null;
+                    if (life) life.Cope(trait);
+                });
+                return;
+            }
+            if (evt == "npc:migrated")
+            {
+                var npcId = JsonString(text, "npcId");
+                var from = JsonString(text, "fromWorld");
+                var to = JsonString(text, "toWorld");
+                var line = string.IsNullOrEmpty(npcId) ? "someone crossed" : npcId;
+                if (!string.IsNullOrEmpty(from) && !string.IsNullOrEmpty(to))
+                    line += " · " + from + " → " + to;
+                Consequence("npc", "Migration", line, false, 0f);
+                RunMain(() => PresentMigration(npcId, from, to));
                 return;
             }
             if (evt == "combat:dodge:ack")
@@ -709,11 +745,24 @@ namespace Concordia
                 var shown = 0;
                 ForEachArrayObject(json, "gossip", row =>
                 {
-                    if (shown >= 3) return;
                     var summary = JsonString(row, "summary");
                     if (string.IsNullOrEmpty(summary)) return;
-                    WorldClock.PushFeed("gossip", summary);
-                    shown++;
+                    if (shown < 3)
+                    {
+                        WorldClock.PushFeed("gossip", summary);
+                        shown++;
+                    }
+                    var a = WorldPresence.FindGuest(JsonString(row, "npcA"));
+                    var b = WorldPresence.FindGuest(JsonString(row, "npcB"));
+                    GossipEar.Attach(a, summary);
+                    GossipEar.Attach(b, summary);
+                    if (a && b)
+                    {
+                        var la = a.GetComponent<NpcLife>();
+                        var lb = b.GetComponent<NpcLife>();
+                        if (la) la.Notice(b.transform, 3f);
+                        if (lb) lb.Notice(a.transform, 3f);
+                    }
                 });
             }
             var tombN = JsonArrayCount(json, "tombs");
@@ -722,12 +771,34 @@ namespace Concordia
                 var said = false;
                 ForEachArrayObject(json, "tombs", row =>
                 {
-                    if (said) return;
                     var last = JsonString(row, "lastWords");
+                    var npcId = JsonString(row, "npcId");
+                    KernelTomb.Place(npcId, last, JsonFloat(row, "x", 0f), JsonFloat(row, "z", 0f));
+                    if (said) return;
                     if (string.IsNullOrEmpty(last)) return;
                     WorldClock.PushFeed("lineage", "\"" + last + "\"");
                     said = true;
                 });
+            }
+        }
+
+        static void PresentMigration(string npcId, string fromWorld, string toWorld)
+        {
+            var guest = WorldPresence.FindGuest(npcId);
+            var life = guest ? guest.GetComponent<NpcLife>() : null;
+            if (!life) return;
+            var here = WorldBook.Folder(WorldClock.World);
+            if (toWorld == here)
+            {
+                life.HeadFor(Canon.Spawn);
+                return;
+            }
+            var gate = WorldPresence.GateToward(toWorld);
+            if (gate) life.HeadFor(gate.transform.position);
+            else if (fromWorld == here)
+            {
+                gate = WorldPresence.GateToward(fromWorld);
+                if (gate) life.HeadFor(gate.transform.position);
             }
         }
 
@@ -1142,5 +1213,115 @@ namespace Concordia
         [DllImport("__Internal")] static extern void ConcordWsClose();
         [DllImport("__Internal")] static extern string ConcordReadConfig(string key);
 #endif
+    }
+
+    /// <summary>
+    /// Port of concord-frontend/lib/concordia/adaptive-score.ts scoreDirectivesFor.
+    /// Same numbers. Drives the existing DressAudio sources — not a second SM.
+    /// </summary>
+    public static class AdaptiveScore
+    {
+        public struct Dir
+        {
+            public string action, mode;
+            public float intensity, holdMs;
+        }
+
+        static float _combat;
+        static float _modeUntil;
+        static string _mode = "neutral";
+        static readonly Dictionary<int, float> _vol0 = new Dictionary<int, float>();
+
+        public static Dir[] For(string eventName, string outcome = "")
+        {
+            switch (eventName)
+            {
+                case "faction:war-declared":
+                    return new[] { Intensity(0.85f), Mode("minor", 12000f) };
+                case "world:crisis":
+                    return new[] { Intensity(0.7f), Mode("minor", 15000f) };
+                case "refusal:compound-threshold":
+                    return new[] { Mode("minor", 20000f) };
+                case "world:crisis-resolved":
+                case "faction:alliance-formed":
+                    return new[] { Intensity(0f), Mode("major", 8000f) };
+                case "kingdom:founded":
+                    return new[] { Mode("major", 6000f) };
+                case "kingdom:fallen":
+                    return new[] { Mode("minor", 10000f) };
+                case "npc:scheme-resolved":
+                    {
+                        var o = outcome ?? "";
+                        var foiled = o == "exposed" || o == "abandoned" || o == "failed";
+                        return new[] { Mode(foiled ? "major" : "minor", 3500f) };
+                    }
+                default:
+                    return Array.Empty<Dir>();
+            }
+        }
+
+        static Dir Intensity(float v) => new Dir { action = "setMusicCombatIntensity", intensity = v };
+        static Dir Mode(string m, float hold) => new Dir { action = "setMusicMode", mode = m, holdMs = hold };
+
+        public static void Apply(string eventName, string outcome = "")
+        {
+            var ds = For(eventName, outcome);
+            foreach (var d in ds)
+            {
+                if (d.action == "setMusicCombatIntensity") _combat = d.intensity;
+                if (d.action == "setMusicMode")
+                {
+                    _mode = d.mode;
+                    _modeUntil = Time.unscaledTime + d.holdMs / 1000f;
+                }
+            }
+            Mix();
+        }
+
+        public static void Tick()
+        {
+            if (_mode == "neutral" && _combat <= 0.01f) return;
+            if (_mode != "neutral" && Time.unscaledTime > _modeUntil)
+                _mode = "neutral";
+            if (_mode == "neutral")
+                _combat = Mathf.MoveTowards(_combat, 0f, Time.unscaledDeltaTime * 0.35f);
+            Mix();
+        }
+
+        static void Mix()
+        {
+            var srcs = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude);
+            foreach (var s in srcs)
+            {
+                if (!s) continue;
+                var n = s.gameObject.name ?? "";
+                bool eth = n.IndexOf("Ethereal", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool sus = n.IndexOf("Suspenseful", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool act = n.IndexOf("Action", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!eth && !sus && !act) continue;
+                int id = s.GetInstanceID();
+                if (!_vol0.ContainsKey(id)) _vol0[id] = s.volume;
+                float v0 = _vol0[id];
+                float vol = v0;
+                float pitch = 1f;
+                if (_mode == "minor")
+                {
+                    pitch = 0.94f;
+                    if (eth) vol = v0 * 0.45f;
+                    if (sus) vol = Mathf.Max(v0, 0.55f);
+                    if (act) vol = Mathf.Lerp(v0, 0.7f, _combat);
+                }
+                else if (_mode == "major")
+                {
+                    pitch = 1.04f;
+                    if (eth) vol = Mathf.Max(v0, 0.5f);
+                    if (sus) vol = v0 * 0.4f;
+                }
+                if (_combat > 0.01f && (sus || act))
+                    vol = Mathf.Lerp(vol, Mathf.Max(vol, _combat), 0.8f);
+                s.volume = Mathf.Clamp01(vol);
+                s.pitch = pitch;
+            }
+        }
     }
 }

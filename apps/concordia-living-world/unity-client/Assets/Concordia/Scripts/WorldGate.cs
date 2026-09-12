@@ -296,4 +296,143 @@ namespace Concordia
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
         }
     }
+
+    public static class WorldPresence
+    {
+        public static GuestNpc FindGuest(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            foreach (var n in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+            {
+                if (!n) continue;
+                if (n.personId == id) return n;
+                if (n.def != null && n.def.id == id) return n;
+            }
+            return null;
+        }
+
+        public static WorldGate GateToward(string kernelWorld)
+        {
+            if (string.IsNullOrEmpty(kernelWorld)) return null;
+            foreach (var g in Object.FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
+            {
+                if (!g || g.def == null) continue;
+                if (WorldBook.Folder(g.def.world) == kernelWorld) return g;
+            }
+            return null;
+        }
+
+        public static bool InPresenter(float x, float z)
+        {
+            var mag = new Vector2(x, z).magnitude;
+            return mag > 0.4f && mag <= Canon.RingRadius + 16f;
+        }
+    }
+
+    /// <summary>
+    /// Kernel tomb from world:snapshot.tombs. Coords outside the presenter
+    /// stay unplaced. Matching GuestNpc feet win over a far kernel xz.
+    /// </summary>
+    public class KernelTomb : MonoBehaviour
+    {
+        public string npcId;
+        public string lastWords;
+        public string Prompt => string.IsNullOrEmpty(lastWords)
+            ? "E  ·  a grave"
+            : "E  ·  last words";
+
+        public static KernelTomb Place(string npcId, string lastWords, float x, float z)
+        {
+            if (string.IsNullOrEmpty(npcId)) return null;
+            var existing = GameObject.Find("KernelTomb_" + npcId);
+            if (existing) return existing.GetComponent<KernelTomb>();
+            var guest = WorldPresence.FindGuest(npcId);
+            Vector3 p;
+            if (guest)
+                p = guest.transform.position + guest.transform.right * 0.9f;
+            else if (WorldPresence.InPresenter(x, z))
+                p = new Vector3(x, 0.08f, z);
+            else
+                return null;
+            var root = Object.FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var stone = HubLook.Prim(parent, PrimitiveType.Cube, p + Vector3.up * 0.55f,
+                new Vector3(0.55f, 1.1f, 0.22f),
+                HubLook.Lit(new Color(0.38f, 0.34f, 0.3f), 0.04f, 0.18f),
+                "KernelTomb_" + npcId);
+            var tomb = stone.AddComponent<KernelTomb>();
+            tomb.npcId = npcId;
+            tomb.lastWords = lastWords ?? "";
+            foreach (var n in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+            {
+                if (!n || n == guest) continue;
+                if (Vector3.Distance(n.transform.position, stone.transform.position) > 12f) continue;
+                var life = n.GetComponent<NpcLife>();
+                if (life) life.Notice(stone.transform, 5f);
+            }
+            return tomb;
+        }
+    }
+
+    /// <summary>
+    /// Real gossip summary on a matching GuestNpc. One-shot when the player
+    /// walks within 7m. Does not spawn a fake speaker.
+    /// </summary>
+    public class GossipEar : MonoBehaviour
+    {
+        public string summary;
+        bool _heard;
+        const float Reach = 7f;
+
+        public static void Attach(GuestNpc npc, string line)
+        {
+            if (!npc || string.IsNullOrEmpty(line)) return;
+            var ear = npc.GetComponent<GossipEar>();
+            if (!ear) ear = npc.gameObject.AddComponent<GossipEar>();
+            ear.summary = line;
+            ear._heard = false;
+        }
+
+        void Update()
+        {
+            if (_heard || string.IsNullOrEmpty(summary)) return;
+            var p = ConcordiaPlayer.Live;
+            if (!p) return;
+            if (Vector3.Distance(p.transform.position, transform.position) > Reach) return;
+            _heard = true;
+            WorldClock.LastEvent = summary;
+            WorldClock.PushFeed("gossip", summary);
+            var life = GetComponent<NpcLife>();
+            if (life) life.NoticePlayer(4f);
+        }
+    }
+
+    /// <summary>
+    /// Player co-location centroid from world:gathering-detected. Marker only;
+    /// never a fabricated crowd.
+    /// </summary>
+    public class GatheringTell : MonoBehaviour
+    {
+        float _life = 18f;
+
+        public static void Place(float x, float y, float z)
+        {
+            if (!WorldPresence.InPresenter(x, z)) return;
+            var root = Object.FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            float py = y > 0.01f && y < 4.5f ? y : 0.08f;
+            var go = HubLook.Prim(parent, PrimitiveType.Cylinder,
+                new Vector3(x, py + 0.04f, z),
+                new Vector3(2.4f, 0.04f, 2.4f),
+                HubLook.Emit(new Color(0.95f, 0.82f, 0.45f), 1.6f),
+                "GatheringTell", false);
+            go.AddComponent<GatheringTell>();
+        }
+
+        void Update()
+        {
+            _life -= Time.deltaTime;
+            if (_life <= 0f) Destroy(gameObject);
+        }
+    }
 }

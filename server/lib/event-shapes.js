@@ -429,6 +429,9 @@ export const EVENT_SHAPES = Object.freeze({
   "npc:heir-rose":              { required: ["heirId", "deceasedId"], optional: ["heirName", "deceasedName", "worldId", "inherited", "lastWords"] },
   // Unity consequence strip — existing broke write, now visible. @dead-event-ok
   "npc:stress-break":           { required: ["npcId", "copingTrait", "stress"], optional: ["eventKind", "worldId"] },
+  // Thin emit of arriveAtDestination's existing fields. @dead-event-ok:
+  // Unity ConcordClient.cs walks a matching GuestNpc toward the named gate.
+  "npc:migrated":               { required: ["eventId", "npcId", "fromWorld", "toWorld"], optional: ["arrivalTime", "ok", "worldId"] },
   "scheme:overheard":           { required: ["schemeId"], optional: ["plotterId", "worldId", "snippet", "plotterArchetype", "plotterFaction", "targetArchetype", "targetFaction", "schemeKind", "ts"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },

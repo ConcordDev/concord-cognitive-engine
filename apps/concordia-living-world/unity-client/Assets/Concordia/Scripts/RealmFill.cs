@@ -142,6 +142,28 @@ namespace Concordia // keep-spawn-assign
             }
         }
 
+        /// <summary>
+        /// Kernel war lands on the authored banner already placed for that
+        /// faction id. No match is an honest no-op — never invent a faction.
+        /// </summary>
+        public static void MarkWar(string factionId)
+        {
+            if (string.IsNullOrEmpty(factionId)) return;
+            BrightenNamed("FactionBanner_" + factionId);
+            BrightenNamed("FactionPole_" + factionId);
+            BrightenNamed("Faction_" + factionId);
+        }
+
+        static void BrightenNamed(string n)
+        {
+            var go = GameObject.Find(n);
+            if (!go) return;
+            var r = go.GetComponent<Renderer>();
+            if (!r) return;
+            var c = r.sharedMaterial ? r.sharedMaterial.color : Color.white;
+            r.material = HubLook.Emit(c, 2.6f);
+        }
+
         static void Lore(Transform root, WorldDef w)
         {
             var lore = WorldBook.Lore(w.id);

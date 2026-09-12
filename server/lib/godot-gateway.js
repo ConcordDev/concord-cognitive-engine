@@ -502,6 +502,8 @@ function isBinaryMovePayload(p) {
               summary: r.summary || "",
               kind: r.event_kind || "",
               relation: r.relationship_kind || "",
+              npcA: r.npc_a_id || "",
+              npcB: r.npc_b_id || "",
             })),
             tombs: tombRows.map((r) => ({
               npcId: r.npc_id || "",

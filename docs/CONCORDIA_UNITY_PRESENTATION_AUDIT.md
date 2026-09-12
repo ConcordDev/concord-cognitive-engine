@@ -82,9 +82,31 @@ substrate yet).
    write. Faction coping bias was already live; Unity can now *see* the break.
 6. **`npc:heir-rose.lastWords`** — the words `onNpcDeath` already composed.
 
-**Not this pass:** Mixamo, funeral 3D crowds, boss HP bar, adaptive audio SM,
-migration emit, crafted-DTU world props, unique GLB per world, interiors,
-F2 affixes, F5.1 raid lockout.
+**3D collision pass (same payloads, in-world):**
+
+1. **Kernel tombs** from `world:snapshot.tombs` — stone + E last-words when
+   xz fits the presenter or a matching `GuestNpc` exists. Nearby NPCs
+   `Notice` the grave. Empty stays empty. Far kernel coords are skipped.
+2. **Gossip overheard** — snapshot now includes `npcA`/`npcB`. Matching
+   `GuestNpc`s get a `GossipEar`; walking within 7m one-shots the real
+   `summary`. No fake speakers.
+3. **Stress acting** — `npc:stress-break` finds a `GuestNpc` and
+   `NpcLife.Cope(trait)`: drink→tavern Sit, withdraw skips social,
+   reckless faster walk, paranoid NoticePlayer, cruel Notices a neighbor.
+4. **Gathering marker** — `world:gathering-detected` centroid x/y/z as a
+   temporary tell. Never a fabricated crowd.
+5. **Faction banners** — `faction:war-declared` brightens existing
+   `FactionBanner_{id}`. No match is a no-op.
+6. **Adaptive music** — Unity `AdaptiveScore.For` is a literal port of
+   `scoreDirectivesFor` (0.85/minor 12s war, 0.7/minor 15s crisis, major
+   8s on alliance/crisis-resolved, scheme outcome fork). Drives the
+   existing Ethereal/Suspenseful/Action sources.
+7. **Migration** — `arriveAtDestination` emits `npc:migrated` with its
+   existing fields. Matching GuestNpc `HeadFor` the named gate or spawn.
+
+**Not this pass:** Mixamo, funeral 3D crowds, boss HP bar / boss body,
+crafted-DTU world props, unique GLB per world, interiors, F2 affixes,
+F5.1 raid lockout.
 
 Honesty checks:
 
@@ -93,5 +115,7 @@ Honesty checks:
 - Funerals/weddings are `daily_life.gather` composition. There is no
   heartbeat that spawns mourners in the 3D world. Empty stays empty.
 - Gossip with zero `npc_nemesis_events` rows is `[]`, never invented rumor.
-- Adaptive music: copy `scoreDirectivesFor` when a Unity soundscape exists.
+- Adaptive music: Unity `AdaptiveScore.For` copies `scoreDirectivesFor`.
   Do not fork a second mapping.
+- World bosses still have **no spawn coordinates**. HUD only — do not drop
+  a fake body at the arena.

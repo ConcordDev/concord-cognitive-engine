@@ -80,3 +80,31 @@ test("ConcordClient consequence strip consumes gossip + lastWords", () => {
   assert.match(client, /JsonString\(text, "lastWords"\)/);
   assert.match(client, /PushFeed\(/);
 });
+
+test("Unity collides kernel gossip, tombs, stress, banners, and inherited score in 3D", () => {
+  const gate = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/WorldGate.cs",
+  ), "utf8");
+  const life = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/NpcLife.cs",
+  ), "utf8");
+  const gw = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+  assert.match(gate, /class KernelTomb/);
+  assert.match(gate, /class GossipEar/);
+  assert.match(gate, /class GatheringTell/);
+  assert.match(life, /public void Cope\(/);
+  assert.match(life, /public void HeadFor\(/);
+  assert.match(client, /AdaptiveScore\.Apply\("faction:war-declared"\)/);
+  assert.match(client, /setMusicCombatIntensity/);
+  assert.match(client, /intensity = 0\.85f/);
+  assert.match(client, /holdMs = 12000f/);
+  assert.match(client, /evt == "npc:migrated"/);
+  assert.match(client, /RealmFill\.MarkWar/);
+  assert.match(client, /life\.Cope\(trait\)/);
+  assert.match(client, /KernelTomb\.Place/);
+  assert.match(client, /GossipEar\.Attach/);
+  assert.match(gw, /npcA: r\.npc_a_id/);
+  assert.match(gw, /npcB: r\.npc_b_id/);
+});
