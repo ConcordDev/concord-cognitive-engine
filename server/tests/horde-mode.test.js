@@ -10,6 +10,8 @@ import {
 } from "../lib/horde-mode.js";
 import { up as upHorde } from "../migrations/246_horde_mode.js";
 import { up as upRunDraft } from "../migrations/267_run_draft.js";
+import { up as up270 } from "../migrations/270_run_coop.js";
+import { runParticipants, findActivePartyRun } from "../lib/run-coop.js";
 
 // Wave 4 — pickUpgrade/tickWave now delegate to the shared run-draft engine
 // (run_draft_picks table, migration 267), so tests need both migrations.
@@ -145,5 +147,36 @@ describe("Phase CB2 — horde mode", () => {
     const juggernautHint = t.synergyHints.find((h) => h.id === "juggernaut");
     assert.ok(juggernautHint, "expected a juggernaut near-synergy hint after picking iron_hide");
     assert.equal(juggernautHint.missingBoonId, "thorned_aura");
+  });
+});
+
+describe("C4 — party shares one horde run", () => {
+  it("a party-mate joins the leader's horde, not a new one", () => {
+    const db = new Database(":memory:");
+    upHorde(db);
+    upRunDraft(db);
+    up270(db);
+    const leader = startHorde(db, "leader", { worldId: "tunya", partyId: "party-1" });
+    assert.equal(leader.ok, true);
+    assert.equal(leader.alreadyActive, false);
+    const mate = startHorde(db, "mate", { worldId: "tunya", partyId: "party-1" });
+    assert.equal(mate.ok, true);
+    assert.equal(mate.joined, true);
+    assert.equal(mate.runId, leader.runId);
+    assert.deepEqual(runParticipants(db, "horde", leader.runId).sort(), ["leader", "mate"]);
+    assert.equal(findActivePartyRun(db, "horde_runs", "party-1"), leader.runId);
+    assert.equal(getActiveHorde(db, "mate")?.id, leader.runId);
+    db.close();
+  });
+
+  it("a solo player (no party) opens their own horde", () => {
+    const db = new Database(":memory:");
+    upHorde(db);
+    upRunDraft(db);
+    up270(db);
+    const a = startHorde(db, "solo-a", { worldId: "tunya" });
+    const b = startHorde(db, "solo-b", { worldId: "tunya" });
+    assert.notEqual(a.runId, b.runId);
+    db.close();
   });
 });

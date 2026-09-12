@@ -715,13 +715,13 @@ namespace Concordia
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
-            if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
-            return FirstStem(new[] { "OakBigTree01_pr", "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
+            if (c == "grid") return FirstStem(new[] { "UNS_Spruce_01", "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
+            if (c == "ash") return FirstStem(new[] { "half_tree", "UNS_Spruce_01", "tree" }, "tree-dead");
+            return FirstStem(new[] { "OakBigTree01_pr", "UNS_Spruce_01", "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
+            FirstStem(new[] { "UNS_Grass", "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
 
         public static string Prop(WorldId id)
         {
@@ -732,16 +732,18 @@ namespace Concordia
         }
 
         public static string Column(WorldId id) =>
-            FirstStem(new[] { "stone_column" }, "column");
+            FirstStem(new[] { "wood_column.001", "Column_01_Top", "stone_column" }, "column");
 
         public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
         public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
         public static string Table() => FirstStem(new[] { "table" }, "table");
         public static string Chair() => FirstStem(new[] { "chair" }, "chair");
         public static string Chest() => FirstStem(new[] { "chest" }, "chest");
+        public static string Well() => FirstStem(new[] { "well" }, "well");
+        public static string Torch() => FirstStem(new[] { "torch" }, "torch");
         public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
         public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
-        public static string Rock() => FirstStem(new[] { "Rock1A", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+        public static string Rock() => FirstStem(new[] { "Rock1B", "Rock2", "Rock1A", "UNS_Standard_Rock_01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
         /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace

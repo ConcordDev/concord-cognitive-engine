@@ -416,6 +416,35 @@ namespace Concordia
             FromKernel = catalogCount > 0;
             if (string.IsNullOrEmpty(Group)) Group = "combat";
             if (Find(ActiveSkill) == null) ActiveSkill = CombatSlot(0);
+            WorldBuilder.PresentSkillPylons();
+        }
+
+        public static string FirstInGroup(string group)
+        {
+            if (string.IsNullOrEmpty(group)) return ActiveSkill;
+            for (int i = 0; i < All.Count; i++)
+                if (All[i].group == group) return All[i].skillType;
+            return group == "combat" ? "swords" : "";
+        }
+
+        public static string VfxPath(string skillType)
+        {
+            var row = Find(skillType);
+            var e = row != null ? (row.element ?? "") : "";
+            if (string.IsNullOrEmpty(e)) e = skillType ?? "";
+            e = e.ToLowerInvariant();
+            const string root = "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/";
+            if (e.Contains("fire") || e.Contains("ember") || e.Contains("flame"))
+                return root + "vfx_Flamethrower_01.prefab";
+            if (e.Contains("lightning") || e.Contains("electric") || e.Contains("shock"))
+                return root + "vfx_Lightning_01.prefab";
+            if (e.Contains("ice") || e.Contains("water") || e.Contains("frost"))
+                return root + "vfx_Shockwave_01.prefab";
+            if (e.Contains("poison") || e.Contains("bio") || e.Contains("miasma"))
+                return root + "vfx_Smoke_01.prefab";
+            if (e.Contains("energy") || e.Contains("heal") || e.Contains("plasma"))
+                return root + "vfx_Heal_02.prefab";
+            return root + "vfx_Impact_01.prefab";
         }
 
         public static void Add(Row row)
@@ -477,6 +506,23 @@ namespace Concordia
             var row = Find(skillType);
             if (row == null) return 1f;
             return Mathf.Clamp(0.7f + row.glow * 0.8f + row.cameraKickPx * 0.08f, 0.5f, 2.4f);
+        }
+    }
+
+    /// <summary>
+    /// In-world skill group marker around the training dummy. E selects the
+    /// group's first catalog skill. The full 67 live on the K overlay.
+    /// </summary>
+    public class SkillPylon : MonoBehaviour
+    {
+        public string group;
+        public string skillType;
+
+        public string Take()
+        {
+            if (!string.IsNullOrEmpty(group)) SkillLattice.Group = group;
+            if (!string.IsNullOrEmpty(skillType)) SkillLattice.ActiveSkill = skillType;
+            return SkillLattice.HudLine();
         }
     }
 

@@ -3,22 +3,15 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Places Get Started / Unity Asset Store prefabs that actually live in this project:
-    /// Prefabs (PlayerRobot, Stairs, Wall_Light, Collectible_Star, Moving_Platform),
-    /// TimmyRobot, SourceFiles models. No Synty/POLYGON pack is imported here.
+    /// Places owned-pack dressing (Mega Fantasy, 3DForge, forest/rocks).
+    /// Unity Get Started robots/stars/stairs stay out of the world.
     /// </summary>
     public static class StoreDress
     {
-        const string LightsL = "Assets/Prefabs/Wall_Light_Left.prefab";
-        const string LightsR = "Assets/Prefabs/Wall_Light_Right.prefab";
-        const string Stairs = "Assets/Prefabs/Stairs.prefab";
-        const string Star = "Assets/Prefabs/Collectible_Star.prefab";
-        const string Robot = "Assets/Prefabs/PlayerRobot.prefab";
-        const string Platform = "Assets/Prefabs/Moving_Platform.prefab";
-        const string Timmy = "Assets/SourceFiles/TimmyRobot/Models/TimmyRobot.fbx";
-        const string StairMesh = "Assets/SourceFiles/Models/Stairs_650_400_300_Mesh.fbx";
-        const string Hollow = "Assets/SourceFiles/Models/CubeHollow.fbx";
-        const string Box = "Assets/SourceFiles/Models/Box_350x250x300_Mesh.fbx";
+        const string WallLit =
+            "Assets/3DForge/Fantasy_Interiors/Villages_&_Towns/Prefabs/Props/Lighting/WallMounted/fi_vil_light_candle_wall02_lit_b.prefab";
+        const string StandLit =
+            "Assets/3DForge/Fantasy_Interiors/Villages_&_Towns/Prefabs/Props/Lighting/Standing/fi_vil_light_candle_holder04_lit.prefab";
 
         public static void Hub(Transform root)
         {
@@ -27,35 +20,38 @@ namespace Concordia
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 var side = Vector3.Cross(Vector3.up, dir).normalized;
                 var baseP = dir * Canon.RingRadius;
-                Place(LightsL, root, baseP + side * 4.4f + Vector3.up * 4.6f + dir * -0.8f, -g.angle * Mathf.Rad2Deg, 0.9f);
-                Place(LightsR, root, baseP - side * 4.4f + Vector3.up * 4.6f + dir * -0.8f, -g.angle * Mathf.Rad2Deg, 0.9f);
+                Place(WallLit, root, baseP + side * 4.4f + Vector3.up * 2.4f + dir * -0.6f, -g.angle * Mathf.Rad2Deg, 1.5f);
+                Place(WallLit, root, baseP - side * 4.4f + Vector3.up * 2.4f + dir * -0.6f, -g.angle * Mathf.Rad2Deg, 1.5f);
             }
-            Place(Star, root, new Vector3(0f, 7.4f, 0f), 0f, 0.55f);
+            Place(StandLit, root, new Vector3(0f, 0f, 0f), 0f, 1.7f);
+            FreePacks.Spawn(DressVocab.Well(), root, new Vector3(-8.4f, 0f, 6.2f), 20f, 1.6f, required: false);
+            FreePacks.Spawn(DressVocab.Cart(), root, new Vector3(9.2f, 0f, -5.4f), -35f, 2.1f, required: false);
+            FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, new Vector3(-14f, 0f, 11f), 12f, 9f, required: false);
+            FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, new Vector3(13.4f, 0f, 12.2f), -28f, 8.2f, required: false);
+            FreePacks.Spawn(DressVocab.Rock(), root, new Vector3(-11.2f, 0f, -8.6f), 40f, 1.3f, required: false);
         }
 
         public static void Realm(Transform root, WorldDef w)
         {
-            Place(Stairs, root, new Vector3(0f, 0f, -10.4f), 180f, 0);
-            Place(StairMesh, root, new Vector3(3.2f, 0f, -10.4f), 180f, 2.4f);
-            Place(Hollow, root, new Vector3(-4.5f, 0f, 6f), 25f, 2.2f);
-            Place(Box, root, new Vector3(5.2f, 0f, 5.4f), -20f, 1.6f);
-
-            if (w.id == WorldId.Cyber || w.id == WorldId.Crucible)
+            FreePacks.Spawn(DressVocab.House(w.id), root, new Vector3(-6.2f, 0f, 5.4f), 25f, 5.2f, required: false);
+            FreePacks.Spawn(DressVocab.Tower(w.id), root, new Vector3(7.4f, 0f, 6.2f), -20f, 6.5f, required: false);
+            FreePacks.Spawn(DressVocab.Tree(w.id), root, new Vector3(-3.2f, 0f, -4.4f), 40f, 8f, required: false);
+            FreePacks.Spawn(DressVocab.Tree(w.id), root, new Vector3(5.6f, 0f, -6.1f), -15f, 7.2f, required: false);
+            FreePacks.Spawn(DressVocab.Prop(w.id), root, new Vector3(2.4f, 0f, 4.8f), 15f, 0.9f, required: false);
+            FreePacks.Spawn(DressVocab.Rock(), root, new Vector3(4.2f, 0f, -3.2f), 10f, 1.1f, required: false);
+            HubLook.Lantern(root, new Vector3(0.8f, 0f, 2.2f));
+            if (w.id == WorldId.Frontier)
+                FreePacks.Spawn(DressVocab.Cart(), root, new Vector3(0f, 0f, 10f), 12f, 2.2f, required: false);
+            if (w.id == WorldId.Crime)
             {
-                var bot = Place(Robot, root, new Vector3(-6f, 0f, 4f), 140f, 1.75f);
-                if (bot) bot.name = "StoreRobot";
-                var tim = Place(Timmy, root, new Vector3(6.4f, 0f, 3.2f), -40f, 1.7f);
-                if (tim) tim.name = "Timmy";
+                FreePacks.Spawn(DressVocab.Crate(), root, new Vector3(-4.2f, 0f, 3.1f), 8f, 0.9f, required: false);
+                FreePacks.Spawn(DressVocab.Crate(), root, new Vector3(-3.4f, 0f, 3.8f), -20f, 0.8f, required: false);
             }
-            if (w.id == WorldId.Crucible || w.id == WorldId.Frontier)
-                Place(Platform, root, new Vector3(0f, 0.2f, 10f), 0f, 0);
-            if (w.id == WorldId.Fantasy || w.id == WorldId.Superhero)
-                Place(Star, root, new Vector3(0f, 4.2f, 8f), 0f, 0.7f);
         }
 
         public static void QuestMark(Transform root, Vector3 boardTop)
         {
-            Place(Star, root, boardTop + Vector3.up * 0.85f, 0f, 0.45f);
+            Place(StandLit, root, boardTop, 0f, 1.1f);
         }
 
         public static GameObject Place(string path, Transform parent, Vector3 pos, float yawDeg, float height)

@@ -9,7 +9,7 @@ import Database from "better-sqlite3";
 import { WebSocket } from "ws";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
 import { giftReaction, GIFT_DELTA, giveGift } from "../lib/gifting.js";
-import { handleDodge, handleDungeonOpen } from "../lib/concordia-play.js";
+import { handleDodge, handleDungeonOpen, handleRunStart } from "../lib/concordia-play.js";
 import { applyHitToState, resetCombatState } from "../lib/combat-state.js";
 import { resetSessionsForTest } from "../lib/concordia-session.js";
 import { up as up050 } from "../migrations/050_player_inventory.js";
@@ -152,5 +152,29 @@ describe("Unity play verbs", () => {
     assert.equal(r.source, "presenter");
     assert.equal(r.boss.name, "The Hollow Warden");
     assert.equal(handleDungeonOpen(null, "u1", { encounterId: "nope" }).reason, "unknown_encounter");
+  });
+
+  it("run:start without a db is an honest failure, never a fabricated wave", () => {
+    const r = handleRunStart(null, "u1", { kind: "horde", worldId: "concordia-hub" });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_db");
+    assert.equal(handleRunStart(db, "u1", { kind: "raid" }).reason, "unknown_kind");
+  });
+
+  it("run:start horde on /unity-ws opens a kernel run", async () => {
+    const { up: upHorde } = await import("../migrations/246_horde_mode.js");
+    const { up: upDraft } = await import("../migrations/267_run_draft.js");
+    const { up: upCoop } = await import("../migrations/270_run_coop.js");
+    upHorde(db); upDraft(db); upCoop(db);
+    const ws = await authAs(gw.url);
+    sendMsg(ws, "run:start", { kind: "horde", worldId: "concordia-hub" });
+    const frame = await nextFrame(ws);
+    assert.equal(frame.evt, "run:data");
+    assert.equal(frame.data.ok, true);
+    assert.equal(frame.data.kind, "horde");
+    assert.equal(frame.data.source, "kernel");
+    assert.ok(frame.data.runId);
+    assert.equal(frame.data.alreadyActive, false);
+    ws.close();
   });
 });

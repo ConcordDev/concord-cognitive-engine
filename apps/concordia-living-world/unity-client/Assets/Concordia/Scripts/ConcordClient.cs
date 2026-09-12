@@ -40,6 +40,7 @@ namespace Concordia
         public static string PartyLine { get; private set; } = "PARTY  ·  you";
         public static int PartyCount { get; private set; } = 1;
         public static string DungeonLine { get; private set; } = "";
+        public static string RunLine { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
         string _userId = "";
         readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
@@ -257,6 +258,7 @@ namespace Concordia
             PartyLine = "PARTY  ·  you";
             PartyCount = 1;
             DungeonLine = "";
+            RunLine = "";
             SkillLattice.Reset();
         }
 
@@ -453,6 +455,11 @@ namespace Concordia
                 ConcordiaHUD.Announce(name, string.IsNullOrEmpty(phase) ? "the hold opened" : phase);
                 return;
             }
+            if (evt == "run:data")
+            {
+                RunMain(() => ApplyRun(text));
+                return;
+            }
             if (evt == "combat:dodge:ack")
                 return;
             if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
@@ -551,7 +558,7 @@ namespace Concordia
             else
             {
                 var feel = player ? player.GetComponent<CombatFeel>() : null;
-                feel?.Strike(impact, true, kick);
+                feel?.Strike(impact, true, kick, skillKey);
             }
             if (!string.IsNullOrEmpty(skillKey))
                 WorldClock.NoteAct(skillKey + (impact ? " · impact" : " · steel"));
@@ -622,6 +629,32 @@ namespace Concordia
                 WorldClock.NoteAct(SkillLattice.CatalogCount + " skills · kernel");
         }
 
+        void ApplyRun(string json)
+        {
+            if (JsonFlagFalse(json, "ok"))
+            {
+                var reason = JsonString(json, "reason");
+                if (string.IsNullOrEmpty(reason)) reason = JsonString(json, "error");
+                RunLine = "";
+                WorldClock.NoteAct(string.IsNullOrEmpty(reason) ? "run refused" : "run · " + reason);
+                ConcordiaHUD.Announce("Run refused", string.IsNullOrEmpty(reason) ? "no_db" : reason);
+                return;
+            }
+            var kind = JsonString(json, "kind");
+            if (string.IsNullOrEmpty(kind)) kind = "run";
+            var n = JsonArrayCount(json, "roster");
+            if (n <= 0) n = JsonInt(json, "count", 1);
+            var joined = json.IndexOf("\"joined\":true", System.StringComparison.Ordinal) >= 0;
+            var wave = JsonInt(json, "wave", 0);
+            var line = kind.ToUpperInvariant();
+            if (joined) line += "  ·  joined";
+            if (wave > 0) line += "  ·  wave " + wave;
+            line += n <= 1 ? "  ·  you" : "  ·  " + n + " in the run";
+            RunLine = line;
+            WorldClock.NoteAct(line);
+            ConcordiaHUD.Announce(kind, joined ? "joined the party run" : "run opened");
+        }
+
         public Task LensRun(string domain, string name, string inputJson = "{}")
         {
             var body = "{\"domain\":\"" + Escape(domain)
@@ -685,6 +718,13 @@ namespace Concordia
             SendEvt("dungeon:open",
                 "{\"encounterId\":\"" + Escape(encounterId)
                 + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
+
+        public Task RequestRunStart(string kind)
+        {
+            if (string.IsNullOrEmpty(kind)) kind = "horde";
+            return SendEvt("run:start",
+                "{\"kind\":\"" + Escape(kind) + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
+        }
 
         async Task SendEvt(string evt, string dataJson)
         {

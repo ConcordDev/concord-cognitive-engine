@@ -32,6 +32,7 @@ import {
   handleInheritanceRequest,
   handleDodge,
   handleDungeonOpen,
+  handleRunStart,
 } from "./concordia-play.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
@@ -454,6 +455,12 @@ function isBinaryMovePayload(p) {
       case "dungeon:open": {
         const result = handleDungeonOpen(db, client.userId, data);
         send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "run:start": {
+        const result = handleRunStart(db, client.userId, data);
+        send(client.ws, "run:data", result);
         return;
       }
 

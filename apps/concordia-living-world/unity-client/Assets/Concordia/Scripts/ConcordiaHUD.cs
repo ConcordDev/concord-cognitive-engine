@@ -83,6 +83,7 @@ namespace Concordia
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
+            if (player.skillOpen) SkillSheet(w, h);
             PlotBar(w, h);
             Hints(w, h);
         }
@@ -93,10 +94,12 @@ namespace Concordia
             GUI.Label(new Rect(18, h - 22, w - 36, 20),
                 player.talkOpen
                     ? "Type  ·  Enter  send  ·  Esc  leave  ·  2B " + TwoBStatus()
-                    : player.menuOpen
-                        ? "I  close  ·  click a weapon  ·  1/2/3  skill  ·  [ ]  group  ·  Esc  close"
-                        : "I  kit   ·   1/2/3  " + SkillLattice.ActiveSkill
-                          + "   ·   LMB  swing   ·   X  dodge   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
+                    : player.skillOpen
+                        ? "K  close  ·  click a skill  ·  [ ]  group  ·  Esc  close"
+                        : player.menuOpen
+                            ? "I  close  ·  click a weapon  ·  1/2/3  combat slot  ·  K  lattice  ·  Esc  close"
+                            : "I  kit   ·   K  " + SkillLattice.CatalogCount + " skills   ·   1/2/3  " + SkillLattice.ActiveSkill
+                              + "   ·   H  horde   ·   J  extract   ·   LMB  swing   ·   X  dodge   ·   E  use",
                 _small);
             GUI.color = Color.white;
         }
@@ -196,12 +199,61 @@ namespace Concordia
             GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.9f);
             GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons  ·  skills", _title);
-            float col = (pw - 48f) / 3f;
+            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons", _title);
+            float col = (pw - 48f) / 2f;
             DrawInvCol(x + 16, y + 44, col, "Carry", false);
-            DrawInvCol(x + 24 + col, y + 44, col, "Weapons", true);
-            DrawSkillCol(x + 32 + col * 2f, y + 44, col);
+            DrawInvCol(x + 32 + col, y + 44, col, "Weapons", true);
+            GUI.Label(new Rect(x + 18, y + ph - 48, pw - 36, 18),
+                SkillLattice.FromKernel
+                    ? "K  opens the " + SkillLattice.CatalogCount + "-skill lattice  ·  " + SkillLattice.HudLine()
+                    : "K  opens the lattice. skills.mastery unbound until Concord answers.", _small);
             GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
+        }
+
+        void SkillSheet(float w, float h)
+        {
+            float pw = Mathf.Min(1080f, w - 48f), ph = Mathf.Min(620f, h - 80f);
+            float x = (w - pw) * 0.5f, y = (h - ph) * 0.5f;
+            GUI.color = new Color(0.03f, 0.02f, 0.015f, 0.92f);
+            GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
+            GUI.color = Color.white;
+            var head = SkillLattice.FromKernel
+                ? SkillLattice.CatalogCount + " SKILLS  ·  " + SkillLattice.TrainedCount + " trained  ·  kernel"
+                : "SKILLS  ·  skills.mastery unbound";
+            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), head, _title);
+            GUI.Label(new Rect(x + 18, y + 38, pw - 36, 18), SkillLattice.HudLine(), _small);
+            if (!SkillLattice.FromKernel)
+            {
+                GUI.Label(new Rect(x + 18, y + 70, pw - 36, 80),
+                    "The catalog lives on Concord. This overlay stays empty until skills.mastery answers. Kit arts are not this lattice.",
+                    _small);
+                return;
+            }
+            int cols = Mathf.Max(1, SkillLattice.Groups.Count);
+            float colW = (pw - 36f) / cols;
+            for (int g = 0; g < cols; g++)
+            {
+                var group = SkillLattice.Groups[g];
+                float cx = x + 18 + colW * g;
+                var title = group == SkillLattice.Group ? "▸ " + group.ToUpperInvariant() : group.ToUpperInvariant();
+                if (GUI.Button(new Rect(cx, y + 62, colW - 10, 24), title, _btn))
+                    SkillLattice.Group = group;
+                float yy = y + 92f;
+                for (int i = 0; i < SkillLattice.All.Count; i++)
+                {
+                    var row = SkillLattice.All[i];
+                    if (row.group != group) continue;
+                    var mark = row.skillType == SkillLattice.ActiveSkill ? "▸ " : "  ";
+                    var label = mark + row.skillType + "  L" + row.level;
+                    if (GUI.Button(new Rect(cx, yy, colW - 10, 22), label, _btn))
+                    {
+                        SkillLattice.Group = group;
+                        SkillLattice.ActiveSkill = row.skillType;
+                    }
+                    yy += 24f;
+                    if (yy > y + ph - 36f) break;
+                }
+            }
         }
 
         void DrawInvCol(float x, float y, float w, string title, bool weaponsOnly)
@@ -234,36 +286,10 @@ namespace Concordia
 
         void DrawSkillCol(float x, float y, float w)
         {
-            GUI.Label(new Rect(x, y, w, 20),
+            GUI.Label(new Rect(x, y, w, 40),
                 SkillLattice.FromKernel
-                    ? SkillLattice.Group.ToUpperInvariant() + "  ·  " + SkillLattice.CatalogCount
-                    : "Skills", _center);
-            if (!SkillLattice.FromKernel)
-            {
-                GUI.Label(new Rect(x, y + 26, w - 8, 72),
-                    "skills.mastery unbound. Kit arts stay local until Concord answers.", _small);
-                return;
-            }
-            float yy = y + 26f;
-            if (GUI.Button(new Rect(x, yy, (w - 16) * 0.5f, 22), "<", _btn))
-                SkillLattice.CycleGroup(-1);
-            if (GUI.Button(new Rect(x + (w - 16) * 0.5f + 8, yy, (w - 16) * 0.5f, 22), ">", _btn))
-                SkillLattice.CycleGroup(1);
-            yy += 28f;
-            int shown = 0;
-            for (int i = 0; i < SkillLattice.All.Count; i++)
-            {
-                var row = SkillLattice.All[i];
-                if (row.group != SkillLattice.Group) continue;
-                var mark = row.skillType == SkillLattice.ActiveSkill ? "▸ " : "  ";
-                var label = mark + row.skillType + "  L" + row.level;
-                if (GUI.Button(new Rect(x, yy, w - 8, 26), label, _btn))
-                    SkillLattice.ActiveSkill = row.skillType;
-                yy += 28f;
-                shown++;
-                if (shown >= 8) break;
-            }
-            GUI.Label(new Rect(x, y + 280, w - 8, 36), SkillLattice.HudLine(), _small);
+                    ? "K  " + SkillLattice.CatalogCount + " skills"
+                    : "K  lattice unbound", _small);
         }
 
         void Rings(float w)
@@ -430,17 +456,21 @@ namespace Concordia
 
         void PartyStrip()
         {
+            var run = ConcordClient.RunLine;
+            float extra = string.IsNullOrEmpty(run) ? 0f : 18f;
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
-            GUI.DrawTexture(new Rect(22, 142, 300, 28), _white);
+            GUI.DrawTexture(new Rect(22, 142, 300, 28 + extra), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 144, 280, 16), ConcordClient.PartyLine, _small);
             DrawBar(170, 150, 140, 8, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
+            if (!string.IsNullOrEmpty(run))
+                GUI.Label(new Rect(32, 162, 280, 16), run, _small);
         }
 
         void PlotBar(float w, float h)
         {
             var plot = Plots.Nearby;
-            if (plot == null || player.talkOpen || player.menuOpen) return;
+            if (plot == null || player.talkOpen || player.menuOpen || player.skillOpen) return;
             float pw = 520f, ph = 72f;
             float x = (w - pw) * 0.5f, y = h - 118f;
             GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.88f);

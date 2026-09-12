@@ -9,6 +9,10 @@ import { getInheritanceForHeir, getInheritanceFromDeceased } from "./npc-legacy.
 import { joinSession } from "./concordia-session.js";
 import { grantIFrames } from "./combat-state.js";
 import { openInstance, DUNGEON_ENCOUNTERS } from "./dungeon-instance.js";
+import { getMyParty } from "./parties.js";
+import { startHorde, getActiveHorde } from "./horde-mode.js";
+import { startRun as startExtraction, getActiveRun as getActiveExtraction } from "./extraction.js";
+import { runParticipants } from "./run-coop.js";
 
 export function handleGiftGive(db, userId, data = {}) {
   const npcId = String(data.npcId || "");
@@ -116,6 +120,62 @@ export function handleDungeonOpen(db, userId, data = {}) {
   return { ok: true, source: "presenter", encounterId, boss: catalog };
 }
 
+export function handleRunStart(db, userId, data = {}) {
+  const kind = String(data.kind || data.mode || "").toLowerCase();
+  const worldId = String(data.worldId || "concordia-hub");
+  if (!userId) return { ok: false, reason: "missing_user" };
+  if (kind !== "horde" && kind !== "extraction") return { ok: false, reason: "unknown_kind" };
+  if (!db) return { ok: false, reason: "no_db" };
+
+  let partyId = data.partyId ? String(data.partyId) : "";
+  if (!partyId) {
+    try {
+      const mine = getMyParty(db, userId);
+      if (mine?.party_id) partyId = mine.party_id;
+    } catch { /* parties table optional */ }
+  }
+  partyId = partyId || null;
+
+  try {
+    if (kind === "horde") {
+      const r = startHorde(db, userId, { worldId, partyId });
+      if (!r?.ok) return { ok: false, reason: r?.error || "start_failed", kind };
+      const run = getActiveHorde(db, userId);
+      const roster = runParticipants(db, "horde", r.runId);
+      return {
+        ok: true,
+        kind,
+        source: "kernel",
+        runId: r.runId,
+        joined: !!r.joined,
+        alreadyActive: !!r.alreadyActive,
+        partyId: r.partyId || partyId,
+        roster,
+        wave: run?.wave_reached ?? 0,
+        kills: run?.kills ?? 0,
+        score: run?.score ?? 0,
+      };
+    }
+    const r = startExtraction(db, userId, { worldId, partyId });
+    if (!r?.ok) return { ok: false, reason: r?.error || "start_failed", kind };
+    const run = getActiveExtraction(db, userId);
+    const roster = runParticipants(db, "extraction", r.runId);
+    return {
+      ok: true,
+      kind,
+      source: "kernel",
+      runId: r.runId,
+      joined: !!r.joined,
+      alreadyActive: !!r.alreadyActive,
+      partyId: r.partyId || partyId,
+      roster,
+      timeoutAt: r.timeoutAt || run?.timeout_at,
+    };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message || e), kind };
+  }
+}
+
 export default {
   handleGiftGive,
   handleSchemeIntervene,
@@ -123,4 +183,5 @@ export default {
   handleInheritanceRequest,
   handleDodge,
   handleDungeonOpen,
+  handleRunStart,
 };

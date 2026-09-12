@@ -3,7 +3,8 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Camera kick + FOV punch. ChaseCamera writes pose first; we offset after.
+    /// Camera kick + FOV punch + owned-pack combat VFX.
+    /// ChaseCamera writes pose first; we offset after.
     /// </summary>
     [DefaultExecutionOrder(80)]
     public class CombatFeel : MonoBehaviour
@@ -13,11 +14,12 @@ namespace Concordia
         float _shake;
         float _fovKick;
 
-        public void Strike(bool heavy, bool connected, float kickMul = 1f)
+        public void Strike(bool heavy, bool connected, float kickMul = 1f, string skillType = null)
         {
             var k = Mathf.Clamp(kickMul, 0.4f, 2.6f);
             _shake = (connected ? (heavy ? 0.22f : 0.12f) : 0.05f) * k;
             _fovKick = (connected ? (heavy ? 7f : 3.5f) : 1.2f) * k;
+            if (connected) Burst(skillType);
         }
 
         public void ApplyAck(bool hit, float knockback, bool brokenArm, bool brokenLeg)
@@ -27,6 +29,14 @@ namespace Concordia
             _shake = hit ? 0.16f : 0.05f;
             if (brokenArm) Debug.Log("limb: broken arm — strikes weakened");
             if (brokenLeg) Debug.Log("limb: broken leg — dodge locked");
+        }
+
+        void Burst(string skillType)
+        {
+            var path = SkillLattice.VfxPath(skillType);
+            var at = transform.position + transform.forward * 1.5f + Vector3.up * 1.1f;
+            var go = FreePacks.Prefab(path, transform, at, transform.eulerAngles.y);
+            if (go) Object.Destroy(go, 1.25f);
         }
 
         void LateUpdate()

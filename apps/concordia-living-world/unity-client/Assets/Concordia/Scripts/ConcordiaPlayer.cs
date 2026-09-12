@@ -24,6 +24,7 @@ namespace Concordia
         public string toast;
         public string kitWeapon;
         public bool menuOpen;
+        public bool skillOpen;
         public bool talkOpen;
         public bool focusTalk;
         public string talkDraft = "";
@@ -34,7 +35,7 @@ namespace Concordia
         public System.Action<string> onToast;
         public System.Func<Vector3, string> onInteract;
         public static ConcordiaPlayer Live { get; private set; }
-        public bool Busy => talkOpen || menuOpen;
+        public bool Busy => talkOpen || menuOpen || skillOpen;
         float _dmgMul = 1f;
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
@@ -191,6 +192,7 @@ namespace Concordia
         {
             talkOpen = true;
             menuOpen = false;
+            skillOpen = false;
             talkNpc = npc;
             talkDraft = "";
             talkLog.Clear();
@@ -229,6 +231,7 @@ namespace Concordia
             if (menuOpen)
             {
                 talkOpen = false;
+                skillOpen = false;
                 UnlockCursor();
             }
             else LockCursor();
@@ -247,16 +250,31 @@ namespace Concordia
             Cursor.visible = false;
         }
 
+        public void ToggleSkillSheet()
+        {
+            skillOpen = !skillOpen;
+            if (skillOpen)
+            {
+                menuOpen = false;
+                talkOpen = false;
+                UnlockCursor();
+            }
+            else LockCursor();
+        }
+
         void HandleMenuKeys()
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
             if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
-            if (Busy) return;
+            if (KeyDown(KeyCode.K) && !talkOpen) ToggleSkillSheet();
+            if (talkOpen) return;
             if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
             if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
             if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
-            if (menuOpen && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
-            if (menuOpen && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
+            if ((menuOpen || skillOpen) && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
+            if ((menuOpen || skillOpen) && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
+            if (!Busy && KeyDown(KeyCode.H)) ConcordClient.Live?.RequestRunStart("horde");
+            if (!Busy && KeyDown(KeyCode.J)) ConcordClient.Live?.RequestRunStart("extraction");
         }
 
         void TryAttack(bool heavy)
@@ -284,7 +302,7 @@ namespace Concordia
             var connected = HitScan(heavy, 1f);
             SkillLedger.Record(art, connected);
             var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill));
+            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
         }
 
         void TrySpecial()
@@ -521,6 +539,19 @@ namespace Concordia
 
         void Interact()
         {
+            SkillPylon nearest = null;
+            float best = 3.4f;
+            foreach (var p in FindObjectsByType<SkillPylon>(FindObjectsInactive.Exclude))
+            {
+                if (!p) continue;
+                var d = Vector3.Distance(transform.position, p.transform.position);
+                if (d < best) { best = d; nearest = p; }
+            }
+            if (nearest != null)
+            {
+                Toast(nearest.Take());
+                return;
+            }
             var msg = onInteract?.Invoke(transform.position);
             if (!string.IsNullOrEmpty(msg)) Toast(msg);
         }
@@ -564,6 +595,12 @@ namespace Concordia
             if (talkOpen && KeyDown(KeyCode.Escape))
             {
                 CloseTalk();
+                return;
+            }
+            if (skillOpen && KeyDown(KeyCode.Escape))
+            {
+                skillOpen = false;
+                LockCursor();
                 return;
             }
             if (menuOpen && KeyDown(KeyCode.Escape))
@@ -612,10 +649,15 @@ namespace Concordia
             KeyCode.Q => Key.Q,
             KeyCode.E => Key.E,
             KeyCode.I => Key.I,
+            KeyCode.K => Key.K,
+            KeyCode.H => Key.H,
+            KeyCode.J => Key.J,
             KeyCode.Return => Key.Enter,
             KeyCode.Alpha1 => Key.Digit1,
             KeyCode.Alpha2 => Key.Digit2,
             KeyCode.Alpha3 => Key.Digit3,
+            KeyCode.LeftBracket => Key.LeftBracket,
+            KeyCode.RightBracket => Key.RightBracket,
             KeyCode.Escape => Key.Escape,
             KeyCode.Tab => Key.Tab,
             _ => null

@@ -204,7 +204,10 @@ namespace Concordia
 
         public static void Lantern(Transform parent, Vector3 pos)
         {
-            FreePacks.Spawn("lantern", parent, pos, 0, 1.35f);
+            const string forge =
+                "Assets/3DForge/Fantasy_Interiors/Villages_&_Towns/Prefabs/Props/Lighting/Standing/fi_vil_light_candle_holder04_lit.prefab";
+            var held = FreePacks.Prefab(forge, parent, pos, 0);
+            if (!held) FreePacks.Spawn("lantern", parent, pos, 0, 1.35f);
             var bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bulb.name = "LanternGlow";
             bulb.transform.SetParent(parent, false);
