@@ -17,7 +17,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent, waitFor, act } from '@testing-library/react';
+import { render as rtlRender, fireEvent, waitFor, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 // ── backend channel: useLensData (the artifact list the page renders) ────────
@@ -82,13 +83,33 @@ vi.mock('@/components/common/MapView', () => ({ default: () => null }));
 
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy(
     {},
     { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) },
   ),
+  AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 import AgricultureLens from '@/app/lenses/agriculture/page';
+
+// The page defaults to the "Ops" desk view (OpsDeskPanel) — the
+// useLensData('agriculture', ...)-driven artifact list (RecordsPanel) only
+// mounts on one of the record-kind tabs (Fields/Crops/Livestock/Equipment/
+// Water/Harvest/Certifications). Switch to "Fields" before asserting.
+function goToFields(getByText: (text: string) => HTMLElement) {
+  fireEvent.click(getByText('Fields'));
+}
+
+// OpsDeskPanel (the default "Ops" tab) calls useQuery, which needs a real
+// QueryClientProvider ancestor — this focused state-machine test doesn't
+// otherwise mount the app-wide Providers tree.
+function render(ui: React.ReactElement) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(React.createElement(QueryClientProvider, { client: qc }, ui));
+}
 
 const FIELD_ITEM = {
   id: 'field_1',
@@ -121,13 +142,15 @@ describe('agriculture lens — four UX states', () => {
   it('LOADING: shows a role=status indicator while the artifact list is in flight', async () => {
     mockLensData({ isLoading: true });
     const { container, getByText } = render(<AgricultureLens />);
+    await act(async () => { goToFields(getByText); });
     await waitFor(() => expect(container.querySelector('[role="status"]')).toBeTruthy());
-    expect(getByText(/Loading field data/i)).toBeInTheDocument();
+    expect(getByText(/Loading fields/i)).toBeInTheDocument();
   });
 
   it('ERROR: a failed list shows role=alert + a working Retry that re-fetches', async () => {
     mockLensData({ isError: true, error: { message: 'fields offline' } });
     const { container, getByText } = render(<AgricultureLens />);
+    await act(async () => { goToFields(getByText); });
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/fields offline/i)).toBeInTheDocument();
 
@@ -140,6 +163,7 @@ describe('agriculture lens — four UX states', () => {
   it('EMPTY: shows the honest CTA when there are no fields', async () => {
     mockLensData({ items: [], total: 0 });
     const { getByText } = render(<AgricultureLens />);
+    await act(async () => { goToFields(getByText); });
     await waitFor(() =>
       expect(getByText(/No fields found/i)).toBeInTheDocument(),
     );
@@ -150,6 +174,7 @@ describe('agriculture lens — four UX states', () => {
   it('POPULATED: renders the real field row from the artifact list', async () => {
     mockLensData({ items: [FIELD_ITEM], total: 1 });
     const { getByText } = render(<AgricultureLens />);
+    await act(async () => { goToFields(getByText); });
     await waitFor(() => expect(getByText('North 40')).toBeInTheDocument());
   });
 });

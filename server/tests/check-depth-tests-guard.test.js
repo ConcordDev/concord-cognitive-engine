@@ -158,6 +158,88 @@ describe("check-depth-tests.mjs — FALSE POSITIVE regression: real assertions u
   });
 });
 
+describe("check-depth-tests.mjs — 2026-09-10 fix: recognise domain-fn-call + method-call-comparison assertions", () => {
+  // The isSubstantive() regex only credited `assert.equal(obj.field, literal)` —
+  // it missed `assert.equal(fn(args), literal)` and `assert.ok(obj.method() > x)`,
+  // both genuine behavioural assertions. This flagged ~7 real tests
+  // (mission-runtime `isToolAllowed(...)`, dtu-visibility-cache `getVersion() > v0`
+  // and `!a.has(id) && b.has(id)`, even the `lib/sample.js` reference example
+  // `assert.equal(compute(2), 3)`) as shape-only.
+
+  it("assert.equal(domainFn(args), literal) is credited (mission-templates safety pattern)", () => {
+    const out = runWithFixture(
+      "zzz-guard-fixture-fncall-equal",
+      `import { describe, it } from "node:test";\n` +
+      `import assert from "node:assert/strict";\n` +
+      `const isToolAllowed = (t, s) => s === "operator";\n` +
+      `describe("zzz guard fixture", () => {\n` +
+      `  it("blocks research_invoke for autonomous sources", () => {\n` +
+      `    assert.equal(isToolAllowed("research_invoke", "proactive"), false);\n` +
+      `    assert.equal(isToolAllowed("research_invoke", "operator"), true);\n` +
+      `  });\n` +
+      `});\n`,
+    );
+    assert.doesNotMatch(out, /zzz-guard-fixture-fncall-equal-behavior\.test\.js:/);
+  });
+
+  it("assert.ok(obj.method() <cmp> x) is credited (version-bump / count pattern)", () => {
+    const out = runWithFixture(
+      "zzz-guard-fixture-methodcall-cmp",
+      `import { describe, it } from "node:test";\n` +
+      `import assert from "node:assert/strict";\n` +
+      `describe("zzz guard fixture", () => {\n` +
+      `  it("set() bumps the version", () => {\n` +
+      `    const store = { _v: 1, getVersion() { return this._v; }, set() { this._v++; } };\n` +
+      `    const v0 = store.getVersion();\n` +
+      `    store.set();\n` +
+      `    assert.ok(store.getVersion() > v0);\n` +
+      `  });\n` +
+      `});\n`,
+    );
+    assert.doesNotMatch(out, /zzz-guard-fixture-methodcall-cmp-behavior\.test\.js:/);
+  });
+
+  it("assert.ok(!a.has(id) && b.has(id)) is credited (round-trip membership)", () => {
+    const out = runWithFixture(
+      "zzz-guard-fixture-set-membership",
+      `import { describe, it } from "node:test";\n` +
+      `import assert from "node:assert/strict";\n` +
+      `describe("zzz guard fixture", () => {\n` +
+      `  it("a just-created id appears in the next list", () => {\n` +
+      `    const before = new Set([1, 2]);\n` +
+      `    const after = new Set([1, 2, 3]);\n` +
+      `    assert.ok(!before.has(3) && after.has(3));\n` +
+      `  });\n` +
+      `});\n`,
+    );
+    assert.doesNotMatch(out, /zzz-guard-fixture-set-membership-behavior\.test\.js:/);
+  });
+
+  it("STILL FLAGS assert.equal(1, 1) — a literal-literal compare is not behavioural", () => {
+    const out = runWithFixture(
+      "zzz-guard-fixture-literal-literal",
+      `import { describe, it } from "node:test";\n` +
+      `import assert from "node:assert/strict";\n` +
+      `describe("zzz guard fixture", () => {\n` +
+      `  it("passes", () => { assert.equal(1, 1); });\n` +
+      `});\n`,
+    );
+    assert.match(out, /zzz-guard-fixture-literal-literal-behavior\.test\.js: it\("passes"\) has no substantive assertion/);
+  });
+
+  it("STILL FLAGS assert.equal(String(x), y) / assert.equal(typeof x, y) — shape coercions are excluded", () => {
+    const out = runWithFixture(
+      "zzz-guard-fixture-shape-coercion",
+      `import { describe, it } from "node:test";\n` +
+      `import assert from "node:assert/strict";\n` +
+      `describe("zzz guard fixture", () => {\n` +
+      `  it("coerces", () => { const r = { n: 3 }; assert.equal(String(r.n), "3"); });\n` +
+      `});\n`,
+    );
+    assert.match(out, /zzz-guard-fixture-shape-coercion-behavior\.test\.js: it\("coerces"\) has no substantive assertion/);
+  });
+});
+
 describe("check-depth-tests.mjs — real tree: the fix eliminates the false positives it previously reported", () => {
   it("materials-fractography-behavior.test.js (heavy /regex/.test(e) user) reports zero issues", () => {
     const out = execFileSync("node", [CHECKER], { cwd: ROOT, encoding: "utf8" });

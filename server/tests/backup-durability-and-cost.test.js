@@ -39,6 +39,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import zlib from "node:zlib";
 import { stripComments } from "../lib/detectors/command-injection-detector.js";
 
 const RAW = readFileSync(
@@ -293,7 +294,6 @@ describe("the streaming gzip pipeline runBackup uses: real round-trip, not just 
     // and the point is already proven by the vendor's own documented
     // behavior) — it exists so a future reader has a pointer to WHY the
     // ceiling is real, not asserted on faith.
-    const zlib = require("zlib");
     assert.equal(typeof zlib.gzip, "function", "one-shot API still exists for other, smaller-payload call sites — this test is not asking for its removal");
   });
 });

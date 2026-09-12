@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import {
   ModeSelector,
@@ -14,6 +15,14 @@ import {
   CrossLensMemoryBar,
   ProactiveChip,
 } from '@/components/chat/ChatModePanels';
+
+// ExplorePanel mounts SaveAsDtuButton, which calls useQueryClient() — needs a
+// QueryClientProvider ancestor. Wrap every render() in this file with one
+// rather than touching each call site individually.
+function render(ui: React.ReactElement) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(React.createElement(QueryClientProvider, { client: queryClient }, ui));
+}
 
 // ── ModeSelector ─────────────────────────────────────────────────────────────
 
@@ -261,7 +270,7 @@ describe('MessageActions', () => {
     render(
       <MessageActions messageContent="Some message content" onSendMessage={onSendMessage} />
     );
-    expect(screen.getByText('Save as DTU')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeDefined();
   });
 
   it('renders Explore deeper button', () => {
@@ -271,12 +280,17 @@ describe('MessageActions', () => {
     expect(screen.getByText('Explore deeper')).toBeDefined();
   });
 
-  it('clicking Save as DTU fires sendMessage with message content', () => {
+  it('clicking Save as DTU opens the real confirm modal (SaveAsDtuButton now saves directly, not via a chat message)', () => {
+    // SaveAsDtuButton (components/dtu/SaveAsDtuButton.tsx) manages its own
+    // save mutation — it never took/called an onSendMessage prop. Mounted
+    // here with `confirm`, so a click opens its confirm modal (real submit
+    // button "Save DTU") rather than firing any message.
     render(
       <MessageActions messageContent="Test message" onSendMessage={onSendMessage} />
     );
-    fireEvent.click(screen.getByText('Save as DTU'));
-    expect(onSendMessage).toHaveBeenCalledWith(expect.stringContaining('Save this as a DTU'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save as DTU' }));
+    expect(screen.getByRole('button', { name: /save dtu/i })).toBeInTheDocument();
+    expect(onSendMessage).not.toHaveBeenCalled();
   });
 
   it('clicking Explore deeper fires sendMessage', () => {
@@ -303,8 +317,10 @@ describe('ResponseActions', () => {
   });
 
   it('renders assist mode actions', () => {
+    // "Create DTU from this" was consolidated into the shared SaveAsDtuButton
+    // ("Save as DTU") — assist mode's own action list now has only "What's next?".
     render(<ResponseActions mode="assist" {...baseProps} />);
-    expect(screen.getByText('Create DTU from this')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeDefined();
     expect(screen.getByText("What's next?")).toBeDefined();
   });
 
@@ -321,14 +337,14 @@ describe('ResponseActions', () => {
 
   it('renders default mode actions (Save as DTU)', () => {
     render(<ResponseActions mode="welcome" {...baseProps} />);
-    expect(screen.getByText('Save as DTU')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save as DTU' })).toBeDefined();
   });
 
   it('clicking an action fires onSendMessage', () => {
     render(<ResponseActions mode="assist" {...baseProps} />);
-    fireEvent.click(screen.getByText('Create DTU from this'));
+    fireEvent.click(screen.getByText("What's next?"));
     expect(onSendMessage).toHaveBeenCalledTimes(1);
-    expect(onSendMessage.mock.calls[0][0]).toContain('Create a DTU from this response');
+    expect(onSendMessage.mock.calls[0][0]).toContain('what should I do next');
   });
 });
 

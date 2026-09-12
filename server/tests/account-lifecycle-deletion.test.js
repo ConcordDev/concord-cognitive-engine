@@ -172,7 +172,8 @@ function createDb() {
 
     CREATE TABLE audit_log (
       id TEXT PRIMARY KEY, timestamp TEXT NOT NULL, category TEXT NOT NULL, action TEXT NOT NULL,
-      user_id TEXT, details TEXT
+      user_id TEXT, ip_address TEXT, user_agent TEXT, request_id TEXT, path TEXT, method TEXT,
+      status_code INTEGER, details TEXT
     );
   `);
   return db;

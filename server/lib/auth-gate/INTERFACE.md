@@ -164,7 +164,7 @@ const gateResult = await dispatchMCP(name, args || {}, {
 
 ## Tests
 
-- `server/tests/auth-gate/acceptance.test.js` — 14 acceptance criteria
+- `server/tests/auth-gate/acceptance.manual.js` — 14 acceptance criteria (manual audit script requiring a live server; renamed 2026-09-11 from `.test.js` — it was never a `node:test` suite and can't run under CI's `CONCORD_NO_LISTEN=true` sandboxed test step. Run with `node server/tests/auth-gate/acceptance.manual.js` against a live server.)
 - `server/tests/auth-gate/coverage.test.js` — universal MCP coverage (zero bypass)
 
 Both must pass before any phase downstream of F0 may proceed.

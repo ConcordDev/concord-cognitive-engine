@@ -117,7 +117,21 @@ test.describe('404 Page', () => {
     expect(has404 || redirected).toBeTruthy();
   });
 
-  test('404 page has link back to dashboard', async ({ page }) => {
+  test('404 page has link back to dashboard', async ({ context, page }) => {
+    // middleware.ts redirects an UNAUTHENTICATED request for any
+    // non-public path (a genuinely unknown route included) to /login
+    // before Next's router ever gets to render app/not-found.tsx — by
+    // design, so an anonymous visitor can't distinguish "protected route"
+    // from "doesn't exist" (no route-enumeration leak). That previously
+    // made this test land on the login page instead — its own
+    // "ConcordOS" home-logo link (also `a[href="/"]`) matched the
+    // locator and its text obviously didn't say "dashboard"/"home". This
+    // test's actual subject is app/not-found.tsx itself, which only an
+    // authenticated caller reaches, so authenticate first — same pattern
+    // as the 'App Shell Navigation' describe block below.
+    await authenticateContext(context);
+    await mockAuthSuccess(page);
+
     const response = await page.goto('/this-route-does-not-exist-99999');
     if (response?.status()) {
       expect(response.status()).toBeLessThan(500);

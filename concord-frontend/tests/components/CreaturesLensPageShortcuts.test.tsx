@@ -96,16 +96,32 @@ async function renderPopulated() {
 }
 
 describe('CreaturesLensPage — keyboard shortcuts (useLensCommand)', () => {
-  it('registers all four shortcuts under the creatures lensId', async () => {
+  it('registers all four shortcuts under the creatures lensId, across the three panels that each own them', async () => {
+    // The creatures lens is a single-view-union shell (populations | codex |
+    // lineage, see the page's own header comment) — only the active panel is
+    // mounted, and each panel calls useLensCommand independently, so the
+    // mock (which captures the latest call, matching the real hook's
+    // per-component registration) only ever reflects ONE panel's shortcuts
+    // at a time. "All four" is true across the three panels, not in one
+    // render — switch tabs to observe each panel's own registration.
     await renderPopulated();
     expect(capturedOptions).toEqual({ lensId: 'creatures' });
     expect(capturedCommands.map((c) => c.id).sort()).toEqual(
-      ['breed-pair', 'focus-codex-search', 'focus-lineage', 'refresh-populations'].sort(),
+      ['breed-pair', 'refresh-populations'].sort(),
     );
     expect(byId('refresh-populations').keys).toBe('r');
-    expect(byId('focus-codex-search').keys).toBe('/');
-    expect(byId('focus-lineage').keys).toBe('l');
     expect(byId('breed-pair').keys).toBe('b');
+
+    // Accessible name includes the trailing <kbd> hint (e.g. "Species codex2")
+    // — jsdom has no real stylesheet, so the hint's `hidden sm:inline`
+    // Tailwind classes don't actually hide it from the a11y tree.
+    fireEvent.click(screen.getByRole('button', { name: /species codex/i }));
+    expect(capturedOptions).toEqual({ lensId: 'creatures' });
+    expect(byId('focus-codex-search').keys).toBe('/');
+
+    fireEvent.click(screen.getByRole('button', { name: /^lineage/i }));
+    expect(capturedOptions).toEqual({ lensId: 'creatures' });
+    expect(byId('focus-lineage').keys).toBe('l');
   });
 
   it('"r" re-dispatches the real creatures.roster macro (the same one the Refresh button calls)', async () => {
@@ -125,6 +141,7 @@ describe('CreaturesLensPage — keyboard shortcuts (useLensCommand)', () => {
 
   it('"/" focuses the real species-codex search input (id="codex-search")', async () => {
     await renderPopulated();
+    fireEvent.click(screen.getByRole('button', { name: /species codex/i }));
     const input = screen.getByLabelText('Search species codex');
     expect(document.activeElement).not.toBe(input);
 
@@ -135,6 +152,7 @@ describe('CreaturesLensPage — keyboard shortcuts (useLensCommand)', () => {
 
   it('"l" focuses the real lineage-browser input (id="creature-lineage-id")', async () => {
     await renderPopulated();
+    fireEvent.click(screen.getByRole('button', { name: /^lineage/i }));
     const input = screen.getByLabelText('Creature id');
     expect(document.activeElement).not.toBe(input);
 
@@ -200,12 +218,14 @@ describe('CreaturesLensPage — shortcut discoverability', () => {
 
   it('names the search-focus shortcut in the codex search placeholder', async () => {
     await renderPopulated();
+    fireEvent.click(screen.getByRole('button', { name: /species codex/i }));
     const input = screen.getByLabelText('Search species codex') as HTMLInputElement;
     expect(input.placeholder).toMatch(/\/ focuses/);
   });
 
   it('names the lineage-focus shortcut in the lineage input placeholder', async () => {
     await renderPopulated();
+    fireEvent.click(screen.getByRole('button', { name: /^lineage/i }));
     const input = screen.getByLabelText('Creature id') as HTMLInputElement;
     expect(input.placeholder).toMatch(/L focuses/);
   });

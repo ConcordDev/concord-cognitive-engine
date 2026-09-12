@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -46,6 +46,8 @@ vi.mock('next/navigation', () => ({
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: {
     // eslint-disable-next-line react/display-name
     div: React.forwardRef(({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>, ref: React.Ref<HTMLDivElement>) =>
@@ -159,32 +161,48 @@ describe('WalletPage', () => {
   });
 
   it('renders Buy CC button', async () => {
+    // The Cash-App-style tab rewrite (Home/Activity/Pay/Cash Out/Tools)
+    // replaced the old always-visible action-bar "Buy CC" button with the
+    // real inline PurchaseFlow on the default "Home" tab. PurchaseFlow
+    // itself is mocked above (to a data-testid stub) so this file stays
+    // focused on WalletPage's own wiring, not PurchaseFlow's internals
+    // (covered by tests/components/PurchaseFlow.test.tsx) — assert on the
+    // stub actually being mounted, which is the real claim this test makes.
     const { default: WalletPage } = await import('@/app/lenses/wallet/page');
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      // "Buy CC" button in the action bar
-      const buyBtn = screen.getByRole('button', { name: /buy cc/i });
-      expect(buyBtn).toBeDefined();
+      expect(screen.getByTestId('purchase-flow')).toBeDefined();
     });
   });
 
   it('withdraw section shows for connected users', async () => {
+    // Same tab rewrite: withdrawing now lives under the "Cash Out" tab
+    // (WalletCashOutPanel -> WithdrawFlow). WithdrawFlow is mocked above
+    // to a data-testid stub for the same reason as PurchaseFlow.
     const { default: WalletPage } = await import('@/app/lenses/wallet/page');
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
 
     await waitFor(() => {
-      // "Withdraw" button in the action bar. Accessible name now includes
-      // the trailing keyboard hint ("Withdraw W") since the lens-ux pass
-      // added <kbd>W</kbd> after the label.
-      const withdrawBtn = screen.getByRole('button', { name: /^withdraw\b/i });
-      expect(withdrawBtn).toBeDefined();
+      expect(screen.getByRole('tab', { name: /cash out/i })).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /cash out/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('withdraw-flow')).toBeDefined();
     });
   });
 
   it('transaction history renders', async () => {
+    // Full transaction rows (with descriptions) live under the "Activity"
+    // tab (WalletActivityPanel -> WalletTxRow), not the default "Home" tab.
     const { default: WalletPage } = await import('@/app/lenses/wallet/page');
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /activity/i })).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /activity/i }));
 
     await waitFor(() => {
       // Both transaction descriptions should be visible
@@ -206,8 +224,15 @@ describe('WalletPage', () => {
   });
 
   it('renders transaction filter tabs', async () => {
+    // Same as above: the filter tabs (TRANSACTION_TABS) render inside
+    // WalletActivityPanel, under the "Activity" tab.
     const { default: WalletPage } = await import('@/app/lenses/wallet/page');
     render(React.createElement(WalletPage), { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /activity/i })).toBeDefined();
+    });
+    fireEvent.click(screen.getByRole('tab', { name: /activity/i }));
 
     await waitFor(() => {
       expect(screen.getByText('All')).toBeDefined();

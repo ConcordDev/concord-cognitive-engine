@@ -112,7 +112,7 @@ function densifyMegaHyper(db) {
   // Drop FTS triggers briefly to avoid corrupt blob writes on UPDATE
   const trigs = db.prepare(`SELECT name FROM sqlite_master WHERE type='trigger' AND tbl_name='dtus'`).all();
   for (const t of trigs) {
-    try { db.exec(`DROP TRIGGER IF EXISTS "${t.name}"`); } catch {}
+    try { db.exec(`DROP TRIGGER IF EXISTS "${t.name}"`); } catch { /* ignore */ }
   }
   const rows = db.prepare(`SELECT id, tier FROM dtus WHERE body_json IS NOT NULL AND body_json != '' AND body_json != '{}' LIMIT 40`).all();
   let mega = 0, hyper = 0;
@@ -122,7 +122,7 @@ function densifyMegaHyper(db) {
     else if (i < 16) { upd.run("hyper", rows[i].id); hyper++; }
   }
   // best-effort FTS rebuild + recreate minimal triggers
-  try { db.exec(`INSERT INTO dtus_fts(dtus_fts) VALUES('rebuild')`); } catch {}
+  try { db.exec(`INSERT INTO dtus_fts(dtus_fts) VALUES('rebuild')`); } catch { /* ignore */ }
   try {
     db.exec(`
       CREATE TRIGGER IF NOT EXISTS dtus_fts_insert AFTER INSERT ON dtus BEGIN
@@ -136,7 +136,7 @@ function densifyMegaHyper(db) {
         INSERT INTO dtus_fts(rowid, title) VALUES (new.rowid, new.title);
       END;
     `);
-  } catch {}
+  } catch { /* ignore */ }
   const counts = db.prepare(`SELECT tier, COUNT(*) AS n FROM dtus GROUP BY tier`).all();
   const byAfter = Object.fromEntries(counts.map((r) => [r.tier, r.n]));
   return { ok: (byAfter.mega || 0) >= 5 && (byAfter.hyper || 0) >= 5, promoted: { mega, hyper }, counts };

@@ -83,10 +83,22 @@ vi.mock('@/components/app-maker/NpmPackageSearch', () => ({ NpmPackageSearch: ()
 vi.mock('@/components/app-maker/AppBuilderStudio', () => ({ AppBuilderStudio: () => null }));
 // framer-motion: render plain elements so animated nodes mount synchronously.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: new Proxy({}, { get: () => (props: Record<string, unknown>) => React.createElement('div', props, props.children as React.ReactNode) }),
+  AnimatePresence: ({ children }: { children?: import('react').ReactNode }) =>
+    React.createElement(React.Fragment, null, children),
 }));
 
 import AppMakerLens from '@/app/lenses/app-maker/page';
+
+// The page is a 4-tab view union (Studio/Compute/Apps/Packages) defaulting
+// to Studio; the compute-action panel (useRunArtifact + Scaffold App) lives
+// on "Compute" and the apps list lives on "Apps" — neither mounts on the
+// default tab.
+function goToTab(getByText: (text: string) => HTMLElement, label: string) {
+  fireEvent.click(getByText(label));
+}
 
 const APP = { id: 'app_1', name: 'My CRM', status: 'draft', author: 'user_a', version: '0.0.1', createdAt: '2026-06-27' };
 
@@ -101,7 +113,8 @@ beforeEach(() => {
 describe('app-maker lens — wiring', () => {
   it('drives the compute-action panel on the HYPHENATED app-maker domain', async () => {
     appsList.mockImplementation(() => Promise.resolve({ data: { apps: [] } }));
-    render(<AppMakerLens />);
+    const { getByText } = render(<AppMakerLens />);
+    await act(async () => { goToTab(getByText, 'Compute'); });
     await waitFor(() => expect(useRunArtifactSpy).toHaveBeenCalledWith('app-maker'));
     expect(useRunArtifactSpy).not.toHaveBeenCalledWith('appmaker');
   });
@@ -111,6 +124,7 @@ describe('app-maker lens — apps list four UX states', () => {
   it('LOADING: shows a role=status indicator while the apps list is in flight', async () => {
     appsList.mockImplementation(() => new Promise(() => {})); // never resolves
     const { getByText, container } = render(<AppMakerLens />);
+    await act(async () => { goToTab(getByText, 'Apps'); });
     await waitFor(() => expect(getByText(/Loading your apps/i)).toBeInTheDocument());
     expect(container.querySelector('[role="status"]')).toBeTruthy();
   });
@@ -118,6 +132,7 @@ describe('app-maker lens — apps list four UX states', () => {
   it('EMPTY: shows the honest "No apps yet" CTA when the list is empty', async () => {
     appsList.mockImplementation(() => Promise.resolve({ data: { apps: [] } }));
     const { getByText } = render(<AppMakerLens />);
+    await act(async () => { goToTab(getByText, 'Apps'); });
     await waitFor(() => expect(getByText(/No apps yet/i)).toBeInTheDocument());
   });
 
@@ -128,6 +143,7 @@ describe('app-maker lens — apps list four UX states', () => {
       return Promise.resolve({ data: { apps: [APP] } });
     });
     const { getByText, container } = render(<AppMakerLens />);
+    await act(async () => { goToTab(getByText, 'Apps'); });
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());
     expect(getByText(/apps offline/i)).toBeInTheDocument();
 
@@ -142,6 +158,7 @@ describe('app-maker lens — apps list four UX states', () => {
   it('POPULATED: renders the real app row with its status + version', async () => {
     appsList.mockImplementation(() => Promise.resolve({ data: { apps: [APP] } }));
     const { getByText } = render(<AppMakerLens />);
+    await act(async () => { goToTab(getByText, 'Apps'); });
     await waitFor(() => expect(getByText('My CRM')).toBeInTheDocument());
     expect(getByText('draft')).toBeInTheDocument();
     expect(getByText('v0.0.1')).toBeInTheDocument();
@@ -161,7 +178,8 @@ describe('app-maker lens — compute-action panel error state + working Retry', 
     });
 
     const { getByText, container, getAllByText } = render(<AppMakerLens />);
-    await waitFor(() => expect(getByText(/No apps yet/i)).toBeInTheDocument());
+    await act(async () => { goToTab(getByText, 'Compute'); });
+    await waitFor(() => expect(getByText('Scaffold App')).toBeInTheDocument());
 
     await act(async () => { fireEvent.click(getByText('Scaffold App')); });
     await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeTruthy());

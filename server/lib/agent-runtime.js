@@ -169,11 +169,13 @@ function readAffect(entity_id, ctx) {
     if (!engine) return { status: "unavailable", reason: "engine not booted" };
     const state = engine.getQualiaState?.(entity_id);
     const summary = engine.getQualiaSummary?.(entity_id);
-    if (!state) return {
-      status: "stale",  // Honest — no state means Qualia OS hasn't been primed for this entity yet
-      reason: "entity_not_primed",
-      hint: "Call emergent_register to prime qualia OS for this entity",
-    };
+    if (!state) {
+      return {
+        status: "stale",  // Honest — no state means Qualia OS hasn't been primed for this entity yet
+        reason: "entity_not_primed",
+        hint: "Call emergent_register to prime qualia OS for this entity",
+      };
+    }
     return {
       status: "available",
       entity_id,

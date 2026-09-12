@@ -28,7 +28,12 @@ import { ConsultingWorkbench } from '@/components/consulting/ConsultingWorkbench
 import { type ConsultingView, type ModeTab } from '@/components/consulting/consulting-shared';
 
 const VIEWS: { id: ConsultingView; label: string; keys: string; hint: string; icon: typeof Lightbulb }[] = [
-  { id: 'engagements', label: 'Engagements', keys: '1', hint: 'Engagement records', icon: Briefcase },
+  // Labeled "Engagement Records" (not the bare "Engagements") to disambiguate
+  // from the "Tracker" tab below — this is the generic DTU-backed CRUD list
+  // (briefs/scope/fee terms), distinct storage from EngagementTracker's live
+  // STATE.consultingLens.engagements. See ConsultingDeskPanel's matching
+  // subtitle when this tab is active. docs/lens-specs/consulting-capability-map.md.
+  { id: 'engagements', label: 'Engagement Records', keys: '1', hint: 'Engagement records', icon: Briefcase },
   { id: 'proposals', label: 'Proposals', keys: '2', hint: 'Proposals', icon: FileText },
   { id: 'deliverables', label: 'Deliverables', keys: '3', hint: 'Deliverables', icon: Target },
   { id: 'clients', label: 'Clients', keys: '4', hint: 'Clients', icon: Users },

@@ -17,7 +17,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORLD_PAGE = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09) moved this wiring out of app/lenses/world/page.tsx
+// (now a thin Unity-viewport shell) into components/world/WorldOsSurface.tsx —
+// see the file comment above.
+const WORLD_PAGE = path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx');
 const ANNOUNCER = path.resolve(__dirname, '..', 'components', 'accessibility', 'ScreenReaderAnnouncer.tsx');
 
 describe("combat:kill screen-reader bridge (audit item #13)", () => {

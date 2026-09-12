@@ -142,13 +142,13 @@ describe("announcements.get (public read)", () => {
   it("rejects missing id", async () => {
     const r = await call("get", memberCtx(db), {});
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "missing_id");
+    assert.equal(r.error, "missing_id");
   });
 
   it("unknown id returns unknown_announcement", async () => {
     const r = await call("get", memberCtx(db), { id: "ann_nope" });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "unknown_announcement");
+    assert.equal(r.error, "unknown_announcement");
   });
 });
 
@@ -173,8 +173,8 @@ describe("announcements broadcast dequeue marks last_broadcast_at", () => {
 
 describe("announcements macros degrade without a db", () => {
   it("list/get/post return no_db when ctx.db is missing", async () => {
-    assert.equal((await call("list", { actor: { role: "admin" } }, {})).reason, "no_db");
-    assert.equal((await call("get", { actor: { role: "admin" } }, { id: "x" })).reason, "no_db");
-    assert.equal((await call("post", { actor: { role: "admin" } }, { kind: "news", title: "x", body: "y" })).reason, "no_db");
+    assert.equal((await call("list", { actor: { role: "admin" } }, {})).error, "no_db");
+    assert.equal((await call("get", { actor: { role: "admin" } }, { id: "x" })).error, "no_db");
+    assert.equal((await call("post", { actor: { role: "admin" } }, { kind: "news", title: "x", body: "y" })).error, "no_db");
   });
 });

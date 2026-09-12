@@ -11,6 +11,10 @@ vi.mock('@/components/lens/LensShell', () => ({
 vi.mock('@/components/lens/ManifestActionBar', () => ({
   ManifestActionBar: () => null,
 }));
+// The real hook calls useKeyboard(), which requires a KeyboardProvider
+// parent. Production mounts that via the lens shell; this isolated page
+// test doesn't, so stub the keyboard binding to a no-op.
+vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: vi.fn() }));
 
 // The compose tab's RecipientSearchInput hits `api.get('/api/social/users/search', ...)`
 // via axios (not the raw `fetch` this file already stubs) — mock it separately

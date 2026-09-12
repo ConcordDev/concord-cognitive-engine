@@ -16,7 +16,12 @@ import { GameModesHotbarGroup } from '@/components/world/GameModesHotbarGroup';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HB = path.resolve(__dirname, '..', 'components', 'world', 'GameModesHotbarGroup.tsx');
-const WORLD = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport-first shell (WorldUnityShell); the former ~7.6k LOC HUD/OS
+// monolith — where this component actually mounts — moved to
+// components/world/WorldOsSurface.tsx (opened via Menu -> Advanced OS tools
+// or ?surface=os, still inside /lenses/world).
+const WORLD = path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx');
 
 describe('Phase DA4 — Game modes hotbar', () => {
   const src = readFileSync(HB, 'utf8');

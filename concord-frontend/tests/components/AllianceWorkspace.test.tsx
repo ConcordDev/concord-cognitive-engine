@@ -15,6 +15,8 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   motion: {
     // eslint-disable-next-line react/display-name
     div: React.forwardRef(({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>, ref: React.Ref<HTMLDivElement>) =>

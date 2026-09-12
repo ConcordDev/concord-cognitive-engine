@@ -50,10 +50,14 @@ describe("F0 resource + rollback gates", () => {
 });
 
 describe("P7 coding loop", () => {
-  it("plans coding_loop with search and verify steps", () => {
+  it("plans the closed PCE coding loop with an index + verify step", () => {
+    // planCodingLoop was moved to the PCE-based closed loop (2026-09-07):
+    // repo_graph_index -> pce_execute -> coding_loop_verify.
     const plan = planCodingLoop("refactor mission runtime for better tests");
     assert.equal(plan.ok, true);
-    assert.equal(plan.template, "coding_loop");
+    assert.equal(plan.template, "coding_loop_closed");
+    assert.equal(plan.planner, "pce");
+    assert.ok(plan.steps.some((s) => s.tool === "repo_graph_index"));
     assert.ok(plan.steps.some((s) => s.tool === "coding_loop_verify"));
   });
 

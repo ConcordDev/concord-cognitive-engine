@@ -96,6 +96,12 @@ const REVIEWED = {
   // the gate runs and bound via `?` regardless. No user string reaches SQL text.
   "domains/hermes-memory.js": 2,
   "domains/literary.js": 2,
+  // domains/predict.js (7) — every site is `${TICKET_WITH_OUTCOME_SQL} ...`
+  // (a module-constant SELECT+JOIN) followed by a WHERE built from
+  // `clauses.push("t.<col> = ?")` literal fragments gated by presence checks;
+  // every value goes into `args` and is bound via `.all(...args[, limit])`.
+  // `LIMIT ?` is bound. No user string reaches SQL text.
+  "domains/predict.js": 7,
   "domains/profile.js": 2,
   "domains/repair.js": 1,
   "domains/sessions.js": 3,
@@ -122,10 +128,20 @@ const REVIEWED = {
   // string with zero embedded data; every value is bound via the params array.
   "emergent/forgetting-engine.js": 1,
   "emergent/nemesis-cycle.js": 1,
+  // emergent/store.js (1) — `cols` = Object.keys(row) where `row` is a
+  // literal object with hardcoded key names (emergent_id, name, role, ...);
+  // `placeholders` is all "?", `updateClause` is `<col> = excluded.<col>`
+  // over those same literal cols. Values bound via .run(cols.map(c => row[c])).
+  "emergent/store.js": 1,
   "guidance.js": 5,
   "lib/account-lifecycle.js": 1,
   "lib/achievement-engine.js": 1,
   "lib/activitypub-bridge.js": 1,
+  // lib/agent-runtime.js (3) — each interpolates an identifier from
+  // `cols.find(c => c === "emergent_id" || c === "entity_id" || c === "user_id")`
+  // (or a filter against it), where `cols` is `PRAGMA table_info(...)` output —
+  // the DB's own column names, never request data. The entity id is bound with ?.
+  "lib/agent-runtime.js": 3,
   "lib/agent-marathon.js": 1,
   "lib/agent-self.js": 1,
   "lib/ambient-chat.js": 1,
@@ -159,6 +175,10 @@ const REVIEWED = {
   "lib/dtu-operations-log.js": 2,
   "lib/dtu-portability.js": 1,
   "lib/dtu-protection.js": 4,
+  // lib/dtu-store.js (1) — boot-time DDL: `${col} ${type}` iterate a hardcoded
+  // literal array ([["owner_user_id","TEXT"], ...]) in an ALTER TABLE ADD
+  // COLUMN loop (SQLite has no ADD COLUMN IF NOT EXISTS). No request data.
+  "lib/dtu-store.js": 1,
   "lib/dx/severity-evo.js": 1,
   "lib/ecosystem/score-engine.js": 1,
   "lib/federation-mesh.js": 1,
@@ -173,6 +193,10 @@ const REVIEWED = {
   "lib/inference/thread-manager.js": 2,
   "lib/lattice-fork.js": 1,
   "lib/lattice-quest-composer.js": 1,
+  // lib/lattice-seed.js (1) — listPages' `clauses` = ["user_id = ?"] plus an
+  // optional literal "source_id = ?" / "status = ?"; values are Number()/
+  // String()-coerced into `params` and bound via .all(...params).
+  "lib/lattice-seed.js": 1,
   "lib/lfg.js": 1,
   "lib/literary-vec.js": 1,
   "lib/long-horizon-planner.js": 1,
@@ -199,6 +223,25 @@ const REVIEWED = {
   "lib/quest-archetype-bias.js": 1,
   "lib/realm-access.js": 1,
   "lib/robotics-persistence.js": 1,
+  // lib/runtime/adaptive-field-compression.js (1) — `SELECT COUNT(*) FROM
+  // ${table}` where `table` is a string literal ("dhtp_field_outcomes" /
+  // "dhtp_learned_policies") passed to a local count() helper. No input.
+  "lib/runtime/adaptive-field-compression.js": 1,
+  // lib/runtime/causal-memory.js (1) — retrieveRelevantLessons' `clauses` are
+  // fixed literal "<col> LIKE ?" fragments gated by presence checks; the
+  // `%...%` wildcards are param VALUES bound with ?, never spliced into SQL;
+  // `cap` is Math.min(Math.max(limit,1),20) — always a number.
+  "lib/runtime/causal-memory.js": 1,
+  // lib/runtime/cognitive-savings-ledger.js (2) — site 1's `placeholders` is
+  // idList.map(() => "?").join(",") (values .all(...idList)); site 2's `where`
+  // is a ternary over literal "mission_id = ?" / "created_at >= ?"[" AND
+  // path = ?"] fragments, values bound via .get(...params).
+  "lib/runtime/cognitive-savings-ledger.js": 2,
+  // lib/runtime/memory-graph.js (3) — site 1's `clauses` are literal
+  // "ref_id = ?" / "kind = ?" / "memory_class = ?"; sites 2-3 are the
+  // fixed-count "?"-join IN-clause idiom over the frontier/ids arrays,
+  // spread-bound via .all(...).
+  "lib/runtime/memory-graph.js": 3,
   "lib/scheme-overhear.js": 1,
   "lib/secrets.js": 2,
   "lib/security-ingest.js": 1,

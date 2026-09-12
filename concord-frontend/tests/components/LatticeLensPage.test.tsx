@@ -28,6 +28,8 @@ vi.mock('@/components/lattice/AuditAndDrift', () => ({ AuditAndDrift: () => Reac
 
 // framer-motion → passthrough so the AnimatePresence tab switch is synchronous.
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => false,
+  MotionConfig: ({ children }: { children?: import('react').ReactNode }) => children,
   AnimatePresence: ({ children }: React.PropsWithChildren) => React.createElement(React.Fragment, null, children),
   motion: new Proxy({}, {
     get: () => ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) =>

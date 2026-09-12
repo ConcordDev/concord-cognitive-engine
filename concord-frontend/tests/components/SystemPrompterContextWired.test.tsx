@@ -22,7 +22,10 @@ import { fileURLToPath } from 'node:url';
 import SystemPrompter from '@/components/world/SystemPrompter';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WORLD = path.resolve(__dirname, '..', '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport shell; this wiring lives in components/world/WorldOsSurface.tsx
+// (already referenced by this file's own header comment above).
+const WORLD = path.resolve(__dirname, '..', '..', 'components', 'world', 'WorldOsSurface.tsx');
 
 describe('SystemPrompter — reacts to a real concordia:context-update dispatch', () => {
   afterEach(() => cleanup());

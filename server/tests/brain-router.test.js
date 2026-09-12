@@ -6,7 +6,7 @@
  *   - getBrainPriority() priority level resolution
  *   - resolveBrain() system→brain name resolution
  */
-import { describe, it, beforeEach, mock } from "node:test";
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import { getBrainPriority, resolveBrain } from "../lib/brain-router.js";
@@ -141,6 +141,32 @@ describe("resolveBrain", () => {
 // ── preloadBrains ───────────────────────────────────────────────────────────
 
 describe("preloadBrains", () => {
+  // BRAIN_CONFIG's default URLs are docker-compose hostnames
+  // (ollama-conscious, etc.) that don't resolve outside that network —
+  // this file's own header comment promises "mocked fetch" but never wired
+  // one up, so every test below made a REAL fetch() per brain per endpoint,
+  // each only bounded by the 5-minute AbortSignal.timeout in
+  // lib/brain-router.js#preloadBrains's model-pull call. Across 4 tests x 5
+  // brains that's a real, reproducible multi-minute-to-tens-of-minutes stall
+  // (worse on a resolver that's slow to NXDOMAIN an unknown host rather than
+  // an instant ECONNREFUSED), not a flake — it just never surfaced before
+  // because this whole gate never ran to completion. Mock fetch to fail
+  // fast, matching the header's original intent and the "will fail in test
+  // env" comment two lines below (which was true in outcome, just not fast).
+  // Resolve with ok:false rather than throwing: preloadBrains only retries
+  // (with a real 5s+15s setTimeout backoff) on a THROWN fetch error — a
+  // resolved-but-failed response takes the fast `if (!res.ok) { failed.push
+  // (...); continue; }` path instead, so tests stay fast.
+  let restoreFetch;
+  beforeEach(() => {
+    restoreFetch = globalThis.fetch;
+    mock.method(globalThis, "fetch", async () => ({ ok: false, status: 503 }));
+  });
+  afterEach(() => {
+    mock.restoreAll();
+    globalThis.fetch = restoreFetch;
+  });
+
   it("is exported as a function", async () => {
     const mod = await import("../lib/brain-router.js");
     assert.equal(typeof mod.preloadBrains, "function");

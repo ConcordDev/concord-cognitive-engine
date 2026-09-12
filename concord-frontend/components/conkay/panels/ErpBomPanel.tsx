@@ -216,7 +216,7 @@ export function ErpBomPanel() {
   const lines = useMemo(() => {
     const raw = bom?.lines || [];
     const q = filter.trim().toLowerCase();
-    let list = !q
+    const list = !q
       ? raw
       : raw.filter((l) => {
           const hay = `${l.partNumber || ''} ${l.name || ''} ${l.material || ''} ${l.vendorId || ''}`.toLowerCase();

@@ -54,7 +54,7 @@ export function parseFormula(raw) {
     if (m.index !== last) {
       // allow OH suffix style by continuing; reject unknown chars
       const gap = s.slice(last, m.index);
-      if (!/^[\s\-]*$/.test(gap)) {
+      if (!/^[\s-]*$/.test(gap)) {
         return { ok: false, error: `bad_token:${gap}`, code: 'BAD_FORMULA' };
       }
     }
@@ -67,9 +67,9 @@ export function parseFormula(raw) {
     tokens.push({ symbol: sym, count });
     last = m.index + m[0].length;
   }
-  if (!tokens.length || last !== s.replace(/[\s\-]/g, '').length && last < s.length && /[A-Za-z0-9]/.test(s.slice(last))) {
+  if (!tokens.length || last !== s.replace(/[\s-]/g, '').length && last < s.length && /[A-Za-z0-9]/.test(s.slice(last))) {
     // re-validate: strip spaces/dashes and re-parse length
-    const compact = s.replace(/[\s\-]/g, '');
+    const compact = s.replace(/[\s-]/g, '');
     const tokens2 = [];
     const re2 = /([A-Z][a-z]?)(\d*)/g;
     let m2;
@@ -125,7 +125,7 @@ export function parseMolecularIntent(textOrFormula) {
   }
 
   // Direct formula
-  const compact = raw.replace(/[\s\-]/g, '');
+  const compact = raw.replace(/[\s-]/g, '');
   if (/^[A-Z][a-z]?(?:\d*[A-Z][a-z]?\d*)*$/.test(compact)) {
     const p = parseFormula(compact);
     if (p.ok) return { ...p, text: raw };
@@ -240,10 +240,12 @@ function placeC60() {
   const phi = (1 + Math.sqrt(5)) / 2;
   const raw = [];
   for (const [a, b] of [[0, 1], [1, 0]]) {
-    for (const s1 of [-1, 1]) for (const s2 of [-1, 1]) {
-      raw.push([0, s1 * a, s2 * b * phi]);
-      raw.push([s1 * a, s2 * b * phi, 0]);
-      raw.push([s1 * b * phi, 0, s2 * a]);
+    for (const s1 of [-1, 1]) {
+      for (const s2 of [-1, 1]) {
+        raw.push([0, s1 * a, s2 * b * phi]);
+        raw.push([s1 * a, s2 * b * phi, 0]);
+        raw.push([s1 * b * phi, 0, s2 * a]);
+      }
     }
   }
   // Truncated-icosahedron-ish: seed icosa verts + mid-edge points scaled to ~3.5Å radius

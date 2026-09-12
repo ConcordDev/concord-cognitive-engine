@@ -62,6 +62,7 @@ const AUTH_NAMES = new Set([
   "requireAdminRole",
   "requireRole",
   "adminGate", // local alias for requireRole("owner","admin","sovereign") (e.g. routes/brains.js)
+  "kitchenGuestOrAuth", // routes/combat.js + quest-authority.js: wraps auth() — always calls it; only extra is a dev-only (NODE_ENV!=="production") "Bearer unity-local-guest" shortcut for the Unity Editor REST bind. Production === auth.
   "requireApiKey",
   "requireToken",
   "requireSession",

@@ -6408,7 +6408,12 @@ const AUTH = {
 // security-critical mutations (is_active=0, password change) call
 // `bustUserCache()` explicitly for immediate effect.
 const _userCache = new LruMap(50_000);
-const _USER_CACHE_TTL_MS = Number(process.env.CONCORD_USER_CACHE_TTL_MS) || 5_000;
+// `|| 5_000` would silently ignore an explicit `CONCORD_USER_CACHE_TTL_MS=0`
+// (0 is falsy in JS) and fall back to the 5s default anyway — an operator
+// or test trying to disable the cache outright would have no way to. Only
+// fall back when the value is genuinely unset/non-numeric.
+const _parsedUserCacheTtlMs = Number(process.env.CONCORD_USER_CACHE_TTL_MS);
+const _USER_CACHE_TTL_MS = Number.isFinite(_parsedUserCacheTtlMs) ? _parsedUserCacheTtlMs : 5_000;
 function bustUserCache(userId) {
   if (userId) _userCache.delete(String(userId));
   else _userCache.clear();
@@ -8171,6 +8176,7 @@ function authMiddleware(req, res, next) {
           req.authMethod = "cookie";
           // Update sliding idle timer so active sessions stay alive.
           if (decoded.jti) _SESSION_ACTIVITY.touch(decoded.jti);
+          try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
           return _sovereignGate();
         }
       }
@@ -8185,6 +8191,7 @@ function authMiddleware(req, res, next) {
           req.user = user;
           req.authMethod = "jwt";
           if (decoded.jti) _SESSION_ACTIVITY.touch(decoded.jti);
+          try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
           return _sovereignGate();
         }
       }
@@ -8221,6 +8228,7 @@ function authMiddleware(req, res, next) {
         req.apiKeyData = keyData;
         req.authMethod = "apiKey";
         auditLog("auth", "api_key_used", { userId: user.id, keyName: keyData.name, ip: req.ip });
+        try { _markActivity({ authed: true }); } catch (_e) { /* best-effort */ }
         return _sovereignGate();
       }
     }
@@ -59108,6 +59116,26 @@ app.get("/api/runtime/dila/config", requireRole("owner", "admin", "sovereign", "
   res.json({ ok: true, entries: listConfig(db, req.query.prefix || "") });
 }));
 
+// Deployment profile — local / cloud-hybrid / air-gapped (lib/runtime/deployment-profiles.js).
+// Built alongside the DILA runtime config surface above but never wired into
+// a route (wiring-gate connection-debt fix): an operator had no way to
+// actually switch profiles short of hand-editing CONCORD_DEPLOYMENT_PROFILE
+// and restarting. GET mirrors the read-only summary; POST applies one of the
+// three frozen PROFILES (local/hybrid/airgapped), which persists the choice
+// via runtime-config and — for the current process — flips
+// CONCORD_DILA_WORKER_ALLOWLIST immediately.
+app.get("/api/runtime/dila/deployment-profile", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { profileSummary } = await import("./lib/runtime/deployment-profiles.js");
+  res.json(profileSummary(db));
+}));
+
+app.post("/api/runtime/dila/deployment-profile", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
+  const { applyDeploymentProfile } = await import("./lib/runtime/deployment-profiles.js");
+  const result = applyDeploymentProfile(db, req.body?.profileId || "local");
+  if (!result.ok) return res.status(400).json(result);
+  res.json(result);
+}));
+
 app.get("/api/runtime/dila/improvements", requireRole("owner", "admin", "sovereign", "founder"), asyncHandler(async (req, res) => {
   const { listImprovementProposals } = await import("./lib/runtime/self-improvement.js");
   res.json({ ok: true, proposals: listImprovementProposals(db, parseInt(req.query.limit, 10) || 20) });
@@ -73549,7 +73577,23 @@ if (server) {
   try {
     const godotGatewayHandle = mountGodotGateway(server, {
       verifyToken,
-      getUser: AuthDB.getUser,
+      // MUST stay wrapped, never `getUser: AuthDB.getUser` — that detaches the
+      // method from its receiver, and `AuthDB.getUser` calls
+      // `this._getUserUncached(userId)` on a cache MISS. Detached in strict-mode
+      // ESM `this` is undefined, so the miss path throws
+      // `TypeError: Cannot read properties of undefined (reading '_getUserUncached')`,
+      // which godot-gateway.js#tryAuth swallows in its `catch { user = null }`
+      // and reports as the misleading `auth:error{reason:"user_not_found"}` —
+      // for a user that genuinely exists and just registered.
+      //
+      // This read as a years-long "flake" because the bug is cache-shaped: the
+      // HTTP register that mints the token calls AuthDB.getUser correctly bound
+      // and warms `_userCache`, and getUser's cache branch returns EARLY without
+      // ever touching `this`. So a fast register→WS-auth round trip hits the warm
+      // cache and passes; once the 5s TTL lapses (full-suite CI contention) the
+      // miss path runs and every handshake fails. `CONCORD_USER_CACHE_TTL_MS=0`
+      // makes it fail 100% of the time. Verified with a standalone repro.
+      getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,
@@ -73570,7 +73614,11 @@ if (server) {
   try {
     const unityGatewayHandle = mountUnityGateway(server, {
       verifyToken,
-      getUser: AuthDB.getUser,
+      // Same detachment hazard as the Godot mount above — see that comment.
+      // This site matters just as much: lib/unity-bridge.js extends
+      // godot-gateway.js, so an unbound getUser here breaks Unity client auth
+      // on /unity-ws for exactly the same cache-miss reason.
+      getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
       db: STATE?.db || db,

@@ -252,8 +252,9 @@ export function AppsPanel() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="w-6 h-6 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-8 gap-2" role="status" aria-live="polite">
+            <div className="w-6 h-6 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+            <span className="text-sm text-gray-400">Loading your apps…</span>
           </div>
         ) : appsError ? (
           <div role="alert" className="text-center py-6">

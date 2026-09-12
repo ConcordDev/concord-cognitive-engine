@@ -171,7 +171,16 @@ jobs:
           # past Node's default ~3.8GB. Match the build step's heap.
           NODE_OPTIONS: --max-old-space-size=6144
           NODE_ENV: test
-        run: npm run test:coverage
+        # test:coverage:ci wraps the raw `vitest run --coverage` in
+        # scripts/ci-test-coverage-tolerant.mjs — tolerates ONLY a known,
+        # open upstream Vitest 4.1.x worker-pool teardown race
+        # ("[vitest-worker]: Closing rpc while ... was pending",
+        # vitest-dev/vitest#8649/#9872/#9736) that intermittently makes an
+        # otherwise-fully-passing run exit 1. Real test failures and real
+        # coverage-threshold violations are never tolerated — see that
+        # script's header for the exact, narrow decision logic. Local dev
+        # still uses the raw `npm run test:coverage`, unchanged.
+        run: npm run test:coverage:ci
 
       - name: Frontend diff-coverage gate (changed files must be tested)
         if: github.event_name == 'pull_request'

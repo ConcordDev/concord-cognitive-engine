@@ -1,8 +1,8 @@
-// server/tests/research-frontier/acceptance.test.js
+// server/tests/research-frontier/acceptance.manual.js
 //
 // D.5 — Independent evaluator for Research Frontier organ.
 //
-// Run with: node server/tests/research-frontier/acceptance.test.js
+// Run with: node server/tests/research-frontier/acceptance.manual.js
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

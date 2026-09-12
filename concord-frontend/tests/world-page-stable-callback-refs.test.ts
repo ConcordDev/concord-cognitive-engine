@@ -42,7 +42,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx'), 'utf8');
+const src = readFileSync(path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx'), 'utf8');
 
 describe('world lens page — stable callback/prop identity into child effects', () => {
   it('passes the setWalkerNpcs setter directly to WalkerNpcInjector, not wrapped in a fresh arrow function', () => {

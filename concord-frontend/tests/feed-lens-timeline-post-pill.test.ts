@@ -25,8 +25,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Feed lens de-stacking (2026-09) moved this wiring out of app/lenses/feed/page.tsx
+// into components/feed/FeedTimelinePanel.tsx.
 const pageSrc = readFileSync(
-  path.resolve(__dirname, '..', 'app/lenses/feed/page.tsx'),
+  path.resolve(__dirname, '..', 'components/feed/FeedTimelinePanel.tsx'),
   'utf8'
 );
 const socketSrc = readFileSync(

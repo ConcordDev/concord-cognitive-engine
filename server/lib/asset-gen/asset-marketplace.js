@@ -205,6 +205,17 @@ export async function mintGeneratedAssetAsDtu(ctx, assetRecord, opts = {}) {
   if (dtu && dtu.scope !== "personal") {
     dtu.scope = "personal";
   }
+  // Second known dtu.create gap, same shape as the scope quirk above:
+  // dtu.create doesn't grant a license, so a fresh DTU defaults to
+  // { scopes: ["private"] } (lib/dtu-licenses.js#normalizeLicense) — and
+  // marketplace.list's dtuAssertScope(dtu, "marketplace_sale") gate (added
+  // ea3dc18ba, after this module was written) refuses to list a DTU that
+  // never explicitly granted that scope, owner or not. An asset this
+  // function just finished honestly FEA-gating exists specifically to be
+  // sold, so grant it here the same way scope:"personal" is granted above.
+  if (dtu && !(dtu.license?.scopes || []).includes("marketplace_sale")) {
+    dtu.license = { ...(dtu.license || {}), scopes: ["private", "marketplace_sale"] };
+  }
 
   return { ok: true, dtuId: dtu?.id, verified: feaOk, feaSummary };
 }

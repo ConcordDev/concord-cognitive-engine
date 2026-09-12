@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
 'use client';
+
+import type { ReactNode } from 'react';
 
 /**
  * Observability + absorbed analytics/plugins/substrate/health tab panels.

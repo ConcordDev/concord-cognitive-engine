@@ -10,7 +10,12 @@ import { dispatchBuildingInteractEvent } from '@/lib/world-lens/building-interac
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROUTER = path.resolve(__dirname, '..', 'components', 'world', 'StationInteractionRouter.tsx');
-const WORLD = path.resolve(__dirname, '..', 'app', 'lenses', 'world', 'page.tsx');
+// World lens de-stacking (2026-09): app/lenses/world/page.tsx is now a thin
+// Unity-viewport-first shell (WorldUnityShell); the former ~7.6k LOC HUD/OS
+// monolith — where this component actually mounts — moved to
+// components/world/WorldOsSurface.tsx (opened via Menu -> Advanced OS tools
+// or ?surface=os, still inside /lenses/world).
+const WORLD = path.resolve(__dirname, '..', 'components', 'world', 'WorldOsSurface.tsx');
 
 describe('Phase DA2 — Station interaction router', () => {
   it('listens for concordia:building-interact', () => {

@@ -468,7 +468,7 @@ export const MCP_TOOLS = [
   },
   {
     name: "dtu_retrieval_eval",
-    description: "Run deterministic DTU retrieval quality eval (precision/recall, stale exclusion).",
+    description: "Run a deterministic DTU retrieval-quality evaluation (precision/recall, stale exclusion).",
     inputSchema: SCHEMA_DESCRIPTION_BASE
   },
   {
@@ -2138,7 +2138,7 @@ async function organCall(organPath, toolName, args, organLabel) {
                   return;
                 }
               }
-            } catch {}
+            } catch { /* noop */ }
           }
           resolve({ ok: false, error: organLabel + ": no valid response", raw: out.slice(0, 500), stderr: err.slice(0, 200), f0_trace_id: f0TraceId });
         } catch (e) {

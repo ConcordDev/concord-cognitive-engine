@@ -1,8 +1,8 @@
-// server/tests/concordia/acceptance.test.js
+// server/tests/concordia/acceptance.manual.js
 //
 // I.5 — Independent evaluator for Concordia integration organ (final audit).
 //
-// Run with: node server/tests/concordia/acceptance.test.js
+// Run with: node server/tests/concordia/acceptance.manual.js
 
 import assert from "node:assert/strict";
 

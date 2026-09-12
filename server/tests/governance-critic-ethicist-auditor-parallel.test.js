@@ -46,6 +46,13 @@ let roleBehavior = {
   AUDITOR: { delayMs: 0, pass: true, reason: "ok" },
 };
 
+// Per-role request arrival / response timestamps, captured by the fake brain
+// servers below. This is what makes the concurrency proof contention-proof —
+// see the "last arrival precedes first completion" test for why wall-clock
+// elapsed time is the wrong instrument on a shared CI runner.
+let roleTimings = {};
+function resetRoleTimings() { roleTimings = {}; }
+
 function roleForPrompt(promptText) {
   if (promptText.includes("CRITIC")) return "CRITIC";
   if (promptText.includes("ETHICIST")) return "ETHICIST";
@@ -64,7 +71,12 @@ function makeFakeBrainServer() {
       const role = roleForPrompt(userMsg?.content || "");
       const behavior = (role && roleBehavior[role]) || { delayMs: 0, pass: true, reason: "unmatched" };
 
+      // Stamp when this role's request ARRIVED — i.e. when the server issued
+      // the call — before the artificial delay runs.
+      if (role) roleTimings[role] = { arrivedAt: Date.now(), completedAt: null };
+
       const respond = () => {
+        if (role && roleTimings[role]) roleTimings[role].completedAt = Date.now();
         if (behavior.error) {
           res.writeHead(500, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "simulated failure" }));
@@ -141,22 +153,49 @@ function makeDtu(idSuffix) {
 }
 
 describe("validateOrganismDTU — critic/ethicist/auditor run concurrently", () => {
-  it("wall-clock time is close to the SLOWEST role's delay, not the sum of all three", async () => {
+  // Rewritten 2026-09-11: this used to assert `elapsedMs < 400` on the theory
+  // that a serial run needs >= 150+200+100 = 450ms. That inference is only
+  // valid on an idle machine. Under full-suite CI contention the observed
+  // elapsed time was 1422ms — which exceeds even the 450ms SERIAL figure, so
+  // the measurement had stopped discriminating between the two cases entirely
+  // and was reporting the runner's load, not the code's behaviour.
+  //
+  // Raising the threshold would have been the wrong fix: it keeps a weak
+  // indirect proxy and just makes it quieter. Instead this now proves the
+  // property DIRECTLY, from timestamps the fake brain servers record.
+  //
+  // The crisp invariant: under concurrent dispatch, all three requests are in
+  // flight before any of them answers, so the LAST arrival precedes the FIRST
+  // completion. Under sequential dispatch that is impossible — role 2's
+  // request cannot even arrive until role 1's response has completed. It is a
+  // boolean fact about overlap, so an arbitrarily slow or contended runner
+  // stretches every timestamp equally and cannot flip the verdict.
+  it("all three role requests are in flight at once (last arrival precedes first completion)", async () => {
     roleBehavior = {
       CRITIC: { delayMs: 150, pass: true, reason: "falsifiable" },
       ETHICIST: { delayMs: 200, pass: true, reason: "no violation" },
       AUDITOR: { delayMs: 100, pass: true, reason: "provenance clean" },
     };
-    const start = Date.now();
+    resetRoleTimings();
     const result = await T.validateOrganismDTU(makeDtu("timing"), "test-submitter");
-    const elapsedMs = Date.now() - start;
 
-    // Sequential would be >= 150+200+100 = 450ms. Parallel should land
-    // close to the slowest single role (200ms) plus normal overhead.
-    // Generous margin (well under the 450ms a serial run would need) so
-    // this isn't flaky under CI load, while still being a real proof of
-    // concurrency, not just a passing shape check.
-    assert.ok(elapsedMs < 400, `expected concurrent execution (<400ms), took ${elapsedMs}ms`);
+    const roles = ["CRITIC", "ETHICIST", "AUDITOR"];
+    for (const r of roles) {
+      assert.ok(roleTimings[r], `no request recorded for ${r} — the fake brain never saw this role`);
+      assert.ok(roleTimings[r].completedAt, `${r} request never completed`);
+    }
+
+    const lastArrival = Math.max(...roles.map((r) => roleTimings[r].arrivedAt));
+    const firstCompletion = Math.min(...roles.map((r) => roleTimings[r].completedAt));
+
+    assert.ok(
+      lastArrival <= firstCompletion,
+      "expected concurrent dispatch: every role's request should be in flight before any " +
+      `response is sent. Last arrival was ${lastArrival - Math.min(...roles.map((r) => roleTimings[r].arrivedAt))}ms ` +
+      `after the first, but the first completion landed ${firstCompletion - Math.min(...roles.map((r) => roleTimings[r].arrivedAt))}ms in. ` +
+      `Timings: ${JSON.stringify(roleTimings)}`,
+    );
+
     assert.equal(result.allPassed, true);
   });
 

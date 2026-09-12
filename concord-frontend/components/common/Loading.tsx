@@ -16,9 +16,9 @@ export function Loading({ size = 'md', text, fullScreen = false }: LoadingProps)
   };
 
   const content = (
-    <div className="flex flex-col items-center justify-center gap-3">
-      <Loader2 className={`${sizeStyles[size]} text-neon-cyan animate-spin`} />
-      {text && <p className="text-sm text-gray-400">{text}</p>}
+    <div className="flex flex-col items-center justify-center gap-3" role="status" aria-live="polite">
+      <Loader2 className={`${sizeStyles[size]} text-neon-cyan animate-spin`} aria-hidden="true" />
+      {text ? <p className="text-sm text-gray-400">{text}</p> : <span className="sr-only">Loading…</span>}
     </div>
   );
 
