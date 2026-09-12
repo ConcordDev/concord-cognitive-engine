@@ -124,7 +124,8 @@ namespace Concordia
     /// <summary>Kenney hold mouth. Geometry is dressing; the plaque stays honest.</summary>
     public class DungeonGate : MonoBehaviour
     {
-        public string holdName = "the hold";
+        public string encounterId = "hollow_warden";
+        public string holdName = "The Hollow Warden";
         public Vector3 inside;
         public Vector3 mouth;
         public bool inHold;

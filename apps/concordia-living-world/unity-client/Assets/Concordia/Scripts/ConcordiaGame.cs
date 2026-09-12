@@ -393,8 +393,11 @@ namespace Concordia
             QuestLog.NoteLocation("dungeon", "hold");
             if (hold.inHold)
             {
-                ConcordiaHUD.Announce("A hold", "Kenney tiles. No authored name.");
-                return "You enter the hold. Live steel if the world allows it.";
+                var client = ConcordClient.Live;
+                if (client != null) client.SendDungeonOpen(hold.encounterId);
+                var title = string.IsNullOrEmpty(hold.holdName) ? "The Hollow Warden" : hold.holdName;
+                ConcordiaHUD.Announce(title, string.IsNullOrEmpty(ConcordClient.DungeonLine) ? "the hold opened" : ConcordClient.DungeonLine);
+                return "You enter " + title + ".";
             }
             return "You leave the hold.";
         }

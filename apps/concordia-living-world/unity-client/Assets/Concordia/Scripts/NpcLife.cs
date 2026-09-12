@@ -10,7 +10,7 @@ namespace Concordia
     /// </summary>
     public class NpcLife : MonoBehaviour
     {
-        public enum Job { Wander, Stall, Sit, Sweep, Watch }
+        public enum Job { Wander, Stall, Sit, Sweep, Watch, Companion }
         public Job job = Job.Wander;
         public bool pinned;
         public string act = "idle";
@@ -70,6 +70,28 @@ namespace Concordia
                 Hold();
                 _person?.SetGait(0f, true);
                 act = "watch";
+                return;
+            }
+
+            if (job == Job.Companion)
+            {
+                Show(true);
+                var p = ConcordiaPlayer.Live;
+                if (p)
+                {
+                    act = "follow";
+                    var follow = p.transform.position - p.transform.forward * 1.6f;
+                    follow.y = transform.position.y;
+                    if (Vector3.Distance(transform.position, follow) > 2.2f)
+                        Walk(follow, 4.2f);
+                    else
+                    {
+                        Hold();
+                        _person?.SetGait(0f, true);
+                    }
+                }
+                else
+                    Hold();
                 return;
             }
 

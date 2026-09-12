@@ -583,8 +583,40 @@ namespace Concordia
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
             LastEvent = Canon.Get(World).title + ": a pack thinned.";
             var who = string.IsNullOrEmpty(id) ? "someone" : id;
-            NoteAct(who + " fell. Heirs would carry this — kernel npc_legacy needs /unity-ws.");
-            ConcordiaHUD.Announce("A thread passes", who + " is dead. Inheritance is kernel-side.");
+            string heirName = "";
+            string heirId = "";
+            var deadPerson = WorldBook.FindPerson(World, id);
+            var fac = deadPerson != null ? deadPerson.faction_id : "";
+            var guests = UnityEngine.Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude);
+            GuestNpc heir = null;
+            for (int i = 0; i < guests.Length; i++)
+            {
+                var g = guests[i];
+                if (!g) continue;
+                var key = Bonds.Key(g);
+                if (string.IsNullOrEmpty(key) || string.Equals(key, id, StringComparison.OrdinalIgnoreCase)) continue;
+                if (WorldMemory.IsDead(World, key)) continue;
+                var gp = WorldBook.FindPerson(World, key);
+                if (!string.IsNullOrEmpty(fac) && gp != null && gp.faction_id == fac)
+                {
+                    heir = g;
+                    break;
+                }
+                if (heir == null) heir = g;
+            }
+            if (heir != null)
+            {
+                heirName = heir.def != null ? heir.def.name : heir.name;
+                heirId = Bonds.Key(heir);
+                WorldMemory.NoteHeir(World, who, heirName);
+            }
+            var line = string.IsNullOrEmpty(heirName)
+                ? who + " fell. No heir stood."
+                : who + " fell. " + heirName + " carries the thread.";
+            NoteAct(line);
+            ConcordiaHUD.Announce("A thread passes", line);
+            var client = ConcordClient.Live;
+            if (client != null) client.SendInheritance(heirId, id);
         }
 
         /// <summary>Port of events.ts tickEvents / rollEvent — authored strings only.</summary>
@@ -606,6 +638,13 @@ namespace Concordia
             public string text;
             public float ecology, heat, prices;
             public int births;
+        }
+
+        static EvRec SeedScheme(string beat)
+        {
+            var text = "A faction scheme ripened. " + beat;
+            Plots.Seed(text);
+            return new EvRec { text = text, heat = 0.16f, prices = 0.04f };
         }
 
         static EvRec RollEvent()
@@ -632,11 +671,7 @@ namespace Concordia
                     text = w.title + ": stores tightened. " + w.refusal,
                     ecology = -0.08f, heat = 0.1f, prices = 0.14f
                 },
-                "scheme" => new EvRec
-                {
-                    text = "A faction scheme ripened. " + beat,
-                    heat = 0.16f, prices = 0.04f
-                },
+                "scheme" => SeedScheme(beat),
                 "emergence" => new EvRec
                 {
                     text = w.title + ": " + creature + " took the hour.",
@@ -744,11 +779,12 @@ namespace Concordia
             if (sun)
             {
                 float wx = WeatherDim();
-                if (World == WorldId.Hub)
-                    sun.intensity = (0.92f + 0.38f * day) * wx;
-                else
-                    sun.intensity = (0.35f + 0.9f * day) * wx;
+                sun.intensity = (0.06f + 1.12f * day) * wx;
+                sun.color = Color.Lerp(new Color(0.28f, 0.36f, 0.62f), new Color(1f, 0.94f, 0.82f), day);
             }
+            var box = RenderSettings.skybox;
+            if (box && box.HasProperty("_Exposure"))
+                box.SetFloat("_Exposure", 0.22f + 0.98f * day);
         }
 
         /// <summary>
@@ -1007,7 +1043,15 @@ namespace Concordia
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
         public static int Births(WorldId id) => Load(id).births;
 
-        /// <summary>T2.2 — local lineage until npc_legacy arrives on /unity-ws.</summary>
+        /// <summary>T2.2 — last heir named when someone fell.</summary>
+        static string _heirLine;
+
+        public static void NoteHeir(WorldId id, string dead, string heir)
+        {
+            if (string.IsNullOrEmpty(heir)) return;
+            _heirLine = heir + " carries " + (string.IsNullOrEmpty(dead) ? "the dead" : dead);
+        }
+
         public static string LineageLine(WorldId id)
         {
             var dead = DeadCsv(id);
@@ -1028,6 +1072,7 @@ namespace Concordia
             var line = n > 0 ? n + " dead" : "none dead";
             if (births > 0) line += " · " + births + " births";
             if (!string.IsNullOrEmpty(first)) line += " · " + first + " still weighs";
+            if (!string.IsNullOrEmpty(_heirLine)) line += " · " + _heirLine;
             return "lineage · " + line;
         }
 

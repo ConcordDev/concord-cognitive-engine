@@ -25,6 +25,14 @@ import { encodeFrame, decodeFrame, isBinaryFrame, encodeMove, decodeMove } from 
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 import { composeTwoBDialogue } from "./concordia-two-b.js";
+import {
+  handleGiftGive,
+  handleSchemeIntervene,
+  handlePartyRequest,
+  handleInheritanceRequest,
+  handleDodge,
+  handleDungeonOpen,
+} from "./concordia-play.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -401,6 +409,42 @@ function isBinaryMovePayload(p) {
           return;
         }
         send(client.ws, "kingdom:data", kingdom);
+        return;
+      }
+
+      case "gift:give": {
+        const result = handleGiftGive(db, client.userId, data);
+        send(client.ws, "gift:result", result);
+        return;
+      }
+
+      case "scheme:intervene": {
+        const result = handleSchemeIntervene(db, client.userId, data);
+        send(client.ws, "scheme:intervened", result);
+        return;
+      }
+
+      case "party:request": {
+        const result = handlePartyRequest(client.userId, data);
+        send(client.ws, "party:data", result);
+        return;
+      }
+
+      case "inheritance:request": {
+        const result = handleInheritanceRequest(db, data);
+        send(client.ws, "inheritance:data", result);
+        return;
+      }
+
+      case "combat:dodge": {
+        const result = handleDodge(client.userId, data);
+        send(client.ws, "combat:dodge:ack", result);
+        return;
+      }
+
+      case "dungeon:open": {
+        const result = handleDungeonOpen(db, client.userId, data);
+        send(client.ws, "dungeon:data", result);
         return;
       }
 

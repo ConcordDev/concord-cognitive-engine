@@ -18,7 +18,7 @@ namespace Concordia
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
         Vector3 _vel;
-        float _yaw, _slashUntil, _dodgeUntil, _attackKind, _coyote;
+        float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
@@ -88,7 +88,10 @@ namespace Concordia
             {
                 _vel += wish.normalized * 12.4f;
                 _dodgeUntil = Time.time + 0.38f;
+                _iframeUntil = Time.time + 0.35f;
                 stamina -= 18;
+                var client = ConcordClient.Live;
+                if (client != null) client.SendDodge();
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
@@ -439,6 +442,11 @@ namespace Concordia
 
         public void TakeHit(float dmg, string from)
         {
+            if (Time.time < _iframeUntil)
+            {
+                Toast("the cut passes through");
+                return;
+            }
             if (!Canon.SteelLive(world, transform.position))
             {
                 FlowerBurst();

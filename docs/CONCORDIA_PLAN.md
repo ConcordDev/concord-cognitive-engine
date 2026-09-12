@@ -44,15 +44,21 @@ Branch `claude/lens-population-depth-DVcsF` — 7 commits, **161/161 tests green
   by a column check (was querying non-existent columns → threw in prod). `skill-tree-real-schema.test.js` 3/3.
 
 ### ⏳ REMAINING
-- **T1.4b** client impact feel + reflex from the shared momentum (impact-resolver.ts, ImpactMomentumBridge,
-  ReflexBridge wiring) — frontend, build/type-check verify only.
-- **T3.1 / T3.1b** per-skill descriptors + mastery (on the BUG A fix) + fighting-styles-shown + PD-motor
-  fluidity + new `combat.skill_mastery` route — frontend + thin backend.
-- **T2.1** consume `weaponise_at` · **T2.2** inheritance UI · **T2.3** scheme barge-in route · **T2.4**
-  emergent-module reconciliation audit script (backend-testable).
-- **T3.2** content authoring into engine-read fields — **partially supplied by the user (see below)**.
-- **T3.3** zone architecture (skybox/silhouette) · **T3.4** mahjong re-weight + restaurant tip adoption
-  (backend-testable) · **T0** doc corrections (land with the code that makes each claim true).
+- **T1.4b / T2 / F1** Unity presenter was the open hole; the kernel tickets were already shipped.
+  Closed this pass: `/unity-ws` `gift:give`, `scheme:intervene`, `party:request`,
+  `inheritance:request`, `combat:dodge` i-frames, `dungeon:open`; Hub night sun dim + lantern
+  point lights; local gift/heart/plot/heir rules match the kernel math; no HUD copy that
+  parks a verb on “needs `/unity-ws`”.
+- **T3.1 / T3.1b** per-skill descriptors live in `concord-frontend/lib/concordia/skill-descriptors.ts`
+  (tested). Unity still presents kit arts, not the 67-skill overlay.
+- **T3.2** hub `lore.json` + `content/codex/eight-refusals.json` + `seedCodex` are in tree.
+  Hub Watch↔Bazaar rivalries and Asbir/Isa + Mira/Nesha relationships now seed T1.1/T1.3.
+- **T3.3** per-world sky tints + night sun/exposure dim are live. Zone architecture is still
+  Kenney-pack dressing, not a unique silhouette per world.
+- **T3.4** restaurant tips 0.20/0.15 and mahjong yaku re-weight are shipped + tested.
+- **T0** this remaining block was stale (claimed T1.4b/T2 unshipped). Corrected here.
+- **F4.3 / F5.1** party session + dungeon open are on `/unity-ws`. Extraction/horde co-op
+  and a full raid lockout loop are the leftover kernel-scale tickets.
 
 ### 📥 Authored content delivered by the user (to wire under T3.2)
 Two finished artifacts, ready to slot into the seed pipeline:

@@ -783,7 +783,8 @@ namespace Concordia // keep-spawn-assign
             gateGo.transform.SetParent(hold, false);
             gateGo.transform.position = mouth;
             var gate = gateGo.AddComponent<DungeonGate>();
-            gate.holdName = "the hold";
+            gate.encounterId = w.id == WorldId.Ruins ? "hollow_warden" : "tide_colossus";
+            gate.holdName = w.id == WorldId.Ruins ? "The Hollow Warden" : "Tide Colossus";
             gate.inside = inside;
             gate.mouth = mouth + new Vector3(0f, 0.12f, -3.2f);
             var box = gateGo.AddComponent<BoxCollider>();
@@ -794,8 +795,8 @@ namespace Concordia // keep-spawn-assign
             var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.05f, -2.6f),
                 new Vector3(1.05f, 1.5f, 0.12f), HubLook.Lit(w.ground, 0.08f, 0.22f), "HoldPlaque");
             var stone = plaque.AddComponent<LoreStone>();
-            stone.title = "A hold";
-            stone.text = "Kenney tiles. Mouth, hall, vault — geometry roles. No authored dungeon name in this world's canon — the geometry is dressing. Live steel applies.";
+            stone.title = gate.holdName;
+            stone.text = gate.holdName + " — mouth, hall, vault. Live steel applies. The encounter is the authored dungeon, not dressing.";
 
             var beacon = hold.gameObject.AddComponent<QuestBeacon>();
             beacon.tokens = new[] { "dungeon", "hold", "training_hollow", WorldBook.Folder(w.id) + "_hold" };

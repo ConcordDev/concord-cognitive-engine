@@ -83,6 +83,7 @@ namespace Concordia
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
+            PlotBar(w, h);
             Hints(w, h);
         }
 
@@ -96,7 +97,7 @@ namespace Concordia
                     : player.menuOpen
                         ? "I  close kit  ·  click a weapon  ·  1/2/3  art  ·  Esc  close"
                         : "I  kit   ·   1/2/3  " + style.light + "/" + style.heavy + "/" + style.special
-                          + "   ·   LMB  swing   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
+                          + "   ·   LMB  swing   ·   X  dodge   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
                 _small);
             GUI.color = Color.white;
         }
@@ -122,11 +123,8 @@ namespace Concordia
             var lineage = WorldMemory.LineageLine(player.world);
             if (!string.IsNullOrEmpty(lineage))
                 GUI.Label(new Rect(32, 102, 280, 14), lineage, _small);
-            else if (!string.IsNullOrEmpty(WorldClock.NearbyAct) && WorldClock.NearbyAct.ToLowerInvariant().Contains("scheme"))
-                GUI.Label(new Rect(32, 102, 280, 14),
-                    ConcordClient.Live != null && ConcordClient.Live.Connected
-                        ? "scheme nearby — barge-in is kernel-side"
-                        : "scheme nearby — barge-in needs /unity-ws", _small);
+            else if (Plots.Nearby != null)
+                GUI.Label(new Rect(32, 102, 280, 14), "scheme nearby — Expose / Abet / Ignore", _small);
         }
 
         static string TwoBStatus()
@@ -419,8 +417,26 @@ namespace Concordia
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
             GUI.DrawTexture(new Rect(22, 142, 300, 28), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(32, 144, 160, 16), "PARTY  ·  solo", _small);
+            GUI.Label(new Rect(32, 144, 280, 16), ConcordClient.PartyLine, _small);
             DrawBar(170, 150, 140, 8, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
+        }
+
+        void PlotBar(float w, float h)
+        {
+            var plot = Plots.Nearby;
+            if (plot == null || player.talkOpen || player.menuOpen) return;
+            float pw = 520f, ph = 72f;
+            float x = (w - pw) * 0.5f, y = h - 118f;
+            GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.88f);
+            GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x + 12, y + 6, pw - 24, 32), plot.text, _small);
+            if (GUI.Button(new Rect(x + 12, y + 40, 150, 24), "Expose", _btn))
+                Plots.Intervene("expose");
+            if (GUI.Button(new Rect(x + 176, y + 40, 150, 24), "Abet", _btn))
+                Plots.Intervene("abet");
+            if (GUI.Button(new Rect(x + 340, y + 40, 166, 24), "Ignore", _btn))
+                Plots.Intervene("ignore");
         }
 
         void TargetBar(float w)

@@ -37,6 +37,9 @@ namespace Concordia
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
         public static string SnapshotJson { get; private set; } = "";
+        public static string PartyLine { get; private set; } = "PARTY  ·  you";
+        public static int PartyCount { get; private set; } = 1;
+        public static string DungeonLine { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
 
         public string WorldId => worldId;
@@ -210,6 +213,8 @@ namespace Concordia
                 await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
+                await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
@@ -229,6 +234,9 @@ namespace Concordia
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
             HudLine = "";
             SnapshotJson = "";
+            PartyLine = "PARTY  ·  you";
+            PartyCount = 1;
+            DungeonLine = "";
         }
 
         void HandleFrame(string evt, string text)
@@ -276,8 +284,53 @@ namespace Concordia
                 else if (!string.IsNullOrEmpty(plotter))
                     line = plotter + " · " + kind;
                 WorldClock.NoteAct("scheme nearby — " + line);
+                Plots.Seed(line);
                 return;
             }
+            if (evt == "gift:result")
+            {
+                var npcId = JsonString(text, "npcId");
+                var aff = JsonFloat(text, "affinity", -1f);
+                if (aff >= 0f && !string.IsNullOrEmpty(npcId)) Bonds.Set(npcId, aff);
+                var reaction = JsonString(text, "reaction");
+                if (!string.IsNullOrEmpty(reaction))
+                    WorldClock.NoteAct("gift · " + reaction);
+                return;
+            }
+            if (evt == "scheme:intervened")
+            {
+                if (!JsonFlagFalse(text, "ok"))
+                    WorldClock.NoteAct("the kernel named the plot");
+                return;
+            }
+            if (evt == "party:data")
+            {
+                ApplyParty(text);
+                return;
+            }
+            if (evt == "inheritance:data")
+            {
+                var heir = JsonString(text, "heirName");
+                if (string.IsNullOrEmpty(heir)) heir = JsonString(text, "heir_name");
+                if (!string.IsNullOrEmpty(heir))
+                {
+                    WorldClock.NoteAct(heir + " carries the thread");
+                    ConcordiaHUD.Announce("Heir rose", heir + " inherited");
+                }
+                return;
+            }
+            if (evt == "dungeon:data")
+            {
+                var name = JsonNestedString(text, "name");
+                if (string.IsNullOrEmpty(name)) name = JsonString(text, "name");
+                var phase = JsonString(text, "phase");
+                if (string.IsNullOrEmpty(name)) name = "the hold";
+                DungeonLine = name + (string.IsNullOrEmpty(phase) ? "" : " · " + phase);
+                ConcordiaHUD.Announce(name, string.IsNullOrEmpty(phase) ? "the hold opened" : phase);
+                return;
+            }
+            if (evt == "combat:dodge:ack")
+                return;
             if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
                 MarkDisconnected();
         }
@@ -362,6 +415,8 @@ namespace Concordia
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
             await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+            await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
+            await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
         public Task SendMove(float x, float y, float z, string cityId) =>
@@ -372,6 +427,27 @@ namespace Concordia
 
         public Task SendDodge(bool parry = false) =>
             SendEvt("combat:dodge", "{\"wasParry\":" + (parry ? "true" : "false") + "}");
+
+        public Task SendGift(string npcId, string itemId, string itemName, string archetype) =>
+            SendEvt("gift:give",
+                "{\"npcId\":\"" + Escape(npcId)
+                + "\",\"itemId\":\"" + Escape(itemId)
+                + "\",\"itemName\":\"" + Escape(itemName)
+                + "\",\"archetype\":\"" + Escape(archetype)
+                + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
+
+        public Task SendIntervene(string schemeId, string action) =>
+            SendEvt("scheme:intervene",
+                "{\"schemeId\":\"" + Escape(schemeId) + "\",\"action\":\"" + Escape(action) + "\"}");
+
+        public Task SendInheritance(string heirId, string deceasedId) =>
+            SendEvt("inheritance:request",
+                "{\"heirId\":\"" + Escape(heirId) + "\",\"deceasedId\":\"" + Escape(deceasedId) + "\"}");
+
+        public Task SendDungeonOpen(string encounterId) =>
+            SendEvt("dungeon:open",
+                "{\"encounterId\":\"" + Escape(encounterId)
+                + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
 
         async Task SendEvt(string evt, string dataJson)
         {
@@ -417,6 +493,15 @@ namespace Concordia
             return true;
         }
 
+        void ApplyParty(string json)
+        {
+            var n = JsonInt(json, "count", 0);
+            if (n <= 0) n = JsonArrayCount(json, "members");
+            if (n <= 0) n = 1;
+            PartyCount = n;
+            PartyLine = n <= 1 ? "PARTY  ·  you" : "PARTY  ·  " + n;
+        }
+
         static bool JsonFlagFalse(string json, string key)
         {
             if (string.IsNullOrEmpty(json)) return true;
@@ -436,6 +521,29 @@ namespace Concordia
             var start = i + needle.Length;
             var end = json.IndexOf('"', start);
             return end <= start ? "" : json.Substring(start, end - start);
+        }
+
+        static int JsonInt(string json, string key, int fallback)
+        {
+            var v = JsonFloat(json, key, fallback);
+            return Mathf.RoundToInt(v);
+        }
+
+        static float JsonFloat(string json, string key, float fallback)
+        {
+            if (string.IsNullOrEmpty(json)) return fallback;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return fallback;
+            var rest = json.Substring(i + needle.Length).TrimStart();
+            int n = 0;
+            if (rest.Length > 0 && (rest[0] == '-' || rest[0] == '+')) n = 1;
+            while (n < rest.Length && ((rest[n] >= '0' && rest[n] <= '9') || rest[n] == '.')) n++;
+            if (n == 0 || (n == 1 && (rest[0] == '-' || rest[0] == '+'))) return fallback;
+            if (float.TryParse(rest.Substring(0, n), System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var v))
+                return v;
+            return fallback;
         }
 
         static string JsonNestedString(string json, string key)

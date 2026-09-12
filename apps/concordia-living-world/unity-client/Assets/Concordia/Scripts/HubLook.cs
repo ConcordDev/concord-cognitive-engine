@@ -212,6 +212,15 @@ namespace Concordia
             bulb.transform.localScale = Vector3.one * 0.18f;
             Object.Destroy(bulb.GetComponent<Collider>());
             bulb.GetComponent<Renderer>().sharedMaterial = Emit(new Color(1f, 0.72f, 0.38f), 3.5f);
+            var lightGo = new GameObject("LanternLight");
+            lightGo.transform.SetParent(parent, false);
+            lightGo.transform.position = pos + Vector3.up * 1.7f;
+            var pl = lightGo.AddComponent<Light>();
+            pl.type = LightType.Point;
+            pl.color = new Color(1f, 0.72f, 0.38f);
+            pl.intensity = 2.6f;
+            pl.range = 10f;
+            pl.shadows = LightShadows.Soft;
         }
 
         public static Material GroundMat(WorldId world, Color tint)
