@@ -26,10 +26,38 @@ namespace Concordia
         Transform _tell;
         Renderer _tellRend;
         public static string TelegraphKind;
+        public static string TelegraphCounter;
         public static Transform TelegraphFrom;
         public static float TelegraphUntil;
+        public static float KernelUntil;
 
         static readonly string[] Perils = { "thrust", "sweep", "grab" };
+
+        public static string CounterFor(string kind)
+        {
+            if (kind == "thrust") return "dodge";
+            if (kind == "sweep") return "jump";
+            if (kind == "grab") return "break";
+            return "dodge";
+        }
+
+        public static bool CounterMatches(string peril, string defense)
+        {
+            if (string.IsNullOrEmpty(defense)) return false;
+            if (defense == "parry") return true;
+            if (string.IsNullOrEmpty(peril)) return defense == "dodge";
+            if (peril == "grab" && defense == "dodge") return true;
+            return CounterFor(peril) == defense;
+        }
+
+        public static void BindKernel(string kind, string counter, float seconds)
+        {
+            if (string.IsNullOrEmpty(kind)) return;
+            TelegraphKind = kind;
+            TelegraphCounter = string.IsNullOrEmpty(counter) ? CounterFor(kind) : counter;
+            KernelUntil = Time.time + Mathf.Max(0.2f, seconds);
+            TelegraphUntil = KernelUntil;
+        }
 
         void Start()
         {
@@ -72,7 +100,11 @@ namespace Concordia
             {
                 if (TelegraphFrom == transform)
                 {
-                    TelegraphKind = null;
+                    if (Time.time >= KernelUntil)
+                    {
+                        TelegraphKind = null;
+                        TelegraphCounter = null;
+                    }
                     TelegraphFrom = null;
                     _windup = 0f;
                 }
@@ -105,7 +137,11 @@ namespace Concordia
             if (_windup <= 0f)
             {
                 _windup = 0.48f;
-                TelegraphKind = Perils[Mathf.Abs(name.GetHashCode()) % Perils.Length];
+                if (Time.time >= KernelUntil)
+                {
+                    TelegraphKind = Perils[Mathf.Abs(name.GetHashCode()) % Perils.Length];
+                    TelegraphCounter = CounterFor(TelegraphKind);
+                }
                 TelegraphFrom = transform;
                 TelegraphUntil = Time.time + _windup;
                 ShowTell(true);
@@ -116,7 +152,11 @@ namespace Concordia
             _cd = 0.85f + (1.4f - _style);
             if (TelegraphFrom == transform)
             {
-                TelegraphKind = null;
+                if (Time.time >= KernelUntil)
+                {
+                    TelegraphKind = null;
+                    TelegraphCounter = null;
+                }
                 TelegraphFrom = null;
             }
             ShowTell(false);

@@ -11314,6 +11314,9 @@ async function tryInitWebSockets(server) {
             perilKind:  _peril.perilKind,
             counter:    _peril.counter,
           });
+          if (_peril.perilKind && data.targetId) {
+            try { _noteIncomingPeril(data.targetId, _peril.perilKind, _anticipationMs + 120); } catch { /* window optional */ }
+          }
         } catch { /* telegraph is best-effort presentation */ }
 
         // Broadcast the hit event so everyone in the attacker's
@@ -11657,7 +11660,13 @@ async function tryInitWebSockets(server) {
           if (r?.dodged) { perfectDodge = !!r.perfect; dodgeDilation = r.time_dilation_pct || 0; }
         }
       } catch { /* scoring optional — baseline i-frames still granted */ }
-      try { _grantIFrames(userId, perfectDodge ? 500 : 350); } catch { /* in-memory state optional */ }
+      try {
+        const raw = String(data?.action || "").toLowerCase();
+        const defense = ["jump", "break", "block", "parry", "dodge"].includes(raw)
+          ? raw
+          : (data?.wasParry ? "parry" : "dodge");
+        _grantIFrames(userId, perfectDodge ? 500 : 350, defense);
+      } catch { /* in-memory state optional */ }
 
       try {
         realtimeEmit("combat:dodge:ack", { userId, direction, t: now, iframeMs: perfectDodge ? 500 : 350, perfect: perfectDodge });
@@ -39277,7 +39286,7 @@ try {
 import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./lib/world-clock.js";
 import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
 import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
-import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState, noteIncomingPeril as _noteIncomingPeril } from "./lib/combat-state.js";
 // Sprint 1 (Connection) — the dodge/block socket handlers echoed :ack but never
 // granted i-frames or scored a perfect dodge/parry, so the entire defensive
 // combat loop was built-but-unwired. attemptDodge/attemptParry score the timing
@@ -73417,7 +73426,13 @@ async function _dispatchGodotCombatDodge(userId, data) {
       if (r?.dodged) { perfectDodge = !!r.perfect; dodgeDilation = r.time_dilation_pct || 0; }
     }
   } catch { /* scoring optional — baseline i-frames still granted */ }
-  try { _grantIFrames(userId, perfectDodge ? 500 : 350); } catch { /* in-memory state optional */ }
+  try {
+    const raw = String(data.action || "").toLowerCase();
+    const defense = ["jump", "break", "block", "parry", "dodge"].includes(raw)
+      ? raw
+      : (wasParry ? "parry" : "dodge");
+    _grantIFrames(userId, perfectDodge ? 500 : 350, defense);
+  } catch { /* in-memory state optional */ }
 
   const iframeMs = perfectDodge ? 500 : 350;
   // Two distinct payloads on purpose: the BROADCAST reuses the exact field

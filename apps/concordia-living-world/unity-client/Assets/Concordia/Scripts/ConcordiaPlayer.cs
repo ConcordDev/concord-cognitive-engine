@@ -84,6 +84,12 @@ namespace Concordia
                 _vel.y = 8.2f;
                 _coyote = 0f;
                 grounded = false;
+                if (Hostile.TelegraphKind == "sweep")
+                {
+                    _iframeUntil = Time.time + 0.28f;
+                    var hop = ConcordClient.Live;
+                    if (hop != null) hop.SendDodge(false, "jump");
+                }
             }
             if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
             {
@@ -460,12 +466,16 @@ namespace Concordia
             return null;
         }
 
-        public void TakeHit(float dmg, string from)
+        public void TakeHit(float dmg, string from, float knockback = -1f)
         {
             if (Time.time < _iframeUntil)
             {
-                Toast("the cut passes through");
-                return;
+                var defense = (!cc.isGrounded && _vel.y > 1f) ? "jump" : "dodge";
+                if (Hostile.CounterMatches(Hostile.TelegraphKind, defense))
+                {
+                    Toast("the cut passes through");
+                    return;
+                }
             }
             if (!Canon.SteelLive(world, transform.position))
             {
@@ -478,7 +488,7 @@ namespace Concordia
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             var feel = GetComponent<CombatFeel>();
-            feel?.ApplyAck(true, Mathf.Min(dmg * 0.08f, 2.4f), false, false);
+            feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");
             if (hp > 0f) return;
             hp = 100f;

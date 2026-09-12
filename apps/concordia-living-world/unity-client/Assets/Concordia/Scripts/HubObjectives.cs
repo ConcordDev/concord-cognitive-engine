@@ -813,15 +813,16 @@ namespace Concordia
     }
 
     /// <summary>
-    /// Local scheme board. Same verbs as interveneInScheme (expose/abet/ignore).
-    /// Kernel row wins when it exists; missing row is not a fake success — the
-    /// local plot still resolves because the kitchen IS the scheme here.
+    /// Scheme board. Kernel schemeId from scheme:overheard / secret:weaponised
+    /// barges in via scheme:intervene. Kitchen-only plots stay local and never
+    /// claim a kernel success.
     /// </summary>
     public static class Plots
     {
         public class Rec
         {
             public string id, text, phase;
+            public bool kernel;
         }
 
         static Rec _live;
@@ -829,30 +830,45 @@ namespace Concordia
 
         public static void Reset() => _live = null;
 
-        public static void Seed(string text)
+        public static void Seed(string text, string schemeId = null)
         {
+            var kernel = !string.IsNullOrEmpty(schemeId) && !schemeId.StartsWith("local_");
             _live = new Rec
             {
-                id = "local_" + WorldClock.Day + "_" + Mathf.FloorToInt(WorldClock.Hour),
+                id = kernel ? schemeId : "local_" + WorldClock.Day + "_" + Mathf.FloorToInt(WorldClock.Hour),
                 text = text ?? "A faction scheme ripened.",
-                phase = "brewing"
+                phase = "brewing",
+                kernel = kernel
             };
+        }
+
+        public static void ResolveKernel(string action)
+        {
+            if (_live == null) return;
+            if (action != "expose" && action != "abet") action = "ignore";
+            _live.phase = action == "expose" ? "exposed" : action == "abet" ? "abetted" : "ignored";
         }
 
         public static string Intervene(string action)
         {
             if (_live == null) return "No plot in the air.";
             if (action != "expose" && action != "abet") action = "ignore";
-            _live.phase = action == "expose" ? "exposed" : action == "abet" ? "abetted" : "ignored";
             var line = action == "expose"
                 ? "You name the plot. The air goes still."
                 : action == "abet"
                     ? "You put your weight behind it."
                     : "You let it pass.";
+            if (_live.kernel)
+            {
+                var client = ConcordClient.Live;
+                if (client != null) client.SendIntervene(_live.id, action);
+                WorldClock.NoteAct("waiting on the kernel");
+                ConcordiaHUD.Announce(action, "waiting on the kernel");
+                return line + (string.IsNullOrEmpty(_live.text) ? "" : " · " + _live.text);
+            }
+            _live.phase = action == "expose" ? "exposed" : action == "abet" ? "abetted" : "ignored";
             WorldClock.NoteAct(line);
             ConcordiaHUD.Announce(action, line);
-            var client = ConcordClient.Live;
-            if (client != null) client.SendIntervene(_live.id, action);
             return line + (string.IsNullOrEmpty(_live.text) ? "" : " · " + _live.text);
         }
     }

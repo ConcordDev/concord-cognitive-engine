@@ -44,22 +44,33 @@ Branch `claude/lens-population-depth-DVcsF` — 7 commits, **161/161 tests green
   by a column check (was querying non-existent columns → threw in prod). `skill-tree-real-schema.test.js` 3/3.
 
 ### ⏳ REMAINING
-- **T1.4b / T2 / F1** Unity presenter was the open hole; the kernel tickets were already shipped.
-  Closed this pass: `/unity-ws` `gift:give`, `scheme:intervene`, `party:request`,
-  `inheritance:request`, `combat:dodge` i-frames, `dungeon:open`; Hub night sun dim + lantern
-  point lights; local gift/heart/plot/heir rules match the kernel math; no HUD copy that
-  parks a verb on “needs `/unity-ws`”.
-- **T3.1 / T3.1b** per-skill descriptors live in `concord-frontend/lib/concordia/skill-descriptors.ts`
-  (tested). Unity now binds `skills.mastery` over `/unity-ws` (`lens:run`) and paints the catalog
-  overlay (untrained = L0 novice). Kit arts are no longer presented as the 67-skill system.
-- **T3.2** hub `lore.json` + `content/codex/eight-refusals.json` + `seedCodex` are in tree.
-  Hub Watch↔Bazaar rivalries and Asbir/Isa + Mira/Nesha relationships now seed T1.1/T1.3.
-- **T3.3** per-world sky tints + night sun/exposure dim are live. Zone architecture is still
-  Kenney-pack dressing, not a unique silhouette per world.
-- **T3.4** restaurant tips 0.20/0.15 and mahjong yaku re-weight are shipped + tested.
-- **T0** this remaining block was stale (claimed T1.4b/T2 unshipped). Corrected here.
-- **F4.3 / F5.1** party session + dungeon open are on `/unity-ws`. Extraction/horde co-op
-  and a full raid lockout loop are the leftover kernel-scale tickets.
+- **T1.4b / T2 / F1 presenter** — kernel tickets were already shipped; Unity
+  now consumes them. Closed: `/unity-ws` gift/scheme/party/inheritance/dodge/
+  dungeon; `secret:weaponised` + `scheme:overheard` + `npc:conversation-bid`
+  fan through the gateway mirror (not socket.io-only); `npc:heir-rose` emits
+  from `onNpcDeath`; Plots barge-in uses the kernel `schemeId` and local
+  kitchen plots never send a fake id; typed telegraphs (`perilKind`/`counter`)
+  win over local tells; i-frames from the wrong counter do not negate a
+  peril; `combat:impact` momentum drives Unity knockback/shake.
+- **T3.1b** Mixamo combat clips / fluid PD-motor movesets are still open.
+  The 67-skill overlay + element VFX from descriptors are live. Do not claim
+  Mixamo done.
+- **T3.2** hub `lore.json` + `content/codex/eight-refusals.json` + `seedCodex`
+  are in tree. Hub Watch↔Bazaar rivalries and Asbir/Isa + Mira/Nesha
+  relationships seed T1.1/T1.3. Thin-world faction/NPC authoring remains a
+  content job — do not invent NPCs.
+- **T3.3** per-world sky tints + night dim + `DressVocab.Culture` silhouettes
+  are live (grid vertical, street lowrise, ash ruined towers). Unique GLB
+  hero mesh per world is not this floor.
+- **T3.4** restaurant tips 0.20/0.15 and mahjong yaku re-weight are shipped +
+  tested.
+- **T2.4** `node scripts/audit-emergent-wiring.mjs` → 0 ORPHAN (237 files,
+  130 WIRED / 107 ENTITY-INLINE). CI-pinned by
+  `server/tests/integration/emergent-wiring-audit.test.js`.
+- **T0** remaining-block drift corrected here.
+- **F2 / F3.1–F3.3 / F5.1 / F6** affixes, hyperarmor, executions, raid lockout,
+  heart-events — not this foundation pass. F4.3 extraction/horde party join
+  shipped; full raid lockout is still F5.1.
 
 ### 📥 Authored content delivered by the user (to wire under T3.2)
 Two finished artifacts, ready to slot into the seed pipeline:
@@ -950,9 +961,9 @@ audit). Sequenced by impact ÷ effort. Quick wins first.
 
 | Ticket | Build | Reuse / anchors | Verify |
 |---|---|---|---|
-| **F1.1 i-frame dodge wiring** ⭐ | The live `combat:dodge` socket handler acks but never grants invuln. Add: on dodge, call `grantIFrames(userId, 350)` (500ms on perfect dodge). | Handler `server/server.js:8548`; `grantIFrames(actorId,durationMs)` `combat-state.js:114`; `applyHitToState` already whiffs hits while `now < iframeUntil` (`combat-state.js:48`); perfect-dodge window via `attemptDodge` `combat-polish.js:325`. ~3-line change. | node test: grant i-frames → `applyHitToState` returns `iframed:true`, zero damage, within window. |
-| **F1.2 Gift system** ⭐ | New `server/domains/gifting.js` → `romance.give_gift`: consume item → affinity delta by NPC preference. Author `gift_preferences` into `npcs.json`. Surface in `NPCActionMenu` + courtship lens. | Inventory-consume pattern `craft-engine.js:114`; affinity write `romance-engine.js#courtInteraction:39` (base `COURT_AFFINITY_DELTA=0.05` :19 → gift uses 0.10–0.20 × pref); inventory schema `migrations/050`; prefs loaded by `content-seeder.js`. | test: give preferred item → affinity↑ + item consumed; disliked → affinity↓; missing item → rejected. |
-| **F1.3 Typed attack telegraphs** | Upgrade the generic light/heavy windup to *typed* perilous tells (thrust/sweep/grab → forced counter), the one real remaining E0 item. | `combat:telegraph` emit `server.js:8318` → `BodyLanguageOverlay.tsx`; add a `perilKind` to the payload + counter gate. | manual: telegraph shows typed icon; wrong counter fails, right counter negates. |
+| **F1.1 i-frame dodge wiring** ⭐ | ✅ The live `combat:dodge` socket handler grants i-frames (`grantIFrames`). Unity `/unity-ws` `handleDodge` does too. PvP `applyAttack` now consults `applyHitToState` so a dodge actually zeros the next hit. | Handler `server/server.js`; `grantIFrames` `combat-state.js`; `applyAttack` `city-presence.js`. | node test: grant i-frames → `applyHitToState` returns `iframed:true`. |
+| **F1.2 Gift system** ⭐ | ✅ `server/domains/gifting.js` + `/unity-ws` `gift:give`. | Inventory-consume + romance affinity. | test: preferred item → affinity↑; missing item → rejected. |
+| **F1.3 Typed attack telegraphs** | ✅ Kernel emits `perilKind`+`counter`. `noteIncomingPeril` gates i-frames: wrong counter fails, right counter (or parry) negates. Unity HUD shows thrust→X / sweep→Space / grab→X; kernel tell wins over local random. | `telegraph-peril.js`; `combat-state.js`; Unity `Hostile.BindKernel`. | node test: sweep+dodge still damages; sweep+jump iframed. |
 
 ## Sprint F2 — Build agency & itemization (ARPG/MMO day-1 dopamine)
 
@@ -969,8 +980,8 @@ audit). Sequenced by impact ÷ effort. Quick wins first.
 | **F3.1 Hyperarmor** | Heavy attacks ignore incoming stagger during active frames (poise-attacker side). | flag in `combat-impact.js`/`combat-polish.js#triggerStaggerFromImpact`; frame data `combat-frame-data.js`. |
 | **F3.2 Execution moves** | Backstab/positional crit (offAxis already computes harder poise break → add crit-damage execution); posture-break deathblow; stun→grab finisher (link `rocked` → `attemptGrapple`). | `combat-impact.js` offAxis; `attemptGrapple` `combat-polish.js:477`; rocked state. |
 | **F3.3 Anim-cancel + input buffering** | Cancel windows (≥50% recovery) + 4–6-frame input buffer. | frontend `CombatInputController.tsx`; frame data cancel windows in `combat-frame-data.js`. |
-| **F3.4 Per-skill VFX + mastery** | The data-driven `skill-descriptors.ts` overlay (already specced in the Combat-depth section / T3.1) so 67 skills differentiate; mastery from `player_skill_levels`. | T3.1 design (plan lines ~497); `element-vfx.ts`, `combo-vfx.ts`, `CombatVFXBridge.tsx`. |
-| **F3.5 T1.4b client feel** | Wire momentum → hitstop/knockback/reflex on the client (impact-resolver + ImpactMomentumBridge). | T1.4b design (plan ~464); server already emits momentum (T1.4a ✅). |
+| **F3.4 Per-skill VFX + mastery** | ✅ Unity skill lattice + GabrielAguiar VFX from kernel descriptors. Mixamo style clips remain T3.1b. | T3.1 design; `skill-descriptors.ts`. |
+| **F3.5 T1.4b client feel** | ✅ Unity `ApplyCombatFeel` reads `impactMomentum` / `feel.knockback` into `CombatFeel.ApplyAck`. Three.js ImpactMomentumBridge was already shipped. | T1.4b design; server already emits momentum (T1.4a ✅). |
 
 ## Sprint F4 — Run-mode depth (replayability)
 
@@ -978,7 +989,7 @@ audit). Sequenced by impact ÷ effort. Quick wins first.
 |---|---|---|
 | **F4.1 Shared in-run draft** | Generalize horde's deterministic pick-1-of-3 into `server/lib/run-draft.js` (+ `run_draft_picks`, `draft_options` tables); wire boon/relic drafts into roguelite + extraction; effects **applied**, not descriptive strings; add synergy combos. | `_rollUpgrades` `horde-mode.js:84` (drop-in generalize); run state `roguelite.js:27`/`extraction.js:35` (add `run_picks_json`). |
 | **F4.2 Difficulty + meta wired to runs** | Wire `difficulty.js` tiers (currently world-boss-only) + author a meta-currency→run-modifier catalog so unlocks change runs. | `difficulty.js`; `roguelite_meta_currency` + `purchaseUnlock` `roguelite.js:115`. |
-| **F4.3 Multiplayer in runs** (larger) | Co-op / PvPvE session for extraction + horde; the real source of Tarkov/DRG/DbD tension. Scope after F4.1/F4.2. | parties `parties.js`; horror asymmetry `horror.js` as the template. |
+| **F4.3 Multiplayer in runs** (larger) | ✅ Extraction + horde party join (`party_id` + `run_participants`). Full raid lockout is F5.1. | parties `parties.js`; `run-coop.js`. |
 
 ## Sprint F5 — Grouped instanced PvE
 

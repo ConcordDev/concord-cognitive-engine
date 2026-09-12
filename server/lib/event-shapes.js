@@ -423,6 +423,11 @@ export const EVENT_SHAPES = Object.freeze({
   "faction:alliance-formed":    { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
   "faction:truce-sought":       { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
   "npc:scheme-resolved":        { required: ["schemeId", "plotterKind", "plotterId", "kind", "outcome"], optional: ["targetKind", "targetId"] },
+  // T2.1 / T2.2 / T2.3 — Unity presenter consumes these over /unity-ws.
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "secret:weaponised":          { required: ["kind"], optional: ["userId", "secretId", "holder", "subject_kind", "subject_id", "schemeId", "byNpc", "ts", "worldId"] },
+  "npc:heir-rose":              { required: ["heirId", "deceasedId"], optional: ["heirName", "deceasedName", "worldId", "inherited"] },
+  "scheme:overheard":           { required: ["schemeId"], optional: ["plotterId", "worldId", "snippet", "plotterArchetype", "plotterFaction", "targetArchetype", "targetFaction", "schemeKind", "ts"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },
   "refusal:compound-threshold": { required: ["worldId", "strength"], optional: ["kind", "reason"] },

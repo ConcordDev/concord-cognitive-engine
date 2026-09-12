@@ -130,6 +130,12 @@ describe("Unity play verbs", () => {
     assert.equal(hit.damageMul, 0);
   });
 
+  it("combat:dodge action:jump is the recorded defense", () => {
+    const ack = handleDodge("u-jump", { action: "jump" });
+    assert.equal(ack.ok, true);
+    assert.equal(ack.action, "jump");
+  });
+
   it("scheme:intervene without a row is not a fabricated success", async () => {
     const ws = await authAs(gw.url);
     sendMsg(ws, "scheme:intervene", { schemeId: "missing", action: "expose" });

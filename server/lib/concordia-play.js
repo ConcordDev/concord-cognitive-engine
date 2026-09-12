@@ -86,8 +86,12 @@ export function handleDodge(userId, data = {}) {
   if (!userId) return { ok: false, reason: "missing_user" };
   const perfect = data.perfect === true || data.wasParry === true;
   const ms = perfect ? 500 : 350;
-  try { grantIFrames(userId, ms); } catch { /* in-memory optional */ }
-  return { ok: true, iframeMs: ms, perfect: !!perfect };
+  const raw = String(data.action || "").toLowerCase();
+  const defense = ["jump", "break", "block", "parry", "dodge"].includes(raw)
+    ? raw
+    : (data.wasParry ? "parry" : "dodge");
+  try { grantIFrames(userId, ms, defense); } catch { /* in-memory optional */ }
+  return { ok: true, iframeMs: ms, perfect: !!perfect, action: defense };
 }
 
 export function handleDungeonOpen(db, userId, data = {}) {

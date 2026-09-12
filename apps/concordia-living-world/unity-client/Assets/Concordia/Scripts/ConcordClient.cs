@@ -321,9 +321,11 @@ namespace Concordia
             }
             if (evt == "combat:telegraph")
             {
-                var kind = JsonString(text, "kind");
-                if (string.IsNullOrEmpty(kind)) kind = JsonString(text, "style");
-                RunMain(() => { if (!string.IsNullOrEmpty(kind)) Hostile.TelegraphKind = kind; });
+                var kind = JsonString(text, "perilKind");
+                if (string.IsNullOrEmpty(kind)) kind = JsonString(text, "kind");
+                var counter = JsonString(text, "counter");
+                var ms = JsonFloat(text, "anticipationMs", 400f);
+                RunMain(() => Hostile.BindKernel(kind, counter, ms / 1000f));
                 return;
             }
             if (evt == "world:crisis" || evt == "world:plague-declared")
@@ -385,18 +387,43 @@ namespace Concordia
                 if (string.IsNullOrEmpty(from)) from = JsonString(text, "deceased_name");
                 var line = string.IsNullOrEmpty(heir) ? "an heir rose" : heir + " inherited";
                 if (!string.IsNullOrEmpty(from)) line += " from " + from;
-                WorldClock.NoteAct(line);
-                ConcordiaHUD.Announce("Heir rose", line);
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct(line);
+                    ConcordiaHUD.Announce("Heir rose", line);
+                });
                 return;
             }
             if (evt == "secret:weaponised")
             {
                 var kind = JsonString(text, "kind");
                 if (string.IsNullOrEmpty(kind)) kind = "leverage";
-                WorldClock.NoteAct("a secret turned — " + kind);
+                var schemeId = JsonString(text, "schemeId");
+                var line = "a secret turned — " + kind;
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct(line);
+                    ConcordiaHUD.Announce("Betrayal", line);
+                    if (!string.IsNullOrEmpty(schemeId)) Plots.Seed(line, schemeId);
+                });
                 return;
             }
-            if (evt == "npc:scheme-resolved" || evt == "npc:conversation-bid")
+            if (evt == "scheme:overheard")
+            {
+                var snippet = JsonString(text, "snippet");
+                var schemeId = JsonString(text, "schemeId");
+                var kind = JsonString(text, "schemeKind");
+                var line = snippet;
+                if (string.IsNullOrEmpty(line)) line = string.IsNullOrEmpty(kind) ? "a plot in the air" : kind;
+                RunMain(() =>
+                {
+                    Plots.Seed(line, schemeId);
+                    WorldClock.NoteAct("overheard — " + line);
+                    ConcordiaHUD.Announce("Overheard", line);
+                });
+                return;
+            }
+            if (evt == "npc:scheme-resolved")
             {
                 var plotter = JsonString(text, "plotterName");
                 if (string.IsNullOrEmpty(plotter)) plotter = JsonString(text, "plotter");
@@ -404,13 +431,23 @@ namespace Concordia
                 if (string.IsNullOrEmpty(target)) target = JsonString(text, "target");
                 var kind = JsonString(text, "kind");
                 if (string.IsNullOrEmpty(kind)) kind = "scheme";
+                var outcome = JsonString(text, "outcome");
                 var line = kind;
                 if (!string.IsNullOrEmpty(plotter) && !string.IsNullOrEmpty(target))
                     line = plotter + " ↔ " + target + ": " + kind;
                 else if (!string.IsNullOrEmpty(plotter))
                     line = plotter + " · " + kind;
-                WorldClock.NoteAct("scheme nearby — " + line);
-                Plots.Seed(line);
+                if (!string.IsNullOrEmpty(outcome)) line += " · " + outcome;
+                RunMain(() =>
+                {
+                    WorldClock.NoteAct("scheme closed — " + line);
+                    ConcordiaHUD.Announce("Scheme", line);
+                });
+                return;
+            }
+            if (evt == "npc:conversation-bid")
+            {
+                RunMain(() => WorldClock.NoteAct("voices nearby"));
                 return;
             }
             if (evt == "gift:result")
@@ -425,8 +462,19 @@ namespace Concordia
             }
             if (evt == "scheme:intervened")
             {
-                if (!JsonFlagFalse(text, "ok"))
+                RunMain(() =>
+                {
+                    if (JsonFlagFalse(text, "ok"))
+                    {
+                        var reason = JsonString(text, "reason");
+                        if (string.IsNullOrEmpty(reason)) reason = "the plot did not take";
+                        WorldClock.NoteAct(reason);
+                        ConcordiaHUD.Announce("Plot missed", reason);
+                        return;
+                    }
+                    Plots.ResolveKernel(JsonString(text, "action"));
                     WorldClock.NoteAct("the kernel named the plot");
+                });
                 return;
             }
             if (evt == "party:data")
@@ -436,13 +484,7 @@ namespace Concordia
             }
             if (evt == "inheritance:data")
             {
-                var heir = JsonString(text, "heirName");
-                if (string.IsNullOrEmpty(heir)) heir = JsonString(text, "heir_name");
-                if (!string.IsNullOrEmpty(heir))
-                {
-                    WorldClock.NoteAct(heir + " carries the thread");
-                    ConcordiaHUD.Announce("Heir rose", heir + " inherited");
-                }
+                RunMain(() => ApplyInheritance(text));
                 return;
             }
             if (evt == "dungeon:data")
@@ -551,19 +593,47 @@ namespace Concordia
             var dmg = JsonFloat(json, "damage", JsonFloat(json, "amount", 8f));
             var skillKey = JsonString(json, "skillKey");
             if (string.IsNullOrEmpty(skillKey)) skillKey = JsonString(json, "skillId");
+            var mom = JsonFloat(json, "impactMomentum", 0f);
+            if (mom <= 0f) mom = JsonFloat(json, "knockback", 0f);
+            var kb = mom > 0f ? Mathf.Clamp(mom * 0.12f, 0.05f, 2.4f) : -1f;
             var player = ConcordiaPlayer.Live;
             var kick = SkillLattice.KickMul(skillKey);
+            var feel = player ? player.GetComponent<CombatFeel>() : null;
             if (player && !string.IsNullOrEmpty(_userId) && target == _userId)
-                player.TakeHit(Mathf.Max(1f, dmg), string.IsNullOrEmpty(atk) ? "a blow" : atk);
+                player.TakeHit(Mathf.Max(1f, dmg), string.IsNullOrEmpty(atk) ? "a blow" : atk, kb);
             else
             {
-                var feel = player ? player.GetComponent<CombatFeel>() : null;
                 feel?.Strike(impact, true, kick, skillKey);
+                if (impact && feel && kb > 0f) feel.ApplyAck(true, kb, false, false);
             }
             if (!string.IsNullOrEmpty(skillKey))
                 WorldClock.NoteAct(skillKey + (impact ? " · impact" : " · steel"));
             else if (impact)
                 WorldClock.NoteAct("steel");
+        }
+
+        void ApplyInheritance(string json)
+        {
+            if (JsonFlagFalse(json, "ok"))
+            {
+                var reason = JsonString(json, "reason");
+                if (!string.IsNullOrEmpty(reason)) WorldClock.NoteAct(reason);
+                return;
+            }
+            var heir = JsonString(json, "heirName");
+            if (string.IsNullOrEmpty(heir)) heir = JsonString(json, "heir_name");
+            var n = JsonArrayCount(json, "links");
+            var kinds = new System.Collections.Generic.List<string>();
+            ForEachArrayObject(json, "links", link =>
+            {
+                var k = JsonString(link, "inherited_kind");
+                if (!string.IsNullOrEmpty(k) && !kinds.Contains(k)) kinds.Add(k);
+            });
+            var line = string.IsNullOrEmpty(heir) ? "the thread holds" : heir + " carries the thread";
+            if (kinds.Count > 0) line += " · " + string.Join(", ", kinds);
+            else if (n <= 0) line += " · nothing passed";
+            WorldClock.NoteAct(line);
+            ConcordiaHUD.Announce("Heir rose", line);
         }
 
         /// <summary>
@@ -695,8 +765,13 @@ namespace Concordia
                 + "\",\"skillId\":\"" + Escape(skillId) + "\"}");
         }
 
-        public Task SendDodge(bool parry = false) =>
-            SendEvt("combat:dodge", "{\"wasParry\":" + (parry ? "true" : "false") + "}");
+        public Task SendDodge(bool parry = false, string action = null)
+        {
+            if (string.IsNullOrEmpty(action)) action = parry ? "parry" : "dodge";
+            return SendEvt("combat:dodge",
+                "{\"wasParry\":" + (parry ? "true" : "false")
+                + ",\"action\":\"" + Escape(action) + "\"}");
+        }
 
         public Task SendGift(string npcId, string itemId, string itemName, string archetype) =>
             SendEvt("gift:give",

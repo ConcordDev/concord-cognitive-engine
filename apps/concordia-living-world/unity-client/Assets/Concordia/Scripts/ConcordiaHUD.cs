@@ -531,7 +531,10 @@ namespace Concordia
             DrawBar(cx - 140, y + 20, 280, 8, hpT, new Color(0.82f, 0.16f, 0.14f));
             if (!string.IsNullOrEmpty(peril))
             {
-                var hint = peril == "thrust" ? "Thrust — parry" : peril == "sweep" ? "Sweep — dodge" : "Grab — dodge";
+                var hint = peril == "thrust" ? "Thrust — X"
+                    : peril == "sweep" ? "Sweep — Space"
+                    : peril == "grab" ? "Grab — X"
+                    : peril;
                 GUI.Label(new Rect(cx - 150, y + 30, 300, 18), hint, _center);
             }
         }

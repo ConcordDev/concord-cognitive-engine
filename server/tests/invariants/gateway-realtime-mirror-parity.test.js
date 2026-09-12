@@ -129,4 +129,11 @@ test("io.emit-only modules have a gateway-only mirror hook (clock/weather do not
   const clock = readFileSync(join(import.meta.dirname, "..", "..", "lib", "world-clock.js"), "utf8");
   assert.match(weather, /mirrorToGateways\(\s*"world:weather"/);
   assert.match(clock, /mirrorToGateways\(\s*"world:clock"/);
+  const secrets = readFileSync(join(import.meta.dirname, "..", "..", "lib", "secrets.js"), "utf8");
+  assert.match(secrets, /fanSecretWeaponised/);
+  assert.match(secrets, /mirrorToGateways\(\s*"secret:weaponised"/);
+  const overhear = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "scheme-overhear-cycle.js"), "utf8");
+  assert.match(overhear, /mirrorToGateways\(\s*"scheme:overheard"/);
+  const bid = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "npc-conversation-initiator.js"), "utf8");
+  assert.match(bid, /mirrorToGateways\(\s*"npc:conversation-bid"/);
 });

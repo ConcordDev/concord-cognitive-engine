@@ -318,6 +318,27 @@ describe("onNpcDeath — legacy + inheritance cascade", () => {
     const r = onNpcDeath(null, null);
     assert.equal(r.ok, false);
   });
+
+  it("emits npc:heir-rose when an heir exists", () => {
+    const db = makeFakeDb();
+    const dead = makeNpc({ id: "npc:dad2" });
+    const heir = makeNpc({ id: "npc:son2" });
+    db._tables.world_npcs.set(dead.id, dead);
+    db._tables.world_npcs.set(heir.id, heir);
+    db._tables.npc_relations.set("r-heir", { npc_id: "npc:son2", related_to: "npc:dad2", relation_kind: "child" });
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      onNpcDeath(db, dead);
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0].event, "npc:heir-rose");
+    assert.equal(seen[0].payload.heirId, "npc:son2");
+    assert.equal(seen[0].payload.deceasedId, "npc:dad2");
+  });
 });
 
 describe("getTombsForWorld + getInheritanceForHeir", () => {
