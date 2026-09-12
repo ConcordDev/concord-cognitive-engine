@@ -406,6 +406,11 @@ namespace Concordia
             return "Took " + loot.label + ".";
         }
 
+        /// <summary>
+        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
+        /// topology is one continuous universe; Link gates are the only fast
+        /// travel. Flower Law is Hub-only. See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
+        /// </summary>
         public void Travel(WorldId next)
         {
             var carried = _player != null ? _player.kitWeapon : null;

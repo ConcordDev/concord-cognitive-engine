@@ -50,6 +50,7 @@ export const PER_WORLD_WRITE_TABLES = Object.freeze(new Set([
   "world_chronicle_cursor",
   "settlements",
   "settlement_vacancies",
+  "settlement_chronicle",
   "vassalage",
   "world_emperors",
   "world_seasons",

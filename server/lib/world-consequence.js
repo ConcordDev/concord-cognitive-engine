@@ -27,6 +27,8 @@ const ACTIONS = new Set([
   "destroy",
   "crime",
   "world_event",
+  "settle",
+  "abandon",
 ]);
 
 function json(v) {

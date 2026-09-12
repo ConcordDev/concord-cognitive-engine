@@ -2,6 +2,13 @@
 
 ## 🟢 HANDOFF — start here
 
+**Concordia live architecture (2026-09-12):** one continuous megaworld —
+settlements as historical objects, place memory, consequence→Unity presentation.
+Read **`docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` first** for Concordia work.
+Spine pinned by `server/tests/concordia-megaworld.test.js`. Do not rebuild
+`settlements` / `world_consequences` / `world_chronicle`. W5/W6 (cold-start and
+100-hour return) are named and **not yet run**.
+
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —
 see the per-phase SHIPPED markers in §B and §C for commit hashes and

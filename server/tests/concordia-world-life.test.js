@@ -128,6 +128,13 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
+  it("Travel is labeled region_rebuild until the megaworld streams continuously", () => {
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /MEGAWORLD: current mode is region_rebuild/);
+    assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
+    assert.match(game, /_world\.Build\(next\)/);
+  });
+
   it("stock becomes a caravan with a real Ring tariff, never an invented city", () => {
     const book = src("WorldBook.cs");
     const gate = src("WorldGate.cs");
