@@ -23,6 +23,7 @@ namespace Concordia
             Seen.Clear();
             QuestLog.Reset();
             SkillLedger.Reset();
+            SkillLattice.Reset();
             KitBag.Reset();
             Bonds.Reset();
             Plots.Reset();
@@ -372,6 +373,111 @@ namespace Concordia
         }
 
         static int Count(Dictionary<string, int> d, string k) => d.TryGetValue(k, out var n) ? n : 0;
+    }
+
+    /// <summary>
+    /// T3.1 kernel skill overlay. Bound from skills.mastery over /unity-ws.
+    /// Untrained catalog rows stay level 0. Empty until Concord answers —
+    /// kit arts are not this lattice.
+    /// </summary>
+    public static class SkillLattice
+    {
+        public class Row
+        {
+            public string skillType, group, tier, element, preset;
+            public int level, cameraKickPx;
+            public float potency, glow;
+            public bool finisher;
+        }
+
+        public static readonly List<Row> All = new List<Row>();
+        public static readonly List<string> Groups = new List<string>();
+        public static bool FromKernel;
+        public static string Group = "combat";
+        public static string ActiveSkill = "swords";
+        public static int CatalogCount;
+        public static int TrainedCount;
+
+        public static void Reset()
+        {
+            All.Clear();
+            Groups.Clear();
+            FromKernel = false;
+            Group = "combat";
+            ActiveSkill = "swords";
+            CatalogCount = 0;
+            TrainedCount = 0;
+        }
+
+        public static void Bind(int catalogCount, int trainedCount)
+        {
+            CatalogCount = catalogCount;
+            TrainedCount = trainedCount;
+            FromKernel = catalogCount > 0;
+            if (string.IsNullOrEmpty(Group)) Group = "combat";
+            if (Find(ActiveSkill) == null) ActiveSkill = CombatSlot(0);
+        }
+
+        public static void Add(Row row)
+        {
+            if (row == null || string.IsNullOrEmpty(row.skillType)) return;
+            All.Add(row);
+            if (!string.IsNullOrEmpty(row.group) && !Groups.Contains(row.group))
+                Groups.Add(row.group);
+        }
+
+        public static Row Find(string skillType)
+        {
+            if (string.IsNullOrEmpty(skillType)) return null;
+            for (int i = 0; i < All.Count; i++)
+                if (All[i].skillType == skillType) return All[i];
+            return null;
+        }
+
+        public static string CombatSlot(int art)
+        {
+            int n = 0;
+            for (int i = 0; i < All.Count; i++)
+            {
+                if (All[i].group != "combat") continue;
+                if (n == art) return All[i].skillType;
+                n++;
+            }
+            if (art == 1) return "fists";
+            if (art == 2) return "archery";
+            return "swords";
+        }
+
+        public static void SelectSlot(int art)
+        {
+            KitBag.Art = art;
+            ActiveSkill = CombatSlot(art);
+        }
+
+        public static void CycleGroup(int delta)
+        {
+            if (Groups.Count == 0) return;
+            int i = Groups.IndexOf(Group);
+            if (i < 0) i = 0;
+            i = (i + delta + Groups.Count * 8) % Groups.Count;
+            Group = Groups[i];
+        }
+
+        public static string HudLine()
+        {
+            if (!FromKernel) return "skills.mastery unbound";
+            var row = Find(ActiveSkill);
+            if (row == null) return CatalogCount + " skills · kernel";
+            return row.skillType + "  L" + row.level + "  " + row.tier
+                + (row.finisher ? "  finisher" : "");
+        }
+
+        public static float KickMul(string skillType)
+        {
+            var row = Find(skillType);
+            if (row == null) return 1f;
+            return Mathf.Clamp(0.7f + row.glow * 0.8f + row.cameraKickPx * 0.08f, 0.5f, 2.4f);
+        }
     }
 
     /// <summary>

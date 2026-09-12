@@ -234,6 +234,7 @@ namespace Concordia
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                 await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
@@ -256,6 +257,7 @@ namespace Concordia
             PartyLine = "PARTY  ·  you";
             PartyCount = 1;
             DungeonLine = "";
+            SkillLattice.Reset();
         }
 
         void HandleFrame(string evt, string text)
@@ -364,7 +366,10 @@ namespace Concordia
                 return;
             }
             if (evt == "lens:result")
+            {
+                RunMain(() => ApplyLensResult(text));
                 return;
+            }
             if (evt == "dialogue:data")
             {
                 ApplyDialogue(text);
@@ -537,15 +542,20 @@ namespace Concordia
             var target = JsonString(json, "targetId");
             var atk = JsonString(json, "attackerId");
             var dmg = JsonFloat(json, "damage", JsonFloat(json, "amount", 8f));
+            var skillKey = JsonString(json, "skillKey");
+            if (string.IsNullOrEmpty(skillKey)) skillKey = JsonString(json, "skillId");
             var player = ConcordiaPlayer.Live;
+            var kick = SkillLattice.KickMul(skillKey);
             if (player && !string.IsNullOrEmpty(_userId) && target == _userId)
                 player.TakeHit(Mathf.Max(1f, dmg), string.IsNullOrEmpty(atk) ? "a blow" : atk);
             else
             {
                 var feel = player ? player.GetComponent<CombatFeel>() : null;
-                feel?.Strike(impact, true);
+                feel?.Strike(impact, true, kick);
             }
-            if (impact)
+            if (!string.IsNullOrEmpty(skillKey))
+                WorldClock.NoteAct(skillKey + (impact ? " · impact" : " · steel"));
+            else if (impact)
                 WorldClock.NoteAct("steel");
         }
 
@@ -579,6 +589,39 @@ namespace Concordia
             });
         }
 
+        void ApplyLensResult(string json)
+        {
+            if (JsonFlagFalse(json, "ok")) return;
+            var lensName = JsonString(json, "lensName");
+            var catalogCount = JsonInt(json, "catalogCount", 0);
+            if (lensName != "mastery" && catalogCount <= 0) return;
+            SkillLattice.Reset();
+            ForEachArrayObject(json, "groups", groupJson =>
+            {
+                var group = JsonString(groupJson, "group");
+                ForEachArrayObject(groupJson, "skills", skillJson =>
+                {
+                    SkillLattice.Add(new SkillLattice.Row
+                    {
+                        skillType = JsonString(skillJson, "skillType"),
+                        group = string.IsNullOrEmpty(JsonString(skillJson, "group")) ? group : JsonString(skillJson, "group"),
+                        tier = JsonString(skillJson, "tier"),
+                        element = JsonNestedString(skillJson, "element"),
+                        preset = JsonString(skillJson, "preset"),
+                        level = JsonInt(skillJson, "level", 0),
+                        cameraKickPx = JsonInt(skillJson, "cameraKickPx", 0),
+                        potency = JsonFloat(skillJson, "potency", 1f),
+                        glow = JsonFloat(skillJson, "glow", 0.4f),
+                        finisher = skillJson.IndexOf("\"finisherFlourish\":true", System.StringComparison.Ordinal) >= 0
+                            || skillJson.IndexOf("\"finisherUnlocked\":true", System.StringComparison.Ordinal) >= 0,
+                    });
+                });
+            });
+            SkillLattice.Bind(catalogCount, JsonInt(json, "trainedCount", 0));
+            if (SkillLattice.FromKernel)
+                WorldClock.NoteAct(SkillLattice.CatalogCount + " skills · kernel");
+        }
+
         public Task LensRun(string domain, string name, string inputJson = "{}")
         {
             var body = "{\"domain\":\"" + Escape(domain)
@@ -601,13 +644,23 @@ namespace Concordia
             await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
             await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+            await LensRun("skills", "mastery");
         }
 
         public Task SendMove(float x, float y, float z, string cityId) =>
             SendEvt("player:move", "{\"cityId\":\"" + Escape(cityId) + "\",\"x\":" + x + ",\"y\":" + y + ",\"z\":" + z + ",\"direction\":0}");
 
-        public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword") =>
-            SendEvt("combat:attack", "{\"targetId\":\"" + Escape(targetId) + "\",\"baseDamage\":" + baseDamage + ",\"range\":" + range + ",\"weapon\":\"" + Escape(weapon) + "\"}");
+        public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword", string skillId = null)
+        {
+            if (string.IsNullOrEmpty(skillId)) skillId = SkillLattice.ActiveSkill;
+            if (string.IsNullOrEmpty(skillId)) skillId = "swords";
+            return SendEvt("combat:attack",
+                "{\"targetId\":\"" + Escape(targetId)
+                + "\",\"baseDamage\":" + baseDamage
+                + ",\"range\":" + range
+                + ",\"weapon\":\"" + Escape(weapon)
+                + "\",\"skillId\":\"" + Escape(skillId) + "\"}");
+        }
 
         public Task SendDodge(bool parry = false) =>
             SendEvt("combat:dodge", "{\"wasParry\":" + (parry ? "true" : "false") + "}");

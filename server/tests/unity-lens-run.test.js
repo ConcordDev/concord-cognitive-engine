@@ -109,6 +109,8 @@ describe("lens:run gateway verb — same three gates as HTTP", () => {
       assert.equal(call.ctx.reqMeta.method, "POST");
       assert.equal(call.ctx.actor.userId, "u1");
       assert.equal(call.ctx.userId, "u1");
+      assert.equal(frame.data.lensDomain, "lore");
+      assert.equal(frame.data.lensName, "list");
       assert.notEqual(call.ctx.actor.role, "system");
       assert.notEqual(call.ctx.actor.internal, true);
       assert.ok(!call.ctx.actor.scopes?.includes("*"), "must not mint a root actor");

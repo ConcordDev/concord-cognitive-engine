@@ -50,7 +50,8 @@ Branch `claude/lens-population-depth-DVcsF` — 7 commits, **161/161 tests green
   point lights; local gift/heart/plot/heir rules match the kernel math; no HUD copy that
   parks a verb on “needs `/unity-ws`”.
 - **T3.1 / T3.1b** per-skill descriptors live in `concord-frontend/lib/concordia/skill-descriptors.ts`
-  (tested). Unity still presents kit arts, not the 67-skill overlay.
+  (tested). Unity now binds `skills.mastery` over `/unity-ws` (`lens:run`) and paints the catalog
+  overlay (untrained = L0 novice). Kit arts are no longer presented as the 67-skill system.
 - **T3.2** hub `lore.json` + `content/codex/eight-refusals.json` + `seedCodex` are in tree.
   Hub Watch↔Bazaar rivalries and Asbir/Isa + Mira/Nesha relationships now seed T1.1/T1.3.
 - **T3.3** per-world sky tints + night sun/exposure dim are live. Zone architecture is still

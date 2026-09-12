@@ -77,6 +77,8 @@ the Unity client's world.
 - Native 3D (wire): arena, coop/raids, extraction, horde, farming, factory,
   mounts, auctions, crafting, parties — reach the kernel via `lens:run` plus
   the play verbs already on the socket (party, dungeon, gift, dodge).
+  `skills.mastery` now covers the T3.1 67-skill overlay (catalog + live
+  `player_skill_levels`); Unity consumes it instead of kit arts.
 - In-world terminals later: hacking, trivia, mahjong, karaoke, code-puzzle —
   engines stay; no page port.
 - Stay web: genuine dashboards.

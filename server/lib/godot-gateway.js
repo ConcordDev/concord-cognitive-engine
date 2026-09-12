@@ -536,13 +536,14 @@ function isBinaryMovePayload(p) {
         };
         try {
           const result = await runMacro(domain, name, input, ctx);
-          send(
-            client.ws,
-            "lens:result",
-            result && typeof result === "object"
-              ? result
-              : { ok: false, reason: "lens_run_failed" },
-          );
+          const payload = result && typeof result === "object"
+            ? result
+            : { ok: false, reason: "lens_run_failed" };
+          send(client.ws, "lens:result", {
+            ...payload,
+            lensDomain: domain,
+            lensName: name,
+          });
         } catch (e) {
           const msg = String(e?.message || e);
           send(client.ws, "lens:result", {

@@ -16,9 +16,12 @@
 //     scaling: particle count, scale, trail, glow, finisher flag) the client
 //     renders verbatim, so a master's cast genuinely looks bigger.
 //   - getSkillMastery / getAllSkillMastery: DB reads over player_skill_levels.
+//   - getCatalogSkillMastery: every SKILL_CATALOG key, untrained at L0 novice.
 //
 // All pure/deterministic (no RNG) so it's testable and a client can't inflate
 // its own mastery.
+
+import { SKILL_TREE_CONSTANTS } from "../skill-tree-engine.js";
 
 /**
  * Mastery tiers. `minLevel` is inclusive. Bonuses are small, stacking-by-tier
@@ -173,4 +176,58 @@ export function getAllSkillMastery(db, userId) {
       vfx: skillVfxDescriptor({ skillType: r.skill_type, level: r.level || 0 }),
     };
   });
+}
+
+function elementForCatalogSkill(skillType, group) {
+  const key = String(skillType || "");
+  if (key.startsWith("elemental_")) return key.slice("elemental_".length) || "none";
+  if (group === "combat") return "physical";
+  return "none";
+}
+
+/**
+ * T3.1 catalog overlay: every SKILL_CATALOG key, including untrained
+ * skills at level-0 novice. Trained rows overlay the live
+ * player_skill_levels aggregate. Never invents XP.
+ */
+export function getCatalogSkillMastery(db, userId) {
+  const trained = new Map();
+  for (const row of getAllSkillMastery(db, userId)) {
+    if (row?.skillType) trained.set(row.skillType, row);
+  }
+  const catalog = SKILL_TREE_CONSTANTS.SKILL_CATALOG || {};
+  const groups = [];
+  let catalogCount = 0;
+  for (const [group, list] of Object.entries(catalog)) {
+    const skills = (Array.isArray(list) ? list : []).map((skillType) => {
+      catalogCount += 1;
+      const element = elementForCatalogSkill(skillType, group);
+      const live = trained.get(skillType);
+      if (live) {
+        return {
+          ...live,
+          group,
+          vfx: skillVfxDescriptor({
+            skillType,
+            element,
+            level: live.level || 0,
+          }),
+        };
+      }
+      const mastery = masteryForLevel(0);
+      return {
+        skillType,
+        xp: 0,
+        group,
+        ...mastery,
+        vfx: skillVfxDescriptor({ skillType, element, level: 0 }),
+      };
+    });
+    groups.push({ group, skills });
+  }
+  return {
+    catalogCount,
+    trainedCount: trained.size,
+    groups,
+  };
 }
