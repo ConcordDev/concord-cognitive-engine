@@ -52,21 +52,21 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 | 2 Link vs walk | Gates + CrossRing. `WorldBook.Folder` maps Hub→`concordia-hub`, Frontier→`concord-link-frontier`, etc. | No overland path that keeps the same scene streaming. Fast travel is currently *all* travel. |
 | 3 Flower Law | Hub `steelLive = false`; every other `Canon` world `steelLive = true`. Sere law text: Flower-law is the Court only. | Law lives in Unity Canon + HUD copy. Server `flowerLawGoverns` is the kernel pin. |
 | 4 Persistent geography | `world_terrain_deformations` + `world_water_cells` (mig 281) are delta-over-seed. `procgen_regions` persist. | No single `world_seed` → continent → settlement-site pipeline that stamps identity. Two settlement systems: Living Society `settlements` (mig 287) vs `procgen_settlement_npcs` (region NPC packs). |
-| 5 Settlement entity | `settlements` (`id, world_id, name, center_x/z, radius_m, faction_id, realm_id, created_at`) + vacancies + `world_npcs.settlement_id`. `createSettlement` in `lib/settlements.js`. | Row is a **cluster**, not a historical object. No status, former names, founders, food/water/security, destroyed_at. |
+| 5 Settlement entity | `settlements` cluster (mig 287) + identity (`status`, founders, abandoned_at — mig 446) + `region_id` (mig 447). `foundSettlement` / `abandonSettlement` keep the row. | Village→city ladder / split successor states still GAP. Food/water/security columns stay empty. |
 | 6 Place memory | `world_chronicle` (mig 286) + composers. `npc_memories` (mig 417). | Chronicle is **world-scoped**, not settlement-scoped. No mill-built / charter / plague-rebuild chain on a place id. |
 | 7 Consequence graph | **Shipped.** `world_consequences` (mig 416) + `recordConsequence` / `recordLeaderDeath` + `consequence-apply.js` → schedules + memories + relation axes. | Not every kill/trade/founding writes it. `location` is a string, not a settlement FK. Unity does not show “this shop has been closed since…”. Plan A8 in `CONCORDIA_UNITY_BUILD_PLAN.md` that still says “missing unifier” is **stale**. |
-| 8 Inhabitation | Civilian roster, labor→`world_buildings.construction_progress_pct`, crops, scarcity, employment edges, migration mig 168, `population-migration-cycle`. | `procgen-settlements.spawnSettlementForRegion` still drops 3–5 archetypes in a disc. That is the anti-pattern in law 8. |
+| 8 Inhabitation | Civilian roster, labor→`world_buildings.construction_progress_pct`, crops, scarcity, employment edges, migration mig 168, `population-migration-cycle`. **W1:** `spawnSettlementForRegion` founds or joins a `settlements` row (mig 447 `region_id`). | NPC packs are still 3–5 archetypes in a disc — wrapped, not enlarged. |
+| 10 Abandon ≠ delete | `decaySettlementForRegion` tombstones `procgen_settlement_npcs` **and** `abandonSettlement` on the joined row. Buildings collapse via `applyStructuralStress`. | Unity ruin meshes are a label (`status=abandoned` / “ruins remain”), not a second building set. |
+| 11 Presentation | Unity presents kernel tombs, gossip, banners, fauna genomes, LOD Real/Bulk/Virtual (`WorldClock.LodAt`). HUD shows WorldField physics language. Abandoned count from `kingdom:data`. | Growth still does not add houses the kernel does not have. |
+| 15 LOD | Unity `SimLod { Real, Bulk, Virtual }` at 28m / 70m. World shards + `PER_WORLD_WRITE_TABLES`. **W4:** `regionalSummary` keeps chronicle ids; food/wealth stay empty. | Distant Virtual NPCs rewind to home; L3 statistical food/wealth still empty. |
+| 16 Tests | Heartbeats exist; world continues in `WorldMemory` slices. Mechanism pin: abandoned rows survive a simulated 7-day timestamp. | 7-day / 1-year / 50-year **live** cold-start **not run**. 100-hour return **not run**. Do not claim them. |
+| 17 WorldField | Kernel `fieldAt(x,z)` + `localToMegaworld` (W3-thin in-region sample). Combat samples `applyGeographicDamage`. Unity `WorldField.cs` presents the same constants. Hub is a suppression well. | Continent streaming between civilizations is **not** shipped. `Travel` is still `region_rebuild`. `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). The field degrades; the discrete leftover still forbids. |
+| 18 Geographic effectiveness | **W7 wired.** HTTP combat + Unity dummy/HP authority sample the field. Actor-kind-blind. HUD speaks physics (`explainGeographicEffectiveness` / `WorldField.HudLine`). | Boss retreat-to-home-field is the FaunaLife habitat retreat, not a named boss AI. |
+| 19 Organism | **W8:** fauna-spawner inserts stamp `species_id` and `recordOrganismBirth`. Death still tombstones. Catalog honesty (no invented Gloom Stalker prey). Unity FaunaLife reads habitat fitness. | Quota top-up still exists (now with organism ids). Morphology from genome×field is later — CreatureCompiler is the other client branch. |
 | 9 Growth / death | Vacancies on NPC death. Movements / uprisings. Realm health symptoms. | No Village→Town→City ladder, no split/successor states as settlement rows, no ghost-town status. |
-| 10 Abandon ≠ delete | `decaySettlementForRegion` **tombstones** `procgen_settlement_npcs.decayed_at` (does not DELETE). Buildings collapse via `applyStructuralStress` (standing→damaged→collapsed). | Living Society `settlements` had no abandon path. Spine now: `abandonSettlement` sets `status='abandoned'`. Buildings/roads of an abandoned town are not yet a Unity ruin pass. |
-| 11 Presentation | Unity presents kernel tombs, gossip, banners, fauna genomes, LOD Real/Bulk/Virtual (`WorldClock.LodAt`). | Settlement growth does not add houses. Abandoned status does not swap meshes. Crowds/markets/graves are not derived from the settlement row. |
-| 12 Kingdoms | Realms, vassalage, faction strategy, `concordia-kingdom-snapshot.js`. | Borders are not an emergent mesh of settlement ownership. |
+| 12 Kingdoms | Realms, vassalage, faction strategy, `concordia-kingdom-snapshot.js`. Overlay of kernel `status` on authored settlements. | Borders are not an emergent mesh of settlement ownership. |
 | 13 Dynasties | Aging/dynasty mig 181, inheritance, Voss authored lore. | Dynasty↔place history is lore, not `founders_json` on the settlement. |
-| 14 Query | Chronicle macros, realm health, consequence list. | No `whyPlace(settlementId)` until this spine. Must not invent a spring/road story when beats are empty. |
-| 15 LOD | Unity `SimLod { Real, Bulk, Virtual }` at 28m / 70m. World shards + `PER_WORLD_WRITE_TABLES`. | No L2/L3 **historical** aggregate. Distant Virtual NPCs rewind to home; they do not keep a summarized village ledger. |
-| 16 Tests | Heartbeats exist; world continues in `WorldMemory` slices (“The world continued while you were away”). | 7-day / 1-year / 50-year cold-start **not run**. 100-hour return test **not run**. Do not claim them. |
-| 17 WorldField | Kernel `fieldAt(x,z)` on one plane. Gate bearings copied from Unity `Canon.Gates`. Authored `content/world/*/meta.json` `skill_affinity` is the blend at each center. Hub is a suppression well (Flower Law + steel dead). Discrete `crossWorldPotency` / `effectivenessMultiplier` remain the **live combat** path (WorldId). | Unity still region-rebuilds; combat has a WorldId, not a megaworld (x,z). `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). That is the discrete leftover — the field degrades, it does not forbid. |
-| 18 Geographic effectiveness | `geographicEffectiveness` is actor-kind-blind. Adaptation raises a floor without beating home. | Not wired into `/combat/attack`. Bosses do not yet retreat toward their home field. No Unity presentation of weakening (and when it lands, it must read the kernel, not a fake HUD modifier). |
-| 19 Organism | Authored `content/world/*/creatures.json`. Creature needs (`creature-needs.js`). Food-web trophic edges. `creature_corpses` / `creature_population`. `world_npcs` rows with `archetype='creature'`. Spine: `organismInField` + death never deletes. | `fauna-spawner` still **tops up quotas** with anonymous inserts (same anti-pattern as `spawnTown`). Morphology does not yet change with the field (Unity `CreatureCompiler` is on the other client branch). Prey for Gloom Stalker is **empty** in the catalog — do not fill it from the prose “hunts isolated targets.” Population is per `(world_id, biome)`, not per megaworld point. |
+| 14 Query | Chronicle macros, realm health, consequence list. `whyPlace(settlementId)` is the spine. | Must not invent a spring/road story when beats are empty. |
 | 20 Person loop | `npc-needs.js` (16 need kinds). Utility + routines. Consequence graph. Place chronicle. | Person action does not yet always write `world_consequences`. The two loops share the field in the kernel; Unity FaunaLife / NpcLife are still local presenters. |
 
 ---
@@ -89,7 +89,7 @@ native strength
 
 `explainGeographicEffectiveness` speaks in physics (“local magic is 0.12; you trained in fantasy”). It does not mint a combat-log debuff.
 
-Live combat keeps `cross-world-potency.js` until W3 gives coordinates and W7 samples `fieldAt`. Do not swap the route early and pretend Unity is already walking a supercontinent.
+Live combat samples `applyGeographicDamage` (W7). Discrete `cross-world-potency.js` remains the kill-switch fallback (`CONCORD_GEOGRAPHIC_FIELD=0`). In-region Unity metres map through `localToMegaworld` (W3-thin). Do not claim continent streaming — `Travel` still `_world.Build`.
 
 ---
 
@@ -102,9 +102,9 @@ Person → needs → action → consequence → memory → place → history →
 
 They meet at `sharedWorldSurface(x,z)` (the field) and `world_consequences` (the graph). A Gloom Stalker walked from Fantasy toward Crime is the same catalog id; habitat fitness and magic coupling change because the **environment changed under it**. Prey stays empty until a food-web edge or catalog list exists. Pack/territory stay null until authored.
 
-`fauna-spawner` topping up anonymous `world_npcs` is the organism analog of `spawnTown`. Wrap it in W8. Do not enlarge it.
+`fauna-spawner` still tops up quotas, but each insert now has a species id and writes `birth` on the existing consequence graph (W8). Do not invent prey.
 
-Unity `FaunaLife` / `NpcLife` **reveal**. They do not invent a hunting list or a mourner.
+Unity `FaunaLife` / `NpcLife` **reveal**. They do not invent a hunting list or a mourner. Low habitat fitness retreats toward home.
 
 ---
 
@@ -205,14 +205,14 @@ Aggregation must store `population / food / wealth / stability / war_risk` **and
 | **W0** | Laws in code. Settlement status + abandon-not-delete. Place chronicle. `whyPlace`. `settle`/`abandon` consequences. Unity Travel labeled region-rebuild. Tests. This doc. | **This PR** |
 | **W0-field** | `fieldAt(x,z)`. Hub well. Geographic effectiveness, actor-kind-blind. Authored affinities. Canon bearings. Discrete potency left as live combat. | **This PR** |
 | **W0-organism** | Two loops named. `organismInField`. Gloom Stalker catalog honesty (no invented prey). Death tombstones. `birth`/`hunt` on the existing consequence graph. | **This PR** |
-| **W1** | `spawnSettlementForRegion` founds or joins a `settlements` row (no second identity). Population counted from NPCs. | open |
-| **W2** | Unity presents `status` (active vs abandoned ruins remain). No despawn of the settlement id. | open |
-| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | open |
-| **W4** | L2/L3 aggregates that retain chronicle ids. | open |
-| **W5** | Cold-start: new seed, run sim 7 days (then 1 month / 1 year as capacity allows). Inspect settlements, deaths, abandonments **without authored history**. Walk it. | not run |
-| **W6** | **Come back 100 hours later.** Help a farmer, leave, return. The place continued. Memories and buildings match the ledger. | not run |
-| **W7** | Combat, NPCs, bosses, summons, faction armies sample `geographicEffectiveness`. A boss far from home is weaker too, and may retreat toward its field. Unity presents the field (no fake percent sticker). | open |
-| **W8** | Fauna-spawner founds organism rows (no anonymous quota as the live path). Death/birth always hit the graph. Field-coupled habitat. Unity FaunaLife reads `organismInField`. Morphology from genome×field is later — do not fake unique GLBs. | open |
+| **W1** | `spawnSettlementForRegion` founds or joins a `settlements` row (no second identity). Population counted from NPCs. | **This PR** |
+| **W2** | Unity presents `status` (active vs abandoned ruins remain). No despawn of the settlement id. | **This PR** (HUD / kingdom overlay; no invented houses) |
+| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | **thin shipped** — `localToMegaworld` in-region sample. Continent streaming **GAP**. Travel still `region_rebuild`. |
+| **W4** | L2/L3 aggregates that retain chronicle ids. | **thin shipped** — `regionalSummary` counts + chronicle ids; food/wealth empty |
+| **W5** | Cold-start: new seed, run sim 7 days (then 1 month / 1 year as capacity allows). Inspect settlements, deaths, abandonments **without authored history**. Walk it. | **not run** (mechanism pin only: abandoned rows survive a backdated timestamp) |
+| **W6** | **Come back 100 hours later.** Help a farmer, leave, return. The place continued. Memories and buildings match the ledger. | **not run** |
+| **W7** | Combat, NPCs, bosses, summons, faction armies sample `geographicEffectiveness`. A boss far from home is weaker too, and may retreat toward its field. Unity presents the field (no fake percent sticker). | **This PR** |
+| **W8** | Fauna-spawner founds organism rows (no anonymous quota as the live path). Death/birth always hit the graph. Field-coupled habitat. Unity FaunaLife reads `organismInField`. Morphology from genome×field is later — do not fake unique GLBs. | **This PR** (quota remains; births are organisms) |
 
 Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 
@@ -243,10 +243,10 @@ Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 
 ## 10. Pins
 
-- Topology + Flower Law + abandon-not-delete + whyPlace emptiness: `server/tests/concordia-megaworld.test.js`
-- WorldField + geographic effectiveness (actor-kind-blind, Hub well, authored affinities): `server/tests/concordia-world-field.test.js`
-- Organism loops + Gloom Stalker catalog honesty + death remains: `server/tests/concordia-organism.test.js`
-- Discrete WorldId potency (live combat, still): `server/tests/cross-world-potency.test.js`
+- Topology + Flower Law + abandon-not-delete + whyPlace emptiness + W1 join + W4 summary: `server/tests/concordia-megaworld.test.js`
+- WorldField + geographic effectiveness (actor-kind-blind, Hub well, authored affinities, W3-thin map, W7 combat wire): `server/tests/concordia-world-field.test.js`
+- Organism loops + Gloom Stalker catalog honesty + death remains + W8 birth: `server/tests/concordia-organism.test.js`
+- Discrete WorldId potency (kill-switch fallback): `server/tests/cross-world-potency.test.js`
 - Consequence graph (existing): `server/tests/world-consequence.test.js`
 - Settlement composition / vacancy (existing): `server/tests/settlements.test.js`
 - Procgen NPC tombstone (existing decay path): same megaworld test file

@@ -2565,30 +2565,55 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
-      // Universal Move System Pillar 3 — cross-world potency. A move sags when
-      // used outside its native world unless the skill is highly leveled. Reads
-      // skillData.nativeWorld (stamped by move-descriptor.js at mint/evolve) +
-      // the skill DTU's level. Applied AFTER the cap, like env boost. Defensive:
-      // only activates for a move with a native stamp used in a DIFFERENT world;
-      // every pre-MS-P1 move (no stamp) is a complete no-op. KS CONCORD_CROSS_WORLD_POTENCY=0.
+      // Universal Move System Pillar 3 / W7 — geographic effectiveness.
+      // Field is the live damage scale (same formula for every actor kind).
+      // Discrete crossWorldPotency stays the kill-switch fallback
+      // (CONCORD_GEOGRAPHIC_FIELD=0). Do not multiply both.
       try {
-        const nativeWorld = skillData?.nativeWorld ?? null;
-        if (nativeWorld && nativeWorld !== worldId && Number.isFinite(damageResult.finalDamage)) {
-          const { crossWorldPotency } = await import("../lib/cross-world-potency.js");
-          const worldRow = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
-          const potency = crossWorldPotency({
-            skillLevel,
-            skillKind: skillData?.skill_kind,
-            nativeWorldId: nativeWorld,
-            targetWorldId: worldId,
-            targetWorld: worldRow,
-          });
-          if (potency !== 1.0) {
-            damageResult.finalDamage = Math.round(damageResult.finalDamage * potency * 10) / 10;
-            damageResult.crossWorldPotency = potency;
+        const nativeWorld = skillData?.nativeWorld ?? worldId;
+        const field = await import("../lib/concordia-world-field.js");
+        const domain = field.domainFromSkillKind(skillData?.skill_kind, "athletics");
+        const pos = npcPosRow || {};
+        if (Number.isFinite(damageResult.finalDamage)) {
+          if (process.env.CONCORD_GEOGRAPHIC_FIELD === "0") {
+            if (nativeWorld && nativeWorld !== worldId) {
+              const { crossWorldPotency } = await import("../lib/cross-world-potency.js");
+              const worldRow = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
+              const potency = crossWorldPotency({
+                skillLevel,
+                skillKind: skillData?.skill_kind,
+                nativeWorldId: nativeWorld,
+                targetWorldId: worldId,
+                targetWorld: worldRow,
+              });
+              if (potency !== 1.0) {
+                damageResult.finalDamage = Math.round(damageResult.finalDamage * potency * 10) / 10;
+                damageResult.crossWorldPotency = potency;
+              }
+            }
+          } else {
+            const stamped = field.applyGeographicDamage(damageResult.finalDamage, {
+              worldId,
+              localX: pos.x,
+              localZ: pos.z,
+              origin: nativeWorld,
+              domain,
+              nativeStrength: skillLevel,
+              actorKind: "player",
+            });
+            if (stamped.ok && stamped.geographic) {
+              damageResult.finalDamage = stamped.damage;
+              damageResult.geographicEffectiveness = {
+                multiplier: stamped.geographic.multiplier,
+                localPhysics: stamped.geographic.localPhysics,
+                dominant: stamped.geographic.dominant,
+                flowerLaw: stamped.geographic.flowerLaw,
+                because: stamped.because,
+              };
+            }
           }
         }
-      } catch { /* potency disabled / no native stamp — neutral pass-through */ }
+      } catch { /* field / potency disabled — neutral pass-through */ }
 
       // Wave 7a glue #4 — mounted combat overlay. When the attacker is mounted
       // (combat_actor_state.mount_state set by mount/dismount), apply the mount

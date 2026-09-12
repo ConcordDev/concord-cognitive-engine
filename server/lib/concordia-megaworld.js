@@ -78,6 +78,14 @@ export function getSettlement(db, settlementId) {
   catch { return null; }
 }
 
+export function findSettlementByRegion(db, regionId) {
+  if (!db || !regionId) return null;
+  if (!hasColumn(db, "settlements", "region_id")) return null;
+  try {
+    return db.prepare(`SELECT * FROM settlements WHERE region_id = ?`).get(regionId) || null;
+  } catch { return null; }
+}
+
 function writePlaceBeat(db, settlementId, worldId, kind, payload) {
   const c = composeEntry(kind, payload);
   if (!c.ok) return c;
@@ -112,6 +120,11 @@ function tryConsequence(db, opts) {
 export function foundSettlement(db, opts = {}) {
   const made = createSettlement(db, opts);
   if (!made.ok) return made;
+  if (opts.regionId && hasColumn(db, "settlements", "region_id")) {
+    try {
+      db.prepare(`UPDATE settlements SET region_id = ? WHERE id = ?`).run(opts.regionId, made.id);
+    } catch { /* optional col */ }
+  }
   if (hasColumn(db, "settlements", "status")) {
     try {
       db.prepare(`UPDATE settlements SET status = 'active', founded_at = COALESCE(founded_at, unixepoch()) WHERE id = ?`)
@@ -241,5 +254,55 @@ export function presentationForSettlement(db, settlementId) {
     settlement: why.settlement,
     history: why.history,
     livePopulation: why.settlement.population,
+  };
+}
+
+/**
+ * L2 regional aggregate. Counts and chronicle ids only — food/wealth stay
+ * empty until those columns are real. Does not reroll a town.
+ */
+export function regionalSummary(db, worldId, limit = 50) {
+  if (!db || !worldId) return { ok: false, reason: "missing_inputs" };
+  const cap = Math.min(200, Math.max(1, Number(limit) || 50));
+  let settlements = [];
+  try {
+    settlements = db.prepare(`
+      SELECT id, name, status, region_id, population, center_x, center_z, founded_at, abandoned_at
+        FROM settlements
+       WHERE world_id = ?
+       ORDER BY founded_at ASC, created_at ASC
+       LIMIT ?
+    `).all(worldId, cap);
+  } catch {
+    return { ok: false, reason: "schema" };
+  }
+  const chronicleIds = [];
+  try {
+    const rows = db.prepare(`
+      SELECT id FROM settlement_chronicle
+       WHERE world_id = ?
+       ORDER BY created_at ASC, rowid ASC
+       LIMIT 200
+    `).all(worldId);
+    for (const r of rows) chronicleIds.push(r.id);
+  } catch { /* optional */ }
+  let population = 0;
+  for (const s of settlements) {
+    const live = countPopulation(db, s.id);
+    population += live;
+    s.livePopulation = live;
+  }
+  return {
+    ok: true,
+    worldId,
+    settlementCount: settlements.length,
+    abandonedCount: settlements.filter((s) => s.status === "abandoned").length,
+    population,
+    food: null,
+    wealth: null,
+    stability: null,
+    warRisk: null,
+    chronicleIds,
+    settlements,
   };
 }

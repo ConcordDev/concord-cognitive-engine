@@ -383,9 +383,10 @@ namespace Concordia
                 // Kernel resolves HP. Presentation already played the swing.
                 _pendingKernelTarget = dummy;
                 Toast(dummy.name + " — Concord resolving");
-                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon());
+                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon(), transform.position.x, transform.position.z);
                 return true;
             }
+            dmg = WorldField.ScaleDamage(dmg, world, transform.position, "athletics");
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
             Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");

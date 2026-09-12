@@ -14,6 +14,7 @@ import {
   FIELD_ACTOR_KINDS,
   FIELD_GATE_ANGLES,
   MEGAWORLD_KM,
+  SCENE_METRES_TO_KM,
   fieldCenter,
   fieldAt,
   fieldAtWorld,
@@ -22,7 +23,10 @@ import {
   geographicEffectivenessAtWorld,
   explainGeographicEffectiveness,
   centerAffinity,
+  localToMegaworld,
+  applyGeographicDamage,
 } from "../lib/concordia-world-field.js";
+import { applyAuthoritativeHit, resetCombatHpAuthorityForTest } from "../lib/combat-hp-authority.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -201,10 +205,43 @@ describe("compose with discrete potency; do not replace it yet", () => {
     assert.ok(Math.abs(a.fantasy - b.fantasy) < 1e-9);
   });
 
-  it("live combat route still does not import the field (W7)", () => {
+  it("live combat route samples the field (W7)", () => {
     const worlds = readFileSync(join(root, "server/routes/worlds.js"), "utf8");
-    assert.doesNotMatch(worlds, /concordia-world-field/);
-    assert.doesNotMatch(worlds, /geographicEffectiveness/);
+    assert.match(worlds, /concordia-world-field/);
+    assert.match(worlds, /applyGeographicDamage/);
+    const cs = readFileSync(
+      join(root, "apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/WorldField.cs"),
+      "utf8",
+    );
+    assert.match(cs, /CivilizationRadiusKm = 400/);
+    assert.match(cs, /SceneMetresToKm = 0\.4/);
+    assert.doesNotMatch(cs, /-42% Magic Damage/);
+  });
+
+  it("in-region local map moves toward Hub when localZ is negative", () => {
+    const c = fieldCenter("fantasy");
+    const towardHub = localToMegaworld("fantasy", 0, -50);
+    assert.equal(towardHub.ok, true);
+    const distCenter = Math.hypot(towardHub.x - c.x, towardHub.z - c.z);
+    assert.ok(Math.abs(distCenter - 50 * SCENE_METRES_TO_KM) < 1e-6);
+    assert.ok(Math.hypot(towardHub.x, towardHub.z) < Math.hypot(c.x, c.z));
+    const hub = localToMegaworld("concordia-hub", 12, -8);
+    assert.equal(hub.x, 0);
+    assert.equal(hub.z, 0);
+  });
+
+  it("applyGeographicDamage scales a fantasy-native magic hit down in crime", () => {
+    const home = applyGeographicDamage(100, {
+      worldId: "fantasy", origin: "fantasy", domain: "magic", nativeStrength: 94,
+    });
+    const abroad = applyGeographicDamage(100, {
+      worldId: "crime", origin: "fantasy", domain: "magic", nativeStrength: 94,
+    });
+    assert.equal(home.ok, true);
+    assert.equal(abroad.ok, true);
+    assert.ok(abroad.damage < home.damage, `crime ${abroad.damage} vs fantasy ${home.damage}`);
+    assert.match(abroad.because, /physics/i);
+    assert.doesNotMatch(abroad.because, /-42%/);
   });
 
   it("center magic affinities come from authored meta, not invented tables", () => {
@@ -212,5 +249,23 @@ describe("compose with discrete potency; do not replace it yet", () => {
     const crimeMeta = JSON.parse(readFileSync(join(root, "content/world/crime/meta.json"), "utf8"));
     assert.equal(centerAffinity("fantasy", "magic"), fantasyMeta.skill_affinity.magic);
     assert.equal(centerAffinity("crime", "magic"), crimeMeta.skill_affinity.magic);
+  });
+
+  it("dummy HP authority stamps the field before subtracting HP (W7)", () => {
+    resetCombatHpAuthorityForTest();
+    const home = applyAuthoritativeHit({
+      targetId: "d-home", worldId: "fantasy", localX: 0, localZ: 0,
+      origin: "fantasy", skillKind: "spell", nativeStrength: 94, baseDamage: 20,
+    });
+    resetCombatHpAuthorityForTest();
+    const abroad = applyAuthoritativeHit({
+      targetId: "d-abroad", worldId: "crime", localX: 0, localZ: 0,
+      origin: "fantasy", skillKind: "spell", nativeStrength: 94, baseDamage: 20,
+    });
+    assert.equal(home.ok, true);
+    assert.equal(abroad.ok, true);
+    assert.ok(abroad.geographicEffectiveness, "stamp is on the hit");
+    assert.ok(abroad.damage < home.damage, `crime ${abroad.damage} vs fantasy ${home.damage}`);
+    assert.match(String(abroad.geographicEffectiveness.because || ""), /physics/i);
   });
 });

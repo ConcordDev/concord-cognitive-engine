@@ -10,6 +10,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { regionalSummary } from "./concordia-megaworld.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const WORLD_ROOT = join(ROOT, "content", "world");
@@ -291,11 +292,48 @@ function gatesFor(canon, worldKey) {
   }];
 }
 
+function overlayKernelSettlements(db, worldKey, authored) {
+  const out = authored.map((s) => ({ ...s, status: s.status || null, chronicleIds: [] }));
+  if (!db) return { settlements: out, abandonedCount: 0, chronicleIds: [], kernelPopulation: null };
+  let summary;
+  try { summary = regionalSummary(db, worldKey); }
+  catch { return { settlements: out, abandonedCount: 0, chronicleIds: [], kernelPopulation: null }; }
+  if (!summary?.ok) return { settlements: out, abandonedCount: 0, chronicleIds: [], kernelPopulation: null };
+  const byName = new Map(out.map((s) => [String(s.name || "").toLowerCase(), s]));
+  const byId = new Map(out.map((s) => [String(s.id || "").toLowerCase(), s]));
+  for (const row of summary.settlements || []) {
+    const hit = byId.get(String(row.id || "").toLowerCase())
+      || byName.get(String(row.name || "").toLowerCase());
+    if (hit) {
+      hit.status = row.status || hit.status;
+      hit.kernelId = row.id;
+      hit.livePopulation = row.livePopulation;
+      continue;
+    }
+    out.push({
+      id: row.id,
+      name: row.name,
+      factionId: "",
+      districts: [],
+      source: "kernel",
+      status: row.status || "active",
+      kernelId: row.id,
+      livePopulation: row.livePopulation,
+    });
+  }
+  return {
+    settlements: out,
+    abandonedCount: summary.abandonedCount,
+    chronicleIds: summary.chronicleIds,
+    kernelPopulation: summary.population,
+  };
+}
+
 /**
- * @param {any} _db  unused — the graph is authored JSON, not a SQLite invention
+ * @param {any} db  overlay kernel settlement status when present; authored graph stays
  * @param {string} worldId  folder, enum, or alias
  */
-export function buildKingdomSnapshot(_db, worldId) {
+export function buildKingdomSnapshot(db, worldId) {
   const key = resolveWorldKey(worldId);
   if (!key) {
     return { ok: false, reason: "unknown_world", worldId: worldId || "" };
@@ -304,7 +342,9 @@ export function buildKingdomSnapshot(_db, worldId) {
   const folder = canon.folder;
   const factions = loadFactions(folder);
   const actors = loadPeople(folder);
-  const settlements = settlementsFromAuthored(folder, key, canon);
+  const authored = settlementsFromAuthored(folder, key, canon);
+  const overlay = overlayKernelSettlements(db, key, authored);
+  const settlements = overlay.settlements;
   const lore = readJson(folder, "lore");
   const notes = [];
   if (canon.hub) {
@@ -315,6 +355,9 @@ export function buildKingdomSnapshot(_db, worldId) {
   }
   notes.push("stock/need live on the client WorldMemory slice until persist-sync.");
   notes.push("caravans/tariffs stay empty here until the Ring economy persists them.");
+  if (overlay.abandonedCount > 0) {
+    notes.push(`${overlay.abandonedCount} settlement(s) remain as abandoned rows — ruins, not deletes.`);
+  }
 
   const regionName = canon.hub
     ? "The Unburned Court"
@@ -333,7 +376,7 @@ export function buildKingdomSnapshot(_db, worldId) {
       staple: canon.staple,
       stock: null,
       need: null,
-      population: actors.length,
+      population: overlay.kernelPopulation != null ? overlay.kernelPopulation : actors.length,
       stockNote: "slice_lives_on_client",
     },
     regions: [{
@@ -341,8 +384,11 @@ export function buildKingdomSnapshot(_db, worldId) {
       name: regionName,
       capital: canon.hub ? "The Court" : (settlements[0]?.name || canon.title),
       settlementCount: settlements.length,
+      chronicleIds: overlay.chronicleIds,
     }],
     settlements,
+    abandonedCount: overlay.abandonedCount,
+    chronicleIds: overlay.chronicleIds,
     districts: settlements.flatMap((s) => (s.districts || []).map((d) => ({ settlementId: s.id, id: d }))),
     buildings: [],
     actors,

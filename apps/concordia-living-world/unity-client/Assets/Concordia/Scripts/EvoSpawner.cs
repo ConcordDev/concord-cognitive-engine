@@ -227,6 +227,15 @@ namespace Concordia
                 return;
             }
 
+            var field = WorldField.At(WorldClock.World, transform.position, "athletics", WorldClock.World);
+            if (field.ok && field.habitatFitness < 0.35f && !field.flowerLaw)
+            {
+                act = "retreat";
+                Step(_home, fly ? 3.2f : 2.4f);
+                if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " retreats toward home field");
+                return;
+            }
+
             if (hunting) { act = "hunt"; return; }
 
             if (_wait > 0f)

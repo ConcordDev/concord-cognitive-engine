@@ -11,8 +11,10 @@ Spine pinned by `server/tests/concordia-megaworld.test.js`,
 `server/tests/concordia-organism.test.js`. Do not rebuild
 `settlements` / `world_consequences` / `world_chronicle` / `cross-world-potency`
 / `fauna-spawner` / `creature-needs` / `npc-needs`.
-W5/W6 (cold-start and 100-hour return), W7 (combat samples the field), and
-W8 (fauna-spawner becomes organism identity) are named and **not yet run / not yet wired**.
+W1–W4/W7/W8 playable loop is wired on this branch (in-region field sample,
+combat samples the field, settlements found/abandon, organism births).
+**W3 continent streaming is still GAP** (Travel remains `region_rebuild`).
+**W5/W6 live 7-day / 100-hour runs are not claimed.**
 
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —

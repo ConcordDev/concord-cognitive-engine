@@ -14,6 +14,7 @@ import { up as up287 } from "../migrations/287_settlements.js";
 import { up as up286 } from "../migrations/286_chronicle.js";
 import { up as up416 } from "../migrations/416_world_consequences.js";
 import { up as up446 } from "../migrations/446_settlement_identity.js";
+import { up as up447 } from "../migrations/447_settlement_region.js";
 import {
   flowerLawGoverns,
   intendedTravelMode,
@@ -25,6 +26,8 @@ import {
   presentationForSettlement,
   countPopulation,
   getSettlement,
+  findSettlementByRegion,
+  regionalSummary,
 } from "../lib/concordia-megaworld.js";
 import { composeEntry } from "../lib/chronicle/compose.js";
 import { decaySettlementForRegion, spawnSettlementForRegion } from "../lib/procgen-settlements.js";
@@ -44,6 +47,7 @@ function mkDb() {
   up286(db);
   up416(db);
   up446(db);
+  up447(db);
   return db;
 }
 
@@ -152,16 +156,21 @@ describe("composers refuse empty place myths", () => {
 
 describe("procgen decay tombstones, it does not DELETE", () => {
   it("decayed NPCs remain queryable by count", () => {
-    const db = new Database(":memory:");
+    const db = mkDb();
     const spawned = spawnSettlementForRegion(db, {
       id: "reg_1",
       world_id: "fantasy",
       anchor_x: 0,
       anchor_z: 0,
       radius_m: 80,
+      region_kind: "haunted_glade",
     });
     assert.equal(spawned.ok, true);
     assert.ok(spawned.npcs.length >= 3);
+    assert.ok(spawned.settlementId, "W1 founds a settlements row");
+    const row = findSettlementByRegion(db, "reg_1");
+    assert.equal(row.status, "active");
+    assert.equal(row.name, "haunted glade");
     const before = db.prepare(`SELECT COUNT(*) AS n FROM procgen_settlement_npcs`).get().n;
     const d = decaySettlementForRegion(db, "reg_1");
     assert.equal(d.ok, true);
@@ -169,5 +178,50 @@ describe("procgen decay tombstones, it does not DELETE", () => {
     assert.equal(after, before);
     const live = db.prepare(`SELECT COUNT(*) AS n FROM procgen_settlement_npcs WHERE decayed_at IS NULL`).get().n;
     assert.equal(live, 0);
+    const gone = getSettlement(db, spawned.settlementId);
+    assert.equal(gone.status, "abandoned");
+    assert.equal(db.prepare(`SELECT COUNT(*) AS n FROM settlements WHERE id = ?`).get(spawned.settlementId).n, 1);
+  });
+
+  it("re-spawn after decay joins the same region row and does not mint a second town", () => {
+    const db = mkDb();
+    const first = spawnSettlementForRegion(db, {
+      id: "reg_2", world_id: "tunya", anchor_x: 1, anchor_z: 2, radius_m: 40, region_kind: "reed_bank",
+    });
+    decaySettlementForRegion(db, "reg_2");
+    const second = spawnSettlementForRegion(db, {
+      id: "reg_2", world_id: "tunya", anchor_x: 1, anchor_z: 2, radius_m: 40, region_kind: "reed_bank",
+    });
+    assert.equal(second.settlementId, first.settlementId);
+    assert.equal(getSettlement(db, first.settlementId).status, "active");
+    const n = db.prepare(`SELECT COUNT(*) AS n FROM settlements WHERE region_id = 'reg_2'`).get().n;
+    assert.equal(n, 1);
+  });
+});
+
+describe("regional summary keeps chronicle ids (W4)", () => {
+  it("empty stats stay empty; chronicle ids are the real rows", () => {
+    const db = mkDb();
+    const r = foundSettlement(db, { worldId: "fantasy", name: "Harrow" });
+    const sum = regionalSummary(db, "fantasy");
+    assert.equal(sum.ok, true);
+    assert.equal(sum.settlementCount, 1);
+    assert.equal(sum.food, null);
+    assert.equal(sum.wealth, null);
+    assert.ok(sum.chronicleIds.length >= 1);
+    assert.equal(sum.settlements[0].id, r.id);
+  });
+});
+
+describe("simulated 7-day gap does not DELETE abandoned places (W5 mechanism, not a live run)", () => {
+  it("an abandoned row is still there after now+7d", () => {
+    const db = mkDb();
+    const r = foundSettlement(db, { worldId: "crime", name: "Old Dock" });
+    abandonSettlement(db, r.id, { reason: "the bill arrived" });
+    db.prepare(`UPDATE settlements SET abandoned_at = unixepoch() - (7 * 86400) WHERE id = ?`).run(r.id);
+    const row = getSettlement(db, r.id);
+    assert.ok(row);
+    assert.equal(row.status, "abandoned");
+    assert.ok(row.abandoned_at < Date.now() / 1000 - 6 * 86400);
   });
 });

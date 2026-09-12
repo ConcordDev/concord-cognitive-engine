@@ -155,12 +155,12 @@ describe("death remains; birth does not mint a fake body", () => {
   });
 });
 
-describe("fauna-spawner still tops up anonymous counts (W8, not claimed)", () => {
-  it("the live spawner is a population quota, not organism identity", () => {
+describe("fauna-spawner founds organism rows (W8)", () => {
+  it("the live spawner stamps species and writes birth on the existing graph", () => {
     const src = readFileSync(join(root, "server/lib/ecosystem/fauna-spawner.js"), "utf8");
     assert.match(src, /tops up/);
     assert.match(src, /archetype='creature'/);
-    assert.match(src, /not organism identity/);
-    assert.doesNotMatch(src, /from ["'].*concordia-organism/);
+    assert.match(src, /from ["'].*concordia-organism/);
+    assert.match(src, /recordOrganismBirth/);
   });
 });

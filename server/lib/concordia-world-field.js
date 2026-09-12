@@ -6,8 +6,10 @@
  * Geographic effectiveness is physics: the same formula for a player, an NPC,
  * a boss, a dragon, a summoned creature, a faction army, or equipment.
  *
- * Discrete WorldId combat (`cross-world-potency.js`) remains the live path
- * until travel streams continuous (x,z). This module is the continuous law.
+ * Live combat samples this module (W7). Discrete `cross-world-potency.js`
+ * remains the WorldId fallback when CONCORD_GEOGRAPHIC_FIELD=0.
+ * In-region Unity metres map onto the megaworld plane (W3-thin). Continent
+ * streaming between civilizations is still GAP — Travel stays region_rebuild.
  *
  * Hub is a suppression well (Flower Law), not a ninth combat physics.
  * Authored skill_affinity tables at field centers are the blend weights —
@@ -20,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { NEUTRAL_AFFINITY } from "./skill-domains.js";
+import { SKILL_KIND_DOMAIN } from "./cross-world-potency.js";
 
 /** Actor kinds the field treats identically. Branching on kind is a bug. */
 export const FIELD_ACTOR_KINDS = Object.freeze([
@@ -77,6 +80,14 @@ export const MEGAWORLD_KM = Object.freeze({
   hubCourt: 12,
   hubMetro: 40,
 });
+
+/**
+ * Playable in-region sample, not continent streaming.
+ * 1 Unity scene metre → this many megaworld km around a civilization center.
+ * A ~80 m plaza walk is tens of km on the field — enough to feel a gradient
+ * without claiming the player walked to the next civilization.
+ */
+export const SCENE_METRES_TO_KM = 0.4;
 
 /** Softmax-ish: nearest center owns core physics; neighbors mix in the bands. */
 export const BLEND_SHARPNESS = 8;
@@ -407,12 +418,121 @@ export function explainGeographicEffectiveness(opts = {}) {
 }
 
 /**
- * Until W3 streams (x,z), live combat has a WorldId not a megaworld point.
- * Sample the civilization center. Not a claim that Unity already walks the field.
+ * Discrete WorldId fallback: sample the civilization center.
+ * Used when the caller has no local (x,z). Not a claim that Unity walks
+ * the supercontinent — Travel is still region_rebuild.
  */
 export function geographicEffectivenessAtWorld(opts = {}) {
   const key = fieldKeyForWorld(opts.worldId);
   if (!key) return { ok: false, reason: "unknown_world" };
   const c = key === "hub" ? { x: 0, z: 0 } : fieldCenter(key);
   return geographicEffectiveness({ ...opts, x: c.x, z: c.z });
+}
+
+export function domainFromSkillKind(skillKind, fallback = "athletics") {
+  if (!skillKind) return fallback;
+  return SKILL_KIND_DOMAIN[skillKind] || fallback;
+}
+
+/**
+ * Map Unity scene metres onto the megaworld plane around a civilization
+ * center. Hub stays in the well (Flower Law is the Court — plaza walking
+ * does not leave it). +localZ is radially outward from Hub; +localX is
+ * clockwise tangent. Cross-region walking is still Travel/Build.
+ */
+export function localToMegaworld(worldId, localX, localZ) {
+  const key = fieldKeyForWorld(worldId);
+  if (!key) return { ok: false, reason: "unknown_world" };
+  const lx = Number(localX);
+  const lz = Number(localZ);
+  if (!Number.isFinite(lx) || !Number.isFinite(lz)) {
+    return { ok: false, reason: "missing_position" };
+  }
+  if (key === "hub") {
+    return { ok: true, x: 0, z: 0, worldId: FIELD_WORLD_IDS.hub, fieldKey: "hub", hubWell: true };
+  }
+  const c = fieldCenter(key);
+  if (!c) return { ok: false, reason: "unknown_world" };
+  const km = SCENE_METRES_TO_KM;
+  const ang = c.angle;
+  const radialX = Math.cos(ang);
+  const radialZ = Math.sin(ang);
+  const tanX = -Math.sin(ang);
+  const tanZ = Math.cos(ang);
+  return {
+    ok: true,
+    x: c.x + tanX * lx * km + radialX * lz * km,
+    z: c.z + tanZ * lx * km + radialZ * lz * km,
+    worldId: FIELD_WORLD_IDS[key] || worldId,
+    fieldKey: key,
+    hubWell: false,
+  };
+}
+
+export function sampleCombatField(opts = {}) {
+  const { worldId, localX, localZ, x, z } = opts;
+  if (Number.isFinite(Number(x)) && Number.isFinite(Number(z))) {
+    return geographicEffectiveness(opts);
+  }
+  if (Number.isFinite(Number(localX)) && Number.isFinite(Number(localZ)) && worldId) {
+    const p = localToMegaworld(worldId, localX, localZ);
+    if (!p.ok) return p;
+    return geographicEffectiveness({ ...opts, x: p.x, z: p.z });
+  }
+  if (worldId) return geographicEffectivenessAtWorld(opts);
+  return { ok: false, reason: "missing_position" };
+}
+
+/**
+ * Scale a resolved hit by the field. Kill-switch CONCORD_GEOGRAPHIC_FIELD=0
+ * leaves damage unchanged. Missing field → unmodified, honest reason.
+ */
+export function applyGeographicDamage(baseDamage, opts = {}) {
+  const raw = Number(baseDamage);
+  if (!Number.isFinite(raw)) return { ok: false, reason: "invalid_damage" };
+  if (process.env.CONCORD_GEOGRAPHIC_FIELD === "0") {
+    return { ok: true, damage: raw, geographic: null, disabled: true };
+  }
+  const g = sampleCombatField(opts);
+  if (!g.ok) return { ok: true, damage: raw, geographic: null, reason: g.reason };
+  const damage = Math.round(raw * g.multiplier * 10) / 10;
+  const explained = explainGeographicEffectiveness({
+    origin: opts.origin,
+    x: g.x,
+    z: g.z,
+    domain: opts.domain || "athletics",
+    nativeStrength: opts.nativeStrength,
+    adaptation: opts.adaptation,
+    actorKind: opts.actorKind,
+  });
+  return {
+    ok: true,
+    damage,
+    geographic: g,
+    because: explained.ok ? explained.because : null,
+  };
+}
+
+export function stampGeographicOnHit(result, opts = {}) {
+  if (!result || result.ok === false || result.refused) return result;
+  if (!Number.isFinite(Number(result.damage))) return result;
+  const stamped = applyGeographicDamage(result.damage, opts);
+  if (!stamped.ok) return result;
+  result.damage = stamped.damage;
+  if (stamped.geographic) {
+    result.geographicEffectiveness = {
+      multiplier: stamped.geographic.multiplier,
+      localPhysics: stamped.geographic.localPhysics,
+      dominant: stamped.geographic.dominant,
+      flowerLaw: stamped.geographic.flowerLaw,
+      steelLive: stamped.geographic.steelLive,
+      because: stamped.because,
+    };
+  } else if (stamped.reason || stamped.disabled) {
+    result.geographicEffectiveness = {
+      ok: false,
+      reason: stamped.disabled ? "disabled" : stamped.reason,
+    };
+  }
+  return result;
 }
