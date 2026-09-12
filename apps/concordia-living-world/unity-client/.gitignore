@@ -35,6 +35,7 @@ sysinfo.txt
 # Editor debug captures (p0 Hub shots) — never commit
 [Aa]ssets/[Ss]creenshots/
 Assets/Concordia/Shots/
+Captures/
 
 # Mixamo / character FBX (~587MB). Restore locally from the kitchen tree.
 Assets/Concordia/Models/**
