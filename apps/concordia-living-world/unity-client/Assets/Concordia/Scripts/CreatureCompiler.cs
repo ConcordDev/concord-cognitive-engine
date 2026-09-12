@@ -279,7 +279,7 @@ namespace Concordia
 
         static string PickBird()
         {
-            var bird = FreePacks.Bird();
+            var bird = DressVocab.Bird();
             if (!string.IsNullOrEmpty(bird)) return bird;
             return Pick(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" });
         }

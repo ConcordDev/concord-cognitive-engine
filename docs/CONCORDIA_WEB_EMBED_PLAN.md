@@ -17,12 +17,12 @@ What is **not** alive is any native client presenting that kernel in the browser
 | Tree | What it is today |
 |---|---|
 | **Server** | Kernel. Real. |
-| **Three.js world-lens** | OS HUD (DTUs, presence, stations). Combat *can* hit the kernel. `currentWorldId` is pinned to `concordia-hub`. Not the AAA presenter. |
+| **Three.js world-lens** | OS HUD (DTUs, presence, stations). ConcordiaScene is **not** mounted as the world viewport. |
 | **Unity Editor** | Offline procedural hub. Combat ack only if `/unity-ws` connects. **Travel, NPC brains, HP, persist, `player:move` are local.** `SendMove` is dead code. |
 | **Vite `src/game/`** | Richest “feels alive” loop. **Zero network.** localStorage persist. Explicitly superseded. Do not ship it into the frontend. |
 | **Godot** | Parity native client. **Web export pipeline already exists** (`npm run export:web` → `/godot-client/`). **No world-lens iframe yet.** |
 
-**Unity WebGL export ran on this Mac 2026-09-03** (`npm run export:unity-web` exit 0). The player is committed so CI clones and the live site load Unity, not Three.js. Three.js stays the honest fallback only when those files are deleted.
+**Unity WebGL export ran on this Mac 2026-09-03** (`npm run export:unity-web` exit 0). The player is committed so CI clones and the live site load Unity. A missing export is an honest `{ok:false, reason:'unity_web_export_not_built'}` — ConcordiaScene is not mounted as a fallback.
 
 **The website already knows how to serve a WASM 3D client** (Godot). Unity clones that path, with one difference: Godot's ~42MB wasm stays gitignored; Unity's ~17MB ship **is** in git so a deploy box without the Editor still presents Concordia.
 
@@ -39,7 +39,7 @@ Browser  →  /lenses/world (OS HUD stays)
 
 Standalone Editor / Godot desktop remain first-class. WebGL is the **same presenter**, smaller asset budget, same kernel.
 
-Three.js ConcordiaScene becomes the **honest fallback** when the Unity export has not been built (`{ok:false, reason:'unity_web_export_not_built'}`), never a fake Unity.
+A missing Unity export is `{ok:false, reason:'unity_web_export_not_built'}`. Three.js ConcordiaScene is **not** the world viewport.
 
 ---
 
@@ -125,7 +125,7 @@ Proven by reading `scripts/export-godot-web.mjs` + `app/godot-client/index.html/
 
 | ID | Work | Stop-point |
 |---|---|---|
-| **W1** | Serve/embed slot: `/unity-client/` route, middleware, gitignore, `NativeWorldPlayer` iframe, honest unbuilt state, keep Three.js as fallback | Can ship without a WASM |
+| **W1** | Serve/embed slot: `/unity-client/` route, middleware, gitignore, `NativeWorldPlayer` iframe, honest unbuilt state (`unity_web_export_not_built`) — ConcordiaScene is not a fallback | Can ship without a WASM |
 | **W2** | Ingress: nginx + cloudflared `/unity-ws` → :5050 | In-page WS would otherwise die at Next |
 | **W3** | WebGL `WebSocket` jslib; `ConcordClient` reads `window.CONCORD_UNITY_CONFIG` | Editor keeps `ClientWebSocket` |
 | **W4** | `npm run export:unity-web` on this Mac (Unity 6000.5.9f1 Personal + WebGL playback engine already installed) | Player committed under `public/unity-client/` (wasm + `export-index.html`); **claim a .wasm only after the exporter exits 0** |
@@ -155,7 +155,7 @@ Proven by reading `scripts/export-godot-web.mjs` + `app/godot-client/index.html/
 
 - **No Unity WebGL binary in this pass unless `export-unity-web.mjs` exits 0.** Missing scene/URP/meshes will fail the export; that is a real fail, not a 404 we paper over with a spinning fake world.
 - **Cannot fabricate Kenney/Mixamo in the browser.** If packs are absent, spawn the procedural primitives `FreePacks` already uses for `required: true` — honest greybox.
-- **Do not run Three.js Rapier and Unity WebGL on the same canvas.** Iframe replaces `ConcordiaScene` when the export exists.
+- **Do not run Three.js Rapier and Unity WebGL on the same canvas.** ConcordiaScene is not mounted as the world; a missing export is `unity_web_export_not_built`.
 
 ---
 

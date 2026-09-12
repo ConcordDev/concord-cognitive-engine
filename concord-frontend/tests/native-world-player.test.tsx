@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 import NativeWorldPlayer from '@/components/world/NativeWorldPlayer';
 
 vi.mock('@/lib/auth-bridge', () => ({
@@ -33,7 +33,7 @@ describe('NativeWorldPlayer', () => {
     expect(iframe.getAttribute('allow')).toContain('pointer-lock');
   });
 
-  it('keeps Three.js children when the export is missing', async () => {
+  it('does not mount Three.js children when the export is missing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -47,9 +47,11 @@ describe('NativeWorldPlayer', () => {
         <div data-testid="three-fallback">three</div>
       </NativeWorldPlayer>,
     );
-    await waitFor(() => {
-      expect(screen.getByTestId('three-fallback')).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('native-world-missing')).toBeInTheDocument();
+    expect(screen.getByTestId('native-world-missing').getAttribute('data-reason')).toBe(
+      'unity_web_export_not_built',
+    );
+    expect(screen.queryByTestId('three-fallback')).not.toBeInTheDocument();
     expect(screen.queryByTestId('native-world-player')).not.toBeInTheDocument();
   });
 });

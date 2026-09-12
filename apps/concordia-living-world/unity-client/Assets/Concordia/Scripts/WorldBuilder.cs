@@ -709,7 +709,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                var bird = FreePacks.Bird();
+                var bird = DressVocab.Bird();
                 if (string.IsNullOrEmpty(bird)) return;
                 for (int i = 0; i < 8; i++)
                 {
@@ -745,7 +745,7 @@ namespace Concordia
 
         void DressGroveBirds(WorldDef w)
         {
-            var bird = FreePacks.Bird();
+            var bird = DressVocab.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {

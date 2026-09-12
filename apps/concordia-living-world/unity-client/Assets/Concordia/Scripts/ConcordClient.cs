@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -28,12 +29,13 @@ namespace Concordia
         bool _jsOpen;
         readonly Dictionary<string, TaskCompletionSource<string>> _dialogueWait =
             new Dictionary<string, TaskCompletionSource<string>>();
-        public bool Connected =>
+        public bool SocketOpen =>
 #if UNITY_WEBGL && !UNITY_EDITOR
             _jsOpen;
 #else
             _ws != null && _ws.State == WebSocketState.Open;
 #endif
+        public bool Connected => SocketOpen && !string.IsNullOrEmpty(_userId);
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
@@ -41,6 +43,7 @@ namespace Concordia
         public static ConcordClient Live { get; private set; }
         string _userId = "";
         readonly ConcurrentQueue<Action> _main = new ConcurrentQueue<Action>();
+        TaskCompletionSource<bool> _hello;
 
         public string WorldId => worldId;
 
@@ -155,6 +158,11 @@ namespace Concordia
                 Debug.LogWarning("Concord gateway not reachable yet: " + (last != null ? last.Message : "no url"));
                 return;
             }
+            // Read before AfterOpen sends — scene:data is already ~61KB and
+            // grows with live buildings. Starting the loop late + a 64KB
+            // one-shot buffer aborted the socket (CloseReceived, no_gateway)
+            // on the kitchen handshake.
+            _ = ReceiveLoop();
             await AfterOpen();
 #endif
         }
@@ -165,6 +173,11 @@ namespace Concordia
             if (Connected) return true;
             if (_cts == null || _cts.IsCancellationRequested)
                 _cts = new CancellationTokenSource();
+            if (SocketOpen && _hello != null)
+            {
+                await Task.WhenAny(_hello.Task, Task.Delay(10000, _cts.Token));
+                return Connected;
+            }
 #if UNITY_WEBGL && !UNITY_EDITOR
             return Connected;
 #else
@@ -182,6 +195,7 @@ namespace Concordia
                     _ws?.Dispose();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
+                    _ = ReceiveLoop();
                     await AfterOpen();
                     return Connected;
                 }
@@ -225,17 +239,26 @@ namespace Concordia
             try
             {
                 var token = string.IsNullOrEmpty(bearerToken) ? "unity-local-guest" : bearerToken;
+                _hello = new TaskCompletionSource<bool>();
                 await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
+                var hello = await Task.WhenAny(_hello.Task, Task.Delay(10000, _cts.Token));
+                if (hello != _hello.Task || !_hello.Task.Result)
+                {
+                    LastReason = "auth_required";
+                    StatusJson = "{\"ok\":false,\"reason\":\"auth_required\"}";
+                    Debug.LogWarning("Concord gateway hello did not arrive before post-auth traffic");
+                    return;
+                }
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
                 await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await LensRun("skills", "mastery");
-                LastReason = "awaiting_kingdom";
-                StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
-#if !(UNITY_WEBGL && !UNITY_EDITOR)
-                _ = ReceiveLoop();
-#endif
+                if (string.IsNullOrEmpty(HudLine))
+                {
+                    LastReason = "awaiting_kingdom";
+                    StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
+                }
             }
             catch (Exception e)
             {
@@ -250,6 +273,7 @@ namespace Concordia
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
             HudLine = "";
             SnapshotJson = "";
+            _userId = "";
             SkillLattice.Reset();
         }
 
@@ -259,6 +283,16 @@ namespace Concordia
             {
                 var uid = JsonString(text, "userId");
                 if (!string.IsNullOrEmpty(uid)) _userId = uid;
+                _hello?.TrySetResult(true);
+                Debug.Log("Concord kernel hello user=" + _userId);
+                return;
+            }
+            if (evt == "auth:error")
+            {
+                _hello?.TrySetResult(false);
+                var why = JsonString(text, "reason");
+                LastReason = string.IsNullOrEmpty(why) ? "auth_failed" : why;
+                StatusJson = "{\"ok\":false,\"reason\":\"" + Escape(LastReason) + "\"}";
                 return;
             }
             if (evt == "kingdom:data")
@@ -368,8 +402,11 @@ namespace Concordia
                 ApplyDialogue(text);
                 return;
             }
-            if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
+            if (evt == "error" && text.Contains("auth_required"))
+            {
+                _hello?.TrySetResult(false);
                 MarkDisconnected();
+            }
         }
 
         void ApplyDialogue(string json)
@@ -579,7 +616,7 @@ namespace Concordia
 
         async Task SendEvt(string evt, string dataJson)
         {
-            if (!Connected) return;
+            if (!SocketOpen) return;
             var json = "{\"evt\":\"" + evt + "\",\"data\":" + dataJson + "}";
 #if UNITY_WEBGL && !UNITY_EDITOR
             ConcordWsSend(json);
@@ -594,14 +631,45 @@ namespace Concordia
         async Task ReceiveLoop()
         {
             var buf = new byte[1 << 16];
+            var acc = new MemoryStream();
+            const int maxFrame = 8 * 1024 * 1024;
             while (_ws != null && _ws.State == WebSocketState.Open)
             {
-                var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
-                if (result.MessageType == WebSocketMessageType.Close) break;
-                var text = Encoding.UTF8.GetString(buf, 0, result.Count);
+                WebSocketReceiveResult result;
+                try
+                {
+                    result = await _ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("Concord gateway receive failed: " + e.Message);
+                    break;
+                }
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Debug.LogWarning("Concord gateway closed: " + _ws.CloseStatus + " " + _ws.CloseStatusDescription);
+                    break;
+                }
+                acc.Write(buf, 0, result.Count);
+                if (!result.EndOfMessage) continue;
+                if (acc.Length > maxFrame)
+                {
+                    Debug.LogWarning("Concord gateway frame dropped: " + acc.Length + " bytes");
+                    acc.SetLength(0);
+                    continue;
+                }
+                var text = Encoding.UTF8.GetString(acc.GetBuffer(), 0, (int)acc.Length);
+                acc.SetLength(0);
                 TryParseEvt(text, out var evt);
-                HandleFrame(evt, text);
-                OnEvent?.Invoke(evt, text);
+                try
+                {
+                    HandleFrame(evt, text);
+                    OnEvent?.Invoke(evt, text);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("Concord frame: " + e.Message);
+                }
             }
             MarkDisconnected();
         }

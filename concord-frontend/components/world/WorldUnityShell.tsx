@@ -9,8 +9,9 @@
  * opens a minimal overlay: leave lens, settings, advanced OS tools.
  *
  * Advanced tools lazy-load WorldOsSurface (the former page.tsx monolith) so
- * auctions / breeding / workshops / ConKay design HUD / Three path stay
- * reachable without permanently layering on the viewport.
+ * auctions / breeding / workshops / ConKay design HUD stay reachable
+ * without permanently layering on the viewport. ConcordiaScene is not
+ * the world — missing WebGL export is an honest unbuilt state.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -141,7 +142,9 @@ export default function WorldUnityShell() {
 
   const chromeHint = useMemo(() => {
     if (status === 'checking') return 'Locating Unity WebGL…';
-    if (status === 'missing') return 'Unity export missing — open Advanced for OS / Three surface';
+    if (status === 'missing') {
+      return 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws';
+    }
     return 'Unity WebGL · /unity-ws';
   }, [status]);
 
@@ -262,7 +265,7 @@ export default function WorldUnityShell() {
                   >
                     Advanced OS tools
                     <span className="mt-0.5 block text-[10px] text-zinc-500">
-                      Hub, district editor, HUD stack, Three path
+                      Hub, district editor, HUD stack
                     </span>
                   </button>
                 </li>
