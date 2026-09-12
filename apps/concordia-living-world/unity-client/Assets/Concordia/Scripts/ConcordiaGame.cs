@@ -39,7 +39,7 @@ namespace Concordia
             camGo.tag = "MainCamera";
             var cam = camGo.AddComponent<Camera>();
             cam.nearClipPlane = 0.18f;
-            cam.farClipPlane = 220f;
+            cam.farClipPlane = 420f;
             camGo.AddComponent<AudioListener>();
             var chase = camGo.AddComponent<ChaseCamera>();
 
@@ -137,6 +137,7 @@ namespace Concordia
         void Update()
         {
             if (!_player || CharacterCreator.IsOpen) return;
+            ContinentStream.Live?.Tick(_player.transform.position);
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();
             var pos = _player.transform.position;
             string prompt = null;
@@ -410,30 +411,20 @@ namespace Concordia
         {
             var carried = _player != null ? _player.kitWeapon : null;
             var from = world;
-            WorldClock.Leave();
             var crossed = CrossRing.Walk(from, next, carried);
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            var spawn = next == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
-            _player.cc.enabled = false;
-            _player.transform.position = spawn;
-            _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            _player.cc.enabled = true;
-            if (_player.cam) _player.cam.yaw = Mathf.PI;
-            _world.Build(next);
-            WorldClock.Enter(next);
+            ContinentStream.Live?.Teleport(_player, next);
             _gates = null;
             _cities = null;
             _holds = null;
             _boards = null;
             _loot = null;
             _cooks = null;
-            _player.EquipWorldKit();
-            Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
-            var steel = Canon.SteelLive(next, spawn)
+            var steel = Canon.SteelLive(next, _player.transform.position)
                 ? "Live steel. Combat is allowed here."
                 : "Flower-law. Blades die as flowers except in the Arena.";
             ConcordiaHUD.Announce(w.title, string.IsNullOrEmpty(crossed) ? w.refusal : crossed);
@@ -450,7 +441,7 @@ namespace Concordia
         public string EnterCity(WorldBook.CityDef city)
         {
             if (city == null) return null;
-            var dest = new Vector3(city.x, 0.12f, city.z);
+            var dest = MegaworldMap.Present(world) + new Vector3(city.x, 0.12f, city.z);
             if (Vector3.Distance(_player.transform.position, dest) > 6f)
             {
                 _player.cc.enabled = false;
