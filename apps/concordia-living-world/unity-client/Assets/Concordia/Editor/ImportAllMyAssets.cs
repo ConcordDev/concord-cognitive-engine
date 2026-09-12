@@ -258,6 +258,8 @@ namespace Concordia.Editor
                     var t = Ed("UnityEditor.PackageManager.UI.Internal.IAssetStorePackageInstaller");
                     t.GetMethod("Install").Invoke(installer, new object[] { id, false });
                     Log("Install(" + id + ", interactive=false)");
+                    // Install of an already-cached pack can finish with no domain reload.
+                    EditorApplication.delayCall += Kick;
                 }
                 catch (Exception ex)
                 {

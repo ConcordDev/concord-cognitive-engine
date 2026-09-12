@@ -45,3 +45,8 @@ Assets/Concordia/Models/**
 # Live editor scripts:   Assets/Editor/
 /Scripts/
 /Editor/
+
+# Asset Store My Assets imports (reinstall from Package Manager; never vendor)
+Assets/ADG_Textures/
+Assets/_Creepy_Cat/
+Assets/3DGamekit/

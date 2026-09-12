@@ -292,6 +292,9 @@ apps/concordia-living-world/unity-client/Assets/Gizmos/
 apps/concordia-living-world/unity-client/Assets/Packages/
 apps/concordia-living-world/unity-client/Assets/_TerrainAutoUpgrade/
 apps/concordia-living-world/unity-client/Assets/_Recovery/
+apps/concordia-living-world/unity-client/Assets/ADG_Textures/
+apps/concordia-living-world/unity-client/Assets/_Creepy_Cat/
+apps/concordia-living-world/unity-client/Assets/3DGamekit/
 # Third-party rocketbox human textures (~584MB) + shot dumps — not script SoT
 apps/concordia-living-world/unity-client/Assets/Concordia/Models/
 apps/concordia-living-world/unity-client/Assets/Concordia/Shots/
@@ -328,6 +331,9 @@ apps/concordia-living-world/unity-client/Assets/Gizmos.meta
 apps/concordia-living-world/unity-client/Assets/Packages.meta
 apps/concordia-living-world/unity-client/Assets/_TerrainAutoUpgrade.meta
 apps/concordia-living-world/unity-client/Assets/_Recovery.meta
+apps/concordia-living-world/unity-client/Assets/ADG_Textures.meta
+apps/concordia-living-world/unity-client/Assets/_Creepy_Cat.meta
+apps/concordia-living-world/unity-client/Assets/3DGamekit.meta
 apps/concordia-living-world/unity-client/Assets/Concordia/Models.meta
 apps/concordia-living-world/unity-client/Assets/Concordia/Shots.meta
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/LlamaLib-v2.0.5.meta
