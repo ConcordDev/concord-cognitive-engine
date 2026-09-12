@@ -40,6 +40,7 @@
 
 import logger from "../logger.js";
 import { runTriggerPass, sweepExpiredActive } from "../lib/world-bosses.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 
 export function runWorldBossCycle({ db, worldId, io } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
@@ -56,11 +57,13 @@ export function runWorldBossCycle({ db, worldId, io } = {}) {
     const opened = worldId ? r.opened.filter(o => o.worldId === worldId) : r.opened;
     for (const o of opened) {
       try {
-        io?.emit?.("world:boss-spawn", {
+        const spawnPayload = {
           activeId: o.activeId, scheduleId: o.scheduleId,
           worldId: o.worldId, bossTemplate: o.bossTemplate,
           ts: Math.floor(Date.now() / 1000),
-        });
+        };
+        io?.emit?.("world:boss-spawn", spawnPayload);
+        mirrorToGateways("world:boss-spawn", spawnPayload, o.worldId ? { worldId: o.worldId } : {});
       } catch (err) {
         logger.debug?.("world-boss-cycle", "emit_failed", { error: err?.message });
       }

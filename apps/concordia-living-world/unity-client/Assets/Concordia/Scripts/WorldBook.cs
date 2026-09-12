@@ -605,6 +605,36 @@ namespace Concordia
             _actAge = 0f;
         }
 
+        public struct FeedBeat
+        {
+            public string channel;
+            public string line;
+        }
+
+        static readonly FeedBeat[] _feed = new FeedBeat[8];
+        static int _feedN;
+
+        /// <summary>
+        /// Kernel consequence strip — Emergent Event Feed role. Empty line is a no-op.
+        /// </summary>
+        public static void PushFeed(string channel, string line)
+        {
+            NoteAct(line);
+            if (string.IsNullOrEmpty(line)) return;
+            _feed[_feedN % _feed.Length] = new FeedBeat { channel = channel ?? "", line = line };
+            _feedN++;
+        }
+
+        public static int FeedCount => _feedN < _feed.Length ? _feedN : _feed.Length;
+
+        public static FeedBeat FeedAt(int newestIndex)
+        {
+            if (newestIndex < 0 || newestIndex >= FeedCount) return default;
+            int idx = _feedN - 1 - newestIndex;
+            if (idx < 0) return default;
+            return _feed[idx % _feed.Length];
+        }
+
         public static void NoteKill(string id)
         {
             WorldMemory.MarkDead(World, id);

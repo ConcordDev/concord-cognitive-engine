@@ -44,6 +44,13 @@ Branch `claude/lens-population-depth-DVcsF` — 7 commits, **161/161 tests green
   by a column check (was querying non-existent columns → threw in prod). `skill-tree-real-schema.test.js` 3/3.
 
 ### ⏳ REMAINING
+- **Presentation audit (2026-09-12)** — the MMO sim is already deep; Unity
+  was presenting a fraction of the consequences. Ranked gap table:
+  `docs/CONCORDIA_UNITY_PRESENTATION_AUDIT.md`. First wave (this pass):
+  faction war/alliance/truce, gatherings, bosses, seasons/festivals, gossip
+  + tombs on `world:snapshot`, stress-break, heir last-words, one
+  consequence strip. Do not invent engines. Mixamo / funeral 3D / adaptive
+  audio SM / migration emit remain open.
 - **T1.4b / T2 / F1 presenter** — kernel tickets were already shipped; Unity
   now consumes them. Closed: `/unity-ws` gift/scheme/party/inheritance/dodge/
   dungeon; `secret:weaponised` + `scheme:overheard` + `npc:conversation-bid`

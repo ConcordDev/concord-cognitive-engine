@@ -136,4 +136,14 @@ test("io.emit-only modules have a gateway-only mirror hook (clock/weather do not
   assert.match(overhear, /mirrorToGateways\(\s*"scheme:overheard"/);
   const bid = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "npc-conversation-initiator.js"), "utf8");
   assert.match(bid, /mirrorToGateways\(\s*"npc:conversation-bid"/);
+  const factionCycle = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "faction-strategy-cycle.js"), "utf8");
+  assert.match(factionCycle, /mirrorToGateways\(\s*"faction:strategy-move"/);
+  const bosses = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "world-boss-cycle.js"), "utf8");
+  assert.match(bosses, /mirrorToGateways\(\s*"world:boss-spawn"/);
+  const festivals = readFileSync(join(import.meta.dirname, "..", "..", "emergent", "festival-trigger-cycle.js"), "utf8");
+  assert.match(festivals, /mirrorToGateways\(\s*"festival:started"/);
+  const seasons = readFileSync(join(import.meta.dirname, "..", "..", "lib", "seasons.js"), "utf8");
+  assert.match(seasons, /mirrorToGateways\(\s*"world:season-transition"/);
+  const gather = readFileSync(join(import.meta.dirname, "..", "..", "lib", "npc-simulator.js"), "utf8");
+  assert.match(gather, /mirrorToGateways\(\s*"world:npc-gather"/);
 });

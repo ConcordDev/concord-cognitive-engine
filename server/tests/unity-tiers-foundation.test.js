@@ -53,3 +53,30 @@ test("ConcordClient applies combat:impact momentum", () => {
   assert.match(client, /impactMomentum/);
   assert.match(client, /TakeHit\(/);
 });
+
+test("ConcordClient presents faction diplomacy from the kernel, not a local bar", () => {
+  assert.match(client, /evt == "faction:war-declared"/);
+  assert.match(client, /evt == "faction:alliance-formed"/);
+  assert.match(client, /evt == "faction:truce-sought"/);
+  assert.match(client, /JsonString\(text, "summary"\)/);
+});
+
+test("ConcordClient presents gatherings, bosses, seasons, festivals, stress-break", () => {
+  assert.match(client, /evt == "world:gathering-detected"/);
+  assert.match(client, /evt == "world:boss-spawn"/);
+  assert.match(client, /evt == "world:season-transition"/);
+  assert.match(client, /evt == "festival:started"/);
+  assert.match(client, /evt == "npc:stress-break"/);
+});
+
+test("ConcordClient does not relabel an NPC harvest as a social gathering", () => {
+  assert.match(client, /evt == "world:npc-gather"/);
+  assert.match(client, /resourceName/);
+  assert.doesNotMatch(client, /NoteAct\("a gathering"\)/);
+});
+
+test("ConcordClient consequence strip consumes gossip + lastWords", () => {
+  assert.match(client, /PushFeed\("gossip"/);
+  assert.match(client, /JsonString\(text, "lastWords"\)/);
+  assert.match(client, /PushFeed\(/);
+});

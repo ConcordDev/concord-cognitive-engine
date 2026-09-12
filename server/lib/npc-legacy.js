@@ -453,6 +453,7 @@ export function onNpcDeath(db, npc, opts = {}) {
         heirName: primary.name || primary.archetype || null,
         deceasedId: npc.id,
         deceasedName: npc.name || npc.archetype || null,
+        lastWords,
         worldId,
         inherited,
       }, { worldId });

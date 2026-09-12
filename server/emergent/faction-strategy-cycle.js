@@ -17,6 +17,7 @@
 
 import logger from "../logger.js";
 import { pickMove, applyMove, resolveFactionWorldId } from "../lib/embodied/faction-strategy.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 import { ethicsEnabled, getSharedValueRuleIndex, factionMoveBias } from "../lib/viability/value-rule-index.js";
 import { collapseCascadeEnabled, cascadeCollapse } from "../lib/viability/collapse-cascade.js";
 
@@ -157,12 +158,14 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
         // move — not just the wars/clashes below — emits a lightweight event so
         // the EmergentEventFeed can show "the world's factions are scheming"
         // (consolidate / expand / propose-alliance / seek-truce / …). Best-effort.
-        io?.emit?.("faction:strategy-move", {
+        const movePayload = {
           factionId: f.faction_id,
           move: applied.move,
           target: applied.target ?? null,
           ts: Date.now(),
-        });
+        };
+        io?.emit?.("faction:strategy-move", movePayload);
+        mirrorToGateways("faction:strategy-move", movePayload);
         // Legibility W2b — route a war move through any online player whose thread
         // it pulls on ("the faction you backed is on the move"). Global (factions
         // aren't per-world) → scans all online players. Best-effort, never blocks.

@@ -338,6 +338,8 @@ describe("onNpcDeath — legacy + inheritance cascade", () => {
     assert.equal(seen[0].event, "npc:heir-rose");
     assert.equal(seen[0].payload.heirId, "npc:son2");
     assert.equal(seen[0].payload.deceasedId, "npc:dad2");
+    assert.equal(typeof seen[0].payload.lastWords, "string");
+    assert.ok(seen[0].payload.lastWords.length > 0);
   });
 });
 

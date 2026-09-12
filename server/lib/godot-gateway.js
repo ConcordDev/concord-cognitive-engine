@@ -36,6 +36,8 @@ import {
 } from "./concordia-play.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
+import { getVillageGossipFeed } from "./npc-relationships.js";
+import { getTombsForWorld } from "./npc-legacy.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -478,6 +480,8 @@ function isBinaryMovePayload(p) {
         try {
           const phase = getWorldPhase();
           const weather = getWeather(worldId);
+          const gossipRows = getVillageGossipFeed(db, worldId, { limit: 8 }) || [];
+          const tombRows = getTombsForWorld(db, worldId, 8) || [];
           send(client.ws, "world:snapshot", {
             ok: true,
             worldId,
@@ -494,6 +498,17 @@ function isBinaryMovePayload(p) {
                   since: weather.since,
                 }
               : null,
+            gossip: gossipRows.map((r) => ({
+              summary: r.summary || "",
+              kind: r.event_kind || "",
+              relation: r.relationship_kind || "",
+            })),
+            tombs: tombRows.map((r) => ({
+              npcId: r.npc_id || "",
+              lastWords: r.last_words || "",
+              x: r.tomb_x,
+              z: r.tomb_z,
+            })),
           });
         } catch (e) {
           send(client.ws, "world:snapshot", {

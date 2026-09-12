@@ -81,6 +81,7 @@ namespace Concordia
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
+            ConsequenceFeed(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
             if (player.skillOpen) SkillSheet(w, h);
@@ -451,6 +452,27 @@ namespace Concordia
             GUI.Label(new Rect(40, h * 0.40f, w - 80, 54), _announceTitle, _card);
             GUI.color = new Color(0.92f, 0.82f, 0.62f, a);
             GUI.Label(new Rect(80, h * 0.50f, w - 160, 40), _announceLine, _cardSub);
+            GUI.color = Color.white;
+        }
+
+        void ConsequenceFeed(float w, float h)
+        {
+            int n = WorldClock.FeedCount;
+            if (n <= 0 || player.talkOpen || player.menuOpen || player.skillOpen) return;
+            float fw = 320f;
+            float fh = 18f + n * 16f;
+            float x = w - fw - 18f;
+            float y = 28f;
+            GUI.color = new Color(0f, 0f, 0f, 0.42f);
+            GUI.DrawTexture(new Rect(x, y, fw, fh), _white);
+            GUI.color = new Color(0.86f, 0.78f, 0.62f, 0.92f);
+            for (int i = 0; i < n; i++)
+            {
+                var beat = WorldClock.FeedAt(i);
+                if (string.IsNullOrEmpty(beat.line)) continue;
+                var prefix = string.IsNullOrEmpty(beat.channel) ? "" : beat.channel + "  ·  ";
+                GUI.Label(new Rect(x + 10, y + 6 + i * 16f, fw - 20, 16), prefix + beat.line, _small);
+            }
             GUI.color = Color.white;
         }
 

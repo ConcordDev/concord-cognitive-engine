@@ -17,7 +17,7 @@ below, which is additive on both sides.
 
 | Surface | Exists | Three.js consumed | Unity consumes today |
 |---|---:|---:|---:|
-| Realtime broadcast events | 117 | 33 | ~6 handlers |
+| Realtime broadcast events | 117 | 33 | ~30+ handlers (consequence strip + faction/boss/season/gather/gossip; see `docs/CONCORDIA_UNITY_PRESENTATION_AUDIT.md`) |
 | Gateway RPC verbs | 13 | — | 13 (complete) |
 | REST `/api/` endpoints | 239 | 239 | 0 |
 

@@ -426,7 +426,9 @@ export const EVENT_SHAPES = Object.freeze({
   // T2.1 / T2.2 / T2.3 — Unity presenter consumes these over /unity-ws.
   // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
   "secret:weaponised":          { required: ["kind"], optional: ["userId", "secretId", "holder", "subject_kind", "subject_id", "schemeId", "byNpc", "ts", "worldId"] },
-  "npc:heir-rose":              { required: ["heirId", "deceasedId"], optional: ["heirName", "deceasedName", "worldId", "inherited"] },
+  "npc:heir-rose":              { required: ["heirId", "deceasedId"], optional: ["heirName", "deceasedName", "worldId", "inherited", "lastWords"] },
+  // Unity consequence strip — existing broke write, now visible. @dead-event-ok
+  "npc:stress-break":           { required: ["npcId", "copingTrait", "stress"], optional: ["eventKind", "worldId"] },
   "scheme:overheard":           { required: ["schemeId"], optional: ["plotterId", "worldId", "snippet", "plotterArchetype", "plotterFaction", "targetArchetype", "targetFaction", "schemeKind", "ts"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },

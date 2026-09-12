@@ -366,7 +366,12 @@ namespace Concordia
             }
             if (evt == "world:npc-gather")
             {
-                RunMain(() => WorldClock.NoteAct("a gathering"));
+                var res = JsonString(text, "resourceName");
+                if (string.IsNullOrEmpty(res)) res = JsonString(text, "resourceId");
+                var amt = JsonInt(text, "amount", 0);
+                var line = string.IsNullOrEmpty(res) ? "someone harvested" : "harvest · " + res;
+                if (amt > 0) line += " ×" + amt;
+                RunMain(() => WorldClock.PushFeed("economy", line));
                 return;
             }
             if (evt == "lens:result")
@@ -385,11 +390,13 @@ namespace Concordia
                 if (string.IsNullOrEmpty(heir)) heir = JsonString(text, "heir_name");
                 var from = JsonString(text, "deceasedName");
                 if (string.IsNullOrEmpty(from)) from = JsonString(text, "deceased_name");
+                var last = JsonString(text, "lastWords");
                 var line = string.IsNullOrEmpty(heir) ? "an heir rose" : heir + " inherited";
                 if (!string.IsNullOrEmpty(from)) line += " from " + from;
+                if (!string.IsNullOrEmpty(last)) line += " — \"" + last + "\"";
                 RunMain(() =>
                 {
-                    WorldClock.NoteAct(line);
+                    WorldClock.PushFeed("lineage", line);
                     ConcordiaHUD.Announce("Heir rose", line);
                 });
                 return;
@@ -502,6 +509,118 @@ namespace Concordia
                 RunMain(() => ApplyRun(text));
                 return;
             }
+            if (evt == "faction:war-declared")
+            {
+                var summary = JsonString(text, "summary");
+                var move = JsonString(text, "move");
+                var a = JsonString(text, "factionId");
+                var b = JsonString(text, "targetFactionId");
+                var line = summary;
+                if (string.IsNullOrEmpty(line))
+                    line = string.IsNullOrEmpty(a) ? "war declared" : a + " declared war" + (string.IsNullOrEmpty(b) ? "" : " on " + b);
+                if (!string.IsNullOrEmpty(move) && move == "RAID" && string.IsNullOrEmpty(summary))
+                    line = string.IsNullOrEmpty(a) ? "a raid" : a + " raids" + (string.IsNullOrEmpty(b) ? "" : " " + b);
+                Consequence("faction", "War", line, true, 0.12f);
+                return;
+            }
+            if (evt == "faction:alliance-formed")
+            {
+                var summary = JsonString(text, "summary");
+                var a = JsonString(text, "factionId");
+                var b = JsonString(text, "targetFactionId");
+                var line = summary;
+                if (string.IsNullOrEmpty(line))
+                    line = string.IsNullOrEmpty(a) ? "an alliance formed" : a + " allied" + (string.IsNullOrEmpty(b) ? "" : " with " + b);
+                Consequence("faction", "Alliance", line, true, -0.06f);
+                return;
+            }
+            if (evt == "faction:truce-sought")
+            {
+                var summary = JsonString(text, "summary");
+                var a = JsonString(text, "factionId");
+                var b = JsonString(text, "targetFactionId");
+                var line = summary;
+                if (string.IsNullOrEmpty(line))
+                    line = string.IsNullOrEmpty(a) ? "a truce sought" : a + " sought truce" + (string.IsNullOrEmpty(b) ? "" : " with " + b);
+                Consequence("faction", "Truce", line, true, -0.06f);
+                return;
+            }
+            if (evt == "faction:strategy-move")
+            {
+                var move = JsonString(text, "move");
+                var a = JsonString(text, "factionId");
+                var b = JsonString(text, "target");
+                if (string.IsNullOrEmpty(move)) return;
+                var line = string.IsNullOrEmpty(a) ? move : a + " · " + move;
+                if (!string.IsNullOrEmpty(b)) line += " → " + b;
+                Consequence("faction", "Faction", line, false, 0f);
+                return;
+            }
+            if (evt == "world:gathering-detected")
+            {
+                var loc = "";
+                var n = 0;
+                ForEachArrayObject(text, "gatherings", g =>
+                {
+                    if (n == 0) loc = JsonString(g, "location");
+                    var c = JsonInt(g, "playerCount", 0);
+                    if (c > n) n = c;
+                });
+                if (n <= 0) n = JsonArrayCount(text, "gatherings");
+                if (n <= 0) return;
+                var line = n + (n == 1 ? " soul gathered" : " souls gathered");
+                if (!string.IsNullOrEmpty(loc)) line += " · " + loc;
+                Consequence("social", "Gathering", line, true, 0f);
+                return;
+            }
+            if (evt == "world:boss-spawn")
+            {
+                var boss = JsonString(text, "bossTemplate");
+                if (string.IsNullOrEmpty(boss)) boss = JsonString(text, "activeId");
+                var line = string.IsNullOrEmpty(boss) ? "a world boss opened" : boss + " walks";
+                Consequence("crisis", "World boss", line, true, 0.08f);
+                return;
+            }
+            if (evt == "world:season-transition")
+            {
+                var season = JsonString(text, "seasonName");
+                var narrative = JsonString(text, "narrative");
+                var year = JsonInt(text, "year", 0);
+                var line = string.IsNullOrEmpty(narrative) ? (string.IsNullOrEmpty(season) ? "the season turned" : season) : narrative;
+                if (year > 0 && string.IsNullOrEmpty(narrative)) line += " · year " + year;
+                Consequence("season", "Season", line, true, 0f);
+                return;
+            }
+            if (evt == "festival:started")
+            {
+                var name = JsonString(text, "name");
+                if (string.IsNullOrEmpty(name)) name = JsonString(text, "festivalId");
+                var line = string.IsNullOrEmpty(name) ? "a festival opened" : name;
+                Consequence("season", "Festival", line, true, 0f);
+                return;
+            }
+            if (evt == "npc:economy-batch")
+            {
+                var crafts = JsonInt(text, "crafts", 0);
+                var trades = JsonInt(text, "trades", 0);
+                var notable = JsonArrayCount(text, "notable");
+                if (crafts <= 0 && trades <= 0 && notable <= 0) return;
+                var line = "work · ";
+                if (crafts > 0) line += crafts + " crafted";
+                if (trades > 0) line += (crafts > 0 ? ", " : "") + trades + " traded";
+                if (notable > 0 && crafts <= 0 && trades <= 0) line += notable + " notable";
+                Consequence("economy", "Market", line, false, 0f);
+                return;
+            }
+            if (evt == "npc:stress-break")
+            {
+                var trait = JsonString(text, "copingTrait");
+                var who = JsonString(text, "npcId");
+                var line = string.IsNullOrEmpty(trait) ? "someone broke" : "broke · " + trait;
+                if (!string.IsNullOrEmpty(who)) line += " · " + who;
+                Consequence("npc", "Broke", line, true, 0f);
+                return;
+            }
             if (evt == "combat:dodge:ack")
                 return;
             if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
@@ -584,6 +703,43 @@ namespace Concordia
             var w = JsonNestedString(json, "type");
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
+            var gossipN = JsonArrayCount(json, "gossip");
+            if (gossipN > 0)
+            {
+                var shown = 0;
+                ForEachArrayObject(json, "gossip", row =>
+                {
+                    if (shown >= 3) return;
+                    var summary = JsonString(row, "summary");
+                    if (string.IsNullOrEmpty(summary)) return;
+                    WorldClock.PushFeed("gossip", summary);
+                    shown++;
+                });
+            }
+            var tombN = JsonArrayCount(json, "tombs");
+            if (tombN > 0)
+            {
+                var said = false;
+                ForEachArrayObject(json, "tombs", row =>
+                {
+                    if (said) return;
+                    var last = JsonString(row, "lastWords");
+                    if (string.IsNullOrEmpty(last)) return;
+                    WorldClock.PushFeed("lineage", "\"" + last + "\"");
+                    said = true;
+                });
+            }
+        }
+
+        void Consequence(string channel, string title, string line, bool announce, float heatDelta)
+        {
+            RunMain(() =>
+            {
+                WorldClock.PushFeed(channel, line);
+                if (announce) ConcordiaHUD.Announce(title, line);
+                if (heatDelta != 0f)
+                    WorldClock.FactionHeat = Mathf.Clamp01(WorldClock.FactionHeat + heatDelta);
+            });
         }
 
         void ApplyCombatFeel(string json, bool impact)

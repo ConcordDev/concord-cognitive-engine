@@ -101,6 +101,10 @@ describe("world:snapshot", () => {
       const live = getWeather("concordia-hub");
       assert.equal(frame.data.weather.type, live.type);
       assert.equal(frame.data.weather.intensity, live.intensity);
+      assert.ok(Array.isArray(frame.data.gossip), "gossip must be an array, never omitted as fake rumor");
+      assert.equal(frame.data.gossip.length, 0, "empty substrate stays empty");
+      assert.ok(Array.isArray(frame.data.tombs), "tombs must be an array");
+      assert.equal(frame.data.tombs.length, 0);
       ws.close();
     } finally { await h.stop(); }
   });
