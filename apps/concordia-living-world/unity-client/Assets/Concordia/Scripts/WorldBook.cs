@@ -433,6 +433,10 @@ namespace Concordia
         static float _actAge;
         static float _threatAt;
         static float _eventCd = 16f;
+        static bool _kernelLive;
+        static float _kernelAt;
+        static float _baseFog = -1f;
+        static string _placedWeather;
 
         public static void Enter(WorldId id)
         {
@@ -450,6 +454,31 @@ namespace Concordia
             ApplySky();
             NoteAct(Canon.Get(id).title + " kept its hours.");
             KingdomBook.Dump();
+        }
+
+        /// <summary>
+        /// Server day-phase [0,1). Hour follows the kernel while frames keep arriving.
+        /// </summary>
+        public static void BindKernelClock(float phase, string segment)
+        {
+            Hour = Mathf.Repeat(phase * 24f, 24f);
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            if (!string.IsNullOrEmpty(segment)) LastEvent = Canon.Get(World).title + " · " + segment;
+            ApplySky();
+        }
+
+        /// <summary>
+        /// Server weather type. Stops the local random cycle from overwriting it.
+        /// </summary>
+        public static void BindKernelWeather(string type)
+        {
+            if (string.IsNullOrEmpty(type)) return;
+            Weather = type;
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            ApplyKernelWeatherFx();
+            ApplySky();
         }
 
         public static void Leave()
@@ -481,7 +510,9 @@ namespace Concordia
 
         public static void Tick(float dt)
         {
-            Hour = (Hour + dt * 0.08f) % 24f;
+            var kernelFresh = _kernelLive && Time.unscaledTime - _kernelAt < 90f;
+            if (!kernelFresh)
+                Hour = (Hour + dt * 0.08f) % 24f;
             if (Hour < 0.05f * dt + 0.02f)
             {
                 Day += 1;
@@ -491,7 +522,7 @@ namespace Concordia
             _weatherT -= dt;
             Ecology = Mathf.Clamp(Ecology + dt * 0.004f, 0.15f, 1f);
             FactionHeat = Mathf.Max(0f, FactionHeat - dt * 0.02f);
-            if (_weatherT <= 0f)
+            if (!kernelFresh && _weatherT <= 0f)
             {
                 _weatherT = 28f + UnityEngine.Random.value * 22f;
                 var kit = Canon.Get(World).weather;
@@ -698,11 +729,43 @@ namespace Concordia
             }
             if (sun)
             {
+                var dim = WeatherDim();
                 if (World == WorldId.Hub)
-                    sun.intensity = 0.92f + 0.38f * day;
+                    sun.intensity = (0.92f + 0.38f * day) * dim;
                 else
-                    sun.intensity = 0.35f + 0.9f * day;
+                    sun.intensity = (0.35f + 0.9f * day) * dim;
             }
+        }
+
+        static float WeatherDim()
+        {
+            if (Weather == "rain" || Weather == "ash" || Weather == "smog" || Weather == "storm") return 0.62f;
+            if (Weather == "fog" || Weather == "overcast") return 0.78f;
+            if (Weather == "wind") return 0.88f;
+            return 1f;
+        }
+
+        static void ApplyKernelWeatherFx()
+        {
+            Transform root = null;
+            if (ContinentStream.Live)
+                root = ContinentStream.Live.ChunkOf(World);
+            if (!root) return;
+            var kind = (Weather == "rain" || Weather == "storm") ? "rain"
+                : (Weather == "ash" || Weather == "snow") ? "snow"
+                : null;
+            if (kind != _placedWeather)
+            {
+                _placedWeather = kind;
+                if (kind != null)
+                    DressVocab.PlaceWeather(kind, root, new Vector3(0f, 8f, 0f));
+            }
+            if (_baseFog < 0f) _baseFog = RenderSettings.fogDensity;
+            float mul = (Weather == "rain" || Weather == "ash" || Weather == "storm") ? 1.45f
+                : (Weather == "smog" || Weather == "fog") ? 1.7f
+                : Weather == "overcast" ? 1.2f
+                : 1f;
+            RenderSettings.fogDensity = _baseFog * mul;
         }
 
         static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;

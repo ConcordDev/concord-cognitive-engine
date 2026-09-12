@@ -13,10 +13,11 @@ namespace Concordia
         float _shake;
         float _fovKick;
 
-        public void Strike(bool heavy, bool connected)
+        public void Strike(bool heavy, bool connected, float kickMul = 1f)
         {
-            _shake = connected ? (heavy ? 0.22f : 0.12f) : 0.05f;
-            _fovKick = connected ? (heavy ? 7f : 3.5f) : 1.2f;
+            var k = Mathf.Clamp(kickMul, 0.4f, 2.6f);
+            _shake = (connected ? (heavy ? 0.22f : 0.12f) : 0.05f) * k;
+            _fovKick = (connected ? (heavy ? 7f : 3.5f) : 1.2f) * k;
         }
 
         public void ApplyAck(bool hit, float knockback, bool brokenArm, bool brokenLeg)

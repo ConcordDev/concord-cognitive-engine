@@ -8,6 +8,7 @@ namespace Concordia
     /// </summary>
     public class Hostile : MonoBehaviour
     {
+        public static string TelegraphKind;
         public float damage = 9f;
         public float range = 1.9f;
         public float aggro = 16f;

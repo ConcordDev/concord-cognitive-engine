@@ -802,5 +802,49 @@ namespace Concordia
             var r = go.GetComponent<Renderer>();
             if (!r || r.sharedMaterial == null) Tint(go, c);
         }
+
+        static Transform KernelLiveParent()
+        {
+            if (ContinentStream.Live)
+            {
+                var chunk = ContinentStream.Live.ChunkOf(WorldClock.World);
+                if (chunk) return chunk;
+                if (ContinentStream.Live.continent) return ContinentStream.Live.continent;
+            }
+            var megaworld = GameObject.Find("Megaworld");
+            if (megaworld) return megaworld.transform;
+            var world = GameObject.Find("World");
+            return world ? world.transform : null;
+        }
+
+        /// <summary>
+        /// Live kernel buildings from scene:data. Local Kenney dressing stays;
+        /// this overlay is which buildings exist right now, not how the hub looks.
+        /// Parent under the current streamed chunk — never PurgeWorldRoots.
+        /// </summary>
+        public static void ClearKernelLive()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelLive");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelBuilding(string id, string type, Vector3 pos, float yawRad, float maxDim)
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var holder = parent.Find("KernelLive");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelLive");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+            if (maxDim < 1.6f) maxDim = 3.2f;
+            var stem = Houses[Mathf.Abs((id ?? type ?? "b").GetHashCode()) % Houses.Length];
+            var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
+            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+        }
     }
 }

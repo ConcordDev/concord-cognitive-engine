@@ -247,10 +247,12 @@ namespace Concordia
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
             if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
+            if (menuOpen && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
+            if (menuOpen && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
             if (Busy) return;
-            if (KeyDown(KeyCode.Alpha1)) { KitBag.Art = 0; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha2)) { KitBag.Art = 1; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha3)) { KitBag.Art = 2; Toast(KitBag.ArtName(world)); }
+            if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
         }
 
         void TryAttack(bool heavy)
@@ -278,7 +280,7 @@ namespace Concordia
             var connected = HitScan(heavy, 1f);
             SkillLedger.Record(art, connected);
             var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected);
+            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill));
         }
 
         void TrySpecial()
