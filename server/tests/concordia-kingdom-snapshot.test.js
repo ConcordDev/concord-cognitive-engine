@@ -1,8 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import Database from "better-sqlite3";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { up as up287 } from "../migrations/287_settlements.js";
+import { up as up286 } from "../migrations/286_chronicle.js";
+import { up as up416 } from "../migrations/416_world_consequences.js";
+import { up as up446 } from "../migrations/446_settlement_identity.js";
+import { up as up447 } from "../migrations/447_settlement_region.js";
+import { foundSettlement, abandonSettlement } from "../lib/concordia-megaworld.js";
 import { buildKingdomSnapshot, resolveWorldKey, KINGDOM_FORMAT } from "../lib/concordia-kingdom-snapshot.js";
 
 const src = readFileSync(
@@ -66,5 +73,33 @@ describe("concordia kingdom snapshot — authored graph only", () => {
     const hub = JSON.stringify(buildKingdomSnapshot(null, "hub"));
     assert.doesNotMatch(hub, /Aurelia/);
     assert.doesNotMatch(hub, /Concord admits he loves her/);
+  });
+
+  it("kernel overlay stamps abandoned status onto the authored name; does not invent a mill", () => {
+    const db = new Database(":memory:");
+    db.exec(`
+      CREATE TABLE world_npcs (
+        id TEXT PRIMARY KEY, world_id TEXT, name TEXT, archetype TEXT,
+        npc_type TEXT, state TEXT, is_dead INTEGER DEFAULT 0
+      );
+    `);
+    up287(db);
+    up286(db);
+    up416(db);
+    up446(db);
+    up447(db);
+    const authored = buildKingdomSnapshot(null, "tunya");
+    assert.ok(authored.settlements.some((c) => c.name === "Dinye Gate"));
+    const found = foundSettlement(db, { worldId: "tunya", name: "Dinye Gate", centerX: 0, centerZ: 0 });
+    assert.equal(found.ok, true);
+    abandonSettlement(db, found.id, { reason: "the grove went quiet" });
+    const live = buildKingdomSnapshot(db, "tunya");
+    const row = live.settlements.find((s) => s.name === "Dinye Gate");
+    assert.ok(row);
+    assert.equal(row.status, "abandoned");
+    assert.ok(live.abandonedCount >= 1);
+    assert.ok(live.notes.some((n) => /abandoned/i.test(n)));
+    assert.doesNotMatch(JSON.stringify(live), /mill was built/i);
+    db.close();
   });
 });

@@ -104,17 +104,19 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
-                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
+                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name + (city.status == "abandoned" ? " (ruins remain)" : ""))
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
                 + "  ·  " + KitBag.ArtName(player.world), _small);
             GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
+            var field = WorldField.HudLine(player.world, player.transform.position);
             GUI.Label(new Rect(32, 86, 280, 16),
-                !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
+                !string.IsNullOrEmpty(field) ? field
+                : !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
         }
 

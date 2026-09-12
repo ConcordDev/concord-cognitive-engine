@@ -5,6 +5,9 @@ namespace Concordia
     /// <summary>
     /// Evo-asset presentation: Kenney/living fauna GLBs when present.
     /// Live path is FaunaLife (wander / graze / flee / hunt / sleep), not a sine orbit.
+    /// MEGAWORLD: this is the renderer. Organism identity (genome, habitat
+    /// fitness, death remains) lives in server/lib/concordia-organism.js.
+    /// Quota top-up in fauna-spawner is not a persistent organism (W8).
     /// </summary>
     public class EvoSpawner : MonoBehaviour
     {
@@ -221,6 +224,15 @@ namespace Concordia
             {
                 act = "sleep";
                 Step(_home, 1.4f);
+                return;
+            }
+
+            var field = WorldField.At(WorldClock.World, transform.position, "athletics", WorldClock.World);
+            if (field.ok && field.habitatFitness < 0.35f && !field.flowerLaw)
+            {
+                act = "retreat";
+                Step(_home, fly ? 3.2f : 2.4f);
+                if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " retreats toward home field");
                 return;
             }
 

@@ -67,7 +67,7 @@ namespace Concordia
         [Serializable]
         public class CityDef
         {
-            public string id, name, factionId, description;
+            public string id, name, factionId, description, status;
             public WorldId world;
             public float x, z;
             public string[] districts;
@@ -326,6 +326,35 @@ namespace Concordia
             var arr = list.ToArray();
             Cache[world] = arr;
             return arr;
+        }
+
+        /// <summary>
+        /// Overlay kernel settlement status onto authored cities. Missing
+        /// status stays empty — never invents ruins. Does not despawn ids.
+        /// </summary>
+        public static void ApplyKernelStatuses(string kingdomJson)
+        {
+            if (string.IsNullOrEmpty(kingdomJson)) return;
+            foreach (WorldId id in System.Enum.GetValues(typeof(WorldId)))
+            {
+                if (!Cache.TryGetValue(id, out var cities) || cities == null) continue;
+                foreach (var c in cities)
+                {
+                    if (c == null || string.IsNullOrEmpty(c.name)) continue;
+                    if (kingdomJson.IndexOf("\"name\":\"" + c.name + "\"", System.StringComparison.Ordinal) < 0
+                        && kingdomJson.IndexOf("\"id\":\"" + c.id + "\"", System.StringComparison.Ordinal) < 0)
+                        continue;
+                    if (kingdomJson.Contains("\"status\":\"abandoned\""))
+                    {
+                        // Only stamp when this city's object mentions abandoned nearby — coarse but honest:
+                        // if the snapshot has abandoned rows and this name appears, check a tight window.
+                        var nameAt = kingdomJson.IndexOf("\"" + c.name + "\"", System.StringComparison.Ordinal);
+                        if (nameAt < 0) continue;
+                        var window = kingdomJson.Substring(Mathf.Max(0, nameAt - 80), Mathf.Min(200, kingdomJson.Length - Mathf.Max(0, nameAt - 80)));
+                        if (window.Contains("abandoned")) c.status = "abandoned";
+                    }
+                }
+            }
         }
 
         public static WorldBook.CityDef Nearest(WorldId world, Vector3 pos, float max = 14f)

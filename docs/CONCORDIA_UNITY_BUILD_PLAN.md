@@ -1,7 +1,7 @@
 # Concordia — AAA Living-World north star + build plan
 
-**Status:** living. Read before any Concordia / Unity work.
-**Date:** 2026-08-25
+**Status:** living. Concordia topology + settlement history: `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md`.
+**Date:** 2026-09-12
 **Durable copy:** `docs/CONCORDIA_UNITY_BUILD_PLAN.md` (sync this file there on execute)
 
 **Unity client lives in this repo:** `apps/concordia-living-world/unity-client/`. Open `concord.code-workspace` so Unity Concordia sits next to Godot, frontend, server, and mobile. Do not copy the project out of the tree. `Library/` is gitignored and regenerates in Unity Hub.
@@ -234,7 +234,7 @@ Owner phases A–G **with repo binding**. Each step: find existing module → cl
 5. Faction strategy **already ticks** — wire succession + economy + rumors into it
 6. Settlement supply/demand cascade (npc-economy + scarcity exist)
 7. World events bus (EmergentEventFeed is UI; need **consequence graph** writer)
-8. **World Consequence Graph** — the missing unifier. Event sourcing: actor/action/target/location/time/evidence/witnesses/immediate/long-term → reducers
+8. **World Consequence Graph** — **SHIPPED as substrate** (`world_consequences` mig 416, `lib/world-consequence.js`, `consequence-apply.js`). The remaining work is writers + settlement location + Unity presentation, not a second graph. See `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md`.
 
 **Alive test is the Phase A exit.**
 
@@ -274,7 +274,7 @@ LOD L0–L3, streaming, shards (protocol exists), proc expansion, background sim
 | P7 | Standalone `/download` |
 | P8 | WebGL later |
 
-**Now:** finish P0 presentation **and** start Phase A item 8 (consequence graph) + NPC LOD design so Unity has something true to show.
+**Now:** persistent megaworld W0 + W0-field + organism spine (settlement identity, WorldField, Gloom Stalker as catalog organism). Then W1 wrapping `procgen-settlements` and W8 wrapping `fauna-spawner` onto identity rows. Combat still uses discrete `crossWorldPotency` until W3 streams (x,z) and W7 samples the field. Do not claim the 100-hour test. Do not invent Gloom Stalker prey. Do not claim bosses already retreat toward home.
 
 ---
 

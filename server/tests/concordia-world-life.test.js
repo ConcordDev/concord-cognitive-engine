@@ -128,6 +128,32 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
+  it("Travel is labeled region_rebuild until the megaworld streams continuously", () => {
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /MEGAWORLD: current mode is region_rebuild/);
+    assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
+    assert.match(game, /_world\.Build\(next\)/);
+    const field = src("WorldField.cs");
+    assert.match(field, /SceneMetresToKm = 0\.4f/);
+    assert.match(field, /Travel is still region_rebuild/);
+    assert.doesNotMatch(field, /-42% Magic Damage/);
+  });
+
+  it("HUD presents field physics and abandoned ruins, not a percent sticker", () => {
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(hud, /WorldField\.HudLine/);
+    assert.match(hud, /ruins remain/);
+    assert.doesNotMatch(hud, /-42%/);
+    const player = src("ConcordiaPlayer.cs");
+    assert.match(player, /WorldField\.ScaleDamage/);
+    const evo = src("EvoSpawner.cs");
+    assert.match(evo, /retreats toward home field/);
+    const field = src("WorldField.cs");
+    assert.match(field, /HudLine\(WorldId world, Vector3 localPos\)/);
+    assert.match(field, /At\(world, localPos/);
+    assert.doesNotMatch(field, /ConcordClient\.Live && ConcordClient\.Live\.Connected/);
+  });
+
   it("stock becomes a caravan with a real Ring tariff, never an invented city", () => {
     const book = src("WorldBook.cs");
     const gate = src("WorldGate.cs");
