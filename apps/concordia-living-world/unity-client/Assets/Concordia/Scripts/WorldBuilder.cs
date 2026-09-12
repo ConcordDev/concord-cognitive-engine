@@ -9,7 +9,7 @@ namespace Concordia
 
         static readonly string[] ForestTrees =
         {
-            "tree_1", "Tree1", "Tree9", "OakBigTree01_pr", "Tree"
+            "tree_1"
         };
         static readonly string[] Flowers =
         {
@@ -305,8 +305,8 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Grass(WorldId.Tunya), root, outPos + side * 4.4f, yaw + 15f, 1.2f, required: false);
                     break;
                 case WorldId.Fantasy:
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 9f, required: false);
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 7.5f, required: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 8f, required: false, byHeight: false);
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Fantasy), root, outPos, yaw, 7.2f, required: false);
                     break;
                 case WorldId.Crime:
@@ -425,7 +425,7 @@ namespace Concordia
                 var rad = 28 + (i % 4) * 3.4f;
                 var stem = ForestTrees[i % ForestTrees.Length];
                 FreePacks.SpawnStore(stem, root,
-                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 4.5f, required: false);
+                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 8f, required: false, byHeight: false);
                 if (i % 3 == 0)
                     FreePacks.SpawnStore(Flowers[0], root,
                         new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f, required: false);

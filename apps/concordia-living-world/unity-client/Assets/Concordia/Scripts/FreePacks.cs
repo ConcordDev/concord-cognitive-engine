@@ -319,7 +319,16 @@ namespace Concordia
             SitOrHang(go, pos, stem);
             PaintIfBlank(go, PathForStem(stem));
             var kind = stem.ToLowerInvariant();
-            if (IsTree(kind)) TrunkCollider(go);
+            if (IsTree(kind))
+            {
+                var canopy = Encapsulate(go);
+                if (Mathf.Max(canopy.size.x, canopy.size.z) > 18f)
+                {
+                    Object.Destroy(go);
+                    return null;
+                }
+                TrunkCollider(go);
+            }
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
             else StripColliders(go);
             return go;
@@ -372,7 +381,7 @@ namespace Concordia
                     || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
                     || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
                     || s.Contains("wagon") || s.Contains("well") || s.Contains("platform")
-                    || s.Contains("panel") || s.Contains("granite") || s.Contains("gate")
+                    || s.Contains("panel") || s.Contains("granite")
                     || s.Contains("furnace") || s.Contains("cauldron"))
                 return true;
             return maxDim >= 2.4f;
@@ -744,7 +753,7 @@ namespace Concordia
             var c = Culture(id);
             if (c == "grid") return StoreTree(new[] { "LowPoly - FirTree A", "tree_1", "Tree1" });
             if (c == "ash") return StoreTree(new[] { "half_tree", "tree_1", "Tree1" });
-            return StoreTree(new[] { "tree_1", "Tree1", "Tree9", "OakBigTree01_pr", "Tree" });
+            return StoreTree(new[] { "tree_1" });
         }
 
         static string StoreTree(string[] prefer)

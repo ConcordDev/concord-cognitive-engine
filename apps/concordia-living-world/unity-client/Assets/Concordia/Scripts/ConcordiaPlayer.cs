@@ -454,7 +454,7 @@ namespace Concordia
             hp = 100f;
             poise = 12f;
             cc.enabled = false;
-            var spawn = world == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
+            var spawn = world == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
             transform.position = spawn;
             cc.enabled = true;
             Grounding.Snap(cc);

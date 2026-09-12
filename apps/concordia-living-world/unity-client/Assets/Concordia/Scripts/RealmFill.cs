@@ -43,19 +43,19 @@ namespace Concordia // keep-spawn-assign
                     for (int i = 0; i < 36; i++)
                         FreePacks.Spawn("crops_cornStageD", root, new Vector3(-14 + (i % 12) * 1.3f, 0, 7 + (i / 12) * 2.1f), 0, 1.4f);
                     Ring(root, "tent_detailedOpen", 14f, 7, 3.2f, 30f);
-                    RingStore(root, new[] { "tree_1", "Tree1", "OakBigTree01_pr" }, 20f, 12, 7f, 15f);
-                    RingStore(root, new[] { "Tree9", "tree_1" }, 28f, 10, 9f, 20f);
+                    RingStore(root, new[] { "tree_1" }, 20f, 12, 8f, 15f);
+                    RingStore(root, new[] { "tree_1" }, 28f, 10, 8f, 20f);
                     Scatter(root, "bridge_wood", 3, 10f, 16f, 2.4f);
                     Scatter(root, "campfire_stones", 6, 5f, 16f, 1.3f);
                     Horizon(root, "cliff_large_rock", 54f, 8, 10f);
                     break;
                 case WorldId.Fantasy:
                     Ring(root, "hedge-large", 16f, 12, 2.8f, 0f);
-                    FreePacks.Spawn("fountain-round", root, new Vector3(0, 0, 9), 0, 3.2f);
+                    FreePacks.SpawnStore("fountain-round", root, new Vector3(0, 0, 9), 0, 3.2f, required: false, byHeight: false);
                     Ring(root, "banner-red", 11f, 8, 2.4f, 0f);
                     Scatter(root, "tower-square-base", 5, 16f, 26f, 7f);
                     Scatter(root, "statue", 5, 8f, 16f, 2.4f);
-                    RingStore(root, new[] { "tree_1", "Tree1", "OakBigTree01_pr", "Tree9" }, 22f, 10, 7.5f, 25f);
+                    RingStore(root, new[] { "tree_1" }, 22f, 10, 8f, 25f);
                     Horizon(root, "tower-hexagon-base", 48f, 6, 12f);
                     break;
                 case WorldId.Crime:
@@ -306,7 +306,7 @@ namespace Concordia // keep-spawn-assign
 
         static void Roads(Transform root, WorldDef w)
         {
-            var start = w.id == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0f, 2f);
+            var start = w.id == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
             var cities = CityAtlas.For(w.id);
             if (cities.Length > 0)
             {
@@ -449,7 +449,7 @@ namespace Concordia // keep-spawn-assign
                 float a = i / (float)n * Mathf.PI * 2f + 0.2f;
                 var stem = stems[i % stems.Length];
                 FreePacks.SpawnStore(stem, root, new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad),
-                    -a * Mathf.Rad2Deg + yawOff, h, required: false);
+                    -a * Mathf.Rad2Deg + yawOff, h, required: false, byHeight: false);
             }
         }
 

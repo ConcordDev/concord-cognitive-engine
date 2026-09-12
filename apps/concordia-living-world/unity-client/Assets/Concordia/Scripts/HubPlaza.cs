@@ -74,7 +74,11 @@ namespace Concordia
                 var arch = FreePacks.SpawnStore("stone_half_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
                            ?? FreePacks.SpawnStore("stone_half_gate.001", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
                            ?? FreePacks.SpawnStore("wood_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 6.5f, required: true);
-                if (arch) arch.transform.SetParent(hold, true);
+                if (arch)
+                {
+                    FreePacks.StripColliders(arch);
+                    arch.transform.SetParent(hold, true);
+                }
 
                 var portalCol = PortalColor(gate);
                 Swirl(hold, new Vector3(0f, 2.4f, 0.2f), portalCol);
@@ -224,7 +228,7 @@ namespace Concordia
                 float mid = (g.angle + n.angle) * 0.5f;
                 if (Mathf.Abs(n.angle - g.angle) > Mathf.PI) mid += Mathf.PI;
                 var grove = new Vector3(Mathf.Cos(mid) * 27.5f, 0f, Mathf.Sin(mid) * 27.5f);
-                FreePacks.SpawnStore(DressVocab.Tree(WorldId.Hub), root, grove, mid * Mathf.Rad2Deg, FreePacks.HumanHeight("tree"), required: false);
+                FreePacks.SpawnStore(DressVocab.Tree(WorldId.Hub), root, grove, mid * Mathf.Rad2Deg, 8f, required: false, byHeight: false);
                 FreePacks.SpawnStore(DressVocab.Rock(), root, grove + new Vector3(1.6f, 0f, -0.8f), i * 21f, 1.05f, required: false);
                 var col = new Vector3(Mathf.Cos(g.angle + 0.12f) * 31.2f, 0f, Mathf.Sin(g.angle + 0.12f) * 31.2f);
                 FreePacks.SpawnStore(DressVocab.Column(WorldId.Hub), root, col, g.angle * Mathf.Rad2Deg, FreePacks.HumanHeight("column"), required: false);

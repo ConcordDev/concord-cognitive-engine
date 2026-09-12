@@ -53,6 +53,9 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.match(g, /SnapPoint\(/);
     assert.doesNotMatch(g, /4\.5f/);
     assert.doesNotMatch(g, /y = 0\.08f/);
+    assert.match(g, /sz\.y > 1\.6f/);
+    assert.match(src("Canon.cs"), /SteelSpawn/);
+    assert.match(game, /Canon\.SteelSpawn/);
     assert.match(life, /Grounding\.SnapPoint/);
     assert.doesNotMatch(game, /py > 3\.5f/);
   });
@@ -76,6 +79,8 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.doesNotMatch(builder, /tree_oak/);
     assert.match(packs, /SpawnStore\(/);
     assert.match(fill, /RingStore\(/);
+    assert.match(fill, /byHeight: false/);
+    assert.match(packs, /size\.x, canopy\.size\.z\) > 18f/);
     assert.doesNotMatch(fill, /tree_oak_dark/);
   });
 

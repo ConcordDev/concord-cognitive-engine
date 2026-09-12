@@ -418,7 +418,7 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            var spawn = next == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
+            var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
             _player.cc.enabled = false;
             _player.transform.position = spawn;
             _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);

@@ -57,6 +57,11 @@ namespace Concordia
         public const float WallRadius = 56f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
+        /// <summary>
+        /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
+        /// and CharacterController depenetration launched the hero onto roofs.
+        /// </summary>
+        public static readonly Vector3 SteelSpawn = new Vector3(0f, 0.12f, -8f);
 
         /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one

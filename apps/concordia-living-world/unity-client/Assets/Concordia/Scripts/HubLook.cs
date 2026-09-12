@@ -147,7 +147,7 @@ namespace Concordia
                 sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, daySky, sun01));
             }
 
-            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
+            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
             for (int i = 0; i < lights.Length; i++)
             {
                 var l = lights[i];
@@ -165,6 +165,11 @@ namespace Concordia
                 }
                 else if (l.type == LightType.Directional && l.name == "Fill")
                     l.intensity = 0.02f + 0.16f * sun01;
+                else if (l.type == LightType.Directional)
+                {
+                    l.intensity = 0f;
+                    l.enabled = false;
+                }
                 else if (l.type == LightType.Point && (l.name == "CourtLamp" || l.name == "MonumentLight" || l.name == "Lantern"))
                     l.intensity = Mathf.Lerp(2.6f, 0.55f, sun01);
             }

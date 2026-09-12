@@ -45,12 +45,15 @@ namespace Concordia
             for (int i = 0; i < n; i++)
             {
                 var side = (i == 0 ? -1.6f : 1.6f);
-                var pos = gate.transform.position + gate.transform.right * side + Vector3.up * 0.05f;
+                var pos = gate.transform.position + gate.transform.right * side + gate.transform.forward * 4.2f + Vector3.up * 0.05f;
                 var look = Appearance.Random(gate.GetHashCode() + i * 17);
                 look.displayName = "a guard";
                 look.outfit = 1;
                 var go = ModularPerson.SpawnNpc(gate.transform, pos, gate.transform.eulerAngles.y + 180f, look, false);
                 go.name = "a guard";
+                var gcc = go.GetComponent<CharacterController>();
+                if (gcc) Grounding.Snap(gcc);
+                else go.transform.position = Grounding.SnapPoint(go.transform.position, 0.04f, go.transform);
                 var life = go.AddComponent<NpcLife>();
                 life.job = NpcLife.Job.Watch;
                 var guest = go.AddComponent<GuestNpc>();
