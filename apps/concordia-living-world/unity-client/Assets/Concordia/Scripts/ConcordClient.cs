@@ -1230,7 +1230,7 @@ namespace Concordia
         static float _combat;
         static float _modeUntil;
         static string _mode = "neutral";
-        static readonly Dictionary<int, float> _vol0 = new Dictionary<int, float>();
+        static readonly Dictionary<string, float> _vol0 = new Dictionary<string, float>();
 
         public static Dir[] For(string eventName, string outcome = "")
         {
@@ -1290,7 +1290,7 @@ namespace Concordia
 
         static void Mix()
         {
-            var srcs = Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude);
+            var srcs = UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude);
             foreach (var s in srcs)
             {
                 if (!s) continue;
@@ -1299,9 +1299,8 @@ namespace Concordia
                 bool sus = n.IndexOf("Suspenseful", StringComparison.OrdinalIgnoreCase) >= 0;
                 bool act = n.IndexOf("Action", StringComparison.OrdinalIgnoreCase) >= 0;
                 if (!eth && !sus && !act) continue;
-                int id = s.GetInstanceID();
-                if (!_vol0.ContainsKey(id)) _vol0[id] = s.volume;
-                float v0 = _vol0[id];
+                if (!_vol0.ContainsKey(n)) _vol0[n] = s.volume;
+                float v0 = _vol0[n];
                 float vol = v0;
                 float pitch = 1f;
                 if (_mode == "minor")

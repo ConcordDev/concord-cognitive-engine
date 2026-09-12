@@ -98,8 +98,8 @@ test("Unity collides kernel gossip, tombs, stress, banners, and inherited score 
   assert.match(life, /public void HeadFor\(/);
   assert.match(client, /AdaptiveScore\.Apply\("faction:war-declared"\)/);
   assert.match(client, /setMusicCombatIntensity/);
-  assert.match(client, /intensity = 0\.85f/);
-  assert.match(client, /holdMs = 12000f/);
+  assert.match(client, /Intensity\(0\.85f\)/);
+  assert.match(client, /Mode\("minor", 12000f\)/);
   assert.match(client, /evt == "npc:migrated"/);
   assert.match(client, /RealmFill\.MarkWar/);
   assert.match(client, /life\.Cope\(trait\)/);

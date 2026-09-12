@@ -305,7 +305,6 @@ namespace Concordia
                     var d = Vector3.Distance(pos, t.transform.position);
                     if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
-                }
             if (gate != null)
             {
                 Travel(gate.def.world);
