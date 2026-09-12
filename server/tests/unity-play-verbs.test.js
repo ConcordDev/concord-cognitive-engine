@@ -9,7 +9,7 @@ import Database from "better-sqlite3";
 import { WebSocket } from "ws";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
 import { giftReaction, GIFT_DELTA, giveGift } from "../lib/gifting.js";
-import { handleDodge, handleDungeonOpen, handleRunStart } from "../lib/concordia-play.js";
+import { handleDodge, handleDungeonOpen, handleDungeonHit, handleRunStart } from "../lib/concordia-play.js";
 import { applyHitToState, resetCombatState } from "../lib/combat-state.js";
 import { resetSessionsForTest } from "../lib/concordia-session.js";
 import { up as up050 } from "../migrations/050_player_inventory.js";
@@ -150,6 +150,13 @@ describe("Unity play verbs", () => {
     const r = giveGift(db, { userId: "u1", npcId: "kestra", itemId: "nope" });
     assert.equal(r.ok, false);
     assert.equal(r.reason, "item_not_owned");
+  });
+
+  it("dungeon:hit without a db is an honest failure, never a fabricated kill", () => {
+    const r = handleDungeonHit(null, "u1", { instanceId: "dng_x", damage: 20 });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_db");
+    assert.equal(handleDungeonHit(db, "u1", { damage: 20 }).reason, "missing_instance");
   });
 
   it("dungeon:open without a kernel table still names the authored encounter", () => {

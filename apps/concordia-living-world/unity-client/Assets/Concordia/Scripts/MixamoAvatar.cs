@@ -14,7 +14,8 @@ namespace Concordia
         public Transform rightHand;
         public GameObject sword;
         public Animator animator;
-        float _slashT, _hitT, _staggerT, _speed, _vert;
+        public FightStyle style = FightStyle.MuayThai;
+        float _slashT, _slashDur, _hitT, _staggerT, _knockT, _anticipateT, _speed, _vert;
         bool _grounded = true, _bound;
         int _plantFrames;
         Transform _body, _hips, _spine, _lArm, _lFore, _rArm, _rFore, _lUp, _lLeg, _rUp, _rLeg;
@@ -50,6 +51,7 @@ namespace Concordia
             av.sword.transform.localPosition = new Vector3(0.02f, 0.04f, 0.08f);
             av.sword.transform.localRotation = Quaternion.Euler(70, 0, 12);
             CharacterGear.Attach(body, "shield-round", false, 0.55f);
+            av.BindStyle(FightStyle.MuayThai);
             return av;
         }
 
@@ -104,6 +106,12 @@ namespace Concordia
             if (t) rest = t.localRotation;
         }
 
+        public void BindStyle(FightStyle s)
+        {
+            style = s;
+            if (sword) sword.SetActive(s == FightStyle.Sword);
+        }
+
         public void SetGait(float speed, bool grounded, float vert = 0f)
         {
             _speed = speed;
@@ -117,9 +125,43 @@ namespace Concordia
             }
         }
 
-        public void Slash() => _slashT = 0.48f;
+        public void Anticipate() => _anticipateT = Windup();
+        public void Slash()
+        {
+            _slashDur = StrikeDur();
+            _slashT = _slashDur;
+            _anticipateT = 0f;
+        }
         public void Hit() => _hitT = 0.32f;
         public void Stagger() => _staggerT = 0.55f;
+        public void Knockdown() => _knockT = 0.72f;
+
+        float StanceWidth() => style switch
+        {
+            FightStyle.Karate => 1.20f,
+            FightStyle.MuayThai => 1.05f,
+            FightStyle.WingChun => 0.85f,
+            FightStyle.Capoeira => 1.40f,
+            _ => 1.15f
+        };
+
+        float Windup() => style switch
+        {
+            FightStyle.WingChun => 0.18f,
+            FightStyle.Karate => 0.28f,
+            FightStyle.Capoeira => 0.36f,
+            FightStyle.Sword => 0.42f,
+            _ => 0.32f
+        };
+
+        float StrikeDur() => style switch
+        {
+            FightStyle.WingChun => 0.28f,
+            FightStyle.Karate => 0.36f,
+            FightStyle.MuayThai => 0.42f,
+            FightStyle.Capoeira => 0.52f,
+            _ => 0.48f
+        };
 
         void LateUpdate()
         {
@@ -127,20 +169,130 @@ namespace Concordia
             if (!_grounded && _bound) ApplyJump();
             else if (_bound && (animator == null || animator.runtimeAnimatorController == null))
                 ApplyProceduralGait();
+            ApplyStance();
+            ApplyAnticipate();
             ApplySlash();
             ApplyHit();
             ApplyStagger();
+            ApplyKnockdown();
+        }
+
+        void ApplyStance()
+        {
+            if (!_bound || !_grounded) return;
+            if (_slashT > 0f || _anticipateT > 0f || _knockT > 0f) return;
+            float spread = (StanceWidth() - 1f) * 16f;
+            if (_lUp) _lUp.localRotation *= Quaternion.Euler(0f, 0f, spread);
+            if (_rUp) _rUp.localRotation *= Quaternion.Euler(0f, 0f, -spread);
+            switch (style)
+            {
+                case FightStyle.Karate:
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(18f, 0f, 38f);
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-22f, 12f, -8f);
+                    break;
+                case FightStyle.MuayThai:
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(-38f, 0f, 32f);
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-38f, 0f, -32f);
+                    if (_spine) _spine.localRotation *= Quaternion.Euler(6f, 0f, 0f);
+                    break;
+                case FightStyle.WingChun:
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(-28f, 8f, 18f);
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-28f, -8f, -18f);
+                    if (_lFore) _lFore.localRotation *= Quaternion.Euler(-22f, 0f, 0f);
+                    if (_rFore) _rFore.localRotation *= Quaternion.Euler(-22f, 0f, 0f);
+                    break;
+                case FightStyle.Capoeira:
+                    if (_hips) _hips.localRotation *= Quaternion.Euler(10f, Mathf.Sin(Time.time * 2.4f) * 14f, 0f);
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(12f, 0f, 28f);
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-16f, 0f, -22f);
+                    break;
+                default:
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-24f, 18f, 0f);
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(8f, 0f, 22f);
+                    break;
+            }
+        }
+
+        void ApplyAnticipate()
+        {
+            if (_anticipateT <= 0f) return;
+            _anticipateT -= Time.deltaTime;
+            var t = Mathf.Clamp01(_anticipateT / Mathf.Max(0.08f, Windup()));
+            switch (style)
+            {
+                case FightStyle.Karate:
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-55f * t, 12f * t, 0f);
+                    if (_spine) _spine.localRotation *= Quaternion.Euler(-8f * t, 10f * t, 0f);
+                    break;
+                case FightStyle.MuayThai:
+                    if (_rUp) _rUp.localRotation *= Quaternion.Euler(-28f * t, 0f, 0f);
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-40f * t, 0f, -18f * t);
+                    break;
+                case FightStyle.WingChun:
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-18f * t, 0f, 0f);
+                    if (_lArm) _lArm.localRotation *= Quaternion.Euler(-12f * t, 0f, 0f);
+                    break;
+                case FightStyle.Capoeira:
+                    if (_hips) _hips.localRotation *= Quaternion.Euler(18f * t, -22f * t, 0f);
+                    if (_rUp) _rUp.localRotation *= Quaternion.Euler(-40f * t, 0f, 8f * t);
+                    break;
+                default:
+                    if (_rArm) _rArm.localRotation *= Quaternion.Euler(-70f * t, 20f * t, 0f);
+                    if (_spine) _spine.localRotation *= Quaternion.Euler(-6f * t, 8f * t, 0f);
+                    break;
+            }
         }
 
         void ApplySlash()
         {
             if (_slashT <= 0 || _rArm == null) return;
             _slashT -= Time.deltaTime;
-            var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
-            float wind = t < 0.25f ? t / 0.25f : t < 0.45f ? 1f : 1f - (t - 0.45f) / 0.55f;
-            var swing = t < 0.4f ? Mathf.Lerp(-70, 100, t / 0.4f) : Mathf.Lerp(100, 0, (t - 0.4f) / 0.6f);
-            _rArm.localRotation *= Quaternion.Euler(swing * wind, 20f * wind, 0);
-            if (_rFore) _rFore.localRotation *= Quaternion.Euler(-18f * wind, 0, 0);
+            var dur = Mathf.Max(0.12f, _slashDur);
+            var t = 1f - Mathf.Clamp01(_slashT / dur);
+            float wind = t < 0.22f ? t / 0.22f : t < 0.48f ? 1f : 1f - (t - 0.48f) / 0.52f;
+            switch (style)
+            {
+                case FightStyle.Karate:
+                    {
+                        var punch = t < 0.35f ? Mathf.Lerp(-40f, 95f, t / 0.35f) : Mathf.Lerp(95f, 0f, (t - 0.35f) / 0.65f);
+                        _rArm.localRotation *= Quaternion.Euler(punch * wind, 8f * wind, 0f);
+                        if (_rFore) _rFore.localRotation *= Quaternion.Euler(-8f * wind, 0f, 0f);
+                        if (_spine) _spine.localRotation *= Quaternion.Euler(-6f * wind, 10f * wind, 0f);
+                        break;
+                    }
+                case FightStyle.MuayThai:
+                    {
+                        if (_rUp) _rUp.localRotation *= Quaternion.Euler(-70f * wind, 0f, 8f * wind);
+                        if (_rLeg) _rLeg.localRotation *= Quaternion.Euler(40f * wind, 0f, 0f);
+                        _rArm.localRotation *= Quaternion.Euler(-50f * wind, 0f, -28f * wind);
+                        if (_spine) _spine.localRotation *= Quaternion.Euler(8f * wind, 0f, 0f);
+                        break;
+                    }
+                case FightStyle.WingChun:
+                    {
+                        var chain = Mathf.Sin(t * Mathf.PI * 3f) * 28f * wind;
+                        _rArm.localRotation *= Quaternion.Euler(-30f * wind + chain, 0f, 0f);
+                        if (_lArm) _lArm.localRotation *= Quaternion.Euler(-24f * wind - chain * 0.6f, 0f, 12f * wind);
+                        if (_rFore) _rFore.localRotation *= Quaternion.Euler(-30f * wind, 0f, 0f);
+                        break;
+                    }
+                case FightStyle.Capoeira:
+                    {
+                        if (_hips) _hips.localRotation *= Quaternion.Euler(12f * wind, -40f * wind, 0f);
+                        if (_rUp) _rUp.localRotation *= Quaternion.Euler(-95f * wind, 0f, 10f * wind);
+                        if (_rLeg) _rLeg.localRotation *= Quaternion.Euler(55f * wind, 0f, 0f);
+                        _rArm.localRotation *= Quaternion.Euler(20f * wind, 0f, -40f * wind);
+                        if (_lArm) _lArm.localRotation *= Quaternion.Euler(-30f * wind, 0f, 35f * wind);
+                        break;
+                    }
+                default:
+                    {
+                        var swing = t < 0.4f ? Mathf.Lerp(-70f, 100f, t / 0.4f) : Mathf.Lerp(100f, 0f, (t - 0.4f) / 0.6f);
+                        _rArm.localRotation *= Quaternion.Euler(swing * wind, 20f * wind, 0f);
+                        if (_rFore) _rFore.localRotation *= Quaternion.Euler(-18f * wind, 0f, 0f);
+                        break;
+                    }
+            }
         }
 
         void ApplyHit()
@@ -159,6 +311,17 @@ namespace Concordia
             var t = Mathf.Clamp01(_staggerT / 0.55f);
             if (_hips) _hips.localRotation *= Quaternion.Euler(22f * t, 0, -8f * t);
             if (_spine) _spine.localRotation *= Quaternion.Euler(14f * t, -16f * t, 0);
+        }
+
+        void ApplyKnockdown()
+        {
+            if (_knockT <= 0) return;
+            _knockT -= Time.deltaTime;
+            var t = Mathf.Clamp01(_knockT / 0.72f);
+            if (_hips) _hips.localRotation *= Quaternion.Euler(48f * t, 0f, -14f * t);
+            if (_spine) _spine.localRotation *= Quaternion.Euler(28f * t, -22f * t, 0f);
+            if (_lUp) _lUp.localRotation *= Quaternion.Euler(30f * t, 0f, 12f * t);
+            if (_rUp) _rUp.localRotation *= Quaternion.Euler(22f * t, 0f, -12f * t);
         }
 
         float _phase;

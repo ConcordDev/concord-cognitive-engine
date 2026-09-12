@@ -462,7 +462,7 @@ export function onNpcDeath(db, npc, opts = {}) {
   } catch { /* presentation optional */ }
 
   // Thin emit of the existing funeral composition — not a new mourner engine.
-  // Empty attendees stay empty; Unity only HeadFors matching GuestNpcs.
+  // Empty attendees stay empty; Unity Attends matching GuestNpcs at the tomb.
   try {
     const gathering = gatherAttendees(db, { kind: "funeral", focalKind: "npc", focalId: npc.id });
     const emit = globalThis._concordRealtimeEmit;

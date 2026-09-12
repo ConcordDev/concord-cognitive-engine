@@ -26,8 +26,9 @@ namespace Concordia // FORCE_REFRESH_0022
         Quaternion _hipsRest, _spineRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
         Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
         Vector3 _hipPos0;
-        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT;
+        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT;
         bool _grounded = true;
+        FightStyle _style = FightStyle.MuayThai;
         bool _built;
         bool _authored;
         bool _biped;
@@ -107,12 +108,19 @@ namespace Concordia // FORCE_REFRESH_0022
 
         public void Slash()
         {
-            _slashT = 0.48f;
+            _slashT = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
+            _anticipateT = 0f;
             if (_anim && _anim.runtimeAnimatorController)
             {
                 if (HasParam(_anim, "Attack")) _anim.SetTrigger("Attack");
                 else if (HasParam(_anim, "Slash")) _anim.SetTrigger("Slash");
             }
+        }
+        public void Anticipate() => _anticipateT = 0.32f;
+        public void BindStyle(FightStyle s)
+        {
+            _style = s;
+            if (sword) sword.SetActive(s == FightStyle.Sword);
         }
         public void Sit(bool on) => _sit = on ? 1f : 0f;
         public void Hurt() => _hitT = 0.32f;
@@ -726,17 +734,56 @@ namespace Concordia // FORCE_REFRESH_0022
             if (_slashT > 0f && _uArmR)
             {
                 _slashT -= Time.deltaTime;
-                var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
+                var dur = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
+                var t = 1f - Mathf.Clamp01(_slashT / dur);
                 float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
-                var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
-                float arc = swing * wind;
-                if (_biped)
+                if (_style == FightStyle.Capoeira && _uLegR)
                 {
-                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
-                    if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                    _uLegR.localRotation *= Quaternion.Euler(-90f * wind, 0f, 8f * wind);
+                    if (_hip) _hip.localRotation *= Quaternion.Euler(10f * wind, -28f * wind, 0f);
+                }
+                else if (_style == FightStyle.MuayThai && _uLegR)
+                {
+                    _uLegR.localRotation *= Quaternion.Euler(-62f * wind, 0f, 6f * wind);
+                    var arc = Mathf.Lerp(-20f, 70f, t) * wind;
+                    if (_biped) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.6f, false);
+                    else _uArmR.localRotation *= Quaternion.Euler(-40f * wind, 0f, -24f * wind);
+                }
+                else if (_style == FightStyle.WingChun)
+                {
+                    var chain = Mathf.Sin(t * Mathf.PI * 3f) * 22f * wind;
+                    if (_biped)
+                    {
+                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 28f + chain, false);
+                        if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 22f - chain * 0.5f, true);
+                    }
+                    else
+                    {
+                        _uArmR.localRotation *= Quaternion.Euler(-28f * wind + chain, 0f, 0f);
+                        if (_uArmL) _uArmL.localRotation *= Quaternion.Euler(-22f * wind - chain * 0.5f, 0f, 10f * wind);
+                    }
                 }
                 else
-                    _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                {
+                    var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
+                    float arc = swing * wind;
+                    if (_biped)
+                    {
+                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
+                        if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                    }
+                    else
+                        _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                }
+            }
+            else if (_anticipateT > 0f && _uArmR)
+            {
+                _anticipateT -= Time.deltaTime;
+                var t = Mathf.Clamp01(_anticipateT / 0.32f);
+                if (_style == FightStyle.Capoeira && _uLegR)
+                    _uLegR.localRotation *= Quaternion.Euler(-28f * t, 0f, 0f);
+                else
+                    _uArmR.localRotation *= Quaternion.Euler(-40f * t, 12f * t, 0f);
             }
 
             // Idle plant only. While moving the gait owns the feet — planting

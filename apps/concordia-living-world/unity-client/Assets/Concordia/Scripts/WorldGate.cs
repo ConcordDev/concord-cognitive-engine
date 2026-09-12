@@ -437,11 +437,15 @@ namespace Concordia
         public static void Place(float x, float y, float z)
         {
             if (!WorldPresence.InPresenter(x, z)) return;
+            PlaceAt(new Vector3(x, y > 0.01f && y < 4.5f ? y : 0.08f, z));
+        }
+
+        public static void PlaceAt(Vector3 p)
+        {
             var root = Object.FindFirstObjectByType<WorldBuilder>();
             var parent = root ? root.transform : null;
-            float py = y > 0.01f && y < 4.5f ? y : 0.08f;
             var go = HubLook.Prim(parent, PrimitiveType.Cylinder,
-                new Vector3(x, py + 0.04f, z),
+                new Vector3(p.x, p.y + 0.04f, p.z),
                 new Vector3(2.4f, 0.04f, 2.4f),
                 HubLook.Emit(new Color(0.95f, 0.82f, 0.45f), 1.6f),
                 "GatheringTell", false);
@@ -458,16 +462,24 @@ namespace Concordia
     /// <summary>
     /// World boss body only at an existing DungeonGate mouth. No invented xz.
     /// Template slug may differ from hollow_warden — the hold is the site.
+    /// Hostile + TrainingDummy are the body: HP / phase from kernel BindState,
+    /// attacks from Hostile, death → Fall → chronicle plaque at the mouth.
     /// </summary>
     public class WorldBoss : MonoBehaviour
     {
         public static WorldBoss Live;
         public string template;
         public string activeId;
+        public string encounterId;
         public float hp = -1f, maxHp = 1f;
         public string phase;
         public string mechanic;
+        public bool fallen;
         public float HpPct => maxHp > 0f && hp >= 0f ? Mathf.Clamp01(hp / maxHp) : -1f;
+        TrainingDummy _dummy;
+        Hostile _hostile;
+        Vector3 _scale0;
+        Renderer _rend;
 
         public static WorldBoss Present(string template, string activeId)
         {
@@ -486,6 +498,7 @@ namespace Concordia
                 {
                     Live = boss;
                     if (!string.IsNullOrEmpty(template)) boss.template = template;
+                    if (!string.IsNullOrEmpty(hold.encounterId)) boss.encounterId = hold.encounterId;
                 }
                 return boss;
             }
@@ -499,6 +512,21 @@ namespace Concordia
             var presented = go.AddComponent<WorldBoss>();
             presented.template = template ?? "";
             presented.activeId = activeId ?? "";
+            presented.encounterId = hold.encounterId ?? "";
+            presented._rend = go.GetComponent<Renderer>();
+            presented._scale0 = go.transform.localScale;
+            var cc = go.GetComponent<CharacterController>() ?? go.AddComponent<CharacterController>();
+            cc.height = 3.2f;
+            cc.radius = 0.7f;
+            cc.center = Vector3.up * 0.2f;
+            presented._dummy = go.GetComponent<TrainingDummy>() ?? go.AddComponent<TrainingDummy>();
+            presented._dummy.living = true;
+            presented._dummy.hp = 80f;
+            presented._hostile = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
+            presented._hostile.damage = 16f;
+            presented._hostile.range = 2.6f;
+            presented._hostile.aggro = 22f;
+            presented._hostile.speed = 2.2f;
             Live = presented;
             var label = string.IsNullOrEmpty(template) ? hold.holdName : template;
             PersonLabel.Attach(go.transform, label, "boss");
@@ -513,11 +541,47 @@ namespace Concordia
             if (!string.IsNullOrEmpty(name)) boss.template = name;
             boss.hp = hp;
             boss.maxHp = maxHp > 0f ? maxHp : 1f;
+            var prev = boss.phase;
             boss.phase = phase ?? "";
             boss.mechanic = mechanic ?? "";
             var title = string.IsNullOrEmpty(boss.template) ? "world boss" : boss.template;
             if (!string.IsNullOrEmpty(phase)) title += " · " + phase;
             PersonLabel.Attach(boss.transform, title, mechanic);
+            boss.PaintPhase(prev != boss.phase);
+            if (boss._dummy)
+            {
+                if (hp >= 0f) boss._dummy.SyncHp(hp);
+            }
+            if (hp >= 0f && hp <= 0.01f) boss.Fall();
+        }
+
+        void PaintPhase(bool entered)
+        {
+            var pct = HpPct < 0f ? 1f : HpPct;
+            if (_scale0.sqrMagnitude < 0.01f) _scale0 = transform.localScale;
+            transform.localScale = _scale0 * (1f + (1f - pct) * 0.18f);
+            if (!_rend) _rend = GetComponent<Renderer>();
+            if (_rend)
+            {
+                var c = phase == "desperate" || phase == "undertow"
+                    ? new Color(0.95f, 0.18f, 0.08f)
+                    : phase == "sundered" || phase == "surge"
+                        ? new Color(0.85f, 0.38f, 0.1f)
+                        : new Color(0.52f, 0.12f, 0.1f);
+                _rend.material = HubLook.Lit(c, entered ? 0.35f : 0.12f, 0.32f);
+            }
+            if (entered && _hostile) _hostile.TelegraphNow();
+        }
+
+        public void Fall()
+        {
+            if (fallen) return;
+            fallen = true;
+            hp = 0f;
+            if (_dummy) _dummy.hp = 0f;
+            if (_hostile) _hostile.enabled = false;
+            transform.rotation = Quaternion.Euler(78f, transform.eulerAngles.y, 12f);
+            PersonLabel.Attach(transform, string.IsNullOrEmpty(template) ? "fallen" : template, "fallen");
         }
 
         void OnDestroy()
@@ -544,6 +608,8 @@ namespace Concordia
             var root = FindFirstObjectByType<WorldBuilder>();
             var parent = root ? root.transform : null;
             var p = Canon.Arena + Vector3.right * 3.4f + Vector3.up * 0.9f;
+            if (WorldBoss.Live && WorldBoss.Live.fallen)
+                p = WorldBoss.Live.transform.position + Vector3.right * 2.2f + Vector3.up * 0.9f;
             var go = HubLook.Prim(parent, PrimitiveType.Cube, p,
                 new Vector3(0.9f, 1.4f, 0.14f),
                 HubLook.Lit(new Color(0.42f, 0.36f, 0.22f), 0.12f, 0.28f),

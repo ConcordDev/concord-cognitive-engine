@@ -435,6 +435,9 @@ export const EVENT_SHAPES = Object.freeze({
   // Thin emit of gatherAttendees after onNpcDeath. Empty attendees stay [].
   // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
   "npc:funeral":                { required: ["deceasedId", "worldId"], optional: ["deceasedName", "lastWords", "tombX", "tombZ", "attendees", "beats"] },
+  // Thin emit of gatherAttendees after romance-engine wed(). Empty attendees stay [].
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "npc:wedding":                { required: ["marriageId", "worldId"], optional: ["celebrantId", "partnerKind", "partnerId", "attendees", "beats"] },
   // Minted match chronicle DTU. Plaque only when chronicleId is real.
   // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
   "combat:chronicle":           { required: ["chronicleId"], optional: ["title", "summary", "worldId", "winnerId", "loserId"] },

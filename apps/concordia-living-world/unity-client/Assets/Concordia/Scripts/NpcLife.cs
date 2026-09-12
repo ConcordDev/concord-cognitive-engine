@@ -37,6 +37,9 @@ namespace Concordia
         bool _withdrawn;
         Vector3 _headFor;
         float _headForT;
+        Vector3 _attend;
+        Transform _attendFace;
+        float _attendT;
 
         void Start()
         {
@@ -93,6 +96,21 @@ namespace Concordia
         {
             _headFor = dest;
             _headForT = seconds;
+            _attendT = 0f;
+        }
+
+        /// <summary>
+        /// Kernel funeral/wedding: walk to a ring slot around a real site
+        /// and stay. Slot/of come from gatherAttendees — never invented mourners.
+        /// </summary>
+        public void Attend(Vector3 site, Transform face, int slot, int of, float seconds = 28f)
+        {
+            of = Mathf.Max(1, of);
+            float a = (slot / (float)of) * Mathf.PI * 2f + 0.35f;
+            _attend = site + new Vector3(Mathf.Cos(a) * 2.15f, 0f, Mathf.Sin(a) * 2.15f);
+            _attendFace = face;
+            _attendT = seconds;
+            _headForT = 0f;
         }
 
         public void BindWorkplace(Vector3 pos) => workplace = pos;
@@ -128,6 +146,25 @@ namespace Concordia
                 }
                 else
                     Hold();
+                return;
+            }
+
+            if (_attendT > 0f)
+            {
+                _attendT -= Time.deltaTime;
+                Show(true);
+                if (!Arrived(_attend))
+                {
+                    act = "gather";
+                    Walk(_attend, 2.6f);
+                    return;
+                }
+                act = "watch";
+                Hold();
+                _person?.Sit(true);
+                _person?.SetGait(0f, true);
+                if (_attendFace) Notice(_attendFace, 0.4f);
+                FaceRegard();
                 return;
             }
 

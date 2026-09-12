@@ -44,6 +44,7 @@ namespace Concordia
         public static string HoldLockReason { get; private set; } = "";
         public static string RunLine { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
+        public string DungeonInstanceId { get; private set; } = "";
         string _userId = "";
         readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
@@ -526,9 +527,33 @@ namespace Concordia
                 DungeonLine = name + (string.IsNullOrEmpty(phase) ? "" : " · " + phase);
                 if (!string.IsNullOrEmpty(mechanic)) DungeonLine += " · " + mechanic;
                 ConcordiaHUD.Announce(name, string.IsNullOrEmpty(phase) ? "the hold opened" : phase);
+                var instanceId = JsonString(text, "instanceId");
+                if (!string.IsNullOrEmpty(instanceId)) DungeonInstanceId = instanceId;
                 var hp = JsonFloat(text, "hp", -1f);
                 var maxHp = JsonFloat(text, "maxHp", 1f);
                 RunMain(() => WorldBoss.BindState(name, hp, maxHp, phase, mechanic));
+                return;
+            }
+            if (evt == "dungeon:hit:ack")
+            {
+                if (JsonFlagFalse(text, "ok"))
+                {
+                    var reason = JsonString(text, "reason");
+                    if (!string.IsNullOrEmpty(reason))
+                        RunMain(() => ConcordiaHUD.Announce("Hold", reason));
+                    return;
+                }
+                var hpHit = JsonFloat(text, "bossHp", JsonFloat(text, "hp", -1f));
+                var maxHit = JsonFloat(text, "bossMaxHp", JsonFloat(text, "maxHp", 1f));
+                var phaseHit = JsonString(text, "phaseName");
+                if (string.IsNullOrEmpty(phaseHit)) phaseHit = JsonString(text, "phase");
+                var mechanicHit = JsonString(text, "mechanic");
+                var nm = JsonString(text, "encounterId");
+                RunMain(() =>
+                {
+                    WorldBoss.BindState(nm, hpHit, maxHit, phaseHit, mechanicHit);
+                    if (JsonFlagTrue(text, "cleared")) WorldBoss.Live?.Fall();
+                });
                 return;
             }
             if (evt == "run:data")
@@ -703,6 +728,16 @@ namespace Concordia
                 if (n > 0) line += " · " + n + (n == 1 ? " mourner" : " mourners");
                 Consequence("lineage", "Funeral", line, true, 0f);
                 RunMain(() => PresentFuneral(text, deceased, last));
+                return;
+            }
+            if (evt == "npc:wedding")
+            {
+                var n = JsonArrayCount(text, "attendees");
+                var partner = JsonString(text, "partnerId");
+                var line = string.IsNullOrEmpty(partner) ? "a wedding" : "married · " + partner;
+                if (n > 0) line += " · " + n + (n == 1 ? " guest" : " guests");
+                Consequence("social", "Wedding", line, true, 0f);
+                RunMain(() => PresentWedding(text));
                 return;
             }
             if (evt == "combat:chronicle")
@@ -930,18 +965,54 @@ namespace Concordia
         {
             var tomb = KernelTomb.Place(deceasedId, lastWords,
                 JsonFloat(json, "tombX", 0f), JsonFloat(json, "tombZ", 0f));
+            int of = Mathf.Max(1, JsonArrayCount(json, "attendees"));
+            int slot = 0;
+            int matched = 0;
             ForEachArrayObject(json, "attendees", row =>
             {
                 var id = JsonString(row, "id");
                 var guest = WorldPresence.FindGuest(id);
                 var life = guest ? guest.GetComponent<NpcLife>() : null;
+                var i = slot;
+                slot++;
                 if (!life) return;
+                matched++;
                 if (tomb)
-                {
-                    life.HeadFor(tomb.transform.position, 14f);
-                    life.Notice(tomb.transform, 8f);
-                }
+                    life.Attend(tomb.transform.position, tomb.transform, i, of, 28f);
             });
+            if (matched > 0 && tomb) GatheringTell.PlaceAt(tomb.transform.position);
+        }
+
+        static void PresentWedding(string json)
+        {
+            var dest = WeddingGround();
+            int of = Mathf.Max(1, JsonArrayCount(json, "attendees"));
+            int slot = 0;
+            int matched = 0;
+            Transform face = null;
+            var plaza = GameObject.Find("PlazaPad");
+            if (plaza) face = plaza.transform;
+            ForEachArrayObject(json, "attendees", row =>
+            {
+                var id = JsonString(row, "id");
+                var guest = WorldPresence.FindGuest(id);
+                var life = guest ? guest.GetComponent<NpcLife>() : null;
+                var i = slot;
+                slot++;
+                if (!life) return;
+                matched++;
+                life.Attend(dest, face, i, of, 32f);
+            });
+            if (matched > 0) GatheringTell.PlaceAt(dest);
+        }
+
+        static Vector3 WeddingGround()
+        {
+            var tavern = BuildingPlace.Nearest(Vector3.zero, "tavern");
+            if (tavern) return tavern.door;
+            var plaza = GameObject.Find("PlazaPad");
+            if (plaza) return plaza.transform.position;
+            return Vector3.zero;
         }
 
         static void PresentMigration(string npcId, string fromWorld, string toWorld)
@@ -1183,6 +1254,18 @@ namespace Concordia
                 "{\"encounterId\":\"" + Escape(encounterId)
                 + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
 
+        public Task SendDungeonHit(float damage)
+        {
+            var active = WorldBoss.Live ? (WorldBoss.Live.activeId ?? "") : "";
+            var encounter = WorldBoss.Live ? (WorldBoss.Live.encounterId ?? "") : "";
+            return SendEvt("dungeon:hit",
+                "{\"instanceId\":\"" + Escape(DungeonInstanceId)
+                + "\",\"damage\":" + damage
+                + ",\"worldId\":\"" + Escape(worldId)
+                + "\",\"activeId\":\"" + Escape(active)
+                + "\",\"encounterId\":\"" + Escape(encounter) + "\"}");
+        }
+
         public Task RequestRunStart(string kind)
         {
             if (string.IsNullOrEmpty(kind)) kind = "horde";
@@ -1251,6 +1334,16 @@ namespace Concordia
             if (i < 0) return false;
             var rest = json.Substring(i + needle.Length).TrimStart();
             return rest.StartsWith("false", StringComparison.Ordinal);
+        }
+
+        static bool JsonFlagTrue(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return false;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return false;
+            var rest = json.Substring(i + needle.Length).TrimStart();
+            return rest.StartsWith("true", StringComparison.Ordinal);
         }
 
         static string JsonString(string json, string key)

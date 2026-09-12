@@ -8,7 +8,9 @@ import { interveneInScheme } from "./npc-schemes.js";
 import { getInheritanceForHeir, getInheritanceFromDeceased } from "./npc-legacy.js";
 import { joinSession } from "./concordia-session.js";
 import { grantIFrames } from "./combat-state.js";
-import { openInstance, DUNGEON_ENCOUNTERS } from "./dungeon-instance.js";
+import { openInstance, recordHit, DUNGEON_ENCOUNTERS } from "./dungeon-instance.js";
+import { mintMatchChronicle } from "./combat/match-chronicle.js";
+import { defeatBoss } from "./world-bosses.js";
 import { getMyParty } from "./parties.js";
 import { startHorde, getActiveHorde } from "./horde-mode.js";
 import { startRun as startExtraction, getActiveRun as getActiveExtraction } from "./extraction.js";
@@ -133,6 +135,44 @@ export function handleDungeonOpen(db, userId, data = {}) {
   return { ok: true, source: "presenter", encounterId, boss: catalog };
 }
 
+/**
+ * Thin presenter verb for the existing dungeon-instance recordHit.
+ * No second boss engine — HP / phase / clear already live in the instance row.
+ */
+export function handleDungeonHit(db, userId, data = {}) {
+  const instanceId = String(data.instanceId || "");
+  if (!userId) return { ok: false, reason: "missing_user" };
+  if (!instanceId) return { ok: false, reason: "missing_instance" };
+  if (!db) return { ok: false, reason: "no_db" };
+  try {
+    const r = recordHit(db, instanceId, userId, data.damage);
+    if (!r?.ok) return r;
+    const encounterId = String(data.encounterId || "");
+    const enc = DUNGEON_ENCOUNTERS[encounterId];
+    const mechanic = enc && Number.isInteger(r.phaseIdx) ? (enc.phases[r.phaseIdx]?.mechanic || "") : "";
+    if (r.cleared) {
+      try {
+        mintMatchChronicle(db, {
+          winnerId: userId,
+          loserId: encounterId || instanceId,
+          endedReason: "kill",
+          worldId: data.worldId ? String(data.worldId) : "concordia-hub",
+        });
+      } catch { /* chronicle optional */ }
+      const activeId = String(data.activeId || "");
+      if (activeId) {
+        try { defeatBoss(db, { activeId, participantUserIds: [userId] }); }
+        catch { /* world-boss row optional */ }
+      }
+    }
+    return { ...r, mechanic, encounterId };
+  } catch (e) {
+    const msg = String(e?.message || e);
+    if (/no such table/i.test(msg)) return { ok: false, reason: "unavailable" };
+    return { ok: false, reason: msg };
+  }
+}
+
 export function handleRunStart(db, userId, data = {}) {
   const kind = String(data.kind || data.mode || "").toLowerCase();
   const worldId = String(data.worldId || "concordia-hub");
@@ -196,5 +236,6 @@ export default {
   handleInheritanceRequest,
   handleDodge,
   handleDungeonOpen,
+  handleDungeonHit,
   handleRunStart,
 };

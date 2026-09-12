@@ -40,6 +40,7 @@ namespace Concordia
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
+        WorldId _fightWorld = (WorldId)(-1);
 
         void OnEnable() => Live = this;
         void OnDisable() { if (Live == this) Live = null; }
@@ -61,6 +62,13 @@ namespace Concordia
             }
             var dt = Time.deltaTime;
             var style = Canon.Get(world).style;
+            if (_fightWorld != world)
+            {
+                _fightWorld = world;
+                var fs = Canon.PickFight(null, null, world);
+                avatar?.BindStyle(fs);
+                person?.BindStyle(fs);
+            }
             HandleMenuKeys();
             LookInput();
             var axes = Busy ? Vector2.zero : MoveAxes();
@@ -409,6 +417,14 @@ namespace Concordia
             }
             if (!dummy) return false;
             var client = ConcordClient.Live;
+            var boss = dummy.GetComponent<WorldBoss>() ?? dummy.GetComponentInParent<WorldBoss>();
+            if (boss != null && client && client.Connected && !string.IsNullOrEmpty(client.DungeonInstanceId))
+            {
+                _pendingKernelTarget = dummy;
+                Toast(dummy.name + " — Concord resolving");
+                _ = client.SendDungeonHit(dmg);
+                return true;
+            }
             if (client && client.Connected)
             {
                 // Kernel resolves HP. Presentation already played the swing.
@@ -489,7 +505,8 @@ namespace Concordia
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             avatar?.Hit();
-            if (poise < 4f) avatar?.Stagger();
+            if (knockback > 1.8f || poise < 2.5f) avatar?.Knockdown();
+            else if (poise < 4f || knockback > 1.1f) avatar?.Stagger();
             var feel = GetComponent<CombatFeel>();
             feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");

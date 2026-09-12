@@ -32,6 +32,7 @@ import {
   handleInheritanceRequest,
   handleDodge,
   handleDungeonOpen,
+  handleDungeonHit,
   handleRunStart,
 } from "./concordia-play.js";
 import { getWeather } from "./weather.js";
@@ -458,6 +459,12 @@ function isBinaryMovePayload(p) {
       case "dungeon:open": {
         const result = handleDungeonOpen(db, client.userId, data);
         send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "dungeon:hit": {
+        const result = handleDungeonHit(db, client.userId, data);
+        send(client.ws, "dungeon:hit:ack", result);
         return;
       }
 

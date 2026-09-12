@@ -59,6 +59,23 @@ namespace Concordia
             TelegraphUntil = KernelUntil;
         }
 
+        public void TelegraphNow()
+        {
+            _windup = 0.48f;
+            if (Time.time >= KernelUntil)
+            {
+                TelegraphKind = Perils[Mathf.Abs(name.GetHashCode()) % Perils.Length];
+                TelegraphCounter = CounterFor(TelegraphKind);
+            }
+            TelegraphFrom = transform;
+            TelegraphUntil = Time.time + _windup;
+            ShowTell(true);
+            var av = GetComponentInChildren<MixamoAvatar>();
+            av?.Anticipate();
+            var person = GetComponentInChildren<ModularPerson>();
+            person?.Anticipate();
+        }
+
         void Start()
         {
             _body = GetComponent<TrainingDummy>() ?? GetComponentInParent<TrainingDummy>();
@@ -136,15 +153,7 @@ namespace Concordia
             if (_cd > 0f) return;
             if (_windup <= 0f)
             {
-                _windup = 0.48f;
-                if (Time.time >= KernelUntil)
-                {
-                    TelegraphKind = Perils[Mathf.Abs(name.GetHashCode()) % Perils.Length];
-                    TelegraphCounter = CounterFor(TelegraphKind);
-                }
-                TelegraphFrom = transform;
-                TelegraphUntil = Time.time + _windup;
-                ShowTell(true);
+                TelegraphNow();
                 return;
             }
             _windup -= Time.deltaTime;

@@ -160,3 +160,87 @@ test("Unity presents remaining kernel consequences without inventing engines", (
   assert.match(chronicle, /"combat:chronicle"/);
   assert.match(legacy, /"npc:funeral"/);
 });
+
+test("Level 1 funeral gathering uses real attendee ids, not invented mourners", () => {
+  const life = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/NpcLife.cs",
+  ), "utf8");
+  const romance = readFileSync(join(import.meta.dirname, "../lib/romance-engine.js"), "utf8");
+  const shapes = readFileSync(join(import.meta.dirname, "../lib/event-shapes.js"), "utf8");
+  assert.match(life, /public void Attend\(/);
+  assert.match(client, /life\.Attend\(/);
+  assert.match(client, /GatheringTell\.PlaceAt/);
+  assert.match(client, /evt == "npc:wedding"/);
+  assert.match(client, /PresentWedding/);
+  assert.match(romance, /"npc:wedding"/);
+  assert.match(romance, /kind: "wedding"/);
+  assert.match(shapes, /"npc:wedding"/);
+});
+
+test("Level 1 boss body fights at the hold and dies into a chronicle", () => {
+  const gate = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/WorldGate.cs",
+  ), "utf8");
+  const play = readFileSync(join(import.meta.dirname, "../lib/concordia-play.js"), "utf8");
+  const gw = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+  const dummy = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/TrainingDummy.cs",
+  ), "utf8");
+  assert.match(gate, /AddComponent<TrainingDummy>/);
+  assert.match(gate, /AddComponent<Hostile>/);
+  assert.match(gate, /public void Fall\(\)/);
+  assert.match(gate, /No invented xz/);
+  assert.match(dummy, /GetComponent<WorldBoss>/);
+  assert.match(client, /dungeon:hit:ack/);
+  assert.match(client, /SendDungeonHit/);
+  assert.match(play, /export function handleDungeonHit/);
+  assert.match(play, /recordHit\(/);
+  assert.match(play, /mintMatchChronicle/);
+  assert.match(gw, /case "dungeon:hit"/);
+});
+
+test("Level 1 Mixamo styles stance anticipation strike impact recovery", () => {
+  const mixamo = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/MixamoAvatar.cs",
+  ), "utf8");
+  const canon = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/Canon.cs",
+  ), "utf8");
+  const person = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/ModularPerson.cs",
+  ), "utf8");
+  assert.match(canon, /enum FightStyle/);
+  assert.match(canon, /PickFight/);
+  assert.match(canon, /FightStyle\.Karate/);
+  assert.match(canon, /FightStyle\.MuayThai/);
+  assert.match(canon, /FightStyle\.WingChun/);
+  assert.match(canon, /FightStyle\.Capoeira/);
+  assert.match(canon, /FightStyle\.Sword/);
+  assert.match(mixamo, /public void Anticipate\(\)/);
+  assert.match(mixamo, /public void Knockdown\(\)/);
+  assert.match(mixamo, /void ApplyStance\(\)/);
+  assert.match(mixamo, /FightStyle\.WingChun/);
+  assert.match(mixamo, /FightStyle\.Capoeira/);
+  assert.match(person, /public void BindStyle\(/);
+  assert.match(person, /public void Anticipate\(\)/);
+});
+
+test("Level 2 world silhouettes differ by architecture, not only palette", () => {
+  const fill = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/RealmFill.cs",
+  ), "utf8");
+  assert.match(fill, /HubLook\.Point\(root, "NeonA"/);
+  const crime = fill.split("case WorldId.Crime:")[1]?.split("case WorldId.Cyber:")[0] || "";
+  assert.equal(crime.includes("Horizon("), false, "Crime is low-rise; no skyscraper horizon");
+  assert.match(crime, /building-type-h/);
+  assert.match(fill, /Ring\(root, DressVocab\.House\(WorldId\.Fantasy\)/);
+  assert.match(fill, /Ring\(root, DressVocab\.House\(WorldId\.Frontier\)/);
+  assert.match(fill, /w\.id == WorldId\.Crime \|\| w\.id == WorldId\.Sere/);
+});
