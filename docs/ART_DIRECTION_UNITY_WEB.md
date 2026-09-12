@@ -81,8 +81,8 @@ session's standing verification discipline. Two categories of finding:
 
 ## Recommended next steps
 
-1. **Job 1 shipped** — `LoadPersonPrefab` now reads `CastingWorld` (Knight off-Hub, Rocketbox on Hub). Remaining: visually verify the Knight path in a non-Hub world (Hub Play-mode check already confirmed Rocketbox still renders there).
-2. **Oversized-sword shipped** — `MakeSword` prefers `Sword16` (MYFG Weapon Pack Lite) over the chibi Kenney `weapon-sword` fallback. Live-verified: `sharedMesh` = Sword16, scale ~0.97. Floating NPCs were a spawn-frame false alarm — do not "fix" `Grounding.cs`.
-3. **Weather-visuals binding** — `WorldClock.Weather` ticks and cycles, but `DressVocab.PlaceWeather` only runs at world-build from `Canon.WorldDef.weather`. Live weather shifts currently do not change what you see.
+1. **Weather-visuals binding SHIPPED** — `WorldClock.ApplyWeatherVisuals` now places rain/ash (snow VFX) and thickens fog from the live `Weather` string on Enter and on each kernel cycle. Build-time `PlaceWeather("rain"|"snow")` in DressSky/Accents was the leak: Crime rained forever and a "weather shifted" HUD line changed nothing on screen. Hub/Tunya/Fantasy fireflies stay as identity ambience, not weather. Remaining: visual confirm in Play mode (Hub is clear, so force `WorldClock.Weather = "rain"` or travel to Crime).
+2. **Job 1 shipped** — `LoadPersonPrefab` now reads `CastingWorld` (Knight off-Hub, Rocketbox on Hub). Remaining: visually verify the Knight path in a non-Hub world (Hub Play-mode check already confirmed Rocketbox still renders there).
+3. **Oversized-sword shipped** — `MakeSword` prefers `Sword16` (MYFG Weapon Pack Lite) over the chibi Kenney `weapon-sword` fallback. Live-verified: `sharedMesh` = Sword16, scale ~0.97. Floating NPCs were a spawn-frame false alarm — do not "fix" `Grounding.cs`.
 4. **Reconcile the 9-vs-10 world list** between `Canon.cs` (`Sere` is the 10th) and the retired Three.js theme file, so no future doc repeats the stale "9 worlds" figure.
 5. Before buying anything from the list, re-verify title/price/live-status directly on the Asset Store at purchase time (listings drift) — don't batch-buy off the pasted doc as-is.

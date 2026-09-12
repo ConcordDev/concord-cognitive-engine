@@ -139,12 +139,11 @@ namespace Concordia
                 _ => new Color(0.08f, 0.28f, 0.28f)
             };
             DynamicGI.UpdateEnvironment();
+            WorldClock.NoteFogBase();
+            // Hub fireflies are identity ambience, not weather. Rain/ash/snow
+            // follow WorldClock.Weather from Enter/Tick (see ApplyWeatherVisuals).
             if (w.id == WorldId.Hub)
                 DressVocab.PlaceWeather("fireflies", root, new Vector3(0, 2.2f, 0));
-            if (w.id == WorldId.Crime || w.weather == "rain")
-                DressVocab.PlaceWeather("rain", root, new Vector3(0, 8, 0));
-            if (w.id == WorldId.Ruins || w.id == WorldId.Crucible)
-                DressVocab.PlaceWeather("snow", root, new Vector3(0, 8, 0));
         }
 
         void DressAudio(WorldDef w)

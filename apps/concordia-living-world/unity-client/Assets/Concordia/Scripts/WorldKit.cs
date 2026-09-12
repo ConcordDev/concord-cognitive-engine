@@ -186,10 +186,8 @@ namespace Concordia
 
         static void Accents(Transform root, WorldDef w)
         {
-            if (w.id == WorldId.Crime || w.weather == "rain")
-                DressVocab.PlaceWeather("rain", root, new Vector3(0, 8, 0));
-            if (w.id == WorldId.Ruins)
-                DressVocab.PlaceWeather("snow", root, new Vector3(0, 8, 0));
+            // Rain/ash follow WorldClock.Weather. Grove/wildfireflies stay here
+            // as identity ambience for Tunya and Fantasy.
             if (w.id == WorldId.Tunya || w.id == WorldId.Fantasy)
                 DressVocab.PlaceWeather("fireflies", root, new Vector3(0, 2.2f, 8));
         }

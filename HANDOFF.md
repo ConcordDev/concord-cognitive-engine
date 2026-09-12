@@ -123,23 +123,21 @@ look.
 
 ## Open items / next steps, prioritized
 
-1. **Weather-visuals binding** — the third named Tier-1 item, not started
-   this session. No investigation done yet.
-2. **Verify the Knight-casting fix visually** in a non-Hub world (force
+1. **Verify the Knight-casting fix visually** in a non-Hub world (force
    `ModularPerson.CastingWorld` to e.g. `WorldId.Fantasy` and check the
    spawned body/outfit actually looks right, not just that it compiles).
-3. **Unidentified small floating dark object** — appeared consistently in
+2. **Unidentified small floating dark object** — appeared consistently in
    two screenshots near the player in the Hub plaza. Filtered ~1,241 world
    renderers for small+elevated+nearby matches; only hit was a `LanternGlow`
    prop whose position doesn't match what was visible on screen. Left
    unresolved — minor, likely VFX, but not confirmed.
-4. **World-count discrepancy**: `Canon.cs`'s `WorldId` enum has **10** worlds
+3. **World-count discrepancy**: `Canon.cs`'s `WorldId` enum has **10** worlds
    (Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible,
    **Sere**). The retired Three.js style guide's own saturation table only
    lists **9** — `Sere` is missing from it entirely. Not urgent now that the
    guide is retired, but worth a note if anyone later mines that doc for a
    world list.
-5. **Acquisition list** (see `docs/ART_DIRECTION_UNITY_WEB.md` for full
+4. **Acquisition list** (see `docs/ART_DIRECTION_UNITY_WEB.md` for full
    detail): 4 of ~20 named packages spot-checked and confirmed real (Kevin
    Iglesias Human Basic Motions FREE, Synty Sidekick Starter Pack FREE, KHS
    Korean-heritage architecture family, Slavic Medieval Environment). Two
@@ -147,6 +145,15 @@ look.
    buildings" vs. the code's real 100-per-city target with the Hub itself
    having ~zero). ~16 more named packages are still **unverified** — don't
    treat the rest of that list as vetted.
+
+### Weather-visuals binding (done this continuation)
+
+`WorldClock.Weather` now drives precip + fog + sun dim. Build-time
+`PlaceWeather("rain"|"snow")` in `WorldBuilder.DressSky` / `WorldKit.Accents`
+was one-shot from `Canon.WorldDef.weather`, so Crime rained forever and the
+kernel's "weather shifted" line was HUD-only. Identity fireflies (Hub / Tunya
+/ Fantasy) are unchanged. Play-mode visual confirm still outstanding — Hub
+starts `clear`, so either travel to Crime or force `WorldClock.Weather`.
 
 ## Environment gotchas worth knowing about
 

@@ -433,6 +433,8 @@ namespace Concordia
         static float _actAge;
         static float _threatAt;
         static float _eventCd = 16f;
+        static string _visualWeather;
+        static float _baseFog = -1f;
 
         public static void Enter(WorldId id)
         {
@@ -448,6 +450,7 @@ namespace Concordia
             LastEvent = slice.lastEvent;
             Weather = Canon.Get(id).weather;
             ApplySky();
+            ApplyWeatherVisuals(force: true);
             NoteAct(Canon.Get(id).title + " kept its hours.");
             KingdomBook.Dump();
         }
@@ -498,6 +501,8 @@ namespace Concordia
                 var cycle = new[] { kit, "wind", "clear", kit };
                 Weather = cycle[UnityEngine.Random.Range(0, cycle.Length)];
                 LastEvent = Canon.Get(World).title + ": weather shifted. Schedules will.";
+                ApplyWeatherVisuals(force: false);
+                ApplySky();
             }
             _actAge += dt;
             if (_actAge > 8f) NearbyAct = "";
@@ -698,11 +703,64 @@ namespace Concordia
             }
             if (sun)
             {
+                float wx = WeatherDim();
                 if (World == WorldId.Hub)
-                    sun.intensity = 0.92f + 0.38f * day;
+                    sun.intensity = (0.92f + 0.38f * day) * wx;
                 else
-                    sun.intensity = 0.35f + 0.9f * day;
+                    sun.intensity = (0.35f + 0.9f * day) * wx;
             }
+        }
+
+        /// <summary>
+        /// DressSky owns the per-world fog floor. Capture it after that write so
+        /// weather can thicken rain/ash/smog without compounding across shifts.
+        /// </summary>
+        public static void NoteFogBase()
+        {
+            _baseFog = RenderSettings.fogDensity;
+            _visualWeather = null;
+        }
+
+        static float WeatherDim()
+        {
+            if (Weather == "rain" || Weather == "ash" || Weather == "smog") return 0.62f;
+            if (Weather == "wind") return 0.88f;
+            return 1f;
+        }
+
+        /// <summary>
+        /// Bind precip + fog to the live Weather string. Build-time PlaceWeather
+        /// used Canon.WorldDef.weather once and then ignored the kernel cycle, so
+        /// Crime rained forever and a "weather shifted" HUD line changed nothing
+        /// on screen. Identity VFX (Hub/Tunya/Fantasy fireflies) stay in DressSky
+        /// / Accents — they are not weather.
+        /// </summary>
+        static void ApplyWeatherVisuals(bool force)
+        {
+            if (!force && Weather == _visualWeather) return;
+            _visualWeather = Weather;
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var holder = world.transform.Find("WeatherFx");
+            if (holder) UnityEngine.Object.DestroyImmediate(holder.gameObject);
+            var go = new GameObject("WeatherFx");
+            go.transform.SetParent(world.transform, false);
+            var kind = WeatherKind(Weather);
+            if (kind != null)
+                DressVocab.PlaceWeather(kind, go.transform, new Vector3(0f, 8f, 0f));
+            if (_baseFog < 0f) _baseFog = RenderSettings.fogDensity;
+            float mul = (Weather == "rain" || Weather == "ash") ? 1.45f
+                : Weather == "smog" ? 1.7f
+                : 1f;
+            RenderSettings.fogDensity = _baseFog * mul;
+        }
+
+        static string WeatherKind(string weather)
+        {
+            if (weather == "rain") return "rain";
+            // Ruins kit weather is "ash"; the in-project snow VFX is the ash-fall.
+            if (weather == "ash") return "snow";
+            return null;
         }
 
         static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
