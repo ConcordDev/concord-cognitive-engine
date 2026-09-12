@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0022
+namespace Concordia // FORCE_REFRESH_0023
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -39,6 +39,7 @@ namespace Concordia // FORCE_REFRESH_0022
         static int _bodySeq;
         static string _lastPrefabPath;
         public static WorldId CastingWorld = WorldId.Hub;
+        static WorldId _castBodyWorld = WorldId.Hub;
 
         static readonly string[] SkinFiles =
         {
@@ -67,6 +68,7 @@ namespace Concordia // FORCE_REFRESH_0022
             p.Apply(look ?? new Appearance());
             p.sword = MakeSword();
             CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
+            _castBodyWorld = CastingWorld;
             return p;
         }
 
@@ -266,6 +268,19 @@ namespace Concordia // FORCE_REFRESH_0022
         {
             GameObject go = null;
 #if UNITY_EDITOR
+            // Hub may keep one modern Rocketbox adult. Every steel world wears
+            // that world's imported costume (KayKit Knight / dress). CastingWorld
+            // is the dress code — never ignore it for a polo default.
+            if (CastingWorld != WorldId.Hub)
+            {
+                var steel = SteelCostumePath(CastingWorld);
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(steel);
+                if (go)
+                {
+                    _lastPrefabPath = steel;
+                    return go;
+                }
+            }
             // Mixamo Vanguard has no folder albedo. Rocketbox is the painted adult.
             var adult = new[]
             {
@@ -285,7 +300,9 @@ namespace Concordia // FORCE_REFRESH_0022
                 return go;
             }
 #endif
-            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight" };
+            string[] stems = CastingWorld == WorldId.Hub
+                ? new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01" }
+                : new[] { "Knight", "Barbarian", "Mage", "Male_Adult_01" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -296,6 +313,54 @@ namespace Concordia // FORCE_REFRESH_0022
                 return go;
             }
             return go;
+        }
+
+        static string SteelCostumePath(WorldId world)
+        {
+            if (world == WorldId.Crime)
+                return "Assets/Concordia/Models/kaykit/adventures/gltf/Barbarian.glb";
+            if (world == WorldId.Cyber)
+                return "Assets/Concordia/Models/kaykit/adventures/gltf/Mage.glb";
+            return "Assets/Concordia/Models/kaykit/adventures/gltf/Knight.glb";
+        }
+
+        /// <summary>
+        /// Rebuild the authored body after Travel so Hub polo does not follow
+        /// the player into a steel world (and Knight does not return to Hub).
+        /// </summary>
+        public static void RecastBody(ModularPerson person)
+        {
+            if (!person) return;
+            if (_castBodyWorld == CastingWorld && person.transform.childCount > 0) return;
+            _castBodyWorld = CastingWorld;
+            person.RebuildForWorld();
+        }
+
+        void RebuildForWorld()
+        {
+            bool hero = GetComponentInParent<ConcordiaPlayer>() != null;
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var c = transform.GetChild(i);
+                if (!c) continue;
+                Object.DestroyImmediate(c.gameObject);
+            }
+            _built = false;
+            _authored = false;
+            _biped = false;
+            _clipsFit = false;
+            _anim = null;
+            _skinMesh = null;
+            _hip = _spine = _chest = _neck = _head = null;
+            _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
+            _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
+            _hairRoot = _coat = _coatL = _coatR = _tunic = _sash = _pelvisMesh = _skull = _jaw = null;
+            leftHand = rightHand = null;
+            sword = null;
+            Build(hero);
+            Apply(look ?? new Appearance());
+            sword = MakeSword();
+            CharacterGear.Grip(sword, rightHand ? rightHand : transform, 1.05f, true, false);
         }
 
         static void DressFromPrefabFolder(GameObject body)

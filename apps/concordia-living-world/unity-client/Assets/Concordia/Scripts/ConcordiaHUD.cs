@@ -11,6 +11,7 @@ namespace Concordia
     public class ConcordiaHUD : MonoBehaviour
     {
         public ConcordiaPlayer player;
+        public static bool DebugHud;
         GUIStyle _title, _small, _center, _prompt, _card, _cardSub, _btn, _log;
         Texture2D _white, _ring;
         static float _announceT;
@@ -63,6 +64,7 @@ namespace Concordia
 
         void Update()
         {
+            if (Input.GetKeyDown(KeyCode.F8)) DebugHud = !DebugHud;
             if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
         }
 
@@ -72,15 +74,18 @@ namespace Concordia
             Ensure();
             float w = Screen.width, h = Screen.height;
             Compass(w);
-            Vitals();
             Rings(w);
-            if (!player.Busy) Minimap(h);
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
-            Hints(w, h);
+            if (DebugHud)
+            {
+                Vitals();
+                if (!player.Busy) Minimap(h);
+                Hints(w, h);
+            }
         }
 
         void Hints(float w, float h)

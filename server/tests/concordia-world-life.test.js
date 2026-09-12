@@ -65,15 +65,18 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(fill, /Concord admits he loves her/);
   });
 
-  it("travel persists the slice and the HUD shows the living clock", () => {
+  it("travel persists the slice and the living clock sits behind F8 DebugHud", () => {
     const game = src("ConcordiaGame.cs");
     const hud = src("ConcordiaHUD.cs");
     assert.match(game, /WorldClock\.Leave\(\)/);
     assert.match(game, /WorldClock\.Enter\(/);
     assert.match(game, /WorldClock\.Tick\(/);
     assert.match(game, /NoticePlayer/);
+    assert.match(hud, /DebugHud/);
+    assert.match(hud, /KeyCode\.F8/);
     assert.match(hud, /WorldClock\.HudClock\(\)/);
     assert.match(hud, /WorldClock\.NearbyAct/);
+    assert.match(hud, /if \(DebugHud\)/);
   });
 
   it("activities are visible: open shop, patrol, deliver, talk, enter a building", () => {

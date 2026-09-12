@@ -89,9 +89,6 @@ namespace Concordia
             _world.Build(world);
             WorldClock.Enter(world);
             Grounding.Snap(cc);
-            var py = pgo.transform.position.y;
-            if (py < 0f || py > 3.5f)
-                pgo.transform.position = new Vector3(Canon.Spawn.x, 0.12f, Canon.Spawn.z);
             camGo.transform.position = pgo.transform.position + new Vector3(1.7f, 2.55f, -5.2f);
             camGo.transform.LookAt(pgo.transform.position + Vector3.up * 1.3f);
             try { HubLook.Apply(cam, world); } catch (Exception e) { Debug.LogException(e); }
@@ -435,6 +432,7 @@ namespace Concordia
             _boards = null;
             _loot = null;
             _cooks = null;
+            ModularPerson.RecastBody(_player.person);
             _player.EquipWorldKit();
             Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }

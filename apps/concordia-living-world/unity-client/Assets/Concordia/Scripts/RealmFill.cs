@@ -43,8 +43,8 @@ namespace Concordia // keep-spawn-assign
                     for (int i = 0; i < 36; i++)
                         FreePacks.Spawn("crops_cornStageD", root, new Vector3(-14 + (i % 12) * 1.3f, 0, 7 + (i / 12) * 2.1f), 0, 1.4f);
                     Ring(root, "tent_detailedOpen", 14f, 7, 3.2f, 30f);
-                    Ring(root, "tree_oak", 20f, 12, 7f, 15f);
-                    Ring(root, "tree_pineTallA", 28f, 10, 9f, 20f);
+                    RingStore(root, new[] { "tree_1", "Tree1", "OakBigTree01_pr" }, 20f, 12, 7f, 15f);
+                    RingStore(root, new[] { "Tree9", "tree_1" }, 28f, 10, 9f, 20f);
                     Scatter(root, "bridge_wood", 3, 10f, 16f, 2.4f);
                     Scatter(root, "campfire_stones", 6, 5f, 16f, 1.3f);
                     Horizon(root, "cliff_large_rock", 54f, 8, 10f);
@@ -55,7 +55,7 @@ namespace Concordia // keep-spawn-assign
                     Ring(root, "banner-red", 11f, 8, 2.4f, 0f);
                     Scatter(root, "tower-square-base", 5, 16f, 26f, 7f);
                     Scatter(root, "statue", 5, 8f, 16f, 2.4f);
-                    Ring(root, "tree_oak_dark", 22f, 10, 7.5f, 25f);
+                    RingStore(root, new[] { "tree_1", "Tree1", "OakBigTree01_pr", "Tree9" }, 22f, 10, 7.5f, 25f);
                     Horizon(root, "tower-hexagon-base", 48f, 6, 12f);
                     break;
                 case WorldId.Crime:
@@ -441,6 +441,18 @@ namespace Concordia // keep-spawn-assign
             }
         }
 
+        static void RingStore(Transform root, string[] stems, float rad, int n, float h, float yawOff)
+        {
+            if (stems == null || stems.Length == 0) return;
+            for (int i = 0; i < n; i++)
+            {
+                float a = i / (float)n * Mathf.PI * 2f + 0.2f;
+                var stem = stems[i % stems.Length];
+                FreePacks.SpawnStore(stem, root, new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad),
+                    -a * Mathf.Rad2Deg + yawOff, h, required: false);
+            }
+        }
+
         static void Scatter(Transform root, string stem, int n, float r0, float r1, float h)
         {
             for (int i = 0; i < n; i++)
@@ -646,13 +658,16 @@ namespace Concordia // keep-spawn-assign
                 float h = key.Contains("tree") || key.Contains("palm") || key.Contains("fir") ? 7.2f
                     : key.Contains("hedge") || key.Contains("column") ? 2.6f
                     : key.Contains("crops") ? 1.4f : 0.7f;
-                FreePacks.Spawn(stem, hold, hold.TransformPoint(local), yaw + k * 28f, h);
+                if (key.Contains("tree") || key.Contains("grass") || key.Contains("flower") || key.Contains("hedge") || key.Contains("pine") || key.Contains("fir"))
+                    FreePacks.SpawnStore(stem, hold, hold.TransformPoint(local), yaw + k * 28f, h, required: false);
+                else
+                    FreePacks.Spawn(stem, hold, hold.TransformPoint(local), yaw + k * 28f, h);
             }
             for (int k = 0; k < 14; k++)
             {
                 float a = k / 14f * Mathf.PI * 2f + 0.41f;
                 var local = new Vector3(Mathf.Cos(a) * 13.1f, 0f, Mathf.Sin(a) * 13.1f);
-                FreePacks.Spawn(grass, hold, hold.TransformPoint(local), yaw + k * 19f, 0.55f);
+                FreePacks.SpawnStore(grass, hold, hold.TransformPoint(local), yaw + k * 19f, 0.55f, required: false);
             }
         }
 

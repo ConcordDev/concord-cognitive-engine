@@ -105,6 +105,79 @@ namespace Concordia
             RenderSettings.defaultReflectionMode = DefaultReflectionMode.Skybox;
             DynamicGI.UpdateEnvironment();
             PlaceProbe(world == WorldId.Hub ? 120f : 95f);
+            ApplyHour(world, WorldClock.Hour);
+        }
+
+        /// <summary>
+        /// Hub day vs night must be unmistakable. Night is moonlight + lamps,
+        /// not noon-minus-UI. Called from WorldClock every sky tick.
+        /// </summary>
+        public static void ApplyHour(WorldId world, float hour)
+        {
+            float sun01 = Sun01(hour);
+            float night = 1f - sun01;
+            var volGo = GameObject.Find("GlobalVolume");
+            var vol = volGo ? volGo.GetComponent<Volume>() : null;
+            var profile = vol && vol.profile ? vol.profile : null;
+            if (profile && profile.TryGet(out ColorAdjustments color))
+            {
+                float dayExp = world == WorldId.Hub ? 0.12f : 0.08f;
+                color.postExposure.Override(Mathf.Lerp(-1.15f, dayExp, sun01));
+                color.contrast.Override(Mathf.Lerp(18f, 12f, sun01));
+                color.saturation.Override(Mathf.Lerp(-8f, 10f, sun01));
+            }
+            if (profile && profile.TryGet(out Vignette vig))
+                vig.intensity.Override(Mathf.Lerp(0.42f, world == WorldId.Hub ? 0.18f : 0.28f, sun01));
+
+            if (world == WorldId.Hub)
+            {
+                RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.08f, 0.10f, 0.18f), new Color(0.58f, 0.64f, 0.74f), sun01);
+                RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.06f, 0.07f, 0.10f), new Color(0.48f, 0.42f, 0.36f), sun01);
+                RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), new Color(0.22f, 0.18f, 0.14f), sun01);
+                RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
+                RenderSettings.reflectionIntensity = 0.22f + 0.83f * sun01;
+                RenderSettings.fogColor = Color.Lerp(new Color(0.02f, 0.03f, 0.06f), new Color(0.55f, 0.58f, 0.62f), sun01);
+                RenderSettings.fogDensity = 0.0045f + 0.01f * night;
+            }
+
+            var sky = RenderSettings.skybox;
+            if (sky && sky.HasProperty("_Exposure"))
+            {
+                float daySky = world == WorldId.Hub ? 0.78f : 0.62f;
+                sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, daySky, sun01));
+            }
+
+            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
+            for (int i = 0; i < lights.Length; i++)
+            {
+                var l = lights[i];
+                if (!l) continue;
+                if (l.type == LightType.Directional && l.name == "Sun")
+                {
+                    l.color = Color.Lerp(new Color(0.42f, 0.52f, 0.78f), new Color(1f, 0.94f, 0.82f), sun01);
+                    l.intensity = world == WorldId.Hub
+                        ? 0.06f + 1.12f * sun01
+                        : 0.08f + 0.9f * sun01;
+                    l.shadows = LightShadows.Soft;
+                    l.shadowStrength = 0.88f + 0.08f * sun01;
+                    float pitch = Mathf.Lerp(8f, 42f, sun01);
+                    l.transform.rotation = Quaternion.Euler(pitch, l.transform.eulerAngles.y, 0f);
+                }
+                else if (l.type == LightType.Directional && l.name == "Fill")
+                    l.intensity = 0.02f + 0.16f * sun01;
+                else if (l.type == LightType.Point && (l.name == "CourtLamp" || l.name == "MonumentLight" || l.name == "Lantern"))
+                    l.intensity = Mathf.Lerp(2.6f, 0.55f, sun01);
+            }
+        }
+
+        public static float Sun01(float hour)
+        {
+            if (hour >= 6f && hour <= 20f)
+            {
+                float t = (hour - 6f) / 14f;
+                return Mathf.Sin(t * Mathf.PI);
+            }
+            return 0f;
         }
 
         static void Grade(WorldId world,
@@ -204,14 +277,8 @@ namespace Concordia
 
         public static void Lantern(Transform parent, Vector3 pos)
         {
-            FreePacks.Spawn("lantern", parent, pos, 0, 1.35f);
-            var bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            bulb.name = "LanternGlow";
-            bulb.transform.SetParent(parent, false);
-            bulb.transform.position = pos + Vector3.up * 1.65f;
-            bulb.transform.localScale = Vector3.one * 0.18f;
-            Object.Destroy(bulb.GetComponent<Collider>());
-            bulb.GetComponent<Renderer>().sharedMaterial = Emit(new Color(1f, 0.72f, 0.38f), 3.5f);
+            FreePacks.SpawnStore("lantern", parent, pos, 0, 1.35f, required: false);
+            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.4f, 10f, true);
         }
 
         public static Material GroundMat(WorldId world, Color tint)
