@@ -25,6 +25,22 @@ import { encodeFrame, decodeFrame, isBinaryFrame, encodeMove, decodeMove } from 
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 import { composeTwoBDialogue } from "./concordia-two-b.js";
+import {
+  handleGiftGive,
+  handleSchemeIntervene,
+  handlePartyRequest,
+  handleInheritanceRequest,
+  handleDodge,
+  handleDungeonOpen,
+  handleDungeonHit,
+  handleRunStart,
+} from "./concordia-play.js";
+import { getWeather } from "./weather.js";
+import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
+import { getVillageGossipFeed } from "./npc-relationships.js";
+import { getTombsForWorld } from "./npc-legacy.js";
+import { listActiveBosses } from "./world-bosses.js";
+import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -40,6 +56,12 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {(userId:string)=>({id:string,username?:string}|null|Promise)} deps.getUser REQUIRED — resolves a user record.
  * @param {(db:any, worldId:string)=>object} [deps.exportScene]  scene:request handler; omit → honest scene_export_unavailable.
  * @param {(db:any, worldId:string)=>object} [deps.exportKingdom]  kingdom:request handler; omit → honest kingdom_export_unavailable.
+ * @param {(domain:string, name:string, input:object, ctx:object)=>object|Promise<object>} [deps.runMacro]
+ *   lens:run handler. MUST be the real `runMacro` (or the HTTP-identical
+ *   LENS_ACTIONS-then-runMacro wrapper). The gateway does NOT reimplement
+ *   publicReadDomains or Chicken2 — those gates live inside runMacro. Omit →
+ *   honest `lens_run_unavailable`. Never call without an actor: runMacro
+ *   defaults a missing actor to `{role:"system", internal:true}`.
  * @param {(input:object)=>object|Promise<object>} [deps.composeDialogue]  dialogue:request → Concord 2B; omit → built-in composeTwoBDialogue.
  * @param {any} [deps.db]  passed verbatim to exportScene / exportKingdom.
  * @param {string} [deps.path="/godot-ws"]  upgrade path this gateway claims.
@@ -59,6 +81,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     getUser,
     exportScene,
     exportKingdom,
+    runMacro,
     composeDialogue = composeTwoBDialogue,
     db = null,
     path = "/godot-ws",
@@ -404,6 +427,178 @@ function isBinaryMovePayload(p) {
         return;
       }
 
+      case "gift:give": {
+        const result = handleGiftGive(db, client.userId, data);
+        send(client.ws, "gift:result", result);
+        return;
+      }
+
+      case "scheme:intervene": {
+        const result = handleSchemeIntervene(db, client.userId, data);
+        send(client.ws, "scheme:intervened", result);
+        return;
+      }
+
+      case "party:request": {
+        const result = handlePartyRequest(client.userId, data);
+        send(client.ws, "party:data", result);
+        return;
+      }
+
+      case "inheritance:request": {
+        const result = handleInheritanceRequest(db, data);
+        send(client.ws, "inheritance:data", result);
+        return;
+      }
+
+      case "combat:dodge": {
+        const result = handleDodge(client.userId, data);
+        send(client.ws, "combat:dodge:ack", result);
+        return;
+      }
+
+      case "dungeon:open": {
+        const result = handleDungeonOpen(db, client.userId, data);
+        send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "dungeon:hit": {
+        const result = handleDungeonHit(db, client.userId, data);
+        send(client.ws, "dungeon:hit:ack", result);
+        return;
+      }
+
+      case "run:start": {
+        const result = handleRunStart(db, client.userId, data);
+        send(client.ws, "run:data", result);
+        return;
+      }
+
+      case "world:snapshot": {
+        // Phase 2 — clock + weather reads that never go through runMacro.
+        // Same public-read surface as GET /api/world/clock and
+        // GET /api/world/weather/:worldId (Gate 1 allowlisted). Authenticated
+        // WS is stricter-or-equal. Missing worldId is an honest failure, never
+        // a fabricated climate.
+        const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        if (!worldId) {
+          send(client.ws, "world:snapshot", { ok: false, reason: "missing_world" });
+          return;
+        }
+        try {
+          const phase = getWorldPhase();
+          const weather = getWeather(worldId);
+          const gossipRows = getVillageGossipFeed(db, worldId, { limit: 8 }) || [];
+          const tombRows = getTombsForWorld(db, worldId, 8) || [];
+          const bossRows = listActiveBosses(db, worldId) || [];
+          send(client.ws, "world:snapshot", {
+            ok: true,
+            worldId,
+            clock: {
+              phase,
+              segment: getDayPhase(phase),
+              dayLengthMs: WORLD_CLOCK_CONSTANTS.dayLengthMs,
+            },
+            weather: weather && typeof weather === "object"
+              ? {
+                  type: weather.type,
+                  intensity: weather.intensity,
+                  windDirection: weather.windDirection,
+                  since: weather.since,
+                }
+              : null,
+            gossip: gossipRows.map((r) => ({
+              summary: r.summary || "",
+              kind: r.event_kind || "",
+              relation: r.relationship_kind || "",
+              npcA: r.npc_a_id || "",
+              npcB: r.npc_b_id || "",
+            })),
+            tombs: tombRows.map((r) => ({
+              npcId: r.npc_id || "",
+              lastWords: r.last_words || "",
+              x: r.tomb_x,
+              z: r.tomb_z,
+            })),
+            bosses: bossRows.map((r) => ({
+              activeId: r.id || "",
+              scheduleId: r.schedule_id || "",
+              bossTemplate: r.boss_template || "",
+              difficultyTier: r.difficulty_tier || "",
+            })),
+            gear: snapshotGear(db, client.userId),
+            chronicles: snapshotChronicles(db, worldId),
+            creatures: snapshotCreatures(db, worldId),
+            ecology: snapshotEcology(db, worldId),
+          });
+        } catch (e) {
+          send(client.ws, "world:snapshot", {
+            ok: false,
+            reason: "snapshot_failed",
+            error: String(e?.message || e),
+          });
+        }
+        return;
+      }
+
+      case "lens:run": {
+        // Phase 1 of docs/CONCORDIA_UNITY_WIRING_PLAN.md — one verb covers
+        // the entire /api/lens/* macro surface. Permission gates are the
+        // load-bearing part: this case MUST NOT reimplement Gate 2 or Gate 3.
+        // It forwards to deps.runMacro with an HTTP-shaped ctx (path
+        // `/api/lens/run`, method POST, authenticated actor) so the same
+        // three gates the REST route runs, run here. A missing actor would
+        // make runMacro default to system/internal — never omit it.
+        if (typeof runMacro !== "function") {
+          send(client.ws, "lens:result", { ok: false, reason: "lens_run_unavailable" });
+          return;
+        }
+        const domain = typeof data.domain === "string" ? data.domain : "";
+        // Same alias rule as POST /api/lens/run: `action` wins, then `name`.
+        const name = typeof data.action === "string"
+          ? data.action
+          : (typeof data.name === "string" ? data.name : "");
+        if (!domain || !name) {
+          send(client.ws, "lens:result", { ok: false, reason: "domain_and_name_required" });
+          return;
+        }
+        const input = data.input && typeof data.input === "object" && !Array.isArray(data.input)
+          ? data.input
+          : {};
+        const ctx = {
+          actor: {
+            userId: client.userId,
+            id: client.userId,
+            role: "user",
+            kind: "user",
+            scopes: ["read", "write"],
+          },
+          userId: client.userId,
+          db,
+          reqMeta: { path: "/api/lens/run", method: "POST" },
+        };
+        try {
+          const result = await runMacro(domain, name, input, ctx);
+          const payload = result && typeof result === "object"
+            ? result
+            : { ok: false, reason: "lens_run_failed" };
+          send(client.ws, "lens:result", {
+            ...payload,
+            lensDomain: domain,
+            lensName: name,
+          });
+        } catch (e) {
+          const msg = String(e?.message || e);
+          send(client.ws, "lens:result", {
+            ok: false,
+            reason: msg.startsWith("forbidden") ? "forbidden" : "lens_run_failed",
+            error: msg,
+          });
+        }
+        return;
+      }
+
       case "dialogue:request": {
         const requestId = typeof data.requestId === "string" ? data.requestId : "";
         if (typeof composeDialogue !== "function") {
@@ -561,6 +756,79 @@ function isBinaryMovePayload(p) {
     clients,
     getSeq: () => gatewaySeq,
   };
+}
+
+/** Read-only equipped affixes. Never inserts a default loadout row. Empty stays []. */
+function snapshotGear(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    const row = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
+    if (!row) return [];
+    const slots = [
+      ["rightHand", row.right_hand_id],
+      ["leftHand", row.left_hand_id],
+      ["head", row.head_id],
+      ["body", row.body_id],
+      ["accessory", row.accessory_id],
+    ];
+    const items = [];
+    for (const [slot, invId] of slots) {
+      if (!invId) continue;
+      const it = db.prepare(
+        `SELECT id, item_name, affixes_json FROM player_inventory WHERE id = ? AND user_id = ?`,
+      ).get(invId, userId);
+      if (!it) continue;
+      let affixes = [];
+      try {
+        const parsed = JSON.parse(it.affixes_json || "[]");
+        if (Array.isArray(parsed)) {
+          affixes = parsed.map((a) => ({
+            id: a.id || "",
+            label: a.label || "",
+            stat: a.stat || "",
+            value: a.value,
+            element: a.element || null,
+          }));
+        }
+      } catch { affixes = []; }
+      items.push({
+        id: String(it.id),
+        name: it.item_name || "",
+        slot,
+        affixes,
+      });
+    }
+    return items;
+  } catch { return []; }
+}
+
+/** Recent match chronicles for this world. Empty stays []. */
+function snapshotChronicles(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT id, title, content FROM dtus
+      WHERE content_type = 'match_chronicle'
+      ORDER BY rowid DESC LIMIT 8
+    `).all();
+    const tag = `world:${worldId}`;
+    const out = [];
+    for (const r of rows) {
+      let summary = "";
+      let blob = "";
+      try {
+        const content = typeof r.content === "string" ? JSON.parse(r.content) : r.content;
+        summary = content?.human?.summary || "";
+        blob = typeof r.content === "string" ? r.content : JSON.stringify(content || {});
+      } catch {
+        blob = String(r.content || "");
+      }
+      if (!blob.includes(worldId) && !blob.includes(tag) && !(r.title || "").includes(worldId)) continue;
+      out.push({ id: r.id, title: r.title || "", summary });
+      if (out.length >= 4) break;
+    }
+    return out;
+  } catch { return []; }
 }
 
 /**

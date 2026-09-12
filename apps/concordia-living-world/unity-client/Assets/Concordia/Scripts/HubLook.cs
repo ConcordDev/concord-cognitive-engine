@@ -204,7 +204,10 @@ namespace Concordia
 
         public static void Lantern(Transform parent, Vector3 pos)
         {
-            FreePacks.Spawn("lantern", parent, pos, 0, 1.35f);
+            const string forge =
+                "Assets/3DForge/Fantasy_Interiors/Villages_&_Towns/Prefabs/Props/Lighting/Standing/fi_vil_light_candle_holder04_lit.prefab";
+            var held = FreePacks.Prefab(forge, parent, pos, 0);
+            if (!held) FreePacks.Spawn("lantern", parent, pos, 0, 1.35f);
             var bulb = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bulb.name = "LanternGlow";
             bulb.transform.SetParent(parent, false);
@@ -212,6 +215,15 @@ namespace Concordia
             bulb.transform.localScale = Vector3.one * 0.18f;
             Object.Destroy(bulb.GetComponent<Collider>());
             bulb.GetComponent<Renderer>().sharedMaterial = Emit(new Color(1f, 0.72f, 0.38f), 3.5f);
+            var lightGo = new GameObject("LanternLight");
+            lightGo.transform.SetParent(parent, false);
+            lightGo.transform.position = pos + Vector3.up * 1.7f;
+            var pl = lightGo.AddComponent<Light>();
+            pl.type = LightType.Point;
+            pl.color = new Color(1f, 0.72f, 0.38f);
+            pl.intensity = 2.6f;
+            pl.range = 10f;
+            pl.shadows = LightShadows.Soft;
         }
 
         public static Material GroundMat(WorldId world, Color tint)

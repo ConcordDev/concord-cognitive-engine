@@ -37,12 +37,14 @@ namespace Concordia // keep-spawn-assign
                     Scatter(root, "coffin", 8, 6f, 16f, 1.6f);
                     Scatter(root, "altar-stone", 4, 8f, 14f, 1.8f);
                     Scatter(root, "crypt-small", 6, 14f, 24f, 4.2f);
+                    Scatter(root, DressVocab.House(WorldId.Ruins), 5, 18f, 28f, 5.5f);
                     Horizon(root, "cliff_large_stone", 52f, 10, 9f);
                     break;
                 case WorldId.Tunya:
                     for (int i = 0; i < 36; i++)
                         FreePacks.Spawn("crops_cornStageD", root, new Vector3(-14 + (i % 12) * 1.3f, 0, 7 + (i / 12) * 2.1f), 0, 1.4f);
                     Ring(root, "tent_detailedOpen", 14f, 7, 3.2f, 30f);
+                    Ring(root, DressVocab.House(WorldId.Tunya), 18f, 6, 5.2f, 12f);
                     Ring(root, "tree_oak", 20f, 12, 7f, 15f);
                     Ring(root, "tree_pineTallA", 28f, 10, 9f, 20f);
                     Scatter(root, "bridge_wood", 3, 10f, 16f, 2.4f);
@@ -50,6 +52,7 @@ namespace Concordia // keep-spawn-assign
                     Horizon(root, "cliff_large_rock", 54f, 8, 10f);
                     break;
                 case WorldId.Fantasy:
+                    Ring(root, DressVocab.House(WorldId.Fantasy), 14f, 8, 6.4f, 8f);
                     Ring(root, "hedge-large", 16f, 12, 2.8f, 0f);
                     FreePacks.Spawn("fountain-round", root, new Vector3(0, 0, 9), 0, 3.2f);
                     Ring(root, "banner-red", 11f, 8, 2.4f, 0f);
@@ -59,22 +62,27 @@ namespace Concordia // keep-spawn-assign
                     Horizon(root, "tower-hexagon-base", 48f, 6, 12f);
                     break;
                 case WorldId.Crime:
-                    Ring(root, "building-d", 20f, 6, 11f, 0f);
-                    Ring(root, "building-type-h", 14f, 8, 7f, 40f);
-                    Scatter(root, "dumpster", 10, 5f, 16f, 1.8f);
-                    Scatter(root, "detail-awning", 8, 10f, 18f, 2.2f);
+                    Ring(root, "building-type-h", 10f, 10, 5.4f, 18f);
+                    Ring(root, "building-d", 16f, 8, 7.2f, 0f);
+                    Scatter(root, "dumpster", 12, 4f, 14f, 1.8f);
+                    Scatter(root, "detail-awning", 10, 8f, 16f, 2.2f);
                     Scatter(root, "barrel", 10, 4f, 14f, 0.9f);
-                    Horizon(root, "building-skyscraper-e", 50f, 7, 22f);
+                    Ring(root, DressVocab.Wall(WorldId.Crime), 7f, 8, 3.2f, 40f);
                     break;
                 case WorldId.Cyber:
-                    Ring(root, "building-skyscraper-c", 22f, 6, 20f, 0f);
-                    Ring(root, "building-skyscraper-a", 16f, 6, 16f, 45f);
+                    Ring(root, "building-skyscraper-c", 14f, 8, 26f, 0f);
+                    Ring(root, "building-skyscraper-a", 20f, 7, 22f, 45f);
+                    Ring(root, "building-skyscraper-d", 28f, 6, 18f, 20f);
                     FreePacks.Spawn("corridor_cross", root, new Vector3(0, 0, 8), 0, 6f);
-                    Scatter(root, "detail-overhang-wide", 8, 8f, 18f, 3.4f);
-                    Horizon(root, "building-skyscraper-d", 48f, 8, 24f);
+                    Scatter(root, "detail-overhang-wide", 10, 8f, 18f, 3.4f);
+                    Horizon(root, "building-skyscraper-d", 48f, 8, 28f);
+                    HubLook.Point(root, "NeonA", new Vector3(8f, 10f, 12f), new Color(0.12f, 1f, 0.92f), 3.4f, 22f);
+                    HubLook.Point(root, "NeonB", new Vector3(-11f, 12f, 6f), new Color(1f, 0.12f, 0.72f), 3.2f, 20f);
+                    HubLook.Point(root, "NeonC", new Vector3(4f, 8f, -14f), new Color(0.45f, 0.2f, 1f), 2.8f, 18f);
                     break;
                 case WorldId.Frontier:
-                    Ring(root, "tent_detailedOpen", 14f, 8, 3f, 25f);
+                    Ring(root, DressVocab.House(WorldId.Frontier), 16f, 7, 4.8f, 18f);
+                    Ring(root, "tent_detailedOpen", 12f, 8, 3f, 25f);
                     Scatter(root, "palm-detailed-bend", 10, 12f, 22f, 5f);
                     Scatter(root, "campfire_stones", 8, 4f, 14f, 1.4f);
                     Scatter(root, "cart", 6, 8f, 16f, 2f);
@@ -140,6 +148,28 @@ namespace Concordia // keep-spawn-assign
                 ls.text = (f.motto ?? "") + "\n\n" + goal;
                 _ = banner;
             }
+        }
+
+        /// <summary>
+        /// Kernel war lands on the authored banner already placed for that
+        /// faction id. No match is an honest no-op — never invent a faction.
+        /// </summary>
+        public static void MarkWar(string factionId)
+        {
+            if (string.IsNullOrEmpty(factionId)) return;
+            BrightenNamed("FactionBanner_" + factionId);
+            BrightenNamed("FactionPole_" + factionId);
+            BrightenNamed("Faction_" + factionId);
+        }
+
+        static void BrightenNamed(string n)
+        {
+            var go = GameObject.Find(n);
+            if (!go) return;
+            var r = go.GetComponent<Renderer>();
+            if (!r) return;
+            var c = r.sharedMaterial ? r.sharedMaterial.color : Color.white;
+            r.material = HubLook.Emit(c, 2.6f);
         }
 
         static void Lore(Transform root, WorldDef w)
@@ -230,6 +260,8 @@ namespace Concordia // keep-spawn-assign
                 };
                 guest.personId = person.id;
                 guest.questHooks = person.quest_hooks;
+                var personGo = go.GetComponent<ModularPerson>();
+                personGo?.BindStyle(Canon.PickFight(person.faction_id, person.archetype, w.id));
                 var weap = PersonKit.WeaponStem(facI >= 0 ? facs[facI] : null, n);
                 if (!string.IsNullOrEmpty(weap)) CharacterGear.Attach(go, weap, true, 0.95f);
                 if (facI >= 0 && facs[facI].visual != null && !string.IsNullOrEmpty(facs[facI].visual.primary_color)
@@ -488,7 +520,7 @@ namespace Concordia // keep-spawn-assign
             hold.rotation = Quaternion.Euler(0f, yaw, 0f);
 
             PlazaPad(hold, w);
-            CrossStreets(hold, yaw);
+            CrossStreets(hold, w, yaw);
             Sidewalks(hold);
 
             var kit = DressVocab.Kit(w.id);
@@ -579,8 +611,19 @@ namespace Concordia // keep-spawn-assign
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.03f, 0f), new Vector3(22f, 0.08f, 22f), mat, "PlazaPad", false);
         }
 
-        static void CrossStreets(Transform hold, float yaw)
+        static void CrossStreets(Transform hold, WorldDef w, float yaw)
         {
+            if (w.id == WorldId.Crime || w.id == WorldId.Sere)
+            {
+                FreePacks.Spawn("road-straight", hold, hold.TransformPoint(new Vector3(0f, 0f, 0f)), yaw, 3.2f, false, false);
+                FreePacks.Spawn(DressVocab.Wall(w.id), hold, hold.TransformPoint(new Vector3(-3.8f, 0f, -6.2f)), yaw, 3.4f);
+                FreePacks.Spawn(DressVocab.Wall(w.id), hold, hold.TransformPoint(new Vector3(3.8f, 0f, -6.2f)), yaw, 3.4f);
+                FreePacks.Spawn(DressVocab.Wall(w.id), hold, hold.TransformPoint(new Vector3(-3.8f, 0f, 6.2f)), yaw, 3.4f);
+                FreePacks.Spawn(DressVocab.Wall(w.id), hold, hold.TransformPoint(new Vector3(3.8f, 0f, 6.2f)), yaw, 3.4f);
+                return;
+            }
+            if (w.id == WorldId.Frontier || w.id == WorldId.Tunya)
+                return;
             float[] along = { -10.5f, 0f, 10.5f };
             for (int i = 0; i < along.Length; i++)
             {
@@ -783,7 +826,8 @@ namespace Concordia // keep-spawn-assign
             gateGo.transform.SetParent(hold, false);
             gateGo.transform.position = mouth;
             var gate = gateGo.AddComponent<DungeonGate>();
-            gate.holdName = "the hold";
+            gate.encounterId = w.id == WorldId.Ruins ? "hollow_warden" : "tide_colossus";
+            gate.holdName = w.id == WorldId.Ruins ? "The Hollow Warden" : "Tide Colossus";
             gate.inside = inside;
             gate.mouth = mouth + new Vector3(0f, 0.12f, -3.2f);
             var box = gateGo.AddComponent<BoxCollider>();
@@ -794,8 +838,8 @@ namespace Concordia // keep-spawn-assign
             var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.05f, -2.6f),
                 new Vector3(1.05f, 1.5f, 0.12f), HubLook.Lit(w.ground, 0.08f, 0.22f), "HoldPlaque");
             var stone = plaque.AddComponent<LoreStone>();
-            stone.title = "A hold";
-            stone.text = "Kenney tiles. Mouth, hall, vault — geometry roles. No authored dungeon name in this world's canon — the geometry is dressing. Live steel applies.";
+            stone.title = gate.holdName;
+            stone.text = gate.holdName + " — mouth, hall, vault. Live steel applies. The encounter is the authored dungeon, not dressing.";
 
             var beacon = hold.gameObject.AddComponent<QuestBeacon>();
             beacon.tokens = new[] { "dungeon", "hold", "training_hollow", WorldBook.Folder(w.id) + "_hold" };

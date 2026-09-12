@@ -2826,13 +2826,25 @@ export default function createWorldsRouter({ requireAuth, db, emitToWorld }) {
             currentHp: bossRow.current_hp, maxHp: bossRow.max_hp,
             phases: bossPhases, defeated: !!kill,
           });
-          req.app.locals.io?.to(`world:${worldId}`).emit('boss:state', payload);
+          emitWorldEvent({
+            io: req.app.locals.io,
+            emitToWorld,
+            worldId,
+            event: "boss:state",
+            payload,
+          });
           // The discrete phase-transition beat alongside the continuous HUD
           // state. Returns null unless THIS hit actually crossed a threshold,
           // so the feed gets one row per phase change, not one per landed hit.
           const phaseEnter = bossPhaseEnterPayload(payload);
           if (phaseEnter) {
-            req.app.locals.io?.to(`world:${worldId}`).emit('boss:phase-enter', phaseEnter);
+            emitWorldEvent({
+              io: req.app.locals.io,
+              emitToWorld,
+              worldId,
+              event: "boss:phase-enter",
+              payload: phaseEnter,
+            });
           }
         }
       } catch { /* boss HUD emit best-effort — never blocks combat */ }

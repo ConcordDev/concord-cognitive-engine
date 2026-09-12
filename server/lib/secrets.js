@@ -19,6 +19,7 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { recordOpinionEvent } from "./npc-opinions.js";
 import { seedRumor } from "./social/gossip.js";
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 const KIND_FALLBACK = "grudge_origin";
 
@@ -161,6 +162,25 @@ export function discoverSecret(db, userId, secretId, via = "dialogue") {
     } catch { /* gossip optional — never block discovery */ }
   }
   return { ok: true, action: r.changes > 0 ? "discovered" : "already_known", secret: exists };
+}
+
+/**
+ * Fan `secret:weaponised` to socket.io AND /unity-ws. Prefer the realtime
+ * emit hook (already mirrored); fall back to io + gateway-only mirror so
+ * unit tests without a boot still observe the event.
+ */
+export function fanSecretWeaponised(payload, { worldId = null, io = null } = {}) {
+  const body = payload && typeof payload === "object" ? payload : {};
+  try {
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function") {
+      emit("secret:weaponised", body, worldId ? { worldId } : {});
+      return;
+    }
+    if (worldId) io?.to?.(`world:${worldId}`)?.emit?.("secret:weaponised", body);
+    else io?.emit?.("secret:weaponised", body);
+    mirrorToGateways("secret:weaponised", body, worldId ? { worldId } : {});
+  } catch { /* socket optional */ }
 }
 
 /**
@@ -382,12 +402,10 @@ export function weaponiseHeldSecrets(db, { proposeScheme, io = null, worldId = n
       db.prepare(`UPDATE secrets SET weaponised_holder_at = unixepoch() WHERE id = ?`).run(r.secret_id);
     } catch { /* column may be absent on a pre-migration build; scheme still opened */ }
 
-    try {
-      io?.to?.(worldId ? `world:${worldId}` : undefined)?.emit?.("secret:weaponised", {
-        holder: r.holder_npc_id, subject_kind: "npc", subject_id: r.subject_id,
-        kind: r.kind, schemeId, byNpc: true, ts: Math.floor(Date.now() / 1000),
-      });
-    } catch { /* socket optional */ }
+    fanSecretWeaponised({
+      holder: r.holder_npc_id, subject_kind: "npc", subject_id: r.subject_id,
+      kind: r.kind, schemeId, byNpc: true, ts: Math.floor(Date.now() / 1000),
+    }, { worldId, io });
 
     weaponised.push({ secretId: r.secret_id, holderNpcId: r.holder_npc_id, subjectId: r.subject_id, schemeId });
   }

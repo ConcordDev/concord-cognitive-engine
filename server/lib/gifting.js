@@ -83,9 +83,9 @@ function tableExists(db, name) {
 }
 
 /**
- * Give an NPC a gift: consume one of the item from the player's inventory in
- * this world, compute the reaction, and shift courtship affinity accordingly.
- * Per-world inventory invariant respected (scoped by user_id + world_id).
+ * Give an NPC a gift: consume one stack of the item from the player's
+ * inventory, compute the reaction, and shift courtship affinity accordingly.
+ * Inventory reads are user-global (world_id is acquisition metadata only).
  * Returns { ok, reaction, delta, affinity, status } or { ok:false, reason }.
  */
 export function giveGift(db, { userId, npcId, itemId, worldId = "concordia-hub" }) {
@@ -100,12 +100,13 @@ export function giveGift(db, { userId, npcId, itemId, worldId = "concordia-hub" 
   } catch { /* world_npcs optional */ }
   if (!npc) return { ok: false, reason: "npc_not_found" };
 
-  // Find a stack of the item the player owns in this world (oldest first).
+  // Inventory is user-global — world_id is acquisition metadata, never a
+  // visibility filter (player_inventory_user_global).
   const slot = db.prepare(`
     SELECT id, item_name, quantity FROM player_inventory
-    WHERE user_id = ? AND item_id = ? AND COALESCE(world_id, 'concordia-hub') = ?
+    WHERE user_id = ? AND item_id = ?
     ORDER BY acquired_at ASC LIMIT 1
-  `).get(userId, itemId, worldId);
+  `).get(userId, itemId);
   if (!slot || slot.quantity <= 0) return { ok: false, reason: "item_not_owned" };
 
   const reaction = giftReaction(npc, slot.item_name || itemId);

@@ -95,7 +95,7 @@ namespace Concordia
 
             var feetY = Mathf.Clamp(target.position.y, 0f, 3.5f);
             var focus = new Vector3(target.position.x, feetY + 1.35f, target.position.z);
-            var fov = creatorFraming ? 52f : (sprinting ? PovFov[pov] + 6f : inCombat ? PovFov[pov] - 3f : PovFov[pov]);
+            var fov = creatorFraming ? 52f : (sprinting ? PovFov[pov] + 6f : inCombat ? PovFov[pov] - 5f : PovFov[pov]);
 
             if (creatorFraming)
             {
@@ -108,7 +108,7 @@ namespace Concordia
             ReadZoomAndPov();
             var dist = PovDist[Mathf.Clamp(pov, 0, 2)];
             if (sprinting) dist += 0.7f;
-            if (inCombat) dist -= 0.6f;
+            if (inCombat) dist -= 0.85f;
             dist = Mathf.Clamp(dist + (distance - 6.2f), 2.4f, 14f);
 
             if (_vcam && _orbit)

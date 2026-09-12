@@ -13,6 +13,7 @@ import {
   sweepExpiredConversations,
   _internal,
 } from "../lib/embodied/npc-dialogue.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 
 export async function runNpcConversationInitiator({ db, io } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
@@ -34,14 +35,16 @@ export async function runNpcConversationInitiator({ db, io } = {}) {
         // pattern of emitting via app.locals.io). Floor-only — emit
         // failures must not stop the cycle.
         try {
-          io?.to(`world:${worldId}`)?.emit?.("npc:conversation-bid", {
+          const payload = {
             id: result.conversationId,
             worldId,
             npcA: result.npcA,
             npcB: result.npcB,
             opener: result.opener,
             expiresAt: result.expiresAt,
-          });
+          };
+          io?.to(`world:${worldId}`)?.emit?.("npc:conversation-bid", payload);
+          mirrorToGateways("npc:conversation-bid", payload, { worldId });
         } catch { /* socket emit best-effort */ }
       }
     }

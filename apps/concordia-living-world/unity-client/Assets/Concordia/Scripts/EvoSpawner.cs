@@ -13,118 +13,15 @@ namespace Concordia
             if (c == null) return null;
             if (WorldMemory.IsDead(world.id, c.id) || WorldMemory.IsDead(world.id, c.name))
                 return null;
-            var hint = (c.topology_hint ?? "").ToLowerInvariant();
-            string kind =
-                hint.Contains("quad") ? "wolf" :
-                hint.Contains("wing") ? "harpy" :
-                hint.Contains("serpent") ? "basilisk" :
-                hint.Contains("drone") || hint.Contains("mech") ? "drone" :
-                hint.Contains("human") ? "wraith" :
-                "hound";
-            var go = Spawn(parent, kind, pos, world);
-            if (go)
-            {
-                go.name = string.IsNullOrEmpty(c.name) ? c.id : c.name;
-                var dummy = go.GetComponent<TrainingDummy>();
-                if (dummy) dummy.unburied = world.id == WorldId.Ruins || world.id == WorldId.Crucible;
-                var life = go.GetComponent<FaunaLife>();
-                if (life)
-                {
-                    life.critterId = string.IsNullOrEmpty(c.id) ? c.name : c.id;
-                    life.predator = IsPredator(kind);
-                }
-            }
-            return go;
+            return CreatureCompiler.FromCritter(parent, c, pos, world);
         }
 
         public static GameObject Spawn(Transform parent, string kind, Vector3 pos, WorldDef world)
         {
             if (WorldMemory.IsDead(world.id, kind) && WorldClock.Ecology < 0.45f)
                 return null;
-            var stem = StemFor(kind);
-            GameObject go = null;
-            if (!string.IsNullOrEmpty(stem))
-                go = FreePacks.Spawn(stem, parent, pos, Random.Range(0, 360f), ScaleHint(kind));
-            if (go == null)
-            {
-                go = GameObject.CreatePrimitive(KindPrim(kind));
-                go.name = "Evo_" + kind;
-                go.transform.SetParent(parent, false);
-                var fly = IsFly(kind);
-                go.transform.position = pos + Vector3.up * (fly ? 2.4f : 0.6f);
-                go.transform.localScale = ScaleFor(kind);
-                var r = go.GetComponent<Renderer>();
-                r.material = new Material(r.sharedMaterial) { color = ColorFor(kind, world) };
-            }
-            go.name = "Evo_" + kind;
-            FreePacks.EnsureCollider(go, 1.2f);
-            if (!go.GetComponent<CharacterController>())
-                Grounding.EnsureController(go, 1.4f);
-            var dummy = go.GetComponent<TrainingDummy>() ?? go.AddComponent<TrainingDummy>();
-            dummy.unburied = world.id == WorldId.Ruins || world.id == WorldId.Crucible;
-            dummy.hp = 70;
-            dummy.living = true;
-            if (!go.GetComponent<Hostile>()) go.AddComponent<Hostile>();
-            var life = go.GetComponent<FaunaLife>() ?? go.AddComponent<FaunaLife>();
-            life.fly = IsFly(kind);
-            life.predator = IsPredator(kind);
-            life.critterId = kind;
-            var spin = go.GetComponent<EvoDrift>();
-            if (spin) spin.enabled = false;
-            return go;
+            return CreatureCompiler.FromKind(parent, kind, pos, world);
         }
-
-        static bool IsFly(string kind) =>
-            kind is "griffin" or "harpy" or "drone" or "sentinel" or "drift" or "wraith";
-
-        static bool IsPredator(string kind) =>
-            kind is "wolf" or "hound" or "griffin" or "basilisk" or "wraith" or "drone" or "sentinel";
-
-        static string StemFor(string k) => k switch
-        {
-            "wolf" or "hound" => "Fox",
-            "sealie" => "Flamingo",
-            "griffin" => "Horse",
-            "harpy" => "Parrot",
-            "wraith" => "character-ghost",
-            "drone" or "sentinel" => "enemy-ufo-a",
-            "construct" => "astronautA",
-            "basilisk" => "quadruped_01",
-            "drift" => "alien",
-            _ => "Fox"
-        };
-
-        static float ScaleHint(string k) => k switch
-        {
-            "griffin" => 2.6f,
-            "drone" or "sentinel" => 1.5f,
-            "wraith" => 1.85f,
-            "wolf" or "hound" => 1.15f,
-            "sealie" => 1.4f,
-            "harpy" => 1.1f,
-            _ => 1.25f
-        };
-
-        static PrimitiveType KindPrim(string k) =>
-            k is "drone" or "construct" or "golem" ? PrimitiveType.Cube :
-            k is "serpent" or "wyrm" or "basilisk" ? PrimitiveType.Capsule :
-            PrimitiveType.Sphere;
-
-        static Vector3 ScaleFor(string k) => k switch
-        {
-            "griffin" or "dragon" or "wyrm" => new Vector3(1.6f, 0.7f, 1.8f),
-            "wolf" or "hound" or "sealie" => new Vector3(0.9f, 0.55f, 1.3f),
-            "drone" => new Vector3(0.5f, 0.2f, 0.7f),
-            _ => Vector3.one * 0.8f
-        };
-
-        static Color ColorFor(string k, WorldDef w) => k switch
-        {
-            "wraith" => new Color(0.7f, 0.85f, 0.9f, 0.7f),
-            "drone" => w.sun,
-            "sealie" => new Color(0.4f, 0.7f, 0.85f),
-            _ => Color.Lerp(w.ground, w.sun, 0.4f)
-        };
     }
 
     /// <summary>Legacy sine orbit. Disabled on the live spawn path — FaunaLife owns motion.</summary>
@@ -151,6 +48,7 @@ namespace Concordia
         public bool hunting;
         public string critterId;
         public string act = "wander";
+        float _walkMps = -1f;
         Vector3 _home;
         Vector3 _dest;
         CharacterController _cc;
@@ -168,7 +66,21 @@ namespace Concordia
             _cc = GetComponent<CharacterController>();
             _body = GetComponent<TrainingDummy>();
             _rend = GetComponentsInChildren<Renderer>(true);
+            var genome = GetComponent<CreatureGenome>();
+            if (genome) BindGenome(genome);
             Pick();
+        }
+
+        /// <summary>
+        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
+        /// </summary>
+        public void BindGenome(CreatureGenome g)
+        {
+            if (!g) return;
+            if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
+            fly = g.fly;
+            predator = g.predator;
+            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Update()
@@ -244,7 +156,8 @@ namespace Concordia
                 return;
             }
             act = "wander";
-            Step(_dest, fly ? 2.6f : 1.8f);
+            var walk = _walkMps > 0.1f ? _walkMps : (fly ? 2.6f : 1.8f);
+            Step(_dest, walk);
             if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " " + act + "s");
         }
 
@@ -261,7 +174,8 @@ namespace Concordia
             }
             if (!prey) return false;
             act = "hunt";
-            Step(prey.transform.position, fly ? 3.8f : 3.1f);
+            var chase = _walkMps > 0.1f ? _walkMps * 1.45f : (fly ? 3.8f : 3.1f);
+            Step(prey.transform.position, chase);
             if (lod == SimLod.Real) WorldClock.NoteAct(Label() + " hunts");
             return true;
         }
@@ -322,6 +236,8 @@ namespace Concordia
 
         string Label()
         {
+            var g = GetComponent<CreatureGenome>();
+            if (g && !string.IsNullOrEmpty(g.Label)) return g.Label;
             if (!string.IsNullOrEmpty(critterId)) return critterId;
             return name.Replace("Evo_", "");
         }

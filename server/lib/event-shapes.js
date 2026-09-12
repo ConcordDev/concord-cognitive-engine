@@ -423,6 +423,28 @@ export const EVENT_SHAPES = Object.freeze({
   "faction:alliance-formed":    { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
   "faction:truce-sought":       { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: ["worldId"] },
   "npc:scheme-resolved":        { required: ["schemeId", "plotterKind", "plotterId", "kind", "outcome"], optional: ["targetKind", "targetId"] },
+  // T2.1 / T2.2 / T2.3 — Unity presenter consumes these over /unity-ws.
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "secret:weaponised":          { required: ["kind"], optional: ["userId", "secretId", "holder", "subject_kind", "subject_id", "schemeId", "byNpc", "ts", "worldId"] },
+  "npc:heir-rose":              { required: ["heirId", "deceasedId"], optional: ["heirName", "deceasedName", "worldId", "inherited", "lastWords"] },
+  // Unity consequence strip — existing broke write, now visible. @dead-event-ok
+  "npc:stress-break":           { required: ["npcId", "copingTrait", "stress"], optional: ["eventKind", "worldId"] },
+  // Thin emit of arriveAtDestination's existing fields. @dead-event-ok:
+  // Unity ConcordClient.cs walks a matching GuestNpc toward the named gate.
+  "npc:migrated":               { required: ["eventId", "npcId", "fromWorld", "toWorld"], optional: ["arrivalTime", "ok", "worldId"] },
+  // Thin emit of gatherAttendees after onNpcDeath. Empty attendees stay [].
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "npc:funeral":                { required: ["deceasedId", "worldId"], optional: ["deceasedName", "lastWords", "tombX", "tombZ", "attendees", "beats"] },
+  // Thin emit of gatherAttendees after romance-engine wed(). Empty attendees stay [].
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "npc:wedding":                { required: ["marriageId", "worldId"], optional: ["celebrantId", "partnerKind", "partnerId", "attendees", "beats"] },
+  // Thin emit of generateHybrid. Empty lineage stays generation 0 / no parents.
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "creature:born":              { required: ["childId", "worldId"], optional: ["id", "speciesId", "topology", "massKg", "heightM", "generation", "parentA", "parentB", "dominant", "variant", "affinity", "gaitKind", "walkMps", "lifestyle", "predator", "fly", "stability", "x", "y", "z"] },
+  // Minted match chronicle DTU. Plaque only when chronicleId is real.
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "combat:chronicle":           { required: ["chronicleId"], optional: ["title", "summary", "worldId", "winnerId", "loserId"] },
+  "scheme:overheard":           { required: ["schemeId"], optional: ["plotterId", "worldId", "snippet", "plotterArchetype", "plotterFaction", "targetArchetype", "targetFaction", "schemeKind", "ts"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },
   "refusal:compound-threshold": { required: ["worldId", "strength"], optional: ["kind", "reason"] },

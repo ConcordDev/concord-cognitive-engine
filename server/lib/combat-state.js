@@ -16,7 +16,13 @@
  *
  * The combat-netcode validateHit() is extended to consult this state and
  * adjust damage / reject the hit when iframes are active.
+ *
+ * F1.3 — a live telegraph peril on the defender means i-frames from the
+ * WRONG counter do not whiff the hit. noteIncomingPeril stamps the window;
+ * grantIFrames records which defense was used.
  */
+
+import { counterNegates } from "./combat/telegraph-peril.js";
 
 const _state = new Map(); // actorId -> { poise, ... }
 
@@ -36,6 +42,9 @@ function _ensure(actorId) {
       knockbackVel: { x: 0, y: 0, z: 0 },
       iframeUntil: 0,
       blockUntil: 0,
+      perilKind: null,
+      perilUntil: 0,
+      defenseAction: "dodge",
       lastUpdate: Date.now(),
     };
     _state.set(actorId, s);
@@ -50,7 +59,11 @@ export function applyHitToState(actorId, { damage = 0, isCrit = false, knockback
   const now = Date.now();
 
   if (now < s.iframeUntil) {
-    return { damageMul: 0, staggered: false, blocked: false, iframed: true };
+    const perilLive = s.perilKind && now < (s.perilUntil || 0);
+    if (!perilLive || counterNegates(s.perilKind, s.defenseAction || "dodge")) {
+      return { damageMul: 0, staggered: false, blocked: false, iframed: true };
+    }
+    // Wrong counter during a perilous tell — i-frames do not save you.
   }
 
   let damageMul = 1.0;
@@ -110,10 +123,20 @@ export function getCombatState(actorId) {
   };
 }
 
+/** Stamp a typed telegraph on the defender so the next hit can gate i-frames. */
+export function noteIncomingPeril(actorId, perilKind, durationMs = 400) {
+  if (!actorId || !perilKind) return;
+  const s = _ensure(actorId);
+  s.perilKind = perilKind;
+  s.perilUntil = Date.now() + Math.max(80, Number(durationMs) || 400);
+}
+
 /** Set the actor's i-frame window (e.g. just after a successful dodge). */
-export function grantIFrames(actorId, durationMs = 350) {
+export function grantIFrames(actorId, durationMs = 350, defenseAction = "dodge") {
   const s = _ensure(actorId);
   s.iframeUntil = Math.max(s.iframeUntil, Date.now() + durationMs);
+  const a = String(defenseAction || "dodge").toLowerCase();
+  s.defenseAction = ["jump", "break", "block", "parry", "dodge"].includes(a) ? a : "dodge";
 }
 
 /** Set the actor's block window. Block reduces damage 50% and prevents stagger. */

@@ -114,6 +114,24 @@ describe("romance-engine library", () => {
     assert.equal(marriages[0].partner_id, "bob");
   });
 
+  it("wed emits npc:wedding from the existing gathering composition", () => {
+    pumpAffinity("alice", "bob", 25);
+    propose(db, "alice", "npc", "bob");
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      const w = wed(db, "alice", "npc", "bob");
+      assert.equal(w.ok, true);
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+    const wedding = seen.find((s) => s.event === "npc:wedding");
+    assert.ok(wedding, "marriage emits the existing wedding composition");
+    assert.equal(wedding.payload.marriageId?.length > 0, true);
+    assert.ok(Array.isArray(wedding.payload.attendees));
+  });
+
   it("wed rejects if not engaged", () => {
     pumpAffinity("alice", "bob", 25);
     const r = wed(db, "alice", "npc", "bob");

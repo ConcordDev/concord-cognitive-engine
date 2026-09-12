@@ -13,6 +13,7 @@ import {
   grantIFrames,
   setBlock,
   resetCombatState,
+  noteIncomingPeril,
   COMBAT_STATE_CONSTANTS,
 } from "../lib/combat-state.js";
 import {
@@ -36,6 +37,22 @@ describe("combat-state: applyHitToState", () => {
     const r = applyHitToState("v", { damage: 999 });
     assert.strictEqual(r.damageMul, 0);
     assert.strictEqual(r.iframed, true);
+  });
+
+  it("F1.3 — a dodge does not negate a sweep tell", () => {
+    noteIncomingPeril("v", "sweep", 800);
+    grantIFrames("v", 500, "dodge");
+    const r = applyHitToState("v", { damage: 40 });
+    assert.strictEqual(r.iframed, false);
+    assert.ok(r.damageMul > 0);
+  });
+
+  it("F1.3 — a jump negates a sweep tell", () => {
+    noteIncomingPeril("v", "sweep", 800);
+    grantIFrames("v", 500, "jump");
+    const r = applyHitToState("v", { damage: 40 });
+    assert.strictEqual(r.iframed, true);
+    assert.strictEqual(r.damageMul, 0);
   });
 
   it("halves damage while blocking", () => {

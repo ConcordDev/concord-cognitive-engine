@@ -18,12 +18,13 @@ namespace Concordia
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
         Vector3 _vel;
-        float _yaw, _slashUntil, _dodgeUntil, _attackKind, _coyote;
+        float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
         public string kitWeapon;
         public bool menuOpen;
+        public bool skillOpen;
         public bool talkOpen;
         public bool focusTalk;
         public string talkDraft = "";
@@ -34,11 +35,12 @@ namespace Concordia
         public System.Action<string> onToast;
         public System.Func<Vector3, string> onInteract;
         public static ConcordiaPlayer Live { get; private set; }
-        public bool Busy => talkOpen || menuOpen;
+        public bool Busy => talkOpen || menuOpen || skillOpen;
         float _dmgMul = 1f;
         GameObject _heldKit;
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
+        WorldId _fightWorld = (WorldId)(-1);
 
         void OnEnable() => Live = this;
         void OnDisable() { if (Live == this) Live = null; }
@@ -60,6 +62,13 @@ namespace Concordia
             }
             var dt = Time.deltaTime;
             var style = Canon.Get(world).style;
+            if (_fightWorld != world)
+            {
+                _fightWorld = world;
+                var fs = Canon.PickFight(null, null, world);
+                avatar?.BindStyle(fs);
+                person?.BindStyle(fs);
+            }
             HandleMenuKeys();
             LookInput();
             var axes = Busy ? Vector2.zero : MoveAxes();
@@ -83,12 +92,21 @@ namespace Concordia
                 _vel.y = 8.2f;
                 _coyote = 0f;
                 grounded = false;
+                if (Hostile.TelegraphKind == "sweep")
+                {
+                    _iframeUntil = Time.time + 0.28f;
+                    var hop = ConcordClient.Live;
+                    if (hop != null) hop.SendDodge(false, "jump");
+                }
             }
             if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
             {
                 _vel += wish.normalized * 12.4f;
                 _dodgeUntil = Time.time + 0.38f;
+                _iframeUntil = Time.time + 0.35f;
                 stamina -= 18;
+                var client = ConcordClient.Live;
+                if (client != null) client.SendDodge();
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
@@ -188,12 +206,14 @@ namespace Concordia
         {
             talkOpen = true;
             menuOpen = false;
+            skillOpen = false;
             talkNpc = npc;
             talkDraft = "";
             talkLog.Clear();
             if (!string.IsNullOrEmpty(first)) talkLog.Add(first);
             focusTalk = true;
             UnlockCursor();
+            Bonds.TalkBump(Bonds.Key(npc));
         }
 
         public void CloseTalk()
@@ -225,6 +245,7 @@ namespace Concordia
             if (menuOpen)
             {
                 talkOpen = false;
+                skillOpen = false;
                 UnlockCursor();
             }
             else LockCursor();
@@ -243,14 +264,31 @@ namespace Concordia
             Cursor.visible = false;
         }
 
+        public void ToggleSkillSheet()
+        {
+            skillOpen = !skillOpen;
+            if (skillOpen)
+            {
+                menuOpen = false;
+                talkOpen = false;
+                UnlockCursor();
+            }
+            else LockCursor();
+        }
+
         void HandleMenuKeys()
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
             if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
-            if (Busy) return;
-            if (KeyDown(KeyCode.Alpha1)) { KitBag.Art = 0; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha2)) { KitBag.Art = 1; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha3)) { KitBag.Art = 2; Toast(KitBag.ArtName(world)); }
+            if (KeyDown(KeyCode.K) && !talkOpen) ToggleSkillSheet();
+            if (talkOpen) return;
+            if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
+            if ((menuOpen || skillOpen) && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
+            if ((menuOpen || skillOpen) && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
+            if (!Busy && KeyDown(KeyCode.H)) ConcordClient.Live?.RequestRunStart("horde");
+            if (!Busy && KeyDown(KeyCode.J)) ConcordClient.Live?.RequestRunStart("extraction");
         }
 
         void TryAttack(bool heavy)
@@ -278,7 +316,7 @@ namespace Concordia
             var connected = HitScan(heavy, 1f);
             SkillLedger.Record(art, connected);
             var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected);
+            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
         }
 
         void TrySpecial()
@@ -287,6 +325,7 @@ namespace Concordia
             if (stamina < 22f) { Toast("Winded."); return; }
             stamina -= 22f;
             person?.Slash();
+            avatar?.Slash();
             _slashUntil = Time.time + 0.7f;
             var live = Canon.SteelLive(world, transform.position);
             if (!live)
@@ -378,6 +417,14 @@ namespace Concordia
             }
             if (!dummy) return false;
             var client = ConcordClient.Live;
+            var boss = dummy.GetComponent<WorldBoss>() ?? dummy.GetComponentInParent<WorldBoss>();
+            if (boss != null && client && client.Connected && !string.IsNullOrEmpty(client.DungeonInstanceId))
+            {
+                _pendingKernelTarget = dummy;
+                Toast(dummy.name + " — Concord resolving");
+                _ = client.SendDungeonHit(dmg);
+                return true;
+            }
             if (client && client.Connected)
             {
                 // Kernel resolves HP. Presentation already played the swing.
@@ -436,8 +483,17 @@ namespace Concordia
             return null;
         }
 
-        public void TakeHit(float dmg, string from)
+        public void TakeHit(float dmg, string from, float knockback = -1f)
         {
+            if (Time.time < _iframeUntil)
+            {
+                var defense = (!cc.isGrounded && _vel.y > 1f) ? "jump" : "dodge";
+                if (Hostile.CounterMatches(Hostile.TelegraphKind, defense))
+                {
+                    Toast("the cut passes through");
+                    return;
+                }
+            }
             if (!Canon.SteelLive(world, transform.position))
             {
                 FlowerBurst();
@@ -448,6 +504,11 @@ namespace Concordia
             poise = Mathf.Max(0f, poise - dmg * 0.25f);
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
+            avatar?.Hit();
+            if (knockback > 1.8f || poise < 2.5f) avatar?.Knockdown();
+            else if (poise < 4f || knockback > 1.1f) avatar?.Stagger();
+            var feel = GetComponent<CombatFeel>();
+            feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");
             if (hp > 0f) return;
             hp = 100f;
@@ -508,6 +569,19 @@ namespace Concordia
 
         void Interact()
         {
+            SkillPylon nearest = null;
+            float best = 3.4f;
+            foreach (var p in FindObjectsByType<SkillPylon>(FindObjectsInactive.Exclude))
+            {
+                if (!p) continue;
+                var d = Vector3.Distance(transform.position, p.transform.position);
+                if (d < best) { best = d; nearest = p; }
+            }
+            if (nearest != null)
+            {
+                Toast(nearest.Take());
+                return;
+            }
             var msg = onInteract?.Invoke(transform.position);
             if (!string.IsNullOrEmpty(msg)) Toast(msg);
         }
@@ -551,6 +625,12 @@ namespace Concordia
             if (talkOpen && KeyDown(KeyCode.Escape))
             {
                 CloseTalk();
+                return;
+            }
+            if (skillOpen && KeyDown(KeyCode.Escape))
+            {
+                skillOpen = false;
+                LockCursor();
                 return;
             }
             if (menuOpen && KeyDown(KeyCode.Escape))
@@ -599,10 +679,15 @@ namespace Concordia
             KeyCode.Q => Key.Q,
             KeyCode.E => Key.E,
             KeyCode.I => Key.I,
+            KeyCode.K => Key.K,
+            KeyCode.H => Key.H,
+            KeyCode.J => Key.J,
             KeyCode.Return => Key.Enter,
             KeyCode.Alpha1 => Key.Digit1,
             KeyCode.Alpha2 => Key.Digit2,
             KeyCode.Alpha3 => Key.Digit3,
+            KeyCode.LeftBracket => Key.LeftBracket,
+            KeyCode.RightBracket => Key.RightBracket,
             KeyCode.Escape => Key.Escape,
             KeyCode.Tab => Key.Tab,
             _ => null
