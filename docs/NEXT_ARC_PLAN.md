@@ -2,11 +2,12 @@
 
 ## 🟢 HANDOFF — start here
 
-**Concordia Unity — Playable Slice gate (2026-09-12):** if the work is the
+**Concordia Unity — Playable Alive Slice gate (2026-09-12):** if the work is the
 Unity client, read **`docs/CONCORDIA_PLAYABLE_SLICE.md` first**. Ban:
-**no new megaworld** / organism / chronicle / ConKay client features until
-that ticket is GREEN. The kernel is ahead of the walk. Pinned by
-`server/tests/concordia-playable-slice.test.js`.
+**no new megaworld** / organism / chronicle schema / affinity copy / ConKay
+client features until that ticket is GREEN. Clips, grip, Living Birds, fauna
+meshes (or no spawn), and one NPC reaction to sim truth before more laws.
+Pinned by `server/tests/concordia-playable-slice.test.js`.
 
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —
