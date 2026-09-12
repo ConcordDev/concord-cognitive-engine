@@ -107,6 +107,12 @@ describe("world:snapshot", () => {
       assert.equal(frame.data.gossip.length, 0, "empty substrate stays empty");
       assert.ok(Array.isArray(frame.data.tombs), "tombs must be an array");
       assert.equal(frame.data.tombs.length, 0);
+      assert.ok(Array.isArray(frame.data.bosses), "bosses must be an array, never invented");
+      assert.equal(frame.data.bosses.length, 0, "empty substrate stays empty");
+      assert.ok(Array.isArray(frame.data.gear), "gear must be an array");
+      assert.equal(frame.data.gear.length, 0);
+      assert.ok(Array.isArray(frame.data.chronicles), "chronicles must be an array");
+      assert.equal(frame.data.chronicles.length, 0);
       ws.close();
     } finally { await h.stop(); }
   });

@@ -432,6 +432,12 @@ export const EVENT_SHAPES = Object.freeze({
   // Thin emit of arriveAtDestination's existing fields. @dead-event-ok:
   // Unity ConcordClient.cs walks a matching GuestNpc toward the named gate.
   "npc:migrated":               { required: ["eventId", "npcId", "fromWorld", "toWorld"], optional: ["arrivalTime", "ok", "worldId"] },
+  // Thin emit of gatherAttendees after onNpcDeath. Empty attendees stay [].
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "npc:funeral":                { required: ["deceasedId", "worldId"], optional: ["deceasedName", "lastWords", "tombX", "tombZ", "attendees", "beats"] },
+  // Minted match chronicle DTU. Plaque only when chronicleId is real.
+  // @dead-event-ok: real consumer lives in unity-client ConcordClient.cs.
+  "combat:chronicle":           { required: ["chronicleId"], optional: ["title", "summary", "worldId", "winnerId", "loserId"] },
   "scheme:overheard":           { required: ["schemeId"], optional: ["plotterId", "worldId", "snippet", "plotterArchetype", "plotterFaction", "targetArchetype", "targetFaction", "schemeKind", "ts"] },
   "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
   "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },

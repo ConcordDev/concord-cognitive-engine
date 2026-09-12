@@ -38,6 +38,7 @@ import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
 import { getVillageGossipFeed } from "./npc-relationships.js";
 import { getTombsForWorld } from "./npc-legacy.js";
+import { listActiveBosses } from "./world-bosses.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -482,6 +483,7 @@ function isBinaryMovePayload(p) {
           const weather = getWeather(worldId);
           const gossipRows = getVillageGossipFeed(db, worldId, { limit: 8 }) || [];
           const tombRows = getTombsForWorld(db, worldId, 8) || [];
+          const bossRows = listActiveBosses(db, worldId) || [];
           send(client.ws, "world:snapshot", {
             ok: true,
             worldId,
@@ -511,6 +513,14 @@ function isBinaryMovePayload(p) {
               x: r.tomb_x,
               z: r.tomb_z,
             })),
+            bosses: bossRows.map((r) => ({
+              activeId: r.id || "",
+              scheduleId: r.schedule_id || "",
+              bossTemplate: r.boss_template || "",
+              difficultyTier: r.difficulty_tier || "",
+            })),
+            gear: snapshotGear(db, client.userId),
+            chronicles: snapshotChronicles(db, worldId),
           });
         } catch (e) {
           send(client.ws, "world:snapshot", {
@@ -736,6 +746,79 @@ function isBinaryMovePayload(p) {
     clients,
     getSeq: () => gatewaySeq,
   };
+}
+
+/** Read-only equipped affixes. Never inserts a default loadout row. Empty stays []. */
+function snapshotGear(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    const row = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
+    if (!row) return [];
+    const slots = [
+      ["rightHand", row.right_hand_id],
+      ["leftHand", row.left_hand_id],
+      ["head", row.head_id],
+      ["body", row.body_id],
+      ["accessory", row.accessory_id],
+    ];
+    const items = [];
+    for (const [slot, invId] of slots) {
+      if (!invId) continue;
+      const it = db.prepare(
+        `SELECT id, item_name, affixes_json FROM player_inventory WHERE id = ? AND user_id = ?`,
+      ).get(invId, userId);
+      if (!it) continue;
+      let affixes = [];
+      try {
+        const parsed = JSON.parse(it.affixes_json || "[]");
+        if (Array.isArray(parsed)) {
+          affixes = parsed.map((a) => ({
+            id: a.id || "",
+            label: a.label || "",
+            stat: a.stat || "",
+            value: a.value,
+            element: a.element || null,
+          }));
+        }
+      } catch { affixes = []; }
+      items.push({
+        id: String(it.id),
+        name: it.item_name || "",
+        slot,
+        affixes,
+      });
+    }
+    return items;
+  } catch { return []; }
+}
+
+/** Recent match chronicles for this world. Empty stays []. */
+function snapshotChronicles(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT id, title, content FROM dtus
+      WHERE content_type = 'match_chronicle'
+      ORDER BY rowid DESC LIMIT 8
+    `).all();
+    const tag = `world:${worldId}`;
+    const out = [];
+    for (const r of rows) {
+      let summary = "";
+      let blob = "";
+      try {
+        const content = typeof r.content === "string" ? JSON.parse(r.content) : r.content;
+        summary = content?.human?.summary || "";
+        blob = typeof r.content === "string" ? r.content : JSON.stringify(content || {});
+      } catch {
+        blob = String(r.content || "");
+      }
+      if (!blob.includes(worldId) && !blob.includes(tag) && !(r.title || "").includes(worldId)) continue;
+      out.push({ id: r.id, title: r.title || "", summary });
+      if (out.length >= 4) break;
+    }
+    return out;
+  } catch { return []; }
 }
 
 /**

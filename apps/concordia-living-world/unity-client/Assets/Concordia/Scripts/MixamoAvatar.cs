@@ -14,7 +14,7 @@ namespace Concordia
         public Transform rightHand;
         public GameObject sword;
         public Animator animator;
-        float _slashT, _speed, _vert;
+        float _slashT, _hitT, _staggerT, _speed, _vert;
         bool _grounded = true, _bound;
         int _plantFrames;
         Transform _body, _hips, _spine, _lArm, _lFore, _rArm, _rFore, _lUp, _lLeg, _rUp, _rLeg;
@@ -118,6 +118,8 @@ namespace Concordia
         }
 
         public void Slash() => _slashT = 0.48f;
+        public void Hit() => _hitT = 0.32f;
+        public void Stagger() => _staggerT = 0.55f;
 
         void LateUpdate()
         {
@@ -125,6 +127,13 @@ namespace Concordia
             if (!_grounded && _bound) ApplyJump();
             else if (_bound && (animator == null || animator.runtimeAnimatorController == null))
                 ApplyProceduralGait();
+            ApplySlash();
+            ApplyHit();
+            ApplyStagger();
+        }
+
+        void ApplySlash()
+        {
             if (_slashT <= 0 || _rArm == null) return;
             _slashT -= Time.deltaTime;
             var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
@@ -132,6 +141,24 @@ namespace Concordia
             var swing = t < 0.4f ? Mathf.Lerp(-70, 100, t / 0.4f) : Mathf.Lerp(100, 0, (t - 0.4f) / 0.6f);
             _rArm.localRotation *= Quaternion.Euler(swing * wind, 20f * wind, 0);
             if (_rFore) _rFore.localRotation *= Quaternion.Euler(-18f * wind, 0, 0);
+        }
+
+        void ApplyHit()
+        {
+            if (_hitT <= 0) return;
+            _hitT -= Time.deltaTime;
+            var t = Mathf.Clamp01(_hitT / 0.32f);
+            if (_spine) _spine.localRotation *= Quaternion.Euler(-18f * t, 12f * t, 0);
+            if (_lArm) _lArm.localRotation *= Quaternion.Euler(20f * t, 0, 28f * t);
+        }
+
+        void ApplyStagger()
+        {
+            if (_staggerT <= 0) return;
+            _staggerT -= Time.deltaTime;
+            var t = Mathf.Clamp01(_staggerT / 0.55f);
+            if (_hips) _hips.localRotation *= Quaternion.Euler(22f * t, 0, -8f * t);
+            if (_spine) _spine.localRotation *= Quaternion.Euler(14f * t, -16f * t, 0);
         }
 
         float _phase;

@@ -334,12 +334,16 @@ describe("onNpcDeath — legacy + inheritance cascade", () => {
     } finally {
       globalThis._concordRealtimeEmit = prev;
     }
-    assert.equal(seen.length, 1);
-    assert.equal(seen[0].event, "npc:heir-rose");
-    assert.equal(seen[0].payload.heirId, "npc:son2");
-    assert.equal(seen[0].payload.deceasedId, "npc:dad2");
-    assert.equal(typeof seen[0].payload.lastWords, "string");
-    assert.ok(seen[0].payload.lastWords.length > 0);
+    const rose = seen.find((s) => s.event === "npc:heir-rose");
+    assert.ok(rose, "heir-rose still fires when an heir exists");
+    assert.equal(rose.payload.heirId, "npc:son2");
+    assert.equal(rose.payload.deceasedId, "npc:dad2");
+    assert.equal(typeof rose.payload.lastWords, "string");
+    assert.ok(rose.payload.lastWords.length > 0);
+    const funeral = seen.find((s) => s.event === "npc:funeral");
+    assert.ok(funeral, "death also emits the existing funeral composition");
+    assert.equal(funeral.payload.deceasedId, "npc:dad2");
+    assert.ok(Array.isArray(funeral.payload.attendees));
   });
 });
 

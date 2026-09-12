@@ -273,6 +273,7 @@ namespace Concordia
                 if (weaponsOnly && it.kind != "weapon") continue;
                 if (!weaponsOnly && it.kind == "weapon") continue;
                 var label = (it.id == KitBag.Equipped ? "▸ " : "  ") + it.name;
+                if (!string.IsNullOrEmpty(it.affixLine)) label += "  ·  " + it.affixLine;
                 if (weaponsOnly)
                 {
                     if (GUI.Button(new Rect(x, yy, w - 8, 32), label, _btn))
@@ -300,6 +301,8 @@ namespace Concordia
             DrawRing(cx, cy, 62, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
             DrawRing(cx, cy, 48, player.stamina / 100f, new Color(0.86f, 0.64f, 0.22f));
             DrawRing(cx, cy, 34, player.poise / 16f, new Color(0.42f, 0.72f, 0.82f));
+            if (WorldBoss.Live && WorldBoss.Live.HpPct >= 0f)
+                DrawRing(cx, cy + 86f, 44, WorldBoss.Live.HpPct, new Color(0.78f, 0.22f, 0.16f));
         }
 
         void DrawRing(float cx, float cy, float size, float t, Color c)
@@ -341,6 +344,8 @@ namespace Concordia
                 Dot(new Vector3(c.x, 0f, c.z), new Color(0.85f, 0.7f, 0.35f), 5f);
             foreach (var g in FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude))
                 if (g) Dot(g.transform.position, new Color(0.55f, 0.35f, 0.2f), 5f);
+            if (WorldBoss.Live)
+                Dot(WorldBoss.Live.transform.position, new Color(0.9f, 0.18f, 0.12f), 7f);
             foreach (var n in FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
                 if (n) Dot(n.transform.position, new Color(0.75f, 0.82f, 0.55f), 3f);
             foreach (var host in FindObjectsByType<Hostile>(FindObjectsInactive.Exclude))

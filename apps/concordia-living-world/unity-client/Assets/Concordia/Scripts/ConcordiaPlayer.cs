@@ -317,6 +317,7 @@ namespace Concordia
             if (stamina < 22f) { Toast("Winded."); return; }
             stamina -= 22f;
             person?.Slash();
+            avatar?.Slash();
             _slashUntil = Time.time + 0.7f;
             var live = Canon.SteelLive(world, transform.position);
             if (!live)
@@ -487,6 +488,8 @@ namespace Concordia
             poise = Mathf.Max(0f, poise - dmg * 0.25f);
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
+            avatar?.Hit();
+            if (poise < 4f) avatar?.Stagger();
             var feel = GetComponent<CombatFeel>();
             feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");

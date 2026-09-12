@@ -418,6 +418,15 @@ namespace Concordia
             {
                 var client = ConcordClient.Live;
                 if (client != null) client.SendDungeonOpen(hold.encounterId);
+                if (ConcordClient.HoldLocked)
+                {
+                    hold.inHold = false;
+                    _player.cc.enabled = false;
+                    _player.transform.position = hold.mouth;
+                    _player.cc.enabled = true;
+                    Grounding.Snap(_player.cc);
+                    return "the hold is sealed — " + ConcordClient.HoldLockReason;
+                }
                 var title = string.IsNullOrEmpty(hold.holdName) ? "The Hollow Warden" : hold.holdName;
                 ConcordiaHUD.Announce(title, string.IsNullOrEmpty(ConcordClient.DungeonLine) ? "the hold opened" : ConcordClient.DungeonLine);
                 return "You enter " + title + ".";

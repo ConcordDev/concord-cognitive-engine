@@ -132,6 +132,25 @@ namespace Concordia
         public string Prompt => inHold
             ? "E  ·  Leave " + holdName
             : "E  ·  Enter " + holdName;
+
+        /// <summary>
+        /// F5.1 lockout: kernel said locked_out after dungeon:open.
+        /// Geometry is local; eject instead of staying in a sealed hold.
+        /// </summary>
+        public static void EjectIfInside()
+        {
+            var player = ConcordiaPlayer.Live;
+            if (!player || !player.cc) return;
+            foreach (var g in FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude))
+            {
+                if (!g || !g.inHold) continue;
+                g.inHold = false;
+                player.cc.enabled = false;
+                player.transform.position = g.mouth;
+                player.cc.enabled = true;
+                Grounding.Snap(player.cc);
+            }
+        }
     }
 
     /// <summary>E picks up. Only stamps what this object actually is.</summary>
@@ -427,6 +446,143 @@ namespace Concordia
                 HubLook.Emit(new Color(0.95f, 0.82f, 0.45f), 1.6f),
                 "GatheringTell", false);
             go.AddComponent<GatheringTell>();
+        }
+
+        void Update()
+        {
+            _life -= Time.deltaTime;
+            if (_life <= 0f) Destroy(gameObject);
+        }
+    }
+
+    /// <summary>
+    /// World boss body only at an existing DungeonGate mouth. No invented xz.
+    /// Template slug may differ from hollow_warden — the hold is the site.
+    /// </summary>
+    public class WorldBoss : MonoBehaviour
+    {
+        public static WorldBoss Live;
+        public string template;
+        public string activeId;
+        public float hp = -1f, maxHp = 1f;
+        public string phase;
+        public string mechanic;
+        public float HpPct => maxHp > 0f && hp >= 0f ? Mathf.Clamp01(hp / maxHp) : -1f;
+
+        public static WorldBoss Present(string template, string activeId)
+        {
+            DungeonGate hold = null;
+            foreach (var g in FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude))
+            {
+                if (g && g.gameObject.activeInHierarchy) { hold = g; break; }
+            }
+            if (!hold) return null;
+            var key = "WorldBoss_" + (string.IsNullOrEmpty(activeId) ? (template ?? "open") : activeId);
+            var existing = GameObject.Find(key);
+            if (existing)
+            {
+                var boss = existing.GetComponent<WorldBoss>();
+                if (boss)
+                {
+                    Live = boss;
+                    if (!string.IsNullOrEmpty(template)) boss.template = template;
+                }
+                return boss;
+            }
+            var root = FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var p = hold.mouth + Vector3.up * 1.6f + hold.transform.forward * 1.4f;
+            var go = HubLook.Prim(parent, PrimitiveType.Capsule, p,
+                new Vector3(1.6f, 2.4f, 1.6f),
+                HubLook.Lit(new Color(0.52f, 0.12f, 0.1f), 0.1f, 0.32f),
+                key);
+            var presented = go.AddComponent<WorldBoss>();
+            presented.template = template ?? "";
+            presented.activeId = activeId ?? "";
+            Live = presented;
+            var label = string.IsNullOrEmpty(template) ? hold.holdName : template;
+            PersonLabel.Attach(go.transform, label, "boss");
+            return presented;
+        }
+
+        public static void BindState(string name, float hp, float maxHp, string phase, string mechanic)
+        {
+            var boss = Live;
+            if (!boss) boss = Present(name, null);
+            if (!boss) return;
+            if (!string.IsNullOrEmpty(name)) boss.template = name;
+            boss.hp = hp;
+            boss.maxHp = maxHp > 0f ? maxHp : 1f;
+            boss.phase = phase ?? "";
+            boss.mechanic = mechanic ?? "";
+            var title = string.IsNullOrEmpty(boss.template) ? "world boss" : boss.template;
+            if (!string.IsNullOrEmpty(phase)) title += " · " + phase;
+            PersonLabel.Attach(boss.transform, title, mechanic);
+        }
+
+        void OnDestroy()
+        {
+            if (Live == this) Live = null;
+        }
+    }
+
+    /// <summary>
+    /// Match chronicle plaque at the Arena. Only when a real chronicleId exists.
+    /// </summary>
+    public class ChroniclePlaque : MonoBehaviour
+    {
+        public string chronicleId;
+        public string title;
+        public string summary;
+        public string Prompt => string.IsNullOrEmpty(title) ? "E  ·  chronicle" : "E  ·  " + title;
+
+        public static ChroniclePlaque Place(string chronicleId, string title, string summary)
+        {
+            if (string.IsNullOrEmpty(chronicleId)) return null;
+            var existing = GameObject.Find("ChroniclePlaque_" + chronicleId);
+            if (existing) return existing.GetComponent<ChroniclePlaque>();
+            var root = FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var p = Canon.Arena + Vector3.right * 3.4f + Vector3.up * 0.9f;
+            var go = HubLook.Prim(parent, PrimitiveType.Cube, p,
+                new Vector3(0.9f, 1.4f, 0.14f),
+                HubLook.Lit(new Color(0.42f, 0.36f, 0.22f), 0.12f, 0.28f),
+                "ChroniclePlaque_" + chronicleId);
+            var plaque = go.AddComponent<ChroniclePlaque>();
+            plaque.chronicleId = chronicleId;
+            plaque.title = title ?? "";
+            plaque.summary = summary ?? "";
+            var stone = go.AddComponent<LoreStone>();
+            stone.title = string.IsNullOrEmpty(title) ? "chronicle" : title;
+            stone.text = string.IsNullOrEmpty(summary) ? "a bout was recorded." : summary;
+            return plaque;
+        }
+    }
+
+    /// <summary>
+    /// Crafted work at an existing cook/market station. Never a fabricated map pin.
+    /// </summary>
+    public class CraftedTell : MonoBehaviour
+    {
+        float _life = 22f;
+
+        public static void PlaceAtStation(string label)
+        {
+            CookStation cook = null;
+            foreach (var c in FindObjectsByType<CookStation>(FindObjectsInactive.Exclude))
+            {
+                if (c) { cook = c; break; }
+            }
+            if (!cook) return;
+            var root = FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var p = cook.transform.position + Vector3.up * 0.08f;
+            var go = HubLook.Prim(parent, PrimitiveType.Cylinder, p,
+                new Vector3(1.1f, 0.05f, 1.1f),
+                HubLook.Emit(new Color(0.72f, 0.55f, 0.28f), 1.4f),
+                "CraftedTell", false);
+            go.AddComponent<CraftedTell>();
+            if (!string.IsNullOrEmpty(label)) WorldClock.PushFeed("economy", label);
         }
 
         void Update()

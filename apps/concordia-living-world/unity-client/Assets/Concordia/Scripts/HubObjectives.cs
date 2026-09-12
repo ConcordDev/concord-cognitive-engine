@@ -534,7 +534,7 @@ namespace Concordia
     {
         public class Item
         {
-            public string id, name, kind, stem;
+            public string id, name, kind, stem, affixLine;
         }
 
         public static readonly List<Item> Items = new List<Item>();
@@ -560,6 +560,26 @@ namespace Concordia
         {
             if (string.IsNullOrEmpty(id) || Has(id)) return;
             Items.Add(new Item { id = id, name = name ?? Pretty(id), kind = "loot", stem = id });
+        }
+
+        /// <summary>
+        /// Kernel loadout row from world:snapshot.gear. Affix labels only —
+        /// never invented stats.
+        /// </summary>
+        public static void BindKernel(string id, string name, string affixLine)
+        {
+            if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
+            var key = string.IsNullOrEmpty(id) ? name : id;
+            Item found = null;
+            foreach (var it in Items)
+                if (it.id == key || it.name == name) { found = it; break; }
+            if (found == null)
+            {
+                found = new Item { id = key, name = string.IsNullOrEmpty(name) ? Pretty(key) : name, kind = "loot", stem = key };
+                Items.Add(found);
+            }
+            found.affixLine = affixLine ?? "";
+            if (!string.IsNullOrEmpty(name)) found.name = name;
         }
 
         public static Item TakeLoot()

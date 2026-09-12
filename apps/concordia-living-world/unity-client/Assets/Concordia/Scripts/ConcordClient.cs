@@ -40,6 +40,8 @@ namespace Concordia
         public static string PartyLine { get; private set; } = "PARTY  ·  you";
         public static int PartyCount { get; private set; } = 1;
         public static string DungeonLine { get; private set; } = "";
+        public static bool HoldLocked { get; private set; }
+        public static string HoldLockReason { get; private set; } = "";
         public static string RunLine { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
         string _userId = "";
@@ -259,6 +261,8 @@ namespace Concordia
             PartyLine = "PARTY  ·  you";
             PartyCount = 1;
             DungeonLine = "";
+            HoldLocked = false;
+            HoldLockReason = "";
             RunLine = "";
             SkillLattice.Reset();
         }
@@ -500,12 +504,31 @@ namespace Concordia
             }
             if (evt == "dungeon:data")
             {
+                if (JsonFlagFalse(text, "ok"))
+                {
+                    var reason = JsonString(text, "reason");
+                    if (string.IsNullOrEmpty(reason)) reason = "hold refused";
+                    HoldLocked = reason == "locked_out";
+                    HoldLockReason = reason;
+                    DungeonLine = reason;
+                    ConcordiaHUD.Announce(reason == "locked_out" ? "Lockout" : "Hold refused", reason);
+                    if (reason == "locked_out")
+                        RunMain(() => DungeonGate.EjectIfInside());
+                    return;
+                }
+                HoldLocked = false;
+                HoldLockReason = "";
                 var name = JsonNestedString(text, "name");
                 if (string.IsNullOrEmpty(name)) name = JsonString(text, "name");
                 var phase = JsonString(text, "phase");
+                var mechanic = JsonString(text, "mechanic");
                 if (string.IsNullOrEmpty(name)) name = "the hold";
                 DungeonLine = name + (string.IsNullOrEmpty(phase) ? "" : " · " + phase);
+                if (!string.IsNullOrEmpty(mechanic)) DungeonLine += " · " + mechanic;
                 ConcordiaHUD.Announce(name, string.IsNullOrEmpty(phase) ? "the hold opened" : phase);
+                var hp = JsonFloat(text, "hp", -1f);
+                var maxHp = JsonFloat(text, "maxHp", 1f);
+                RunMain(() => WorldBoss.BindState(name, hp, maxHp, phase, mechanic));
                 return;
             }
             if (evt == "run:data")
@@ -597,6 +620,7 @@ namespace Concordia
                 if (string.IsNullOrEmpty(boss)) boss = JsonString(text, "activeId");
                 var line = string.IsNullOrEmpty(boss) ? "a world boss opened" : boss + " walks";
                 Consequence("crisis", "World boss", line, true, 0.08f);
+                RunMain(() => WorldBoss.Present(boss, JsonString(text, "activeId")));
                 return;
             }
             if (evt == "world:season-transition")
@@ -628,6 +652,19 @@ namespace Concordia
                 if (trades > 0) line += (crafts > 0 ? ", " : "") + trades + " traded";
                 if (notable > 0 && crafts <= 0 && trades <= 0) line += notable + " notable";
                 Consequence("economy", "Market", line, false, 0f);
+                if (crafts > 0)
+                {
+                    var label = "";
+                    ForEachArrayObject(text, "notable", row =>
+                    {
+                        if (!string.IsNullOrEmpty(label)) return;
+                        if (JsonString(row, "kind") != "craft") return;
+                        label = JsonString(row, "outcome");
+                        if (string.IsNullOrEmpty(label)) label = JsonString(row, "actorId");
+                    });
+                    var stamp = label;
+                    RunMain(() => CraftedTell.PlaceAtStation(stamp));
+                }
                 return;
             }
             if (evt == "npc:stress-break")
@@ -655,6 +692,89 @@ namespace Concordia
                     line += " · " + from + " → " + to;
                 Consequence("npc", "Migration", line, false, 0f);
                 RunMain(() => PresentMigration(npcId, from, to));
+                return;
+            }
+            if (evt == "npc:funeral")
+            {
+                var deceased = JsonString(text, "deceasedId");
+                var last = JsonString(text, "lastWords");
+                var n = JsonArrayCount(text, "attendees");
+                var line = string.IsNullOrEmpty(last) ? "a funeral" : last;
+                if (n > 0) line += " · " + n + (n == 1 ? " mourner" : " mourners");
+                Consequence("lineage", "Funeral", line, true, 0f);
+                RunMain(() => PresentFuneral(text, deceased, last));
+                return;
+            }
+            if (evt == "combat:chronicle")
+            {
+                var id = JsonString(text, "chronicleId");
+                if (string.IsNullOrEmpty(id)) return;
+                var title = JsonString(text, "title");
+                var summary = JsonString(text, "summary");
+                var line = string.IsNullOrEmpty(title) ? summary : title;
+                if (string.IsNullOrEmpty(line)) line = "a bout was recorded";
+                Consequence("combat", "Chronicle", line, false, 0f);
+                RunMain(() => ChroniclePlaque.Place(id, title, summary));
+                return;
+            }
+            if (evt == "boss:state")
+            {
+                var name = JsonString(text, "name");
+                if (string.IsNullOrEmpty(name)) name = JsonString(text, "npcName");
+                var phase = JsonString(text, "phase");
+                var mechanic = JsonString(text, "mechanic");
+                var hp = JsonFloat(text, "currentHp", JsonFloat(text, "hp", -1f));
+                var maxHp = JsonFloat(text, "maxHp", 1f);
+                RunMain(() => WorldBoss.BindState(name, hp, maxHp, phase, mechanic));
+                return;
+            }
+            if (evt == "boss:phase-enter")
+            {
+                var name = JsonString(text, "npcName");
+                var phase = JsonString(text, "phase");
+                var line = string.IsNullOrEmpty(name) ? "phase" : name;
+                if (!string.IsNullOrEmpty(phase)) line += " · " + phase;
+                Consequence("crisis", "Phase", line, true, 0.04f);
+                return;
+            }
+            if (evt == "kingdom:decree-enacted")
+            {
+                var kind = JsonString(text, "decreeKind");
+                var line = string.IsNullOrEmpty(kind) ? "a decree enacted" : kind;
+                Consequence("kingdom", "Decree", line, true, 0f);
+                return;
+            }
+            if (evt == "kingdom:fallen")
+            {
+                var outcome = JsonString(text, "outcome");
+                Consequence("kingdom", "Fallen", string.IsNullOrEmpty(outcome) ? "a kingdom fell" : outcome, true, 0.08f);
+                return;
+            }
+            if (evt == "kingdom:contested")
+            {
+                var kind = JsonString(text, "contestKind");
+                Consequence("kingdom", "Contested", string.IsNullOrEmpty(kind) ? "a throne contested" : kind, true, 0.04f);
+                return;
+            }
+            if (evt == "dream:composed")
+            {
+                var n = JsonInt(text, "fragmentCount", 0);
+                Consequence("dream", "Dream", n > 0 ? n + " fragments composed" : "a dream composed", false, 0f);
+                return;
+            }
+            if (evt == "prediction:realised")
+            {
+                var outcome = JsonString(text, "outcome");
+                Consequence("foresight", "Prediction", string.IsNullOrEmpty(outcome) ? "a prediction realised" : outcome, false, 0f);
+                return;
+            }
+            if (evt == "world:refusal-field")
+            {
+                var kind = JsonString(text, "kind");
+                var strength = JsonFloat(text, "strength", 0f);
+                var line = string.IsNullOrEmpty(kind) ? "the field thickened" : kind;
+                if (strength > 0f) line += " · " + strength.ToString("0.#");
+                Consequence("refusal", "Field", line, true, 0f);
                 return;
             }
             if (evt == "combat:dodge:ack")
@@ -780,6 +900,48 @@ namespace Concordia
                     said = true;
                 });
             }
+            ForEachArrayObject(json, "bosses", row =>
+            {
+                WorldBoss.Present(JsonString(row, "bossTemplate"), JsonString(row, "activeId"));
+            });
+            ForEachArrayObject(json, "gear", row =>
+            {
+                var name = JsonString(row, "name");
+                var id = JsonString(row, "id");
+                if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
+                var labels = new System.Collections.Generic.List<string>();
+                ForEachArrayObject(row, "affixes", a =>
+                {
+                    var lab = JsonString(a, "label");
+                    if (!string.IsNullOrEmpty(lab)) labels.Add(lab);
+                });
+                KitBag.BindKernel(id, name, string.Join(" ", labels));
+            });
+            ForEachArrayObject(json, "chronicles", row =>
+            {
+                ChroniclePlaque.Place(
+                    JsonString(row, "id"),
+                    JsonString(row, "title"),
+                    JsonString(row, "summary"));
+            });
+        }
+
+        static void PresentFuneral(string json, string deceasedId, string lastWords)
+        {
+            var tomb = KernelTomb.Place(deceasedId, lastWords,
+                JsonFloat(json, "tombX", 0f), JsonFloat(json, "tombZ", 0f));
+            ForEachArrayObject(json, "attendees", row =>
+            {
+                var id = JsonString(row, "id");
+                var guest = WorldPresence.FindGuest(id);
+                var life = guest ? guest.GetComponent<NpcLife>() : null;
+                if (!life) return;
+                if (tomb)
+                {
+                    life.HeadFor(tomb.transform.position, 14f);
+                    life.Notice(tomb.transform, 8f);
+                }
+            });
         }
 
         static void PresentMigration(string npcId, string fromWorld, string toWorld)

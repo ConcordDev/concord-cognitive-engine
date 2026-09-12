@@ -904,7 +904,7 @@ namespace Concordia
         /// Hero city (index 0) keeps four playable rooms. Cities 1–3 get fake windows.
         /// The rest stay facade-only so Tunya's 17 towns do not hitch.
         /// </summary>
-        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : 0;
+        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : cityIndex <= 2 ? 2 : 0;
         public static bool WantsFakeWindows(int cityIndex) => cityIndex >= 1 && cityIndex <= 3;
 
         public static string Audit()
@@ -932,7 +932,8 @@ namespace Concordia
             sb.AppendLine("Tree(Tunya)=" + Tree(WorldId.Tunya));
             sb.AppendLine("Weapon(sword)=" + Weapon("sword") + " Weapon(greatsword)=" + Weapon("greatsword") + " Weapon(spear)=" + Weapon("spear"));
             sb.AppendLine("Dummy=" + Dummy());
-            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " other=" + PlayableRooms(1));
+            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " city1=" + PlayableRooms(1) + " city3=" + PlayableRooms(3));
+            sb.AppendLine("unique authored .glb per world: none in tree — Culture+Kit is the honest unique presentation");
             sb.AppendLine("FakeWindows cities 1-3=" + WantsFakeWindows(2) + " city4=" + WantsFakeWindows(4));
             sb.AppendLine("WORLD NEED vs HAVE");
             foreach (var id in new[]

@@ -114,7 +114,16 @@ export function handleDungeonOpen(db, userId, data = {}) {
         encounterId,
         members: Array.isArray(data.members) ? data.members : [],
       });
-      if (r.ok) return { ...r, source: "kernel" };
+      if (r.ok) {
+        const phaseName = r.boss?.phase || enc.phases[0].name;
+        const ph = enc.phases.find((p) => p.name === phaseName) || enc.phases[0];
+        return {
+          ...r,
+          source: "kernel",
+          encounterId,
+          boss: { ...r.boss, mechanic: ph.mechanic },
+        };
+      }
       if (r.reason === "locked_out" || r.reason === "unknown_encounter") return r;
       return { ok: true, source: "presenter", encounterId, boss: catalog, kernel: r.reason };
     } catch (e) {

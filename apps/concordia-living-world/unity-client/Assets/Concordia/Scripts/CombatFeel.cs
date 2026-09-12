@@ -27,6 +27,9 @@ namespace Concordia
             if (hit && body && knockback > 0)
                 body.Move(-transform.forward * Mathf.Min(knockback, 2.4f) * 0.15f);
             _shake = hit ? 0.16f : 0.05f;
+            var av = GetComponentInChildren<MixamoAvatar>();
+            if (hit) av?.Hit();
+            if (knockback > 1.1f) av?.Stagger();
             if (brokenArm) Debug.Log("limb: broken arm — strikes weakened");
             if (brokenLeg) Debug.Log("limb: broken leg — dodge locked");
         }

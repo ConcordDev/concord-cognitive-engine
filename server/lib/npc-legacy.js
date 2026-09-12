@@ -30,6 +30,7 @@ import { birthTemperament } from "./ecosystem/temperament.js";
 import { DRIVE_KINDS } from "./ecosystem/drives.js";
 import { appraiseExperience } from "./felt-per.js";
 import { qualeOf } from "./qualia-space.js";
+import { gatherAttendees } from "./social-gatherings.js";
 
 // Living Society Phase 1.5c — open a settlement vacancy when a role-holder dies.
 function _openSettlementVacancyOnDeath(db, npc, opts) {
@@ -456,6 +457,30 @@ export function onNpcDeath(db, npc, opts = {}) {
         lastWords,
         worldId,
         inherited,
+      }, { worldId });
+    }
+  } catch { /* presentation optional */ }
+
+  // Thin emit of the existing funeral composition — not a new mourner engine.
+  // Empty attendees stay empty; Unity only HeadFors matching GuestNpcs.
+  try {
+    const gathering = gatherAttendees(db, { kind: "funeral", focalKind: "npc", focalId: npc.id });
+    const emit = globalThis._concordRealtimeEmit;
+    if (typeof emit === "function") {
+      const worldId = npc.world_id || "concordia-hub";
+      emit("npc:funeral", {
+        deceasedId: npc.id,
+        deceasedName: npc.name || npc.archetype || gathering.focalName || null,
+        lastWords,
+        tombX,
+        tombZ,
+        worldId,
+        attendees: (gathering.attendees || []).map((a) => ({
+          id: a.id || null,
+          name: a.name || "",
+          role: a.role || "",
+        })),
+        beats: gathering.beats || [],
       }, { worldId });
     }
   } catch { /* presentation optional */ }

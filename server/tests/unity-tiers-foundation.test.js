@@ -108,3 +108,55 @@ test("Unity collides kernel gossip, tombs, stress, banners, and inherited score 
   assert.match(gw, /npcA: r\.npc_a_id/);
   assert.match(gw, /npcB: r\.npc_b_id/);
 });
+
+test("Unity presents remaining kernel consequences without inventing engines", () => {
+  const gate = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/WorldGate.cs",
+  ), "utf8");
+  const mixamo = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/MixamoAvatar.cs",
+  ), "utf8");
+  const packs = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/FreePacks.cs",
+  ), "utf8");
+  const play = readFileSync(join(import.meta.dirname, "../lib/concordia-play.js"), "utf8");
+  const gw = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+  const worlds = readFileSync(join(import.meta.dirname, "../routes/worlds.js"), "utf8");
+  const chronicle = readFileSync(join(import.meta.dirname, "../lib/combat/match-chronicle.js"), "utf8");
+  const legacy = readFileSync(join(import.meta.dirname, "../lib/npc-legacy.js"), "utf8");
+  assert.match(client, /evt == "npc:funeral"/);
+  assert.match(client, /PresentFuneral/);
+  assert.match(client, /WorldBoss\.Present/);
+  assert.match(client, /evt == "combat:chronicle"/);
+  assert.match(client, /ChroniclePlaque\.Place/);
+  assert.match(client, /CraftedTell\.PlaceAtStation/);
+  assert.match(client, /KitBag\.BindKernel/);
+  assert.match(client, /evt == "kingdom:decree-enacted"/);
+  assert.match(client, /evt == "dream:composed"/);
+  assert.match(client, /evt == "prediction:realised"/);
+  assert.match(client, /evt == "world:refusal-field"/);
+  assert.match(client, /reason == "locked_out"/);
+  assert.match(client, /DungeonGate\.EjectIfInside/);
+  assert.match(gate, /class WorldBoss/);
+  assert.match(gate, /No invented xz/);
+  assert.match(gate, /class ChroniclePlaque/);
+  assert.match(gate, /class CraftedTell/);
+  assert.match(gate, /EjectIfInside/);
+  assert.match(mixamo, /public void Hit\(\)/);
+  assert.match(mixamo, /public void Stagger\(\)/);
+  assert.match(packs, /cityIndex <= 2 \? 2 : 0/);
+  assert.match(packs, /unique authored \.glb per world: none in tree/);
+  assert.match(play, /reason === "locked_out"/);
+  assert.match(play, /mechanic: ph\.mechanic/);
+  assert.match(gw, /bosses: bossRows\.map/);
+  assert.match(gw, /gear: snapshotGear/);
+  assert.match(gw, /chronicles: snapshotChronicles/);
+  assert.match(gw, /Never inserts a default loadout row/);
+  assert.match(worlds, /event: "boss:state"/);
+  assert.match(worlds, /event: "boss:phase-enter"/);
+  assert.match(chronicle, /"combat:chronicle"/);
+  assert.match(legacy, /"npc:funeral"/);
+});

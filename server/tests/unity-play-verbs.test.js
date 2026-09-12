@@ -157,6 +157,7 @@ describe("Unity play verbs", () => {
     assert.equal(r.ok, true);
     assert.equal(r.source, "presenter");
     assert.equal(r.boss.name, "The Hollow Warden");
+    assert.equal(r.boss.mechanic, "tank holds aggro");
     assert.equal(handleDungeonOpen(null, "u1", { encounterId: "nope" }).reason, "unknown_encounter");
   });
 
