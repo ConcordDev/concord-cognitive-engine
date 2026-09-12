@@ -73182,6 +73182,12 @@ async function _dispatchGodotCombatAttack(userId, data) {
           weapon: data.weapon || "sword",
           baseDamage: clampBaseDamage(data.baseDamage, spellMaxDamage),
           worldId: String(worldId),
+          localX: Number.isFinite(Number(data.x)) ? Number(data.x) : null,
+          localZ: Number.isFinite(Number(data.z)) ? Number(data.z) : null,
+          origin: data.originWorldId || data.nativeWorld || worldId,
+          skillKind: data.skillKind || null,
+          nativeStrength: Number(data.skillLevel) || 0,
+          actorKind: "player",
         });
       }
     } catch (e) {
@@ -73189,6 +73195,25 @@ async function _dispatchGodotCombatAttack(userId, data) {
     }
   }
   if (limbMods?.limbVerbs) result.limbVerbs = limbMods.limbVerbs;
+
+  // W7: applyAttack PvP path samples the field. Dummy HP authority already
+  // stamped inside applyAuthoritativeHit — do not double-scale.
+  if (result?.ok && result.authority !== "combat-hp-authority") {
+    try {
+      const { stampGeographicOnHit, domainFromSkillKind } = await import("./lib/concordia-world-field.js");
+      const pos = cityPresence.getUserPosition?.(userId) || {};
+      const wid = pos.worldId || pos.cityId || data.worldId || "concordia-hub";
+      stampGeographicOnHit(result, {
+        worldId: String(wid),
+        localX: Number.isFinite(Number(data.x)) ? Number(data.x) : pos.x,
+        localZ: Number.isFinite(Number(data.z)) ? Number(data.z) : pos.z,
+        origin: data.originWorldId || data.nativeWorld || wid,
+        domain: domainFromSkillKind(data.skillKind, "athletics"),
+        nativeStrength: Number(data.skillLevel) || 0,
+        actorKind: "player",
+      });
+    } catch { /* field optional */ }
+  }
 
   if (!result.ok) return result;
 

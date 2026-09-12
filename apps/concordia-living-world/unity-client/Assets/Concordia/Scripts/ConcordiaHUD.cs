@@ -11,6 +11,7 @@ namespace Concordia
     public class ConcordiaHUD : MonoBehaviour
     {
         public ConcordiaPlayer player;
+        public static bool DebugHud;
         GUIStyle _title, _small, _center, _prompt, _card, _cardSub, _btn, _log;
         Texture2D _white, _ring;
         static float _announceT;
@@ -63,6 +64,7 @@ namespace Concordia
 
         void Update()
         {
+            if (Input.GetKeyDown(KeyCode.F8)) DebugHud = !DebugHud;
             if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
         }
 
@@ -72,15 +74,18 @@ namespace Concordia
             Ensure();
             float w = Screen.width, h = Screen.height;
             Compass(w);
-            Vitals();
             Rings(w);
-            if (!player.Busy) Minimap(h);
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
-            Hints(w, h);
+            if (DebugHud)
+            {
+                Vitals();
+                if (!player.Busy) Minimap(h);
+                Hints(w, h);
+            }
         }
 
         void Hints(float w, float h)
@@ -104,17 +109,19 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
-                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
+                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name + (city.status == "abandoned" ? " (ruins remain)" : ""))
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
                 + "  ·  " + KitBag.ArtName(player.world), _small);
             GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
+            var field = WorldField.HudLine(player.world, player.transform.position);
             GUI.Label(new Rect(32, 86, 280, 16),
-                !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
+                !string.IsNullOrEmpty(field) ? field
+                : !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
         }
 

@@ -56,14 +56,14 @@ namespace Concordia
                     HubLook.Point(root, "AshHearth", new Vector3(0, 4, 10), new Color(1f, 0.55f, 0.22f), 3.5f, 18f, true);
                     break;
                 case WorldId.Tunya:
-                    FreePacks.Spawn(tree, root, new Vector3(0, 0, 8), 0, 16f);
-                    FreePacks.Spawn(tree, root, new Vector3(6, 0, 12), 40, 12f);
-                    FreePacks.Spawn(tree, root, new Vector3(-7, 0, 11), -30, 13f);
+                    FreePacks.SpawnStore(tree, root, new Vector3(0, 0, 8), 0, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(tree, root, new Vector3(6, 0, 12), 40, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(tree, root, new Vector3(-7, 0, 11), -30, 8f, required: false, byHeight: false);
                     for (int i = 0; i < 24; i++)
                         FreePacks.Spawn(DressVocab.FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB"), root, new Vector3(-8 + (i % 8) * 2f, 0, 16 + (i / 8) * 2.2f), 0, 1.5f);
                     break;
                 case WorldId.Fantasy:
-                    FreePacks.Spawn(DressVocab.FirstStem(new[] { "well" }, "fountain-round"), root, new Vector3(0, 0, 8), 0, 4.2f);
+                    FreePacks.SpawnStore(DressVocab.FirstStem(new[] { "well" }, "fountain-round"), root, new Vector3(0, 0, 8), 0, 4.2f, required: false, byHeight: false);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, new Vector3(5, 0, 8), 40, 3.2f);
                     FreePacks.Spawn(tower, root, new Vector3(-8, 0, 14), 0, 10f);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "banner-red" }, "banner-red"), root, new Vector3(3, 0, 5), 20, 3f);

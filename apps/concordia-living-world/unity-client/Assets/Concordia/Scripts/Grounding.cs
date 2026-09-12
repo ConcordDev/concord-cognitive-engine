@@ -7,25 +7,48 @@ namespace Concordia
         public static void Snap(CharacterController cc)
         {
             if (!cc) return;
-            var t = cc.transform;
-            var origin = t.position + Vector3.up * 8f;
-            float y = 0.08f;
-            var hits = Physics.SphereCastAll(origin, 0.18f, Vector3.down, 16f, ~0, QueryTriggerInteraction.Ignore);
-            float best = 99f;
+            var p = SnapPoint(cc.transform.position, 0.04f, cc.transform);
+            cc.enabled = false;
+            cc.transform.position = p;
+            cc.enabled = true;
+        }
+
+        /// <summary>
+        /// Real ground height. No 4.5m ceiling hack — multi-level floors are legal.
+        /// Miss keeps the current Y instead of flattening to 0.08.
+        /// </summary>
+        public static Vector3 SnapPoint(Vector3 p, float extra = 0.08f, Transform self = null)
+        {
+            // Start just above a standing person so roofs/lintels above the
+            // spawn are not the first hit. A +80m cast was snapping guards
+            // onto gate tops.
+            var origin = p + Vector3.up * 2.4f;
+            var hits = Physics.SphereCastAll(origin, 0.18f, Vector3.down, 12f, ~0, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            float y = p.y;
+            bool any = false;
             foreach (var h in hits)
             {
                 if (!h.collider) continue;
-                if (h.transform == t || h.transform.IsChildOf(t)) continue;
-                if (h.normal.y < 0.4f) continue;
-                if (h.point.y < -0.2f || h.point.y > 4.5f) continue;
+                if (self && (h.transform == self || h.transform.IsChildOf(self))) continue;
+                if (h.normal.y < 0.35f) continue;
                 var sz = h.collider.bounds.size;
-                if (sz.y > 8f) continue;
-                if (h.distance < best) { best = h.distance; y = h.point.y + 0.04f; }
+                // Building AABBs and kit volumes are not floors. Thin
+                // slabs (tiles, HoldGround) stay legal at any world Y —
+                // this is not a 4.5m ceiling hack.
+                if (sz.y > 1.6f) continue;
+                if (h.distance < best) { best = h.distance; y = h.point.y + extra; any = true; }
             }
-            if (y < 0f || y > 4.5f) y = 0.08f;
-            cc.enabled = false;
-            t.position = new Vector3(t.position.x, y, t.position.z);
-            cc.enabled = true;
+            if (!any && Physics.Raycast(origin, Vector3.down, out var ray, 12f, ~0, QueryTriggerInteraction.Ignore)
+                && ray.normal.y >= 0.35f
+                && ray.collider && ray.collider.bounds.size.y <= 1.6f
+                && (!self || (ray.transform != self && !ray.transform.IsChildOf(self))))
+            {
+                y = ray.point.y + extra;
+                any = true;
+            }
+            if (!any) return p;
+            return new Vector3(p.x, y, p.z);
         }
 
         public static CharacterController EnsureController(GameObject go, float height = 1.8f)

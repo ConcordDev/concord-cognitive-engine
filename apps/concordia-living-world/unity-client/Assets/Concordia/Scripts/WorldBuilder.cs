@@ -9,14 +9,11 @@ namespace Concordia
 
         static readonly string[] ForestTrees =
         {
-            "tree_oak", "tree_default", "tree_pineTallA", "tree_detailed",
-            "tree_tall", "tree_fat", "tree_simple", "tree_pineDefaultA",
-            "tree-large", "tree-small", "detail-tree-large"
+            "tree_1"
         };
         static readonly string[] Flowers =
         {
-            "flower_redA", "flower_yellowA", "flower_purpleA",
-            "flower_redB", "flower_yellowB", "flower_purpleC"
+            "grass01"
         };
         static readonly string[] Houses =
         {
@@ -167,14 +164,6 @@ namespace Concordia
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
 
-            var arena = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            arena.name = "Arena";
-            arena.transform.SetParent(root, false);
-            arena.transform.position = Canon.Arena + Vector3.up * 0.05f;
-            arena.transform.localScale = new Vector3(14f, 0.04f, 14f);
-            FreePacks.ApplyMat(arena, "Assets/Materials/Material_SandLumpy.mat");
-            TintFallback(arena, Canon.Hex("b89060"));
-            FreePacks.FlattenDisc(arena);
             DressArena();
 
             foreach (var gate in Canon.Gates)
@@ -188,6 +177,7 @@ namespace Concordia
             DressPillars();
             DressCrowd();
             DressLore();
+            DressForest();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -315,8 +305,8 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Grass(WorldId.Tunya), root, outPos + side * 4.4f, yaw + 15f, 1.2f, required: false);
                     break;
                 case WorldId.Fantasy:
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 9f, required: false);
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 7.5f, required: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 8f, required: false, byHeight: false);
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Fantasy), root, outPos, yaw, 7.2f, required: false);
                     break;
                 case WorldId.Crime:
@@ -433,15 +423,13 @@ namespace Concordia
                 var a = (i / 40f) * Mathf.PI * 2 + 0.51f;
                 if (Mathf.Sin(a) > 0.62f) continue;
                 var rad = 28 + (i % 4) * 3.4f;
-                FreePacks.Spawn(ForestTrees[i % ForestTrees.Length], root,
-                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 4.5f);
+                var stem = ForestTrees[i % ForestTrees.Length];
+                FreePacks.SpawnStore(stem, root,
+                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 8f, required: false, byHeight: false);
                 if (i % 3 == 0)
-                    FreePacks.Spawn("plant_bush", root,
-                        new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f);
+                    FreePacks.SpawnStore(Flowers[0], root,
+                        new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f, required: false);
             }
-            FreePacks.Spawn("campfire_logs", root, new Vector3(22, 0, 18), 0, 1.4f);
-            FreePacks.Spawn("log_large", root, new Vector3(24, 0, 16), 40, 2.2f);
-            EvoCatalog.Spawn(EvoCatalog.Grass, root, new Vector3(22, 0, 18), Quaternion.identity, 1f);
         }
 
         void DressCliffs()

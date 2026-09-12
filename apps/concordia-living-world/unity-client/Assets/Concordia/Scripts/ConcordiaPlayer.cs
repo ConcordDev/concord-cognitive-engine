@@ -383,9 +383,10 @@ namespace Concordia
                 // Kernel resolves HP. Presentation already played the swing.
                 _pendingKernelTarget = dummy;
                 Toast(dummy.name + " — Concord resolving");
-                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon());
+                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon(), transform.position.x, transform.position.z);
                 return true;
             }
+            dmg = WorldField.ScaleDamage(dmg, world, transform.position, "athletics");
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
             Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
@@ -453,7 +454,7 @@ namespace Concordia
             hp = 100f;
             poise = 12f;
             cc.enabled = false;
-            var spawn = world == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
+            var spawn = world == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
             transform.position = spawn;
             cc.enabled = true;
             Grounding.Snap(cc);

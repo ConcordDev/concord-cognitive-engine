@@ -319,10 +319,44 @@ namespace Concordia
             SitOrHang(go, pos, stem);
             PaintIfBlank(go, PathForStem(stem));
             var kind = stem.ToLowerInvariant();
-            if (IsTree(kind)) TrunkCollider(go);
+            if (IsTree(kind))
+            {
+                var canopy = Encapsulate(go);
+                if (Mathf.Max(canopy.size.x, canopy.size.z) > 18f)
+                {
+                    Object.Destroy(go);
+                    return null;
+                }
+                TrunkCollider(go);
+            }
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
             else StripColliders(go);
             return go;
+        }
+
+        /// <summary>
+        /// Imported-pack spawn only. Kenney / primitive foliage is skipped
+        /// (empty dirt &gt; cardboard). required:true yields one Missing_* cube.
+        /// </summary>
+        public static GameObject SpawnStore(string stem, Transform parent, Vector3 pos, float yawDeg = 0, float maxDim = 0, bool required = false, bool byHeight = true)
+        {
+            if (string.IsNullOrEmpty(stem))
+            {
+                if (!required) return null;
+                stem = "missing_prop";
+            }
+            if (!HasStoreStem(stem))
+            {
+                if (!required) return null;
+                var miss = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                miss.name = "Missing_" + stem;
+                miss.transform.SetParent(parent, false);
+                miss.transform.position = pos;
+                miss.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
+                miss.transform.localScale = Vector3.one * 0.35f;
+                return miss;
+            }
+            return Spawn(stem, parent, pos, yawDeg, maxDim, required, byHeight);
         }
 
         static bool IsTree(string s) =>
@@ -339,14 +373,16 @@ namespace Concordia
                 || s.Contains("crops") || s.StartsWith("detail-") || s.Contains("character-")
                 || s.Contains("astronaut") || s.Contains("enemy") || s.Contains("statue"))
                 return false;
-            if (s.Contains("building") || s.Contains("wall") || s.Contains("tower")
-                || s.Contains("crypt") || s.Contains("house") || s.Contains("road")
-                || s.Contains("stairs") || s.Contains("column") || s.Contains("tent")
-                || s.Contains("room") || s.Contains("crate") || s.Contains("table")
-                || s.Contains("barrel") || s.Contains("cart") || s.Contains("desk")
-                || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
-                || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
-                || s.Contains("wagon") || s.Contains("well"))
+                if (s.Contains("building") || s.Contains("wall") || s.Contains("tower")
+                    || s.Contains("crypt") || s.Contains("house") || s.Contains("road")
+                    || s.Contains("stairs") || s.Contains("column") || s.Contains("tent")
+                    || s.Contains("room") || s.Contains("crate") || s.Contains("table")
+                    || s.Contains("barrel") || s.Contains("cart") || s.Contains("desk")
+                    || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
+                    || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
+                    || s.Contains("wagon") || s.Contains("well") || s.Contains("platform")
+                    || s.Contains("panel") || s.Contains("granite")
+                    || s.Contains("furnace") || s.Contains("cauldron"))
                 return true;
             return maxDim >= 2.4f;
         }
@@ -715,13 +751,23 @@ namespace Concordia
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
-            if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
-            return FirstStem(new[] { "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
+            if (c == "grid") return StoreTree(new[] { "LowPoly - FirTree A", "tree_1", "Tree1" });
+            if (c == "ash") return StoreTree(new[] { "half_tree", "tree_1", "Tree1" });
+            return StoreTree(new[] { "tree_1" });
+        }
+
+        static string StoreTree(string[] prefer)
+        {
+            if (prefer != null)
+                foreach (var n in prefer)
+                    if (!string.IsNullOrEmpty(n) && FreePacks.HasStoreStem(n)) return n;
+            var fuzzy = FreePacks.FirstStoreStemContaining(prefer);
+            if (!string.IsNullOrEmpty(fuzzy)) return fuzzy;
+            return null;
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
+            StoreTree(new[] { "grass01", "LowPoly - Grass A", "Grass_01" });
 
         public static string Prop(WorldId id)
         {

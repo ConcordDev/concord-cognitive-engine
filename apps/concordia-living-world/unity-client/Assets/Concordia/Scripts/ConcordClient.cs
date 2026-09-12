@@ -36,6 +36,8 @@ namespace Concordia
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
+        public static string FieldBecause { get; private set; } = "";
+        public static int AbandonedCount { get; private set; }
         public static string SnapshotJson { get; private set; } = "";
         public static ConcordClient Live { get; private set; }
 
@@ -228,6 +230,8 @@ namespace Concordia
             LastReason = "no_gateway";
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
             HudLine = "";
+            FieldBecause = "";
+            AbandonedCount = 0;
             SnapshotJson = "";
         }
 
@@ -237,6 +241,11 @@ namespace Concordia
             {
                 ApplyKingdom(text);
                 return;
+            }
+            if (evt == "combat:attack:ack")
+            {
+                var because = JsonString(text, "because");
+                if (!string.IsNullOrEmpty(because)) FieldBecause = because;
             }
             if (evt == "dialogue:data")
             {
@@ -312,8 +321,27 @@ namespace Concordia
             StatusJson = "{\"ok\":true,\"format\":\"concord-kingdom/v1\",\"world\":\""
                 + Escape(title) + "\",\"staple\":\"" + Escape(staple)
                 + "\",\"settlements\":" + n + "}";
+            AbandonedCount = JsonInt(json, "abandonedCount");
             HudLine = title + " · kernel · " + staple
-                + (n == 0 ? " · The Court is the city" : " · " + n + " settlements");
+                + (n == 0 ? " · The Court is the city" : " · " + n + " settlements")
+                + (AbandonedCount > 0 ? " · " + AbandonedCount + " remain abandoned" : "");
+            CityAtlas.ApplyKernelStatuses(json);
+        }
+
+        static int JsonInt(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return 0;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, System.StringComparison.Ordinal);
+            if (i < 0) return 0;
+            var rest = json.Substring(i + needle.Length).TrimStart();
+            int n = 0, k = 0;
+            while (k < rest.Length && rest[k] >= '0' && rest[k] <= '9')
+            {
+                n = n * 10 + (rest[k] - '0');
+                k++;
+            }
+            return n;
         }
 
         public Task RequestKingdom(string nextWorldId)
@@ -332,8 +360,14 @@ namespace Concordia
         public Task SendMove(float x, float y, float z, string cityId) =>
             SendEvt("player:move", "{\"cityId\":\"" + Escape(cityId) + "\",\"x\":" + x + ",\"y\":" + y + ",\"z\":" + z + ",\"direction\":0}");
 
-        public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword") =>
-            SendEvt("combat:attack", "{\"targetId\":\"" + Escape(targetId) + "\",\"baseDamage\":" + baseDamage + ",\"range\":" + range + ",\"weapon\":\"" + Escape(weapon) + "\"}");
+        public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword", float x = 0, float z = 0) =>
+            SendEvt("combat:attack", "{\"targetId\":\"" + Escape(targetId)
+                + "\",\"baseDamage\":" + baseDamage
+                + ",\"range\":" + range
+                + ",\"weapon\":\"" + Escape(weapon)
+                + "\",\"worldId\":\"" + Escape(worldId)
+                + "\",\"x\":" + x.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"z\":" + z.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}");
 
         public Task SendDodge(bool parry = false) =>
             SendEvt("combat:dodge", "{\"wasParry\":" + (parry ? "true" : "false") + "}");

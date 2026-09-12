@@ -319,8 +319,16 @@ namespace Concordia
 
         void Snap(Vector3 dest)
         {
-            dest.y = transform.position.y;
-            transform.position = dest;
+            dest = Grounding.SnapPoint(dest, 0.04f, transform);
+            if (_cc)
+            {
+                _cc.enabled = false;
+                transform.position = dest;
+                _cc.enabled = true;
+                Grounding.Snap(_cc);
+            }
+            else
+                transform.position = dest;
         }
 
         Vector3 Dest()

@@ -6,6 +6,7 @@
 // Unity client sends when the actor is not yet in presence.
 
 import { momentumFor, resolvePoiseStagger, poiseBudget } from "./combat-impact.js";
+import { stampGeographicOnHit, domainFromSkillKind } from "./concordia-world-field.js";
 
 /** @type {Map<string, {id:string, hp:number, maxHp:number, poise:number, worldId:string, x:number, z:number}>} */
 const actors = new Map();
@@ -45,6 +46,12 @@ export function applyAuthoritativeHit({
   baseDamage = 20,
   worldId = "concordia-hub",
   refuseHubCombat = false,
+  localX = null,
+  localZ = null,
+  origin = null,
+  skillKind = null,
+  nativeStrength = 0,
+  actorKind = "player",
 } = {}) {
   if (!targetId) return { ok: false, error: "missing_target" };
   const wid = String(worldId || "concordia-hub");
@@ -59,8 +66,7 @@ export function applyAuthoritativeHit({
   const hint = Math.max(0, Number(baseDamage) || 0);
   const damage = Math.max(1, Math.round(mom * 0.35 + hint * 0.15));
   const before = target.hp;
-  target.hp = Math.max(0, target.hp - damage);
-  return {
+  const result = {
     ok: true,
     authority: "combat-hp-authority",
     damage,
@@ -68,7 +74,7 @@ export function applyAuthoritativeHit({
     hpAfter: target.hp,
     targetHealth: target.hp,
     targetMaxHealth: target.maxHp,
-    targetKilled: target.hp <= 0,
+    targetKilled: false,
     momentum: mom,
     severity: stagger.severity,
     poise: stagger.poise,
@@ -79,6 +85,20 @@ export function applyAuthoritativeHit({
     worldId: wid,
     localHpApplied: false,
   };
+  stampGeographicOnHit(result, {
+    worldId: wid,
+    localX,
+    localZ,
+    origin: origin || wid,
+    domain: domainFromSkillKind(skillKind, "athletics"),
+    nativeStrength,
+    actorKind,
+  });
+  target.hp = Math.max(0, target.hp - result.damage);
+  result.hpAfter = target.hp;
+  result.targetHealth = target.hp;
+  result.targetKilled = target.hp <= 0;
+  return result;
 }
 
 export default { ensureActor, getActor, applyAuthoritativeHit, resetCombatHpAuthorityForTest };

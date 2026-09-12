@@ -89,9 +89,6 @@ namespace Concordia
             _world.Build(world);
             WorldClock.Enter(world);
             Grounding.Snap(cc);
-            var py = pgo.transform.position.y;
-            if (py < 0f || py > 3.5f)
-                pgo.transform.position = new Vector3(Canon.Spawn.x, 0.12f, Canon.Spawn.z);
             camGo.transform.position = pgo.transform.position + new Vector3(1.7f, 2.55f, -5.2f);
             camGo.transform.LookAt(pgo.transform.position + Vector3.up * 1.3f);
             try { HubLook.Apply(cam, world); } catch (Exception e) { Debug.LogException(e); }
@@ -406,6 +403,12 @@ namespace Concordia
             return "Took " + loot.label + ".";
         }
 
+        /// <summary>
+        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
+        /// topology is one continuous universe with overlapping WorldFields;
+        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
+        /// </summary>
         public void Travel(WorldId next)
         {
             var carried = _player != null ? _player.kitWeapon : null;
@@ -415,7 +418,7 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            var spawn = next == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
+            var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
             _player.cc.enabled = false;
             _player.transform.position = spawn;
             _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
@@ -429,6 +432,7 @@ namespace Concordia
             _boards = null;
             _loot = null;
             _cooks = null;
+            ModularPerson.RecastBody(_player.person);
             _player.EquipWorldKit();
             Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }

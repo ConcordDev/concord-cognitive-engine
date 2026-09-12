@@ -65,15 +65,18 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(fill, /Concord admits he loves her/);
   });
 
-  it("travel persists the slice and the HUD shows the living clock", () => {
+  it("travel persists the slice and the living clock sits behind F8 DebugHud", () => {
     const game = src("ConcordiaGame.cs");
     const hud = src("ConcordiaHUD.cs");
     assert.match(game, /WorldClock\.Leave\(\)/);
     assert.match(game, /WorldClock\.Enter\(/);
     assert.match(game, /WorldClock\.Tick\(/);
     assert.match(game, /NoticePlayer/);
+    assert.match(hud, /DebugHud/);
+    assert.match(hud, /KeyCode\.F8/);
     assert.match(hud, /WorldClock\.HudClock\(\)/);
     assert.match(hud, /WorldClock\.NearbyAct/);
+    assert.match(hud, /if \(DebugHud\)/);
   });
 
   it("activities are visible: open shop, patrol, deliver, talk, enter a building", () => {
@@ -126,6 +129,32 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(game, /CrossRing\.Walk\(/);
     assert.match(game, /CrossRing\.LivingLines/);
     assert.doesNotMatch(book, /Concord admits he loves her/);
+  });
+
+  it("Travel is labeled region_rebuild until the megaworld streams continuously", () => {
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /MEGAWORLD: current mode is region_rebuild/);
+    assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
+    assert.match(game, /_world\.Build\(next\)/);
+    const field = src("WorldField.cs");
+    assert.match(field, /SceneMetresToKm = 0\.4f/);
+    assert.match(field, /Travel is still region_rebuild/);
+    assert.doesNotMatch(field, /-42% Magic Damage/);
+  });
+
+  it("HUD presents field physics and abandoned ruins, not a percent sticker", () => {
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(hud, /WorldField\.HudLine/);
+    assert.match(hud, /ruins remain/);
+    assert.doesNotMatch(hud, /-42%/);
+    const player = src("ConcordiaPlayer.cs");
+    assert.match(player, /WorldField\.ScaleDamage/);
+    const evo = src("EvoSpawner.cs");
+    assert.match(evo, /retreats toward home field/);
+    const field = src("WorldField.cs");
+    assert.match(field, /HudLine\(WorldId world, Vector3 localPos\)/);
+    assert.match(field, /At\(world, localPos/);
+    assert.doesNotMatch(field, /ConcordClient\.Live && ConcordClient\.Live\.Connected/);
   });
 
   it("stock becomes a caravan with a real Ring tariff, never an invented city", () => {

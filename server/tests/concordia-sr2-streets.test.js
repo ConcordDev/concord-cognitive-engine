@@ -97,7 +97,9 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(book, /UnityEngine\.Rendering\.AmbientMode\.Trilight/);
     assert.match(book, /World == WorldId\.Hub/);
     assert.match(book, /l\.name == "Sun"/);
-    assert.match(book, /sun\.intensity = 0\.92f \+ 0\.38f \* day/);
+    assert.match(book, /HubLook\.ApplyHour\(World, Hour\)/);
+    assert.match(book, /sun\.intensity = 0\.06f \+ 1\.12f \* sun01/);
+    assert.match(look, /Sun01\(/);
     assert.match(builder, /1\.18f/);
     assert.match(builder, /0\.0045f/);
     assert.doesNotMatch(look, /exposure = -0\.72f/);
@@ -116,7 +118,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /Talking\(\)/);
     assert.match(person, /PlanarSpeed/);
     assert.match(person, /talkLift/);
-    assert.match(person, /FORCE_REFRESH_0022/);
+    assert.match(person, /FORCE_REFRESH_0023/);
     assert.match(person, /18f \+ arc/);
     assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
     assert.match(builder, /for \(int i = 0; i < 24; i\+\+\)/);
@@ -131,12 +133,12 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(look, /bool additive = true/);
     assert.doesNotMatch(plaza, /startSize = 0.28f/);
     assert.doesNotMatch(plaza, /sh.radius = 1.6f/);
-    assert.match(plaza, /new Vector3\(2\.4f, 0\.06f, 4\.2f\)/);
-    assert.doesNotMatch(plaza, /w \* 0\.72f, 0\.12f, h \* 0\.72f/);
-    assert.match(plaza, /GodRays\(root\)/);
-    assert.match(plaza, /RingWalk/);
-    assert.match(plaza, /UnpavedKeep/);
-    assert.match(plaza, /MossVerge/);
+    assert.match(plaza, /SpawnStore\("granite_panel"/);
+    assert.match(plaza, /SpawnStore\("stone_column"/);
+    assert.match(plaza, /SpawnStore\("stone_half_gate"/);
+    assert.doesNotMatch(plaza, /Rib/);
+    assert.doesNotMatch(plaza, /GodRays/);
+    assert.doesNotMatch(plaza, /RingBoxes/);
     assert.match(plaza, /DressVocab\.Tree\(/);
     assert.match(plaza, /DressVocab\.Grass\(/);
     assert.match(plaza, /DressVocab\.Table\(/);

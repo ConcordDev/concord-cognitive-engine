@@ -67,7 +67,7 @@ namespace Concordia
         [Serializable]
         public class CityDef
         {
-            public string id, name, factionId, description;
+            public string id, name, factionId, description, status;
             public WorldId world;
             public float x, z;
             public string[] districts;
@@ -326,6 +326,35 @@ namespace Concordia
             var arr = list.ToArray();
             Cache[world] = arr;
             return arr;
+        }
+
+        /// <summary>
+        /// Overlay kernel settlement status onto authored cities. Missing
+        /// status stays empty — never invents ruins. Does not despawn ids.
+        /// </summary>
+        public static void ApplyKernelStatuses(string kingdomJson)
+        {
+            if (string.IsNullOrEmpty(kingdomJson)) return;
+            foreach (WorldId id in System.Enum.GetValues(typeof(WorldId)))
+            {
+                if (!Cache.TryGetValue(id, out var cities) || cities == null) continue;
+                foreach (var c in cities)
+                {
+                    if (c == null || string.IsNullOrEmpty(c.name)) continue;
+                    if (kingdomJson.IndexOf("\"name\":\"" + c.name + "\"", System.StringComparison.Ordinal) < 0
+                        && kingdomJson.IndexOf("\"id\":\"" + c.id + "\"", System.StringComparison.Ordinal) < 0)
+                        continue;
+                    if (kingdomJson.Contains("\"status\":\"abandoned\""))
+                    {
+                        // Only stamp when this city's object mentions abandoned nearby — coarse but honest:
+                        // if the snapshot has abandoned rows and this name appears, check a tight window.
+                        var nameAt = kingdomJson.IndexOf("\"" + c.name + "\"", System.StringComparison.Ordinal);
+                        if (nameAt < 0) continue;
+                        var window = kingdomJson.Substring(Mathf.Max(0, nameAt - 80), Mathf.Min(200, kingdomJson.Length - Mathf.Max(0, nameAt - 80)));
+                        if (window.Contains("abandoned")) c.status = "abandoned";
+                    }
+                }
+            }
         }
 
         public static WorldBook.CityDef Nearest(WorldId world, Vector3 pos, float max = 14f)
@@ -680,13 +709,12 @@ namespace Concordia
 
         static void ApplySky()
         {
-            float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
-            // Trilight already carries HubLook's sky/equator/ground. Scaling
-            // ambientIntensity on top crushed the HDR sky to mud.
+            HubLook.ApplyHour(World, Hour);
+            float sun01 = HubLook.Sun01(Hour);
             if (RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight)
-                RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
+                RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
             else
-                RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+                RenderSettings.ambientIntensity = 0.12f + 0.88f * sun01;
             var suns = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             Light sun = null;
             for (int i = 0; i < suns.Length; i++)
@@ -698,10 +726,11 @@ namespace Concordia
             }
             if (sun)
             {
+                sun.shadows = LightShadows.Soft;
                 if (World == WorldId.Hub)
-                    sun.intensity = 0.92f + 0.38f * day;
+                    sun.intensity = 0.06f + 1.12f * sun01;
                 else
-                    sun.intensity = 0.35f + 0.9f * day;
+                    sun.intensity = 0.08f + 0.9f * sun01;
             }
         }
 
