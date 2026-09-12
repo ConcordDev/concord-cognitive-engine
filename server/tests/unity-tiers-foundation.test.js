@@ -244,3 +244,37 @@ test("Level 2 world silhouettes differ by architecture, not only palette", () =>
   assert.match(fill, /Ring\(root, DressVocab\.House\(WorldId\.Frontier\)/);
   assert.match(fill, /w\.id == WorldId\.Crime \|\| w\.id == WorldId\.Sere/);
 });
+
+test("creature pillar compiles kernel genome, not a catalog kind", () => {
+  const compiler = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/CreatureCompiler.cs",
+  ), "utf8");
+  const spawn = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/EvoSpawner.cs",
+  ), "utf8");
+  const fauna = readFileSync(join(
+    import.meta.dirname,
+    "../../apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/EvoSpawner.cs",
+  ), "utf8");
+  const gw = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+  const shapes = readFileSync(join(import.meta.dirname, "../lib/event-shapes.js"), "utf8");
+  const creatures = readFileSync(join(import.meta.dirname, "../lib/concordia-creatures.js"), "utf8");
+  assert.match(compiler, /class CreatureGenome/);
+  assert.match(compiler, /class CreatureCard/);
+  assert.match(compiler, /PresentKernel/);
+  assert.match(compiler, /DressMorphology/);
+  assert.match(spawn, /CreatureCompiler\.FromCritter/);
+  assert.match(fauna, /BindGenome/);
+  assert.match(client, /evt == "creature:born"/);
+  assert.match(client, /PresentKernelCreatures/);
+  assert.match(client, /PresentEcology/);
+  assert.match(gw, /creatures: snapshotCreatures/);
+  assert.match(gw, /ecology: snapshotEcology/);
+  assert.match(shapes, /"creature:born"/);
+  assert.match(creatures, /export function snapshotCreatures/);
+  assert.match(creatures, /export function snapshotEcology/);
+  assert.match(creatures, /export function announceCreatureBorn/);
+  assert.doesNotMatch(spawn, /hint\.Contains\("quad"\) \? "wolf"/);
+});

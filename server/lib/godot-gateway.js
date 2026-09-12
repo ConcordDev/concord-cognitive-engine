@@ -40,6 +40,7 @@ import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock
 import { getVillageGossipFeed } from "./npc-relationships.js";
 import { getTombsForWorld } from "./npc-legacy.js";
 import { listActiveBosses } from "./world-bosses.js";
+import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -528,6 +529,8 @@ function isBinaryMovePayload(p) {
             })),
             gear: snapshotGear(db, client.userId),
             chronicles: snapshotChronicles(db, worldId),
+            creatures: snapshotCreatures(db, worldId),
+            ecology: snapshotEcology(db, worldId),
           });
         } catch (e) {
           send(client.ws, "world:snapshot", {

@@ -740,6 +740,18 @@ namespace Concordia
                 RunMain(() => PresentWedding(text));
                 return;
             }
+            if (evt == "creature:born")
+            {
+                var child = JsonString(text, "childId");
+                if (string.IsNullOrEmpty(child)) child = JsonString(text, "id");
+                var gen = JsonInt(text, "generation", 0);
+                var species = JsonString(text, "speciesId");
+                var line = string.IsNullOrEmpty(species) ? "a birth" : species;
+                if (gen > 0) line += " · gen " + gen;
+                Consequence("ecology", "Born", line, true, 0f);
+                RunMain(() => PresentCreatureBorn(text));
+                return;
+            }
             if (evt == "combat:chronicle")
             {
                 var id = JsonString(text, "chronicleId");
@@ -959,6 +971,8 @@ namespace Concordia
                     JsonString(row, "title"),
                     JsonString(row, "summary"));
             });
+            PresentKernelCreatures(json);
+            PresentEcology(json);
         }
 
         static void PresentFuneral(string json, string deceasedId, string lastWords)
@@ -1004,6 +1018,86 @@ namespace Concordia
                 life.Attend(dest, face, i, of, 32f);
             });
             if (matched > 0) GatheringTell.PlaceAt(dest);
+        }
+
+        static CreatureCard CardFromJson(string json)
+        {
+            var id = JsonString(json, "childId");
+            if (string.IsNullOrEmpty(id)) id = JsonString(json, "id");
+            var x = JsonFloat(json, "x", float.NaN);
+            var z = JsonFloat(json, "z", float.NaN);
+            return new CreatureCard
+            {
+                id = id,
+                speciesId = JsonString(json, "speciesId"),
+                topology = JsonString(json, "topology"),
+                parentA = JsonString(json, "parentA"),
+                parentB = JsonString(json, "parentB"),
+                dominant = JsonString(json, "dominant"),
+                variant = JsonString(json, "variant"),
+                affinity = JsonString(json, "affinity"),
+                gaitKind = JsonString(json, "gaitKind"),
+                lifestyle = JsonString(json, "lifestyle"),
+                massKg = JsonFloat(json, "massKg", -1f),
+                heightM = JsonFloat(json, "heightM", -1f),
+                walkMps = JsonFloat(json, "walkMps", -1f),
+                stability = JsonFloat(json, "stability", -1f),
+                generation = JsonInt(json, "generation", 0),
+                predator = JsonFlagTrue(json, "predator"),
+                fly = JsonFlagTrue(json, "fly"),
+                x = x,
+                z = z,
+                hasXz = !float.IsNaN(x) && !float.IsNaN(z),
+            };
+        }
+
+        static void PresentCreatureBorn(string json)
+        {
+            var card = CardFromJson(json);
+            if (string.IsNullOrEmpty(card.id)) return;
+            var root = UnityEngine.Object.FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var world = Canon.Get(WorldClock.World);
+            var go = CreatureCompiler.PresentKernel(parent, card, world);
+            if (go) WorldClock.PushFeed("ecology", card.speciesId + " gen " + card.generation);
+        }
+
+        static void PresentKernelCreatures(string json)
+        {
+            var n = JsonArrayCount(json, "creatures");
+            if (n <= 0) return;
+            var root = UnityEngine.Object.FindFirstObjectByType<WorldBuilder>();
+            var parent = root ? root.transform : null;
+            var world = Canon.Get(WorldClock.World);
+            var shown = 0;
+            ForEachArrayObject(json, "creatures", row =>
+            {
+                if (shown >= 12) return;
+                var card = CardFromJson(row);
+                if (string.IsNullOrEmpty(card.id)) return;
+                if (CreatureCompiler.PresentKernel(parent, card, world)) shown++;
+            });
+        }
+
+        static void PresentEcology(string json)
+        {
+            var n = JsonArrayCount(json, "ecology");
+            if (n <= 0) return;
+            var shown = 0;
+            ForEachArrayObject(json, "ecology", row =>
+            {
+                if (shown >= 3) return;
+                var species = JsonString(row, "speciesId");
+                if (string.IsNullOrEmpty(species)) return;
+                var count = JsonInt(row, "count", 0);
+                var target = JsonInt(row, "target", 0);
+                var biome = JsonString(row, "biome");
+                var line = species + " ×" + count;
+                if (target > 0) line += "/" + target;
+                if (!string.IsNullOrEmpty(biome)) line += " · " + biome;
+                WorldClock.PushFeed("ecology", line);
+                shown++;
+            });
         }
 
         static Vector3 WeddingGround()
