@@ -48,6 +48,12 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {(userId:string)=>({id:string,username?:string}|null|Promise)} deps.getUser REQUIRED — resolves a user record.
  * @param {(db:any, worldId:string)=>object} [deps.exportScene]  scene:request handler; omit → honest scene_export_unavailable.
  * @param {(db:any, worldId:string)=>object} [deps.exportKingdom]  kingdom:request handler; omit → honest kingdom_export_unavailable.
+ * @param {(domain:string, name:string, input:object, ctx:object)=>object|Promise<object>} [deps.runMacro]
+ *   lens:run handler. MUST be the real `runMacro` (or the HTTP-identical
+ *   LENS_ACTIONS-then-runMacro wrapper). The gateway does NOT reimplement
+ *   publicReadDomains or Chicken2 — those gates live inside runMacro. Omit →
+ *   honest `lens_run_unavailable`. Never call without an actor: runMacro
+ *   defaults a missing actor to `{role:"system", internal:true}`.
  * @param {(input:object)=>object|Promise<object>} [deps.composeDialogue]  dialogue:request → Concord 2B; omit → built-in composeTwoBDialogue.
  * @param {any} [deps.db]  passed verbatim to exportScene / exportKingdom.
  * @param {string} [deps.path="/godot-ws"]  upgrade path this gateway claims.
@@ -67,6 +73,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     getUser,
     exportScene,
     exportKingdom,
+    runMacro,
     composeDialogue = composeTwoBDialogue,
     db = null,
     path = "/godot-ws",
@@ -445,6 +452,62 @@ function isBinaryMovePayload(p) {
       case "dungeon:open": {
         const result = handleDungeonOpen(db, client.userId, data);
         send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "lens:run": {
+        // Phase 1 of docs/CONCORDIA_UNITY_WIRING_PLAN.md — one verb covers
+        // the entire /api/lens/* macro surface. Permission gates are the
+        // load-bearing part: this case MUST NOT reimplement Gate 2 or Gate 3.
+        // It forwards to deps.runMacro with an HTTP-shaped ctx (path
+        // `/api/lens/run`, method POST, authenticated actor) so the same
+        // three gates the REST route runs, run here. A missing actor would
+        // make runMacro default to system/internal — never omit it.
+        if (typeof runMacro !== "function") {
+          send(client.ws, "lens:result", { ok: false, reason: "lens_run_unavailable" });
+          return;
+        }
+        const domain = typeof data.domain === "string" ? data.domain : "";
+        // Same alias rule as POST /api/lens/run: `action` wins, then `name`.
+        const name = typeof data.action === "string"
+          ? data.action
+          : (typeof data.name === "string" ? data.name : "");
+        if (!domain || !name) {
+          send(client.ws, "lens:result", { ok: false, reason: "domain_and_name_required" });
+          return;
+        }
+        const input = data.input && typeof data.input === "object" && !Array.isArray(data.input)
+          ? data.input
+          : {};
+        const ctx = {
+          actor: {
+            userId: client.userId,
+            id: client.userId,
+            role: "user",
+            kind: "user",
+            scopes: ["read", "write"],
+          },
+          userId: client.userId,
+          db,
+          reqMeta: { path: "/api/lens/run", method: "POST" },
+        };
+        try {
+          const result = await runMacro(domain, name, input, ctx);
+          send(
+            client.ws,
+            "lens:result",
+            result && typeof result === "object"
+              ? result
+              : { ok: false, reason: "lens_run_failed" },
+          );
+        } catch (e) {
+          const msg = String(e?.message || e);
+          send(client.ws, "lens:result", {
+            ok: false,
+            reason: msg.startsWith("forbidden") ? "forbidden" : "lens_run_failed",
+            error: msg,
+          });
+        }
         return;
       }
 

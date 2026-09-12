@@ -9890,6 +9890,19 @@ const REALTIME = {
 // time — so this is not a TDZ hazard despite the forward reference.
 let _godotGatewayEmitter = null;
 
+// Unity gateway mirror — same contract as _godotGatewayEmitter above, same
+// TDZ reasoning. Added 2026-09-12 after an audit found the realtime fan-out
+// was Godot-only: `createGatewayEmitter` was called on the Godot handle and
+// never on the Unity one, so /unity-ws clients received ZERO realtime
+// broadcasts — only direct responses to the ~13 RPC verbs they send. That
+// left real, correctly-written client handlers permanently dead (Unity's
+// ConcordClient.HandleFrame has cases for `secret:weaponised` /
+// `npc:scheme-resolved` / `npc:conversation-bid`, all emitted through
+// realtimeEmit, none of which could ever arrive). Unity is now the canonical
+// World Lens web client (docs/ART_DIRECTION_UNITY_WEB.md), so it needs the
+// same stream Godot already gets.
+let _unityGatewayEmitter = null;
+
 // Per-user emit helper — uses the user:${userId} room joined on socket auth
 // (see io.on("connection") handler). Established in Phase 3 of polish-to-ten;
 // reused by trade, party, and any emergent system that needs to push to one
@@ -10015,6 +10028,9 @@ function emitToWorld(worldId, event, payload) {
     // Godot clients. Best-effort: a gateway hiccup must never affect the
     // socket.io emit above, which is why this is its own try/catch.
     try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enriched); } catch { /* survive */ }
+    // Unity gateway mirror — separate try/catch for the same reason: one
+    // gateway's hiccup must not starve the other, or the socket.io emit.
+    try { _unityGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enriched); } catch { /* survive */ }
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: String(e?.message || e) };
@@ -10096,6 +10112,7 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
       // Godot gateway mirror — same room grammar (user:<id>) the gateway
       // supports. Best-effort; never affects the socket.io transport above.
       try { _godotGatewayEmitter?.emitToRoom(`user:${userId}`, event, enrichedPayload); } catch { /* survive */ }
+      try { _unityGatewayEmitter?.emitToRoom(`user:${userId}`, event, enrichedPayload); } catch { /* survive */ }
     } else if (sessionId) {
       REALTIME.io.to(`session:${sessionId}`).emit(event, enrichedPayload);
       // No gateway mirror: the gateway's room grammar is world:*/user:* only
@@ -10119,10 +10136,12 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
       // dropped all three.
       REALTIME.io.to(`world:${worldId}`).emit(event, enrichedPayload);
       try { _godotGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enrichedPayload); } catch { /* survive */ }
+      try { _unityGatewayEmitter?.emitToRoom(`world:${worldId}`, event, enrichedPayload); } catch { /* survive */ }
     } else {
       REALTIME.io.emit(event, enrichedPayload);
       // Godot gateway mirror — global broadcast to every authenticated client.
       try { _godotGatewayEmitter?.broadcast(event, enrichedPayload); } catch { /* survive */ }
+      try { _unityGatewayEmitter?.broadcast(event, enrichedPayload); } catch { /* survive */ }
     }
     return { ok: true, seq: enrichedPayload._seq, transport: "socketio" };
   }
@@ -73013,6 +73032,44 @@ async function _dispatchDesignCommand(domain, action, params, ctx) {
   return { ok: false, error: "unknown_macro", domain, action };
 }
 
+// Gateway `lens:run` (docs/CONCORDIA_UNITY_WIRING_PLAN.md Phase 1).
+// The gateway module itself never reimplements Gate 2 (publicReadDomains)
+// or Gate 3 (Chicken2) — those live inside runMacro. This wrapper:
+//   1. Rebuilds ctx through makeCtx so the actor is the authenticated WS
+//      user (never runMacro's system/internal default).
+//   2. Pins reqMeta to POST /api/lens/run so Chicken2's path/method
+//      checks see the same surface the HTTP route does.
+//   3. Applies the H1 anon gate the HTTP handler runs before dispatch.
+//   4. Dispatches through the SAME LENS_ACTIONS-then-runMacro lookup
+//      `/api/lens/run` uses (`_dispatchDesignCommand`). No AI catchall —
+//      unknown macros stay `{ok:false, error:"unknown_macro"}`.
+async function _runMacroFromGateway(domain, name, input, gatewayCtx) {
+  const userId = gatewayCtx?.userId || gatewayCtx?.actor?.userId;
+  if (!userId) {
+    return { ok: false, reason: "authentication required", error: "authentication required", code: "LENS_AUTH" };
+  }
+  const ctx = makeCtx({
+    user: { id: userId },
+    headers: {},
+    query: {},
+    method: "POST",
+    path: "/api/lens/run",
+    originalUrl: "/api/lens/run",
+    ip: "gateway",
+    get: () => undefined,
+  });
+  ctx.reqMeta = { ...(ctx.reqMeta || {}), path: "/api/lens/run", method: "POST" };
+  if (ctx.actor) {
+    ctx.actor.internal = false;
+    ctx.actor.kind = ctx.actor.kind || "user";
+  }
+  if (_lensActionForbiddenForAnon(ctx)) {
+    return { ok: false, reason: "authentication required", error: "authentication required", code: "LENS_AUTH" };
+  }
+  const rest = _peelRedundantArtifactWrapper(input && typeof input === "object" ? input : {});
+  return _dispatchDesignCommand(domain, name, rest, ctx);
+}
+
 // Shared by the `design_command` and `design:mode` cases below — a Godot
 // client only ever reaches either post-auth (godot-gateway.js rejects
 // pre-auth frames itself), so `userId` is always a real authenticated user.
@@ -73596,6 +73653,7 @@ if (server) {
       getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
+      runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
@@ -73621,10 +73679,16 @@ if (server) {
       getUser: (userId) => AuthDB.getUser(userId),
       exportScene,
       exportKingdom: buildKingdomSnapshot,
+      runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
+    // Realtime fan-out for Unity, mirroring the Godot mount above. Without
+    // this the gateway serves RPC replies only and every realtimeEmit-driven
+    // world event is invisible to /unity-ws — see the _unityGatewayEmitter
+    // declaration for the full finding.
+    _unityGatewayEmitter = createGatewayEmitter(unityGatewayHandle);
     globalThis._concordUnityGateway = unityGatewayHandle;
     structuredLog("info", "unity_gateway_mounted", { path: "/unity-ws" });
   } catch (e) {
