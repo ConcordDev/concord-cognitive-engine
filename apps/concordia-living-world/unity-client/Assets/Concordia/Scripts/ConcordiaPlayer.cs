@@ -194,6 +194,7 @@ namespace Concordia
             if (!string.IsNullOrEmpty(first)) talkLog.Add(first);
             focusTalk = true;
             UnlockCursor();
+            Bonds.TalkBump(Bonds.Key(npc));
         }
 
         public void CloseTalk()
@@ -448,6 +449,8 @@ namespace Concordia
             poise = Mathf.Max(0f, poise - dmg * 0.25f);
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
+            var feel = GetComponent<CombatFeel>();
+            feel?.ApplyAck(true, Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");
             if (hp > 0f) return;
             hp = 100f;

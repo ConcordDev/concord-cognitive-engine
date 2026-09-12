@@ -87,6 +87,7 @@ namespace Concordia // FORCE_REFRESH_0022
                 var w = go.AddComponent<NpcWander>();
                 w.roam = roam;
             }
+            PersonLabel.Attach(go.transform, look != null ? look.displayName : go.name, null);
             return go;
         }
 

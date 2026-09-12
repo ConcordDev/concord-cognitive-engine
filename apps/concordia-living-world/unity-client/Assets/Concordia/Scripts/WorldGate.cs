@@ -95,6 +95,13 @@ namespace Concordia
         public string personId;
         public string[] questHooks;
         public string Prompt => "E  ·  " + def.name + ", " + def.title;
+
+        void Start()
+        {
+            var name = def != null ? def.name : "someone";
+            var role = def != null ? def.title : null;
+            PersonLabel.Attach(transform, name, role);
+        }
     }
 
     /// <summary>Authored quest on a board. E accepts or reports progress.</summary>
@@ -207,6 +214,85 @@ namespace Concordia
             float flap = Mathf.Sin(Time.time * 11f + _phase) * 28f;
             if (_wingL) _wingL.localRotation = Quaternion.Euler(0f, 0f, flap);
             if (_wingR) _wingR.localRotation = Quaternion.Euler(0f, 0f, -flap);
+        }
+    }
+
+    /// <summary>T1 nameplate. World-space name over a living person.</summary>
+    public class PersonLabel : MonoBehaviour
+    {
+        public string title;
+        public string role;
+        TextMesh _mesh;
+        const float MaxDist = 22f;
+
+        public static PersonLabel Attach(Transform host, string title, string role = null)
+        {
+            if (!host) return null;
+            var existing = host.GetComponentInChildren<PersonLabel>();
+            if (existing)
+            {
+                existing.title = title;
+                existing.role = role;
+                existing.Apply();
+                return existing;
+            }
+            var go = new GameObject("Nameplate");
+            go.transform.SetParent(host, false);
+            go.transform.localPosition = new Vector3(0f, 2.15f, 0f);
+            var lab = go.AddComponent<PersonLabel>();
+            lab.title = title;
+            lab.role = role;
+            lab.Build();
+            return lab;
+        }
+
+        void Build()
+        {
+            _mesh = gameObject.AddComponent<TextMesh>();
+            _mesh.anchor = TextAnchor.LowerCenter;
+            _mesh.alignment = TextAlignment.Center;
+            _mesh.characterSize = 0.045f;
+            _mesh.fontSize = 42;
+            _mesh.color = new Color(1f, 0.94f, 0.82f, 0.95f);
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font)
+            {
+                _mesh.font = font;
+                var matRend = _mesh.GetComponent<Renderer>();
+                if (matRend && font.material) matRend.sharedMaterial = font.material;
+            }
+            var rend = _mesh.GetComponent<Renderer>();
+            if (rend)
+            {
+                rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                rend.receiveShadows = false;
+            }
+            Apply();
+        }
+
+        void Apply()
+        {
+            if (!_mesh) _mesh = GetComponent<TextMesh>();
+            if (!_mesh) return;
+            var line = string.IsNullOrEmpty(title) ? "someone" : title;
+            if (!string.IsNullOrEmpty(role)) line += "\n" + role;
+            _mesh.text = line;
+        }
+
+        void LateUpdate()
+        {
+            var cam = Camera.main;
+            var rend = _mesh ? _mesh.GetComponent<Renderer>() : GetComponent<Renderer>();
+            if (!cam)
+            {
+                if (rend) rend.enabled = false;
+                return;
+            }
+            var d = Vector3.Distance(cam.transform.position, transform.position);
+            var show = d < MaxDist;
+            if (rend) rend.enabled = show;
+            if (!show) return;
+            transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
         }
     }
 }

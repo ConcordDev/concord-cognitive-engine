@@ -243,6 +243,41 @@ namespace Concordia
                 ApplyDialogue(text);
                 return;
             }
+            if (evt == "npc:heir-rose")
+            {
+                var heir = JsonString(text, "heirName");
+                if (string.IsNullOrEmpty(heir)) heir = JsonString(text, "heir_name");
+                var from = JsonString(text, "deceasedName");
+                if (string.IsNullOrEmpty(from)) from = JsonString(text, "deceased_name");
+                var line = string.IsNullOrEmpty(heir) ? "an heir rose" : heir + " inherited";
+                if (!string.IsNullOrEmpty(from)) line += " from " + from;
+                WorldClock.NoteAct(line);
+                ConcordiaHUD.Announce("Heir rose", line);
+                return;
+            }
+            if (evt == "secret:weaponised")
+            {
+                var kind = JsonString(text, "kind");
+                if (string.IsNullOrEmpty(kind)) kind = "leverage";
+                WorldClock.NoteAct("a secret turned — " + kind);
+                return;
+            }
+            if (evt == "npc:scheme-resolved" || evt == "npc:conversation-bid")
+            {
+                var plotter = JsonString(text, "plotterName");
+                if (string.IsNullOrEmpty(plotter)) plotter = JsonString(text, "plotter");
+                var target = JsonString(text, "targetName");
+                if (string.IsNullOrEmpty(target)) target = JsonString(text, "target");
+                var kind = JsonString(text, "kind");
+                if (string.IsNullOrEmpty(kind)) kind = "scheme";
+                var line = kind;
+                if (!string.IsNullOrEmpty(plotter) && !string.IsNullOrEmpty(target))
+                    line = plotter + " ↔ " + target + ": " + kind;
+                else if (!string.IsNullOrEmpty(plotter))
+                    line = plotter + " · " + kind;
+                WorldClock.NoteAct("scheme nearby — " + line);
+                return;
+            }
             if (evt == "auth:error" || (evt == "error" && text.Contains("auth_required")))
                 MarkDisconnected();
         }

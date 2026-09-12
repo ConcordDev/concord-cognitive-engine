@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -73,6 +74,8 @@ namespace Concordia
             float w = Screen.width, h = Screen.height;
             Compass(w);
             Vitals();
+            PartyStrip();
+            TargetBar(w);
             Rings(w);
             if (!player.Busy) Minimap(h);
             Prompt(w, h);
@@ -104,7 +107,7 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
@@ -116,6 +119,14 @@ namespace Concordia
             GUI.Label(new Rect(32, 86, 280, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
+            var lineage = WorldMemory.LineageLine(player.world);
+            if (!string.IsNullOrEmpty(lineage))
+                GUI.Label(new Rect(32, 102, 280, 14), lineage, _small);
+            else if (!string.IsNullOrEmpty(WorldClock.NearbyAct) && WorldClock.NearbyAct.ToLowerInvariant().Contains("scheme"))
+                GUI.Label(new Rect(32, 102, 280, 14),
+                    ConcordClient.Live != null && ConcordClient.Live.Connected
+                        ? "scheme nearby — barge-in is kernel-side"
+                        : "scheme nearby — barge-in needs /unity-ws", _small);
         }
 
         static string TwoBStatus()
@@ -128,12 +139,12 @@ namespace Concordia
 
         void TalkPanel(float w, float h)
         {
-            float pw = 640f, ph = 248f;
+            float pw = 640f, ph = 308f;
             float x = (w - pw) * 0.5f, y = h - ph - 36f;
             GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.88f);
             GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
             GUI.color = Color.white;
-            var who = player.talkNpc != null ? player.talkNpc.def.name : "Someone";
+            var who = player.talkNpc != null && player.talkNpc.def != null ? player.talkNpc.def.name : "Someone";
             GUI.Label(new Rect(x + 16, y + 10, pw - 32, 22), who + "  ·  2B " + TwoBStatus(), _title);
             var log = player.talkLog.Count == 0 ? "" : string.Join("\n", player.talkLog);
             GUI.Label(new Rect(x + 16, y + 36, pw - 32, 140), log, _log);
@@ -146,7 +157,39 @@ namespace Concordia
             }
             if (GUI.Button(new Rect(x + pw - 116, y + 186, 100, 28), "Send", _btn))
                 player.SubmitTalk();
-            GUI.Label(new Rect(x + 16, y + 220, pw - 32, 18), "Enter send  ·  Esc leave", _small);
+            var aff = Bonds.Get(Bonds.Key(player.talkNpc));
+            DrawBar(x + 16, y + 220, 220, 8, aff, new Color(0.92f, 0.42f, 0.55f));
+            GUI.Label(new Rect(x + 244, y + 214, 160, 18), "affinity " + Mathf.RoundToInt(aff * 100f) + "%", _small);
+            if (KitBag.HasLoot())
+            {
+                if (GUI.Button(new Rect(x + pw - 116, y + 216, 100, 24), "Give", _btn))
+                    player.AppendTalk(Bonds.Give(player.talkNpc));
+            }
+            else
+                GUI.Label(new Rect(x + pw - 200, y + 214, 184, 18), "no gift in kit", _small);
+            var lev = LeverageHint();
+            if (!string.IsNullOrEmpty(lev))
+                GUI.Label(new Rect(x + 16, y + 238, pw - 32, 32), lev, _small);
+            var talkLineage = WorldMemory.LineageLine(player.world);
+            if (!string.IsNullOrEmpty(talkLineage))
+                GUI.Label(new Rect(x + 16, y + 270, pw - 32, 18), talkLineage, _small);
+        }
+
+        string LeverageHint()
+        {
+            if (player.talkNpc == null) return "";
+            var key = Bonds.Key(player.talkNpc);
+            var p = WorldBook.FindPerson(player.world, key);
+            if (p == null && player.talkNpc.def != null)
+            {
+                p = WorldBook.FindPerson(player.world, player.talkNpc.def.id);
+                if (p == null) p = WorldBook.FindPerson(player.world, player.talkNpc.def.name);
+            }
+            var lev = WorldBook.LeverageLine(p);
+            if (string.IsNullOrEmpty(lev)) return "";
+            var aff = Bonds.Get(key);
+            if (aff < 0.22f) return "They carry leverage. Talk or give until they open it.";
+            return "Leverage: " + lev;
         }
 
         void KitMenu(float w, float h)
@@ -261,6 +304,11 @@ namespace Concordia
                 if (n) Dot(n.transform.position, new Color(0.75f, 0.82f, 0.55f), 3f);
             foreach (var host in FindObjectsByType<Hostile>(FindObjectsInactive.Exclude))
                 if (host) Dot(host.transform.position, new Color(0.82f, 0.18f, 0.14f), 4f);
+            foreach (var b in FindObjectsByType<QuestBeacon>(FindObjectsInactive.Exclude))
+            {
+                if (!b || !BeaconMatchesQuest(b)) continue;
+                Dot(b.transform.position, new Color(1f, 0.82f, 0.22f), 6f);
+            }
             if (player.world == WorldId.Hub)
                 foreach (var g in Canon.Gates)
                     Dot(new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle)) * Canon.RingRadius, g.color, 4f);
@@ -364,6 +412,85 @@ namespace Concordia
             GUI.color = new Color(0.92f, 0.82f, 0.62f, a);
             GUI.Label(new Rect(80, h * 0.50f, w - 160, 40), _announceLine, _cardSub);
             GUI.color = Color.white;
+        }
+
+        void PartyStrip()
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.4f);
+            GUI.DrawTexture(new Rect(22, 142, 300, 28), _white);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(32, 144, 160, 16), "PARTY  ·  solo", _small);
+            DrawBar(170, 150, 140, 8, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
+        }
+
+        void TargetBar(float w)
+        {
+            TrainingDummy dummy = null;
+            Hostile host = null;
+            float best = 22f;
+            var origin = player.transform.position;
+            var fwd = player.cam ? player.cam.PlanarForward : player.transform.forward;
+            foreach (var h in FindObjectsByType<Hostile>(FindObjectsInactive.Exclude))
+            {
+                if (!h) continue;
+                var to = h.transform.position - origin;
+                to.y = 0f;
+                var dist = to.magnitude;
+                if (dist > best || dist < 0.4f) continue;
+                if (Vector3.Dot(fwd.normalized, to.normalized) < 0.25f) continue;
+                best = dist;
+                host = h;
+                dummy = h.GetComponent<TrainingDummy>() ?? h.GetComponentInParent<TrainingDummy>();
+            }
+            if (host == null)
+            {
+                foreach (var d in FindObjectsByType<TrainingDummy>(FindObjectsInactive.Exclude))
+                {
+                    if (!d || d.hp <= 0f) continue;
+                    var to = d.transform.position - origin;
+                    to.y = 0f;
+                    var dist = to.magnitude;
+                    if (dist > 8f || dist < 0.4f) continue;
+                    if (Vector3.Dot(fwd.normalized, to.normalized) < 0.35f) continue;
+                    dummy = d;
+                    break;
+                }
+            }
+            var peril = Hostile.TelegraphKind;
+            if (dummy == null && string.IsNullOrEmpty(peril)) return;
+            float cx = w * 0.5f;
+            float y = 64f;
+            GUI.color = new Color(0f, 0f, 0f, 0.5f);
+            GUI.DrawTexture(new Rect(cx - 160, y, 320, string.IsNullOrEmpty(peril) ? 36 : 52), _white);
+            GUI.color = Color.white;
+            var label = dummy ? dummy.name : (host ? host.name : "foe");
+            float hpT = dummy ? Mathf.Clamp01(dummy.hp / 80f) : 1f;
+            GUI.Label(new Rect(cx - 150, y + 2, 300, 16), label.ToUpperInvariant(), _center);
+            DrawBar(cx - 140, y + 20, 280, 8, hpT, new Color(0.82f, 0.16f, 0.14f));
+            if (!string.IsNullOrEmpty(peril))
+            {
+                var hint = peril == "thrust" ? "Thrust — parry" : peril == "sweep" ? "Sweep — dodge" : "Grab — dodge";
+                GUI.Label(new Rect(cx - 150, y + 30, 300, 18), hint, _center);
+            }
+        }
+
+        static bool BeaconMatchesQuest(QuestBeacon b)
+        {
+            if (b.tokens == null || QuestLog.Active.Count == 0) return false;
+            foreach (var a in QuestLog.Active)
+            {
+                var objs = a.quest?.objectives;
+                if (objs == null) continue;
+                foreach (var o in objs)
+                {
+                    if (o == null || string.IsNullOrEmpty(o.target)) continue;
+                    foreach (var tok in b.tokens)
+                        if (QuestLog.Hit(new HashSet<string> { QuestLog.Norm(tok) }, o.target)
+                            || QuestLog.Norm(tok) == QuestLog.Norm(o.target))
+                            return true;
+                }
+            }
+            return false;
         }
 
         static void DrawBar(float x, float y, float w, float h, float t, Color c)

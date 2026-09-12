@@ -22,6 +22,14 @@ namespace Concordia
         Vector3 _vel;
         float _strafe;
         float _style;
+        float _windup;
+        Transform _tell;
+        Renderer _tellRend;
+        public static string TelegraphKind;
+        public static Transform TelegraphFrom;
+        public static float TelegraphUntil;
+
+        static readonly string[] Perils = { "thrust", "sweep", "grab" };
 
         void Start()
         {
@@ -62,6 +70,13 @@ namespace Concordia
 
             if (_seen <= 0f && dist > aggro)
             {
+                if (TelegraphFrom == transform)
+                {
+                    TelegraphKind = null;
+                    TelegraphFrom = null;
+                    _windup = 0f;
+                }
+                ShowTell(false);
                 if (_fauna) _fauna.hunting = false;
                 var home = _home - transform.position;
                 home.y = 0f;
@@ -87,7 +102,24 @@ namespace Concordia
             Step((side * Mathf.Sin(_strafe * 2.2f) * 0.55f).normalized);
             Face(aim);
             if (_cd > 0f) return;
+            if (_windup <= 0f)
+            {
+                _windup = 0.48f;
+                TelegraphKind = Perils[Mathf.Abs(name.GetHashCode()) % Perils.Length];
+                TelegraphFrom = transform;
+                TelegraphUntil = Time.time + _windup;
+                ShowTell(true);
+                return;
+            }
+            _windup -= Time.deltaTime;
+            if (_windup > 0f) return;
             _cd = 0.85f + (1.4f - _style);
+            if (TelegraphFrom == transform)
+            {
+                TelegraphKind = null;
+                TelegraphFrom = null;
+            }
+            ShowTell(false);
             player.TakeHit(damage, name);
         }
 
@@ -124,6 +156,40 @@ namespace Concordia
             if (dir.sqrMagnitude < 0.01f) return;
             var look = Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.z));
             transform.rotation = Quaternion.Slerp(transform.rotation, look, Time.deltaTime * 8f);
+        }
+
+        void ShowTell(bool on)
+        {
+            if (!on)
+            {
+                if (_tell) _tell.gameObject.SetActive(false);
+                return;
+            }
+            if (!_tell)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "Telegraph";
+                var col = go.GetComponent<Collider>();
+                if (col) UnityEngine.Object.Destroy(col);
+                _tell = go.transform;
+                _tell.SetParent(transform, false);
+                _tell.localPosition = new Vector3(0f, 2.25f, 0.2f);
+                _tell.localScale = Vector3.one * 0.22f;
+                _tellRend = go.GetComponent<Renderer>();
+            }
+            _tell.gameObject.SetActive(true);
+            if (!_tellRend) return;
+            var kind = TelegraphKind ?? "thrust";
+            var c = kind == "sweep" ? new Color(1f, 0.55f, 0.12f, 1f)
+                : kind == "grab" ? new Color(0.85f, 0.2f, 0.95f, 1f)
+                : new Color(1f, 0.18f, 0.12f, 1f);
+            var mat = _tellRend.material;
+            mat.color = c;
+            if (mat.HasProperty("_EmissionColor"))
+            {
+                mat.EnableKeyword("_EMISSION");
+                mat.SetColor("_EmissionColor", c * 4f);
+            }
         }
     }
 }

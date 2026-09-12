@@ -21,11 +21,18 @@ namespace Concordia
             public string id, title, type, era, description, significance;
         }
         [Serializable] public class PeopleDoc { public Person[] items; }
+        [Serializable] public class Narrative
+        {
+            // Secret is never deserialized here — T2.1 surfaces weaponise_at only.
+            public string weaponise_at, fear, current_goal;
+        }
         [Serializable] public class Person
         {
             public string id, name, title, archetype, backstory, background, faction_id, dialogue_style;
             public bool quest_giver;
             public string[] quest_hooks;
+            public Narrative narrative_context;
+            public string cross_world_hook;
         }
         [Serializable] public class CritterDoc { public Critter[] items; }
         [Serializable] public class Critter
@@ -156,6 +163,36 @@ namespace Concordia
             foreach (var q in Quests(id))
                 if (q != null && q.id == questId) return q;
             return null;
+        }
+
+        public static Person FindPerson(WorldId id, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            Person loose = null;
+            foreach (var p in People(id))
+            {
+                if (p == null) continue;
+                if (string.Equals(p.id, key, StringComparison.OrdinalIgnoreCase)) return p;
+                if (string.Equals(p.name, key, StringComparison.OrdinalIgnoreCase)) return p;
+                if (loose == null && !string.IsNullOrEmpty(p.id)
+                    && p.id.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    loose = p;
+                if (loose == null && !string.IsNullOrEmpty(p.name)
+                    && p.name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    loose = p;
+            }
+            return loose;
+        }
+
+        /// <summary>T2.1 — authored leverage, never the secret.</summary>
+        public static string LeverageLine(Person p)
+        {
+            var raw = p?.narrative_context?.weaponise_at;
+            if (string.IsNullOrEmpty(raw)) return "";
+            var cut = raw.IndexOf(". ", StringComparison.Ordinal);
+            var s = cut > 20 && cut < 180 ? raw.Substring(0, cut + 1) : raw;
+            if (s.Length > 180) s = s.Substring(0, 177) + "…";
+            return s;
         }
 
         public static Quest[] OfferedBy(WorldId id, string npcId)
@@ -545,6 +582,9 @@ namespace Concordia
             Ecology = Mathf.Max(0.15f, Ecology - 0.03f);
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
             LastEvent = Canon.Get(World).title + ": a pack thinned.";
+            var who = string.IsNullOrEmpty(id) ? "someone" : id;
+            NoteAct(who + " fell. Heirs would carry this — kernel npc_legacy needs /unity-ws.");
+            ConcordiaHUD.Announce("A thread passes", who + " is dead. Inheritance is kernel-side.");
         }
 
         /// <summary>Port of events.ts tickEvents / rollEvent — authored strings only.</summary>
@@ -966,6 +1006,30 @@ namespace Concordia
 
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
         public static int Births(WorldId id) => Load(id).births;
+
+        /// <summary>T2.2 — local lineage until npc_legacy arrives on /unity-ws.</summary>
+        public static string LineageLine(WorldId id)
+        {
+            var dead = DeadCsv(id);
+            var births = Births(id);
+            if (string.IsNullOrEmpty(dead) && births <= 0) return "";
+            var n = 0;
+            string first = "";
+            if (!string.IsNullOrEmpty(dead))
+            {
+                foreach (var p in dead.Split(','))
+                {
+                    var t = (p ?? "").Trim();
+                    if (t.Length == 0) continue;
+                    if (n == 0) first = t;
+                    n++;
+                }
+            }
+            var line = n > 0 ? n + " dead" : "none dead";
+            if (births > 0) line += " · " + births + " births";
+            if (!string.IsNullOrEmpty(first)) line += " · " + first + " still weighs";
+            return "lineage · " + line;
+        }
 
         static LivingSaveRec ReadFile()
         {

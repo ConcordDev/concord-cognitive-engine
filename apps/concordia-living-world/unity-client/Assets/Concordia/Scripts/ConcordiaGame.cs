@@ -336,6 +336,10 @@ namespace Concordia
                     line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
+                var person = WorldBook.FindPerson(world, npc.personId ?? npc.def.id);
+                var lev = WorldBook.LeverageLine(person);
+                if (!string.IsNullOrEmpty(lev) && Bonds.Get(Bonds.Key(npc)) >= 0.22f)
+                    line += "\nLeverage: " + lev;
                 _player.OpenTalk(npc, line);
                 return "Talking with " + npc.def.name + ".";
             }

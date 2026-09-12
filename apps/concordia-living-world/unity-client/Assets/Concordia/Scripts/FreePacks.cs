@@ -824,7 +824,12 @@ namespace Concordia
                 }
                 : kind == "fireflies"
                     ? new[] { "Assets/VFX/VFX_Fireflies.prefab" }
-                    : new[] { "Assets/VFX/VFX_Snow.prefab" };
+                    : new[]
+                    {
+                        "Assets/VFX/VFX_Snow.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/DustStorm.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/SmokeEffect.prefab"
+                    };
             foreach (var p in paths)
                 if (FreePacks.Load<GameObject>(p) != null) return p;
             return paths[paths.Length - 1];
@@ -834,7 +839,7 @@ namespace Concordia
         {
             var stem = kind == "rain" ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
                 : kind == "fireflies" ? FirstStem(new[] { "FireFlies" }, "")
-                : FirstStem(new[] { "SnowEffect" }, "");
+                : FirstStem(new[] { "SnowEffect", "DustStorm", "SmokeEffect" }, "");
             if (!string.IsNullOrEmpty(stem) && FreePacks.HasStem(stem))
             {
                 FreePacks.Spawn(stem, root, pos, 0, 0);

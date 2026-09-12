@@ -24,6 +24,7 @@ namespace Concordia
             QuestLog.Reset();
             SkillLedger.Reset();
             KitBag.Reset();
+            Bonds.Reset();
         }
 
         public static void NoteLamp() => Lamp = true;
@@ -408,6 +409,25 @@ namespace Concordia
             Items.Add(new Item { id = id, name = name ?? Pretty(id), kind = "loot", stem = id });
         }
 
+        public static Item TakeLoot()
+        {
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (Items[i].kind == "weapon") continue;
+                var it = Items[i];
+                Items.RemoveAt(i);
+                return it;
+            }
+            return null;
+        }
+
+        public static bool HasLoot()
+        {
+            foreach (var it in Items)
+                if (it.kind != "weapon") return true;
+            return false;
+        }
+
         public static bool Has(string id)
         {
             foreach (var it in Items)
@@ -462,6 +482,54 @@ namespace Concordia
             foreach (var f in WorldBook.Factions(world))
                 if (f != null && f.id == factionId) return f;
             return null;
+        }
+    }
+
+    /// <summary>
+    /// T1 affinity + T2 gifts. Local until /unity-ws carries romance.give_gift.
+    /// </summary>
+    public static class Bonds
+    {
+        static readonly Dictionary<string, float> Aff = new Dictionary<string, float>();
+
+        public static void Reset() => Aff.Clear();
+
+        public static string Key(GuestNpc npc)
+        {
+            if (npc == null) return "";
+            if (!string.IsNullOrEmpty(npc.personId)) return npc.personId;
+            if (npc.def != null && !string.IsNullOrEmpty(npc.def.id)) return npc.def.id;
+            return npc.def != null ? npc.def.name : npc.name;
+        }
+
+        public static float Get(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0f;
+            return Aff.TryGetValue(id, out var v) ? v : 0.08f;
+        }
+
+        public static float TalkBump(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0f;
+            var next = Mathf.Clamp01(Get(id) + 0.02f);
+            Aff[id] = next;
+            return next;
+        }
+
+        public static string Give(GuestNpc npc)
+        {
+            var id = Key(npc);
+            if (string.IsNullOrEmpty(id)) return "No one to give to.";
+            var item = KitBag.TakeLoot();
+            if (item == null) return "Empty hands. Take something from the ring first.";
+            float bump = 0.12f;
+            var n = (item.name ?? item.id ?? "").ToLowerInvariant();
+            if (n.Contains("meal") || n.Contains("flower") || n.Contains("lamp")) bump = 0.22f;
+            var next = Mathf.Clamp01(Get(id) + bump);
+            Aff[id] = next;
+            WorldClock.NoteAct("a gift changed the air");
+            var who = npc.def != null ? npc.def.name : "them";
+            return "You give " + who + " " + item.name + ". Affinity " + Mathf.RoundToInt(next * 100f) + "%.";
         }
     }
 }
