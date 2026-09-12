@@ -274,7 +274,7 @@ LOD L0–L3, streaming, shards (protocol exists), proc expansion, background sim
 | P7 | Standalone `/download` |
 | P8 | WebGL later |
 
-**Now:** persistent megaworld W0 + W0-field (settlement identity, place chronicle, whyPlace, WorldField). Then W1 wrapping `procgen-settlements` onto `settlements` rows. Combat still uses discrete `crossWorldPotency` until W3 streams (x,z) and W7 samples the field. Do not claim the 100-hour test. Do not claim bosses already retreat toward home.
+**Now:** persistent megaworld W0 + W0-field + organism spine (settlement identity, WorldField, Gloom Stalker as catalog organism). Then W1 wrapping `procgen-settlements` and W8 wrapping `fauna-spawner` onto identity rows. Combat still uses discrete `crossWorldPotency` until W3 streams (x,z) and W7 samples the field. Do not claim the 100-hour test. Do not invent Gloom Stalker prey. Do not claim bosses already retreat toward home.
 
 ---
 

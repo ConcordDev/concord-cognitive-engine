@@ -8,6 +8,8 @@
 // Spawned creatures are written to the existing world_npcs table with
 // archetype='creature' so the existing world rendering / proximity
 // queries see them. creature_population tracks counts per species.
+// MEGAWORLD W8: this quota top-up is not organism identity
+// (lib/concordia-organism.js). Do not enlarge the anonymous insert path.
 //
 // Per CLAUDE.md heartbeat invariant: this module never throws.
 

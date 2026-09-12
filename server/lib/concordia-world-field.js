@@ -23,7 +23,8 @@ import { NEUTRAL_AFFINITY } from "./skill-domains.js";
 
 /** Actor kinds the field treats identically. Branching on kind is a bug. */
 export const FIELD_ACTOR_KINDS = Object.freeze([
-  "player", "npc", "boss", "dragon", "summoned", "faction", "equipment", "infrastructure",
+  "player", "person", "npc", "boss", "dragon", "creature", "summoned",
+  "faction", "equipment", "infrastructure",
 ]);
 
 /**

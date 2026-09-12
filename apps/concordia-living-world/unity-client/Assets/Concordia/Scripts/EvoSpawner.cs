@@ -5,6 +5,9 @@ namespace Concordia
     /// <summary>
     /// Evo-asset presentation: Kenney/living fauna GLBs when present.
     /// Live path is FaunaLife (wander / graze / flee / hunt / sleep), not a sine orbit.
+    /// MEGAWORLD: this is the renderer. Organism identity (genome, habitat
+    /// fitness, death remains) lives in server/lib/concordia-organism.js.
+    /// Quota top-up in fauna-spawner is not a persistent organism (W8).
     /// </summary>
     public class EvoSpawner : MonoBehaviour
     {

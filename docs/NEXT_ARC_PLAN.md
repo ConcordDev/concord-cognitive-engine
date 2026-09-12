@@ -6,11 +6,13 @@
 settlements as historical objects, place memory, consequence→Unity presentation,
 and **world identity as a spatial field** (not nine portal maps). Read
 **`docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` first** for Concordia work.
-Spine pinned by `server/tests/concordia-megaworld.test.js` and
-`server/tests/concordia-world-field.test.js`. Do not rebuild
-`settlements` / `world_consequences` / `world_chronicle` / `cross-world-potency`.
-W5/W6 (cold-start and 100-hour return) and W7 (combat samples the field) are
-named and **not yet run / not yet wired**.
+Spine pinned by `server/tests/concordia-megaworld.test.js`,
+`server/tests/concordia-world-field.test.js`, and
+`server/tests/concordia-organism.test.js`. Do not rebuild
+`settlements` / `world_consequences` / `world_chronicle` / `cross-world-potency`
+/ `fauna-spawner` / `creature-needs` / `npc-needs`.
+W5/W6 (cold-start and 100-hour return), W7 (combat samples the field), and
+W8 (fauna-spawner becomes organism identity) are named and **not yet run / not yet wired**.
 
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —

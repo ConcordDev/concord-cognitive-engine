@@ -5,7 +5,7 @@
 
 This doc is the live Concordia arc. It does **not** replace `docs/LIVING_SOCIETY_PLAN.md` (labor → pay → grievance → chronicle) or `docs/CONCORDIA_UNITY_BUILD_PLAN.md` (AAA client + A/B/C). It unifies them under one topology: **one continuous physical universe**, with the existing engines as regions, settlements, memories, and a consequence→presentation pipeline.
 
-Do not rebuild `settlements`, `world_chronicle`, `world_consequences`, `npc_memories`, `world_buildings`, `procgen-settlements`, or faction strategy. Compose them.
+Do not rebuild `settlements`, `world_chronicle`, `world_consequences`, `npc_memories`, `world_buildings`, `procgen-settlements`, `fauna-spawner`, `creature-needs`, `npc-needs`, `food-web`, or faction strategy. Compose them.
 
 ---
 
@@ -37,6 +37,8 @@ World identity is a **spatial field**, not a door to another map. Walking change
 16. **Cold-start and 100-hour tests are acceptance**, not slogans. They are named below. They are **not yet run** as live certification.
 17. **World identity is a spatial field, not a separate map.** Every point on the megaworld has overlapping civilization influences (`fantasyInfluence`, `crimeInfluence`, …). Local rules are derived from those values. Hard borders are a presentation bug. Pinned: `server/lib/concordia-world-field.js`.
 18. **Geographic effectiveness is physics, not a player debuff.** Native strength × local physics × distance from origin × environmental adaptation. The same formula applies to a player, an NPC, a boss, a dragon, a summon, a faction army, and equipment. Location is a gameplay stat because the world-field is different there.
+19. **A creature is a persistent organism, not a spawn.** Genome → organism → ecology → civilization → history → presentation. Death tombstones; it does not DELETE. Missing prey / pack / territory stay empty. Pinned: `server/lib/concordia-organism.js`.
+20. **A person runs the same world.** Person → needs → action → consequence → memory → place → history → presentation. The two loops meet at WorldField + `world_consequences` + place. Concordia does not have a separate “creature system,” “NPC system,” “economy system,” and “world system.” It has one living world.
 
 ---
 
@@ -64,6 +66,8 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 | 16 Tests | Heartbeats exist; world continues in `WorldMemory` slices (“The world continued while you were away”). | 7-day / 1-year / 50-year cold-start **not run**. 100-hour return test **not run**. Do not claim them. |
 | 17 WorldField | Kernel `fieldAt(x,z)` on one plane. Gate bearings copied from Unity `Canon.Gates`. Authored `content/world/*/meta.json` `skill_affinity` is the blend at each center. Hub is a suppression well (Flower Law + steel dead). Discrete `crossWorldPotency` / `effectivenessMultiplier` remain the **live combat** path (WorldId). | Unity still region-rebuilds; combat has a WorldId, not a megaworld (x,z). `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). That is the discrete leftover — the field degrades, it does not forbid. |
 | 18 Geographic effectiveness | `geographicEffectiveness` is actor-kind-blind. Adaptation raises a floor without beating home. | Not wired into `/combat/attack`. Bosses do not yet retreat toward their home field. No Unity presentation of weakening (and when it lands, it must read the kernel, not a fake HUD modifier). |
+| 19 Organism | Authored `content/world/*/creatures.json`. Creature needs (`creature-needs.js`). Food-web trophic edges. `creature_corpses` / `creature_population`. `world_npcs` rows with `archetype='creature'`. Spine: `organismInField` + death never deletes. | `fauna-spawner` still **tops up quotas** with anonymous inserts (same anti-pattern as `spawnTown`). Morphology does not yet change with the field (Unity `CreatureCompiler` is on the other client branch). Prey for Gloom Stalker is **empty** in the catalog — do not fill it from the prose “hunts isolated targets.” Population is per `(world_id, biome)`, not per megaworld point. |
+| 20 Person loop | `npc-needs.js` (16 need kinds). Utility + routines. Consequence graph. Place chronicle. | Person action does not yet always write `world_consequences`. The two loops share the field in the kernel; Unity FaunaLife / NpcLife are still local presenters. |
 
 ---
 
@@ -86,6 +90,21 @@ native strength
 `explainGeographicEffectiveness` speaks in physics (“local magic is 0.12; you trained in fantasy”). It does not mint a combat-log debuff.
 
 Live combat keeps `cross-world-potency.js` until W3 gives coordinates and W7 samples `fieldAt`. Do not swap the route early and pretend Unity is already walking a supercontinent.
+
+---
+
+## 2.2 One living world (organism loops)
+
+```
+Genome → organism → ecology → civilization → history → presentation
+Person → needs → action → consequence → memory → place → history → presentation
+```
+
+They meet at `sharedWorldSurface(x,z)` (the field) and `world_consequences` (the graph). A Gloom Stalker walked from Fantasy toward Crime is the same catalog id; habitat fitness and magic coupling change because the **environment changed under it**. Prey stays empty until a food-web edge or catalog list exists. Pack/territory stay null until authored.
+
+`fauna-spawner` topping up anonymous `world_npcs` is the organism analog of `spawnTown`. Wrap it in W8. Do not enlarge it.
+
+Unity `FaunaLife` / `NpcLife` **reveal**. They do not invent a hunting list or a mourner.
 
 ---
 
@@ -185,6 +204,7 @@ Aggregation must store `population / food / wealth / stability / war_risk` **and
 |---|---|---|
 | **W0** | Laws in code. Settlement status + abandon-not-delete. Place chronicle. `whyPlace`. `settle`/`abandon` consequences. Unity Travel labeled region-rebuild. Tests. This doc. | **This PR** |
 | **W0-field** | `fieldAt(x,z)`. Hub well. Geographic effectiveness, actor-kind-blind. Authored affinities. Canon bearings. Discrete potency left as live combat. | **This PR** |
+| **W0-organism** | Two loops named. `organismInField`. Gloom Stalker catalog honesty (no invented prey). Death tombstones. `birth`/`hunt` on the existing consequence graph. | **This PR** |
 | **W1** | `spawnSettlementForRegion` founds or joins a `settlements` row (no second identity). Population counted from NPCs. | open |
 | **W2** | Unity presents `status` (active vs abandoned ruins remain). No despawn of the settlement id. | open |
 | **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | open |
@@ -192,6 +212,7 @@ Aggregation must store `population / food / wealth / stability / war_risk` **and
 | **W5** | Cold-start: new seed, run sim 7 days (then 1 month / 1 year as capacity allows). Inspect settlements, deaths, abandonments **without authored history**. Walk it. | not run |
 | **W6** | **Come back 100 hours later.** Help a farmer, leave, return. The place continued. Memories and buildings match the ledger. | not run |
 | **W7** | Combat, NPCs, bosses, summons, faction armies sample `geographicEffectiveness`. A boss far from home is weaker too, and may retreat toward its field. Unity presents the field (no fake percent sticker). | open |
+| **W8** | Fauna-spawner founds organism rows (no anonymous quota as the live path). Death/birth always hit the graph. Field-coupled habitat. Unity FaunaLife reads `organismInField`. Morphology from genome×field is later — do not fake unique GLBs. | open |
 
 Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 
@@ -213,6 +234,10 @@ Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 - A second skill-affinity table next to `content/world/*/meta.json`.
 - Wiring `geographicEffectiveness` into combat and claiming Unity already walks the supercontinent.
 - A HUD sticker (“−42% Magic Damage”) as a substitute for local physics.
+- Topping up anonymous fauna as if that were a persistent organism (`fauna-spawner` current path — wrap in W8).
+- Inventing prey / pack / territory from flavor prose (`starting_behavior`).
+- `DELETE FROM world_npcs` on a creature death.
+- A second creature identity table next to `world_npcs`.
 
 ---
 
@@ -220,6 +245,7 @@ Do not claim W5/W6. Do not claim CK3 borders or 20 million NPCs.
 
 - Topology + Flower Law + abandon-not-delete + whyPlace emptiness: `server/tests/concordia-megaworld.test.js`
 - WorldField + geographic effectiveness (actor-kind-blind, Hub well, authored affinities): `server/tests/concordia-world-field.test.js`
+- Organism loops + Gloom Stalker catalog honesty + death remains: `server/tests/concordia-organism.test.js`
 - Discrete WorldId potency (live combat, still): `server/tests/cross-world-potency.test.js`
 - Consequence graph (existing): `server/tests/world-consequence.test.js`
 - Settlement composition / vacancy (existing): `server/tests/settlements.test.js`
