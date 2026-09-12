@@ -20,6 +20,7 @@ import { ds } from '@/lib/design-system';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
+import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
 
 type Status =
   | { kind: 'checking' }
@@ -126,9 +127,10 @@ export default function NativeWorldPlayer({
     );
   }
 
-  const params = new URLSearchParams({ CONCORD_WORLD_ID: worldId });
-  const jwt = token || getInjectedJwt();
-  if (jwt) params.set('CONCORD_AUTH_TOKEN', jwt);
+  const params = buildUnityIframeSearch({
+    worldId,
+    token: token || getInjectedJwt(),
+  });
   const join = status.src.includes('?') ? '&' : '?';
   const src = `${status.src}${join}${params.toString()}`;
 

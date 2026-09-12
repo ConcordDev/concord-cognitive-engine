@@ -30,6 +30,9 @@ describe('NativeWorldPlayer', () => {
     const iframe = screen.getByTitle('Concordia Unity');
     expect(iframe.getAttribute('src')).toContain('/unity-client/index.html');
     expect(iframe.getAttribute('src')).toContain('CONCORD_WORLD_ID=concordia-hub');
+    expect(iframe.getAttribute('src')).toContain(
+      'CONCORD_GATEWAY_URL=' + encodeURIComponent('ws://127.0.0.1:5050/unity-ws'),
+    );
     expect(iframe.getAttribute('allow')).toContain('pointer-lock');
   });
 

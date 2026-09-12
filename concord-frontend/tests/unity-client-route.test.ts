@@ -41,8 +41,17 @@ describe('buildUnityConfig', () => {
   });
 
   it('uses ws:// for http origins', () => {
-    const cfg = buildUnityConfig(new URLSearchParams(), 'http://127.0.0.1:3000');
-    expect(cfg.gatewayUrl).toBe('ws://127.0.0.1:3000/unity-ws');
+    const cfg = buildUnityConfig(new URLSearchParams(), 'http://example.test:3000');
+    expect(cfg.gatewayUrl).toBe('ws://example.test:3000/unity-ws');
+  });
+
+  it('pins the kitchen kernel on loopback because Next cannot upgrade WS', () => {
+    expect(buildUnityConfig(new URLSearchParams(), 'http://127.0.0.1:3000').gatewayUrl).toBe(
+      'ws://127.0.0.1:5050/unity-ws',
+    );
+    expect(buildUnityConfig(new URLSearchParams(), 'http://localhost:3000').gatewayUrl).toBe(
+      'ws://127.0.0.1:5050/unity-ws',
+    );
   });
 
   it('lets query params win', () => {

@@ -581,9 +581,14 @@ function isBinaryMovePayload(p) {
     }, authTimeoutMs);
     if (client._authTimer.unref) client._authTimer.unref();
 
+    // Serialize per-socket. handleMessage is async (tryAuth awaits
+    // verifyToken); a fire-and-forget Promise.resolve lets the WebGL
+    // AfterOpen burst (auth + scene:request in one tick) race 4401.
+    let msgChain = Promise.resolve();
     ws.on("message", (raw) => {
-      // Handlers never throw out of the gateway.
-      Promise.resolve(handleMessage(client, raw)).catch(() => { /* survive */ });
+      msgChain = msgChain
+        .then(() => handleMessage(client, raw))
+        .catch(() => { /* survive */ });
     });
 
     ws.on("pong", () => { client.isAlive = true; });

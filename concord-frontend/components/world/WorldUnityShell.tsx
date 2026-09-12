@@ -20,6 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
+import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
 
 const WorldOsSurface = dynamic(() => import('@/components/world/WorldOsSurface'), {
   ssr: false,
@@ -83,9 +84,10 @@ export default function WorldUnityShell() {
         const ok = await probeUnitySrc(candidate);
         if (cancelled) return;
         if (ok) {
-          const params = new URLSearchParams({ CONCORD_WORLD_ID: worldId });
-          const jwt = getInjectedJwt();
-          if (jwt) params.set('CONCORD_AUTH_TOKEN', jwt);
+          const params = buildUnityIframeSearch({
+            worldId,
+            token: getInjectedJwt(),
+          });
           const join = candidate.includes('?') ? '&' : '?';
           setIframeSrc(`${candidate}${join}${params.toString()}`);
           setStatus('ready');
