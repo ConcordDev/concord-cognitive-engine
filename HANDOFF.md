@@ -152,8 +152,17 @@ look.
 `PlaceWeather("rain"|"snow")` in `WorldBuilder.DressSky` / `WorldKit.Accents`
 was one-shot from `Canon.WorldDef.weather`, so Crime rained forever and the
 kernel's "weather shifted" line was HUD-only. Identity fireflies (Hub / Tunya
-/ Fantasy) are unchanged. Play-mode visual confirm still outstanding — Hub
-starts `clear`, so either travel to Crime or force `WorldClock.Weather`.
+/ Fantasy) are unchanged.
+
+Play-mode visual confirm did **not** complete this pass. Entered Play on
+`ConcordiaHub` while the Editor was still serving the **pre-change**
+`Assembly-CSharp` (`ApplyWeatherVisuals` was not on `WorldClock` via
+reflection; Hub weather read `clear` as expected). After exiting Play and
+force-reimporting `WorldBook.cs`, MCP `execute_code` started TCS-timing-out
+and the Editor main process sat at ~0% CPU — same class of hang as the
+mid-compile-edit gotcha below. Do not assume the weather bind is visually
+proven; next session should let the Editor finish a clean domain reload,
+then force rain (or travel to Crime) and look for a `World/WeatherFx` child.
 
 ## Environment gotchas worth knowing about
 
