@@ -20,6 +20,20 @@ namespace Concordia.Editor
     {
         const long SkipDemoCity = 269772L;
         const int Batch = 3;
+        // Huge sample/tool packs that refill the disk or mutate ProjectSettings.
+        // 115747 3D Game Kit already blew Safe Mode + 2.5GB — never re-import.
+        static readonly long[] SkipForever =
+        {
+            SkipDemoCity,
+            115747L, // 3D Game Kit
+            20282L,  // Huge FBX Mocap Library part 2
+            234361L, // Any(MMO)RPG
+            45568L,  // Item & Inventory System
+            73563L,  // Lighting Optimisation sample
+            272450L, // Meta MR Utility Kit
+            213197L, // Unity URP Terrain sample
+            12555L   // Outdoor Ground — failed twice on this disk
+        };
         const string StatePath = "/tmp/concordia-import-state.txt";
         const string NamesPath = "/tmp/concordia-import-names.txt";
         const string ProgressPath = "/tmp/concordia-import-progress.txt";
@@ -62,7 +76,18 @@ namespace Concordia.Editor
             { 61217, new[] { "Skybox" } },
             { 12567, new[] { "ADG_Textures" } },
             { 42285, new[] { "_Creepy_Cat" } },
-            { 115747, new[] { "3DGamekit" } }
+            { 115747, new[] { "3DGamekit" } },
+            { 17785, new[] { "3DForge" } },
+            { 279431, new[] { "ALP_Assets" } },
+            { 104753, new[] { "Free Island Collection" } },
+            { 155776, new[] { "Free Pack" } },
+            { 49962, new[] { "NatureStarterKit" } },
+            { 76974, new[] { "TreePackVol" } },
+            { 6947, new[] { "Rocks and Boulders" } },
+            { 86679, new[] { "RPG_FPS_game_assets_industrial" } },
+            { 31711, new[] { "BodyGuards" } },
+            { 111778, new[] { "Cartoon_Texture_Pack" } },
+            { 54030, new[] { "Medieval Action" } }
         };
 
         static bool _hooked;
@@ -202,9 +227,9 @@ namespace Concordia.Editor
             {
                 var id = kv.Key;
                 var name = kv.Value;
-                if (id == SkipDemoCity)
+                if (ShouldSkip(id))
                 {
-                    Log("skip Demo City " + id);
+                    Log("skip forever " + id + " " + name);
                     done.Add(id);
                     continue;
                 }
@@ -250,6 +275,11 @@ namespace Concordia.Editor
             var st = ReadState();
             if (st.Phase == "done" || st.Phase == "idle") return;
 
+            var skipped = 0;
+            skipped += st.PendingDownload.RemoveAll(ShouldSkip);
+            skipped += st.PendingInstall.RemoveAll(ShouldSkip);
+            if (skipped > 0) WriteState(st);
+
             if (st.Installing != 0)
             {
                 if (!st.Done.Contains(st.Installing)) st.Done.Add(st.Installing);
@@ -260,6 +290,11 @@ namespace Concordia.Editor
 
             if (st.PendingInstall.Count > 0)
             {
+                if (AnyDownloadInProgress())
+                {
+                    WriteProgress("waiting — download in flight before install remainingInstall=" + st.PendingInstall.Count);
+                    return;
+                }
                 st.Phase = "install";
                 var id = st.PendingInstall[0];
                 st.Installing = id;
@@ -288,6 +323,11 @@ namespace Concordia.Editor
 
             if (st.PendingDownload.Count > 0)
             {
+                if (AnyDownloadInProgress())
+                {
+                    WriteProgress("waiting — download already in progress remaining=" + st.PendingDownload.Count);
+                    return;
+                }
                 st.Phase = "download";
                 WriteState(st);
                 var n = Math.Min(Batch, st.PendingDownload.Count);
@@ -417,6 +457,31 @@ namespace Concordia.Editor
                 WriteProgress("downloading " + id + " " + NameOf(id) + " " + (pct * 100f).ToString("0") + "%");
             }
             catch { }
+        }
+
+        static bool ShouldSkip(long id)
+        {
+            for (var i = 0; i < SkipForever.Length; i++)
+            {
+                if (SkipForever[i] == id) return true;
+            }
+            return false;
+        }
+
+        static bool AnyDownloadInProgress()
+        {
+            try
+            {
+                var mgr = Resolve("UnityEditor.PackageManager.UI.Internal.IAssetStoreDownloadManager");
+                var t = Ed("UnityEditor.PackageManager.UI.Internal.IAssetStoreDownloadManager");
+                var m = t.GetMethod("IsAnyDownloadInProgress");
+                if (m == null) return false;
+                return (bool)m.Invoke(mgr, null);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         static bool AlreadyInProject(long id, string displayName)

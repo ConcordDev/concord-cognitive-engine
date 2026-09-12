@@ -717,7 +717,7 @@ namespace Concordia
             var c = Culture(id);
             if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
             if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
-            return FirstStem(new[] { "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
+            return FirstStem(new[] { "OakBigTree01_pr", "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
         }
 
         public static string Grass(WorldId id) =>
@@ -741,7 +741,7 @@ namespace Concordia
         public static string Chest() => FirstStem(new[] { "chest" }, "chest");
         public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
         public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
-        public static string Rock() => FirstStem(new[] { "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+        public static string Rock() => FirstStem(new[] { "Rock1A", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
         /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace
@@ -847,10 +847,22 @@ namespace Concordia
         {
             var c = Culture(id);
             if (c == "court") return "unpaved Court — no house ring";
-            if (c == "grove" && id == WorldId.Frontier) return "no palm pack — Kenney palm fallback; embassy is road only";
-            if (c == "grove") return "no wheat/hedge pack — Kenney crops/hedge fallback";
+            if (c == "grove" && id == WorldId.Frontier)
+            {
+                var palm = FirstStem(new[] { "Palm" }, "palm-straight");
+                return palm != "palm-straight" ? "SUIMONO palms" : "no palm pack — Kenney palm fallback; embassy is road only";
+            }
+            if (c == "grove")
+            {
+                var wheat = FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB");
+                return wheat != "crops_wheatStageB" ? "store crops" : "no wheat/hedge pack — Kenney crops/hedge fallback";
+            }
             if (c == "ash") return "no crypt/gravestone pack — Kenney fallback";
-            if (c == "street") return "no dumpster pack — Kenney dumpster fallback";
+            if (c == "street")
+            {
+                var dump = FirstStem(new[] { "Dumpster" }, "dumpster");
+                return dump != "dumpster" ? "industrial dumpsters" : "no dumpster pack — Kenney dumpster fallback";
+            }
             if (c == "grid") return "no sci-fi lab / Kyle — modular rooms then Kenney skyline";
             return "no crystal pack — Kenney crystal fallback";
         }
@@ -962,9 +974,9 @@ namespace Concordia
             new PackHint { id = "4387", role = "water (SUIMONO) — imported, not the live water path", needles = new[] { "SUIMONO" } },
             new PackHint { id = "14360", role = "weapon meshes", needles = new[] { "MYFG-Weapon" } },
             new PackHint { id = "267961", role = "controller reference — do not replace Concordia", needles = new[] { "Starter Assets" } },
-            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "Big Oak", "Objective Environment" } },
+            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "ALP_Assets", "Big Oak" } },
             new PackHint { id = "269772", role = "demo city (re-download if truncated; do not vendor)", needles = new[] { "Demo City", "Versatile Studio" } },
-            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Sound Effects" } }
+            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Free Pack", "Sound Effects" } }
         };
 
         public static bool FolderPresent(string[] needles)

@@ -295,6 +295,21 @@ apps/concordia-living-world/unity-client/Assets/_Recovery/
 apps/concordia-living-world/unity-client/Assets/ADG_Textures/
 apps/concordia-living-world/unity-client/Assets/_Creepy_Cat/
 apps/concordia-living-world/unity-client/Assets/3DGamekit/
+apps/concordia-living-world/unity-client/Assets/NatureStarterKit/
+apps/concordia-living-world/unity-client/Assets/Free Island Collection/
+apps/concordia-living-world/unity-client/Assets/Free Pack/
+apps/concordia-living-world/unity-client/Assets/3DForge/
+apps/concordia-living-world/unity-client/Assets/ALP_Assets/
+apps/concordia-living-world/unity-client/Assets/BodyGuards/
+apps/concordia-living-world/unity-client/Assets/Cartoon_Texture_Pack/
+apps/concordia-living-world/unity-client/Assets/InnerverseInteractive/
+apps/concordia-living-world/unity-client/Assets/Medieval Action - FX Pack 2.0/
+apps/concordia-living-world/unity-client/Assets/RPG_FPS_game_assets_industrial/
+apps/concordia-living-world/unity-client/Assets/Rocks and Boulders 2/
+apps/concordia-living-world/unity-client/Assets/TreePackVol.1/
+apps/concordia-living-world/unity-client/Assets/RPG_inventory_icons/
+apps/concordia-living-world/unity-client/Assets/YughuesFreeMetalMaterials/
+apps/concordia-living-world/unity-client/Assets/Plugins/Demigiant/
 # Third-party rocketbox human textures (~584MB) + shot dumps — not script SoT
 apps/concordia-living-world/unity-client/Assets/Concordia/Models/
 apps/concordia-living-world/unity-client/Assets/Concordia/Shots/
@@ -334,6 +349,21 @@ apps/concordia-living-world/unity-client/Assets/_Recovery.meta
 apps/concordia-living-world/unity-client/Assets/ADG_Textures.meta
 apps/concordia-living-world/unity-client/Assets/_Creepy_Cat.meta
 apps/concordia-living-world/unity-client/Assets/3DGamekit.meta
+apps/concordia-living-world/unity-client/Assets/NatureStarterKit.meta
+apps/concordia-living-world/unity-client/Assets/Free Island Collection.meta
+apps/concordia-living-world/unity-client/Assets/Free Pack.meta
+apps/concordia-living-world/unity-client/Assets/3DForge.meta
+apps/concordia-living-world/unity-client/Assets/ALP_Assets.meta
+apps/concordia-living-world/unity-client/Assets/BodyGuards.meta
+apps/concordia-living-world/unity-client/Assets/Cartoon_Texture_Pack.meta
+apps/concordia-living-world/unity-client/Assets/InnerverseInteractive.meta
+apps/concordia-living-world/unity-client/Assets/Medieval Action - FX Pack 2.0.meta
+apps/concordia-living-world/unity-client/Assets/RPG_FPS_game_assets_industrial.meta
+apps/concordia-living-world/unity-client/Assets/Rocks and Boulders 2.meta
+apps/concordia-living-world/unity-client/Assets/TreePackVol.1.meta
+apps/concordia-living-world/unity-client/Assets/RPG_inventory_icons.meta
+apps/concordia-living-world/unity-client/Assets/YughuesFreeMetalMaterials.meta
+apps/concordia-living-world/unity-client/Assets/Plugins/Demigiant.meta
 apps/concordia-living-world/unity-client/Assets/Concordia/Models.meta
 apps/concordia-living-world/unity-client/Assets/Concordia/Shots.meta
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/LlamaLib-v2.0.5.meta
