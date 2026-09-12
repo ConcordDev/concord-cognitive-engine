@@ -59,16 +59,32 @@ namespace Concordia.Editor
             { 28647, new[] { "3rdPerson+Fly" } },
             { 116144, new[] { "SlimUI" } },
             { 18353, new[] { "Skybox" } },
-            { 61217, new[] { "Skybox" } }
+            { 61217, new[] { "Skybox" } },
+            { 12567, new[] { "ADG_Textures" } },
+            { 42285, new[] { "_Creepy_Cat" } },
+            { 115747, new[] { "3DGamekit" } }
         };
 
         static bool _hooked;
-        static bool _listing;
         static Type _editorAsmCached;
+        static double _lastKickAt;
 
         static ImportAllMyAssets()
         {
             EditorApplication.delayCall += ResumeIfNeeded;
+            EditorApplication.update += WatchdogKick;
+        }
+
+        static void WatchdogKick()
+        {
+            if (!File.Exists(StatePath)) return;
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlaying) return;
+            var now = EditorApplication.timeSinceStartup;
+            if (now - _lastKickAt < 4.0) return;
+            var st = ReadState();
+            if (st.Phase == "idle" || st.Phase == "done") return;
+            _lastKickAt = now;
+            Kick();
         }
 
         [MenuItem("Concordia/Asset Store/Import all My Assets")]
@@ -87,7 +103,6 @@ namespace Concordia.Editor
                 return;
             }
             WriteProgress("listing My Assets…");
-            _listing = true;
             HookDownloadEvents();
             ListPurchasesThenQueue();
         }
@@ -163,11 +178,9 @@ namespace Concordia.Editor
                     WriteProgress("list failed: " + ex.Message);
                     Debug.LogException(ex);
                 }
-                finally { _listing = false; }
             };
             Action<object> onErr = err =>
             {
-                _listing = false;
                 var msg = ReadUiError(err);
                 WriteProgress("GetPurchases error: " + msg);
                 Log("GetPurchases error: " + msg);
