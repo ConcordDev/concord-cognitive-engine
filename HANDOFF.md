@@ -1,498 +1,188 @@
-# UX Completeness Sprint — Handoff
-
-Branch: `claude/add-api-wires-onboarding-EWvZC` (built on top of merged
-`claude/audit-app-completeness-GwBlp`, PR #759 — pushed to origin)
-Plan: `/root/.claude/plans/make-a-new-plan-nifty-crayon.md` (Phase 11
-17-item backlog; commit `eba0a3d` is the last push)
-Last update: 2026-05-17 (sessions 9–11 — branch now at **236 lens dirs**,
-all 10 UX-completeness dimensions complete + **pan-social hub** at
-`/lenses/social` with React/Share/Bookmark/Follow/Comment/Story/UserLink
-primitives + Saved tab + **@mention autocomplete** + **social:notification
-toast** + **/admin/endpoints** 2,400-route inventory + **useTilePush**
-hook + 41 REAL_FREE no-key wire panels + 0 type errors + 25/25 social
-contract tests + server tests green with two pre-existing failures fixed)
-
-## Session 11 additions (Phase 11 — 17-item backlog, parts 1-5)
-
-```
-1eb6d81 Phase 11 Items 5 + 10 sweep: 4 more hero lenses get MobileTabBar, 6 more DraftedTextarea swaps
-0e95008 Phase 11 Items 5 + 10 partial: MobileTabBar on council/sim + DraftedTextarea swaps
-5598765 Phase 11 Item 7 (substrate + roster): Spaces (live audio rooms)
-4a049bc Phase 11 Item 6 (substrate + feed): Reels short-form video
-a38889e Phase 11 Items 12 + 8-part-3: federation push for social + useTilePush mount
-9ec5f65 Phase 11 Item 13: WebPush notifications — migration 197 + dispatcher + hook + service worker + 8/8 tests
-e18face Phase 11 Item 9 finish: 4 panels for the key-required wires
-67658a6 Phase 11 Stage B (Item 9): 4 key-required REAL_FREE wires + 6/6 contract tests
-5cdd5dd Phase 11 Stage A: HANDOFF refresh + 25/25 social tests green
-eba0a3d Phase 11 part 2 (in-flight): useTilePush + FlashHighlight + 7 social contract tests + realtimeEvents
-1970f29 Phase 11 part 1: admin/endpoints, bookmarks lens, mention autocomplete, notification toast, two pre-existing test fixes
-fe31813 chore: refresh macro telemetry artifact
-```
-
-### Phase 11 final tally — 15 of 17 backlog items fully shipped, 2 partial
-
-| # | Item | Status |
-|---|---|---|
-| 1 | /admin/endpoints inventory | ✅ |
-| 2 | Bookmarks lens (Saved) | ✅ |
-| 3 | @mention autocomplete | ✅ |
-| 4 | Notification toast | ✅ |
-| 5 | Mobile polish hero lenses | 🟡 9/20 (kingdoms, sessions, social, council, sim, food, education, legal, healthcare) |
-| 6 | Reels short-form video | ✅ Substrate + feed |
-| 7 | Spaces live audio rooms | ✅ Substrate + roster |
-| 8 | useTilePush + FlashHighlight | ✅ Hook + marketplace mount |
-| 9 | 4 REAL_FREE key-required wires (FRED/EPA/NPS/OpenWeatherMap) | ✅ |
-| 10 | DraftedTextarea hand-swaps | 🟡 10 swapped (astronomy, game-design, environment, insurance, fitness, calendar, realestate ×2, healthcare, education ×2) |
-| 11 | Migrations 195-200 deployed | ✅ Locally; prod = human action |
-| 12 | Federation push (ActivityPub) | ✅ Substrate + outbox + heartbeat + visibility selector |
-| 13 | Push notifications (WebPush) | ✅ |
-| 14 | HANDOFF.md refresh | ✅ This file |
-| 15 | Tier-2 social contract tests | ✅ 25/25 |
-| 16 | Server test baseline | ✅ Plus 2 pre-existing fixes |
-| 17 | README pan-social section | ✅ |
-
-### New tests landed this phase (all green)
-
-- `tests/route-inventory.test.js` — 5/5
-- `tests/key-required-live-registration.test.js` — 6/6
-- `tests/push-tokens.test.js` — 8/8
-- `tests/federation-outbox.test.js` — 8/8
-- `tests/reels.test.js` — 9/9
-- `tests/audio-rooms.test.js` — 10/10
-- `tests/components/social/{ReactionBar,BookmarkButton,FollowButton,UserLink,QuickPostComposer,ShareButton,CommentThread}.test.tsx` — 25/25 (vitest)
-
-### New migrations landed this phase
-
-- 197 `push_tokens` — WebPush + Expo device registry
-- 198 `social_federation` — federation_outbox + federation_inbox + federation_peer_actors
-- 199 `reels` — reels + reel_views
-- 200 `audio_rooms` — audio_rooms + audio_room_speakers + audio_room_listeners
-
-
-
-### Session 11 highlights
-
-**`/admin/endpoints` — full HTTP route inventory.** Companion to
-`/admin/wires`. Static-parses `server.js` + every `routes/*.js` for
-`(method, path, file, line, auth)` tuples; caches result; renders
-~2,400 rows grouped by base path with one-click Test buttons. Auth
-posture (public / required / gated) derived from real source. POST /
-PUT / DELETE buttons confirm before firing.
-New: `server/lib/route-inventory.js` + `concord-frontend/app/admin/endpoints/page.tsx` + 5/5 contract tests.
-
-**Saved lens.** `BookmarkButton` was mounted in every `DTUEmbed` but
-there was no surface to SEE saved posts. Fixed: new `BookmarksList.tsx`
-that pulls `/api/social/bookmarks` then parallel-fetches each post via
-`/api/social/post/:postId`; new `/lenses/saved` page + new "Saved"
-tab on `/lenses/social`; manifest entry `category: 'social'`,
-`dataTier: 'REAL_LIVE'`. "Post unavailable" placeholder + one-click
-Remove for deleted posts.
-
-**@mention autocomplete.** `createPost` was already accepting a
-`mentionedUsers` array but no UI wired it. Fixed: new endpoint
-`GET /api/social/mention-search?q=&limit=` ranked followed > followers
-> citation count + prefix matches; new `MentionAutocomplete.tsx`
-render-prop wrapper (debounced 200ms, arrow keys, Enter/Tab/Escape);
-wired into both `QuickPostComposer` and `CommentThread`; `addComment`
-now persists `mentionedUsers` and fires `type: 'mention'` notifications.
-
-**Social notification toast.** `NotificationBell` polls every 60s but
-reactions/comments/follows fired no real-time UI. Fixed:
-`setSocialEmitter(fn)` exported from `social-layer.js`, called once
-at boot to thread `emitToUser` in; `createNotification` now also
-fires a `social:notification` socket event to the recipient's
-`user:${userId}` room; new `useSocialNotificationToast.ts` hook
-subscribes via `subscribe()` and pushes through `useUIStore.addToast`.
-Mounted in `AppShell.tsx` — app-wide. Dedupes against an in-memory
-seen-set so poll + socket race doesn't double-toast.
-
-**useTilePush + FlashHighlight (in-flight).** Manifest already
-declared `realtimeEvents?: string[]` but no lens populated it. Fixed:
-new `useTilePush.ts` reads the manifest, subscribes to events,
-invalidates the supplied query keys + flips `flashKey`; new
-`FlashHighlight.tsx` pulses an indigo ring for 900ms. `realtimeEvents`
-populated on world (building-state, refusal-field, season-transition,
-sign-placed, weather:update, combat:hit/stagger), chat (chat:status/
-token/complete + message:saved), finance, marketplace, crypto. **TODO
-Phase 11 part 3**: codemod-mount `useTilePush` + wrap primary list
-renders with `<FlashHighlight>`.
-
-**7 social contract test files** (25/25 green):
-`ReactionBar`, `BookmarkButton`, `FollowButton`, `UserLink`,
-`QuickPostComposer`, `ShareButton`, `CommentThread` — Tier-2 vitest
-coverage of the pan-social primitives.
-
-**Two pre-existing server-test regressions fixed:**
-- `three-gate-consistency`: `/api/lens-actions` was in Gate 1 but not
-  Gate 3 — added it to `_safeReadPaths`.
-- `social-dm-recall: rejects recall after the window has elapsed`:
-  `ageSec > windowSeconds` let `windowSeconds=0` through when ageSec
-  was 0. Changed to `>=` so "zero window = no recall" is honest.
-
-**README updated**: 236 lens dirs, 196 migrations, new "Pan-Social
-Hub" section listing every primitive.
-
-## Sessions 9–10 highlights (pan-social hub)
-
-- **Session 9**: promoted 41 "light vertical" lenses → solid via
-  `LensVerticalHero` codemod.
-- **Session 10**: pan-social hub at `/lenses/social` mounting
-  StoriesBar / Discovery / NotificationCenter / UserProfile /
-  SuggestedFollows / TrendingTopics / TrendingDomains /
-  PresenceIndicator / DMIndicator / StreakIndicator /
-  CreatorAnalytics / QuickPostComposer / MobileTabBar.
-- **Session 10 primitives** (new): `ReactionBar` (6 canonical
-  reaction types matching backend `VALID_REACTIONS`), `CommentThread`
-  (threaded, collapsed mode, maxDepth=2), `QuickPostComposer`
-  (Post / 24h Story modes, 500-char cap), `ShareButton`
-  (`POST /api/social/share` with commentary), `BookmarkButton`
-  (toggle endpoint, shared cache), `FollowButton` (hides for self
-  and anon), `UserLink` (routes to `/profile/:username`).
-- **Session 10 wiring**: `DTUEmbed.tsx` composes ReactionBar +
-  ShareButton + BookmarkButton + CommentThread + DownstreamBadge so
-  every cross-lens DTU embed has social context.
-- **Session 10 production fixes**: groupId fall-through in
-  `routes/social-groups.js` (was unconditionally blocking generic
-  createPost); reaction-type rename to match backend canonical set.
-
----
-
-## Original session 8 summary (carried for context)
-
-
-## Session 8 additions (3 new commits)
-
-```
-83a0a1b Phase 8: contract test for /api/lens-actions classifier + dedup logic
-366f3fc Phase 7: lift dtu_surface.record into 3 hot DTU rendering callsites
-51f447e Phase 8c: /admin/wires — REAL wires status dashboard
-2934013 Phase 8b: AutoActionStrip in 75 more lenses (bespoke ActionPanel companions) + JSON-param input mode
-```
-
-### Session 8 highlights
-
-**AutoActionStrip coverage rose 151 → 226 lenses (96.5%)**: additive
-codemod mounted `<AutoActionStrip title="More actions" />` BELOW the
-bespoke `<XActionPanel/>` in 75 lenses so the highlight computes stay
-in their custom forms but the long tail (typically 20-40 additional
-registered actions per lens) becomes clickable.
-
-**JSON-param input mode**: every action button now has a `{}` sibling
-that opens an inline JSON editor. User edits input, clicks Run, sees
-the real result envelope. Default click still fires with empty input
-(most engineering computes return useful default-driven output).
-
-**`/admin/wires` status dashboard**: top-level page that auto-discovers
-every `live_*` macro across 39 known live-wire domains via parallel
-`/api/lens-actions/<domain>` fetches, then fires each with curated
-sample inputs and renders per-row status + latency + expandable raw
-envelope. Counters at top: total / ok / failed / running / untested.
-
-**dtu_surface.record lifted into 3 callsites**:
-  - CitationChips (chat + code) — citation_chip surface per dtuId
-  - OracleResponse DtuChip — same
-  - DTUEmpireCard (home) — recent_card surface
-
-DownstreamBadge counts will populate as users browse.
-
-**Contract test**: tests/lens-actions-endpoint.test.js pins classifier
-logic (10/10). Sprint total: 191 → 201 / 57 suites / 0 failures.
-
-## Session 7 additions (4 new commits — close the depth gap)
-
-```
-52c4677 Phase 8: AutoActionStrip — auto-discover every registered lens action + button-strip UI
-c981b77 Fix the 2 pre-existing server test failures (concord-link RNG flake + macro-tests auth)
-dc7cd33 Phase 5: sessions manifest entry follows lens.<domain>.* macro convention
-5c53eab Phase 5: fix useLensSession advance() narrowing — r.session possibly undefined
-```
-
-### Session 7 — the depth-gap closer
-
-**The user flagged**: "trades follow a simple pattern cuz they're mostly
-compute but we gotta make sure every compute call that needs to get
-called actually works and is wired so people can do stuff."
-
-**Audit**: 251 orphan compute actions across 34 trades-style verticals
-(accounting, aviation, healthcare, electrical, plumbing, HVAC, masonry,
-welding, carpentry, landscaping, mining, food, retail, logistics, etc.)
-had `registerLensAction(domain, name, handler)` on the backend but
-zero UI buttons calling them.
-
-**Fix**:
-- New backend endpoint `GET /api/lens-actions/:domain` returns the
-  union of LENS_ACTIONS + MACROS for any domain, annotated with
-  isCompute / isAnalysis / isGenerative / isAi / isLive flags.
-- New `<AutoActionStrip domain="X" />` component auto-discovers via
-  the endpoint, groups by kind, renders ONE BUTTON PER ACTION with
-  kind-tinted icons, fires `useRunArtifact(domain).mutateAsync` on
-  click, and inline-renders the result envelope. Honest empty/error
-  states; raw JSON view.
-- Filter strips noise: generic CRUD, social engagement chips,
-  generic AI catch-alls, and `live_*` (surfaced by per-API panels).
-- Codemod mounted AutoActionStrip in **151 lens pages** (75 skipped
-  because they already mount a bespoke `<XActionPanel/>`, 7 have no
-  RecentMineCard anchor). Report at
-  `audit/codemod-reports/auto-action-strip-codemod.json`.
-
-**Verified**:
-- `electrical.voltageDropCalc` → returns NEC-compliant wire-drop math
-  + upgrade recommendation. Click the button, see the answer.
-- `plumbing.pipeSize` → recommended pipe diameter + material.
-- `welding.heatInput` → kJ/mm + distortion-risk recommendation.
-- 49 actions on aviation, 48 on accounting, 29 on electrical now have
-  callable buttons in the strip.
-
-**Also fixed** (the 2 pre-existing server-test failures the user asked
-me to close out):
-- `concord-link.test.js` "emits realtime to recipient when delivered +
-  online" was flaking 1-in-25 runs because rollCorruption() used
-  Math.random() directly. Threaded `rng` injection through
-  rollCorruption + sendMessage; test now passes `corruptionRng=()=>0.99`
-  to force no-corruption deterministically.
-- `tests/macro-tests.js` was a legacy standalone runner hitting a live
-  authful server anonymously. Added preflight probe that skips with
-  exit 0 + clear message when endpoints 401/403; force-runs locally
-  with `CONCORD_MACRO_TESTS=1`.
-
-**Pre-merge state**:
-- 13876 / 13883 server tests passing (was 99.95%, now closer to 100%
-  once the 2 above land in the upstream suite)
-- 2475 / 2475 vitest passing (162 files)
-- 0 type errors
-- 191 / 191 sprint contract tests
-- 33 + lens pages rendering 200 OK with auth cookie
-
-## Session 6 additions (5 new commits)
-
-## Session 6 additions (5 new commits)
-
-```
-97d9995 Phase 5: SessionRail mounted in marketplace + music + forge + foundry + projects
-5810110 Phase 4 (fourth wave): mount WikipediaSearchPanel in desert/ocean/neuro/geology
-f9d08a9 Phase 4 (sixth wave): mount ZippopotamPanel + IssPassPanel in travel + astronomy
-71d1936 Phase 4 (sixth wave): 5 more REAL free-API wires — World Bank, Open Brewery, Dog CEO, Zippopotam, Open Notify
-```
-
-### Session 6 wires (37 REAL_FREE panels total)
-- World Bank country indicators (global + finance) with SVG sparkline
-- Open Brewery DB (food + cooking)
-- Dog CEO API random dog images (pets)
-- Zippopotam.us postal-code lookup (retail + logistics + travel)
-- Open Notify ISS pass times (astronomy + space)
-- WikipediaSearchPanel mounted in 4 more lenses (desert / ocean / neuro / geology)
-- IssPassPanel mounted in /lenses/astronomy
-- ZippopotamPanel mounted in /lenses/travel
-
-### Session 6 frontend panels
-- WorldBankPanel (country/indicator selectors, big-number latest, sparkline)
-- BreweryPanel (city filter, type chips, address + website links)
-- DogPanel (4-col grid of random dog images, refresh)
-- ZippopotamPanel (country picker + postal lookup with lat/lon)
-- IssPassPanel (city picker + 5 upcoming overpass times)
-
-### Session 6 SessionRail mounts
-marketplace, music, forge, foundry, projects → 5 more lenses
-surface caller's open sessions. Total SessionRail-aware lenses: 13.
-
-Sprint contract suite now: **176 / 176 passing across 56 suites.**
-
-## Session 5 additions (3 commits)
-
-```
-5fd3be4 Phase 4 (fifth wave): mount CatFactsPanel in pets lens
-e0161b5 Phase 5+4: SessionRail in code/studio/agents + TriviaPanel in game
-e787fab Phase 4 (fifth wave): 6 more REAL free-API wires — Spaceflight News, Launch Library, PoetryDB, Open Trivia, Quotable, Cat Facts
-```
-
-### Session 5 wires (26 REAL_FREE panels total)
-- Spaceflight News v4 (astronomy + space)
-- Launch Library 2 (astronomy + space)
-- PoetryDB (poetry) — poetry lens dataTier bumped SIM_GRADE_A → REAL_FREE
-- Open Trivia DB (game)
-- Quotable (daily + reflection)
-- Cat Facts (pets)
-
-### Session 5 frontend panels
-- SpaceflightNewsPanel, UpcomingLaunchesPanel, QuotablePanel,
-  PoetryDbPanel, TriviaPanel, CatFactsPanel — all drop-in REAL data
-  chips with refresh + error handling, no fake placeholders.
-
-### Session 5 mounts
-- /lenses/space — Spaceflight News + Launches side-by-side
-- /lenses/astronomy — Spaceflight News + Launches side-by-side
-- /lenses/poetry — PoetryDB next to Datamuse
-- /lenses/daily — Quotable (wisdom tag) above journal
-- /lenses/pets — Cat Facts above pet workflow
-- /lenses/game — TriviaPanel with difficulty filter
-- /lenses/code — SessionRail (debugging sessions)
-- /lenses/studio — SessionRail (mixdown sessions)
-- /lenses/agents — SessionRail (marathon sessions)
-
-Sprint contract suite now: **161 / 161 passing across 51 suites.**
-
-## Session 4 additions
-
-7 commits closing the polish loop:
-
-```
-1d71699 Phase 7: mount ProvenanceTrail + DownstreamBadge in DTUDetailView
-2d7b789 Phase 5: SessionRail mounted in paper + research lenses
-9f7f4be Phase 4 (fourth wave): Wikipedia REST search wired across 10 reference lenses
-3e1fb7a Phase 5 (mobile): mount MobileTabBar in kingdoms + sessions lenses
-10f7b4a Phase 5 (mobile): ResponsiveModal + MobileTabBar primitives
-942cec3 Phase 5: WarCampaignSession — kingdoms uses the sessions substrate end-to-end
-1cbeb6b Phase 4 (third wave): 4 more REAL free-API wires — CrossRef, OpenAlex, Datamuse, Free Dictionary
-```
-
-### What's new this session
-
-- **REAL_FREE wires (20 → 22 panels)**:
-  - CrossRef DOI metadata (paper + research)
-  - OpenAlex academic graph (paper + research)
-  - Datamuse word relationships (linguistics + creative-writing + poetry)
-  - Free Dictionary (linguistics + education)
-  - Wikipedia REST search + summary (10 reference lenses)
-- **Marquee session use case**: `WarCampaignSession` in kingdoms with
-  declare→muster→engage→resolve step graph, SessionStepper UI, and
-  DraftedTextarea-backed state fields.
-- **Mobile primitives expanded**: ResponsiveModal (auto-picks desktop
-  modal vs. BottomSheet) + MobileTabBar (fixed-bottom thumb nav). Both
-  mounted in kingdoms + sessions lenses as exemplars.
-- **Cross-lens narrative visible at every level**: DTUEmbed shows compact
-  DownstreamBadge + auto-records on mount; DTUDetailView mounts full
-  ProvenanceTrail walking the citation graph upstream.
-- **Test totals (sprint-specific)**: 150 / 150 across 47 suites.
-
----
-
-## What landed across all sessions
-
-37 commits total. Session 3 added 9 commits closing the remaining
-dimensions. All work pushed.
-
-### Per-dimension status (post-session 3)
-
-| # | Dimension | Status | What landed |
-|---|---|---|---|
-| 1 | **Persistence (auto-save drafts)** | ✅ infra + 14 production uses | Migration 194, drafts domain (4 macros), draft-gc-cycle heartbeat. DraftedTextarea now in production at pharmacy/paper/accounting/podcast/kingdoms/legal/mental-health/daily/goals (12 specific fields). Close-the-tab-lose-the-work is closed everywhere it matters. |
-| 2 | **Load-from-substrate** | ✅ all lenses | useListMine hook + RecentMineCard mounted in 226 lens pages (6 hero lenses skipped — bespoke recents). |
-| 3 | **Cross-session list views** | ✅ all ~150 domains | `<domain>.recent_mine` + `<domain>.list_mine` registered across ~150 lens domains. Standard return shape pinned. |
-| 4 | **Bespoke widgets** | partial — DepthBadge + shells visible | DepthBadge live on all 232 lenses. 5 rival shells defaultOpen={true}. 42 bare lenses still need hand-polish. |
-| 5 | **Realtime push** | partial — auto-refresh wired | useListMine integrates socket revalidation; live panels auto-refresh on intervals. |
-| 6 | **Multi-step workflows** | ✅ substrate + 2 mounts | **NEW session 3.** Migration 195 + sessions domain (6 macros) + useLensSession hook + SessionRail + SessionStepper components. Mounted in app/hub (global) and kingdoms (lens-scoped). 20/20 contract tests. |
-| 7 | **Mobile responsiveness** | ✅ primitives shipped | **NEW session 3.** BottomSheet (drag-to-dismiss + snap points), SwipeNav (horizontal swipe + chevrons), useViewport (SSR-safe, real pointer:coarse detection). Per-lens hand-polish to follow. |
-| 8 | **Onboarding per lens** | ✅ 208/208 | **NEW session 3 codegen.** All 208 manifest entries now have firstRunGuide + emptyState (43 hand-authored + 165 metadata-driven). FirstRunTour fires automatically on first visit for every lens. |
-| 9 | **Depth bar (real data)** | ✅ infra + 16 live wires | **NEW session 3 wires.** Added PubChem (chem), PubMed (bio/neuro), MedlinePlus (mental-health), iTunes podcasts, REST Countries (global), GBIF (env/forestry/agriculture), Open Library (paper/education) — 11 new REAL_FREE (domain, macro) pairs. Wire count rose 9 → 16. |
-| 10 | **Cross-lens narrative** | ✅ substrate + 226-lens mount | **NEW session 3.** Migration 196 + dtu_surface domain (4 macros) + useDtuSurface hook + DownstreamBadge (in DTUEmbed header) + ProvenanceTrail component + CrossLensRecentsPanel (codemodded into 226 lenses). DTUEmbed auto-records surfaces on mount. 15/15 contract tests. |
-
-### Session 3 commits
-
-```
-b8be21e Phase 5: mobile primitives — BottomSheet + SwipeNav + useViewport
-c246c88 Phase 7: codemod mounts CrossLensRecentsPanel + auto-record in DTUEmbed
-493db84 Phase 7: cross-lens narrative substrate (dtu_surface domain)
-f33db91 Phase 3: hand-swap DraftedTextarea into 8 form-heavy lenses
-05ad776 Phase 5: multi-step workflow sessions (useLensSession + sessions domain)
-648ab4a Phase 4: 7 more REAL free-API wire-ups (PubChem, PubMed, MedlinePlus, …)
-0fe1896 Phase 5: author firstRunGuide + emptyState for all remaining 165 lenses
-```
-
-### Test totals (sprint-specific)
-
-`cd server && node --test tests/sessions-domain.test.js tests/dtu-surface-domain.test.js tests/more-free-apis-registration.test.js tests/free-api-live-registration.test.js tests/drafts-domain.test.js tests/integration-registry.test.js tests/recent-mine-helper.test.js tests/research-live-arxiv.test.js tests/dtu-recent-mine.test.js`
-
-→ **128 / 128 passing** across 42 suites.
-
-The full server suite has not been re-run end-to-end this session.
-Do `cd server && npm test` before merging.
-
----
-
-## File map (cumulative, post-session 3)
-
-### Backend new (session 3)
-
-- `server/migrations/195_lens_sessions.js` — lens_sessions + lens_session_events
-- `server/migrations/196_dtu_surface_log.js` — dtu_surface_log
-- `server/domains/sessions.js` — 6 macros for multi-step workflows
-- `server/domains/dtu-surface.js` — 4 macros for cross-lens narrative
-- `server/domains/more-free-apis.js` — 11 macros across 9 lenses
-- `server/tests/sessions-domain.test.js` (20)
-- `server/tests/dtu-surface-domain.test.js` (15)
-- `server/tests/more-free-apis-registration.test.js` (22)
-
-### Frontend new (session 3)
-
-- `concord-frontend/hooks/useLensSession.ts`
-- `concord-frontend/hooks/useDtuSurface.ts`
-- `concord-frontend/hooks/useViewport.ts`
-- `concord-frontend/components/lens/SessionRail.tsx`
-- `concord-frontend/components/lens/SessionStepper.tsx`
-- `concord-frontend/components/lens/CrossLensRecentsPanel.tsx`
-- `concord-frontend/components/dtu/DownstreamBadge.tsx`
-- `concord-frontend/components/dtu/ProvenanceTrail.tsx`
-- `concord-frontend/components/mobile/BottomSheet.tsx`
-- `concord-frontend/components/mobile/SwipeNav.tsx`
-- `concord-frontend/components/research/PubMedPanel.tsx`
-- `concord-frontend/components/chem/PubChemPanel.tsx`
-- `concord-frontend/components/podcast/ItunesPodcastPanel.tsx`
-- `concord-frontend/components/paper/OpenLibraryPanel.tsx`
-- `concord-frontend/components/environment/GbifPanel.tsx`
-- `concord-frontend/components/health/MedlinePlusPanel.tsx`
-- `concord-frontend/scripts/codemod-cross-lens-recents.mjs`
-
-### Modified (session 3, summary)
-
-- `concord-frontend/lib/lenses/manifest.ts` — 165 new firstRunGuide + emptyState entries
-- `server/server.js` — registers sessions, dtu-surface, more-free-apis + publicReadDomains entries
-- `concord-frontend/components/dtu/DTUEmbed.tsx` — auto-record surface on mount + DownstreamBadge chip
-- 9 lens pages with DraftedTextarea swaps
-- 9 lens pages with PubMedPanel / PubChemPanel / OpenLibraryPanel / GbifPanel / MedlinePlusPanel mounts
-- 226 lens pages with CrossLensRecentsPanel codemod
-- 2 lens pages with SessionRail mount (hub + kingdoms)
-
----
-
-## Next up (in priority order)
-
-### Highest leverage
-
-1. **Per-lens mobile hand-polish** — pick 10–20 hero lenses, wrap their
-   modals in BottomSheet via useViewport. Pattern is one helper render.
-2. **Use the sessions substrate** — kingdoms war-campaign, research
-   marathon, podcast multi-episode arc. Each lens needs only 2–3 lines
-   to start a session and a stepper to drive it.
-3. **Lift surface_kind on more lens code paths** — pass
-   `recordSurfaceFromLens="<lens>"` into every DTUEmbed mount across
-   the chat / message / feed / paper lenses so the substrate populates
-   broadly within a week of deploy.
-
-### Medium leverage
-
-4. **42 bare lenses** → ≥6/10 widget density (Phase 6, hand work).
-5. **useTilePush codemod** for `realtimeEvents` manifest field.
-6. **More REAL_FREE wires**: FRED (needs free API key, US economic
-   data — good for global + accounting), EPA AirNow (needs free key,
-   environment air quality), Khan Academy (education).
-
-### Pre-merge verification
-
-- [ ] `cd server && npm test` (full suite — only sprint subset run this session; 128/128 there)
-- [ ] `cd concord-frontend && npm run type-check`
-- [ ] `cd concord-frontend && npm run test:run`
-- [ ] `cd server && node migrate.js --status` (should show 195 + 196 applied)
-- [ ] Manual: visit /lenses/chem → PubChem panel renders; type "caffeine".
-- [ ] Manual: visit /lenses/bio → PubMed panel renders; type "CRISPR".
-- [ ] Manual: visit /lenses/paper → Open Library panel renders.
-- [ ] Manual: visit /hub → SessionRail empty (no sessions yet); start one in kingdoms, return → SessionRail shows it.
-- [ ] Manual: open any DTU embed → DownstreamBadge chip absent (no surfaces yet); navigate around → counts populate.
-
----
-
-## Trust-but-verify
-
-This document describes what was committed. The diff is the ground truth.
-Read `git log --stat` on the branch to confirm. Some inserted text
-references use `—` for em-dashes (codemod side-effect from json.dumps)
-— they are valid TS and render correctly; they are not bugs.
+# Handoff — Concordia Unity pivot (2026-09-12)
+
+Written by Claude for whoever (Cursor included) picks this up next. Everything
+below is verified, not guessed — where I couldn't verify something, it's
+labeled as such.
+
+## Where things stand right now
+
+**PR #970 is fully merged/green.** Nothing pending there — 37 checks pass, 0
+fail, 4 intentional deploy-gated skips. Not part of this handoff's scope.
+
+**Uncommitted local changes (3 files, all real, all intentional — nothing
+else in the working tree, editor-churn noise already reverted):**
+- `apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/ModularPerson.cs` — two root-caused fixes, both live-verified in Play mode (see below).
+- `docs/ART_STYLE_GUIDE.md` — retirement notice added at the top (see "Architecture decision" below).
+- `docs/ART_DIRECTION_UNITY_WEB.md` — new file, the current canonical art-direction doc.
+
+None of these are committed yet. Review the diff, then commit — I didn't push
+anything since it wasn't asked for this round.
+
+**Unity Editor**: was left open and running (project at
+`apps/concordia-living-world/unity-client`, Unity 6000.5.9f1) with the
+MCPForUnity bridge live and working. If you're picking this up in a fresh
+session, it may or may not still be running — check before assuming.
+
+## Architecture decision (owner call, this session — canonical, don't relitigate)
+
+- **Unity, exported to WebGL, is now the canonical World Lens web client.**
+  Not a new idea — `scripts/export-unity-web.mjs` (full Unity 6→WebGL
+  pipeline, mirrors Godot's serving shape) and `mountUnityGateway`
+  (`server/lib/unity-bridge.js`, already mounted in `server.js`) both already
+  existed and work. The project's own Editor/WebGL code splits
+  (`ConcordClient.cs`, `FreePacks.cs`, `HubKit.cs`, `Assets/Plugins/WebGL/ConcordWs.jslib`)
+  confirm it was built with this target in mind from early on.
+- **Godot (`world-lens-godot/`) is the presenter/spectator role** — its
+  existing read-only spectator viewer, not a full interactive client.
+- **Three.js's World Lens renderer (`concord-frontend/lib/world-lens/`,
+  `components/world/`, `components/world-lens/`) is retired as canonical.**
+  Its `docs/ART_STYLE_GUIDE.md` stylized-BotW/Palworld mandate governed ONLY
+  that renderer (confirmed by grep — zero references outside those
+  directories + this doc's own tests) and is retired with it. The file still
+  exists with a retirement banner at the top — don't delete it, don't revive
+  its mandate for Unity.
+- **The direction for Unity is photorealistic**, reversing the old
+  `ART_DIRECTION_AUDIT.md` "photorealism explicitly rejected" call — that
+  call was scoped to the Three.js renderer specifically, for reasons that
+  don't bind Unity. See `docs/ART_DIRECTION_UNITY_WEB.md` for the full
+  reasoning and the acquisition-list audit.
+- **The game's systems are untouched by any of this.** Quests, combat,
+  economy, NPC AI all live server-side (`server/emergent/`, `server/domains/`)
+  and are client-agnostic. This pivot only changes which client draws the
+  pixels.
+
+## What's fixed and verified live tonight
+
+Both of these were root-caused and confirmed by actually running the game in
+Unity Play mode (`ConcordiaHub.unity` scene), not just reasoned about from
+source. Verification steps are worth reading if either regresses.
+
+### 1. Hero/NPC world-appropriate body casting (`ModularPerson.cs:265`, `LoadPersonPrefab`)
+
+- **Bug**: `ModularPerson.CastingWorld` was set per-world by `WorldBuilder.cs`
+  but never *read* anywhere — every world (Fantasy, Tunya, Ruins, all of
+  them) got the same Rocketbox photoreal adult body, whose baked texture is
+  business-casual civilian wear (it's a Microsoft crowd-sim asset). That's
+  the actual mechanism behind the "polo-shirt hero" complaint.
+- **Why not just tint it**: checked live — Rocketbox bakes skin AND clothing
+  into one continuous texture with no separate cloth UV region, so a
+  multiplied color tint would also discolor visible skin. Real dead end, not
+  a shortcut I skipped.
+- **Fix**: `LoadPersonPrefab` now branches on `CastingWorld` — `Hub` keeps
+  Rocketbox (the one world with textual grounding as "modern/neutral" per
+  the retired style guide's own saturation table), every other world prefers
+  the already-in-project, already-painted **KayKit Knight**
+  (`Models/kaykit/adventures/gltf/Knight.glb`), falling back to Rocketbox
+  honestly if Knight is ever missing. Resolves via `FreePacks.Mesh`, which
+  works in both Editor and the real WebGL build.
+- **Caveat, in the code comment too**: whether every non-Hub world is
+  genuinely "knight-coded" is a first-pass call, not verified lore — Cyber
+  and Crime in particular could plausibly want a modern body too. Worth a
+  tuning pass once there's real per-world casting content.
+- **Verified live**: entered Play mode on `ConcordiaHub`, confirmed the Hub
+  hero still renders as Rocketbox (correct — Hub is the one exception) and
+  that `ModularPerson.CastingWorld != WorldId.Hub` path compiles/resolves
+  cleanly. Did **not** yet verify the Knight path visually (would need to
+  force-spawn in a non-Hub world) — that's a real next step if you want full
+  confidence on this fix.
+
+### 2. Oversized-sword bug (`ModularPerson.cs:1249`, `MakeSword`)
+
+- **Bug**: not a scale-math bug — `FreePacks.FitMax`'s uniform-scale-to-1.05m
+  logic is correct. The Kenney `weapon-sword.glb` mesh it fell back to is
+  chibi-proportioned (width = 52% of its length); scaling that up to a
+  realistic 1.05m length drags the already-fat width/thickness up with it,
+  reading as a giant slab.
+- Also confirmed live: `FreePacks.Mesh("longsword")` — tried first in the
+  original code — **resolves to nothing**. Every hero was silently falling
+  through to the Kenney mesh.
+- **Fix**: added `FreePacks.Mesh("Sword16")` to the fallback chain before the
+  Kenney mesh. `Sword16` is a real, already-in-project mesh from `MYFG-Weapon
+  Pack Lite` (`Assets/MYFG-Weapon Pack Lite/Meshes/Sword16.FBX`) — measured
+  live at a 0.14 width/length ratio vs. Kenney's 0.52.
+- **Verified live**: screenshot confirms a properly-proportioned blade
+  hanging at the hero's side; live component inspection confirmed
+  `sharedMesh` = `Sword16.FBX` and `localScale` settled to ~0.97 (near 1:1,
+  since Sword16's native size is already close to the 1.05m target).
+
+### 3. "Floating NPCs" — investigated, NOT a real bug (false alarm, self-corrected)
+
+A screenshot early in the session looked like every NPC/the player was
+floating above the ground (shadows offset from feet). Before reporting it as
+a bug I measured it directly:
+- `CharacterController.isGrounded = true`
+- The mesh's actual world-space bounds bottom sat right at the terrain
+  surface (matching `Grounding.Snap`'s deliberate 4cm skin offset exactly)
+- A follow-up screenshot after physics settled showed feet and shadow
+  correctly planted
+
+Conclusion: the first screenshot caught a mid-stride animation pose or a
+spawn-frame transient, not a structural bug. **Don't "fix" `Grounding.cs` —
+it's working correctly**, confirmed by direct measurement, not just a second
+look.
+
+## Open items / next steps, prioritized
+
+1. **Weather-visuals binding** — the third named Tier-1 item, not started
+   this session. No investigation done yet.
+2. **Verify the Knight-casting fix visually** in a non-Hub world (force
+   `ModularPerson.CastingWorld` to e.g. `WorldId.Fantasy` and check the
+   spawned body/outfit actually looks right, not just that it compiles).
+3. **Unidentified small floating dark object** — appeared consistently in
+   two screenshots near the player in the Hub plaza. Filtered ~1,241 world
+   renderers for small+elevated+nearby matches; only hit was a `LanternGlow`
+   prop whose position doesn't match what was visible on screen. Left
+   unresolved — minor, likely VFX, but not confirmed.
+4. **World-count discrepancy**: `Canon.cs`'s `WorldId` enum has **10** worlds
+   (Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible,
+   **Sere**). The retired Three.js style guide's own saturation table only
+   lists **9** — `Sere` is missing from it entirely. Not urgent now that the
+   guide is retired, but worth a note if anyone later mines that doc for a
+   world list.
+5. **Acquisition list** (see `docs/ART_DIRECTION_UNITY_WEB.md` for full
+   detail): 4 of ~20 named packages spot-checked and confirmed real (Kevin
+   Iglesias Human Basic Motions FREE, Synty Sidekick Starter Pack FREE, KHS
+   Korean-heritage architecture family, Slavic Medieval Environment). Two
+   numeric claims in the original doc were wrong (9 vs 10 worlds; "200+ Hub
+   buildings" vs. the code's real 100-per-city target with the Hub itself
+   having ~zero). ~16 more named packages are still **unverified** — don't
+   treat the rest of that list as vetted.
+
+## Environment gotchas worth knowing about
+
+- **MCPForUnity stale-registration bug**: if `mcpforunity://instances` flaps
+  between "found it" and "not found" / returns a project you're not even
+  running, check `~/.unity-mcp/` for leftover `unity-mcp-status-<hash>.json`
+  / `unity-mcp-port-<hash>.json` files from OTHER projects with dead
+  heartbeats, and a stale `unity-mcp-port.json` (no hash) pointing at one of
+  them. Delete the dead ones; the live Editor regenerates its own
+  registration fine. This cost real time tonight before being root-caused.
+- **Don't edit a `.cs` file while Unity is mid-compile.** Did this once
+  tonight and it wedged the Editor's domain-reload pipeline hard enough that
+  a full process kill + relaunch was needed (confirmed via 0% CPU across all
+  shader-compiler/import-worker processes for 45+ minutes with zero log
+  growth — genuinely hung, not just slow).
+- **`tsc --noEmit` without memory headroom can OOM-crash** on this codebase
+  (`EXIT_CODE=134`, V8 heap fatal error at ~4GB) — that's an environment
+  artifact, not a real type error. Use the project's own
+  `NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit`
+  (matches `concord-frontend/package.json`'s `type-check:ci` script) before
+  concluding anything about type-check status.
+- **execute_code (UnityMCP) needs CodeDom-compatible C# 6 syntax** unless
+  Roslyn is installed in this project (it isn't) — no `using` directives (the
+  snippet runs as a method body), no `default` literal, no local functions
+  after a `return`. Explicit types and old-style `new Bounds()` instead.
+
+## Useful facts for resuming live verification
+
+- Scene to load: `Assets/Scenes/ConcordiaHub.unity`. Its only authored roots
+  are `Directional Light` and `ConcordiaGame` — everything else (Player,
+  World with ~900 children, NPCs, etc.) is built procedurally at Play-mode
+  start by `WorldBuilder`/`ConcordiaGame`.
+- Hero body: `find_gameobjects` for `"Person"` → its `ModularPerson`
+  component exposes `rightHand`/`leftHand`/`sword` object references
+  directly (useful — no need to walk the hierarchy by hand).
+- Screenshots: use `manage_camera` action `screenshot` with `output_folder`
+  set to something OUTSIDE `Assets/` (e.g. `Captures`) — saving into
+  `Assets/Screenshots` triggers an asset-database reimport that can look
+  like another hang.
