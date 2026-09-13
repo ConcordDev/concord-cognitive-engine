@@ -35,13 +35,20 @@ namespace Concordia
                 var sz = h.collider.bounds.size;
                 // Building AABBs and kit volumes are not floors. Thin
                 // slabs (tiles, HoldGround) stay legal at any world Y —
-                // this is not a 4.5m ceiling hack.
-                if (sz.y > 1.6f) continue;
+                // this is not a 4.5m ceiling hack. Heightfield Ground
+                // meshes may be taller than 1.6m and still are the floor.
+                if (sz.y > 1.6f)
+                {
+                    var gn = h.collider.gameObject.name ?? "";
+                    if (gn.IndexOf("Ground", System.StringComparison.Ordinal) < 0) continue;
+                }
                 if (h.distance < best) { best = h.distance; y = h.point.y + extra; any = true; }
             }
             if (!any && Physics.Raycast(origin, Vector3.down, out var ray, 12f, ~0, QueryTriggerInteraction.Ignore)
                 && ray.normal.y >= 0.35f
-                && ray.collider && ray.collider.bounds.size.y <= 1.6f
+                && ray.collider
+                && (ray.collider.bounds.size.y <= 1.6f
+                    || (ray.collider.gameObject.name ?? "").IndexOf("Ground", System.StringComparison.Ordinal) >= 0)
                 && (!self || (ray.transform != self && !ray.transform.IsChildOf(self))))
             {
                 y = ray.point.y + extra;

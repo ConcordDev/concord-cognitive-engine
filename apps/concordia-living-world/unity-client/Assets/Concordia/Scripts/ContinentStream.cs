@@ -180,13 +180,8 @@ namespace Concordia
         void MakeGround()
         {
             if (continent.Find("ContinentGround")) return;
-            var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            g.name = "ContinentGround";
-            g.transform.SetParent(continent, false);
-            g.transform.localScale = Vector3.one * 62f;
-            var mat = HubLook.Pbr("packed_earth", new Color(0.42f, 0.38f, 0.32f), 0.05f, 0.22f, 28f);
-            var r = g.GetComponent<Renderer>();
-            if (r && mat) r.sharedMaterial = mat;
+            HubLook.Heightfield(continent, "ContinentGround", 620f, 3.2f,
+                HubLook.Pbr("packed_earth", new Color(0.42f, 0.38f, 0.32f), 0.05f, 0.22f, 28f), 3);
         }
 
         void MakeRoads()

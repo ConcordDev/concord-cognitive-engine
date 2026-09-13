@@ -1,3 +1,4 @@
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -10,6 +11,8 @@ namespace Concordia
     /// <summary>
     /// URP look for the Unburned Court: warm skylight vs cool portals.
     /// Stay on URP — HDRP would drop Kenney/glTFast materials.
+    /// Linear color space + baked soft/cascade/additional shadows. Court
+    /// ground is ADG/PBR heightfield, not Cartoon grass on a Plane.
     /// </summary>
     public static class HubLook
     {
@@ -43,6 +46,7 @@ namespace Concordia
                 urp.maxAdditionalLightsCount = 8;
                 urp.colorGradingMode = ColorGradingMode.HighDynamicRange;
                 urp.colorGradingLutSize = 64;
+                BakeUrp(urp);
             }
             TryEnableSsao();
             QualitySettings.shadowDistance = world == WorldId.Hub ? 160f : 120f;
@@ -288,25 +292,83 @@ namespace Concordia
 
         public static Material GroundMat(WorldId world, Color tint)
         {
-            var path = world switch
+            if (world == WorldId.Hub)
             {
-                WorldId.Hub => "Assets/Materials/Material_GrassFlowers.mat",
-                WorldId.Ruins => "Assets/Materials/Material_Moon.mat",
-                WorldId.Cyber => "Assets/Materials/Material_Circuits.mat",
-                WorldId.Frontier => "Assets/Materials/Material_SandWavey.mat",
-                WorldId.Crime => "Assets/Materials/Material_HexagonPurple.mat",
-                WorldId.Tunya => "Assets/Materials/Material_Grass.mat",
-                WorldId.Fantasy => "Assets/Materials/Material_Runes.mat",
-                WorldId.Superhero => "Assets/Materials/Material_HexagonBlue.mat",
-                _ => "Assets/Materials/Material_Stars.mat"
+                var adg = FreePacks.Load<Material>("Assets/ADG_Textures/ground_vol1/ground1/ground1.mat");
+                if (adg) return adg;
+                return Pbr("packed_earth", tint, 0.04f, 0.16f, 14f);
+            }
+            var stem = world switch
+            {
+                WorldId.Ruins => "ash_soil",
+                WorldId.Tunya => "grove_moss",
+                WorldId.Crime => "wet_asphalt",
+                WorldId.Cyber => "neon_grid",
+                WorldId.Frontier => "packed_earth",
+                WorldId.Superhero => "concrete_floor",
+                WorldId.Crucible => "metal_plate",
+                WorldId.Fantasy => "stone_tiles",
+                WorldId.Sere => "wet_asphalt",
+                _ => "stone_tiles"
             };
-            var store = FreePacks.Load<Material>(path);
-            if (store) return store;
-            var m = Lit(tint, 0.02f, 0.18f);
-            var tex = NoiseTile(tint, Color.Lerp(tint, Color.black, 0.28f), 96);
-            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
-            if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex);
-            return m;
+            return Pbr(stem, tint, 0.04f, 0.16f, 14f);
+        }
+
+        /// <summary>
+        /// Displaced ground mesh. A Unity Plane has no relief, so contact AO
+        /// and the horizon die. Center bowl stays near y=0 so plaza tiles
+        /// and spawn still sit.
+        /// </summary>
+        public static GameObject Heightfield(Transform parent, string name, float size, float relief, Material mat, int seed = 17)
+        {
+            int n = size > 240f ? 64 : 48;
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var verts = new Vector3[n * n];
+            var uvs = new Vector2[n * n];
+            var tris = new int[(n - 1) * (n - 1) * 6];
+            float half = size * 0.5f;
+            float ox = seed * 0.17f;
+            float oz = seed * 0.31f;
+            for (int z = 0; z < n; z++)
+            for (int x = 0; x < n; x++)
+            {
+                float u = x / (float)(n - 1);
+                float v = z / (float)(n - 1);
+                float wx = Mathf.Lerp(-half, half, u);
+                float wz = Mathf.Lerp(-half, half, v);
+                float h = (Mathf.PerlinNoise(wx * 0.018f + ox, wz * 0.018f + oz) * 0.62f
+                         + Mathf.PerlinNoise(wx * 0.055f + ox * 2f, wz * 0.055f + oz * 2f) * 0.38f) * relief;
+                float r = Mathf.Sqrt(wx * wx + wz * wz) / Mathf.Max(half, 1f);
+                float bowl = Mathf.SmoothStep(0.16f, 0.52f, r);
+                verts[z * n + x] = new Vector3(wx, h * bowl, wz);
+                uvs[z * n + x] = new Vector2(u * 18f, v * 18f);
+            }
+            int t = 0;
+            for (int z = 0; z < n - 1; z++)
+            for (int x = 0; x < n - 1; x++)
+            {
+                int i = z * n + x;
+                tris[t++] = i;
+                tris[t++] = i + n;
+                tris[t++] = i + 1;
+                tris[t++] = i + 1;
+                tris[t++] = i + n;
+                tris[t++] = i + n + 1;
+            }
+            var mesh = new Mesh { name = name };
+            mesh.indexFormat = verts.Length > 65000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+            mesh.vertices = verts;
+            mesh.uv = uvs;
+            mesh.triangles = tris;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            if (mat) mr.sharedMaterial = mat;
+            var mc = go.AddComponent<MeshCollider>();
+            mc.sharedMesh = mesh;
+            return go;
         }
 
         public static Texture2D NoiseTile(Color a, Color b, int n)
@@ -404,6 +466,18 @@ namespace Concordia
             return null;
         }
 
+        public static Texture FirstTex(Material src, params string[] names)
+        {
+            if (!src || names == null) return null;
+            for (int i = 0; i < names.Length; i++)
+            {
+                if (!src.HasProperty(names[i])) continue;
+                var t = src.GetTexture(names[i]);
+                if (t) return t;
+            }
+            return null;
+        }
+
         public static Material Pbr(string stem, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
         {
             var m = Lit(tint, metallic, smooth);
@@ -424,8 +498,16 @@ namespace Concordia
                 m.SetTextureScale("_BumpMap", Vector2.one * tile);
                 if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.35f);
             }
-            if (rough && m.HasProperty("_Smoothness"))
-                m.SetFloat("_Smoothness", Mathf.Min(smooth, 0.22f));
+            if (rough)
+            {
+                if (m.HasProperty("_MetallicGlossMap"))
+                {
+                    m.SetTexture("_MetallicGlossMap", rough);
+                    m.EnableKeyword("_METALLICSPECGLOSSMAP");
+                }
+                if (m.HasProperty("_Smoothness"))
+                    m.SetFloat("_Smoothness", Mathf.Min(smooth, 0.22f));
+            }
             return m;
         }
 
@@ -438,17 +520,39 @@ namespace Concordia
 #endif
         }
 
+        static void BakeUrp(UniversalRenderPipelineAsset urp)
+        {
+            if (!urp) return;
+            SetUrp(urp, "supportsSoftShadows", true);
+            SetUrp(urp, "shadowCascadeCount", 4);
+            SetUrp(urp, "supportsAdditionalLightShadows", true);
+            SetUrp(urp, "supportsCameraDepthTexture", true);
+            SetUrp(urp, "supportsCameraOpaqueTexture", true);
+            SetUrp(urp, "reflectionProbeBlending", true);
+            SetUrp(urp, "reflectionProbeBoxProjection", true);
+        }
+
+        static void SetUrp(object urp, string prop, object value)
+        {
+            var p = urp.GetType().GetProperty(prop, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (p == null) return;
+            var set = p.GetSetMethod(true);
+            if (set != null) set.Invoke(urp, new[] { value });
+        }
+
         static void TryEnableSsao()
         {
-#if UNITY_EDITOR
             try
             {
                 var urp = UniversalRenderPipeline.asset;
                 if (!urp) return;
+                ScriptableRendererData renderer = null;
+#if UNITY_EDITOR
                 var so = new SerializedObject(urp);
                 var list = so.FindProperty("m_RendererDataList");
-                if (list == null || list.arraySize < 1) return;
-                var renderer = list.GetArrayElementAtIndex(0).objectReferenceValue as ScriptableRendererData;
+                if (list != null && list.arraySize >= 1)
+                    renderer = list.GetArrayElementAtIndex(0).objectReferenceValue as ScriptableRendererData;
+#endif
                 if (!renderer) return;
                 var featsProp = renderer.GetType().GetProperty("rendererFeatures");
                 var feats = featsProp != null ? featsProp.GetValue(renderer) as System.Collections.IList : null;
@@ -462,11 +566,13 @@ namespace Concordia
                 if (!feat) return;
                 feat.name = "SSAO";
                 feats.Add(feat);
+                feat.Create();
+#if UNITY_EDITOR
                 AssetDatabase.AddObjectToAsset(feat, renderer);
                 EditorUtility.SetDirty(renderer);
+#endif
             }
             catch { }
-#endif
         }
 
         public static Material Emit(Color c, float intensity = 2.4f)
@@ -757,6 +863,21 @@ namespace Concordia
                         {
                             if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
                             dst.EnableKeyword("_NORMALMAP");
+                        }
+                        var metalMap = FirstTex(src, "_MetallicGlossMap", "metallicRoughnessTexture", "_SpecGlossMap", "metallicTexture");
+                        if (metalMap && dst.HasProperty("_MetallicGlossMap"))
+                        {
+                            dst.SetTexture("_MetallicGlossMap", metalMap);
+                            dst.EnableKeyword("_METALLICSPECGLOSSMAP");
+                        }
+                        var occ = FirstTex(src, "_OcclusionMap", "occlusionTexture", "occlusion");
+                        if (occ && dst.HasProperty("_OcclusionMap"))
+                            dst.SetTexture("_OcclusionMap", occ);
+                        var emit = FirstTex(src, "_EmissionMap", "emissiveTexture");
+                        if (emit && dst.HasProperty("_EmissionMap"))
+                        {
+                            dst.SetTexture("_EmissionMap", emit);
+                            dst.EnableKeyword("_EMISSION");
                         }
                         if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
                             dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));

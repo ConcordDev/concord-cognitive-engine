@@ -34,10 +34,7 @@ namespace Concordia
                 _ => ("stone_tiles", new Color(0.55f, 0.50f, 0.42f), 10f)
             };
             var mat = HubLook.Pbr(stem, tint, 0.04f, 0.18f, tile);
-            var bed = HubLook.Prim(root, PrimitiveType.Cube, new Vector3(0f, -0.08f, 0f), new Vector3(140f, 0.16f, 140f), mat, "HoldGround");
-            var col = bed.GetComponent<Collider>();
-            if (col) Object.Destroy(col);
-            bed.AddComponent<BoxCollider>();
+            HubLook.Heightfield(root, "HoldGround", 140f, 1.35f, mat, 19);
         }
 
         static void Landmark(Transform root, WorldDef w)
