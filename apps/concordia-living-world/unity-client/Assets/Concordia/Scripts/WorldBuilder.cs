@@ -393,7 +393,7 @@ namespace Concordia
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
         {
             var outDir = p.normalized;
-            var outPos = p + outDir * 8.5f;
+            var outPos = p + outDir * 16f;
             var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
             string plan = "embassy";
@@ -435,7 +435,6 @@ namespace Concordia
                     }
                     PlaceStone(outPos + side * 2.6f, "No embassy",
                         "The frontier keeps no seat. The road is their door. To claim a fixed house here would be to accept a dome.");
-                    StampRingLink(gate, null, p, yaw);
                     return;
                 case WorldId.Superhero:
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Superhero), root, outPos, yaw, 8.5f);
@@ -447,43 +446,28 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Column(WorldId.Crucible), root, outPos, yaw, 3.2f, required: false);
                     break;
             }
-            if (shell) BuildingInterior.Open(shell, plan, outPos);
-            StampRingLink(gate, shell, p, yaw);
+            if (shell)
+            {
+                BuildingInterior.Open(shell, plan, outPos);
+                KeepRingClear(shell, p);
+            }
         }
 
         /// <summary>
-        /// HubPlaza owns the Ring mouth. DressEmbassy used to spawn only
-        /// FreePacks — no WorldGate — so a missing plaza mesh left no Link.
-        /// Stamp a trigger on the embassy, or at the ring if there is no shell.
-        /// Frontier road stays overland; its Link sits at the ring, not on the road.
+        /// Embassy FreePacks are set-dressing. HubPlaza owns the Link mouth.
+        /// Solid house/tower AABBs that reach the ring made the portal look
+        /// missing — the trigger was there, the walk was not.
         /// </summary>
-        void StampRingLink(GateDef gate, GameObject shell, Vector3 ringPos, float yaw)
+        static void KeepRingClear(GameObject shell, Vector3 ringPos)
         {
-            Transform parent;
-            Vector3 pos;
-            if (shell)
+            if (!shell) return;
+            foreach (var col in shell.GetComponentsInChildren<Collider>())
             {
-                parent = shell.transform;
-                pos = shell.transform.position;
+                if (!col || col.isTrigger) continue;
+                var hit = col.ClosestPoint(ringPos);
+                if ((hit - ringPos).sqrMagnitude < 25f)
+                    Object.Destroy(col);
             }
-            else
-            {
-                var hold = new GameObject("Gate_" + gate.shortName + "_Embassy").transform;
-                hold.SetParent(root, false);
-                hold.position = ringPos;
-                hold.rotation = Quaternion.Euler(0f, yaw, 0f);
-                parent = hold;
-                pos = ringPos;
-            }
-            if (parent.GetComponentInChildren<WorldGate>()) return;
-            var mouth = new GameObject("LinkMouth_" + gate.shortName);
-            mouth.transform.SetParent(parent, false);
-            mouth.transform.position = pos;
-            mouth.AddComponent<WorldGate>().def = gate;
-            var box = mouth.AddComponent<BoxCollider>();
-            box.isTrigger = true;
-            box.center = new Vector3(0f, 2f, 0f);
-            box.size = new Vector3(7.2f, 5f, 2.4f);
         }
 
         void DressTavern(Vector3 p)

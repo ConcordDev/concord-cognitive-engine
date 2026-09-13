@@ -57,8 +57,7 @@ namespace Concordia
             int n = WorldClock.World == WorldId.Hub ? 2 : 1;
             for (int i = 0; i < n; i++)
             {
-                var side = (i == 0 ? -1.6f : 1.6f);
-                var pos = gate.transform.position + gate.transform.right * side + gate.transform.forward * 4.2f + Vector3.up * 0.05f;
+                var pos = gate.transform.position + gate.transform.right * (i == 0 ? -3.4f : 3.4f) + gate.transform.forward * 0.4f + Vector3.up * 0.05f;
                 var look = Appearance.Random(gate.GetHashCode() + i * 17);
                 look.displayName = "a guard";
                 look.outfit = 1;

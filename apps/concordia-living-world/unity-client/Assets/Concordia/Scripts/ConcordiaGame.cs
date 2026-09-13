@@ -144,14 +144,18 @@ namespace Concordia
             var pos = _player.transform.position;
             string prompt = null;
             float best = 3.2f;
+            WorldGate nearGate = null;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; prompt = g.Prompt; }
+                    if (d < gateBest) { gateBest = d; nearGate = g; }
                     if (d < 9f && g.def.world != WorldId.Hub) HubObjectives.NoteGateWalked(g.def.world);
                 }
+            if (nearGate)
+                prompt = nearGate.Prompt;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -225,6 +229,7 @@ namespace Concordia
                     prompt = bi != null && bi.entered ? "E  ·  Leave" : door.Prompt;
                 }
             }
+            if (nearGate) prompt = nearGate.Prompt;
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
             WorldClock.Tick(Time.deltaTime);
@@ -242,14 +247,20 @@ namespace Concordia
             Gatherable loot = null;
             CookStation cook = null;
             KernelTomb tomb = null;
-            float best = 3.2f;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
+                    if (d < gateBest) { gateBest = d; gate = g; }
                 }
+            if (gate != null)
+            {
+                Travel(gate.def.world);
+                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
+            }
+            float best = 3.2f;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -306,11 +317,6 @@ namespace Concordia
                     var d = Vector3.Distance(pos, t.transform.position);
                     if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
-            if (gate != null)
-            {
-                Travel(gate.def.world);
-                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
-            }
             if (hold != null)
                 return EnterHold(hold);
             if (city != null)
