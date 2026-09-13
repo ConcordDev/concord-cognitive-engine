@@ -365,6 +365,15 @@ apps/concordia-living-world/unity-client/Assets/Rocks and Boulders 2.meta
 apps/concordia-living-world/unity-client/Assets/TreePackVol.1.meta
 apps/concordia-living-world/unity-client/Assets/YughuesFreeMetalMaterials.meta
 apps/concordia-living-world/unity-client/Assets/_Creepy_Cat.meta
+
+# Demigiant DOTween — third-party tween plugin. Concordia scripts do not use it
+# (no DG.Tweening). Unity rewrites plugin .meta + DOTweenSettings on every boot,
+# which pollutes git. Keep on disk for this Editor; do not vendor.
+apps/concordia-living-world/unity-client/Assets/Plugins/Demigiant/
+apps/concordia-living-world/unity-client/Assets/Plugins/Demigiant.meta
+apps/concordia-living-world/unity-client/Assets/Resources/DOTweenSettings.asset
+apps/concordia-living-world/unity-client/Assets/Resources/DOTweenSettings.asset.meta
+
 apps/concordia-living-world/unity-client/Captures/
 apps/concordia-living-world/unity-client/LLMUnityBuild/
 apps/concordia-living-world/unity-client/Assets/StreamingAssets/LLMManager.json
