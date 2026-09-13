@@ -60,9 +60,14 @@ describe("megaworld topology laws", () => {
     assert.equal(flowerLawGoverns("tunya"), false);
   });
 
-  it("current travel is region_rebuild; overland is intended, not claimed", () => {
+  it("current travel is continent_stream; overland is intended between civs", () => {
     assert.equal(currentTravelMode().mode, CURRENT_TRAVEL_MODE);
-    assert.equal(CURRENT_TRAVEL_MODE, "region_rebuild");
+    assert.equal(CURRENT_TRAVEL_MODE, "continent_stream");
+    const stream = readFileSync(
+      join(root, "apps/concordia-living-world/unity-client/Assets/Concordia/Scripts/ContinentStream.cs"),
+      "utf8",
+    );
+    assert.match(stream, /TravelMode = "continent_stream"/);
     assert.equal(intendedTravelMode("fantasy", "fantasy").mode, "stay");
     assert.equal(intendedTravelMode("concordia-hub", "fantasy").mode, "link_gate");
     assert.equal(intendedTravelMode("fantasy", "tunya").mode, "overland");

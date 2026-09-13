@@ -48,7 +48,7 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 
 | Law | Already real | Honest gap |
 |---|---|---|
-| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. Unity `ContinentStream` keeps civilizations on one plane. `Travel` is Bind+Teleport only; `_world.Build` is **boot-only** (never mid-session). | Kernel `CURRENT_TRAVEL_MODE` is still `region_rebuild`. Continuous heightmap continents are not presented — playable compression is 0.55 m/km. |
+| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. Unity `ContinentStream` keeps civilizations on one plane. `Travel` is Bind+Teleport only; `_world.Build` is **boot-only** (never mid-session). Kernel `CURRENT_TRAVEL_MODE` is `continent_stream`. | Continuous heightmap continents are not presented — playable compression is 0.55 m/km. |
 | 2 Link vs walk | Gates + CrossRing. `WorldBook.Folder` maps Hub→`concordia-hub`, Frontier→`concord-link-frontier`, etc. Ring `WorldGate` trigger teleports; walking between gates SoftEnters. | Fast travel is the Link gate. Overland is the road. |
 | 3 Flower Law | Hub `steelLive = false`; every other `Canon` world `steelLive = true`. Sere law text: Flower-law is the Court only. | Law lives in Unity Canon + HUD copy. Server `flowerLawGoverns` is the kernel pin. |
 | 4 Persistent geography | `world_terrain_deformations` + `world_water_cells` (mig 281) are delta-over-seed. `procgen_regions` persist. | No single `world_seed` → continent → settlement-site pipeline that stamps identity. Two settlement systems: Living Society `settlements` (mig 287) vs `procgen_settlement_npcs` (region NPC packs). |
@@ -181,7 +181,7 @@ WORLD SIMULATION  →  WORLD STATE  →  CONSEQUENCE GRAPH
 
 When W7 lands, Unity also dresses **the field**: magic density, tech density, transition weather, faction banners, weakening of *every* combatant. The renderer still does not invent the number.
 
-Current Unity `Travel` is a **region rebuild**. The destination is streaming continuous geography with Link gates as the only teleport, and with WorldField sampled at the feet. Until then, every `Travel` call is labeled `currentTravelMode = region_rebuild` so we cannot accidentally claim overland.
+Current Unity `Travel` is **continent_stream** (`ContinentStream` Bind+Teleport to Present). Walking SoftEnters. Link gates remain the only teleport. WorldField is sampled at the feet. Kernel `CURRENT_TRAVEL_MODE` matches. Overland *intent* (`intendedTravelMode`) is still link-vs-walk law, not a heightmap continent.
 
 ---
 
@@ -207,7 +207,7 @@ Aggregation must store `population / food / wealth / stability / war_risk` **and
 | **W0-organism** | Two loops named. `organismInField`. Gloom Stalker catalog honesty (no invented prey). Death tombstones. `birth`/`hunt` on the existing consequence graph. | **This PR** |
 | **W1** | `spawnSettlementForRegion` founds or joins a `settlements` row (no second identity). Population counted from NPCs. | **This PR** |
 | **W2** | Unity presents `status` (active vs abandoned ruins remain). No despawn of the settlement id. | **This PR** (HUD / kingdom overlay; no invented houses) |
-| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | **thin shipped** — `localToMegaworld` in-region sample. Continent streaming **GAP**. Travel still `region_rebuild`. |
+| **W3** | Continuous topology: walking the region does not call `_world.Build`. Link gates remain the only fast travel. Megaworld (x,z) reaches the kernel. | **shipped** — `ContinentStream` + SoftEnter + Travel Bind+Teleport. Kernel `CURRENT_TRAVEL_MODE = continent_stream`. Heightmap still compressed (0.55 m/km). |
 | **W4** | L2/L3 aggregates that retain chronicle ids. | **thin shipped** — `regionalSummary` counts + chronicle ids; food/wealth empty |
 | **W5** | Cold-start: new seed, run sim 7 days (then 1 month / 1 year as capacity allows). Inspect settlements, deaths, abandonments **without authored history**. Walk it. | **not run** (mechanism pin only: abandoned rows survive a backdated timestamp) |
 | **W6** | **Come back 100 hours later.** Help a farmer, leave, return. The place continued. Memories and buildings match the ledger. | **not run** |
