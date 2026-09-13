@@ -48,6 +48,7 @@ namespace Concordia
         public static ConcordClient Live { get; private set; }
         public string DungeonInstanceId { get; private set; } = "";
         string _userId = "";
+        float _retryAt;
         readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
@@ -72,6 +73,13 @@ namespace Concordia
                 catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
             }
             AdaptiveScore.Tick();
+            if (Connected) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (string.IsNullOrWhiteSpace(gatewayUrl)) return;
+#endif
+            if (Time.unscaledTime < _retryAt) return;
+            _retryAt = Time.unscaledTime + 8f;
+            _ = EnsureConnected();
         }
 
         void RunMain(System.Action a)
@@ -125,6 +133,7 @@ namespace Concordia
             _cts = new CancellationTokenSource();
             LastReason = "connecting";
             StatusJson = "{\"ok\":false,\"reason\":\"connecting\"}";
+            _retryAt = 8f;
 #if UNITY_WEBGL && !UNITY_EDITOR
             if (string.IsNullOrWhiteSpace(gatewayUrl))
             {
@@ -290,6 +299,20 @@ namespace Concordia
             {
                 var because = JsonString(text, "because");
                 if (!string.IsNullOrEmpty(because)) FieldBecause = because;
+                return;
+            }
+            if (evt == "character:created" || evt == "character:bound")
+            {
+                RunMain(() => PresentAgentSoul(text, evt == "character:bound" || JsonFlagTrue(text, "spawn")));
+                return;
+            }
+            if (evt == "character:loaded")
+            {
+                return;
+            }
+            if (evt == "agent:intent:ack")
+            {
+                RunMain(() => ApplyAgentIntent(text));
                 return;
             }
             if (evt == "scene:data")
@@ -1351,9 +1374,25 @@ namespace Concordia
             return SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
+        /// <summary>
+        /// SoftEnter / Travel join. Stamps folder even if kitchen is late so
+        /// AfterOpen / retry send the world Concordia is actually in.
+        /// </summary>
+        public static Task JoinWorld(string folder)
+        {
+            var live = Live;
+            if (live == null) return Task.CompletedTask;
+            return live.RequestScene(folder);
+        }
+
         public async Task RequestScene(string nextWorldId)
         {
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
+            if (!Connected)
+            {
+                await EnsureConnected();
+                return;
+            }
             await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
@@ -1362,8 +1401,88 @@ namespace Concordia
             await LensRun("skills", "mastery");
         }
 
+        void PresentAgentSoul(string text, bool spawn)
+        {
+            if (JsonFlagFalse(text, "ok"))
+            {
+                var why = JsonString(text, "reason");
+                ConcordiaHUD.Announce("agent", string.IsNullOrEmpty(why) ? "no soul" : why);
+                return;
+            }
+            var id = JsonString(text, "characterId");
+            if (string.IsNullOrEmpty(id)) return;
+            if (!spawn)
+            {
+                _ = BindAgentCharacter(id);
+                return;
+            }
+            var name = JsonString(text, "displayName");
+            var look = new Appearance();
+            look.displayName = string.IsNullOrEmpty(name) ? "agent" : name;
+            var player = ConcordiaPlayer.Live;
+            var pose = player ? player.transform.position + player.transform.right * 1.8f : Canon.Spawn;
+            var av = AgentAvatar.Present(id, look, pose, player ? player.transform.eulerAngles.y : 180f);
+            if (av && av.Motor)
+            {
+                var dummy = AgentMotor.NearestDummy(pose);
+                av.Motor.ApplyIntent("train_arena", Canon.Arena, dummy ? dummy.transform : null, "cautious");
+            }
+        }
+
+        void ApplyAgentIntent(string text)
+        {
+            var av = AgentAvatar.Live;
+            if (!av || av.Motor == null) return;
+            var goal = JsonString(text, "goal");
+            var gate = JsonString(text, "gate");
+            if (!string.IsNullOrEmpty(gate)) av.Motor.GotoGate(gate);
+            Transform engage = null;
+            if (goal == "train_arena")
+            {
+                var dummy = AgentMotor.NearestDummy(av.transform.position);
+                if (dummy) engage = dummy.transform;
+            }
+            av.Motor.ApplyIntent(goal, null, engage, JsonString(text, "stance"));
+        }
+
         public Task SendMove(float x, float y, float z, string cityId) =>
             SendEvt("player:move", "{\"cityId\":\"" + Escape(cityId) + "\",\"x\":" + x + ",\"y\":" + y + ",\"z\":" + z + ",\"direction\":0}");
+
+        public Task CreateAgentCharacter(string assistantId, string charter = null)
+        {
+            if (string.IsNullOrEmpty(assistantId)) assistantId = "grok-bot";
+            var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
+            look.displayName = string.IsNullOrEmpty(look.displayName) ? "Grok" : look.displayName;
+            var json = "{\"assistantId\":\"" + Escape(assistantId)
+                + "\",\"worldId\":\"" + Escape(worldId)
+                + "\",\"charter\":\"" + Escape(charter ?? "Patrol Unburned Court. Train in the Arena.")
+                + "\",\"appearance\":{\"displayName\":\"" + Escape(look.displayName) + "\"}}";
+            return SendEvt("character:create", json);
+        }
+
+        public Task BindAgentCharacter(string characterId)
+        {
+            return SendEvt("character:bind", "{\"characterId\":\"" + Escape(characterId)
+                + "\",\"sessionId\":\"" + Escape(string.IsNullOrEmpty(_userId) ? "unity-local-guest" : _userId) + "\"}");
+        }
+
+        public Task UnbindAgentCharacter(string characterId, Vector3 pose, float yaw)
+        {
+            return SendEvt("character:unbind", "{\"characterId\":\"" + Escape(characterId)
+                + "\",\"worldId\":\"" + Escape(worldId)
+                + "\",\"x\":" + pose.x.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"y\":" + pose.y.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"z\":" + pose.z.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"yaw\":" + yaw.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}");
+        }
+
+        public Task SendAgentIntent(string characterId, string goal, string gate = null)
+        {
+            var json = "{\"characterId\":\"" + Escape(characterId) + "\",\"goal\":\"" + Escape(goal ?? "idle") + "\"";
+            if (!string.IsNullOrEmpty(gate)) json += ",\"goto\":{\"gate\":\"" + Escape(gate) + "\"}";
+            json += "}";
+            return SendEvt("agent:intent", json);
+        }
 
         public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword", float x = 0, float z = 0, string skillId = null)
         {

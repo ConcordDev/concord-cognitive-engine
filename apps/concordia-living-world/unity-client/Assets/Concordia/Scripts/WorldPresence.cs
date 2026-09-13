@@ -6,6 +6,7 @@ namespace Concordia
     /// A kernel xz is presentable only if a streamed chunk covers it.
     /// Far organisms stay unplaced — not invented at the player's feet.
     /// FindGuest / GateToward stay here so WorldGate.cs is not a second class.
+    /// Before ContinentStream boots, the Hub ring is the presenter.
     /// </summary>
     public static class WorldPresence
     {

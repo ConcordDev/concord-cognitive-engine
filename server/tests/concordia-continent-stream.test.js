@@ -167,6 +167,14 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /LastTravelKind = kind/);
     assert.doesNotMatch(stream, /LastTravelKind == "link_gate" \? "link_gate"/);
     assert.match(stream, /game\.NoteWorld\(id\)/);
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /ConcordClient\.JoinWorld\(WorldBook\.Folder/);
+    assert.doesNotMatch(game, /if \(client && client\.Connected\)/);
+    const client = src("ConcordClient.cs");
+    assert.match(client, /public static Task JoinWorld/);
+    assert.match(client, /if \(!Connected\)/);
+    assert.match(client, /EnsureConnected\(\)/);
+    assert.match(client, /_retryAt = Time\.unscaledTime \+ 8f/);
   });
 
   it("ContinentStream.Live survives OnDisable so Travel cannot lose the stream mid-session", () => {
@@ -195,5 +203,30 @@ describe("Concordia continent streaming + creature compiler", () => {
     for (const name of ["MegaworldMap.cs", "ContinentStream.cs", "CreatureCompiler.cs", "WorldPresence.cs"]) {
       assert.equal(existsSync(join(scripts, name)), true, name);
     }
+  });
+
+  it("WorldPresence is one type — guests, gates, and chunk coverage live together", () => {
+    const presence = src("WorldPresence.cs");
+    const gate = src("WorldGate.cs");
+    assert.match(presence, /public static class WorldPresence/);
+    assert.match(presence, /FindGuest\(/);
+    assert.match(presence, /GateToward\(/);
+    assert.match(presence, /ContinentStream\.Live/);
+    assert.match(presence, /Canon\.RingRadius/);
+    assert.doesNotMatch(gate, /public static class WorldPresence/);
+  });
+
+  it("stacked-merge collisions stay closed (one BindGenome, one TelegraphKind)", () => {
+    const fauna = src("EvoSpawner.cs");
+    const hostile = src("Hostile.cs");
+    const builder = src("WorldBuilder.cs");
+    const clock = src("WorldBook.cs");
+    assert.equal((fauna.match(/public void BindGenome\(/g) || []).length, 1);
+    assert.equal((hostile.match(/public static string TelegraphKind/g) || []).length, 1);
+    assert.match(builder, /DressVocab\.Bird\(\)/);
+    assert.doesNotMatch(builder, /FreePacks\.Bird\(/);
+    assert.match(clock, /public static void RefreshSky\(\)/);
+    assert.match(clock, /0\.22f \+ 0\.98f \* sun01/);
+    assert.doesNotMatch(clock, /0\.98f \* day/);
   });
 });

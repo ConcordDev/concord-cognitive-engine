@@ -195,8 +195,11 @@ namespace Concordia
 
         public static bool SteelLive(WorldId world, Vector3 p)
         {
+            // Walking a streamed chunk updates WorldClock first; player.world
+            // can lag a frame. Flower Law is Hub plaza only, never a leftover
+            // after the Court is behind you.
             if (InArena(p)) return true;
-            if (world != WorldId.Hub) return true;
+            if (world != WorldId.Hub || WorldClock.World != WorldId.Hub) return true;
             return !InHubCourt(p);
         }
 
