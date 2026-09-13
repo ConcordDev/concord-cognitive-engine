@@ -5,6 +5,7 @@
 
 import crypto from 'node:crypto';
 import logger from '../logger.js';
+import { tryRecordConsequence } from './world-consequence.js';
 
 // ── Evidence decay rates (seconds) ────────────────────────────────────────────
 const EVIDENCE_DECAY = {
@@ -172,6 +173,18 @@ export function recordTheft(db, roomId, thievingEntityId, entityType, stolenItem
     // Fingerprints / magical residue if caster
     _addEvidence(db, crimeEventId, worldId, 'footprint',
       'Disturbed dust and moved containers indicate recent search', thievingEntityId, entityType, 0.12);
+    tryRecordConsequence(db, {
+      worldId,
+      actorKind: entityType === "npc" ? "npc" : "player",
+      actorId: thievingEntityId,
+      action: "crime",
+      targetKind: room.owner_id ? "player" : "world",
+      targetId: room.owner_id || worldId,
+      location: roomId,
+      importance: 0.55,
+      evidence: { crimeEventId, crimeType: "theft", stolen: stolenItems.length },
+      immediate: { crimeEventId, crimeType: "theft" },
+    });
   }
 
   // Increase criminal reputation

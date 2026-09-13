@@ -101,6 +101,8 @@ describe("world:snapshot", () => {
       const live = getWeather("concordia-hub");
       assert.equal(frame.data.weather.type, live.type);
       assert.equal(frame.data.weather.intensity, live.intensity);
+      assert.ok(Array.isArray(frame.data.npcs));
+      assert.equal(frame.data.npcs.length, 0);
       ws.close();
     } finally { await h.stop(); }
   });

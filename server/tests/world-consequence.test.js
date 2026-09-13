@@ -59,4 +59,13 @@ describe("world-consequence", () => {
     assert.equal(kills[0].immediate.succession, true);
     assert.equal(succ[0].immediate.triggered_by, kills[0].id);
   });
+
+  it("tryRecordConsequence never throws on a missing table", async () => {
+    const { tryRecordConsequence } = await import("../lib/world-consequence.js");
+    const bare = new Database(":memory:");
+    const r = tryRecordConsequence(bare, {
+      actorKind: "player", actorId: "p1", action: "kindness",
+    });
+    assert.equal(r.ok, false);
+  });
 });

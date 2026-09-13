@@ -8,9 +8,9 @@
 // Does not invent a second architecture — composes existing libs.
 
 import { registerHeartbeat, listHeartbeatModules } from "../emergent/heartbeat-registry.js";
-import { recordConsequence, recordLeaderDeath, listConsequences } from "./world-consequence.js";
+import { listConsequences } from "./world-consequence.js";
 import { applyPendingConsequences } from "./consequence-apply.js";
-import { decayNeeds, freshNeeds, satisfy, topNeed } from "./npc-needs.js";
+import { decayNeeds, freshNeeds, satisfy, topNeed, getNeeds, setNeeds } from "./npc-needs.js";
 import { applyAuthoritativeMove, applyRefusal, combatAllowed } from "./world-physics-authority.js";
 import { applyAuthoritativeHit, ensureActor, getActor } from "./combat-hp-authority.js";
 import { resolveCraft } from "./craft-resolve.js";
@@ -101,27 +101,38 @@ export function ensureKernelTables(db) {
 }
 
 function tickSociety(db, worldId) {
-  const before = listConsequences(db, { worldId, action: "succession", limit: 20 }).length;
-  recordLeaderDeath(db, {
-    worldId,
-    actorKind: "world",
-    actorId: "world-kernel",
-    targetKind: "npc",
-    targetId: "faction-leader-kernel",
-    factionId: "unburned-court",
-    location: "hub-plaza",
-    importance: 0.95,
-  });
-  const after = listConsequences(db, { worldId, action: "succession", limit: 20 }).length;
-  return { ok: true, succession_delta: after - before, succession_total: after };
+  // Observe the bus. Do not invent a leader death — that used to stamp a fake
+  // kill+succession on every kernel tick and poisoned the Alive test.
+  const listed = listConsequences(db, { worldId, limit: 20 });
+  const kills = listed.filter((r) => r.action === "kill").length;
+  const wars = listed.filter((r) => r.action === "war").length;
+  return {
+    ok: true,
+    recorded: listed.length,
+    kills,
+    wars,
+    invented: false,
+  };
 }
 
-function tickLife(elapsedHours = 0.25) {
+function tickLife(db, elapsedHours = 0.25) {
   const npcId = "kernel-citizen";
   const prev = _life.get(npcId) || freshNeeds();
   const decayed = decayNeeds(prev, elapsedHours);
   const fed = satisfy(decayed, "hunger", 0.2);
   _life.set(npcId, fed);
+  let dbTouched = 0;
+  if (db) {
+    try {
+      const rows = db.prepare(`
+        SELECT id FROM world_npcs WHERE is_dead = 0 LIMIT 12
+      `).all();
+      for (const row of rows) {
+        const before = getNeeds(db, row.id);
+        if (setNeeds(db, row.id, decayNeeds(before, elapsedHours))) dbTouched++;
+      }
+    } catch { /* needs_json / table optional on minimal DBs */ }
+  }
   return {
     ok: true,
     npcId,
@@ -130,6 +141,7 @@ function tickLife(elapsedHours = 0.25) {
     hunger_after_decay: decayed.hunger,
     hunger_after_eat: fed.hunger,
     mutated: decayed.hunger !== prev.hunger,
+    dbTouched,
   };
 }
 
@@ -284,7 +296,7 @@ export function tickWorldKernel({ db, worldId = DEFAULT_WORLD, elapsedHours = 0.
   _ticks += 1;
   const organs = {
     society: tickSociety(db, worldId),
-    life: tickLife(elapsedHours),
+    life: tickLife(db, elapsedHours),
     consequence: tickConsequence(db),
     physics: tickPhysics(worldId),
     impact: tickImpact(worldId),

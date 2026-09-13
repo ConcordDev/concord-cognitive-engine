@@ -846,5 +846,95 @@ namespace Concordia
             var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
             if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
         }
+
+        /// <summary>
+        /// Live kernel NPCs from world:snapshot. Canon plaza guests stay;
+        /// matching names bind to the kernel id instead of duplicating.
+        /// </summary>
+        public static void ClearKernelNpcs()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelNpcs");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelNpc(string id, string name, string title, Vector3 pos, string activity)
+        {
+            if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
+            var parent = KernelLiveParent();
+            if (!parent) return;
+
+            foreach (var g in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+            {
+                if (!NamesMatchGuest(g, id, name)) continue;
+                if (g.def == null) g.def = new GuestDef();
+                g.personId = id;
+                if (!string.IsNullOrEmpty(name)) g.def.name = name;
+                if (!string.IsNullOrEmpty(title)) g.def.title = title;
+                return;
+            }
+
+            var xz = new Vector2(pos.x, pos.z);
+            if (xz.sqrMagnitude < 2.25f || xz.magnitude > 90f)
+            {
+                var h = Mathf.Abs((id ?? name ?? "npc").GetHashCode());
+                var a = (h % 360) * Mathf.Deg2Rad;
+                var r = 14f + (h % 9);
+                pos = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+            }
+
+            var holder = parent.Find("KernelNpcs");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelNpcs");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+
+            var look = Appearance.Random(Mathf.Abs((id ?? name).GetHashCode()));
+            look.displayName = string.IsNullOrEmpty(name) ? "Citizen" : name;
+            var job = JobFromActivity(activity);
+            var wander = job == NpcLife.Job.Wander;
+            var go = ModularPerson.SpawnNpc(holder, pos, 180f, look, wander, 10f);
+            go.name = string.IsNullOrEmpty(name) ? "KernelNpc" : name;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = new GuestDef
+            {
+                id = id,
+                name = look.displayName,
+                title = string.IsNullOrEmpty(title) ? "kernel" : title,
+                line = "They are here because the kernel listed them. Not plaza dressing."
+            };
+            guest.personId = id;
+            var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+            life.job = job;
+        }
+
+        static bool NamesMatchGuest(GuestNpc g, string id, string name)
+        {
+            if (!g) return false;
+            if (!string.IsNullOrEmpty(id) && (
+                string.Equals(g.personId, id, System.StringComparison.OrdinalIgnoreCase)
+                || (g.def != null && string.Equals(g.def.id, id, System.StringComparison.OrdinalIgnoreCase))))
+                return true;
+            if (string.IsNullOrEmpty(name) || g.def == null) return false;
+            return string.Equals(g.def.name, name, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        static NpcLife.Job JobFromActivity(string activity)
+        {
+            if (string.IsNullOrEmpty(activity)) return NpcLife.Job.Wander;
+            var a = activity.ToLowerInvariant();
+            if (a.IndexOf("watch") >= 0 || a.IndexOf("guard") >= 0 || a.IndexOf("patrol") >= 0)
+                return NpcLife.Job.Watch;
+            if (a.IndexOf("stall") >= 0 || a.IndexOf("shop") >= 0 || a.IndexOf("work") >= 0 || a.IndexOf("merchant") >= 0)
+                return NpcLife.Job.Stall;
+            if (a.IndexOf("sweep") >= 0 || a.IndexOf("clean") >= 0)
+                return NpcLife.Job.Sweep;
+            if (a.IndexOf("sit") >= 0 || a.IndexOf("tavern") >= 0 || a.IndexOf("eat") >= 0)
+                return NpcLife.Job.Sit;
+            return NpcLife.Job.Wander;
+        }
     }
 }

@@ -27,6 +27,7 @@ import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 import { composeTwoBDialogue } from "./concordia-two-b.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
+import { listNpcsForGatewaySnapshot } from "./world-npc-snapshot.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -427,6 +428,7 @@ function isBinaryMovePayload(p) {
         try {
           const phase = getWorldPhase();
           const weather = getWeather(worldId);
+          const npcs = listNpcsForGatewaySnapshot(db, worldId);
           send(client.ws, "world:snapshot", {
             ok: true,
             worldId,
@@ -443,6 +445,7 @@ function isBinaryMovePayload(p) {
                   since: weather.since,
                 }
               : null,
+            npcs,
           });
         } catch (e) {
           send(client.ws, "world:snapshot", {

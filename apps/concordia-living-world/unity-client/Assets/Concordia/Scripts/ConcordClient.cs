@@ -481,10 +481,53 @@ namespace Concordia
         void ApplyWorldSnapshot(string json)
         {
             if (JsonFlagFalse(json, "ok")) return;
-            WorldClock.BindKernelClock(JsonFloat(json, "phase", WorldClock.Hour / 24f), JsonNestedString(json, "segment"));
-            var w = JsonNestedString(json, "type");
+            var clock = JsonObjectSlice(json, "clock");
+            var phaseSrc = string.IsNullOrEmpty(clock) ? json : clock;
+            WorldClock.BindKernelClock(
+                JsonFloat(phaseSrc, "phase", WorldClock.Hour / 24f),
+                JsonString(phaseSrc, "segment"));
+            var weather = JsonObjectSlice(json, "weather");
+            var w = JsonString(weather, "type");
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
+            var n = JsonArrayCount(json, "npcs");
+            if (n <= 0) return;
+            WorldBuilder.ClearKernelNpcs();
+            ForEachArrayObject(json, "npcs", node =>
+            {
+                WorldBuilder.PlaceKernelNpc(
+                    JsonString(node, "id"),
+                    JsonString(node, "name"),
+                    JsonString(node, "title"),
+                    new Vector3(JsonFloat(node, "x"), JsonFloat(node, "y"), JsonFloat(node, "z")),
+                    JsonString(node, "activity"));
+            });
+            WorldClock.NoteAct(n + " npcs · kernel");
+        }
+
+        static string JsonObjectSlice(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return "";
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, System.StringComparison.Ordinal);
+            if (i < 0) return "";
+            var start = json.IndexOf('{', i + needle.Length);
+            if (start < 0) return "";
+            int depth = 0;
+            bool inStr = false;
+            for (int p = start; p < json.Length; p++)
+            {
+                char c = json[p];
+                if (c == '"' && (p == 0 || json[p - 1] != '\\')) inStr = !inStr;
+                if (inStr) continue;
+                if (c == '{') depth++;
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0) return json.Substring(start, p - start + 1);
+                }
+            }
+            return "";
         }
 
         void ApplyCombatFeel(string json, bool impact)
