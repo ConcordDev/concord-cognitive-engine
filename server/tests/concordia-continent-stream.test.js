@@ -113,6 +113,13 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(gate, /game\.Travel\(def\.world\)/);
     assert.match(plaza, /FallbackArch\(/);
     assert.match(plaza, /AddComponent<WorldGate>\(\)\.def = gate/);
+    const builder = src("WorldBuilder.cs");
+    assert.match(builder, /void StampRingLink\(/);
+    assert.match(builder, /LinkMouth_/);
+    assert.match(builder, /StampRingLink\(gate, shell, p, yaw\)/);
+    assert.match(builder, /StampRingLink\(gate, null, p, yaw\)/);
+    assert.match(stream, /FindFirstObjectByType<ConcordiaPlayer>/);
+    assert.match(stream, /public void SoftEnter\(/);
     assert.match(presence, /FindGuest\(/);
     assert.match(presence, /GateToward\(/);
     assert.match(presence, /ContinentStream\.Live/);

@@ -162,9 +162,9 @@ namespace Concordia
             _lod.Remove(id);
         }
 
-        void SoftEnter(WorldId id)
+        public void SoftEnter(WorldId id)
         {
-            var player = ConcordiaPlayer.Live;
+            var player = ConcordiaPlayer.Live ?? Object.FindFirstObjectByType<ConcordiaPlayer>();
             var clockSame = WorldClock.World == id;
             var playerSame = !player || player.world == id;
             if (clockSame && playerSame) return;

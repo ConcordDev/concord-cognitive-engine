@@ -435,6 +435,7 @@ namespace Concordia
                     }
                     PlaceStone(outPos + side * 2.6f, "No embassy",
                         "The frontier keeps no seat. The road is their door. To claim a fixed house here would be to accept a dome.");
+                    StampRingLink(gate, null, p, yaw);
                     return;
                 case WorldId.Superhero:
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Superhero), root, outPos, yaw, 8.5f);
@@ -447,6 +448,42 @@ namespace Concordia
                     break;
             }
             if (shell) BuildingInterior.Open(shell, plan, outPos);
+            StampRingLink(gate, shell, p, yaw);
+        }
+
+        /// <summary>
+        /// HubPlaza owns the Ring mouth. DressEmbassy used to spawn only
+        /// FreePacks — no WorldGate — so a missing plaza mesh left no Link.
+        /// Stamp a trigger on the embassy, or at the ring if there is no shell.
+        /// Frontier road stays overland; its Link sits at the ring, not on the road.
+        /// </summary>
+        void StampRingLink(GateDef gate, GameObject shell, Vector3 ringPos, float yaw)
+        {
+            Transform parent;
+            Vector3 pos;
+            if (shell)
+            {
+                parent = shell.transform;
+                pos = shell.transform.position;
+            }
+            else
+            {
+                var hold = new GameObject("Gate_" + gate.shortName + "_Embassy").transform;
+                hold.SetParent(root, false);
+                hold.position = ringPos;
+                hold.rotation = Quaternion.Euler(0f, yaw, 0f);
+                parent = hold;
+                pos = ringPos;
+            }
+            if (parent.GetComponentInChildren<WorldGate>()) return;
+            var mouth = new GameObject("LinkMouth_" + gate.shortName);
+            mouth.transform.SetParent(parent, false);
+            mouth.transform.position = pos;
+            mouth.AddComponent<WorldGate>().def = gate;
+            var box = mouth.AddComponent<BoxCollider>();
+            box.isTrigger = true;
+            box.center = new Vector3(0f, 2f, 0f);
+            box.size = new Vector3(7.2f, 5f, 2.4f);
         }
 
         void DressTavern(Vector3 p)
