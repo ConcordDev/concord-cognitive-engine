@@ -144,7 +144,7 @@ describe("Concordia alive gate — file-by-file", () => {
     assert.match(log, /AcceptQuest\(WorldBook\.Folder\(world\), q\.id\)/);
     assert.match(client, /LensRun\("quests", "accept"/);
     assert.match(client, /VoiceJoin/);
-    assert.match(src("ProximityVoice.cs"), /concordia:" \+ world/);
-    assert.match(src("ProximityVoice.cs"), /voice_unavailable/);
+    assert.match(client, /concordia:" \+ world/);
+    assert.match(client, /voice_unavailable/);
   });
 });
