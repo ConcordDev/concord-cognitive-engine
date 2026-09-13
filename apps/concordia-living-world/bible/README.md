@@ -20,6 +20,7 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 | SKILLS | Local attempt/connect ledger |
 | NPC_BRAIN | Unity schedules + visible activities (open/patrol/deliver/talk/inside); REAL/BULK/VIRTUAL LOD |
 | SAVE_SYSTEM | Appearance JSON + `concordia-living-v1.json` world slices |
+| AGENT_BODY | PARTIAL — P0 characterId + affect_state bind + AgentMotor; MCP is still devtools only |
 | NETWORK | `/unity-ws` mounted; `kingdom:request` → authored snapshot; offline stays `no_gateway` |
 | ANIMATION | Hero prefers Soldier.glb + SoldierLocomotion; NPC gait still often procedural |
 | AUDIO | Prefab paths; Vrellan Six missing |

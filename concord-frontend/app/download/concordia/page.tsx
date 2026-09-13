@@ -43,9 +43,9 @@ export default function ConcordiaDownloadPage() {
           <Link href="/lenses/world" className={ds.btnPrimary}>
             Play in browser
           </Link>
-          <a href="/unity-client/index.html" className={ds.btnSecondary}>
+          <Link href="/unity-client/index.html" className={ds.btnSecondary}>
             Open WebGL directly
-          </a>
+          </Link>
         </div>
       </div>
     </UtilityPageShell>

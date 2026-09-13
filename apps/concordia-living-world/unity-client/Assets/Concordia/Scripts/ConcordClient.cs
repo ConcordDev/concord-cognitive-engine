@@ -48,6 +48,7 @@ namespace Concordia
         public static ConcordClient Live { get; private set; }
         public string DungeonInstanceId { get; private set; } = "";
         string _userId = "";
+        float _retryAt;
         readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
@@ -63,6 +64,12 @@ namespace Concordia
             ApplyPageConfig();
         }
 
+        void OnEnable()
+        {
+            Live = this;
+            StampPresenterWorld();
+        }
+
         void Update()
         {
             System.Action a;
@@ -72,6 +79,13 @@ namespace Concordia
                 catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
             }
             AdaptiveScore.Tick();
+            if (Connected) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (string.IsNullOrWhiteSpace(gatewayUrl)) return;
+#endif
+            if (Time.unscaledTime < _retryAt) return;
+            _retryAt = Time.unscaledTime + 8f;
+            _ = EnsureConnected();
         }
 
         void RunMain(System.Action a)
@@ -125,6 +139,7 @@ namespace Concordia
             _cts = new CancellationTokenSource();
             LastReason = "connecting";
             StatusJson = "{\"ok\":false,\"reason\":\"connecting\"}";
+            _retryAt = 8f;
 #if UNITY_WEBGL && !UNITY_EDITOR
             if (string.IsNullOrWhiteSpace(gatewayUrl))
             {
@@ -234,6 +249,7 @@ namespace Concordia
         {
             try
             {
+                StampPresenterWorld();
                 var token = string.IsNullOrEmpty(bearerToken) ? "unity-local-guest" : bearerToken;
                 await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
@@ -244,6 +260,7 @@ namespace Concordia
                 await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
+                RestoreAgentSoul();
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
                 _ = ReceiveLoop();
 #endif
@@ -290,6 +307,16 @@ namespace Concordia
             {
                 var because = JsonString(text, "because");
                 if (!string.IsNullOrEmpty(because)) FieldBecause = because;
+                return;
+            }
+            if (evt == "character:created" || evt == "character:bound" || evt == "character:loaded")
+            {
+                RunMain(() => PresentAgentSoul(text, evt == "character:bound" || JsonFlagTrue(text, "spawn")));
+                return;
+            }
+            if (evt == "agent:intent:ack")
+            {
+                RunMain(() => ApplyAgentIntent(text));
                 return;
             }
             if (evt == "scene:data")
@@ -1351,9 +1378,25 @@ namespace Concordia
             return SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
+        /// <summary>
+        /// SoftEnter / Travel join. Stamps folder even if kitchen is late so
+        /// AfterOpen / retry send the world Concordia is actually in.
+        /// </summary>
+        public static Task JoinWorld(string folder)
+        {
+            var live = Live;
+            if (live == null) return Task.CompletedTask;
+            return live.RequestScene(folder);
+        }
+
         public async Task RequestScene(string nextWorldId)
         {
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
+            if (!Connected)
+            {
+                await EnsureConnected();
+                return;
+            }
             await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
@@ -1362,8 +1405,120 @@ namespace Concordia
             await LensRun("skills", "mastery");
         }
 
+        void PresentAgentSoul(string text, bool spawn)
+        {
+            if (JsonFlagFalse(text, "ok"))
+            {
+                var why = JsonString(text, "reason");
+                if (why == "not_found")
+                {
+                    PlayerPrefs.DeleteKey("concordia-agent-character");
+                    _ = CreateAgentCharacter("grok-bot");
+                    return;
+                }
+                ConcordiaHUD.Announce("agent", string.IsNullOrEmpty(why) ? "no soul" : why);
+                return;
+            }
+            var id = JsonString(text, "characterId");
+            if (string.IsNullOrEmpty(id)) return;
+            PlayerPrefs.SetString("concordia-agent-character", id);
+            if (!spawn)
+            {
+                _ = BindAgentCharacter(id);
+                return;
+            }
+            var appearance = JsonObject(text, "appearance");
+            var pose = JsonObject(text, "pose");
+            var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
+            var name = JsonString(appearance, "displayName");
+            if (string.IsNullOrEmpty(name)) name = JsonString(text, "displayName");
+            look.displayName = string.IsNullOrEmpty(name) ? "Grok" : name;
+            var player = ConcordiaPlayer.Live;
+            var beside = player ? player.transform.position + player.transform.right * 1.8f : Canon.Spawn;
+            var x = JsonFloat(pose, "x", float.NaN);
+            var y = JsonFloat(pose, "y", float.NaN);
+            var z = JsonFloat(pose, "z", float.NaN);
+            var parked = !float.IsNaN(x) && !float.IsNaN(z) && (Mathf.Abs(x) + Mathf.Abs(z) > 0.5f);
+            var pos = parked
+                ? new Vector3(x, float.IsNaN(y) ? beside.y : y, z)
+                : beside;
+            var yaw = JsonFloat(pose, "yaw", player ? player.transform.eulerAngles.y : 180f);
+            var av = AgentAvatar.Present(id, look, pos, yaw);
+            if (av && av.Motor)
+            {
+                var dummy = AgentMotor.NearestDummy(pos);
+                av.Motor.ApplyIntent("train_arena", Canon.Arena, dummy ? dummy.transform : null, "cautious");
+            }
+        }
+
+        void StampPresenterWorld()
+        {
+            var player = ConcordiaPlayer.Live;
+            if (player) worldId = WorldBook.Folder(player.world);
+            else worldId = WorldBook.Folder(WorldClock.World);
+        }
+
+        void RestoreAgentSoul()
+        {
+            var last = PlayerPrefs.GetString("concordia-agent-character", "");
+            if (string.IsNullOrEmpty(last)) return;
+            _ = BindAgentCharacter(last);
+        }
+
+        void ApplyAgentIntent(string text)
+        {
+            var av = AgentAvatar.Live;
+            if (!av || av.Motor == null) return;
+            var goal = JsonString(text, "goal");
+            var gate = JsonString(text, "gate");
+            if (!string.IsNullOrEmpty(gate)) av.Motor.GotoGate(gate);
+            Transform engage = null;
+            if (goal == "train_arena")
+            {
+                var dummy = AgentMotor.NearestDummy(av.transform.position);
+                if (dummy) engage = dummy.transform;
+            }
+            av.Motor.ApplyIntent(goal, null, engage, JsonString(text, "stance"));
+        }
+
         public Task SendMove(float x, float y, float z, string cityId) =>
             SendEvt("player:move", "{\"cityId\":\"" + Escape(cityId) + "\",\"x\":" + x + ",\"y\":" + y + ",\"z\":" + z + ",\"direction\":0}");
+
+        public Task CreateAgentCharacter(string assistantId, string charter = null)
+        {
+            if (string.IsNullOrEmpty(assistantId)) assistantId = "grok-bot";
+            var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
+            look.displayName = string.IsNullOrEmpty(look.displayName) ? "Grok" : look.displayName;
+            var json = "{\"assistantId\":\"" + Escape(assistantId)
+                + "\",\"worldId\":\"" + Escape(worldId)
+                + "\",\"charter\":\"" + Escape(charter ?? "Patrol Unburned Court. Train in the Arena.")
+                + "\",\"appearance\":{\"displayName\":\"" + Escape(look.displayName) + "\"}}";
+            return SendEvt("character:create", json);
+        }
+
+        public Task BindAgentCharacter(string characterId)
+        {
+            return SendEvt("character:bind", "{\"characterId\":\"" + Escape(characterId)
+                + "\",\"sessionId\":\"" + Escape(string.IsNullOrEmpty(_userId) ? "unity-local-guest" : _userId) + "\"}");
+        }
+
+        public Task UnbindAgentCharacter(string characterId, Vector3 pose, float yaw)
+        {
+            return SendEvt("character:unbind", "{\"characterId\":\"" + Escape(characterId)
+                + "\",\"worldId\":\"" + Escape(worldId)
+                + "\",\"x\":" + pose.x.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"y\":" + pose.y.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"z\":" + pose.z.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                + ",\"yaw\":" + yaw.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}");
+        }
+
+        public Task SendAgentIntent(string characterId, string goal, string gate = null)
+        {
+            var json = "{\"characterId\":\"" + Escape(characterId) + "\",\"goal\":\"" + Escape(goal ?? "idle") + "\"";
+            if (!string.IsNullOrEmpty(gate)) json += ",\"goto\":{\"gate\":\"" + Escape(gate) + "\"}";
+            json += "}";
+            return SendEvt("agent:intent", json);
+        }
 
         public Task SendAttack(string targetId, float baseDamage = 20, float range = 5, string weapon = "sword", float x = 0, float z = 0, string skillId = null)
         {
@@ -1538,6 +1693,31 @@ namespace Concordia
         {
             var v = JsonString(json, key);
             return v;
+        }
+
+        static string JsonObject(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(key)) return "";
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return "";
+            var start = json.IndexOf('{', i + needle.Length);
+            if (start < 0) return "";
+            int depth = 0;
+            bool inStr = false;
+            for (int p = start; p < json.Length; p++)
+            {
+                char c = json[p];
+                if (c == '"' && (p == 0 || json[p - 1] != '\\')) inStr = !inStr;
+                if (inStr) continue;
+                if (c == '{') depth++;
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0) return json.Substring(start, p - start + 1);
+                }
+            }
+            return "";
         }
 
         static int JsonArrayCount(string json, string key)

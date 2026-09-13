@@ -186,7 +186,7 @@ namespace Concordia
             var fac = facs[i];
             kitWeapon = PersonKit.WeaponStem(fac, i);
             HoldFromBag(kitWeapon);
-            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+            Toast((fac.name ?? "kit") + " — " + KitBag.PrettyWeapon(kitWeapon));
         }
 
         public void HoldFromBag(string stem)
@@ -515,7 +515,10 @@ namespace Concordia
             hp = 100f;
             poise = 12f;
             cc.enabled = false;
-            var spawn = world == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
+            var spawn = world == WorldId.Hub ? Canon.Spawn
+                : ContinentStream.Live
+                    ? MegaworldMap.Present(world) + new Vector3(0f, 0.12f, 2f)
+                    : Canon.SteelSpawn;
             transform.position = spawn;
             cc.enabled = true;
             Grounding.Snap(cc);

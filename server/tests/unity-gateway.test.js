@@ -11,7 +11,9 @@ import { test } from "node:test";
 import assert from "node:assert";
 import http from "node:http";
 import { WebSocket } from "ws";
+import Database from "better-sqlite3";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
+import { getActiveWorldForPlayer } from "../lib/world-loader.js";
 
 const STUB_SCENE = {
   ok: true,
@@ -162,4 +164,33 @@ test("5. auth + scene:request in one tick is hello then scene:data, not 4401", a
     assert.equal(frames[1]?.data?.ok, true);
     ws.close();
   } finally { await h.stop(); }
+});
+
+test("6. scene:request stamps player_world_state so Concord follows Unity", async () => {
+  const db = new Database(":memory:");
+  db.exec(`
+    CREATE TABLE player_world_state (
+      user_id TEXT PRIMARY KEY,
+      world_id TEXT,
+      city_id TEXT NOT NULL DEFAULT 'concordia-central'
+    )
+  `);
+  const h = await startGateway({
+    db,
+    exportScene: () => ({ ok: true, format: "concord-scene/v1", nodes: [], count: 0 }),
+  });
+  try {
+    const { ws } = await authAs(h.url);
+    sendMsg(ws, "scene:request", { worldId: "fantasy" });
+    const f = await nextFrame(ws);
+    assert.equal(f.evt, "scene:data");
+    assert.equal(getActiveWorldForPlayer(db, "u1"), "fantasy");
+    sendMsg(ws, "scene:request", { worldId: "tunya" });
+    await nextFrame(ws);
+    assert.equal(getActiveWorldForPlayer(db, "u1"), "tunya");
+    ws.close();
+  } finally {
+    await h.stop();
+    db.close();
+  }
 });

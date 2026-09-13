@@ -17,6 +17,7 @@
 import crypto from "node:crypto";
 import { checkHeartEvent } from "./heart-events.js";
 import { gatherAttendees } from "./social-gatherings.js";
+import { getActiveWorldForPlayer } from "./world-loader.js";
 
 const COURT_AFFINITY_DELTA = 0.05;
 const ENGAGE_THRESHOLD     = 0.70;
@@ -121,8 +122,7 @@ export function wed(db, playerUserId, partnerKind, partnerId) {
     if (typeof emit === "function") {
       let worldId = "concordia-hub";
       try {
-        const row = db.prepare("SELECT world_id FROM city_presence WHERE user_id = ? LIMIT 1").get(playerUserId);
-        if (row && row.world_id) worldId = String(row.world_id);
+        worldId = getActiveWorldForPlayer(db, playerUserId) || "concordia-hub";
       } catch { /* presence optional */ }
       emit("npc:wedding", {
         marriageId,

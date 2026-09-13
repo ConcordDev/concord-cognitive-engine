@@ -846,6 +846,8 @@ namespace Concordia
                 + (Ecology < 0.4f ? " · ecology thin" : "");
         }
 
+        public static void RefreshSky() => ApplySky();
+
         static void ApplySky()
         {
             HubLook.ApplyHour(World, Hour);
@@ -875,7 +877,7 @@ namespace Concordia
             }
             var box = RenderSettings.skybox;
             if (box && box.HasProperty("_Exposure"))
-                box.SetFloat("_Exposure", 0.22f + 0.98f * day);
+                box.SetFloat("_Exposure", 0.22f + 0.98f * sun01);
         }
 
         /// <summary>

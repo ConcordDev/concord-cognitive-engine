@@ -35,6 +35,14 @@ import {
   handleDungeonHit,
   handleRunStart,
 } from "./concordia-play.js";
+import {
+  handleCharacterCreate,
+  handleCharacterLoad,
+  handleCharacterBind,
+  handleCharacterUnbind,
+  handleAgentPerceive,
+  handleAgentIntent,
+} from "./concordia-agent-body.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
 import { packAaaSnapshot } from "./world-aaa-present.js";
@@ -43,6 +51,7 @@ import { getVillageGossipFeed } from "./npc-relationships.js";
 import { getTombsForWorld } from "./npc-legacy.js";
 import { listActiveBosses } from "./world-bosses.js";
 import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
+import { notePlayerWorld } from "./world-loader.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -472,8 +481,15 @@ function isBinaryMovePayload(p) {
 
       case "scene:request": {
         const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        const stampWorld = () => {
+          if (worldId && client.userId) {
+            try { notePlayerWorld(db, client.userId, worldId); }
+            catch { /* stub deps / missing table — scene:data still sent */ }
+          }
+        };
         if (typeof exportScene !== "function" || !db) {
           send(client.ws, "scene:data", { ok: false, reason: "scene_export_unavailable" });
+          stampWorld();
           return;
         }
         let scene;
@@ -481,10 +497,14 @@ function isBinaryMovePayload(p) {
           scene = await exportScene(db, worldId);
         } catch (e) {
           send(client.ws, "scene:data", { ok: false, reason: "scene_export_failed", error: String(e?.message || e) });
+          stampWorld();
           return;
         }
         // Passthrough verbatim, including honest {ok:false,...} failures. Never fabricate a scene.
         send(client.ws, "scene:data", scene);
+        // Interest-set stamp. Unity SoftEnter/Travel send scene:request;
+        // getActiveWorldForPlayer must follow or kernel systems stay on Hub.
+        stampWorld();
         return;
       }
 
@@ -508,6 +528,31 @@ function isBinaryMovePayload(p) {
       case "gift:give": {
         const result = handleGiftGive(db, client.userId, data);
         send(client.ws, "gift:result", result);
+        return;
+      }
+
+      case "character:create": {
+        send(client.ws, "character:created", handleCharacterCreate(db, client.userId, data));
+        return;
+      }
+      case "character:load": {
+        send(client.ws, "character:loaded", handleCharacterLoad(db, client.userId, data));
+        return;
+      }
+      case "character:bind": {
+        send(client.ws, "character:bound", handleCharacterBind(db, client.userId, data));
+        return;
+      }
+      case "character:unbind": {
+        send(client.ws, "character:unbound", handleCharacterUnbind(db, client.userId, data));
+        return;
+      }
+      case "agent:perceive": {
+        send(client.ws, "agent:perceived", handleAgentPerceive(db, client.userId, data));
+        return;
+      }
+      case "agent:intent": {
+        send(client.ws, "agent:intent:ack", handleAgentIntent(db, client.userId, data));
         return;
       }
 
