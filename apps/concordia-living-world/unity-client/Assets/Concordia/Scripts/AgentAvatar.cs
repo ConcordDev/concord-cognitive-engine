@@ -31,6 +31,10 @@ namespace Concordia
             var go = new GameObject("Agent_" + characterId);
             go.transform.position = pose;
             go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            var host = ContinentStream.Live
+                ? (ContinentStream.Live.ChunkOf(WorldClock.World) ?? ContinentStream.Live.ChunkOf(WorldId.Hub))
+                : null;
+            if (host) go.transform.SetParent(host, true);
             var av = go.AddComponent<AgentAvatar>();
             av.characterId = characterId;
             av._look = look ?? new Appearance();
@@ -49,20 +53,34 @@ namespace Concordia
         public CharacterController Cc => _cc;
         public AgentMotor Motor => _motor;
 
-        void OnDestroy()
-        {
-            if (Live == this) Live = null;
-        }
-
         public static void KitchenBind()
         {
             var client = ConcordClient.Live;
             if (client && client.Connected)
             {
+                var last = PlayerPrefs.GetString("concordia-agent-character", "");
+                if (!string.IsNullOrEmpty(last))
+                {
+                    _ = client.BindAgentCharacter(last);
+                    return;
+                }
                 _ = client.CreateAgentCharacter("grok-bot");
                 return;
             }
             ConcordiaHUD.Announce("no gateway", "AgentBody will not fake a soul offline.");
+        }
+
+        void OnEnable()
+        {
+            Live = this;
+        }
+
+        void OnDestroy()
+        {
+            if (Live == this) Live = null;
+            var client = ConcordClient.Live;
+            if (client && client.Connected && !string.IsNullOrEmpty(characterId))
+                _ = client.UnbindAgentCharacter(characterId, transform.position, transform.eulerAngles.y);
         }
 
         public Vector3 Pose => transform.position;

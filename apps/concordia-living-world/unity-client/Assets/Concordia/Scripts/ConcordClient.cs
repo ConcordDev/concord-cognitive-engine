@@ -64,6 +64,12 @@ namespace Concordia
             ApplyPageConfig();
         }
 
+        void OnEnable()
+        {
+            Live = this;
+            StampPresenterWorld();
+        }
+
         void Update()
         {
             System.Action a;
@@ -243,6 +249,7 @@ namespace Concordia
         {
             try
             {
+                StampPresenterWorld();
                 var token = string.IsNullOrEmpty(bearerToken) ? "unity-local-guest" : bearerToken;
                 await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
@@ -253,6 +260,7 @@ namespace Concordia
                 await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
+                RestoreAgentSoul();
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
                 _ = ReceiveLoop();
 #endif
@@ -301,13 +309,9 @@ namespace Concordia
                 if (!string.IsNullOrEmpty(because)) FieldBecause = because;
                 return;
             }
-            if (evt == "character:created" || evt == "character:bound")
+            if (evt == "character:created" || evt == "character:bound" || evt == "character:loaded")
             {
                 RunMain(() => PresentAgentSoul(text, evt == "character:bound" || JsonFlagTrue(text, "spawn")));
-                return;
-            }
-            if (evt == "character:loaded")
-            {
                 return;
             }
             if (evt == "agent:intent:ack")
@@ -1406,27 +1410,59 @@ namespace Concordia
             if (JsonFlagFalse(text, "ok"))
             {
                 var why = JsonString(text, "reason");
+                if (why == "not_found")
+                {
+                    PlayerPrefs.DeleteKey("concordia-agent-character");
+                    _ = CreateAgentCharacter("grok-bot");
+                    return;
+                }
                 ConcordiaHUD.Announce("agent", string.IsNullOrEmpty(why) ? "no soul" : why);
                 return;
             }
             var id = JsonString(text, "characterId");
             if (string.IsNullOrEmpty(id)) return;
+            PlayerPrefs.SetString("concordia-agent-character", id);
             if (!spawn)
             {
                 _ = BindAgentCharacter(id);
                 return;
             }
-            var name = JsonString(text, "displayName");
-            var look = new Appearance();
-            look.displayName = string.IsNullOrEmpty(name) ? "agent" : name;
+            var appearance = JsonObject(text, "appearance");
+            var pose = JsonObject(text, "pose");
+            var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
+            var name = JsonString(appearance, "displayName");
+            if (string.IsNullOrEmpty(name)) name = JsonString(text, "displayName");
+            look.displayName = string.IsNullOrEmpty(name) ? "Grok" : name;
             var player = ConcordiaPlayer.Live;
-            var pose = player ? player.transform.position + player.transform.right * 1.8f : Canon.Spawn;
-            var av = AgentAvatar.Present(id, look, pose, player ? player.transform.eulerAngles.y : 180f);
+            var beside = player ? player.transform.position + player.transform.right * 1.8f : Canon.Spawn;
+            var x = JsonFloat(pose, "x", float.NaN);
+            var y = JsonFloat(pose, "y", float.NaN);
+            var z = JsonFloat(pose, "z", float.NaN);
+            var parked = !float.IsNaN(x) && !float.IsNaN(z) && (Mathf.Abs(x) + Mathf.Abs(z) > 0.5f);
+            var pos = parked
+                ? new Vector3(x, float.IsNaN(y) ? beside.y : y, z)
+                : beside;
+            var yaw = JsonFloat(pose, "yaw", player ? player.transform.eulerAngles.y : 180f);
+            var av = AgentAvatar.Present(id, look, pos, yaw);
             if (av && av.Motor)
             {
-                var dummy = AgentMotor.NearestDummy(pose);
+                var dummy = AgentMotor.NearestDummy(pos);
                 av.Motor.ApplyIntent("train_arena", Canon.Arena, dummy ? dummy.transform : null, "cautious");
             }
+        }
+
+        void StampPresenterWorld()
+        {
+            var player = ConcordiaPlayer.Live;
+            if (player) worldId = WorldBook.Folder(player.world);
+            else worldId = WorldBook.Folder(WorldClock.World);
+        }
+
+        void RestoreAgentSoul()
+        {
+            var last = PlayerPrefs.GetString("concordia-agent-character", "");
+            if (string.IsNullOrEmpty(last)) return;
+            _ = BindAgentCharacter(last);
         }
 
         void ApplyAgentIntent(string text)
@@ -1657,6 +1693,31 @@ namespace Concordia
         {
             var v = JsonString(json, key);
             return v;
+        }
+
+        static string JsonObject(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(key)) return "";
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return "";
+            var start = json.IndexOf('{', i + needle.Length);
+            if (start < 0) return "";
+            int depth = 0;
+            bool inStr = false;
+            for (int p = start; p < json.Length; p++)
+            {
+                char c = json[p];
+                if (c == '"' && (p == 0 || json[p - 1] != '\\')) inStr = !inStr;
+                if (inStr) continue;
+                if (c == '{') depth++;
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0) return json.Substring(start, p - start + 1);
+                }
+            }
+            return "";
         }
 
         static int JsonArrayCount(string json, string key)

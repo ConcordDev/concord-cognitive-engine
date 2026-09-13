@@ -13,7 +13,7 @@ import { WebSocket } from "ws";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
 import { up as up110 } from "../migrations/110_affect_state.js";
 import { up as up449 } from "../migrations/449_concordia_agent_characters.js";
-import { handleCharacterCreate, handleCharacterBind, handleCharacterUnbind } from "../lib/concordia-agent-body.js";
+import { handleCharacterCreate, handleCharacterBind, handleCharacterUnbind, handleCharacterLoad } from "../lib/concordia-agent-body.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const scripts = join(root, "apps/concordia-living-world/unity-client/Assets/Concordia/Scripts");
@@ -104,6 +104,16 @@ describe("Concordia AgentBody P0", () => {
     db.close();
   });
 
+  it("load by assistantId returns the latest soul", () => {
+    const db = freshDb();
+    handleCharacterCreate(db, "u1", { assistantId: "grok-bot", appearance: { displayName: "First" } });
+    const later = handleCharacterCreate(db, "u1", { assistantId: "grok-bot", appearance: { displayName: "Second" } });
+    const loaded = handleCharacterLoad(db, "u1", { assistantId: "grok-bot" });
+    assert.equal(loaded.ok, true);
+    assert.equal(loaded.characterId, later.characterId);
+    db.close();
+  });
+
   it("character:create over /unity-ws returns a bound soul", async () => {
     const db = freshDb();
     const gw = await startGateway(db);
@@ -141,6 +151,13 @@ describe("Concordia AgentBody P0", () => {
     assert.match(gait, /allowFallback/);
     assert.match(hud, /if \(DebugHud\)/);
     assert.match(hud, /AgentAvatar\.KitchenBind/);
+    assert.match(avatar, /ChunkOf\(WorldClock\.World\)/);
+    assert.match(avatar, /void OnEnable\(\)/);
+    const client = src("ConcordClient.cs");
+    assert.match(client, /StampPresenterWorld\(/);
+    assert.match(client, /RestoreAgentSoul\(/);
+    assert.match(client, /JsonObject\(text, "appearance"\)/);
+    assert.match(client, /JsonObject\(text, "pose"\)/);
     assert.doesNotMatch(avatar, /Coplay/);
     assert.doesNotMatch(motor, /Coplay/);
   });

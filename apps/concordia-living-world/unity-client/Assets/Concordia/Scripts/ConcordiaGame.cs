@@ -138,6 +138,8 @@ namespace Concordia
         void Update()
         {
             if (!_player || CharacterCreator.IsOpen) return;
+            if (ContinentStream.Live == null && _world)
+                ContinentStream.Bind(_world);
             ContinentStream.Live?.Tick(_player.transform.position);
             ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();

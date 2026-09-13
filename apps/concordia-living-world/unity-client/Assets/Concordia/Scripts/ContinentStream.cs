@@ -48,6 +48,11 @@ namespace Concordia
             return stream;
         }
 
+        void OnEnable()
+        {
+            Live = this;
+        }
+
         public void Boot(WorldId start)
         {
             Live = this;

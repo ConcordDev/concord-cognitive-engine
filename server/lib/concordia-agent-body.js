@@ -78,7 +78,15 @@ export function handleCharacterCreate(db, userId, data = {}) {
 }
 
 export function handleCharacterLoad(db, userId, data = {}) {
-  const characterId = String(data.characterId || "").trim();
+  let characterId = String(data.characterId || "").trim();
+  if (!characterId && data.assistantId) {
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!tableOk(db)) return { ok: false, reason: "no_character_table" };
+    const found = db.prepare(
+      `SELECT id FROM concordia_agent_characters WHERE assistant_id = ? ORDER BY rowid DESC LIMIT 1`,
+    ).get(String(data.assistantId).trim());
+    characterId = found?.id || "";
+  }
   if (!characterId) return { ok: false, reason: "missing_character" };
   if (!db) return { ok: false, reason: "no_db" };
   if (!tableOk(db)) return { ok: false, reason: "no_character_table" };

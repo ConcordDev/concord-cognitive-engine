@@ -180,6 +180,7 @@ describe("Concordia continent streaming + creature compiler", () => {
 
   it("ContinentStream.Live survives OnDisable so Travel cannot lose the stream mid-session", () => {
     const stream = src("ContinentStream.cs");
+    assert.match(stream, /void OnEnable\(\)/);
     assert.match(stream, /void OnDestroy\(\)[\s\S]*if \(Live == this\) Live = null/);
     const onDestroy = stream.indexOf("void OnDestroy()");
     const liveClear = stream.indexOf("if (Live == this) Live = null");
