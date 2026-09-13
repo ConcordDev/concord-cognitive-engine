@@ -27,7 +27,8 @@ import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 import { composeTwoBDialogue } from "./concordia-two-b.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
-import { listNpcsForGatewaySnapshot } from "./world-npc-snapshot.js";
+import { packAaaSnapshot } from "./world-aaa-present.js";
+import { explainNpc } from "./world-inspect.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -428,7 +429,7 @@ function isBinaryMovePayload(p) {
         try {
           const phase = getWorldPhase();
           const weather = getWeather(worldId);
-          const npcs = listNpcsForGatewaySnapshot(db, worldId);
+          const extra = packAaaSnapshot(db, worldId, { userId: client.userId });
           send(client.ws, "world:snapshot", {
             ok: true,
             worldId,
@@ -445,7 +446,7 @@ function isBinaryMovePayload(p) {
                   since: weather.since,
                 }
               : null,
-            npcs,
+            ...extra,
           });
         } catch (e) {
           send(client.ws, "world:snapshot", {
@@ -538,6 +539,30 @@ function isBinaryMovePayload(p) {
           send(client.ws, "dialogue:data", {
             ok: false,
             reason: "dialogue_failed",
+            requestId,
+            error: String(e?.message || e),
+          });
+        }
+        return;
+      }
+
+      case "inspect:request": {
+        const npcId = typeof data.npcId === "string" ? data.npcId : "";
+        const requestId = typeof data.requestId === "string" ? data.requestId : "";
+        if (!npcId) {
+          send(client.ws, "inspect:data", { ok: false, reason: "missing_npc", requestId });
+          return;
+        }
+        try {
+          const explained = explainNpc(db, npcId, {
+            viewerId: client.userId,
+            worldId: typeof data.worldId === "string" ? data.worldId : "",
+          });
+          send(client.ws, "inspect:data", { ...explained, requestId });
+        } catch (e) {
+          send(client.ws, "inspect:data", {
+            ok: false,
+            reason: "inspect_failed",
             requestId,
             error: String(e?.message || e),
           });

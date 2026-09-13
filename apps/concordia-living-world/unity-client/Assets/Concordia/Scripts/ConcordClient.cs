@@ -29,6 +29,9 @@ namespace Concordia
         bool _jsOpen;
         readonly Dictionary<string, TaskCompletionSource<string>> _dialogueWait =
             new Dictionary<string, TaskCompletionSource<string>>();
+        readonly Dictionary<string, TaskCompletionSource<string>> _inspectWait =
+            new Dictionary<string, TaskCompletionSource<string>>();
+        float _snapshotAt;
         public bool SocketOpen =>
 #if UNITY_WEBGL && !UNITY_EDITOR
             _jsOpen;
@@ -64,6 +67,11 @@ namespace Concordia
             {
                 try { a(); }
                 catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
+            }
+            if (Connected && Time.unscaledTime >= _snapshotAt)
+            {
+                _snapshotAt = Time.unscaledTime + 12f;
+                _ = SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             }
         }
 
@@ -402,6 +410,11 @@ namespace Concordia
                 ApplyDialogue(text);
                 return;
             }
+            if (evt == "inspect:data")
+            {
+                ApplyInspect(text);
+                return;
+            }
             if (evt == "error" && text.Contains("auth_required"))
             {
                 _hello?.TrySetResult(false);
@@ -420,6 +433,16 @@ namespace Concordia
                 return;
             }
             wait.TrySetResult(JsonString(json, "text"));
+        }
+
+        void ApplyInspect(string json)
+        {
+            var id = JsonString(json, "requestId");
+            var name = JsonString(json, "name");
+            var why = JsonString(json, "why");
+            WorldAaa.BindInspect(name, why);
+            if (!string.IsNullOrEmpty(id) && _inspectWait.TryGetValue(id, out var wait))
+                wait.TrySetResult(JsonFlagFalse(json, "ok") ? "" : (string.IsNullOrEmpty(why) ? name : why));
         }
 
         /// <summary>
@@ -454,6 +477,31 @@ namespace Concordia
             }
         }
 
+        public async Task<string> RequestInspect(string npcId)
+        {
+            if (!Connected || string.IsNullOrEmpty(npcId)) return "";
+            var id = Guid.NewGuid().ToString("N");
+            var wait = new TaskCompletionSource<string>();
+            _inspectWait[id] = wait;
+            try
+            {
+                await SendEvt("inspect:request",
+                    "{\"requestId\":\"" + Escape(id)
+                    + "\",\"worldId\":\"" + Escape(worldId)
+                    + "\",\"npcId\":\"" + Escape(npcId) + "\"}");
+                var done = await Task.WhenAny(wait.Task, Task.Delay(8000, _cts.Token));
+                return done == wait.Task ? wait.Task.Result : "";
+            }
+            catch
+            {
+                return "";
+            }
+            finally
+            {
+                _inspectWait.Remove(id);
+            }
+        }
+
         void ApplyKingdom(string json)
         {
             SnapshotJson = json ?? "";
@@ -481,6 +529,7 @@ namespace Concordia
         void ApplyWorldSnapshot(string json)
         {
             if (JsonFlagFalse(json, "ok")) return;
+            SnapshotJson = json;
             var clock = JsonObjectSlice(json, "clock");
             var phaseSrc = string.IsNullOrEmpty(clock) ? json : clock;
             WorldClock.BindKernelClock(
@@ -491,18 +540,59 @@ namespace Concordia
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
             var n = JsonArrayCount(json, "npcs");
-            if (n <= 0) return;
-            WorldBuilder.ClearKernelNpcs();
-            ForEachArrayObject(json, "npcs", node =>
+            if (n > 0)
             {
-                WorldBuilder.PlaceKernelNpc(
-                    JsonString(node, "id"),
-                    JsonString(node, "name"),
-                    JsonString(node, "title"),
-                    new Vector3(JsonFloat(node, "x"), JsonFloat(node, "y"), JsonFloat(node, "z")),
-                    JsonString(node, "activity"));
+                WorldBuilder.ClearKernelNpcs();
+                ForEachArrayObject(json, "npcs", node =>
+                {
+                    WorldBuilder.PlaceKernelNpc(
+                        JsonString(node, "id"),
+                        JsonString(node, "name"),
+                        JsonString(node, "title"),
+                        new Vector3(JsonFloat(node, "x"), JsonFloat(node, "y"), JsonFloat(node, "z")),
+                        JsonString(node, "activity"));
+                });
+            }
+            ApplyAaaExtras(json);
+            WorldClock.NoteAct((n <= 0 ? "clock" : n + " npcs") + " · kernel");
+        }
+
+        void ApplyAaaExtras(string json)
+        {
+            var qn = JsonArrayCount(json, "quests");
+            string first = "";
+            ForEachArrayObject(json, "quests", node =>
+            {
+                if (string.IsNullOrEmpty(first)) first = JsonString(node, "title");
+                var qid = JsonString(node, "id");
+                if (string.IsNullOrEmpty(qid)) return;
+                var world = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : WorldId.Hub;
+                var authored = WorldBook.QuestById(world, qid);
+                if (authored != null) QuestLog.Offer(authored, world);
             });
-            WorldClock.NoteAct(n + " npcs · kernel");
+            WorldAaa.BindQuests(qn, first);
+            WorldAaa.BindWarrants(JsonArrayCount(json, "warrants"));
+            WorldAaa.ConsequenceCount = JsonArrayCount(json, "consequences");
+            var refusal = JsonObjectSlice(json, "refusal");
+            WorldAaa.BindRefusal(JsonString(refusal, "name"), JsonString(refusal, "theNo"));
+            var limbs = JsonObjectSlice(json, "limbs");
+            var player = ConcordiaPlayer.Live;
+            if (player && !string.IsNullOrEmpty(limbs))
+                player.ApplyLimbs(
+                    JsonFlagTrue(limbs, "brokenArm"),
+                    JsonFlagTrue(limbs, "brokenLeg") || JsonFlagTrue(limbs, "dodgeDisabled"));
+            WorldBuilder.ClearKernelVehicles();
+            var vn = 0;
+            ForEachArrayObject(json, "vehicles", node =>
+            {
+                vn++;
+                WorldBuilder.PlaceKernelVehicle(
+                    JsonString(node, "id"),
+                    JsonString(node, "kind"),
+                    new Vector3(JsonFloat(node, "x"), JsonFloat(node, "y"), JsonFloat(node, "z")),
+                    JsonFloat(node, "heading"));
+            });
+            WorldAaa.VehicleCount = vn;
         }
 
         static string JsonObjectSlice(string json, string key)
@@ -740,6 +830,16 @@ namespace Concordia
             if (i < 0) return false;
             var rest = json.Substring(i + needle.Length).TrimStart();
             return rest.StartsWith("false", StringComparison.Ordinal);
+        }
+
+        static bool JsonFlagTrue(string json, string key)
+        {
+            if (string.IsNullOrEmpty(json)) return false;
+            var needle = "\"" + key + "\":";
+            var i = json.IndexOf(needle, StringComparison.Ordinal);
+            if (i < 0) return false;
+            var rest = json.Substring(i + needle.Length).TrimStart();
+            return rest.StartsWith("true", StringComparison.Ordinal);
         }
 
         static string JsonString(string json, string key)

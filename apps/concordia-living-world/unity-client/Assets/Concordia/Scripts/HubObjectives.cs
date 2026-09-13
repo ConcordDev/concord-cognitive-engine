@@ -21,6 +21,7 @@ namespace Concordia
             Lamp = ArenaHit = Ruins = ReturnHub = false;
             RingGates = 0;
             Seen.Clear();
+            WorldAaa.Reset();
             QuestLog.Reset();
             SkillLedger.Reset();
             SkillLattice.Reset();
@@ -167,8 +168,16 @@ namespace Concordia
         static void Complete(ActiveQuest a)
         {
             if (a?.quest == null) return;
+            var world = a.world;
+            var follows = a.quest.follow_up_quest_ids;
             Done.Add(a.quest.id);
             Active.Remove(a);
+            if (follows == null) return;
+            foreach (var id in follows)
+            {
+                var next = WorldBook.QuestById(world, id);
+                if (next != null) Offer(next, world);
+            }
         }
 
         static void Refresh()
@@ -228,6 +237,7 @@ namespace Concordia
                 case "talk_to":
                 case "interact":
                 case "reach_location":
+                case "observe":
                 case "defeat":
                 case "gather":
                 case "deliver":
@@ -269,8 +279,11 @@ namespace Concordia
                 switch (t)
                 {
                     case "talk_to":
-                    case "interact":
                         return Hit(Talked, target);
+                    case "interact":
+                        return Hit(Talked, target) || Hit(Places, target);
+                    case "observe":
+                        return Hit(Talked, target) || Hit(Places, target);
                     case "reach_location":
                         return Hit(Places, target);
                     case "defeat":

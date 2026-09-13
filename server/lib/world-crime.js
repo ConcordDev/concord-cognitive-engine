@@ -341,6 +341,17 @@ export function detectiveTick(db, npcId, worldId) {
 
       solved++;
       warrantIssued = true;
+      tryRecordConsequence(db, {
+        worldId,
+        actorKind: "npc",
+        actorId: npcId,
+        action: "crime",
+        targetKind: crime.criminal_type === "npc" ? "npc" : "player",
+        targetId: primarySuspect,
+        importance: 0.8,
+        evidence: { crimeEventId: crime.id, warrantId, bounty },
+        immediate: { warrant: true, crimeType: crime.crime_type, confidence: newConfidence },
+      });
       logger.debug('world-crime', 'crime_solved', { crimeId: crime.id, suspect: primarySuspect, confidence: newConfidence });
     }
   }

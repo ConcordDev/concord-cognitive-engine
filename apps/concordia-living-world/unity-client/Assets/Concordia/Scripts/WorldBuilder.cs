@@ -201,6 +201,7 @@ namespace Concordia
             DressPillars();
             DressCrowd();
             DressLore();
+            DressConcordantArchive();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -210,7 +211,7 @@ namespace Concordia
             var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
             dummy.AddComponent<TrainingDummy>();
             FreePacks.EnsureCollider(dummy, 1.8f);
-            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
+            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court", "unburned_court", "concordant_law_reading");
             Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
             var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
             Beacon(root, east, 7f, "east_gate");
@@ -492,6 +493,7 @@ namespace Concordia
                     case "thorne": weapon = "greatsword"; look.outfit = 1; look.attitude = 2; look.height = 1.12f; break;
                     case "lyra": weapon = "staff"; look.outfit = 0; look.attitude = 0; break;
                     case "asbir": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
+                    case "archivist_maren": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
                     case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
@@ -656,17 +658,27 @@ namespace Concordia
 
         void DressLore()
         {
-            PlaceStone(new Vector3(4.8f, 0f, -3.2f), "The Ground She Made Hers",
-                "Dig far enough beneath any district and you reach the same thing: Concordia, listening. The hub is not built on her. It is built of her.");
-            PlaceStone(new Vector3(-5.1f, 0f, -2.4f), "The Ring of Doors",
-                "Eight gates around the old battlefield, left unpaved. They still call it the Unburned Court, though nothing there ever burned.");
-            PlaceStone(new Vector3(0.4f, 0f, 6.6f), "The Night Someone Tried",
-                "They held the Court four hours. Then the ground spoke in flowers. No one died. You cannot own the heart.");
+            // History beats are placed from authored lore.json by RealmFill.
+            // Flower-law is Court canon, not a history row.
             PlaceStone(new Vector3(8.2f, 0f, 2.1f), "Flower-law",
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
-            PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
-                "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
             DressSereWaystone();
+        }
+
+        void DressConcordantArchive()
+        {
+            // Headquarters named in factions.json (concordant_curators).
+            // Furniture from HubKit; mesh is evo archive.glb when present.
+            var p = new Vector3(-16.2f, 0f, -9.4f);
+            PlaceLandmark(EvoCatalog.Archive, p, 7.2f, "archive");
+            DressArchive(p);
+            PlaceStone(p + new Vector3(2.4f, 0f, -2.2f), "The Concordant Oath",
+                "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture.",
+                "hub_concordant_oath");
+            PlaceStone(p + new Vector3(-1.6f, 0f, 1.8f), "Founding Day drawer",
+                "The drawer sits beneath a blank nameplate. The blank nameplate on the drawer is older than the Archive.",
+                "archive_founding_day_drawer");
+            Beacon(root, p, 7f, "hub_archive", "hub_archive_main_floor", "hub_archive_curator_chambers", "archive_founding_day_drawer");
         }
 
         void DressSereWaystone()
@@ -694,13 +706,14 @@ namespace Concordia
             box.isTrigger = true;
         }
 
-        void PlaceStone(Vector3 pos, string title, string text)
+        void PlaceStone(Vector3 pos, string title, string text, string mark = null)
         {
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
                 HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
             var stone = plinth.AddComponent<LoreStone>();
             stone.title = title;
             stone.text = text;
+            stone.mark = mark;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
                 HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
         }
@@ -904,11 +917,61 @@ namespace Concordia
                 id = id,
                 name = look.displayName,
                 title = string.IsNullOrEmpty(title) ? "kernel" : title,
-                line = "They are here because the kernel listed them. Not plaza dressing."
+                line = AuthoredLine(id, name, title)
             };
             guest.personId = id;
             var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
             life.job = job;
+        }
+
+        public static void ClearKernelVehicles()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelVehicles");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelVehicle(string id, string kind, Vector3 pos, float heading)
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var holder = parent.Find("KernelVehicles");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelVehicles");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+            var stem = string.IsNullOrEmpty(kind) || kind == "cart" ? "cart" : kind;
+            var go = FreePacks.Spawn(stem, holder, pos, heading * Mathf.Rad2Deg, 2.4f);
+            if (!go && HubKit.TryGet("cart", out var cart) && cart)
+            {
+                go = Object.Instantiate(cart, holder);
+                go.transform.position = pos;
+                go.transform.rotation = Quaternion.Euler(0f, heading * Mathf.Rad2Deg, 0f);
+            }
+            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelCart" : "KernelCart_" + id;
+        }
+
+        static string AuthoredLine(string id, string name, string title)
+        {
+            foreach (var g in Canon.HubGuests)
+            {
+                if (!string.IsNullOrEmpty(id) && g.id == id) return g.line;
+                if (!string.IsNullOrEmpty(name) && string.Equals(g.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    return g.line;
+            }
+            var world = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : WorldId.Hub;
+            foreach (var p in WorldBook.People(world))
+            {
+                if (p == null) continue;
+                if (!string.IsNullOrEmpty(id) && p.id == id) return WorldBook.LineFor(p);
+                if (!string.IsNullOrEmpty(name) && string.Equals(p.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    return WorldBook.LineFor(p);
+            }
+            if (!string.IsNullOrEmpty(title)) return title + ".";
+            return "They are on the kernel list. Not plaza dressing.";
         }
 
         static bool NamesMatchGuest(GuestNpc g, string id, string name)

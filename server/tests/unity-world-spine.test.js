@@ -103,6 +103,24 @@ describe("world:snapshot", () => {
       assert.equal(frame.data.weather.intensity, live.intensity);
       assert.ok(Array.isArray(frame.data.npcs));
       assert.equal(frame.data.npcs.length, 0);
+      assert.ok(Array.isArray(frame.data.lore));
+      assert.ok(frame.data.lore.some((b) => b.id === "hub_the_heart_claimed"));
+      assert.ok(Array.isArray(frame.data.quests));
+      assert.ok(frame.data.quests.some((q) => q.id === "founding_day_01_gather"));
+      assert.equal(frame.data.refusal.id, "the_ninth");
+      ws.close();
+    } finally { await h.stop(); }
+  });
+
+  it("inspect:request fails honestly without an npc id", async () => {
+    const h = await startGateway();
+    try {
+      const ws = await authAs(h.url);
+      sendMsg(ws, "inspect:request", {});
+      const frame = await nextFrame(ws);
+      assert.equal(frame.evt, "inspect:data");
+      assert.equal(frame.data.ok, false);
+      assert.equal(frame.data.reason, "missing_npc");
       ws.close();
     } finally { await h.stop(); }
   });

@@ -23,7 +23,7 @@ namespace Concordia
         [Serializable] public class PeopleDoc { public Person[] items; }
         [Serializable] public class Person
         {
-            public string id, name, title, archetype, backstory, background, faction_id, dialogue_style;
+            public string id, name, title, archetype, backstory, background, faction_id, dialogue_style, personality;
             public bool quest_giver;
             public string[] quest_hooks;
         }
@@ -49,6 +49,7 @@ namespace Concordia
         {
             public string id, title, description, giver_npc_id, difficulty;
             public string[] prerequisites;
+            public string[] follow_up_quest_ids;
             public Objective[] objectives;
         }
         [Serializable] public class Objective
@@ -189,7 +190,8 @@ namespace Concordia
 
         public static string LineFor(Person p)
         {
-            var raw = !string.IsNullOrEmpty(p.backstory) ? p.backstory : p.background;
+            var raw = !string.IsNullOrEmpty(p.personality) ? p.personality
+                : !string.IsNullOrEmpty(p.backstory) ? p.backstory : p.background;
             if (string.IsNullOrEmpty(raw))
                 return string.IsNullOrEmpty(p.title) ? p.name : p.name + ", " + p.title + ".";
             var cut = raw.IndexOf(". ", StringComparison.Ordinal);

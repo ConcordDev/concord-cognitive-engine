@@ -85,7 +85,7 @@ namespace Concordia
 
     public class LoreStone : MonoBehaviour
     {
-        public string title, text;
+        public string title, text, mark;
         public string Prompt => "E  ·  " + title;
     }
 
@@ -123,7 +123,8 @@ namespace Concordia
         public bool inHold;
         public string Prompt => inHold
             ? "E  ·  Leave " + holdName
-            : "E  ·  Enter " + holdName;
+            : "E  ·  " + (string.IsNullOrEmpty(climbVerb) ? "Enter " + holdName : climbVerb);
+        public string climbVerb;
     }
 
     /// <summary>E picks up. Only stamps what this object actually is.</summary>

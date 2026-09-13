@@ -91,7 +91,7 @@ namespace Concordia
                     ? "Type  ·  Enter  send  ·  Esc  leave  ·  2B " + TwoBStatus()
                     : player.menuOpen
                         ? "I  close  ·  click a weapon  ·  1/2/3  skill  ·  [ ]  group  ·  Esc  close"
-                        : "I  kit   ·   1/2/3  " + SkillLattice.ActiveSkill
+                        : "I  kit / inspect   ·   1/2/3  " + SkillLattice.ActiveSkill
                           + "   ·   LMB  swing   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
                 _small);
             GUI.color = Color.white;
@@ -103,18 +103,21 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
+                + (player.brokenArm ? "  ·  broken arm" : "")
+                + (player.brokenLeg ? "  ·  broken leg" : "")
                 + "  ·  " + SkillLattice.HudLine(), _small);
             GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
             GUI.Label(new Rect(32, 86, 280, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
+            GUI.Label(new Rect(32, 102, 280, 16), WorldAaa.HudTail(), _small);
         }
 
         static string TwoBStatus()

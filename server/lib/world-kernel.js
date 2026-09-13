@@ -11,6 +11,9 @@ import { registerHeartbeat, listHeartbeatModules } from "../emergent/heartbeat-r
 import { listConsequences } from "./world-consequence.js";
 import { applyPendingConsequences } from "./consequence-apply.js";
 import { decayNeeds, freshNeeds, satisfy, topNeed, getNeeds, setNeeds } from "./npc-needs.js";
+import { getWeather, weatherNeedMods } from "./weather.js";
+import { tryRecordConsequence } from "./world-consequence.js";
+import { registerHubKitEvo } from "./evo-hubkit-register.js";
 import { applyAuthoritativeMove, applyRefusal, combatAllowed } from "./world-physics-authority.js";
 import { applyAuthoritativeHit, ensureActor, getActor } from "./combat-hp-authority.js";
 import { resolveCraft } from "./craft-resolve.js";
@@ -115,10 +118,11 @@ function tickSociety(db, worldId) {
   };
 }
 
-function tickLife(db, elapsedHours = 0.25) {
+function tickLife(db, elapsedHours = 0.25, worldId = DEFAULT_WORLD) {
   const npcId = "kernel-citizen";
+  const mods = weatherNeedMods(worldId);
   const prev = _life.get(npcId) || freshNeeds();
-  const decayed = decayNeeds(prev, elapsedHours);
+  const decayed = decayNeeds(prev, elapsedHours, mods);
   const fed = satisfy(decayed, "hunger", 0.2);
   _life.set(npcId, fed);
   let dbTouched = 0;
@@ -129,9 +133,19 @@ function tickLife(db, elapsedHours = 0.25) {
       `).all();
       for (const row of rows) {
         const before = getNeeds(db, row.id);
-        if (setNeeds(db, row.id, decayNeeds(before, elapsedHours))) dbTouched++;
+        if (setNeeds(db, row.id, decayNeeds(before, elapsedHours, mods))) dbTouched++;
       }
     } catch { /* needs_json / table optional on minimal DBs */ }
+    if (mods.type === "storm" || mods.type === "rain") {
+      tryRecordConsequence(db, {
+        worldId,
+        actorKind: "world",
+        actorId: "weather",
+        action: "world_event",
+        importance: mods.type === "storm" ? 0.7 : 0.4,
+        immediate: { weather: mods.type, intensity: mods.intensity },
+      });
+    }
   }
   return {
     ok: true,
@@ -142,6 +156,7 @@ function tickLife(db, elapsedHours = 0.25) {
     hunger_after_eat: fed.hunger,
     mutated: decayed.hunger !== prev.hunger,
     dbTouched,
+    weather: mods.type || getWeather(worldId)?.type || null,
   };
 }
 
@@ -273,7 +288,9 @@ function tickCreator(db) {
   } catch (e) {
     return { ok: false, reason: e?.message || "creator_failed" };
   }
-  return { ok: true, assetId: id, created };
+  let hubkit = { ok: false };
+  try { hubkit = registerHubKitEvo(db); } catch { /* */ }
+  return { ok: true, assetId: id, created, hubkit };
 }
 
 function tickCreature() {
@@ -296,7 +313,7 @@ export function tickWorldKernel({ db, worldId = DEFAULT_WORLD, elapsedHours = 0.
   _ticks += 1;
   const organs = {
     society: tickSociety(db, worldId),
-    life: tickLife(db, elapsedHours),
+    life: tickLife(db, elapsedHours, worldId),
     consequence: tickConsequence(db),
     physics: tickPhysics(worldId),
     impact: tickImpact(worldId),

@@ -101,4 +101,14 @@ export function getWeather(worldId) {
   return ensureWeatherForWorld(worldId);
 }
 
+/** Decay multipliers so rain/storm/snow change NPC needs — the sim, not VFX. */
+export function weatherNeedMods(worldId) {
+  const w = getWeather(worldId);
+  const type = w?.type;
+  if (type === "storm") return { safety: 1.8, comfort: 1.6, energy: 1.25, type, intensity: w.intensity };
+  if (type === "rain") return { safety: 1.25, comfort: 1.2, type, intensity: w.intensity };
+  if (type === "snow") return { comfort: 1.7, energy: 1.3, type, intensity: w.intensity };
+  return { type, intensity: w?.intensity ?? 0 };
+}
+
 export const WEATHER_CONSTANTS = Object.freeze({ types: WEATHER_TYPES });
