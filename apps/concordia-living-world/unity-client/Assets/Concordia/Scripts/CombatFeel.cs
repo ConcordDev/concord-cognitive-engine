@@ -3,7 +3,8 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Camera kick + FOV punch. ChaseCamera writes pose first; we offset after.
+    /// Camera kick + FOV punch + owned-pack combat VFX.
+    /// ChaseCamera writes pose first; we offset after.
     /// </summary>
     [DefaultExecutionOrder(80)]
     public class CombatFeel : MonoBehaviour
@@ -13,10 +14,12 @@ namespace Concordia
         float _shake;
         float _fovKick;
 
-        public void Strike(bool heavy, bool connected)
+        public void Strike(bool heavy, bool connected, float kickMul = 1f, string skillType = null)
         {
-            _shake = connected ? (heavy ? 0.22f : 0.12f) : 0.05f;
-            _fovKick = connected ? (heavy ? 7f : 3.5f) : 1.2f;
+            var k = Mathf.Clamp(kickMul, 0.4f, 2.6f);
+            _shake = (connected ? (heavy ? 0.22f : 0.12f) : 0.05f) * k;
+            _fovKick = (connected ? (heavy ? 7f : 3.5f) : 1.2f) * k;
+            if (connected) Burst(skillType);
         }
 
         public void ApplyAck(bool hit, float knockback, bool brokenArm, bool brokenLeg)
@@ -24,8 +27,20 @@ namespace Concordia
             if (hit && body && knockback > 0)
                 body.Move(-transform.forward * Mathf.Min(knockback, 2.4f) * 0.15f);
             _shake = hit ? 0.16f : 0.05f;
+            var av = GetComponentInChildren<MixamoAvatar>();
+            if (hit) av?.Hit();
+            if (knockback > 1.8f) av?.Knockdown();
+            else if (knockback > 1.1f) av?.Stagger();
             if (brokenArm) Debug.Log("limb: broken arm — strikes weakened");
             if (brokenLeg) Debug.Log("limb: broken leg — dodge locked");
+        }
+
+        void Burst(string skillType)
+        {
+            var path = SkillLattice.VfxPath(skillType);
+            var at = transform.position + transform.forward * 1.5f + Vector3.up * 1.1f;
+            var go = FreePacks.Prefab(path, transform, at, transform.eulerAngles.y);
+            if (go) Object.Destroy(go, 1.25f);
         }
 
         void LateUpdate()

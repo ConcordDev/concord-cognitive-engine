@@ -52,6 +52,12 @@ namespace Concordia
             ApplyDamage(dmg, world);
         }
 
+        public void SyncHp(float next)
+        {
+            if (next < hp) _flash = 0.16f;
+            hp = next;
+        }
+
         /// <summary>HP from combat:attack:ack. Same presentation as the offline sandbox Hit.</summary>
         public void ApplyServerHit(float dmg, WorldId world)
         {
@@ -65,6 +71,12 @@ namespace Concordia
             _flash = 0.16f;
             transform.position += -transform.forward * 0.42f + Vector3.up * 0.06f;
             if (hp > 0) return;
+            var boss = GetComponent<WorldBoss>();
+            if (boss)
+            {
+                boss.Fall();
+                return;
+            }
             QuestLog.NoteDefeat(name);
             if (world == WorldId.Ruins || world == WorldId.Crucible)
             {

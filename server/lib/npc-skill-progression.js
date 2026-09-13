@@ -16,6 +16,7 @@
 // user_skills. A level-10 NPC has ~3162 XP banked.
 
 import crypto from 'node:crypto';
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 const XP_CURVE_FACTOR = 100;
 const XP_CURVE_EXP    = 1.5;
@@ -49,9 +50,9 @@ export function awardNpcXp(db, npcId, skillId, xp) {
   if (newLevel > prevLevel) {
     try {
       if (globalThis?.__CONCORD_REALTIME__?.io) {
-        globalThis.__CONCORD_REALTIME__.io.emit('npc:level-up', {
-          npcId, skillId, level: newLevel, xp: newXp,
-        });
+        const payload = { npcId, skillId, level: newLevel, xp: newXp };
+        globalThis.__CONCORD_REALTIME__.io.emit('npc:level-up', payload);
+        mirrorToGateways('npc:level-up', payload);
       }
     } catch { /* sockets are optional */ }
   }

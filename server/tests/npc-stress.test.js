@@ -79,6 +79,25 @@ describe("Sprint C / A1 — mental break + coping_trait", () => {
     assert.ok(row.coping_until > Math.floor(Date.now() / 1000));
   });
 
+  it("emits npc:stress-break with the locked coping_trait when a break lands", () => {
+    const db = setupDb();
+    bumpStress(db, "npc-break-emit", "custom_event", 49);
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      const r = bumpStress(db, "npc-break-emit", "grudge_severe");
+      assert.equal(r.broke, true);
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+    const evt = seen.find((s) => s.event === "npc:stress-break");
+    assert.ok(evt, "mental break must emit npc:stress-break so Unity can present it");
+    assert.equal(evt.payload.npcId, "npc-break-emit");
+    assert.ok(STRESS_CONSTANTS.COPING_TRAITS.includes(evt.payload.copingTrait));
+    assert.ok(evt.payload.stress >= 80);
+  });
+
   it("does not re-lock while existing coping_trait window is active", () => {
     const db = setupDb();
     bumpStress(db, "npc-3", "custom_event", 90); // breaks

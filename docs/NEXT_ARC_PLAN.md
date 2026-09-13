@@ -2,6 +2,27 @@
 
 ## 🟢 HANDOFF — start here
 
+**Concordia Unity — Playable Alive Slice gate (2026-09-12):** if the work is the
+Unity client, read **`docs/CONCORDIA_PLAYABLE_SLICE.md` first**. Ban:
+**no new megaworld** / organism / chronicle schema / affinity copy / ConKay
+client features until that ticket is GREEN. Clips, grip, Living Birds, fauna
+meshes (or no spawn), and one NPC reaction to sim truth before more laws.
+Pinned by `server/tests/concordia-playable-slice.test.js`.
+
+**Concordia live architecture (2026-09-12):** one continuous megaworld —
+settlements as historical objects, place memory, consequence→Unity presentation,
+and **world identity as a spatial field** (not nine portal maps). Read
+**`docs/CONCORDIA_PERSISTENT_MEGAWORLD.md` first** for Concordia work.
+Spine pinned by `server/tests/concordia-megaworld.test.js`,
+`server/tests/concordia-world-field.test.js`, and
+`server/tests/concordia-organism.test.js`. Do not rebuild
+`settlements` / `world_consequences` / `world_chronicle` / `cross-world-potency`
+/ `fauna-spawner` / `creature-needs` / `npc-needs`.
+W1–W4/W7/W8 playable loop is wired on this branch (in-region field sample,
+combat samples the field, settlements found/abandon, organism births).
+**W3 continent streaming is still GAP** (Travel remains `region_rebuild`).
+**W5/W6 live 7-day / 100-hour runs are not claimed.**
+
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K
 (K1–K6, K6-voice) and Track P (P-A, P-B, P-C, P-D) landed on this branch —
 see the per-phase SHIPPED markers in §B and §C for commit hashes and

@@ -21,6 +21,7 @@ import {
 } from "../lib/creature-crossbreeding.js";
 import { buildCreaturePortraitSvg, summarizePartCounts } from "../lib/creature-portrait.js";
 import { registerCitation } from "../economy/royalty-cascade.js";
+import { announceCreatureBorn } from "../lib/concordia-creatures.js";
 
 // Deterministic coat colour from species id + dominant affinity, so a steam
 // variant reads cool-grey, a magma variant red, etc. — no per-species art asset.
@@ -410,6 +411,7 @@ export default function registerCreatureMacros(register) {
       const environment = biome ? { kind: biome } : null;
       const result = generateHybrid(db, { a: pa, b: pb, environment });
       if (!result.ok) return result;
+      try { announceCreatureBorn(result, worldId); } catch { /* presentation optional */ }
 
       // ── Creatures-C — the composition flywheel ────────────────────────
       // When a parent creature is a REAL owned creature (spawned via

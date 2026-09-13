@@ -32,6 +32,7 @@ import { resolveAggro, temperamentEnabled } from "./npc-temperament.js";
 import { targetRung, stepRung, isEngaged, barkFor } from "./temperament-ladder.js";
 import { bountyTier, arrestOffer, wantedLevelFor } from "./authority-heat.js";
 import { LruMap, LruSet } from "./lru-map.js";
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // NPC Combat AI — state machine for alert/pursue/attack/retreat behavior
@@ -620,13 +621,9 @@ function _emitGather(npc, worldId, gathered) {
   if (!gathered) return;
   try {
     const io = globalThis._concordREALTIME?.io;
-    io?.to(`world:${worldId}`).emit('world:npc-gather', {
+    const gatherPayload = {
       worldId,
       npcId:        npc.id,
-      // Node position, NOT npc.location — the tool-swing/particle burst
-      // should land at the resource node the NPC is actually gathering
-      // from, which can be up to 30m away (getNearbyNodes' search radius),
-      // not "wherever the NPC happens to be standing" per npc.location.
       x:            gathered.x,
       y:            gathered.y,
       z:            gathered.z,
@@ -635,7 +632,9 @@ function _emitGather(npc, worldId, gathered) {
       resourceId:   gathered.resourceId,
       resourceName: gathered.resourceName,
       amount:       gathered.amount,
-    });
+    };
+    io?.to(`world:${worldId}`).emit('world:npc-gather', gatherPayload);
+    mirrorToGateways("world:npc-gather", gatherPayload, { worldId });
   } catch { /* non-fatal */ }
 }
 
