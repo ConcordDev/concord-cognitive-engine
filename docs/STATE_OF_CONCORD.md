@@ -38,8 +38,8 @@ Still reclassifies 10 data-modules (172k lines, e.g. the deprecated 145k-line
 | Backend domain files | **440** | `ls server/domains/*.js \| wc -l` |
 | Numbered migrations | **447 files** (highest `448`) | `ls server/migrations/[0-9]*.js \| wc -l` |
 | Route files | **136** | `ls server/routes/*.js \| wc -l` |
-| Lib modules | **783** top (`ls server/lib/*.js \| wc -l`) · **1,312** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
-| `server/server.js` | **87,854 lines** | `wc -l server/server.js` |
+| Lib modules | **796** top (`ls server/lib/*.js \| wc -l`) · **1,328** recursive (`find server/lib -name '*.js' \| wc -l`) | see cell |
+| `server/server.js` | **88,236 lines** | `wc -l server/server.js` |
 | DB tables (cartographer) | **765** | `cd server && npm run cartograph:static` |
 | Socket events (cartographer) | **337** | cartographer |
 | Heartbeats (registered) | **140** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
