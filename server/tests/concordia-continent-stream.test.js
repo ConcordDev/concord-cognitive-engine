@@ -53,8 +53,9 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(evo, /CreatureCompiler\.FromCritter/);
     assert.doesNotMatch(evo, /"wolf" or "hound" => "Fox"/);
     assert.doesNotMatch(evo, /CreatePrimitive\(KindPrim/);
-    assert.match(builder, /FreePacks\.Bird\(\)/);
+    assert.match(builder, /DressVocab\.Bird\(\)/);
     assert.match(builder, /CreatureCompiler\.FromKind/);
+    assert.match(builder, /FlockOrbit/);
     assert.doesNotMatch(builder, /Dove" \+/);
     assert.doesNotMatch(builder, /AddComponent<CourtBird>/);
     assert.match(compiler, /class FlockOrbit/);

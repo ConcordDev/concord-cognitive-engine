@@ -720,14 +720,21 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
             else
                 RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+            if (day < 0.32f)
+                RenderSettings.ambientIntensity *= Mathf.Lerp(0.18f, 1f, day / 0.32f);
             var suns = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             Light sun = null;
+            Light continent = null;
             for (int i = 0; i < suns.Length; i++)
             {
                 var l = suns[i];
-                if (!l || l.type != LightType.Directional) continue;
-                if (l.name == "Sun") { sun = l; break; }
-                if (sun == null && l.shadows != LightShadows.None) sun = l;
+                if (!l) continue;
+                if (l.name == "LanternLight")
+                    l.intensity = day < 0.32f ? Mathf.Lerp(3.4f, 0.55f, day / 0.32f) : 0.35f;
+                if (l.type != LightType.Directional) continue;
+                if (l.name == "Sun") { sun = l; }
+                else if (l.name == "ContinentSun") continent = l;
+                else if (sun == null && l.shadows != LightShadows.None) sun = l;
             }
             if (sun)
             {
@@ -736,6 +743,15 @@ namespace Concordia
                     sun.intensity = (0.92f + 0.38f * day) * dim;
                 else
                     sun.intensity = (0.35f + 0.9f * day) * dim;
+                if (day < 0.32f)
+                    sun.intensity *= Mathf.Lerp(0.08f, 1f, day / 0.32f);
+            }
+            if (continent && continent != sun)
+            {
+                var dim = WeatherDim();
+                continent.intensity = (0.92f + 0.38f * day) * dim;
+                if (day < 0.32f)
+                    continent.intensity *= Mathf.Lerp(0.08f, 1f, day / 0.32f);
             }
         }
 

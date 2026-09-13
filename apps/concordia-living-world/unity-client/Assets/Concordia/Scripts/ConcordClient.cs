@@ -349,6 +349,8 @@ namespace Concordia
                 {
                     WorldClock.NoteAct(string.IsNullOrEmpty(who) ? "a death" : who + " fell");
                     ConcordiaHUD.Announce("Fell", string.IsNullOrEmpty(who) ? "someone died" : who);
+                    var at = ConcordiaPlayer.Live ? ConcordiaPlayer.Live.transform.position : Vector3.zero;
+                    NpcLife.NoteKernelDeath(who, at);
                 });
                 return;
             }
@@ -566,9 +568,9 @@ namespace Concordia
                 if (string.IsNullOrEmpty(first)) first = JsonString(node, "title");
                 var qid = JsonString(node, "id");
                 if (string.IsNullOrEmpty(qid)) return;
-                var world = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : WorldId.Hub;
-                var authored = WorldBook.QuestById(world, qid);
-                if (authored != null) QuestLog.Offer(authored, world);
+                var w = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : Concordia.WorldId.Hub;
+                var authored = WorldBook.QuestById(w, qid);
+                if (authored != null) QuestLog.Offer(authored, w);
             });
             WorldAaa.BindQuests(qn, first);
             WorldAaa.BindWarrants(JsonArrayCount(json, "warrants"));
@@ -636,6 +638,8 @@ namespace Concordia
                 var feel = player ? player.GetComponent<CombatFeel>() : null;
                 feel?.Strike(impact, true, kick);
             }
+            var at = player ? player.transform.position : Vector3.zero;
+            NpcLife.NoteKernelThreat(at);
             if (!string.IsNullOrEmpty(skillKey))
                 WorldClock.NoteAct(skillKey + (impact ? " · impact" : " · steel"));
             else if (impact)

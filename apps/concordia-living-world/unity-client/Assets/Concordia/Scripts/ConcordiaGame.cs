@@ -355,7 +355,7 @@ namespace Concordia
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
                 StampWitness(npc);
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
-                _ = InspectNpc(npc);
+                InspectNpc(npc);
                 var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
                 if (offered.Length > 0)
                     return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(offered[0], world);

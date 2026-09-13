@@ -16,6 +16,7 @@ namespace Concordia
         static float _announceT;
         static string _announceTitle, _announceLine;
         Font _font;
+        static bool _p0NoDebug;
 
         public static void Announce(string title, string line)
         {
@@ -64,23 +65,40 @@ namespace Concordia
         void Update()
         {
             if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
+            if (!_p0NoDebug && Input.GetKeyDown(KeyCode.F1))
+                WorldAaa.DebugDump = !WorldAaa.DebugDump;
         }
 
         void OnGUI()
         {
             if (!player || CharacterCreator.IsOpen) return;
             Ensure();
+            if (!_p0NoDebug)
+            {
+                try { _p0NoDebug = System.IO.File.Exists("/tmp/concordia-p0-no-debug"); }
+                catch { }
+                if (_p0NoDebug) WorldAaa.DebugDump = false;
+            }
             float w = Screen.width, h = Screen.height;
-            Compass(w);
             Vitals();
             Rings(w);
-            if (!player.Busy) Minimap(h);
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
-            Hints(w, h);
+            if (WorldAaa.DebugDump)
+            {
+                Compass(w);
+                if (!player.Busy) Minimap(h);
+                Hints(w, h);
+            }
+            else if (!_p0NoDebug)
+            {
+                GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.45f);
+                GUI.Label(new Rect(18, h - 22, 140, 20), "F1  inspect", _small);
+                GUI.color = Color.white;
+            }
         }
 
         void Hints(float w, float h)

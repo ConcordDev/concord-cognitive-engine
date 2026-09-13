@@ -36,12 +36,14 @@ describe("Concordia world-life — source contracts", () => {
 
   it("FaunaLife is the live path; EvoDrift is disabled on spawn", () => {
     const evo = src("EvoSpawner.cs");
+    const compiler = src("CreatureCompiler.cs");
     assert.match(evo, /class FaunaLife/);
     assert.match(evo, /act = "wander"/);
     assert.match(evo, /act = "graze"/);
     assert.match(evo, /act = "flee"/);
-    assert.match(evo, /AddComponent<FaunaLife>/);
-    assert.match(evo, /if \(spin\) spin\.enabled = false/);
+    assert.match(evo, /CreatureCompiler\.FromKind/);
+    assert.match(compiler, /AddComponent<FaunaLife>/);
+    assert.match(compiler, /if \(spin\) spin\.enabled = false/);
     assert.match(evo, /WorldMemory\.IsDead/);
   });
 

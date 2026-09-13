@@ -15,6 +15,7 @@ namespace Concordia
         public static string RefusalLine = "";
         public static int VehicleCount;
         public static int ConsequenceCount;
+        public static bool DebugDump;
 
         public static void Reset()
         {

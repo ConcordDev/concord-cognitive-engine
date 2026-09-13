@@ -230,9 +230,9 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 24; i++)
             {
-                var a = i / 16f * Mathf.PI * 2f + 0.4f;
+                var a = i / 24f * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
