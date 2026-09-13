@@ -8,8 +8,9 @@
  *
  * Live combat samples this module (W7). Discrete `cross-world-potency.js`
  * remains the WorldId fallback when CONCORD_GEOGRAPHIC_FIELD=0.
- * In-region Unity metres map onto the megaworld plane (W3-thin). Continent
- * streaming between civilizations is still GAP — Travel stays region_rebuild.
+ * In-region Unity metres map onto the megaworld plane. Continent
+ * streaming is live (ContinentStream). Kernel CURRENT_TRAVEL_MODE is
+ * continent_stream. Heightmap continents are still compressed (0.55 m/km).
  *
  * Hub is a suppression well (Flower Law), not a ninth combat physics.
  * Authored skill_affinity tables at field centers are the blend weights —

@@ -41,18 +41,18 @@ export function listWorldQuestsForSnapshot(db, worldId, userId) {
   }
   try {
     const rows = db.prepare(`
-      SELECT id, title, status, kind
+      SELECT id, quest_id, drift_type, realisation_outcome
         FROM lattice_born_quests
-       WHERE world_id = ? AND (status IS NULL OR status IN ('open','active','offered'))
+       WHERE world_id = ? AND realisation_outcome IS NULL
        LIMIT 16
     `).all(worldId);
     for (const r of rows) {
       out.push({
         id: r.id,
-        title: r.title || r.id,
+        title: r.quest_id || r.id,
         origin: "lattice",
-        status: r.status || "open",
-        kind: r.kind || null,
+        status: r.realisation_outcome || "open",
+        kind: r.drift_type || null,
       });
     }
   } catch { /* lattice optional */ }

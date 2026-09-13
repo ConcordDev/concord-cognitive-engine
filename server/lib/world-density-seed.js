@@ -112,9 +112,15 @@ function seedRoutines(db, worldId, npcs) {
     return { routines: 0, schedules: 0, reason: "no_routine_tables" };
   }
 
+  let npcExists;
+  try {
+    npcExists = db.prepare(`SELECT id FROM world_npcs WHERE id = ?`);
+  } catch {
+    return { routines: 0, schedules: 0, reason: "no_world_npcs" };
+  }
   for (const npc of npcs) {
     if (!npc?.id || !Array.isArray(npc.daily_schedule) || npc.daily_schedule.length === 0) continue;
-    const exists = db.prepare(`SELECT id FROM world_npcs WHERE id = ?`).get(npc.id);
+    const exists = npcExists.get(npc.id);
     if (!exists) continue;
     const pos = (npc.spawn_location && typeof npc.spawn_location === "object")
       ? { x: Number(npc.spawn_location.x) || 0, z: Number(npc.spawn_location.z) || 0 }

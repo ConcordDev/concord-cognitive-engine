@@ -30,19 +30,27 @@ export function registerHubKitEvo(db) {
   const files = Array.isArray(manifest?.files) ? manifest.files : [];
   let inserted = 0;
   let known = 0;
+  let existsGet;
+  let insertRun;
+  try {
+    existsGet = db.prepare(`SELECT id FROM evo_assets WHERE id = ?`);
+    insertRun = db.prepare(`
+      INSERT INTO evo_assets (id, kind, source, source_id, local_path, category)
+      VALUES (?, 'mesh', 'hubkit', ?, ?, 'hub')
+    `);
+  } catch {
+    return { ok: false, reason: "evo_assets_missing" };
+  }
   for (const entry of files) {
     if (!entry?.stem || !entry?.file) continue;
     const id = `evo_hubkit_${String(entry.stem).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
     try {
-      const exists = db.prepare(`SELECT id FROM evo_assets WHERE id = ?`).get(id);
+      const exists = existsGet.get(id);
       if (exists) { known++; continue; }
-      db.prepare(`
-        INSERT INTO evo_assets (id, kind, source, source_id, local_path, category)
-        VALUES (?, 'mesh', 'hubkit', ?, ?, 'hub')
-      `).run(id, String(entry.stem), `StreamingAssets/HubKit/${entry.file}`);
+      insertRun.run(id, String(entry.stem), `StreamingAssets/HubKit/${entry.file}`);
       inserted++;
     } catch {
-      /* table optional */
+      /* row optional / unique */
     }
   }
   return { ok: true, inserted, known, total: files.length, manifest: path };

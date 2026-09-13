@@ -133,7 +133,7 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
-  it("Travel streams continuously; region_rebuild is the no-stream fallback", () => {
+  it("Travel streams continuously; Build is boot only", () => {
     const game = src("ConcordiaGame.cs");
     assert.match(game, /live path is ContinentStream/);
     assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
@@ -201,7 +201,7 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(packs, /return "drift"/);
     assert.match(packs, /Assets\/Store/);
     assert.match(packs, /IsStorePath/);
-    assert.match(packs, /PlayableRooms\(int cityIndex\) => cityIndex == 0 \? 4 : 0/);
+    assert.match(packs, /PlayableRooms\(int cityIndex\) => cityIndex == 0 \? 4 : cityIndex <= 2 \? 2 : 0/);
     assert.match(packs, /WantsFakeWindows/);
     assert.match(packs, /HasStoreStem/);
     assert.match(packs, /87811/);
