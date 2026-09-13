@@ -186,7 +186,7 @@ namespace Concordia
             var fac = facs[i];
             kitWeapon = PersonKit.WeaponStem(fac, i);
             HoldFromBag(kitWeapon);
-            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+            Toast((fac.name ?? "kit") + " — " + KitBag.PrettyWeapon(kitWeapon));
         }
 
         public void HoldFromBag(string stem)
