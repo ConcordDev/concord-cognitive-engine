@@ -117,27 +117,7 @@ namespace Concordia
 
         void BuildGround(WorldDef w)
         {
-            if (w.id == WorldId.Hub) return;
-            var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            g.name = "Ground";
-            g.transform.SetParent(root, false);
-            g.transform.localScale = Vector3.one * 6;
-            var pbrStem = w.id switch
-            {
-                WorldId.Ruins => "ash_soil",
-                WorldId.Tunya => "grove_moss",
-                WorldId.Crime => "wet_asphalt",
-                WorldId.Cyber => "neon_grid",
-                WorldId.Frontier => "packed_earth",
-                WorldId.Superhero => "concrete_floor",
-                WorldId.Crucible => "metal_plate",
-                WorldId.Fantasy => "stone_tiles",
-                WorldId.Sere => "wet_asphalt",
-                _ => "stone_tiles"
-            };
-            var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
-            var gr0 = g.GetComponent<Renderer>();
-            if (gr0) gr0.sharedMaterial = pbr;
+            HubLook.Heightfield(root, "Ground", 64f, 1.4f, HubLook.GroundMat(w.id, w.ground), 17 + (int)w.id);
         }
 
         void DressSky(WorldDef w)
@@ -193,6 +173,7 @@ namespace Concordia
 
         void BuildHub()
         {
+            HubLook.Heightfield(root, "Ground", 96f, 1.35f, HubLook.GroundMat(WorldId.Hub, Canon.Hub.ground), 11);
             HubPlaza.Build(root);
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
