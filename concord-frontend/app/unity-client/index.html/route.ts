@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs';
-import path from 'node:path';
+import { unityKernelGatewayUrl } from '@/lib/unity-iframe-config';
+import { resolveUnityIndexFile } from '@/lib/unity-web-files';
 
 // Serves the Unity WebGL export's index.html with two request-time injections:
 //
@@ -11,23 +12,16 @@ import path from 'node:path';
 //
 // 2. window.CONCORD_UNITY_CONFIG — gateway URL, world id, optional token —
 //    so the WebGL ConcordClient (jslib WebSocket) does not hardcode
-//    wss://live.concordos.ai. Query params win; missing gateway defaults to
-//    same-origin /unity-ws (ws/wss from the page origin).
+//    wss://live.concordos.ai. Query params win. Missing gateway: production
+//    is same-origin /unity-ws; loopback pins ws://127.0.0.1:5050/unity-ws
+//    because Next cannot upgrade WebSockets.
 //
-// Index sources (first hit wins):
-//   1. .unity-web-staging/index.html — local re-export, gitignored
-//   2. public/unity-client/export-index.html — committed copy so CI/deploy
-//      and Next standalone (startup.sh copies public/) serve HTML without
-//      a Unity Editor on the box. Not named index.html: that URL is this
-//      route (CSP nonce). Static bytes: public/unity-client/Build/* etc.
-
-const STAGED_INDEX = path.join(process.cwd(), '.unity-web-staging', 'index.html');
-const COMMITTED_INDEX = path.join(process.cwd(), 'public', 'unity-client', 'export-index.html');
+// Index sources: resolveUnityIndexFile walks cwd/public, gitignored
+// staging, and standalone's ../../public so a partial standalone copy
+// (HTML only, no Build/) still finds the committed player.
 
 export function resolveUnityIndexPath(): string | null {
-  if (fs.existsSync(STAGED_INDEX)) return STAGED_INDEX;
-  if (fs.existsSync(COMMITTED_INDEX)) return COMMITTED_INDEX;
-  return null;
+  return resolveUnityIndexFile();
 }
 
 /** Full-bleed iframe + gzip fallback. Idempotent. */
@@ -70,20 +64,13 @@ export function resolveRequestOrigin(request: NextRequest): string {
   return `${proto}://${host}`;
 }
 
-function wsOriginFromHttp(origin: string): string {
-  if (origin.startsWith('https://')) return `wss://${origin.slice('https://'.length)}`;
-  if (origin.startsWith('http://')) return `ws://${origin.slice('http://'.length)}`;
-  return origin;
-}
-
 export function buildUnityConfig(
   searchParams: URLSearchParams,
   defaultOrigin?: string,
 ): { gatewayUrl: string; worldId: string; token: string } {
   const origin = defaultOrigin || '';
-  const gatewayDefault = origin ? `${wsOriginFromHttp(origin)}/unity-ws` : '';
   return {
-    gatewayUrl: searchParams.get('CONCORD_GATEWAY_URL') || gatewayDefault,
+    gatewayUrl: searchParams.get('CONCORD_GATEWAY_URL') || unityKernelGatewayUrl(origin),
     worldId: searchParams.get('CONCORD_WORLD_ID') || 'concordia-hub',
     token: searchParams.get('CONCORD_AUTH_TOKEN') || '',
   };

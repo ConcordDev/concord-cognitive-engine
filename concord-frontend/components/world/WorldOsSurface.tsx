@@ -2,10 +2,10 @@
 
 /**
  * World OS surface — former world/page.tsx monolith (DTUs, presence, stations,
- * Three.js ConcordiaScene + full HUD stack). Parked behind WorldUnityShell's
- * Escape / Advanced menu so the default world lens is Unity-viewport-first.
- * Do not delete capabilities here without relocating them; dead unreachable
- * UI can be pruned over time.
+ * HUD stack). Parked behind WorldUnityShell's Escape / Advanced menu so the
+ * default world lens is Unity-viewport-first. ConcordiaScene remains in this
+ * file as NativeWorldPlayer children for source-form tests; NativeWorldPlayer
+ * never mounts it. Do not delete capabilities here without relocating them.
  */
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
@@ -107,9 +107,8 @@ import {
   type ServerStateMsg,
 } from '@/lib/concordia/netcode';
 
-// Renderer gate (2026-09-07): default hub so heavy Three.js ConcordiaScene
-// does not crash the site. Set NEXT_PUBLIC_CONCORDIA_RENDERER=three|unity-webgl
-// and optionally NEXT_PUBLIC_UNITY_WEBGL_URL / NEXT_PUBLIC_CONCORDIA_UNITY_URL.
+// Renderer gate: default hub (OS tools). Concordia's world viewport is Unity.
+// NEXT_PUBLIC_CONCORDIA_RENDERER=three is retired and does not mount ConcordiaScene.
 const CONCORDIA_RENDERER = (process.env.NEXT_PUBLIC_CONCORDIA_RENDERER || 'hub') as
   | 'hub'
   | 'three'
@@ -2046,10 +2045,10 @@ export default function WorldOsSurface() {
   const dialogueCtx = useDialogue(DEFAULT_SPECIAL);
 
   // ── State ─────────────────────────────────────────────────────
-  // Default to 2D hub unless renderer explicitly wants 3D/Unity WebGL.
-  // Legacy Three.js ConcordiaScene is opt-in (NEXT_PUBLIC_CONCORDIA_RENDERER=three).
+  // Default to 2D hub (OS tools). World (3D) iframes Unity or shows the
+  // honest unbuilt state — ConcordiaScene is never the viewport.
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (CONCORDIA_RENDERER === 'three') return 'explore';
+    // Unity WebGL iframe (or honest unbuilt) — never ConcordiaScene.
     if (CONCORDIA_RENDERER === 'unity-webgl' && UNITY_WEBGL_URL) return 'explore';
     return 'concordia';
   });
@@ -2153,15 +2152,8 @@ export default function WorldOsSurface() {
   const [engineChunkReady, setEngineChunkReady] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
   useEffect(() => {
-    if (CONCORDIA_RENDERER !== 'three') {
-      setEngineChunkReady(true);
-      return;
-    }
-    let cancelled = false;
-    import('@/components/world-lens/ConcordiaScene')
-      .then(() => { if (!cancelled) setEngineChunkReady(true); })
-      .catch(() => { /* the dynamic <ConcordiaScene> mount reports its own failure */ });
-    return () => { cancelled = true; };
+    // ConcordiaScene is retired as the world viewport — no Three.js prefetch.
+    setEngineChunkReady(true);
   }, []);
 
   // Scene-build stall watchdog. The two failure modes already handled above
@@ -5044,12 +5036,8 @@ export default function WorldOsSurface() {
                 views are menus over it, reachable but secondary. */}
             <button
               onClick={() => {
-                if (CONCORDIA_RENDERER === 'three' || (CONCORDIA_RENDERER === 'unity-webgl' && UNITY_WEBGL_URL)) {
-                  setSceneCrashed(false);
-                  setViewMode('explore');
-                } else {
-                  setViewMode('concordia');
-                }
+                setSceneCrashed(false);
+                setViewMode('explore');
               }}
               className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
             >
@@ -5099,12 +5087,8 @@ export default function WorldOsSurface() {
               </span>
               <button
                 onClick={() => {
-                if (CONCORDIA_RENDERER === 'three' || (CONCORDIA_RENDERER === 'unity-webgl' && UNITY_WEBGL_URL)) {
-                  setSceneCrashed(false);
-                  setViewMode('explore');
-                } else {
-                  setViewMode('concordia');
-                }
+                setSceneCrashed(false);
+                setViewMode('explore');
               }}
                 className="shrink-0 px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 hover:bg-amber-500/30 transition-colors"
               >

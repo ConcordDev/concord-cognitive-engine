@@ -47,12 +47,17 @@ export default function ConcordiaPlayDoor() {
             Unity WebGL export exists, Concordia loads in-page at{' '}
             <code className="font-mono text-[10px] text-amber-200">/unity-client/</code>
             {' '}over <code className="font-mono text-[10px] text-zinc-400">/unity-ws</code>.
-            Until then this canvas stays Three.js. The Editor at{' '}
+            When it does not, the viewport stays empty with reason{' '}
+            <code className="font-mono text-[10px] text-amber-200">unity_web_export_not_built</code>
+            {' '}— it does not fall back to Three.js.             The Editor at{' '}
             <code className="font-mono text-[10px] text-amber-200">
               apps/concordia-living-world/unity-client/
             </code>
-            {' '}is the standalone AAA client. Godot remains the parity native
-            path on <code className="font-mono text-[10px] text-zinc-400">/godot-ws</code>.
+            {' '}is the standalone AAA client against the live kernel. Status and
+            the honest download door live at{' '}
+            <code className="font-mono text-[10px] text-amber-200">/download/concordia</code>
+            . Godot remains the
+            parity native path on <code className="font-mono text-[10px] text-zinc-400">/godot-ws</code>.
           </p>
         </div>
         <button

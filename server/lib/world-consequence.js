@@ -27,6 +27,10 @@ const ACTIONS = new Set([
   "destroy",
   "crime",
   "world_event",
+  "settle",
+  "abandon",
+  "birth",
+  "hunt",
 ]);
 
 function json(v) {
@@ -77,6 +81,15 @@ export function recordConsequence(db, opts) {
     createdAt,
   );
   return { ok: true, id, importance };
+}
+
+/** Best-effort stamp — never throws into a heartbeat or combat path. */
+export function tryRecordConsequence(db, opts) {
+  try {
+    return recordConsequence(db, opts);
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
 }
 
 export function listConsequences(db, q = {}) {

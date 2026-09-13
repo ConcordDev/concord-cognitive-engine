@@ -13,6 +13,7 @@ import logger from "../logger.js";
 import { maxFootSpeedFor, agilityLevelFor, awardSprintXp } from "./movement/foot-speed.js";
 import { speedScaledRadius } from "./movement/interest-management.js";
 import { sanitizeVector, clampToWorldBounds } from "./math-safety.js";
+import { applyHitToState } from "./combat-state.js";
 import {
   shouldRunHeavyMaintenance,
   registerIdleGate,
@@ -1793,7 +1794,32 @@ export function applyAttack({ attackerId, targetId, baseDamage = 10, range = 3, 
   // client-supplied baseDamage can never one-shot regardless of variance/crit.
   // maxDamage defaults to Infinity (NPC/legacy callers unaffected); the socket
   // PvP path passes resolvedDamageCap() to close the injection exploit.
-  const damage = Math.min(isCrit ? mitigated * 2 : mitigated, maxDamage);
+  let damage = Math.min(isCrit ? mitigated * 2 : mitigated, maxDamage);
+
+  if (isPlayerTarget) {
+    try {
+      const defMod = applyHitToState(targetId, { damage, isCrit });
+      if (defMod.iframed) {
+        attacker.stamina = Math.max(0, (attacker.stamina || 0) - STAMINA_COST);
+        attacker.dirty = true;
+        return {
+          ok: true,
+          damage: 0,
+          isCrit: false,
+          evaded: true,
+          iframed: true,
+          targetHealth: target.health ?? target.hp ?? 100,
+          targetMaxHealth: target.maxHealth ?? target.maxHp ?? 100,
+          targetKilled: false,
+          attackerStamina: attacker.stamina,
+          reason: "iframe",
+        };
+      }
+      if (defMod.damageMul !== 1 && Number.isFinite(damage)) {
+        damage = Math.max(0, Math.round(damage * defMod.damageMul));
+      }
+    } catch { /* combat-state optional */ }
+  }
 
   // Degrade zone armor — each hit reduces it; heavier hits + crits degrade more
   const armorDeg = Math.min(zoneArmorBefore, Math.ceil((damage / 3) + (isCrit ? 5 : 0)));

@@ -251,7 +251,8 @@ const nextConfig = {
       // HTTP/engine.io polling only. Next 16 `next dest` (launchd) does not
       // proxy WebSocket upgrades; browser sockets use same-origin + polling
       // first (lib/realtime/socket.ts). Production custom server is
-      // server-proxy.js which DOES upgrade /socket.io to :5050.
+      // server-proxy.js which DOES upgrade /socket.io, /unity-ws, and
+      // /godot-ws to :5050.
       {
         source: '/socket.io',
         destination: `${backendUrl}/socket.io/`,

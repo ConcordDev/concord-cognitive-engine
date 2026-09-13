@@ -142,3 +142,24 @@ test("4. scene:request on /unity-ws → scene:data (presentation, not a second s
     ws.close();
   } finally { await h.stop(); }
 });
+
+test("5. auth + scene:request in one tick is hello then scene:data, not 4401", async () => {
+  const h = await startGateway();
+  try {
+    const ws = await connect(h.url);
+    const frames = [];
+    ws.on("message", (raw) => {
+      try { frames.push(JSON.parse(raw.toString())); } catch { /* survive */ }
+    });
+    sendMsg(ws, "auth", { token: "good-token" });
+    sendMsg(ws, "scene:request", { worldId: "hub" });
+    const deadline = Date.now() + 2000;
+    while (frames.length < 2 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 15));
+    }
+    assert.equal(frames[0]?.evt, "hello");
+    assert.equal(frames[1]?.evt, "scene:data");
+    assert.equal(frames[1]?.data?.ok, true);
+    ws.close();
+  } finally { await h.stop(); }
+});

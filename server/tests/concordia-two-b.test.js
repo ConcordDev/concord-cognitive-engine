@@ -64,4 +64,42 @@ describe("Concord 2B dialogue provider", () => {
       globalThis.fetch = prev;
     }
   });
+
+  it("grounds the deterministic fallback in authored public line when 2B is off", async () => {
+    const prev = process.env.CONCORD_2B;
+    process.env.CONCORD_2B = "0";
+    try {
+      const r = await composeTwoBDialogue({
+        npcId: "lord_curator_asbir_thelane",
+        npcName: "Asbir Thelane",
+        worldId: "concordia-hub",
+      });
+      assert.equal(r.ok, true);
+      assert.equal(r.fallback, true);
+      assert.match(r.text, /notebook/i);
+      assert.doesNotMatch(r.text, /sealed wall-cavity/i);
+    } finally {
+      if (prev === undefined) delete process.env.CONCORD_2B;
+      else process.env.CONCORD_2B = prev;
+    }
+  });
+
+  it("uses Maren's Founding Day line and never her secret", async () => {
+    const prev = process.env.CONCORD_2B;
+    process.env.CONCORD_2B = "0";
+    try {
+      const r = await composeTwoBDialogue({
+        npcId: "archivist_maren",
+        npcName: "Maren Ashveil",
+        worldId: "concordia-hub",
+      });
+      assert.equal(r.ok, true);
+      assert.match(r.text, /Write what you see/i);
+      assert.doesNotMatch(r.text, /Warden Commander Voss/i);
+      assert.doesNotMatch(JSON.stringify(r), /Vault Seventeen/i);
+    } finally {
+      if (prev === undefined) delete process.env.CONCORD_2B;
+      else process.env.CONCORD_2B = prev;
+    }
+  });
 });

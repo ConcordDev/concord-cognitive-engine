@@ -8,6 +8,8 @@ import {
   composeDeterministicDialogue,
   composeDeterministicResponse,
 } from "./npc-dialogue-fallback.js";
+import { explainNpc } from "./world-inspect.js";
+import { authoredNpcPublic } from "./world-lore-present.js";
 
 export const CONCORD_2B_PROVIDER_ID = "concord-2b";
 export const CONCORD_2B_MODEL = process.env.CONCORD_2B_MODEL || "qwen3.5:2b";
@@ -41,7 +43,8 @@ export async function composeTwoBDialogue(input = {}, deps = {}) {
   const worldId = clip(input.worldId, 80);
   const npcId = clip(input.npcId, 80);
   const npcName = honestName(input.npcName, npcId);
-  const known = clip(input.line, 200);
+  const authored = authoredNpcPublic(npcId, worldId);
+  const known = clip(input.line || authored?.line, 200);
   const playerText = clip(input.text, 280);
   const userId = clip(input.userId, 80);
 
@@ -55,7 +58,7 @@ export async function composeTwoBDialogue(input = {}, deps = {}) {
   };
 
   if (process.env.CONCORD_2B === "0") {
-    return { ...base, ...deterministicReply({ npcId, npcName, playerText }), reason: "disabled" };
+    return { ...base, ...deterministicReply({ npcId, npcName, playerText, db: input.db, userId, worldId }), reason: "disabled" };
   }
 
   const chat = typeof deps.chat === "function" ? deps.chat : defaultTwoBChat;
@@ -79,31 +82,52 @@ export async function composeTwoBDialogue(input = {}, deps = {}) {
     }
     return {
       ...base,
-      ...deterministicReply({ npcId, npcName, playerText }),
+      ...deterministicReply({ npcId, npcName, playerText, db: input.db, userId, worldId }),
       reason: "empty_or_banned",
     };
   } catch (e) {
     return {
       ...base,
-      ...deterministicReply({ npcId, npcName, playerText }),
+      ...deterministicReply({ npcId, npcName, playerText, db: input.db, userId, worldId }),
       reason: String(e?.message || e || "brain_unavailable").slice(0, 120),
     };
   }
 }
 
-function deterministicReply({ npcId, npcName, playerText }) {
+function deterministicReply({ npcId, npcName, playerText, db, userId, worldId }) {
+  let grounded = null;
+  if (db && npcId) {
+    try { grounded = explainNpc(db, npcId, { viewerId: userId, worldId }); } catch { /* */ }
+  }
+  const authored = authoredNpcPublic(npcId, worldId || grounded?.worldId);
+  const mood = grounded?.axes?.hatred > 0.4 ? "hostile"
+    : grounded?.axes?.fear > 0.4 ? "fearful"
+    : grounded?.axes?.gratitude > 0.4 ? "friendly"
+    : "neutral";
   if (playerText) {
+    const r = composeDeterministicResponse({ npcId, npcName, choice: "ask_world" });
+    const why = grounded?.ok ? grounded.why : "";
+    const spoken = authored?.line || r.greeting || r.text || r;
     return {
-      text: composeDeterministicResponse({ npcId, npcName, choice: "ask_world" }),
+      text: why ? `${spoken} (${why})` : spoken,
       model: "deterministic",
       fallback: true,
+      inspect: grounded?.ok ? grounded : undefined,
     };
   }
-  const d = composeDeterministicDialogue({ npcId, npcName, mood: "neutral" });
+  const d = composeDeterministicDialogue({
+    npcId,
+    npcName,
+    mood,
+    currentActivity: grounded?.activity,
+    faction: grounded?.faction,
+  });
+  const extra = grounded?.ok ? grounded.why : "";
   return {
-    text: [d.greeting, d.subtext].filter(Boolean).join(" "),
+    text: [authored?.line || d.greeting, d.subtext, extra].filter(Boolean).join(" "),
     model: "deterministic",
     fallback: true,
+    inspect: grounded?.ok ? grounded : undefined,
   };
 }
 

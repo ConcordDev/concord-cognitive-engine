@@ -8,6 +8,13 @@ namespace Concordia
     Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible, Sere
 }
 
+    /// <summary>
+    /// Five fighting styles from style-sets.ts. Presentation of the existing
+    /// combat engine — not a second one. Stance / anticipation / strike read
+    /// differently on sight.
+    /// </summary>
+    public enum FightStyle { Karate, MuayThai, WingChun, Capoeira, Sword }
+
     [Serializable]
     public class GateDef
     {
@@ -57,7 +64,17 @@ namespace Concordia
         public const float WallRadius = 56f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
+        /// <summary>
+        /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
+        /// and CharacterController depenetration launched the hero onto roofs.
+        /// </summary>
+        public static readonly Vector3 SteelSpawn = new Vector3(0f, 0.12f, -8f);
 
+        /// <summary>
+        /// MEGAWORLD: these angles are civilization field centers on one
+        /// supercontinent (kernel: concordia-world-field.js), not portals to
+        /// disconnected maps. Travel() still region-rebuilds until W3.
+        /// </summary>
         public static readonly GateDef[] Gates =
         {
             new GateDef { world = WorldId.Cyber, shortName = "CYBER", name = "The Grid", refusal = "Refusal of Numbers", theNo = "I will not be counted.", color = Hex("3dffa0"), angle = 0 },
@@ -84,6 +101,7 @@ namespace Concordia
             new GuestDef { id = "lyra", name = "Lyra Silentchant", title = "Second hour", line = "I have not taught a ninth Refusal because it cannot be taught. It can only be walked into.", color = Hex("3a3850"), x = 5.5f, z = 14.8f, height = 1.68f },
             new GuestDef { id = "warden", name = "Arena Warden Gale", title = "Iron Wardens", line = "The Court forbids conquest. The sand does not. Poise, not luck.", color = Hex("6a6860"), x = 0, z = 18, height = 1.9f },
             new GuestDef { id = "asbir", name = "Asbir Thelane", title = "Lord Curator", line = "I keep three notebooks. One for facts. One for inferences. One for the difference.", color = Hex("8aa0b4"), x = -6.8f, z = -8.4f, height = 1.74f },
+            new GuestDef { id = "archivist_maren", name = "Maren Ashveil", title = "Archivist", line = "Write what you see. Not what the embassies will claim you saw.", color = Hex("7a8aa0"), x = 6.4f, z = -3.1f, height = 1.7f },
             new GuestDef { id = "brackish", name = "Brackish", title = "Plaza urchin", line = "If you stand still the Court will tell you a secret. If you run it will still be there.", color = Hex("6a5a40"), x = 3.2f, z = -8.8f, height = 1.42f },
             new GuestDef { id = "oldseam", name = "Old Seam", title = "Lantern path", line = "I have mended this street since before the gates had names. Walk soft.", color = Hex("7a6a58"), x = -11.2f, z = -4.1f, height = 1.58f },
         };
@@ -129,6 +147,43 @@ namespace Concordia
                 default:
                     return new WorldDef { id = WorldId.Crucible, title = "The Crucible", refusal = "A system that refuses to close can never rest.", theNo = "There is no ninth.", fantasy = "rules that refuse to stay", traversal = "unstable ground", combat = "drift", weather = "drift", ground = Hex("204040"), sun = Hex("20ffd0"), steelLive = true, law = "If it would end, un-end it.", style = S("drift", "Open Lattice", "Shard", "Recycle", "Refuse completion", "Un-end", 1.15f, 1f, 1.1f), fauna = new[] { "drift", "wraith", "construct" } };
             }
+        }
+
+        /// <summary>
+        /// Port of pickStyle({factionId, archetype, preferredStyleId}) plus a
+        /// world default so Hub karate and Crime wing chun actually read apart.
+        /// </summary>
+        public static FightStyle PickFight(string factionId, string archetype, WorldId world)
+        {
+            if (!string.IsNullOrEmpty(factionId))
+            {
+                if (factionId == "iron_wardens") return FightStyle.Sword;
+                if (factionId == "scholars_guild") return FightStyle.WingChun;
+                if (factionId == "shadow_network") return FightStyle.Capoeira;
+                if (factionId == "merchant_collective") return FightStyle.MuayThai;
+            }
+            if (!string.IsNullOrEmpty(archetype))
+            {
+                var a = archetype.ToLowerInvariant();
+                if (a.Contains("warrior") || a.Contains("guard")) return FightStyle.Sword;
+                if (a.Contains("scholar") || a.Contains("mystic")) return FightStyle.WingChun;
+                if (a.Contains("hunter") || a.Contains("acrobat")) return FightStyle.Capoeira;
+                if (a.Contains("trader")) return FightStyle.MuayThai;
+                if (a.Contains("monk")) return FightStyle.Karate;
+            }
+            return world switch
+            {
+                WorldId.Hub => FightStyle.Karate,
+                WorldId.Crime => FightStyle.WingChun,
+                WorldId.Sere => FightStyle.WingChun,
+                WorldId.Cyber => FightStyle.Capoeira,
+                WorldId.Tunya => FightStyle.Capoeira,
+                WorldId.Frontier => FightStyle.MuayThai,
+                WorldId.Fantasy => FightStyle.Sword,
+                WorldId.Ruins => FightStyle.Sword,
+                WorldId.Superhero => FightStyle.Karate,
+                _ => FightStyle.Sword
+            };
         }
 
         public static bool InArena(Vector3 p) => Vector3.Distance(new Vector3(p.x, 0, p.z), Arena) < 8f;

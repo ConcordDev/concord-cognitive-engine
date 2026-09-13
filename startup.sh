@@ -268,11 +268,14 @@ if $IS_RUNPOD || [ "${1:-}" = "--runpod" ] || [ "${1:-}" = "--cloudflare" ]; the
   # Runs unconditionally (not just after a fresh build) so a box carrying an
   # older build without the assets self-heals on the next boot. Idempotent:
   # stale copies are removed first so `cp -a` never nests dir-into-dir.
+  # Unity WebGL: a partial copy that left only export-index.html made the
+  # world lens HTML 200 and Build/*.wasm 500 — sync the player explicitly.
   if [ -d concord-frontend/.next/standalone ]; then
     rm -rf concord-frontend/.next/standalone/public concord-frontend/.next/standalone/.next/static
     mkdir -p concord-frontend/.next/standalone/.next
     cp -a concord-frontend/public concord-frontend/.next/standalone/public
     cp -a concord-frontend/.next/static concord-frontend/.next/standalone/.next/static
+    node scripts/sync-unity-web-to-standalone.mjs
     log "Copied public/ + .next/static into the standalone bundle"
   fi
 

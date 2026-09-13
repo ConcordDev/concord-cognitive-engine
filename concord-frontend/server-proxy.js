@@ -2,13 +2,13 @@
  * Concord Frontend Proxy Server (v5)
  *
  * Replaces Next.js's standalone server.js to fix WebSocket proxy through
- * /socket.io/. Next.js's HTTP rewrites handle regular HTTP correctly, but
- * the WS upgrade handshake through that rewrite path returns "Internal
- * Server Error" (no HTTP/1.1 status line) — Cloudflare tunnel sees this
- * as a malformed HTTP response and aborts the connection.
+ * /socket.io/, /unity-ws, and /godot-ws. Next.js's HTTP rewrites handle
+ * regular HTTP correctly, but the WS upgrade handshake through that rewrite
+ * path returns "Internal Server Error" (no HTTP/1.1 status line) — Cloudflare
+ * tunnel sees this as a malformed HTTP response and aborts the connection.
  *
- * This server intercepts /socket.io/* BEFORE Next.js sees them and proxies
- * them directly to the backend (:5050), using http.request's built-in
+ * This server intercepts those kernel sockets BEFORE Next.js sees them and
+ * proxies them directly to the backend (:5050), using http.request's built-in
  * upgrade event handler so WebSocket connections tunnel cleanly through.
  * Everything else is handed to Next.js's getRequestHandler unchanged.
  *
@@ -19,6 +19,7 @@
 const path = require('path');
 const http = require('http');
 const url = require('url');
+const { isBackendWsProxyPath } = require('./server-proxy-paths.cjs');
 
 const dir = __dirname;
 process.env.NODE_ENV = 'production';
@@ -50,7 +51,7 @@ const nextServer = new NextServer({
   port: currentPort,
 });
 
-function proxySocketIO(req, res) {
+function proxyBackendHttp(req, res) {
   const opts = {
     hostname: parsedBackend.hostname,
     port: parsedBackend.port || 80,
@@ -64,10 +65,10 @@ function proxySocketIO(req, res) {
     proxyRes.pipe(res);
   });
   proxyReq.on('error', (err) => {
-    console.error('[proxy] socket.io http proxy error:', err.message);
+    console.error('[proxy] backend http proxy error:', err.message);
     if (!res.headersSent) {
       res.writeHead(502, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'socket.io proxy failed', detail: err.message }));
+      res.end(JSON.stringify({ error: 'backend proxy failed', detail: err.message }));
     } else {
       res.destroy();
     }
@@ -75,7 +76,7 @@ function proxySocketIO(req, res) {
   req.pipe(proxyReq);
 }
 
-function upgradeSocketIO(req, socket, head) {
+function upgradeBackend(req, socket, head) {
   const opts = {
     hostname: parsedBackend.hostname,
     port: parsedBackend.port || 80,
@@ -108,7 +109,7 @@ function upgradeSocketIO(req, socket, head) {
     });
   });
   proxyReq.on('error', (err) => {
-    console.error('[proxy] socket.io WS upgrade error:', err.message);
+    console.error('[proxy] backend WS upgrade error:', err.message);
     try { socket.destroy(); } catch (e) {}
   });
   proxyReq.end();
@@ -119,16 +120,16 @@ nextServer.prepare().then(() => {
   const upgradeHandler = nextServer.getUpgradeHandler();
 
   const server = http.createServer((req, res) => {
-    if (req.url && req.url.startsWith('/socket.io/')) {
-      proxySocketIO(req, res);
+    if (isBackendWsProxyPath(req.url)) {
+      proxyBackendHttp(req, res);
       return;
     }
     handler(req, res);
   });
 
   server.on('upgrade', (req, socket, head) => {
-    if (req.url && req.url.startsWith('/socket.io/')) {
-      upgradeSocketIO(req, socket, head);
+    if (isBackendWsProxyPath(req.url)) {
+      upgradeBackend(req, socket, head);
       return;
     }
     upgradeHandler(req, socket, head);
@@ -136,7 +137,7 @@ nextServer.prepare().then(() => {
 
   server.listen(currentPort, hostname, () => {
     console.log(`[proxy] Concord frontend listening on ${hostname}:${currentPort}`);
-    console.log(`[proxy] /socket.io/* -> ${backendUrl}`);
+    console.log(`[proxy] /socket.io /unity-ws /godot-ws -> ${backendUrl}`);
     console.log(`[proxy] everything else -> Next.js handler`);
     console.log(`[proxy] working dir: ${dir}`);
   });

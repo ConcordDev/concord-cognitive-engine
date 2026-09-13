@@ -25,6 +25,7 @@ import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
 import { maybeEmitPersonalStake } from "./personal-stake.js";
+import { tryRecordConsequence } from "./world-consequence.js";
 import { ethicsEnabled, npcSchemeRestraint, ETHICS_REFUSE_THRESHOLD } from "./viability/value-rule-index.js";
 import { buildLens, deceptionLands, driftLensFromDeception } from "./empathy-lens.js";
 
@@ -169,6 +170,21 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
     INSERT INTO npc_schemes (id, plotter_kind, plotter_id, target_kind, target_id, kind, phase, success_pct, discovery_pct, next_tick_at)
     VALUES (?, 'npc', ?, ?, ?, ?, 'planning', ?, ?, ?)
   `).run(id, plotterNpcId, targetKind, targetId, pickedKind, successBase, discoveryBase, nextTickAt());
+
+  let rumorWorld = "concordia-hub";
+  try {
+    rumorWorld = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(plotterNpcId)?.world_id || rumorWorld;
+  } catch { /* */ }
+  tryRecordConsequence(db, {
+    worldId: rumorWorld,
+    actorKind: "npc",
+    actorId: plotterNpcId,
+    action: "rumor",
+    targetKind,
+    targetId,
+    importance: 0.55,
+    immediate: { schemeId: id, kind: pickedKind, phase: "planning" },
+  });
 
   return { ok: true, action: "proposed", schemeId: id, kind: pickedKind };
 }

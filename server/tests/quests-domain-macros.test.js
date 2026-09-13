@@ -67,7 +67,7 @@ describe("quests domain — registration", () => {
   it("registers the full macro surface", () => {
     const m = buildMacros();
     for (const name of [
-      "quests.active", "quests.mine", "quests.completed", "quests.progress",
+      "quests.accept", "quests.active", "quests.mine", "quests.completed", "quests.progress",
       "quests.recordProgress", "quests.checkCompletion", "quests.claimRewards",
       "quests.addObjectives", "quests.addRewards",
     ]) {
@@ -247,5 +247,34 @@ describe("quests domain — full lifecycle round-trip", () => {
     const noUser = await macros.get("quests.completed")({ db, actor: {} }, {});
     assert.equal(noUser.ok, false);
     assert.equal(noUser.reason, "no_user");
+  });
+});
+
+describe("quests.accept — player_quests only", () => {
+  it("inserts player_quests and leaves world_quests.status available", async () => {
+    const db = await freshDb();
+    const macros = buildMacros();
+    db.prepare(
+      `INSERT INTO world_quests (id, world_id, title, description, status)
+       VALUES ('founding_day_01_gather', ?, 'Founding Day', 'Gather', 'available')`
+    ).run(WORLD);
+    const first = await macros.get("quests.accept")(makeCtx(db), { questId: "founding_day_01_gather" });
+    assert.equal(first.ok, true);
+    assert.equal(first.already, false);
+    const row = db.prepare(
+      `SELECT status FROM player_quests WHERE user_id = ? AND quest_id = ?`
+    ).get(USER, "founding_day_01_gather");
+    assert.equal(row.status, "active");
+    const catalog = db.prepare(`SELECT status FROM world_quests WHERE id = 'founding_day_01_gather'`).get();
+    assert.equal(catalog.status, "available");
+    const again = await macros.get("quests.accept")(makeCtx(db), { questId: "founding_day_01_gather" });
+    assert.equal(again.ok, true);
+    assert.equal(again.already, true);
+    const n = db.prepare(`SELECT COUNT(*) AS n FROM player_quests WHERE quest_id = 'founding_day_01_gather'`).get().n;
+    assert.equal(n, 1);
+    const missing = await macros.get("quests.accept")(makeCtx(db), { questId: "no_such_quest" });
+    assert.equal(missing.ok, false);
+    assert.equal(missing.reason, "quest_not_found");
+    db.close();
   });
 });
