@@ -43,6 +43,7 @@ namespace Concordia
             if (!builder) return null;
             var stream = builder.GetComponent<ContinentStream>() ?? builder.gameObject.AddComponent<ContinentStream>();
             stream._builder = builder;
+            if (!stream.enabled) stream.enabled = true;
             Live = stream;
             return stream;
         }
@@ -162,32 +163,43 @@ namespace Concordia
             _lod.Remove(id);
         }
 
+        /// <summary>
+        /// Walk-in and debug teleports. Always writes ConcordiaPlayer.world
+        /// and kit first — WorldClock matching is not enough (Editor proof:
+        /// clock Fantasy, player.world still Hub, steel false).
+        /// </summary>
         public void SoftEnter(WorldId id)
         {
-            var player = ConcordiaPlayer.Live ?? Object.FindFirstObjectByType<ConcordiaPlayer>();
-            var clockSame = WorldClock.World == id;
-            var playerSame = !player || player.world == id;
-            if (clockSame && playerSame) return;
+            SyncActor(id);
+            if (WorldClock.World == id) return;
             LastTravelKind = LastTravelKind == "link_gate" ? "link_gate" : "walk";
-            if (!clockSame)
-            {
-                WorldClock.Leave();
-                WorldClock.Enter(id);
-            }
+            WorldClock.Leave();
+            WorldClock.Enter(id);
             ApplySky(id);
             ModularPerson.CastingWorld = id;
-            if (player && player.world != id)
-            {
-                player.world = id;
-                player.EquipWorldKit();
-            }
-            var game = ConcordiaGame.Live;
-            if (game) game.world = id;
             if (LastTravelKind != "link_gate")
             {
                 var w = Canon.Get(id);
                 ConcordiaHUD.Announce(w.title, w.refusal);
             }
+        }
+
+        static void SyncActor(WorldId id)
+        {
+            var player = ConcordiaPlayer.Live;
+            if (!player)
+            {
+                var all = Object.FindObjectsByType<ConcordiaPlayer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                if (all != null && all.Length > 0) player = all[0];
+            }
+            if (player)
+            {
+                var changed = player.world != id;
+                player.world = id;
+                if (changed) player.EquipWorldKit();
+            }
+            var game = ConcordiaGame.Live ?? Object.FindFirstObjectByType<ConcordiaGame>();
+            if (game) game.world = id;
         }
 
         void EnsureContinent()
@@ -330,7 +342,7 @@ namespace Concordia
             if (Camera.main) Camera.main.farClipPlane = 420f;
         }
 
-        void OnDisable()
+        void OnDestroy()
         {
             if (Live == this) Live = null;
         }

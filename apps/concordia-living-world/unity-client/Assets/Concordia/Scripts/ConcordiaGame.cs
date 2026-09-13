@@ -466,8 +466,9 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            if (ContinentStream.Live != null)
-                ContinentStream.Live.Teleport(_player, next);
+            var stream = ContinentStream.Bind(_world);
+            if (stream)
+                stream.Teleport(_player, next);
             else
             {
                 var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;

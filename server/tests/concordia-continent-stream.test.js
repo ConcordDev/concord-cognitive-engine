@@ -39,7 +39,8 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /void Tick\(/);
     assert.match(builder, /BuildChunk\(/);
     assert.match(builder, /ContinentStream\.Bind/);
-    assert.match(game, /ContinentStream\.Live\.Teleport/);
+    assert.match(game, /ContinentStream\.Bind\(_world\)/);
+    assert.match(game, /stream\.Teleport/);
     assert.match(game, /ContinentStream\.Live\?\.Tick/);
     assert.match(game, /_world\.Build\(next\)/);
     assert.match(game, /no-stream fallback/);
@@ -120,8 +121,10 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(builder, /KeepRingClear\(/);
     assert.doesNotMatch(builder, /StampRingLink/);
     assert.doesNotMatch(builder, /LinkMouth_/);
-    assert.match(stream, /FindFirstObjectByType<ConcordiaPlayer>/);
+    assert.match(stream, /FindObjectsByType<ConcordiaPlayer>/);
+    assert.match(stream, /FindObjectsInactive\.Include/);
     assert.match(stream, /public void SoftEnter\(/);
+    assert.match(stream, /static void SyncActor\(/);
     assert.match(src("ConcordiaGame.cs"), /5\.2f/);
     assert.match(src("WorldGate.cs"), /right \* \(i == 0 \? -3\.4f : 3\.4f\)/);
     assert.match(presence, /FindGuest\(/);
@@ -132,6 +135,34 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.equal((presence.match(/class WorldPresence/g) || []).length, 1);
   });
 
+  it("SoftEnter writes ConcordiaPlayer.world before the WorldClock already-there return", () => {
+    const stream = src("ContinentStream.cs");
+    const soft = stream.slice(stream.indexOf("public void SoftEnter"), stream.indexOf("static void SyncActor"));
+    assert.match(soft, /SyncActor\(id\)/);
+    const syncFirst = soft.indexOf("SyncActor(id)");
+    const clockReturn = soft.indexOf("WorldClock.World == id");
+    assert.ok(syncFirst >= 0 && clockReturn > syncFirst, "SyncActor must run even when the clock already matches (Editor SoftEnter proof)");
+    assert.match(stream, /FindObjectsByType<ConcordiaPlayer>/);
+    assert.match(stream, /player\.world = id/);
+    assert.match(stream, /EquipWorldKit\(\)/);
+  });
+
+  it("Travel always Bind()s the stream so a disabled component cannot drop the player at SteelSpawn", () => {
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /ContinentStream\.Bind\(_world\)/);
+    assert.match(game, /stream\.Teleport/);
+    assert.doesNotMatch(game, /if \(ContinentStream\.Live != null\)/);
+  });
+
+  it("ContinentStream.Live survives OnDisable so Travel cannot lose the stream mid-session", () => {
+    const stream = src("ContinentStream.cs");
+    assert.match(stream, /void OnDestroy\(\)[\s\S]*if \(Live == this\) Live = null/);
+    const onDestroy = stream.indexOf("void OnDestroy()");
+    const liveClear = stream.indexOf("if (Live == this) Live = null");
+    assert.ok(onDestroy >= 0 && liveClear > onDestroy, "Live=null belongs on OnDestroy, not OnDisable");
+    assert.doesNotMatch(stream, /void OnDisable\(\)/);
+  });
+
   it("bible status matches the live path", () => {
     const streaming = readFileSync(join(root, "apps/concordia-living-world/bible/STREAMING.md"), "utf8");
     const creatures = readFileSync(join(root, "apps/concordia-living-world/bible/CREATURES.md"), "utf8");
@@ -139,6 +170,8 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(streaming, /ContinentStream/);
     assert.match(streaming, /L0 unload/);
     assert.match(streaming, /L1 impostor/);
+    assert.match(streaming, /SyncActor/);
+    assert.match(streaming, /Bind/);
     assert.match(creatures, /CreatureCompiler/);
     assert.match(creatures, /wolf is not a Fox/);
   });
