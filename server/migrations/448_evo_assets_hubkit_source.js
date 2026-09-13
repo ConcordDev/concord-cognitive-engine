@@ -1,4 +1,4 @@
-// server/migrations/446_evo_assets_hubkit_source.js
+// server/migrations/448_evo_assets_hubkit_source.js
 //
 // Admit 'hubkit' as an evo_assets source. HubKit stems are a committed
 // StreamingAssets catalog (MANIFEST.json), not Kenney CC0, not Concord-authored
@@ -6,6 +6,11 @@
 // RENAME→CREATE→DROP shape as 373, but the CREATE keeps cdn_url +
 // train_consented so this rebuild does not repeat 373's column drops.
 // Child FKs that SQLite rewrites onto evo_assets_v4 are repaired in-file.
+//
+// Renumbered 2026-09-13 from 446_evo_assets_hubkit_source.js: that slot
+// collided with 446_settlement_identity.js. schema_version.version is a
+// PRIMARY KEY, so runMigrations silently skipped the second 446. Same
+// class as the 2026-09-08 430/416 → 444/445 rename.
 
 function tableExists(db, name) {
   return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);

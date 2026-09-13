@@ -46,6 +46,11 @@ const SKIP = new Set([
   // tree is the category error this allowlist exists for. The LIVE inventory
   // (CLAUDE.md) IS gated.
   "docs/AUDIT_INVENTORY.md",
+  // Verbatim relocation of an old CLAUDE.md Database paragraph (2026-09-07
+  // size cut). Its **444** / highest-445 counts describe that past snapshot;
+  // re-running `ls server/migrations/[0-9]*.js | wc -l` against today's tree
+  // is the same category error as AUDIT_INVENTORY.md.
+  "docs/CLAUDE_MD_ARCHIVE_MIGRATION_HISTORY.md",
 ]);
 
 const targets = [

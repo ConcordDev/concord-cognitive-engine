@@ -2,9 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { up as up373 } from "../migrations/373_evo_assets_github_source.js";
-import { up as up446 } from "../migrations/446_evo_assets_hubkit_source.js";
+import { up as up448 } from "../migrations/448_evo_assets_hubkit_source.js";
 
-describe("migration 446 hubkit source", () => {
+describe("migration 448 hubkit source", () => {
   it("admits hubkit without dropping github", async () => {
     const db = new Database(":memory:");
     db.exec(`
@@ -31,7 +31,7 @@ describe("migration 446 hubkit source", () => {
     `);
     db.prepare(`INSERT INTO evo_assets (id, kind, source, local_path) VALUES ('e1','mesh','github','x')`).run();
     await up373(db);
-    await up446(db);
+    await up448(db);
     db.prepare(`INSERT INTO evo_assets (id, kind, source, local_path) VALUES ('e2','mesh','hubkit','StreamingAssets/HubKit/a.glb')`).run();
     const github = db.prepare(`SELECT source FROM evo_assets WHERE id = 'e1'`).get();
     const hubkit = db.prepare(`SELECT source FROM evo_assets WHERE id = 'e2'`).get();
