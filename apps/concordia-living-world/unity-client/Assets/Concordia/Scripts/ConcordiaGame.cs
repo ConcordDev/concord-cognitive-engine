@@ -27,6 +27,7 @@ namespace Concordia
         DungeonGate[] _holds;
         Gatherable[] _loot;
         CookStation[] _cooks;
+        KernelTomb[] _tombs;
         float _probeAt;
 
         async void Start()
@@ -131,6 +132,7 @@ namespace Concordia
             _holds = FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude);
             _loot = FindObjectsByType<Gatherable>(FindObjectsInactive.Exclude);
             _cooks = FindObjectsByType<CookStation>(FindObjectsInactive.Exclude);
+            _tombs = FindObjectsByType<KernelTomb>(FindObjectsInactive.Exclude);
             _probeAt = Time.unscaledTime;
         }
 
@@ -198,6 +200,13 @@ namespace Concordia
                     var d = Vector3.Distance(pos, k.transform.position);
                     if (d < best) { best = d; prompt = k.Prompt; }
                 }
+            if (_tombs != null)
+                foreach (var t in _tombs)
+                {
+                    if (!t) continue;
+                    var d = Vector3.Distance(pos, t.transform.position);
+                    if (d < best) { best = d; prompt = t.Prompt; }
+                }
             var use = UsePlace.Nearest(pos, 2.4f);
             if (use)
             {
@@ -231,62 +240,70 @@ namespace Concordia
             DungeonGate hold = null;
             Gatherable loot = null;
             CookStation cook = null;
+            KernelTomb tomb = null;
             float best = 3.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_cities != null)
                 foreach (var c in _cities)
                 {
                     if (!c) continue;
                     var d = Vector3.Distance(pos, c.transform.position);
-                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_holds != null)
                 foreach (var h in _holds)
                 {
                     if (!h) continue;
                     var d = Vector3.Distance(pos, h.transform.position);
-                    if (d < best) { best = d; hold = h; gate = null; city = null; stone = null; npc = null; board = null; loot = null; cook = null; }
+                    if (d < best) { best = d; hold = h; gate = null; city = null; stone = null; npc = null; board = null; loot = null; cook = null; tomb = null; }
                 }
             if (_boards != null)
                 foreach (var b in _boards)
                 {
                     if (!b) continue;
                     var d = Vector3.Distance(pos, b.transform.position);
-                    if (d < best) { best = d; board = b; gate = null; city = null; stone = null; npc = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; board = b; gate = null; city = null; stone = null; npc = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_loot != null)
                 foreach (var l in _loot)
                 {
                     if (!l || l.taken) continue;
                     var d = Vector3.Distance(pos, l.transform.position);
-                    if (d < best) { best = d; loot = l; gate = null; city = null; stone = null; npc = null; board = null; hold = null; cook = null; }
+                    if (d < best) { best = d; loot = l; gate = null; city = null; stone = null; npc = null; board = null; hold = null; cook = null; tomb = null; }
                 }
             if (_cooks != null)
                 foreach (var k in _cooks)
                 {
                     if (!k) continue;
                     var d = Vector3.Distance(pos, k.transform.position);
-                    if (d < best) { best = d; cook = k; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; }
+                    if (d < best) { best = d; cook = k; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; tomb = null; }
                 }
             if (_stones != null)
                 foreach (var s in _stones)
                 {
                     if (!s) continue;
                     var d = Vector3.Distance(pos, s.transform.position);
-                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_npcs != null)
                 foreach (var n in _npcs)
                 {
                     if (!n) continue;
                     var d = Vector3.Distance(pos, n.transform.position);
-                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
+                }
+            if (_tombs != null)
+                foreach (var t in _tombs)
+                {
+                    if (!t) continue;
+                    var d = Vector3.Distance(pos, t.transform.position);
+                    if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
             if (gate != null)
             {
@@ -307,6 +324,12 @@ namespace Concordia
             {
                 QuestLog.NoteLocation(stone.title);
                 return stone.title + "\n" + stone.text;
+            }
+            if (tomb != null)
+            {
+                var said = string.IsNullOrEmpty(tomb.lastWords) ? "a grave with no words" : tomb.lastWords;
+                WorldClock.LastEvent = said;
+                return said;
             }
             var use = UsePlace.Nearest(pos, 2.4f);
             var door = BuildingPlace.NearestDoor(pos, 3.4f);
@@ -336,6 +359,10 @@ namespace Concordia
                     line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
+                var person = WorldBook.FindPerson(world, npc.personId ?? npc.def.id);
+                var lev = WorldBook.LeverageLine(person);
+                if (!string.IsNullOrEmpty(lev) && Bonds.Get(Bonds.Key(npc)) >= 0.22f)
+                    line += "\nLeverage: " + lev;
                 _player.OpenTalk(npc, line);
                 return "Talking with " + npc.def.name + ".";
             }
@@ -389,8 +416,20 @@ namespace Concordia
             QuestLog.NoteLocation("dungeon", "hold");
             if (hold.inHold)
             {
-                ConcordiaHUD.Announce("A hold", "Kenney tiles. No authored name.");
-                return "You enter the hold. Live steel if the world allows it.";
+                var client = ConcordClient.Live;
+                if (client != null) client.SendDungeonOpen(hold.encounterId);
+                if (ConcordClient.HoldLocked)
+                {
+                    hold.inHold = false;
+                    _player.cc.enabled = false;
+                    _player.transform.position = hold.mouth;
+                    _player.cc.enabled = true;
+                    Grounding.Snap(_player.cc);
+                    return "the hold is sealed — " + ConcordClient.HoldLockReason;
+                }
+                var title = string.IsNullOrEmpty(hold.holdName) ? "The Hollow Warden" : hold.holdName;
+                ConcordiaHUD.Announce(title, string.IsNullOrEmpty(ConcordClient.DungeonLine) ? "the hold opened" : ConcordClient.DungeonLine);
+                return "You enter " + title + ".";
             }
             return "You leave the hold.";
         }

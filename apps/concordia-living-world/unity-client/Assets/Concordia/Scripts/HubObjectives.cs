@@ -23,7 +23,10 @@ namespace Concordia
             Seen.Clear();
             QuestLog.Reset();
             SkillLedger.Reset();
+            SkillLattice.Reset();
             KitBag.Reset();
+            Bonds.Reset();
+            Plots.Reset();
         }
 
         public static void NoteLamp() => Lamp = true;
@@ -373,6 +376,157 @@ namespace Concordia
     }
 
     /// <summary>
+    /// T3.1 kernel skill overlay. Bound from skills.mastery over /unity-ws.
+    /// Untrained catalog rows stay level 0. Empty until Concord answers —
+    /// kit arts are not this lattice.
+    /// </summary>
+    public static class SkillLattice
+    {
+        public class Row
+        {
+            public string skillType, group, tier, element, preset;
+            public int level, cameraKickPx;
+            public float potency, glow;
+            public bool finisher;
+        }
+
+        public static readonly List<Row> All = new List<Row>();
+        public static readonly List<string> Groups = new List<string>();
+        public static bool FromKernel;
+        public static string Group = "combat";
+        public static string ActiveSkill = "swords";
+        public static int CatalogCount;
+        public static int TrainedCount;
+
+        public static void Reset()
+        {
+            All.Clear();
+            Groups.Clear();
+            FromKernel = false;
+            Group = "combat";
+            ActiveSkill = "swords";
+            CatalogCount = 0;
+            TrainedCount = 0;
+        }
+
+        public static void Bind(int catalogCount, int trainedCount)
+        {
+            CatalogCount = catalogCount;
+            TrainedCount = trainedCount;
+            FromKernel = catalogCount > 0;
+            if (string.IsNullOrEmpty(Group)) Group = "combat";
+            if (Find(ActiveSkill) == null) ActiveSkill = CombatSlot(0);
+            WorldBuilder.PresentSkillPylons();
+        }
+
+        public static string FirstInGroup(string group)
+        {
+            if (string.IsNullOrEmpty(group)) return ActiveSkill;
+            for (int i = 0; i < All.Count; i++)
+                if (All[i].group == group) return All[i].skillType;
+            return group == "combat" ? "swords" : "";
+        }
+
+        public static string VfxPath(string skillType)
+        {
+            var row = Find(skillType);
+            var e = row != null ? (row.element ?? "") : "";
+            if (string.IsNullOrEmpty(e)) e = skillType ?? "";
+            e = e.ToLowerInvariant();
+            const string root = "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/";
+            if (e.Contains("fire") || e.Contains("ember") || e.Contains("flame"))
+                return root + "vfx_Flamethrower_01.prefab";
+            if (e.Contains("lightning") || e.Contains("electric") || e.Contains("shock"))
+                return root + "vfx_Lightning_01.prefab";
+            if (e.Contains("ice") || e.Contains("water") || e.Contains("frost"))
+                return root + "vfx_Shockwave_01.prefab";
+            if (e.Contains("poison") || e.Contains("bio") || e.Contains("miasma"))
+                return root + "vfx_Smoke_01.prefab";
+            if (e.Contains("energy") || e.Contains("heal") || e.Contains("plasma"))
+                return root + "vfx_Heal_02.prefab";
+            return root + "vfx_Impact_01.prefab";
+        }
+
+        public static void Add(Row row)
+        {
+            if (row == null || string.IsNullOrEmpty(row.skillType)) return;
+            All.Add(row);
+            if (!string.IsNullOrEmpty(row.group) && !Groups.Contains(row.group))
+                Groups.Add(row.group);
+        }
+
+        public static Row Find(string skillType)
+        {
+            if (string.IsNullOrEmpty(skillType)) return null;
+            for (int i = 0; i < All.Count; i++)
+                if (All[i].skillType == skillType) return All[i];
+            return null;
+        }
+
+        public static string CombatSlot(int art)
+        {
+            int n = 0;
+            for (int i = 0; i < All.Count; i++)
+            {
+                if (All[i].group != "combat") continue;
+                if (n == art) return All[i].skillType;
+                n++;
+            }
+            if (art == 1) return "fists";
+            if (art == 2) return "archery";
+            return "swords";
+        }
+
+        public static void SelectSlot(int art)
+        {
+            KitBag.Art = art;
+            ActiveSkill = CombatSlot(art);
+        }
+
+        public static void CycleGroup(int delta)
+        {
+            if (Groups.Count == 0) return;
+            int i = Groups.IndexOf(Group);
+            if (i < 0) i = 0;
+            i = (i + delta + Groups.Count * 8) % Groups.Count;
+            Group = Groups[i];
+        }
+
+        public static string HudLine()
+        {
+            if (!FromKernel) return "skills.mastery unbound";
+            var row = Find(ActiveSkill);
+            if (row == null) return CatalogCount + " skills · kernel";
+            return row.skillType + "  L" + row.level + "  " + row.tier
+                + (row.finisher ? "  finisher" : "");
+        }
+
+        public static float KickMul(string skillType)
+        {
+            var row = Find(skillType);
+            if (row == null) return 1f;
+            return Mathf.Clamp(0.7f + row.glow * 0.8f + row.cameraKickPx * 0.08f, 0.5f, 2.4f);
+        }
+    }
+
+    /// <summary>
+    /// In-world skill group marker around the training dummy. E selects the
+    /// group's first catalog skill. The full 67 live on the K overlay.
+    /// </summary>
+    public class SkillPylon : MonoBehaviour
+    {
+        public string group;
+        public string skillType;
+
+        public string Take()
+        {
+            if (!string.IsNullOrEmpty(group)) SkillLattice.Group = group;
+            if (!string.IsNullOrEmpty(skillType)) SkillLattice.ActiveSkill = skillType;
+            return SkillLattice.HudLine();
+        }
+    }
+
+    /// <summary>
     /// What the player is actually carrying. Equip swaps the held mesh.
     /// Not a full item-instance economy — that lives in the kernel.
     /// </summary>
@@ -380,7 +534,7 @@ namespace Concordia
     {
         public class Item
         {
-            public string id, name, kind, stem;
+            public string id, name, kind, stem, affixLine;
         }
 
         public static readonly List<Item> Items = new List<Item>();
@@ -406,6 +560,45 @@ namespace Concordia
         {
             if (string.IsNullOrEmpty(id) || Has(id)) return;
             Items.Add(new Item { id = id, name = name ?? Pretty(id), kind = "loot", stem = id });
+        }
+
+        /// <summary>
+        /// Kernel loadout row from world:snapshot.gear. Affix labels only —
+        /// never invented stats.
+        /// </summary>
+        public static void BindKernel(string id, string name, string affixLine)
+        {
+            if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
+            var key = string.IsNullOrEmpty(id) ? name : id;
+            Item found = null;
+            foreach (var it in Items)
+                if (it.id == key || it.name == name) { found = it; break; }
+            if (found == null)
+            {
+                found = new Item { id = key, name = string.IsNullOrEmpty(name) ? Pretty(key) : name, kind = "loot", stem = key };
+                Items.Add(found);
+            }
+            found.affixLine = affixLine ?? "";
+            if (!string.IsNullOrEmpty(name)) found.name = name;
+        }
+
+        public static Item TakeLoot()
+        {
+            for (int i = 0; i < Items.Count; i++)
+            {
+                if (Items[i].kind == "weapon") continue;
+                var it = Items[i];
+                Items.RemoveAt(i);
+                return it;
+            }
+            return null;
+        }
+
+        public static bool HasLoot()
+        {
+            foreach (var it in Items)
+                if (it.kind != "weapon") return true;
+            return false;
         }
 
         public static bool Has(string id)
@@ -462,6 +655,241 @@ namespace Concordia
             foreach (var f in WorldBook.Factions(world))
                 if (f != null && f.id == factionId) return f;
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Same reaction table as server/lib/gifting.js. Kitchen and kernel
+    /// share the math so a gift is never a fabricated success.
+    /// </summary>
+    public static class GiftFeel
+    {
+        public static string Category(string itemName)
+        {
+            var n = itemName ?? "";
+            if (Contains(n, "sword", "blade", "dagger", "axe", "mace", "hammer", "spear", "lance", "bow", "whetstone", "arrow")) return "weapon";
+            if (Contains(n, "armour", "armor", "shield", "helm", "plate", "mail", "gauntlet", "greave", "boot")) return "armor";
+            if (Contains(n, "book", "scroll", "tome", "codex", "ink", "quill", "map", "treatise", "ledger")) return "book";
+            if (Contains(n, "herb", "root", "leaf", "flower", "poultice", "salve", "potion", "elixir", "tonic", "remedy")) return "herb";
+            if (Contains(n, "gem", "jewel", "crystal", "diamond", "ruby", "sapphire", "emerald", "pearl", "coin", "spark", "gold", "silver")) return "gem";
+            if (Contains(n, "relic", "rune", "glyph", "sigil", "talisman", "amulet", "charm", "idol", "fragment")) return "relic";
+            if (Contains(n, "bread", "stew", "roast", "soup", "ale", "tea", "pastry", "meat", "fish", "cheese", "wine", "fruit", "meal")) return "food";
+            if (Contains(n, "pelt", "hide", "fur", "leather", "bone", "fang", "claw", "feather")) return "pelt";
+            if (Contains(n, "tool", "gear", "cog", "wrench", "pick", "kit", "device", "component", "lamp")) return "tool";
+            return "misc";
+        }
+
+        public static string Reaction(string archetype, string itemName)
+        {
+            var cat = Category(itemName);
+            var arch = string.IsNullOrEmpty(archetype) ? "default" : archetype;
+            Prefs(arch, out var loved, out var liked, out var disliked);
+            if (Has(loved, cat)) return "loved";
+            if (Has(disliked, cat)) return "disliked";
+            if (Has(liked, cat)) return "liked";
+            return "neutral";
+        }
+
+        public static float Delta(string reaction)
+        {
+            if (reaction == "loved") return 0.15f;
+            if (reaction == "liked") return 0.10f;
+            if (reaction == "disliked") return -0.05f;
+            return 0.03f;
+        }
+
+        static bool Contains(string n, params string[] keys)
+        {
+            var low = (n ?? "").ToLowerInvariant();
+            for (int i = 0; i < keys.Length; i++)
+                if (low.IndexOf(keys[i], StringComparison.Ordinal) >= 0) return true;
+            return false;
+        }
+
+        static bool Has(string[] list, string cat)
+        {
+            if (list == null) return false;
+            for (int i = 0; i < list.Length; i++)
+                if (list[i] == cat) return true;
+            return false;
+        }
+
+        static void Prefs(string arch, out string[] loved, out string[] liked, out string[] disliked)
+        {
+            switch (arch)
+            {
+                case "scholar": loved = new[] { "book", "relic" }; liked = new[] { "gem", "tool" }; disliked = new[] { "pelt" }; break;
+                case "mystic": loved = new[] { "relic", "gem" }; liked = new[] { "book", "herb" }; disliked = new[] { "weapon" }; break;
+                case "healer": loved = new[] { "herb", "book" }; liked = new[] { "food", "relic" }; disliked = new[] { "weapon" }; break;
+                case "warrior":
+                case "warlord":
+                case "guard": loved = new[] { "weapon", "armor" }; liked = new[] { "pelt", "food" }; disliked = new[] { "book" }; break;
+                case "hunter": loved = new[] { "pelt", "weapon" }; liked = new[] { "food", "herb" }; disliked = new[] { "gem" }; break;
+                case "trader":
+                case "noble": loved = new[] { "gem", "relic" }; liked = new[] { "book", "food" }; disliked = new[] { "pelt" }; break;
+                default: loved = new[] { "gem", "food" }; liked = new[] { "relic", "book" }; disliked = Array.Empty<string>(); break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// T1 affinity + F1.2 gifts. Same deltas as gifting.js. Heart beats match
+    /// content/heart-events/default.json. Companion walk starts at 0.55.
+    /// </summary>
+    public static class Bonds
+    {
+        static readonly Dictionary<string, float> Aff = new Dictionary<string, float>();
+        static readonly Dictionary<string, HashSet<string>> Hearts = new Dictionary<string, HashSet<string>>();
+        static readonly HeartBeat[] Beats =
+        {
+            new HeartBeat { id = "small_kindnesses", t = 0.15f, title = "The Second Look" },
+            new HeartBeat { id = "first_spark", t = 0.30f, title = "A Shared Quiet" },
+            new HeartBeat { id = "learning_the_shape", t = 0.45f, title = "How You Take Your Mornings" },
+            new HeartBeat { id = "deepening", t = 0.60f, title = "The Thing Not Said" },
+            new HeartBeat { id = "the_harder_conversation", t = 0.75f, title = "What the Silence Cost" },
+            new HeartBeat { id = "devotion", t = 0.85f, title = "Before the Asking" },
+            new HeartBeat { id = "the_long_field", t = 0.95f, title = "The Long Field" },
+        };
+
+        struct HeartBeat { public string id, title; public float t; }
+
+        public static void Reset()
+        {
+            Aff.Clear();
+            Hearts.Clear();
+        }
+
+        public static string Key(GuestNpc npc)
+        {
+            if (npc == null) return "";
+            if (!string.IsNullOrEmpty(npc.personId)) return npc.personId;
+            if (npc.def != null && !string.IsNullOrEmpty(npc.def.id)) return npc.def.id;
+            return npc.def != null ? npc.def.name : npc.name;
+        }
+
+        public static float Get(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0f;
+            return Aff.TryGetValue(id, out var v) ? v : 0.08f;
+        }
+
+        public static void Set(string id, float v)
+        {
+            if (string.IsNullOrEmpty(id)) return;
+            Aff[id] = Mathf.Clamp01(v);
+        }
+
+        public static float TalkBump(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0f;
+            var prev = Get(id);
+            var next = Mathf.Clamp01(prev + 0.02f);
+            Aff[id] = next;
+            MaybeHeart(id, prev, next, id);
+            return next;
+        }
+
+        public static string Give(GuestNpc npc)
+        {
+            var id = Key(npc);
+            if (string.IsNullOrEmpty(id)) return "No one to give to.";
+            var item = KitBag.TakeLoot();
+            if (item == null) return "Empty hands. Take something from the ring first.";
+            var person = WorldBook.FindPerson(WorldClock.World, id);
+            var arch = person != null ? person.archetype : "";
+            var reaction = GiftFeel.Reaction(arch, item.name ?? item.id);
+            var bump = GiftFeel.Delta(reaction);
+            var prev = Get(id);
+            var next = Mathf.Clamp01(prev + bump);
+            Aff[id] = next;
+            MaybeHeart(id, prev, next, npc.def != null ? npc.def.name : id);
+            if (next >= 0.55f)
+            {
+                var life = npc.GetComponent<NpcLife>();
+                if (life) life.job = NpcLife.Job.Companion;
+            }
+            WorldClock.NoteAct("a gift changed the air");
+            var who = npc.def != null ? npc.def.name : "them";
+            var client = ConcordClient.Live;
+            if (client != null)
+                client.SendGift(id, item.id, item.name, arch);
+            return "You give " + who + " " + item.name + " (" + reaction + "). Affinity " + Mathf.RoundToInt(next * 100f) + "%.";
+        }
+
+        static void MaybeHeart(string id, float prev, float next, string who)
+        {
+            if (!Hearts.TryGetValue(id, out var seen))
+            {
+                seen = new HashSet<string>();
+                Hearts[id] = seen;
+            }
+            for (int i = 0; i < Beats.Length; i++)
+            {
+                var b = Beats[i];
+                if (prev < b.t && next >= b.t && seen.Add(b.id))
+                    ConcordiaHUD.Announce(b.title, who + " · " + Mathf.RoundToInt(b.t * 100f) + "%");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Scheme board. Kernel schemeId from scheme:overheard / secret:weaponised
+    /// barges in via scheme:intervene. Kitchen-only plots stay local and never
+    /// claim a kernel success.
+    /// </summary>
+    public static class Plots
+    {
+        public class Rec
+        {
+            public string id, text, phase;
+            public bool kernel;
+        }
+
+        static Rec _live;
+        public static Rec Nearby => _live != null && _live.phase == "brewing" ? _live : null;
+
+        public static void Reset() => _live = null;
+
+        public static void Seed(string text, string schemeId = null)
+        {
+            var kernel = !string.IsNullOrEmpty(schemeId) && !schemeId.StartsWith("local_");
+            _live = new Rec
+            {
+                id = kernel ? schemeId : "local_" + WorldClock.Day + "_" + Mathf.FloorToInt(WorldClock.Hour),
+                text = text ?? "A faction scheme ripened.",
+                phase = "brewing",
+                kernel = kernel
+            };
+        }
+
+        public static void ResolveKernel(string action)
+        {
+            if (_live == null) return;
+            if (action != "expose" && action != "abet") action = "ignore";
+            _live.phase = action == "expose" ? "exposed" : action == "abet" ? "abetted" : "ignored";
+        }
+
+        public static string Intervene(string action)
+        {
+            if (_live == null) return "No plot in the air.";
+            if (action != "expose" && action != "abet") action = "ignore";
+            var line = action == "expose"
+                ? "You name the plot. The air goes still."
+                : action == "abet"
+                    ? "You put your weight behind it."
+                    : "You let it pass.";
+            if (_live.kernel)
+            {
+                var client = ConcordClient.Live;
+                if (client != null) client.SendIntervene(_live.id, action);
+                WorldClock.NoteAct("waiting on the kernel");
+                ConcordiaHUD.Announce(action, "waiting on the kernel");
+                return line + (string.IsNullOrEmpty(_live.text) ? "" : " · " + _live.text);
+            }
+            _live.phase = action == "expose" ? "exposed" : action == "abet" ? "abetted" : "ignored";
+            WorldClock.NoteAct(line);
+            ConcordiaHUD.Announce(action, line);
+            return line + (string.IsNullOrEmpty(_live.text) ? "" : " · " + _live.text);
         }
     }
 }

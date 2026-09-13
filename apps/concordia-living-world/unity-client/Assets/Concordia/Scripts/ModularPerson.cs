@@ -26,8 +26,9 @@ namespace Concordia // FORCE_REFRESH_0022
         Quaternion _hipsRest, _spineRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
         Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
         Vector3 _hipPos0;
-        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT;
+        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT;
         bool _grounded = true;
+        FightStyle _style = FightStyle.MuayThai;
         bool _built;
         bool _authored;
         bool _biped;
@@ -87,6 +88,7 @@ namespace Concordia // FORCE_REFRESH_0022
                 var w = go.AddComponent<NpcWander>();
                 w.roam = roam;
             }
+            PersonLabel.Attach(go.transform, look != null ? look.displayName : go.name, null);
             return go;
         }
 
@@ -106,12 +108,19 @@ namespace Concordia // FORCE_REFRESH_0022
 
         public void Slash()
         {
-            _slashT = 0.48f;
+            _slashT = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
+            _anticipateT = 0f;
             if (_anim && _anim.runtimeAnimatorController)
             {
                 if (HasParam(_anim, "Attack")) _anim.SetTrigger("Attack");
                 else if (HasParam(_anim, "Slash")) _anim.SetTrigger("Slash");
             }
+        }
+        public void Anticipate() => _anticipateT = 0.32f;
+        public void BindStyle(FightStyle s)
+        {
+            _style = s;
+            if (sword) sword.SetActive(s == FightStyle.Sword);
         }
         public void Sit(bool on) => _sit = on ? 1f : 0f;
         public void Hurt() => _hitT = 0.32f;
@@ -265,6 +274,38 @@ namespace Concordia // FORCE_REFRESH_0022
         static GameObject LoadPersonPrefab(bool hero)
         {
             GameObject go = null;
+
+            // World-appropriate body (2026-09-11, root-caused this session): CastingWorld
+            // is set per-world by WorldBuilder but was never read here, so every world —
+            // Fantasy, Tunya, Ruins, all of them — got the same Rocketbox photoreal adult,
+            // whose baked texture is business-casual civilian wear by design (it's a
+            // Microsoft crowd-sim asset, not a game character). That's the actual "polo
+            // shirt hero" bug: not a missing tint (Rocketbox bakes skin+clothes into one
+            // continuous photo texture with no separate cloth UV region, so a multiplied
+            // tint would discolor visible skin too — a real dead end, not just untried),
+            // but a missing per-world body choice on an already-existing hook. Hub is the
+            // one world with solid textual grounding as modern/neutral (concordia-hub =
+            // "neutral baseline" in the retired ART_STYLE_GUIDE) — Rocketbox reads
+            // correctly there and keeps its current behavior. Everywhere else, prefer the
+            // already-painted, already-in-project KayKit Knight (no new assets needed).
+            // FreePacks.Mesh resolves in both Editor (AssetDatabase index) and Player/
+            // WebGL (HubKit/StreamingAssets), so this fixes the real shipped web client,
+            // not just the Editor. Whether every non-Hub world is genuinely "knight-coded"
+            // (Cyber/Crime plausibly want modern too) is a first-pass call, not verified
+            // lore — tune per-world as real per-world body assets are added.
+            if (CastingWorld != WorldId.Hub)
+            {
+                go = FreePacks.Mesh("Knight");
+                if (go)
+                {
+#if UNITY_EDITOR
+                    _lastPrefabPath = AssetDatabase.GetAssetPath(go);
+#endif
+                    return go;
+                }
+                // Knight unresolved (asset missing) — honest fallback to Rocketbox below
+                // rather than returning no body at all.
+            }
 #if UNITY_EDITOR
             // Mixamo Vanguard has no folder albedo. Rocketbox is the painted adult.
             var adult = new[]
@@ -693,17 +734,56 @@ namespace Concordia // FORCE_REFRESH_0022
             if (_slashT > 0f && _uArmR)
             {
                 _slashT -= Time.deltaTime;
-                var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
+                var dur = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
+                var t = 1f - Mathf.Clamp01(_slashT / dur);
                 float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
-                var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
-                float arc = swing * wind;
-                if (_biped)
+                if (_style == FightStyle.Capoeira && _uLegR)
                 {
-                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
-                    if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                    _uLegR.localRotation *= Quaternion.Euler(-90f * wind, 0f, 8f * wind);
+                    if (_hip) _hip.localRotation *= Quaternion.Euler(10f * wind, -28f * wind, 0f);
+                }
+                else if (_style == FightStyle.MuayThai && _uLegR)
+                {
+                    _uLegR.localRotation *= Quaternion.Euler(-62f * wind, 0f, 6f * wind);
+                    var arc = Mathf.Lerp(-20f, 70f, t) * wind;
+                    if (_biped) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.6f, false);
+                    else _uArmR.localRotation *= Quaternion.Euler(-40f * wind, 0f, -24f * wind);
+                }
+                else if (_style == FightStyle.WingChun)
+                {
+                    var chain = Mathf.Sin(t * Mathf.PI * 3f) * 22f * wind;
+                    if (_biped)
+                    {
+                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 28f + chain, false);
+                        if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 22f - chain * 0.5f, true);
+                    }
+                    else
+                    {
+                        _uArmR.localRotation *= Quaternion.Euler(-28f * wind + chain, 0f, 0f);
+                        if (_uArmL) _uArmL.localRotation *= Quaternion.Euler(-22f * wind - chain * 0.5f, 0f, 10f * wind);
+                    }
                 }
                 else
-                    _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                {
+                    var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
+                    float arc = swing * wind;
+                    if (_biped)
+                    {
+                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
+                        if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                    }
+                    else
+                        _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                }
+            }
+            else if (_anticipateT > 0f && _uArmR)
+            {
+                _anticipateT -= Time.deltaTime;
+                var t = Mathf.Clamp01(_anticipateT / 0.32f);
+                if (_style == FightStyle.Capoeira && _uLegR)
+                    _uLegR.localRotation *= Quaternion.Euler(-28f * t, 0f, 0f);
+                else
+                    _uArmR.localRotation *= Quaternion.Euler(-40f * t, 12f * t, 0f);
             }
 
             // Idle plant only. While moving the gait owns the feet — planting
@@ -1216,7 +1296,18 @@ namespace Concordia // FORCE_REFRESH_0022
 
         static GameObject MakeSword()
         {
-            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("weapon-sword");
+            // "Oversized sword" root-caused live in Unity (2026-09-12): not a scale
+            // bug — FitMax's uniform-scale-to-1.05m target math is correct — but the
+            // Kenney weapon-sword.glb mesh it fell back to is chibi-proportioned
+            // (width is 52% of its length), so scaling its length up to a realistic
+            // sword also drags its already-fat width/thickness up with it, reading
+            // as a giant slab. "longsword" (tried first below) has never actually
+            // resolved to anything — confirmed live via FreePacks.Mesh returning
+            // null — so every hero silently fell through to the Kenney mesh. The
+            // MYFG Weapon Pack Lite (already in the project) has real,
+            // human-sword-proportioned meshes; Sword16 measured live at a 0.14
+            // width/length ratio vs Kenney's 0.52 — prefer it.
+            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
             if (mesh)
             {
                 var held = Object.Instantiate(mesh);

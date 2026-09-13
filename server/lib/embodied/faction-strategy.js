@@ -500,23 +500,24 @@ export function applyMove(db, factionId, picked, peerStates) {
       const _factionWorldId = resolveFactionWorldId(db, factionId);
       const _worldIdField = _factionWorldId ? { worldId: _factionWorldId } : {};
       if (picked.move === "DECLARE_WAR" || picked.move === "RAID") {
+        const _emitOpts = _factionWorldId ? { worldId: _factionWorldId } : {};
         emitFn("faction:war-declared", {
           factionId, targetFactionId: picked.target ?? null,
           move: picked.move, summary: picked.summary, moveId,
           ..._worldIdField,
-        });
+        }, _emitOpts);
       } else if (picked.move === "PROPOSE_ALLIANCE" || picked.move === "FORM_ALLIANCE") {
         emitFn("faction:alliance-formed", {
           factionId, targetFactionId: picked.target ?? null,
           summary: picked.summary, moveId,
           ..._worldIdField,
-        });
+        }, _factionWorldId ? { worldId: _factionWorldId } : {});
       } else if (picked.move === "SEEK_TRUCE") {
         emitFn("faction:truce-sought", {
           factionId, targetFactionId: picked.target ?? null,
           summary: picked.summary, moveId,
           ..._worldIdField,
-        });
+        }, _factionWorldId ? { worldId: _factionWorldId } : {});
       }
     }
   } catch { /* emit failure never affects the cycle */ }

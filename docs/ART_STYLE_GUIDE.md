@@ -1,5 +1,24 @@
 # Concordia Art Style Guide — coherence > fidelity
 
+**⚠️ RETIRED for the World Lens (2026-09-11, owner decision).** This guide governed the
+Three.js web client (`concord-frontend/lib/world-lens/concordia-theme.ts`) exclusively —
+grep confirms `ART_STYLE`/`toonGradient`/`WORLD_SATURATION` are referenced ONLY inside
+`world-lens/`, `components/world/`, `components/world-lens/`, and this doc's own tests;
+zero references anywhere in the Unity project. The owner has now retired the Three.js
+renderer as the canonical World Lens client — reason given: "the web version with
+three.js ruined so much but the systems and stuff are good" (the systems referenced are
+almost entirely server-side — `server/emergent/`, `server/domains/`, quest/combat/economy
+engines — and are untouched by this change, since they're client-agnostic by construction).
+**Unity (exported to WebGL via `scripts/export-unity-web.mjs`, already real and already
+wired to `mountUnityGateway` in `server.js`) is now the canonical World Lens web client,**
+targeting a photoreal direction — see `docs/ART_DIRECTION_UNITY_WEB.md`. Godot
+(`world-lens-godot/`, already shipping a read-only spectator viewer) becomes the
+lightweight **presenter** role alongside it. This file is kept for historical record and
+in case any future non-Concordia stylized surface wants the constants; it no longer
+describes the World Lens's target look.
+
+---
+
 **The thesis (locked).** Photoreal invites comparison to $200M productions; a stylized
 look *sets its own standard* — as long as everything shares one visual language. Hades
 chose pen-and-ink partly because it was *faster to produce*. We pick a style whose

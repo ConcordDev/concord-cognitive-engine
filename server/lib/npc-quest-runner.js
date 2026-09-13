@@ -9,6 +9,7 @@
 //   listOpenAcceptable(db)                — quests no NPC has accepted yet
 
 import crypto from 'node:crypto';
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 /** Returns activeQuestId on accept, null on reject. */
 export function tryAcceptQuestForNpc(db, npc, quest) {
@@ -33,7 +34,9 @@ export function tryAcceptQuestForNpc(db, npc, quest) {
 
   try {
     if (globalThis?.__CONCORD_REALTIME__?.io) {
-      globalThis.__CONCORD_REALTIME__.io.emit('npc:quest-accepted', { npcId: npc.id, questId: quest.id, activeQuestId: id });
+      const payload = { npcId: npc.id, questId: quest.id, activeQuestId: id };
+      globalThis.__CONCORD_REALTIME__.io.emit('npc:quest-accepted', payload);
+      mirrorToGateways('npc:quest-accepted', payload);
     }
   } catch { /* sockets optional */ }
 
@@ -53,7 +56,9 @@ export function advanceNpcQuest(db, activeQuestId, evidence = {}) {
     db.prepare(`UPDATE npc_active_quests SET status = 'completed', current_step = ? WHERE id = ?`).run(next, activeQuestId);
     try {
       if (globalThis?.__CONCORD_REALTIME__?.io) {
-        globalThis.__CONCORD_REALTIME__.io.emit('npc:quest-completed', { activeQuestId, npcId: row.npc_id, questId: row.quest_id });
+        const payload = { activeQuestId, npcId: row.npc_id, questId: row.quest_id };
+        globalThis.__CONCORD_REALTIME__.io.emit('npc:quest-completed', payload);
+        mirrorToGateways('npc:quest-completed', payload);
       }
     } catch { /* sockets optional */ }
     return { completed: true, step: next };

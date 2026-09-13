@@ -318,6 +318,33 @@ describe("onNpcDeath — legacy + inheritance cascade", () => {
     const r = onNpcDeath(null, null);
     assert.equal(r.ok, false);
   });
+
+  it("emits npc:heir-rose when an heir exists", () => {
+    const db = makeFakeDb();
+    const dead = makeNpc({ id: "npc:dad2" });
+    const heir = makeNpc({ id: "npc:son2" });
+    db._tables.world_npcs.set(dead.id, dead);
+    db._tables.world_npcs.set(heir.id, heir);
+    db._tables.npc_relations.set("r-heir", { npc_id: "npc:son2", related_to: "npc:dad2", relation_kind: "child" });
+    const seen = [];
+    const prev = globalThis._concordRealtimeEmit;
+    globalThis._concordRealtimeEmit = (event, payload) => seen.push({ event, payload });
+    try {
+      onNpcDeath(db, dead);
+    } finally {
+      globalThis._concordRealtimeEmit = prev;
+    }
+    const rose = seen.find((s) => s.event === "npc:heir-rose");
+    assert.ok(rose, "heir-rose still fires when an heir exists");
+    assert.equal(rose.payload.heirId, "npc:son2");
+    assert.equal(rose.payload.deceasedId, "npc:dad2");
+    assert.equal(typeof rose.payload.lastWords, "string");
+    assert.ok(rose.payload.lastWords.length > 0);
+    const funeral = seen.find((s) => s.event === "npc:funeral");
+    assert.ok(funeral, "death also emits the existing funeral composition");
+    assert.equal(funeral.payload.deceasedId, "npc:dad2");
+    assert.ok(Array.isArray(funeral.payload.attendees));
+  });
 });
 
 describe("getTombsForWorld + getInheritanceForHeir", () => {
