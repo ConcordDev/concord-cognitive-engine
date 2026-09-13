@@ -35,6 +35,7 @@ namespace Concordia
             if (!string.IsNullOrEmpty(WarrantLine)) extra += "  ·  " + WarrantLine;
             if (!string.IsNullOrEmpty(InspectLine)) extra += "  ·  " + InspectLine;
             if (VehicleCount > 0) extra += "  ·  carts " + VehicleCount;
+            if (!string.IsNullOrEmpty(ProximityVoice.HudLine)) extra += "  ·  " + ProximityVoice.HudLine;
             return q + extra;
         }
 

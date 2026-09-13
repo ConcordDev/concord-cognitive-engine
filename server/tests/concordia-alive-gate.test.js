@@ -124,4 +124,27 @@ describe("Concordia alive gate — file-by-file", () => {
     assert.match(shot, /WaitForSecondsRealtime/);
     assert.doesNotMatch(shot, /new WaitForSeconds\(/);
   });
+
+  it("Kenney magenta shirts are a fallback mesh that gets repainted, not left hot-pink", () => {
+    const packs = src("FreePacks.cs");
+    const person = src("ModularPerson.cs");
+    assert.match(packs, /IsMissingMagenta/);
+    assert.match(packs, /c\.r > 0\.7f && c\.b > 0\.7f && c\.g < 0\.35f/);
+    assert.match(packs, /PaintMagentaIfFallback/);
+    assert.match(person, /PaintMagentaIfFallback\(gameObject, a\.ShirtColor\(\)\)/);
+  });
+
+  it("Founding Day persist is player_quests via quests.accept, offer only gather", () => {
+    const game = src("ConcordiaGame.cs");
+    const log = src("HubObjectives.cs");
+    const client = src("ConcordClient.cs");
+    assert.match(game, /TryOfferHubQuest\("founding_day_01_gather"\)/);
+    assert.doesNotMatch(game, /founding_day_02_reading/);
+    assert.doesNotMatch(game, /founding_day_03_sign/);
+    assert.match(log, /AcceptQuest\(WorldBook\.Folder\(world\), q\.id\)/);
+    assert.match(client, /LensRun\("quests", "accept"/);
+    assert.match(client, /VoiceJoin/);
+    assert.match(src("ProximityVoice.cs"), /concordia:" \+ world/);
+    assert.match(src("ProximityVoice.cs"), /voice_unavailable/);
+  });
 });

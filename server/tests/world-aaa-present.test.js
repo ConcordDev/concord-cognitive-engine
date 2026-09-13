@@ -9,7 +9,9 @@ describe("packAaaSnapshot", () => {
     assert.ok(Array.isArray(extra.npcs));
     assert.equal(extra.npcs.length, 0);
     assert.ok(Array.isArray(extra.quests));
-    assert.ok(extra.quests.some((q) => q.id === "founding_day_01_gather"));
+    assert.ok(Array.isArray(extra.authoredCatalog));
+    assert.ok(extra.authoredCatalog.some((q) => q.id === "founding_day_01_gather"));
+    assert.equal(extra.quests.some((q) => q.id === "founding_day_01_gather"), false);
     assert.ok(Array.isArray(extra.lore));
     assert.ok(extra.lore.some((b) => b.id === "hub_the_heart_claimed"));
     assert.equal(extra.refusal.id, "the_ninth");
@@ -26,6 +28,8 @@ describe("packAaaSnapshot", () => {
     db.prepare(`INSERT INTO lattice_born_quests VALUES ('q-lat','Lattice thread','open','rumor','concordia-hub')`).run();
     const extra = packAaaSnapshot(db, "concordia-hub", { userId: "u1" });
     assert.ok(extra.quests.some((q) => q.id === "q-lat"));
-    assert.ok(extra.quests.some((q) => q.id === "founding_day_01_gather"));
+    assert.ok(extra.authoredCatalog.some((q) => q.id === "founding_day_01_gather"));
+    assert.equal(extra.evoHubkit.source, "hubkit");
+    assert.equal(extra.evoHubkit.count, 0);
   });
 });

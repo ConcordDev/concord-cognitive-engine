@@ -283,6 +283,7 @@ namespace Concordia
             SnapshotJson = "";
             _userId = "";
             SkillLattice.Reset();
+            ProximityVoice.Reset();
         }
 
         void HandleFrame(string evt, string text)
@@ -316,6 +317,28 @@ namespace Concordia
             if (evt == "world:snapshot")
             {
                 RunMain(() => ApplyWorldSnapshot(text));
+                return;
+            }
+            if (evt == "webrtc:peer-list")
+            {
+                var n = JsonArrayCount(text, "peers");
+                RunMain(() => ProximityVoice.OnPeerList(n));
+                return;
+            }
+            if (evt == "webrtc:peer-joined")
+            {
+                RunMain(ProximityVoice.OnPeerJoined);
+                return;
+            }
+            if (evt == "webrtc:peer-left")
+            {
+                RunMain(ProximityVoice.OnPeerLeft);
+                return;
+            }
+            if (evt == "webrtc:error")
+            {
+                var why = JsonString(text, "reason");
+                RunMain(() => { if (!string.IsNullOrEmpty(why)) ProximityVoice.Status = why; });
                 return;
             }
             if (evt == "world:clock")
@@ -716,6 +739,38 @@ namespace Concordia
                 + "\",\"input\":" + (string.IsNullOrEmpty(inputJson) ? "{}" : inputJson) + "}";
             return SendEvt("lens:run", body);
         }
+
+        public Task AcceptQuest(string worldId, string questId)
+        {
+            if (string.IsNullOrEmpty(questId)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            return LensRun("quests", "accept",
+                "{\"questId\":\"" + Escape(questId) + "\",\"worldId\":\"" + Escape(world) + "\"}");
+        }
+
+        public Task RecordQuestProgress(string worldId, string questId, string type, string target)
+        {
+            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(target)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            var q = string.IsNullOrEmpty(questId) ? "" : "\"questId\":\"" + Escape(questId) + "\",";
+            return LensRun("quests", "recordProgress",
+                "{" + q + "\"type\":\"" + Escape(type) + "\",\"target\":\"" + Escape(target)
+                + "\",\"worldId\":\"" + Escape(world) + "\"}");
+        }
+
+        public Task CheckQuestCompletion(string worldId, string questId)
+        {
+            if (string.IsNullOrEmpty(questId)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            return LensRun("quests", "checkCompletion",
+                "{\"questId\":\"" + Escape(questId) + "\",\"worldId\":\"" + Escape(world) + "\"}");
+        }
+
+        public Task VoiceJoin(string visitId) =>
+            SendEvt("webrtc:join", "{\"visitId\":\"" + Escape(visitId) + "\"}");
+
+        public Task VoiceLeave(string visitId) =>
+            SendEvt("webrtc:leave", "{\"visitId\":\"" + Escape(visitId) + "\"}");
 
         public Task RequestKingdom(string nextWorldId)
         {

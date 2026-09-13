@@ -122,11 +122,17 @@ export function packAaaSnapshot(db, worldId, { userId = null } = {}) {
   );
   const kernelQuests = listWorldQuestsForSnapshot(db, worldId, userId);
   const authored = tryAll(() => listAuthoredQuests(worldId), []);
-  const seen = new Set(kernelQuests.map((q) => q.id));
-  const quests = kernelQuests.concat(authored.filter((q) => q && !seen.has(q.id)));
+  let evoHubkit = { count: 0, source: "hubkit" };
+  try {
+    evoHubkit = {
+      count: Number(db.prepare(`SELECT COUNT(*) AS n FROM evo_assets WHERE source = 'hubkit'`).get()?.n || 0),
+      source: "hubkit",
+    };
+  } catch { /* evo_assets optional */ }
   return {
     npcs,
-    quests,
+    quests: kernelQuests,
+    authoredCatalog: authored,
     warrants: listWarrantsForSnapshot(db, worldId),
     vehicles: listVehiclesForSnapshot(db, worldId),
     consequences,
@@ -134,5 +140,6 @@ export function packAaaSnapshot(db, worldId, { userId = null } = {}) {
     refusal: tryAll(() => refusalForWorld(worldId), null),
     limbs: limbsForSnapshot(db, userId),
     voice: { cellM: 50, ice: "/api/webrtc/ice-servers" },
+    evoHubkit,
   };
 }

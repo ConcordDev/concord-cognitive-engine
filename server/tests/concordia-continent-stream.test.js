@@ -29,6 +29,11 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /TravelMode = "continent_stream"/);
     assert.match(stream, /StreamInM = 95f/);
     assert.match(stream, /StreamOutM = 145f/);
+    assert.match(stream, /L3NearM = 40f/);
+    assert.match(stream, /static int LodOf\(/);
+    assert.match(stream, /EnsureImpostor\(/);
+    assert.match(builder, /BuildImpostor\(/);
+    assert.match(builder, /Impostor_/);
     assert.match(stream, /link_gate/);
     assert.match(stream, /void Tick\(/);
     assert.match(builder, /BuildChunk\(/);
@@ -62,11 +67,21 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(compiler, /PresentKernel/);
   });
 
+  it("LodOf pins L0–L3 thresholds", () => {
+    const stream = src("ContinentStream.cs");
+    assert.match(stream, /if \(dist >= StreamOutM\) return 0/);
+    assert.match(stream, /if \(dist > StreamInM\) return 1/);
+    assert.match(stream, /if \(dist > L3NearM\) return 2/);
+    assert.match(stream, /return 3/);
+  });
+
   it("bible status matches the live path", () => {
     const streaming = readFileSync(join(root, "apps/concordia-living-world/bible/STREAMING.md"), "utf8");
     const creatures = readFileSync(join(root, "apps/concordia-living-world/bible/CREATURES.md"), "utf8");
     assert.match(streaming, /LIVE \(continent stream/);
     assert.match(streaming, /ContinentStream/);
+    assert.match(streaming, /L0 unload/);
+    assert.match(streaming, /L1 impostor/);
     assert.match(creatures, /CreatureCompiler/);
     assert.match(creatures, /wolf is not a Fox/);
   });

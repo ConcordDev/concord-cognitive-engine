@@ -106,7 +106,8 @@ describe("world:snapshot", () => {
       assert.ok(Array.isArray(frame.data.lore));
       assert.ok(frame.data.lore.some((b) => b.id === "hub_the_heart_claimed"));
       assert.ok(Array.isArray(frame.data.quests));
-      assert.ok(frame.data.quests.some((q) => q.id === "founding_day_01_gather"));
+      assert.ok(Array.isArray(frame.data.authoredCatalog));
+      assert.ok(frame.data.authoredCatalog.some((q) => q.id === "founding_day_01_gather"));
       assert.equal(frame.data.refusal.id, "the_ninth");
       ws.close();
     } finally { await h.stop(); }

@@ -167,6 +167,7 @@ namespace Concordia
         {
             if (!_player || CharacterCreator.IsOpen) return;
             ContinentStream.Live?.Tick(_player.transform.position);
+            ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();
             var pos = _player.transform.position;
             string prompt = null;
@@ -511,8 +512,6 @@ namespace Concordia
         void OfferFoundingDay()
         {
             TryOfferHubQuest("founding_day_01_gather");
-            TryOfferHubQuest("founding_day_02_reading");
-            TryOfferHubQuest("founding_day_03_sign");
         }
 
         static void TryOfferHubQuest(string id)

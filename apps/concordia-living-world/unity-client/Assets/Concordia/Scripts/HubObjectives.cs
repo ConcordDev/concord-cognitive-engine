@@ -26,6 +26,7 @@ namespace Concordia
             SkillLedger.Reset();
             SkillLattice.Reset();
             KitBag.Reset();
+            ProximityVoice.Reset();
         }
 
         public static void NoteLamp() => Lamp = true;
@@ -95,6 +96,7 @@ namespace Concordia
             var a = new ActiveQuest { quest = q, world = world };
             a.SyncFromWorld();
             Active.Add(a);
+            ConcordClient.Live?.AcceptQuest(WorldBook.Folder(world), q.id);
             if (a.AllDoableDone() && a.NoBlocked())
             {
                 Complete(a);
@@ -170,6 +172,7 @@ namespace Concordia
             if (a?.quest == null) return;
             var world = a.world;
             var follows = a.quest.follow_up_quest_ids;
+            ConcordClient.Live?.CheckQuestCompletion(WorldBook.Folder(world), a.quest.id);
             Done.Add(a.quest.id);
             Active.Remove(a);
             if (follows == null) return;
@@ -185,7 +188,19 @@ namespace Concordia
             for (int i = Active.Count - 1; i >= 0; i--)
             {
                 var a = Active[i];
+                var before = a.done;
                 a.SyncFromWorld();
+                var objs = a.quest?.objectives;
+                if (objs != null && a.done != null)
+                {
+                    for (int o = 0; o < objs.Length; o++)
+                    {
+                        if (!a.done[o]) continue;
+                        if (before != null && o < before.Length && before[o]) continue;
+                        ConcordClient.Live?.RecordQuestProgress(
+                            WorldBook.Folder(a.world), a.quest.id, objs[o]?.type, objs[o]?.target);
+                    }
+                }
                 if (a.AllDoableDone() && a.NoBlocked())
                     Complete(a);
             }

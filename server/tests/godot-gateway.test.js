@@ -487,3 +487,50 @@ test("16. dialogue:request with no composer → honest unavailable", async () =>
     ws.close();
   } finally { await h.stop(); }
 });
+
+test("webrtc join returns peer-list; second client gets peer-joined; leave emits peer-left; no fabricated sdp", async () => {
+  const h = await startGateway({
+    verifyToken: (token) => {
+      if (token === "good-token") return { userId: "u1" };
+      if (token === "other-token") return { userId: "u2" };
+      return null;
+    },
+  });
+  const visitId = "concordia:concordia-hub:0:0";
+  try {
+    const a = await authAs(h.url, "good-token");
+    sendMsg(a.ws, "webrtc:join", { visitId });
+    const list = await nextFrame(a.ws);
+    assert.equal(list.evt, "webrtc:peer-list");
+    assert.equal(list.data.visitId, visitId);
+    assert.deepEqual(list.data.peers, []);
+    assert.equal(list.data.signalling, true);
+    assert.equal(list.data.media, false);
+    assert.equal("sdp" in list.data, false);
+
+    const b = await authAs(h.url, "other-token");
+    const joinedA = nextFrame(a.ws);
+    sendMsg(b.ws, "webrtc:join", { visitId });
+    const listB = await nextFrame(b.ws);
+    assert.equal(listB.evt, "webrtc:peer-list");
+    assert.equal(listB.data.peers.length, 1);
+    const sawJoin = await joinedA;
+    assert.equal(sawJoin.evt, "webrtc:peer-joined");
+    assert.ok(sawJoin.data.peerId);
+    assert.equal("sdp" in sawJoin.data, false);
+
+    const leftB = nextFrame(b.ws);
+    sendMsg(a.ws, "webrtc:leave", { visitId });
+    const ack = await nextFrame(a.ws);
+    assert.equal(ack.evt, "webrtc:left");
+    const left = await leftB;
+    assert.equal(left.evt, "webrtc:peer-left");
+    assert.equal(left.data.peerId, a.hello.data.clientId);
+
+    sendMsg(b.ws, "webrtc:join", { visitId: "not-a-cell" });
+    const bad = await nextFrame(b.ws);
+    assert.equal(bad.evt, "webrtc:error");
+    a.ws.close();
+    b.ws.close();
+  } finally { await h.stop(); }
+});

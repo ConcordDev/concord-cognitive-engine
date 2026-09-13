@@ -14,6 +14,7 @@ import { decayNeeds, freshNeeds, satisfy, topNeed, getNeeds, setNeeds } from "./
 import { getWeather, weatherNeedMods } from "./weather.js";
 import { tryRecordConsequence } from "./world-consequence.js";
 import { registerHubKitEvo } from "./evo-hubkit-register.js";
+import { seedWorldDensity } from "./world-density-seed.js";
 import { applyAuthoritativeMove, applyRefusal, combatAllowed } from "./world-physics-authority.js";
 import { applyAuthoritativeHit, ensureActor, getActor } from "./combat-hp-authority.js";
 import { resolveCraft } from "./craft-resolve.js";
@@ -100,6 +101,8 @@ export function ensureKernelTables(db) {
   } catch { /* already exist or memory db */ }
   try { seedDefaultGlyphLibrary(db); } catch { /* */ }
   try { ensureCrossbreedingTables(db); } catch { /* */ }
+  try { registerHubKitEvo(db); } catch { /* manifest optional */ }
+  try { seedWorldDensity(db, DEFAULT_WORLD); } catch { /* tables optional */ }
   return { ok: true };
 }
 
@@ -129,7 +132,7 @@ function tickLife(db, elapsedHours = 0.25, worldId = DEFAULT_WORLD) {
   if (db) {
     try {
       const rows = db.prepare(`
-        SELECT id FROM world_npcs WHERE is_dead = 0 LIMIT 12
+        SELECT id FROM world_npcs WHERE is_dead = 0 LIMIT 64
       `).all();
       for (const row of rows) {
         const before = getNeeds(db, row.id);

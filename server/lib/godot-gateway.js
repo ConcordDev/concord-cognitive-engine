@@ -161,6 +161,82 @@ function isBinaryMovePayload(p) {
     for (const room of [...client.rooms]) leaveRoom(client, room);
   }
 
+  /** @type {Map<string, Set<object>>} visitId → clients in a proximity-voice cell */
+  const voiceRooms = new Map();
+  const VOICE_VISIT_RE = /^concordia:[A-Za-z0-9_.-]{1,64}:-?\d+:-?\d+$/;
+
+  function voicePeers(visitId, except) {
+    const set = voiceRooms.get(visitId);
+    if (!set) return [];
+    const out = [];
+    for (const c of set) {
+      if (c !== except && c.ws && c.ws.readyState === c.ws.OPEN) out.push(c);
+    }
+    return out;
+  }
+
+  function joinVoice(client, visitId) {
+    if (!VOICE_VISIT_RE.test(visitId)) return { ok: false, reason: "invalid_visit" };
+    if (!client.voiceRooms) client.voiceRooms = new Set();
+    if (client.voiceRooms.has(visitId)) {
+      return { ok: true, visitId, peers: voicePeers(visitId, client).map((c) => c.id) };
+    }
+    let set = voiceRooms.get(visitId);
+    if (!set) { set = new Set(); voiceRooms.set(visitId, set); }
+    const peers = voicePeers(visitId, client);
+    set.add(client);
+    client.voiceRooms.add(visitId);
+    send(client.ws, "webrtc:peer-list", {
+      visitId,
+      peers: peers.map((c) => c.id),
+      signalling: true,
+      media: false,
+    });
+    for (const peer of peers) {
+      send(peer.ws, "webrtc:peer-joined", { visitId, peerId: client.id });
+    }
+    return { ok: true, visitId };
+  }
+
+  function leaveVoice(client, visitId) {
+    const set = voiceRooms.get(visitId);
+    if (set) {
+      set.delete(client);
+      if (set.size === 0) voiceRooms.delete(visitId);
+      else {
+        for (const peer of set) {
+          send(peer.ws, "webrtc:peer-left", { visitId, peerId: client.id });
+        }
+      }
+    }
+    client.voiceRooms?.delete(visitId);
+  }
+
+  function leaveAllVoice(client) {
+    for (const visitId of [...(client.voiceRooms || [])]) leaveVoice(client, visitId);
+  }
+
+  function relayVoice(client, evt, data) {
+    const visitId = typeof data.visitId === "string" ? data.visitId : "";
+    if (!VOICE_VISIT_RE.test(visitId)) {
+      send(client.ws, "webrtc:error", { reason: "invalid_visit", visitId });
+      return;
+    }
+    if (!client.voiceRooms?.has(visitId)) {
+      send(client.ws, "webrtc:error", { reason: "not_in_visit", visitId });
+      return;
+    }
+    const payload = { visitId, fromPeerId: client.id };
+    if (data.sdp !== undefined) payload.sdp = data.sdp;
+    if (data.candidate !== undefined) payload.candidate = data.candidate;
+    const target = typeof data.target === "string" ? data.target : "";
+    const peers = voicePeers(visitId, client);
+    for (const peer of peers) {
+      if (target && peer.id !== target) continue;
+      send(peer.ws, evt, payload);
+    }
+  }
+
   // Godot Integration Phase 4 (D19 — live system preview). Lets an injected
   // `onClientMessage` handler (server.js's `_onGodotClientMessage`) join a
   // CLIENT'S connection into a real world room from server-side code, the
@@ -570,6 +646,30 @@ function isBinaryMovePayload(p) {
         return;
       }
 
+      case "webrtc:join": {
+        const visitId = typeof data.visitId === "string" ? data.visitId : "";
+        const r = joinVoice(client, visitId);
+        if (!r.ok) send(client.ws, "webrtc:error", { reason: r.reason, visitId });
+        return;
+      }
+
+      case "webrtc:leave": {
+        const visitId = typeof data.visitId === "string" ? data.visitId : "";
+        leaveVoice(client, visitId);
+        send(client.ws, "webrtc:left", { visitId });
+        return;
+      }
+
+      case "webrtc:offer":
+        relayVoice(client, "webrtc:offer", data);
+        return;
+      case "webrtc:answer":
+        relayVoice(client, "webrtc:answer", data);
+        return;
+      case "webrtc:ice":
+        relayVoice(client, "webrtc:ice", data);
+        return;
+
       default: {
         if (typeof onClientMessage === "function") {
           try {
@@ -628,6 +728,7 @@ function isBinaryMovePayload(p) {
     ws.on("close", () => {
       if (client._authTimer) { clearTimeout(client._authTimer); client._authTimer = null; }
       leaveAllRooms(client);
+      leaveAllVoice(client);
       clients.delete(client);
     });
   }

@@ -615,6 +615,7 @@ namespace Concordia // FORCE_REFRESH_0023
                 Tint(_hair, a.HairColor());
                 Tint(_eyes, a.EyeColor() * 1.4f, true);
             }
+            FreePacks.PaintMagentaIfFallback(gameObject, a.ShirtColor());
 
             bool coat = a.HasCoat;
             if (_coat) _coat.gameObject.SetActive(coat);

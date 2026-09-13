@@ -7,6 +7,6 @@ W3: civilizations sit on one megaworld plane (`MegaworldMap` / `ContinentStream`
 
 Playable scale: 400 km civilization radius × 0.55 m/km ≈ 220 m on foot. Kernel field still speaks kilometres via `PresentToKm`.
 
-Cognitive LOD (`WorldClock.LodAt`) is unchanged. Render LOD follows streamed chunks: a missing pack is not a town.
+Render LOD: L0 unload past `StreamOutM`, L1 impostor (named box, no NPCs) between StreamIn and StreamOut, L2 HubKit `BuildChunk` inside StreamIn, L3 same chunk near `L3NearM`. A missing pack is not a town.
 
 TARGET (not this pass): ECS/DOTS, heightmap continents, vehicles for the uncompressed 400 km.

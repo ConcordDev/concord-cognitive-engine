@@ -71,6 +71,27 @@ namespace Concordia
             return holder;
         }
 
+        /// <summary>
+        /// L1 far-but-visible stand-in. Named box only — no NPCs, no town.
+        /// A missing pack stays empty behind this silhouette.
+        /// </summary>
+        public Transform BuildImpostor(WorldId world, Transform continent)
+        {
+            var w = Canon.Get(world);
+            var holder = new GameObject("Impostor_" + world).transform;
+            holder.SetParent(continent, false);
+            holder.position = Vector3.zero;
+            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            box.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            box.transform.SetParent(holder, false);
+            box.transform.localPosition = Vector3.up * 4f;
+            box.transform.localScale = new Vector3(18f, 8f, 18f);
+            var mat = HubLook.Lit(w.ground * 0.55f, 0.08f, 0.2f);
+            var r = box.GetComponent<Renderer>();
+            if (r && mat) r.sharedMaterial = mat;
+            return holder;
+        }
+
         public void DressChunkSky(WorldId id)
         {
             var prev = root;

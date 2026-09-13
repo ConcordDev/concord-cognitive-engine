@@ -13,6 +13,7 @@ namespace Concordia
         public const string TravelMode = "continent_stream";
         public const float StreamInM = 95f;
         public const float StreamOutM = 145f;
+        public const float L3NearM = 40f;
         public const float ChunkRadiusM = 52f;
 
         public static ContinentStream Live { get; private set; }
@@ -21,7 +22,16 @@ namespace Concordia
         public Transform continent { get; private set; }
         WorldBuilder _builder;
         readonly Dictionary<WorldId, Transform> _chunks = new Dictionary<WorldId, Transform>();
+        readonly Dictionary<WorldId, int> _lod = new Dictionary<WorldId, int>();
         Light _sun;
+
+        public static int LodOf(float dist)
+        {
+            if (dist >= StreamOutM) return 0;
+            if (dist > StreamInM) return 1;
+            if (dist > L3NearM) return 2;
+            return 3;
+        }
 
         public static ContinentStream Bind(WorldBuilder builder)
         {
@@ -63,10 +73,12 @@ namespace Concordia
             foreach (var id in MegaworldMap.All)
             {
                 var d = Vector3.Distance(player, MegaworldMap.Present(id));
-                if (d <= StreamInM) Ensure(id);
-                else if (d >= StreamOutM && id != WorldId.Hub) Release(id);
+                var lod = LodOf(d);
+                if (lod >= 2) Ensure(id, lod);
+                else if (lod == 1) EnsureImpostor(id);
+                else if (id != WorldId.Hub) Release(id);
             }
-            if (Vector3.Distance(player, Vector3.zero) >= StreamOutM)
+            if (LodOf(Vector3.Distance(player, Vector3.zero)) == 0)
                 Release(WorldId.Hub);
 
             var near = MegaworldMap.Nearest(player);
@@ -94,15 +106,40 @@ namespace Concordia
             player.EquipWorldKit();
         }
 
-        public Transform Ensure(WorldId id)
+        public Transform Ensure(WorldId id, int lod = 2)
         {
+            if (_lod.TryGetValue(id, out var have) && have >= 2 && _chunks.TryGetValue(id, out var live) && live)
+            {
+                _lod[id] = lod < 2 ? 2 : lod;
+                return live;
+            }
             if (_chunks.TryGetValue(id, out var existing) && existing)
-                return existing;
+            {
+                if (have >= 2) return existing;
+                Release(id);
+            }
             EnsureContinent();
             var chunk = _builder.BuildChunk(id, continent);
             if (!chunk) return null;
             chunk.position = MegaworldMap.Present(id);
             _chunks[id] = chunk;
+            _lod[id] = lod < 2 ? 2 : lod;
+            return chunk;
+        }
+
+        Transform EnsureImpostor(WorldId id)
+        {
+            if (_lod.TryGetValue(id, out var have) && have >= 2 && _chunks.TryGetValue(id, out var full) && full)
+                return full;
+            if (_lod.TryGetValue(id, out var lod) && lod == 1 && _chunks.TryGetValue(id, out var existing) && existing)
+                return existing;
+            if (_chunks.TryGetValue(id, out var stale) && stale) Release(id);
+            EnsureContinent();
+            var chunk = _builder.BuildImpostor(id, continent);
+            if (!chunk) return null;
+            chunk.position = MegaworldMap.Present(id);
+            _chunks[id] = chunk;
+            _lod[id] = 1;
             return chunk;
         }
 
@@ -111,6 +148,7 @@ namespace Concordia
             if (!_chunks.TryGetValue(id, out var chunk) || !chunk) return;
             Object.Destroy(chunk.gameObject);
             _chunks.Remove(id);
+            _lod.Remove(id);
         }
 
         void SoftEnter(WorldId id)

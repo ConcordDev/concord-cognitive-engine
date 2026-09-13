@@ -1,6 +1,7 @@
 /**
- * Register the committed HubKit MANIFEST into evo_assets so store/Kenney
- * meshes are first-class evo rows. Does not copy binaries; paths are local.
+ * Register the committed HubKit MANIFEST into evo_assets so HubKit stems
+ * are first-class evo rows (source='hubkit'). Does not copy binaries;
+ * paths stay StreamingAssets/HubKit/...
  */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,7 +38,7 @@ export function registerHubKitEvo(db) {
       if (exists) { known++; continue; }
       db.prepare(`
         INSERT INTO evo_assets (id, kind, source, source_id, local_path, category)
-        VALUES (?, 'mesh', 'kenney', ?, ?, 'hub')
+        VALUES (?, 'mesh', 'hubkit', ?, ?, 'hub')
       `).run(id, String(entry.stem), `StreamingAssets/HubKit/${entry.file}`);
       inserted++;
     } catch {
