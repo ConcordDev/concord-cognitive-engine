@@ -9,14 +9,11 @@ namespace Concordia
 
         static readonly string[] ForestTrees =
         {
-            "tree_oak", "tree_default", "tree_pineTallA", "tree_detailed",
-            "tree_tall", "tree_fat", "tree_simple", "tree_pineDefaultA",
-            "tree-large", "tree-small", "detail-tree-large"
+            "tree_1"
         };
         static readonly string[] Flowers =
         {
-            "flower_redA", "flower_yellowA", "flower_purpleA",
-            "flower_redB", "flower_yellowB", "flower_purpleC"
+            "grass01"
         };
         static readonly string[] Houses =
         {
@@ -173,12 +170,11 @@ namespace Concordia
                 _ => new Color(0.08f, 0.28f, 0.28f)
             };
             DynamicGI.UpdateEnvironment();
+            WorldClock.NoteFogBase();
+            // Hub fireflies are identity ambience, not weather. Rain/ash/snow
+            // follow WorldClock.Weather from Enter/Tick (see ApplyWeatherVisuals).
             if (w.id == WorldId.Hub)
                 DressVocab.PlaceWeather("fireflies", root, new Vector3(0, 2.2f, 0));
-            if (w.id == WorldId.Crime || w.weather == "rain")
-                DressVocab.PlaceWeather("rain", root, new Vector3(0, 8, 0));
-            if (w.id == WorldId.Ruins || w.id == WorldId.Crucible)
-                DressVocab.PlaceWeather("snow", root, new Vector3(0, 8, 0));
         }
 
         void DressAudio(WorldDef w)
@@ -201,14 +197,6 @@ namespace Concordia
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
 
-            var arena = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            arena.name = "Arena";
-            arena.transform.SetParent(root, false);
-            arena.transform.position = Canon.Arena + Vector3.up * 0.05f;
-            arena.transform.localScale = new Vector3(14f, 0.04f, 14f);
-            FreePacks.ApplyMat(arena, "Assets/Materials/Material_SandLumpy.mat");
-            TintFallback(arena, Canon.Hex("b89060"));
-            FreePacks.FlattenDisc(arena);
             DressArena();
 
             foreach (var gate in Canon.Gates)
@@ -222,7 +210,7 @@ namespace Concordia
             DressPillars();
             DressCrowd();
             DressLore();
-            DressConcordantArchive();
+            DressForest();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -232,7 +220,7 @@ namespace Concordia
             var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
             dummy.AddComponent<TrainingDummy>();
             FreePacks.EnsureCollider(dummy, 1.8f);
-            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court", "unburned_court", "concordant_law_reading");
+            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
             Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
             var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
             Beacon(root, east, 7f, "east_gate");
@@ -251,9 +239,9 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 24; i++)
+            for (int i = 0; i < 16; i++)
             {
-                var a = i / 24f * Mathf.PI * 2f + 0.4f;
+                var a = i / 16f * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -283,8 +271,10 @@ namespace Concordia
                 float a = i / 4f * Mathf.PI * 2f + 0.55f;
                 var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
-                HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.28f, new Vector3(1.4f, 0.22f, 0.45f),
-                    HubLook.Lit(new Color(0.35f, 0.2f, 0.1f), 0.1f, 0.25f), "Bench" + i);
+                var bench = FreePacks.Spawn(DressVocab.Table(), root, p, -a * Mathf.Rad2Deg, 0.55f, required: false);
+                if (!bench)
+                    HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.28f, new Vector3(1.4f, 0.22f, 0.45f),
+                        HubLook.Lit(new Color(0.35f, 0.2f, 0.1f), 0.1f, 0.25f), "Bench" + i);
                 var look = Appearance.Random(3300 + i * 13);
                 var go = ModularPerson.SpawnNpc(root, p + new Vector3(0f, 0f, 0.1f), -a * Mathf.Rad2Deg, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Sit;
@@ -312,6 +302,8 @@ namespace Concordia
             var col = DressVocab.Column(WorldId.Hub);
             var sword = DressVocab.Weapon("sword");
             var tower = DressVocab.Tower(WorldId.Hub);
+            var tree = DressVocab.Tree(WorldId.Hub);
+            var rock = DressVocab.Rock();
             for (int i = 0; i < 12; i++)
             {
                 var a = (i / 12f) * Mathf.PI * 2;
@@ -319,15 +311,66 @@ namespace Concordia
                     -a * Mathf.Rad2Deg + 90, 3.2f);
                 if (i % 3 == 0)
                     FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 7.2f, 0, Mathf.Sin(a) * 7.2f), 0, 2.6f);
+                if (i % 2 == 0)
+                    HubLook.Lantern(root, c + new Vector3(Mathf.Cos(a) * 9.2f, 0, Mathf.Sin(a) * 9.2f));
             }
-            FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, c + new Vector3(6, 0, 6), 40, 2.2f);
-            FreePacks.Spawn("weapon-rack", root, c + new Vector3(-5, 0, 5), 90, 1.8f);
-            FreePacks.Spawn(sword, root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f);
-            FreePacks.Spawn("banner", root, c + new Vector3(0, 0, -7.4f), 0, 2.4f);
-            FreePacks.Spawn("trophy", root, c + new Vector3(4.5f, 0, -3), 0, 1.1f);
-            FreePacks.Prefab("Assets/Prefabs/Stairs.prefab", root, c + new Vector3(0, 0, -10), 0);
-            FreePacks.Spawn(tower, root, c + new Vector3(10, 0, 0), 0, 4.5f);
-            FreePacks.Spawn(tower, root, c + new Vector3(-10, 0, 0), 0, 4.5f);
+            FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, c + new Vector3(6, 0, 6), 40, 2.2f, required: false);
+            FreePacks.Spawn(sword, root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f, required: false);
+            FreePacks.Spawn(DressVocab.Prop(WorldId.Hub), root, c + new Vector3(-5.1f, 0, 5.6f), 20, 0.9f, required: false);
+            FreePacks.Spawn(DressVocab.Well(), root, c + new Vector3(5.2f, 0, -4.4f), 0, 1.5f, required: false);
+            FreePacks.Spawn(tower, root, c + new Vector3(10, 0, 0), 0, 4.5f, required: false);
+            FreePacks.Spawn(tower, root, c + new Vector3(-10, 0, 0), 0, 4.5f, required: false);
+            FreePacks.Spawn(tree, root, c + new Vector3(12.4f, 0, 8.2f), 18, 8.5f, required: false);
+            FreePacks.Spawn(tree, root, c + new Vector3(-11.8f, 0, 9.1f), -30, 7.8f, required: false);
+            FreePacks.Spawn(rock, root, c + new Vector3(8.6f, 0, -7.2f), 12, 1.2f, required: false);
+            FreePacks.Spawn(rock, root, c + new Vector3(-7.4f, 0, -8.1f), -22, 1.0f, required: false);
+            PresentSkillPylons();
+        }
+
+        /// <summary>
+        /// Combat pylons around the training dummy — one per catalog group,
+        /// labeled from skills.mastery when Concord has answered. Walk up and
+        /// press E, or open K for the full 67. Empty until the lattice binds.
+        /// </summary>
+        public static void PresentSkillPylons()
+        {
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var old = world.transform.Find("SkillRing");
+            if (old) Object.DestroyImmediate(old.gameObject);
+            var hold = new GameObject("SkillRing").transform;
+            hold.SetParent(world.transform, false);
+            var c = Canon.Arena;
+            var groups = SkillLattice.Groups.Count > 0
+                ? SkillLattice.Groups
+                : new System.Collections.Generic.List<string> { "combat", "athletic", "craft", "arts", "social", "scholar", "side" };
+            var col = DressVocab.Column(WorldId.Hub);
+            for (int i = 0; i < groups.Count; i++)
+            {
+                var a = (i / (float)groups.Count) * Mathf.PI * 2f + 0.18f;
+                var pos = c + new Vector3(Mathf.Cos(a) * 5.6f, 0f, Mathf.Sin(a) * 5.6f);
+                var go = FreePacks.Spawn(col, hold, pos, -a * Mathf.Rad2Deg, 2.4f, required: false);
+                if (!go)
+                {
+                    go = HubLook.Prim(hold, PrimitiveType.Cylinder, pos + Vector3.up * 1.1f,
+                        new Vector3(0.38f, 2.2f, 0.38f), HubLook.Lit(new Color(0.42f, 0.32f, 0.22f), 0.15f, 0.3f),
+                        "Pylon_" + groups[i]);
+                }
+                var pylon = go.GetComponent<SkillPylon>() ?? go.AddComponent<SkillPylon>();
+                pylon.group = groups[i];
+                pylon.skillType = SkillLattice.FirstInGroup(groups[i]);
+                var label = new GameObject("Name").AddComponent<TextMesh>();
+                label.transform.SetParent(go.transform, false);
+                label.transform.localPosition = new Vector3(0f, 2.6f, 0f);
+                label.text = groups[i].ToUpperInvariant();
+                label.fontSize = 42;
+                label.characterSize = 0.06f;
+                label.anchor = TextAnchor.MiddleCenter;
+                label.alignment = TextAlignment.Center;
+                label.color = new Color(1f, 0.93f, 0.78f);
+                HubLook.DressTextMesh(label);
+                FreePacks.EnsureCollider(go, 2.2f);
+            }
         }
 
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
@@ -350,8 +393,8 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Grass(WorldId.Tunya), root, outPos + side * 4.4f, yaw + 15f, 1.2f, required: false);
                     break;
                 case WorldId.Fantasy:
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 9f, required: false);
-                    FreePacks.Spawn(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 7.5f, required: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos + side * 2.8f, yaw, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(DressVocab.Tree(WorldId.Fantasy), root, outPos - side * 3.1f, yaw + 40f, 8f, required: false, byHeight: false);
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Fantasy), root, outPos, yaw, 7.2f, required: false);
                     break;
                 case WorldId.Crime:
@@ -405,7 +448,7 @@ namespace Concordia
         {
             FreePacks.Spawn("campfire_stones", root, p + new Vector3(3, 0, 2), 0, 1.6f);
             FreePacks.Spawn("campfire_logs", root, p + new Vector3(3, 0, 2), 0, 1.2f);
-            FreePacks.Spawn("weapon-rack", root, p + new Vector3(-2, 0, 2), 90, 1.8f);
+            FreePacks.Spawn(DressVocab.Prop(WorldId.Hub), root, p + new Vector3(-2, 0, 2), 90, 1.1f, required: false);
             FreePacks.Spawn(DressVocab.Weapon("sword"), root, p + new Vector3(2, 0, -1), 0, 1.1f);
         }
 
@@ -453,9 +496,9 @@ namespace Concordia
                 var pos = new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad);
                 var yaw = Mathf.Atan2(-Mathf.Cos(a), -Mathf.Sin(a)) * Mathf.Rad2Deg;
                 if (i % 5 == 0)
-                    FreePacks.Spawn(Shops[i % Shops.Length], root, pos, yaw, 9f, required: false, byHeight: true);
+                    FreePacks.Spawn(DressVocab.Tower(WorldId.Hub), root, pos, yaw, 9f, required: false, byHeight: true);
                 else
-                    FreePacks.Spawn(Houses[i % Houses.Length], root, pos, yaw, 6.5f, required: false, byHeight: true);
+                    FreePacks.Spawn(DressVocab.House(WorldId.Hub), root, pos, yaw, 6.5f, required: false, byHeight: true);
             }
             EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(52, 0, 18), Quaternion.Euler(0, 70, 0), 1f);
             EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(48, 0, -12), Quaternion.Euler(0, 90, 0), 1f);
@@ -468,15 +511,13 @@ namespace Concordia
                 var a = (i / 40f) * Mathf.PI * 2 + 0.51f;
                 if (Mathf.Sin(a) > 0.62f) continue;
                 var rad = 28 + (i % 4) * 3.4f;
-                FreePacks.Spawn(ForestTrees[i % ForestTrees.Length], root,
-                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 4.5f);
+                var stem = ForestTrees[i % ForestTrees.Length];
+                FreePacks.SpawnStore(stem, root,
+                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 8f, required: false, byHeight: false);
                 if (i % 3 == 0)
-                    FreePacks.Spawn("plant_bush", root,
-                        new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f);
+                    FreePacks.SpawnStore(Flowers[0], root,
+                        new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f, required: false);
             }
-            FreePacks.Spawn("campfire_logs", root, new Vector3(22, 0, 18), 0, 1.4f);
-            FreePacks.Spawn("log_large", root, new Vector3(24, 0, 16), 40, 2.2f);
-            EvoCatalog.Spawn(EvoCatalog.Grass, root, new Vector3(22, 0, 18), Quaternion.identity, 1f);
         }
 
         void DressCliffs()
@@ -514,7 +555,6 @@ namespace Concordia
                     case "thorne": weapon = "greatsword"; look.outfit = 1; look.attitude = 2; look.height = 1.12f; break;
                     case "lyra": weapon = "staff"; look.outfit = 0; look.attitude = 0; break;
                     case "asbir": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
-                    case "archivist_maren": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
                     case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
@@ -679,27 +719,17 @@ namespace Concordia
 
         void DressLore()
         {
-            // History beats are placed from authored lore.json by RealmFill.
-            // Flower-law is Court canon, not a history row.
+            PlaceStone(new Vector3(4.8f, 0f, -3.2f), "The Ground She Made Hers",
+                "Dig far enough beneath any district and you reach the same thing: Concordia, listening. The hub is not built on her. It is built of her.");
+            PlaceStone(new Vector3(-5.1f, 0f, -2.4f), "The Ring of Doors",
+                "Eight gates around the old battlefield, left unpaved. They still call it the Unburned Court, though nothing there ever burned.");
+            PlaceStone(new Vector3(0.4f, 0f, 6.6f), "The Night Someone Tried",
+                "They held the Court four hours. Then the ground spoke in flowers. No one died. You cannot own the heart.");
             PlaceStone(new Vector3(8.2f, 0f, 2.1f), "Flower-law",
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
+            PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
+                "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
             DressSereWaystone();
-        }
-
-        void DressConcordantArchive()
-        {
-            // Headquarters named in factions.json (concordant_curators).
-            // Furniture from HubKit; mesh is evo archive.glb when present.
-            var p = new Vector3(-16.2f, 0f, -9.4f);
-            PlaceLandmark(EvoCatalog.Archive, p, 7.2f, "archive");
-            DressArchive(p);
-            PlaceStone(p + new Vector3(2.4f, 0f, -2.2f), "The Concordant Oath",
-                "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture.",
-                "hub_concordant_oath");
-            PlaceStone(p + new Vector3(-1.6f, 0f, 1.8f), "Founding Day drawer",
-                "The drawer sits beneath a blank nameplate. The blank nameplate on the drawer is older than the Archive.",
-                "archive_founding_day_drawer");
-            Beacon(root, p, 7f, "hub_archive", "hub_archive_main_floor", "hub_archive_curator_chambers", "archive_founding_day_drawer");
         }
 
         void DressSereWaystone()
@@ -727,14 +757,13 @@ namespace Concordia
             box.isTrigger = true;
         }
 
-        void PlaceStone(Vector3 pos, string title, string text, string mark = null)
+        void PlaceStone(Vector3 pos, string title, string text)
         {
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
                 HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
             var stone = plinth.AddComponent<LoreStone>();
             stone.title = title;
             stone.text = text;
-            stone.mark = mark;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
                 HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
         }
@@ -743,7 +772,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                var bird = DressVocab.Bird();
+                var bird = FreePacks.Bird();
                 if (string.IsNullOrEmpty(bird)) return;
                 for (int i = 0; i < 8; i++)
                 {
@@ -779,7 +808,7 @@ namespace Concordia
 
         void DressGroveBirds(WorldDef w)
         {
-            var bird = DressVocab.Bird();
+            var bird = FreePacks.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {
@@ -837,188 +866,33 @@ namespace Concordia
             if (!r || r.sharedMaterial == null) Tint(go, c);
         }
 
-        static Transform KernelLiveParent()
-        {
-            if (ContinentStream.Live)
-            {
-                var chunk = ContinentStream.Live.ChunkOf(WorldClock.World);
-                if (chunk) return chunk;
-                if (ContinentStream.Live.continent) return ContinentStream.Live.continent;
-            }
-            var megaworld = GameObject.Find("Megaworld");
-            if (megaworld) return megaworld.transform;
-            var world = GameObject.Find("World");
-            return world ? world.transform : null;
-        }
-
         /// <summary>
         /// Live kernel buildings from scene:data. Local Kenney dressing stays;
         /// this overlay is which buildings exist right now, not how the hub looks.
-        /// Parent under the current streamed chunk — never PurgeWorldRoots.
         /// </summary>
         public static void ClearKernelLive()
         {
-            var parent = KernelLiveParent();
-            if (!parent) return;
-            var old = parent.Find("KernelLive");
-            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var old = world.transform.Find("KernelLive");
+            if (old) Object.DestroyImmediate(old.gameObject);
         }
 
         public static void PlaceKernelBuilding(string id, string type, Vector3 pos, float yawRad, float maxDim)
         {
-            var parent = KernelLiveParent();
-            if (!parent) return;
-            var holder = parent.Find("KernelLive");
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var holder = world.transform.Find("KernelLive");
             if (!holder)
             {
                 var goHolder = new GameObject("KernelLive");
-                goHolder.transform.SetParent(parent, false);
+                goHolder.transform.SetParent(world.transform, false);
                 holder = goHolder.transform;
             }
             if (maxDim < 1.6f) maxDim = 3.2f;
-            var stem = Houses[Mathf.Abs((id ?? type ?? "b").GetHashCode()) % Houses.Length];
+            var stem = DressVocab.House(WorldId.Hub);
             var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
             if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
-        }
-
-        /// <summary>
-        /// Live kernel NPCs from world:snapshot. Canon plaza guests stay;
-        /// matching names bind to the kernel id instead of duplicating.
-        /// </summary>
-        public static void ClearKernelNpcs()
-        {
-            var parent = KernelLiveParent();
-            if (!parent) return;
-            var old = parent.Find("KernelNpcs");
-            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
-        }
-
-        public static void PlaceKernelNpc(string id, string name, string title, Vector3 pos, string activity)
-        {
-            if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
-            var parent = KernelLiveParent();
-            if (!parent) return;
-
-            foreach (var g in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
-            {
-                if (!NamesMatchGuest(g, id, name)) continue;
-                if (g.def == null) g.def = new GuestDef();
-                g.personId = id;
-                if (!string.IsNullOrEmpty(name)) g.def.name = name;
-                if (!string.IsNullOrEmpty(title)) g.def.title = title;
-                return;
-            }
-
-            var xz = new Vector2(pos.x, pos.z);
-            if (xz.sqrMagnitude < 2.25f || xz.magnitude > 90f)
-            {
-                var h = Mathf.Abs((id ?? name ?? "npc").GetHashCode());
-                var a = (h % 360) * Mathf.Deg2Rad;
-                var r = 14f + (h % 9);
-                pos = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
-            }
-
-            var holder = parent.Find("KernelNpcs");
-            if (!holder)
-            {
-                var goHolder = new GameObject("KernelNpcs");
-                goHolder.transform.SetParent(parent, false);
-                holder = goHolder.transform;
-            }
-
-            var look = Appearance.Random(Mathf.Abs((id ?? name).GetHashCode()));
-            look.displayName = string.IsNullOrEmpty(name) ? "Citizen" : name;
-            var job = JobFromActivity(activity);
-            var wander = job == NpcLife.Job.Wander;
-            var go = ModularPerson.SpawnNpc(holder, pos, 180f, look, wander, 10f);
-            go.name = string.IsNullOrEmpty(name) ? "KernelNpc" : name;
-            var guest = go.AddComponent<GuestNpc>();
-            guest.def = new GuestDef
-            {
-                id = id,
-                name = look.displayName,
-                title = string.IsNullOrEmpty(title) ? "kernel" : title,
-                line = AuthoredLine(id, name, title)
-            };
-            guest.personId = id;
-            var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
-            life.job = job;
-        }
-
-        public static void ClearKernelVehicles()
-        {
-            var parent = KernelLiveParent();
-            if (!parent) return;
-            var old = parent.Find("KernelVehicles");
-            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
-        }
-
-        public static void PlaceKernelVehicle(string id, string kind, Vector3 pos, float heading)
-        {
-            var parent = KernelLiveParent();
-            if (!parent) return;
-            var holder = parent.Find("KernelVehicles");
-            if (!holder)
-            {
-                var goHolder = new GameObject("KernelVehicles");
-                goHolder.transform.SetParent(parent, false);
-                holder = goHolder.transform;
-            }
-            var stem = string.IsNullOrEmpty(kind) || kind == "cart" ? "cart" : kind;
-            var go = FreePacks.Spawn(stem, holder, pos, heading * Mathf.Rad2Deg, 2.4f);
-            if (!go && HubKit.TryGet("cart", out var cart) && cart)
-            {
-                go = Object.Instantiate(cart, holder);
-                go.transform.position = pos;
-                go.transform.rotation = Quaternion.Euler(0f, heading * Mathf.Rad2Deg, 0f);
-            }
-            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelCart" : "KernelCart_" + id;
-        }
-
-        static string AuthoredLine(string id, string name, string title)
-        {
-            foreach (var g in Canon.HubGuests)
-            {
-                if (!string.IsNullOrEmpty(id) && g.id == id) return g.line;
-                if (!string.IsNullOrEmpty(name) && string.Equals(g.name, name, System.StringComparison.OrdinalIgnoreCase))
-                    return g.line;
-            }
-            var world = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : WorldId.Hub;
-            foreach (var p in WorldBook.People(world))
-            {
-                if (p == null) continue;
-                if (!string.IsNullOrEmpty(id) && p.id == id) return WorldBook.LineFor(p);
-                if (!string.IsNullOrEmpty(name) && string.Equals(p.name, name, System.StringComparison.OrdinalIgnoreCase))
-                    return WorldBook.LineFor(p);
-            }
-            if (!string.IsNullOrEmpty(title)) return title + ".";
-            return "They are on the kernel list. Not plaza dressing.";
-        }
-
-        static bool NamesMatchGuest(GuestNpc g, string id, string name)
-        {
-            if (!g) return false;
-            if (!string.IsNullOrEmpty(id) && (
-                string.Equals(g.personId, id, System.StringComparison.OrdinalIgnoreCase)
-                || (g.def != null && string.Equals(g.def.id, id, System.StringComparison.OrdinalIgnoreCase))))
-                return true;
-            if (string.IsNullOrEmpty(name) || g.def == null) return false;
-            return string.Equals(g.def.name, name, System.StringComparison.OrdinalIgnoreCase);
-        }
-
-        static NpcLife.Job JobFromActivity(string activity)
-        {
-            if (string.IsNullOrEmpty(activity)) return NpcLife.Job.Wander;
-            var a = activity.ToLowerInvariant();
-            if (a.IndexOf("watch") >= 0 || a.IndexOf("guard") >= 0 || a.IndexOf("patrol") >= 0)
-                return NpcLife.Job.Watch;
-            if (a.IndexOf("stall") >= 0 || a.IndexOf("shop") >= 0 || a.IndexOf("work") >= 0 || a.IndexOf("merchant") >= 0)
-                return NpcLife.Job.Stall;
-            if (a.IndexOf("sweep") >= 0 || a.IndexOf("clean") >= 0)
-                return NpcLife.Job.Sweep;
-            if (a.IndexOf("sit") >= 0 || a.IndexOf("tavern") >= 0 || a.IndexOf("eat") >= 0)
-                return NpcLife.Job.Sit;
-            return NpcLife.Job.Wander;
         }
     }
 }

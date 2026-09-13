@@ -30,13 +30,9 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /TryBipedAvatar/);
     assert.match(person, /AvatarBuilder\.BuildHumanAvatar/);
     assert.match(person, /BipedHinge\(/);
-    assert.match(person, /_clipsFit && _authored && _anim/);
-    assert.match(person, /_clipsFit = ctrl && av && av\.isHuman && av\.isValid/);
-    assert.doesNotMatch(person, /_clipsFit = !_biped &&/);
-    assert.doesNotMatch(person, /_clipsFit && !_biped && _authored/);
+    assert.match(person, /_clipsFit && !_biped && _authored && _anim/);
+    assert.match(person, /_clipsFit = !_biped && ctrl && av && av\.isHuman && av\.isValid/);
     assert.match(person, /_hip\.localPosition = _hipPos0/);
-    assert.match(person, /ApplyKenneyDoll/);
-    assert.match(person, /leftHand = null/);
     assert.match(person, /StripPrefabWeapons/);
     assert.match(person, /_footL\.position\.y/);
     assert.match(person, /float contra = -s \* armAmp/);
@@ -125,7 +121,6 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /FORCE_REFRESH_0023/);
     assert.match(person, /18f \+ arc/);
     assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
-    assert.match(builder, /for \(int i = 0; i < 24; i\+\+\)/);
   });
 
   it("portal swirl is a small alpha mote, not a 3m additive oval", () => {

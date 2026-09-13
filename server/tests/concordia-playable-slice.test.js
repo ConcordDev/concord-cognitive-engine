@@ -75,10 +75,11 @@ describe("Concordia Playable Slice — ticket lock", () => {
     assert.match(gate, /class CourtBird/);
     assert.match(gate, /CreatePrimitive\(PrimitiveType\.Sphere\)/);
     assert.match(gate, /CreatePrimitive\(PrimitiveType\.Cube\)/);
-    assert.match(builder, /Dove/);
-    assert.match(builder, /AddComponent<CourtBird>/);
-    assert.match(evo, /"wolf" or "hound" => "Fox"/);
-    assert.match(evo, /"griffin" => "Horse"/);
-    assert.match(evo, /CreatePrimitive\(KindPrim\(kind\)\)/);
+    assert.match(builder, /hub-flock-/);
+    assert.match(builder, /CreatureCompiler\.Compile/);
+    assert.match(evo, /CreatureCompiler\.FromCritter/);
+    assert.match(evo, /CreatureCompiler\.FromKind/);
+    assert.doesNotMatch(evo, /"wolf" or "hound" => "Fox"/);
+    assert.doesNotMatch(evo, /"griffin" => "Horse"/);
   });
 });

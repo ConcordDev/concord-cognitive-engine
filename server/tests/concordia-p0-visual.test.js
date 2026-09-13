@@ -93,7 +93,9 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.match(hud, /Prompt\(w, h\)/);
     assert.match(hud, /if \(DebugHud\)/);
     const onGui = hud.slice(hud.indexOf("void OnGUI()"), hud.indexOf("void Hints("));
-    assert.match(onGui, /if \(DebugHud\)[\s\S]*Vitals\(\)/);
-    assert.doesNotMatch(onGui, /Compass\(w\);\s*Vitals\(\)/);
+    assert.match(onGui, /Vitals\(\)/);
+    assert.match(onGui, /PartyStrip\(\)/);
+    assert.match(onGui, /if \(DebugHud\)/);
+    assert.match(onGui, /Compass\(w\)/);
   });
 });

@@ -30,7 +30,7 @@ namespace Concordia
                     rightHand
                         ? new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
                         : new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
-            if (!socket) return null;
+            if (!socket) socket = body.transform;
             var go = Object.Instantiate(mesh);
             go.name = stem;
             bool shield = stem.ToLowerInvariant().Contains("shield");
@@ -46,7 +46,6 @@ namespace Concordia
         public static void Grip(GameObject held, Transform hand, float size, bool right, bool shield)
         {
             if (!held || !hand) return;
-            if (!IsHand(hand)) return;
             foreach (var c in held.GetComponentsInChildren<Collider>())
                 Object.Destroy(c);
             held.transform.SetParent(null);
@@ -149,14 +148,6 @@ namespace Concordia
             return b;
         }
 
-        static bool IsHand(Transform hand)
-        {
-            if (!hand) return false;
-            if (hand == hand.root) return false;
-            var n = hand.name;
-            return n.IndexOf("Hand", System.StringComparison.OrdinalIgnoreCase) >= 0;
-        }
-
         static Transform Bone(Transform root, string[] names)
         {
             var all = root.GetComponentsInChildren<Transform>(true);
@@ -164,7 +155,7 @@ namespace Concordia
             foreach (var t in all)
                 if (string.Equals(t.name, n, System.StringComparison.OrdinalIgnoreCase))
                     return t;
-            return null;
+            return root;
         }
     }
 }

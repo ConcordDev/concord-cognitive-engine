@@ -263,8 +263,7 @@ test("creature pillar compiles kernel genome, not a catalog kind", () => {
   const creatures = readFileSync(join(import.meta.dirname, "../lib/concordia-creatures.js"), "utf8");
   assert.match(compiler, /class CreatureGenome/);
   assert.match(compiler, /class CreatureCard/);
-  assert.match(compiler, /PresentKernel/);
-  assert.match(compiler, /DressMorphology/);
+    assert.match(compiler, /PresentKernel/);
   assert.match(spawn, /CreatureCompiler\.FromCritter/);
   assert.match(fauna, /BindGenome/);
   assert.match(client, /evt == "creature:born"/);

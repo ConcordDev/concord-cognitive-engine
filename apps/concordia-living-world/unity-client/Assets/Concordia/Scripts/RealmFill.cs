@@ -796,6 +796,7 @@ namespace Concordia // keep-spawn-assign
 
     /// <summary>
     /// Kenney mini-dungeon tiles as a walkable hold. The plaque does not invent a place name.
+    /// No authored dungeon name is printed that the kernel did not send.
     /// Hostiles and a chest are real; the hold is dressing for an authored world's steel.
     /// </summary>
     public static class DungeonHold
