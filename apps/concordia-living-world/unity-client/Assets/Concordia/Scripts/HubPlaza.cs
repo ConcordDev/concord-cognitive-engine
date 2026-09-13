@@ -71,16 +71,18 @@ namespace Concordia
                 hold.position = p;
                 hold.rotation = yaw;
 
+                var portalCol = PortalColor(gate);
                 var arch = FreePacks.SpawnStore("stone_half_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
                            ?? FreePacks.SpawnStore("stone_half_gate.001", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
-                           ?? FreePacks.SpawnStore("wood_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 6.5f, required: true);
+                           ?? FreePacks.SpawnStore("wood_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 6.5f, required: false);
                 if (arch)
                 {
                     FreePacks.StripColliders(arch);
                     arch.transform.SetParent(hold, true);
                 }
+                else
+                    FallbackArch(hold, portalCol);
 
-                var portalCol = PortalColor(gate);
                 Swirl(hold, new Vector3(0f, 2.4f, 0.2f), portalCol);
 
                 var label = new GameObject("Name").AddComponent<TextMesh>();
@@ -120,6 +122,17 @@ namespace Concordia
                     FreePacks.DyeCloth(flag, Color.Lerp(portalCol, new Color(0.55f, 0.22f, 0.16f), 0.4f));
                 }
             }
+        }
+
+        static void FallbackArch(Transform hold, Color portalCol)
+        {
+            var bronze = HubLook.Lit(new Color(0.55f, 0.32f, 0.14f), 0.7f, 0.45f);
+            var gold = HubLook.Lit(Color.Lerp(portalCol, new Color(0.78f, 0.58f, 0.22f), 0.4f), 0.85f, 0.7f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.0f, 4.6f, 0f), new Vector3(1.1f, 9.2f, 1.4f), bronze, "PillarL");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.0f, 4.6f, 0f), new Vector3(1.1f, 9.2f, 1.4f), bronze, "PillarR");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 9.4f, 0f), new Vector3(7.4f, 1.3f, 1.6f), gold, "Lintel");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 4.2f, 0.1f),
+                new Vector3(5.6f, 7.4f, 0.12f), HubLook.Emit(portalCol, 2.4f), "PortalVeil", false);
         }
 
         static Color PortalColor(GateDef gate)

@@ -78,14 +78,31 @@ namespace Concordia
             var holder = new GameObject("Impostor_" + world).transform;
             holder.SetParent(continent, false);
             holder.position = Vector3.zero;
-            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            box.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
-            box.transform.SetParent(holder, false);
-            box.transform.localPosition = Vector3.up * 4f;
-            box.transform.localScale = new Vector3(18f, 8f, 18f);
             var mat = HubLook.Lit(w.ground * 0.55f, 0.08f, 0.2f);
-            var r = box.GetComponent<Renderer>();
-            if (r && mat) r.sharedMaterial = mat;
+            var mass = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mass.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            mass.transform.SetParent(holder, false);
+            mass.transform.localPosition = Vector3.up * 6f;
+            mass.transform.localScale = new Vector3(22f, 12f, 22f);
+            var mr = mass.GetComponent<Renderer>();
+            if (mr && mat) mr.sharedMaterial = mat;
+            var spire = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            spire.name = "Spire";
+            spire.transform.SetParent(holder, false);
+            spire.transform.localPosition = Vector3.up * 16f;
+            spire.transform.localScale = new Vector3(6f, 20f, 6f);
+            var sr = spire.GetComponent<Renderer>();
+            if (sr) sr.sharedMaterial = HubLook.Lit(w.sun * 0.55f, 0.12f, 0.28f);
+            var label = new GameObject("Name").AddComponent<TextMesh>();
+            label.transform.SetParent(holder, false);
+            label.transform.localPosition = new Vector3(0f, 28f, 0f);
+            label.text = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            label.fontSize = 48;
+            label.characterSize = 0.18f;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = Color.Lerp(w.sun, Color.white, 0.35f);
+            HubLook.DressTextMesh(label);
             return holder;
         }
 
@@ -148,7 +165,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => 0.0045f,
+                WorldId.Hub => ContinentStream.Live ? 0.0026f : 0.0045f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,

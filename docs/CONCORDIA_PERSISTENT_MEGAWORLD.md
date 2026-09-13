@@ -48,8 +48,8 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 
 | Law | Already real | Honest gap |
 |---|---|---|
-| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. | Unity `ConcordiaGame.Travel` **rebuilds the region** (`_world.Build(next)`). That is a door-load, not overland. Continuous terrain between civilizations is not presented. |
-| 2 Link vs walk | Gates + CrossRing. `WorldBook.Folder` maps Hub→`concordia-hub`, Frontier→`concord-link-frontier`, etc. | No overland path that keeps the same scene streaming. Fast travel is currently *all* travel. |
+| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. Unity `ContinentStream` keeps civilizations on one plane; `_world.Build` is the no-stream fallback only. | Kernel `CURRENT_TRAVEL_MODE` is still `region_rebuild`. Continuous heightmap continents are not presented — playable compression is 0.55 m/km. |
+| 2 Link vs walk | Gates + CrossRing. `WorldBook.Folder` maps Hub→`concordia-hub`, Frontier→`concord-link-frontier`, etc. Ring `WorldGate` trigger teleports; walking between gates SoftEnters. | Fast travel is the Link gate. Overland is the road. |
 | 3 Flower Law | Hub `steelLive = false`; every other `Canon` world `steelLive = true`. Sere law text: Flower-law is the Court only. | Law lives in Unity Canon + HUD copy. Server `flowerLawGoverns` is the kernel pin. |
 | 4 Persistent geography | `world_terrain_deformations` + `world_water_cells` (mig 281) are delta-over-seed. `procgen_regions` persist. | No single `world_seed` → continent → settlement-site pipeline that stamps identity. Two settlement systems: Living Society `settlements` (mig 287) vs `procgen_settlement_npcs` (region NPC packs). |
 | 5 Settlement entity | `settlements` cluster (mig 287) + identity (`status`, founders, abandoned_at — mig 446) + `region_id` (mig 447). `foundSettlement` / `abandonSettlement` keep the row. | Village→city ladder / split successor states still GAP. Food/water/security columns stay empty. |
@@ -60,7 +60,7 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 | 11 Presentation | Unity presents kernel tombs, gossip, banners, fauna genomes, LOD Real/Bulk/Virtual (`WorldClock.LodAt`). HUD shows WorldField physics language. Abandoned count from `kingdom:data`. | Growth still does not add houses the kernel does not have. |
 | 15 LOD | Unity `SimLod { Real, Bulk, Virtual }` at 28m / 70m. World shards + `PER_WORLD_WRITE_TABLES`. **W4:** `regionalSummary` keeps chronicle ids; food/wealth stay empty. | Distant Virtual NPCs rewind to home; L3 statistical food/wealth still empty. |
 | 16 Tests | Heartbeats exist; world continues in `WorldMemory` slices. Mechanism pin: abandoned rows survive a simulated 7-day timestamp. | 7-day / 1-year / 50-year **live** cold-start **not run**. 100-hour return **not run**. Do not claim them. |
-| 17 WorldField | Kernel `fieldAt(x,z)` + `localToMegaworld` (W3-thin in-region sample). Combat samples `applyGeographicDamage`. Unity `WorldField.cs` presents the same constants. Hub is a suppression well. | Continent streaming between civilizations is **not** shipped. `Travel` is still `region_rebuild`. `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). The field degrades; the discrete leftover still forbids. |
+| 17 WorldField | Kernel `fieldAt(x,z)` + `localToMegaworld` (W3-thin in-region sample). Combat samples `applyGeographicDamage`. Unity `WorldField.cs` presents the same constants. Hub is a suppression well. Streamed present metres map through `MegaworldMap.PresentToKm`. | `isAvailableIn` still **hard-forbids** magic in authored `magic_level: none` worlds (crime). The field degrades; the discrete leftover still forbids. |
 | 18 Geographic effectiveness | **W7 wired.** HTTP combat + Unity dummy/HP authority sample the field. Actor-kind-blind. HUD speaks physics (`explainGeographicEffectiveness` / `WorldField.HudLine`). | Boss retreat-to-home-field is the FaunaLife habitat retreat, not a named boss AI. |
 | 19 Organism | **W8:** fauna-spawner inserts stamp `species_id` and `recordOrganismBirth`. Death still tombstones. Catalog honesty (no invented Gloom Stalker prey). Unity FaunaLife reads habitat fitness. | Quota top-up still exists (now with organism ids). Morphology from genome×field is later — CreatureCompiler is the other client branch. |
 | 9 Growth / death | Vacancies on NPC death. Movements / uprisings. Realm health symptoms. | No Village→Town→City ladder, no split/successor states as settlement rows, no ghost-town status. |
@@ -89,7 +89,7 @@ native strength
 
 `explainGeographicEffectiveness` speaks in physics (“local magic is 0.12; you trained in fantasy”). It does not mint a combat-log debuff.
 
-Live combat samples `applyGeographicDamage` (W7). Discrete `cross-world-potency.js` remains the kill-switch fallback (`CONCORD_GEOGRAPHIC_FIELD=0`). In-region Unity metres map through `localToMegaworld` (W3-thin). Do not claim continent streaming — `Travel` still `_world.Build`.
+Live combat samples `applyGeographicDamage` (W7). Discrete `cross-world-potency.js` remains the kill-switch fallback (`CONCORD_GEOGRAPHIC_FIELD=0`). Unity present metres map through `MegaworldMap.PresentToKm` when `ContinentStream` is live. `_world.Build` is the no-stream fallback only.
 
 ---
 

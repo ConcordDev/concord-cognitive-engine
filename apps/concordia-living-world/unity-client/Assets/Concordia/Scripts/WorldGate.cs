@@ -6,10 +6,23 @@ namespace Concordia
     {
         public GateDef def;
         public string Prompt => "E  ·  " + def.name + "  —  " + def.refusal;
+        static float _travelLock;
 
         void Start()
         {
             GatePost.Ensure(this);
+        }
+
+        void OnTriggerEnter(Collider other)
+        {
+            if (def == null || Time.unscaledTime < _travelLock) return;
+            var player = other.GetComponent<ConcordiaPlayer>() ?? other.GetComponentInParent<ConcordiaPlayer>();
+            if (!player) return;
+            if (player.world == def.world) return;
+            var game = ConcordiaGame.Live;
+            if (!game) return;
+            _travelLock = Time.unscaledTime + 0.8f;
+            game.Travel(def.world);
         }
     }
 
@@ -316,38 +329,6 @@ namespace Concordia
             if (rend) rend.enabled = show;
             if (!show) return;
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
-        }
-    }
-
-    public static class WorldPresence
-    {
-        public static GuestNpc FindGuest(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return null;
-            foreach (var n in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
-            {
-                if (!n) continue;
-                if (n.personId == id) return n;
-                if (n.def != null && n.def.id == id) return n;
-            }
-            return null;
-        }
-
-        public static WorldGate GateToward(string kernelWorld)
-        {
-            if (string.IsNullOrEmpty(kernelWorld)) return null;
-            foreach (var g in Object.FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
-            {
-                if (!g || g.def == null) continue;
-                if (WorldBook.Folder(g.def.world) == kernelWorld) return g;
-            }
-            return null;
-        }
-
-        public static bool InPresenter(float x, float z)
-        {
-            var mag = new Vector2(x, z).magnitude;
-            return mag > 0.4f && mag <= Canon.RingRadius + 16f;
         }
     }
 

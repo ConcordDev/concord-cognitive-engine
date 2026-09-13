@@ -133,14 +133,16 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(book, /Concord admits he loves her/);
   });
 
-  it("Travel is labeled region_rebuild until the megaworld streams continuously", () => {
+  it("Travel streams continuously; region_rebuild is the no-stream fallback", () => {
     const game = src("ConcordiaGame.cs");
-    assert.match(game, /MEGAWORLD: current mode is region_rebuild/);
+    assert.match(game, /live path is ContinentStream/);
     assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
     assert.match(game, /_world\.Build\(next\)/);
+    assert.match(game, /ContinentStream\.Live\.Teleport/);
     const field = src("WorldField.cs");
     assert.match(field, /SceneMetresToKm = 0\.4f/);
-    assert.match(field, /Travel is still region_rebuild/);
+    assert.match(field, /MegaworldMap\.PresentToKm/);
+    assert.match(field, /ContinentStream\.Live/);
     assert.doesNotMatch(field, /-42% Magic Damage/);
   });
 

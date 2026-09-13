@@ -15,6 +15,7 @@ namespace Concordia
 {
     public class ConcordiaGame : MonoBehaviour
     {
+        public static ConcordiaGame Live { get; private set; }
         public GameObject soldierPrefab;
         public WorldId world = WorldId.Hub;
         ConcordiaPlayer _player;
@@ -32,6 +33,7 @@ namespace Concordia
 
         async void Start()
         {
+            Live = this;
             HubObjectives.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
@@ -445,9 +447,9 @@ namespace Concordia
         }
 
         /// <summary>
-        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
-        /// topology is one continuous universe with overlapping WorldFields;
-        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// MEGAWORLD: live path is ContinentStream (one plane). Link gates
+        /// teleport; walking SoftEnters. _world.Build is the no-stream fallback.
+        /// Flower Law is the Unburned Court only.
         /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
         /// </summary>
         public void Travel(WorldId next)
@@ -560,6 +562,7 @@ namespace Concordia
 
         void OnDestroy()
         {
+            if (Live == this) Live = null;
             WorldClock.Leave();
             var kernel = ConcordClient.Live;
             if (kernel != null) kernel.OnEvent -= HandleKernelEvent;

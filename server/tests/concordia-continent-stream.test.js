@@ -22,14 +22,15 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(map, /Canon\.Gates/);
   });
 
-  it("ContinentStream is the live Travel path — no region_rebuild", () => {
+  it("ContinentStream is the live Travel path — Build is fallback only", () => {
     const stream = src("ContinentStream.cs");
     const game = src("ConcordiaGame.cs");
     const builder = src("WorldBuilder.cs");
     assert.match(stream, /TravelMode = "continent_stream"/);
-    assert.match(stream, /StreamInM = 95f/);
-    assert.match(stream, /StreamOutM = 145f/);
-    assert.match(stream, /L3NearM = 40f/);
+    assert.match(stream, /StreamInM = 175f/);
+    assert.match(stream, /StreamOutM = 360f/);
+    assert.match(stream, /HubKeepM = 125f/);
+    assert.match(stream, /L3NearM = 55f/);
     assert.match(stream, /static int LodOf\(/);
     assert.match(stream, /EnsureImpostor\(/);
     assert.match(builder, /BuildImpostor\(/);
@@ -38,9 +39,10 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /void Tick\(/);
     assert.match(builder, /BuildChunk\(/);
     assert.match(builder, /ContinentStream\.Bind/);
-    assert.match(game, /ContinentStream\.Live\?\.Teleport/);
+    assert.match(game, /ContinentStream\.Live\.Teleport/);
     assert.match(game, /ContinentStream\.Live\?\.Tick/);
-    assert.doesNotMatch(game, /_world\.Build\(next\)/);
+    assert.match(game, /_world\.Build\(next\)/);
+    assert.match(game, /no-stream fallback/);
   });
 
   it("CreatureCompiler is honest — no Fox-for-wolf, no primitive CourtBird Hub flock", () => {
@@ -58,7 +60,7 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(evo, /CreatureCompiler\.FromCritter/);
     assert.doesNotMatch(evo, /"wolf" or "hound" => "Fox"/);
     assert.doesNotMatch(evo, /CreatePrimitive\(KindPrim/);
-    assert.match(builder, /DressVocab\.Bird\(\)/);
+    assert.match(builder, /FreePacks\.Bird\(\)/);
     assert.match(builder, /CreatureCompiler\.FromKind/);
     assert.match(builder, /FlockOrbit/);
     assert.doesNotMatch(builder, /Dove" \+/);
@@ -73,6 +75,50 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /if \(dist > StreamInM\) return 1/);
     assert.match(stream, /if \(dist > L3NearM\) return 2/);
     assert.match(stream, /return 3/);
+  });
+
+  it("StreamOut clears the civilization ring so Hub sees impostors", () => {
+    const stream = src("ContinentStream.cs");
+    const map = src("MegaworldMap.cs");
+    const inM = Number(stream.match(/StreamInM = ([0-9.]+)f/)[1]);
+    const outM = Number(stream.match(/StreamOutM = ([0-9.]+)f/)[1]);
+    const km = Number(map.match(/CivilizationRadiusKm = ([0-9.]+)f/)[1]);
+    const mPerKm = Number(map.match(/PresentMetersPerKm = ([0-9.]+)f/)[1]);
+    const ring = km * mPerKm;
+    const sere = ring * 1.35;
+    assert.ok(outM > sere, `StreamOutM ${outM} must clear Sere at ${sere}`);
+    assert.ok(inM < ring, `StreamInM ${inM} must not load every civ from Hub at ${ring}`);
+    assert.ok(inM > 150, `StreamInM ${inM} must load a chunk before the player is on top of it`);
+  });
+
+  it("SoftEnter writes player.world; walk-out uses Toward not Nearest", () => {
+    const stream = src("ContinentStream.cs");
+    const map = src("MegaworldMap.cs");
+    const canon = src("Canon.cs");
+    const gate = src("WorldGate.cs");
+    const plaza = src("HubPlaza.cs");
+    const presence = src("WorldPresence.cs");
+    const worldGate = src("WorldGate.cs");
+    assert.match(stream, /player\.world = id/);
+    assert.match(stream, /SoftEnter\(MegaworldMap\.Toward/);
+    assert.match(stream, /Canon\.InHubCourt/);
+    assert.match(stream, /MakeWilderness\(/);
+    assert.match(src("WorldBuilder.cs"), /ContinentStream\.Live \? 0\.0026f : 0\.0045f/);
+    assert.match(stream, /ContinentWilderness/);
+    assert.match(map, /static WorldId Toward\(/);
+    assert.match(canon, /HubLawRadius = 42f/);
+    assert.match(canon, /static bool InHubCourt\(/);
+    assert.match(canon, /return !InHubCourt\(p\)/);
+    assert.match(gate, /OnTriggerEnter/);
+    assert.match(gate, /game\.Travel\(def\.world\)/);
+    assert.match(plaza, /FallbackArch\(/);
+    assert.match(plaza, /AddComponent<WorldGate>\(\)\.def = gate/);
+    assert.match(presence, /FindGuest\(/);
+    assert.match(presence, /GateToward\(/);
+    assert.match(presence, /ContinentStream\.Live/);
+    assert.doesNotMatch(worldGate, /public static class WorldPresence/);
+    assert.equal((worldGate.match(/class WorldPresence/g) || []).length, 0);
+    assert.equal((presence.match(/class WorldPresence/g) || []).length, 1);
   });
 
   it("bible status matches the live path", () => {

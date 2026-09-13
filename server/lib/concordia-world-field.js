@@ -419,8 +419,8 @@ export function explainGeographicEffectiveness(opts = {}) {
 
 /**
  * Discrete WorldId fallback: sample the civilization center.
- * Used when the caller has no local (x,z). Not a claim that Unity walks
- * the supercontinent — Travel is still region_rebuild.
+ * Used when the caller has no local (x,z). Unity ContinentStream walks
+ * present metres; this helper still samples the civilization center.
  */
 export function geographicEffectivenessAtWorld(opts = {}) {
   const key = fieldKeyForWorld(opts.worldId);
