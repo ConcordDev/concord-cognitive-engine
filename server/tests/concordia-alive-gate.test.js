@@ -78,6 +78,11 @@ describe("Concordia alive gate — file-by-file", () => {
     assert.match(book, /postExposure\.Override/);
     assert.match(book, /Mathf\.Lerp\(-12f, 52f, day\)/);
     assert.match(book, /fill\.name != "Fill"/);
+    assert.match(book, /DimGodRays\(/);
+    assert.match(book, /GameObject\.Find\("GodRays"\)/);
+    assert.match(book, /rs\[i\]\.enabled = sunUp/);
+    assert.match(book, /fogColor = Color\.Lerp/);
+    assert.match(src("HubPlaza.cs"), /GodRays\(root\)/);
     assert.match(aaa, /DebugDump/);
     assert.match(hud, /KeyCode\.F1/);
     assert.match(hud, /concordia-p0-no-debug/);
@@ -112,7 +117,11 @@ describe("Concordia alive gate — file-by-file", () => {
     assert.match(boot, /concordia-request-stop/);
     assert.match(web, /Application\.isBatchMode/);
     assert.match(web, /Export WebGL \(in Editor\)/);
+    assert.match(web, /public static bool Busy/);
+    assert.match(boot, /ConcordiaWebExport\.Busy/);
     assert.match(shot, /concordia-play-night/);
     assert.match(shot, /WorldClock\.Hour = 1\.92f/);
+    assert.match(shot, /WaitForSecondsRealtime/);
+    assert.doesNotMatch(shot, /new WaitForSeconds\(/);
   });
 });

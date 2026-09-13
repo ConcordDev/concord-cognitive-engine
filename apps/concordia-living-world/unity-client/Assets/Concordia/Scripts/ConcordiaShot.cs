@@ -12,9 +12,13 @@ namespace Concordia
     {
         public static IEnumerator Grab()
         {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPaused = false;
+#endif
+            Time.timeScale = 1f;
             for (int i = 0; i < 50; i++) yield return null;
             if (CharacterCreator.IsOpen) CharacterCreator.SkipNow();
-            yield return new WaitForSeconds(0.35f);
+            yield return new WaitForSecondsRealtime(0.35f);
             ForceGameView();
             DumpBind();
 
@@ -105,7 +109,7 @@ namespace Concordia
             try { File.Delete("/tmp/concordia-request-tour"); } catch { }
             for (int i = 0; i < 20; i++) yield return null;
             if (CharacterCreator.IsOpen) CharacterCreator.SkipNow();
-            yield return new WaitForSeconds(0.4f);
+            yield return new WaitForSecondsRealtime(0.4f);
             ForceGameView();
             var dump = new StringBuilder();
             dump.AppendLine(System.DateTime.Now.ToString("o"));
@@ -113,7 +117,7 @@ namespace Concordia
             {
                 if (!game) yield break;
                 game.Travel(id);
-                yield return new WaitForSeconds(0.85f);
+                yield return new WaitForSecondsRealtime(0.85f);
                 var cities = CityAtlas.For(id);
                 dump.AppendLine(id + " " + Canon.Get(id).title + " cities=" + cities.Length);
                 foreach (var c in cities)
@@ -132,7 +136,7 @@ namespace Concordia
                 if (cities.Length > 0)
                 {
                     game.EnterCity(cities[0]);
-                    yield return new WaitForSeconds(0.35f);
+                    yield return new WaitForSecondsRealtime(0.35f);
                     if (cam)
                     {
                         var p = new Vector3(cities[0].x, 0f, cities[0].z);

@@ -39,6 +39,7 @@ namespace Concordia.Editor
         {
             const string flag = "/tmp/concordia-request-webgl-export";
             if (!System.IO.File.Exists(flag)) return;
+            if (ConcordiaWebExport.Busy) return;
             if (EditorApplication.isCompiling || EditorApplication.isPlaying) return;
             try { System.IO.File.Delete(flag); } catch { return; }
             ConcordiaWebExport.ExportInEditor();

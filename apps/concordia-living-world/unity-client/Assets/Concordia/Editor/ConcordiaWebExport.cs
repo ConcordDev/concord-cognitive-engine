@@ -12,6 +12,8 @@ namespace Concordia.Editor
     /// </summary>
     public static class ConcordiaWebExport
     {
+        public static bool Busy;
+
         public static void Export()
         {
             ConcordiaUrpEnsure.Ensure();
@@ -57,12 +59,19 @@ namespace Concordia.Editor
         [MenuItem("Concordia/Export WebGL (in Editor)")]
         public static void ExportInEditor()
         {
+            if (Busy)
+            {
+                Debug.LogWarning("[Concordia] WebGL export already running.");
+                return;
+            }
             if (EditorApplication.isPlaying)
             {
                 Debug.LogWarning("[Concordia] Stop Play before WebGL export.");
                 return;
             }
-            Export();
+            Busy = true;
+            try { Export(); }
+            finally { Busy = false; }
         }
     }
 }

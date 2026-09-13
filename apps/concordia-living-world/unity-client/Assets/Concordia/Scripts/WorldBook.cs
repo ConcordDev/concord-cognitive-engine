@@ -795,7 +795,38 @@ namespace Concordia
                 float dayPost = World == WorldId.Hub ? 0.12f : 0.08f;
                 color.postExposure.Override(Mathf.Lerp(-0.55f, dayPost, day));
             }
+            if (World == WorldId.Hub)
+            {
+                RenderSettings.fogColor = Color.Lerp(new Color(0.06f, 0.05f, 0.08f), new Color(0.62f, 0.68f, 0.74f), day);
+                if (RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight)
+                {
+                    RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.08f, 0.09f, 0.14f), new Color(0.58f, 0.64f, 0.74f), day);
+                    RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.10f, 0.08f, 0.06f), new Color(0.48f, 0.42f, 0.36f), day);
+                    RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.04f, 0.03f, 0.03f), new Color(0.22f, 0.18f, 0.14f), day);
+                }
+            }
+            DimGodRays(day);
             DynamicGI.UpdateEnvironment();
+        }
+
+        /// <summary>
+        /// HubPlaza shafts are additive sun beams. At night they read as day
+        /// even when the cubemap is dim — disable them; do not fade additive alpha.
+        /// </summary>
+        static void DimGodRays(float day)
+        {
+            var hold = GameObject.Find("GodRays");
+            if (!hold) return;
+            bool sunUp = day >= 0.32f;
+            var rs = hold.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < rs.Length; i++)
+                if (rs[i]) rs[i].enabled = sunUp;
+            var dust = hold.GetComponentInChildren<ParticleSystem>();
+            if (dust)
+            {
+                var em = dust.emission;
+                em.rateOverTime = sunUp ? 3f : 0f;
+            }
         }
 
         static float WeatherDim()
