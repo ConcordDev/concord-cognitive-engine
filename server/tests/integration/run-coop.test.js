@@ -16,6 +16,9 @@ import { up as up258 } from "../../migrations/258_extraction_runs.js";
 import { up as up270 } from "../../migrations/270_run_coop.js";
 import { addRunParticipant, runParticipants, findActivePartyRun } from "../../lib/run-coop.js";
 import { startRun } from "../../lib/extraction.js";
+import { startHorde } from "../../lib/horde-mode.js";
+import { up as up246 } from "../../migrations/246_horde_mode.js";
+import { up as up267 } from "../../migrations/267_run_draft.js";
 
 function freshDb() {
   const db = new Database(":memory:");
@@ -57,6 +60,19 @@ describe("C4 — party shares one extraction run", () => {
     const a = startRun(db, "solo-a", { worldId: "w1" });
     const b = startRun(db, "solo-b", { worldId: "w1" });
     assert.notEqual(a.runId, b.runId);
+    db.close();
+  });
+});
+
+describe("C4 — party shares one horde run", () => {
+  it("a party-mate joins the leader's horde, not a new one", () => {
+    const db = new Database(":memory:");
+    up246(db); up267(db); up270(db);
+    const leader = startHorde(db, "leader", { worldId: "w1", partyId: "party-1" });
+    const mate = startHorde(db, "mate", { worldId: "w1", partyId: "party-1" });
+    assert.equal(mate.joined, true);
+    assert.equal(mate.runId, leader.runId);
+    assert.deepEqual(runParticipants(db, "horde", leader.runId).sort(), ["leader", "mate"]);
     db.close();
   });
 });

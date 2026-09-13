@@ -16,6 +16,7 @@
 
 import logger from "../logger.js";
 import { LruMap, LruSet } from "./lru-map.js";
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 const WEATHER_TYPES = Object.freeze(["clear", "overcast", "rain", "storm", "snow", "fog", "wind"]);
 
@@ -82,11 +83,15 @@ export function advanceWeather(REALTIME = null) {
     // Broadcast a per-world weather event so subscribers in that world re-tune.
     if (REALTIME?.io) {
       try {
-        REALTIME.io.emit("world:weather", {
+        const payload = {
           worldId,
           ...state,
           ts: new Date(now).toISOString(),
-        });
+        };
+        REALTIME.io.emit("world:weather", payload);
+        // socket.io stays global (Three.js listens without a world room).
+        // Gateways join `world:<id>` on connect — mirror world-scoped.
+        mirrorToGateways("world:weather", payload, { worldId });
       } catch { /* socket best-effort */ }
     }
   }

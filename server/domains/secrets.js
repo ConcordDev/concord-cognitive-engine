@@ -13,6 +13,7 @@ import {
   rollSurveillance,
   listDiscoveredForUser,
   listWorldCatalog,
+  fanSecretWeaponised,
 } from "../lib/secrets.js";
 import { generateHookFromSecretDiscovery, getHooksHeldBy } from "../lib/hooks.js";
 
@@ -89,14 +90,11 @@ export default function registerSecretsMacros(register) {
     if (!userId || !input.secretId) return { ok: false, reason: "missing_inputs" };
     const r = weaponiseSecret(db, userId, input.secretId, input.againstNpcId);
     if (r?.ok) {
-      try {
-        const io = ctx?.app?.locals?.io || ctx?.io;
-        io?.emit?.("secret:weaponised", {
-          userId, secretId: input.secretId,
-          holder: r.holder, subject_kind: r.subject_kind, subject_id: r.subject_id,
-          kind: r.kind, ts: Math.floor(Date.now() / 1000),
-        });
-      } catch { /* socket optional */ }
+      fanSecretWeaponised({
+        userId, secretId: input.secretId,
+        holder: r.holder, subject_kind: r.subject_kind, subject_id: r.subject_id,
+        kind: r.kind, ts: Math.floor(Date.now() / 1000),
+      }, { io: ctx?.app?.locals?.io || ctx?.io, worldId: input.worldId || null });
     }
     return r;
   }, { note: "weaponise a discovered secret" });

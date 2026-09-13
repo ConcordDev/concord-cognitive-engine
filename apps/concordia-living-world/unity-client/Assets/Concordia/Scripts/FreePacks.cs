@@ -778,16 +778,18 @@ namespace Concordia
         }
 
         public static string Column(WorldId id) =>
-            FirstStem(new[] { "stone_column" }, "column");
+            FirstStem(new[] { "wood_column.001", "Column_01_Top", "stone_column" }, "column");
 
         public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
         public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
         public static string Table() => FirstStem(new[] { "table" }, "table");
         public static string Chair() => FirstStem(new[] { "chair" }, "chair");
         public static string Chest() => FirstStem(new[] { "chest" }, "chest");
+        public static string Well() => FirstStem(new[] { "well" }, "well");
+        public static string Torch() => FirstStem(new[] { "torch" }, "torch");
         public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
         public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
-        public static string Rock() => FirstStem(new[] { "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+        public static string Rock() => FirstStem(new[] { "Rock1B", "Rock2", "Rock1A", "UNS_Standard_Rock_01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
         /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace
@@ -870,7 +872,12 @@ namespace Concordia
                 }
                 : kind == "fireflies"
                     ? new[] { "Assets/VFX/VFX_Fireflies.prefab" }
-                    : new[] { "Assets/VFX/VFX_Snow.prefab" };
+                    : new[]
+                    {
+                        "Assets/VFX/VFX_Snow.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/DustStorm.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/SmokeEffect.prefab"
+                    };
             foreach (var p in paths)
                 if (FreePacks.Load<GameObject>(p) != null) return p;
             return paths[paths.Length - 1];
@@ -880,7 +887,7 @@ namespace Concordia
         {
             var stem = kind == "rain" ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
                 : kind == "fireflies" ? FirstStem(new[] { "FireFlies" }, "")
-                : FirstStem(new[] { "SnowEffect" }, "");
+                : FirstStem(new[] { "SnowEffect", "DustStorm", "SmokeEffect" }, "");
             if (!string.IsNullOrEmpty(stem) && FreePacks.HasStem(stem))
             {
                 FreePacks.Spawn(stem, root, pos, 0, 0);
@@ -893,10 +900,22 @@ namespace Concordia
         {
             var c = Culture(id);
             if (c == "court") return "unpaved Court — no house ring";
-            if (c == "grove" && id == WorldId.Frontier) return "no palm pack — Kenney palm fallback; embassy is road only";
-            if (c == "grove") return "no wheat/hedge pack — Kenney crops/hedge fallback";
+            if (c == "grove" && id == WorldId.Frontier)
+            {
+                var palm = FirstStem(new[] { "Palm" }, "palm-straight");
+                return palm != "palm-straight" ? "SUIMONO palms" : "no palm pack — Kenney palm fallback; embassy is road only";
+            }
+            if (c == "grove")
+            {
+                var wheat = FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB");
+                return wheat != "crops_wheatStageB" ? "store crops" : "no wheat/hedge pack — Kenney crops/hedge fallback";
+            }
             if (c == "ash") return "no crypt/gravestone pack — Kenney fallback";
-            if (c == "street") return "no dumpster pack — Kenney dumpster fallback";
+            if (c == "street")
+            {
+                var dump = FirstStem(new[] { "Dumpster" }, "dumpster");
+                return dump != "dumpster" ? "industrial dumpsters" : "no dumpster pack — Kenney dumpster fallback";
+            }
             if (c == "grid") return "no sci-fi lab / Kyle — modular rooms then Kenney skyline";
             return "no crystal pack — Kenney crystal fallback";
         }
@@ -931,7 +950,7 @@ namespace Concordia
         /// Hero city (index 0) keeps four playable rooms. Cities 1–3 get fake windows.
         /// The rest stay facade-only so Tunya's 17 towns do not hitch.
         /// </summary>
-        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : 0;
+        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : cityIndex <= 2 ? 2 : 0;
         public static bool WantsFakeWindows(int cityIndex) => cityIndex >= 1 && cityIndex <= 3;
 
         public static string Audit()
@@ -959,7 +978,8 @@ namespace Concordia
             sb.AppendLine("Tree(Tunya)=" + Tree(WorldId.Tunya));
             sb.AppendLine("Weapon(sword)=" + Weapon("sword") + " Weapon(greatsword)=" + Weapon("greatsword") + " Weapon(spear)=" + Weapon("spear"));
             sb.AppendLine("Dummy=" + Dummy());
-            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " other=" + PlayableRooms(1));
+            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " city1=" + PlayableRooms(1) + " city3=" + PlayableRooms(3));
+            sb.AppendLine("unique authored .glb per world: none in tree — Culture+Kit is the honest unique presentation");
             sb.AppendLine("FakeWindows cities 1-3=" + WantsFakeWindows(2) + " city4=" + WantsFakeWindows(4));
             sb.AppendLine("WORLD NEED vs HAVE");
             foreach (var id in new[]
@@ -1008,9 +1028,9 @@ namespace Concordia
             new PackHint { id = "4387", role = "water (SUIMONO) — imported, not the live water path", needles = new[] { "SUIMONO" } },
             new PackHint { id = "14360", role = "weapon meshes", needles = new[] { "MYFG-Weapon" } },
             new PackHint { id = "267961", role = "controller reference — do not replace Concordia", needles = new[] { "Starter Assets" } },
-            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "Big Oak", "Objective Environment" } },
+            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "ALP_Assets", "Big Oak" } },
             new PackHint { id = "269772", role = "demo city (re-download if truncated; do not vendor)", needles = new[] { "Demo City", "Versatile Studio" } },
-            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Sound Effects" } }
+            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Free Pack", "Sound Effects" } }
         };
 
         public static bool FolderPresent(string[] needles)

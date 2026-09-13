@@ -10,6 +10,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 export const SEASONS = Object.freeze([
   { idx: 0, name: "spring",   tempBias: -2,  humidityBias: +5,  lightBias: 0,    narrative: "Spring breaks the lockstep of winter; herbs come back to the grove." },
@@ -105,16 +106,18 @@ export function advanceSeasonForWorld(db, worldId, opts = {}) {
 
   // Realtime: emit world:season-transition. Best-effort.
   try {
+    const seasonPayload = {
+      worldId,
+      seasonIdx: expected.idx,
+      seasonName: expected.name,
+      year: expectedYear,
+      narrative: expected.narrative,
+      ts: Date.now(),
+    };
     if (globalThis?.__CONCORD_REALTIME__?.io) {
-      globalThis.__CONCORD_REALTIME__.io.to(`world:${worldId}`).emit("world:season-transition", {
-        worldId,
-        seasonIdx: expected.idx,
-        seasonName: expected.name,
-        year: expectedYear,
-        narrative: expected.narrative,
-        ts: Date.now(),
-      });
+      globalThis.__CONCORD_REALTIME__.io.to(`world:${worldId}`).emit("world:season-transition", seasonPayload);
     }
+    mirrorToGateways("world:season-transition", seasonPayload, { worldId });
   } catch { /* socket optional */ }
 
   return { ok: true, transitioned: true, season: expected.name, year: expectedYear, narrative: expected.narrative };

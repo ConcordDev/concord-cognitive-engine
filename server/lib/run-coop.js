@@ -19,6 +19,29 @@ export function addRunParticipant(db, runKind, runId, userId) {
   return { ok: true };
 }
 
+/**
+ * Active run the user owns OR joined via run_participants. Owner row wins.
+ * `runTable` is extraction_runs / horde_runs. Returns the row or null.
+ */
+export function findActiveRunForUser(db, runTable, runKind, userId) {
+  if (!db || !userId || !runTable || !tableExists(db, runTable)) return null;
+  try {
+    const owned = db.prepare(
+      `SELECT * FROM ${runTable} WHERE user_id = ? AND ended_at IS NULL`
+    ).get(userId);
+    if (owned) return owned;
+    if (!tableExists(db, "run_participants")) return null;
+    return db.prepare(`
+      SELECT r.* FROM ${runTable} r
+      JOIN run_participants p ON p.run_id = r.id AND p.run_kind = ?
+      WHERE p.user_id = ? AND r.ended_at IS NULL
+      ORDER BY r.rowid DESC LIMIT 1
+    `).get(runKind, userId) || null;
+  } catch {
+    return null;
+  }
+}
+
 /** The user ids sharing a run. */
 export function runParticipants(db, runKind, runId) {
   if (!db || !tableExists(db, "run_participants")) return [];
