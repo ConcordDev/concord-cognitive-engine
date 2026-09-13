@@ -6,10 +6,31 @@ namespace Concordia
     {
         public GateDef def;
         public string Prompt => "E  ·  " + def.name + "  —  " + def.refusal;
+        Light _wind;
+        ParticleSystem _swirl;
 
         void Start()
         {
             GatePost.Ensure(this);
+            var swirlT = transform.Find("Swirl");
+            if (swirlT) _swirl = swirlT.GetComponent<ParticleSystem>();
+            var tint = def != null ? def.color : new Color(1f, 0.86f, 0.62f);
+            _wind = HubLook.Point(transform, "GateWind", transform.position + Vector3.up * 3.4f, tint, 0.12f, 10f, false);
+        }
+
+        void LateUpdate()
+        {
+            bool on = ConcordiaHUD.Bearing == this;
+            if (_swirl)
+            {
+                var em = _swirl.emission;
+                em.rateOverTime = on ? 28f : 7f;
+            }
+            if (_wind)
+            {
+                _wind.intensity = on ? 2.4f : 0.12f;
+                _wind.range = on ? 18f : 8f;
+            }
         }
     }
 
@@ -316,38 +337,6 @@ namespace Concordia
             if (rend) rend.enabled = show;
             if (!show) return;
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
-        }
-    }
-
-    public static class WorldPresence
-    {
-        public static GuestNpc FindGuest(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return null;
-            foreach (var n in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
-            {
-                if (!n) continue;
-                if (n.personId == id) return n;
-                if (n.def != null && n.def.id == id) return n;
-            }
-            return null;
-        }
-
-        public static WorldGate GateToward(string kernelWorld)
-        {
-            if (string.IsNullOrEmpty(kernelWorld)) return null;
-            foreach (var g in Object.FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
-            {
-                if (!g || g.def == null) continue;
-                if (WorldBook.Folder(g.def.world) == kernelWorld) return g;
-            }
-            return null;
-        }
-
-        public static bool InPresenter(float x, float z)
-        {
-            var mag = new Vector2(x, z).magnitude;
-            return mag > 0.4f && mag <= Canon.RingRadius + 16f;
         }
     }
 
