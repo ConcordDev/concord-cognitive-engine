@@ -45,10 +45,13 @@ namespace Concordia
 
             av.Bind(body.transform);
             av.sword = MakeSword();
-            var socket = av.rightHand != null ? av.rightHand : root.transform;
-            av.sword.transform.SetParent(socket, false);
-            av.sword.transform.localPosition = new Vector3(0.02f, 0.04f, 0.08f);
-            av.sword.transform.localRotation = Quaternion.Euler(70, 0, 12);
+            if (av.rightHand && av.rightHand != av.transform && av.rightHand != root.transform)
+                CharacterGear.Grip(av.sword, av.rightHand, 1.05f, true, false);
+            else
+            {
+                Object.Destroy(av.sword);
+                av.sword = null;
+            }
             CharacterGear.Attach(body, "shield-round", false, 0.55f);
             return av;
         }

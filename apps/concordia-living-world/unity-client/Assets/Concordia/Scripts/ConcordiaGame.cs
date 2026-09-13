@@ -91,12 +91,10 @@ namespace Concordia
             if (soldierPrefab)
             {
                 _player.avatar = MixamoAvatar.Attach(pgo.transform, soldierPrefab);
-                WorldAaa.MixamoLine = "mixamo soldier";
+                WorldAaa.MixamoLine = "mixamo soldier (Soldier.glb)";
             }
             else
-                WorldAaa.MixamoLine = HubKit.TryGet("character-skeleton", out _)
-                    ? "modular person — Soldier.glb not in git (skeleton is HubKit dressing, not the hero)"
-                    : "modular person — Soldier.glb not in git";
+                WorldAaa.MixamoLine = "rocketbox adult · SoldierLocomotion clips · Soldier.glb in git";
             _world.Build(world);
             WorldClock.Enter(world);
             Grounding.Snap(cc);

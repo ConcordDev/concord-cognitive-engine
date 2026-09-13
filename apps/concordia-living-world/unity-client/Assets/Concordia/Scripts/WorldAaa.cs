@@ -11,7 +11,7 @@ namespace Concordia
         public static string QuestLine = "";
         public static string WarrantLine = "";
         public static string InspectLine = "";
-        public static string MixamoLine = "modular person (Soldier.glb not in git)";
+        public static string MixamoLine = "modular person (Soldier.glb in git, clips from SoldierLocomotion)";
         public static string RefusalLine = "";
         public static int VehicleCount;
         public static int ConsequenceCount;

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Concordia
 {
@@ -488,6 +490,8 @@ namespace Concordia
             WorldMemory.Write(World, Snapshot());
         }
 
+        public static void RefreshSky() => ApplySky();
+
         public static WorldSliceRec Snapshot()
         {
             return new WorldSliceRec
@@ -753,6 +757,45 @@ namespace Concordia
                 if (day < 0.32f)
                     continent.intensity *= Mathf.Lerp(0.08f, 1f, day / 0.32f);
             }
+            for (int i = 0; i < suns.Length; i++)
+            {
+                var fill = suns[i];
+                if (!fill || fill.name != "Fill" || fill.type != LightType.Directional) continue;
+                fill.intensity = (sun ? sun.intensity : 0.92f + 0.38f * day) * 0.16f;
+            }
+            if (sun)
+            {
+                float yaw = sun.transform.eulerAngles.y;
+                float pitch = Mathf.Lerp(-12f, 52f, day);
+                sun.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+                for (int i = 0; i < suns.Length; i++)
+                {
+                    var fill = suns[i];
+                    if (!fill || fill.name != "Fill") continue;
+                    fill.transform.rotation = Quaternion.Euler(pitch + 12f, yaw + 180f, 0f);
+                }
+            }
+            if (continent)
+            {
+                float yaw = continent.transform.eulerAngles.y;
+                continent.transform.rotation = Quaternion.Euler(Mathf.Lerp(-12f, 42f, day), yaw, 0f);
+            }
+            var sky = RenderSettings.skybox;
+            if (sky && sky.HasProperty("_Exposure"))
+            {
+                float noon = World == WorldId.Hub ? 0.78f : 0.62f;
+                if (sky.shader && sky.shader.name.IndexOf("Procedural", StringComparison.OrdinalIgnoreCase) >= 0)
+                    noon = World == WorldId.Hub ? 1.15f : 1.1f;
+                sky.SetFloat("_Exposure", Mathf.Lerp(0.08f, noon, day));
+            }
+            var volGo = GameObject.Find("GlobalVolume");
+            var vol = volGo ? volGo.GetComponent<Volume>() : null;
+            if (vol && vol.profile && vol.profile.TryGet(out ColorAdjustments color))
+            {
+                float dayPost = World == WorldId.Hub ? 0.12f : 0.08f;
+                color.postExposure.Override(Mathf.Lerp(-0.55f, dayPost, day));
+            }
+            DynamicGI.UpdateEnvironment();
         }
 
         static float WeatherDim()

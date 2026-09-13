@@ -46,6 +46,16 @@ namespace Concordia
             Capture("/tmp/concordia-play-plaza.png");
             CopyShot("/tmp/concordia-play-plaza.png", "Assets/Concordia/Shots/concordia-play-plaza.png");
 
+            var savedHour = WorldClock.Hour;
+            WorldClock.Hour = 1.92f;
+            WorldClock.RefreshSky();
+            yield return null;
+            yield return new WaitForEndOfFrame();
+            Capture("/tmp/concordia-play-night.png");
+            CopyShot("/tmp/concordia-play-night.png", "Captures/concordia-play-night.png");
+            WorldClock.Hour = savedHour;
+            WorldClock.RefreshSky();
+
             // 2b) Founding Day stand — three pillars on the dirt
             if (cam)
             {

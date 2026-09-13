@@ -291,7 +291,7 @@ namespace Concordia // FORCE_REFRESH_0023
                 return go;
             }
 #endif
-            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight" };
+            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight", "Soldier" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -301,6 +301,7 @@ namespace Concordia // FORCE_REFRESH_0023
 #endif
                 return go;
             }
+            go = Resources.Load<GameObject>("Concordia/Soldier");
             return go;
         }
 
