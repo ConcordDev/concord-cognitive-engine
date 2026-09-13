@@ -21,11 +21,18 @@ namespace Concordia
             public string id, title, type, era, description, significance;
         }
         [Serializable] public class PeopleDoc { public Person[] items; }
+        [Serializable] public class Narrative
+        {
+            // Secret is never deserialized here — T2.1 surfaces weaponise_at only.
+            public string weaponise_at, fear, current_goal;
+        }
         [Serializable] public class Person
         {
             public string id, name, title, archetype, backstory, background, faction_id, dialogue_style;
             public bool quest_giver;
             public string[] quest_hooks;
+            public Narrative narrative_context;
+            public string cross_world_hook;
         }
         [Serializable] public class CritterDoc { public Critter[] items; }
         [Serializable] public class Critter
@@ -67,7 +74,7 @@ namespace Concordia
         [Serializable]
         public class CityDef
         {
-            public string id, name, factionId, description;
+            public string id, name, factionId, description, status;
             public WorldId world;
             public float x, z;
             public string[] districts;
@@ -156,6 +163,36 @@ namespace Concordia
             foreach (var q in Quests(id))
                 if (q != null && q.id == questId) return q;
             return null;
+        }
+
+        public static Person FindPerson(WorldId id, string key)
+        {
+            if (string.IsNullOrEmpty(key)) return null;
+            Person loose = null;
+            foreach (var p in People(id))
+            {
+                if (p == null) continue;
+                if (string.Equals(p.id, key, StringComparison.OrdinalIgnoreCase)) return p;
+                if (string.Equals(p.name, key, StringComparison.OrdinalIgnoreCase)) return p;
+                if (loose == null && !string.IsNullOrEmpty(p.id)
+                    && p.id.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    loose = p;
+                if (loose == null && !string.IsNullOrEmpty(p.name)
+                    && p.name.IndexOf(key, StringComparison.OrdinalIgnoreCase) >= 0)
+                    loose = p;
+            }
+            return loose;
+        }
+
+        /// <summary>T2.1 — authored leverage, never the secret.</summary>
+        public static string LeverageLine(Person p)
+        {
+            var raw = p?.narrative_context?.weaponise_at;
+            if (string.IsNullOrEmpty(raw)) return "";
+            var cut = raw.IndexOf(". ", StringComparison.Ordinal);
+            var s = cut > 20 && cut < 180 ? raw.Substring(0, cut + 1) : raw;
+            if (s.Length > 180) s = s.Substring(0, 177) + "…";
+            return s;
         }
 
         public static Quest[] OfferedBy(WorldId id, string npcId)
@@ -328,6 +365,35 @@ namespace Concordia
             return arr;
         }
 
+        /// <summary>
+        /// Overlay kernel settlement status onto authored cities. Missing
+        /// status stays empty — never invents ruins. Does not despawn ids.
+        /// </summary>
+        public static void ApplyKernelStatuses(string kingdomJson)
+        {
+            if (string.IsNullOrEmpty(kingdomJson)) return;
+            foreach (WorldId id in System.Enum.GetValues(typeof(WorldId)))
+            {
+                if (!Cache.TryGetValue(id, out var cities) || cities == null) continue;
+                foreach (var c in cities)
+                {
+                    if (c == null || string.IsNullOrEmpty(c.name)) continue;
+                    if (kingdomJson.IndexOf("\"name\":\"" + c.name + "\"", System.StringComparison.Ordinal) < 0
+                        && kingdomJson.IndexOf("\"id\":\"" + c.id + "\"", System.StringComparison.Ordinal) < 0)
+                        continue;
+                    if (kingdomJson.Contains("\"status\":\"abandoned\""))
+                    {
+                        // Only stamp when this city's object mentions abandoned nearby — coarse but honest:
+                        // if the snapshot has abandoned rows and this name appears, check a tight window.
+                        var nameAt = kingdomJson.IndexOf("\"" + c.name + "\"", System.StringComparison.Ordinal);
+                        if (nameAt < 0) continue;
+                        var window = kingdomJson.Substring(Mathf.Max(0, nameAt - 80), Mathf.Min(200, kingdomJson.Length - Mathf.Max(0, nameAt - 80)));
+                        if (window.Contains("abandoned")) c.status = "abandoned";
+                    }
+                }
+            }
+        }
+
         public static WorldBook.CityDef Nearest(WorldId world, Vector3 pos, float max = 14f)
         {
             WorldBook.CityDef best = null;
@@ -433,6 +499,10 @@ namespace Concordia
         static float _actAge;
         static float _threatAt;
         static float _eventCd = 16f;
+        static string _visualWeather;
+        static float _baseFog = -1f;
+        static bool _kernelLive;
+        static float _kernelAt;
 
         public static void Enter(WorldId id)
         {
@@ -448,8 +518,34 @@ namespace Concordia
             LastEvent = slice.lastEvent;
             Weather = Canon.Get(id).weather;
             ApplySky();
+            ApplyWeatherVisuals(force: true);
             NoteAct(Canon.Get(id).title + " kept its hours.");
             KingdomBook.Dump();
+        }
+
+        /// <summary>
+        /// Server day-phase [0,1). Hour follows the kernel while frames keep arriving.
+        /// </summary>
+        public static void BindKernelClock(float phase, string segment)
+        {
+            Hour = Mathf.Repeat(phase * 24f, 24f);
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            if (!string.IsNullOrEmpty(segment)) LastEvent = Canon.Get(World).title + " · " + segment;
+            ApplySky();
+        }
+
+        /// <summary>
+        /// Server weather type. Stops the local random cycle from overwriting it.
+        /// </summary>
+        public static void BindKernelWeather(string type)
+        {
+            if (string.IsNullOrEmpty(type)) return;
+            Weather = type;
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            ApplyWeatherVisuals(force: false);
+            ApplySky();
         }
 
         public static void Leave()
@@ -481,7 +577,9 @@ namespace Concordia
 
         public static void Tick(float dt)
         {
-            Hour = (Hour + dt * 0.08f) % 24f;
+            var kernelFresh = _kernelLive && Time.unscaledTime - _kernelAt < 90f;
+            if (!kernelFresh)
+                Hour = (Hour + dt * 0.08f) % 24f;
             if (Hour < 0.05f * dt + 0.02f)
             {
                 Day += 1;
@@ -491,13 +589,15 @@ namespace Concordia
             _weatherT -= dt;
             Ecology = Mathf.Clamp(Ecology + dt * 0.004f, 0.15f, 1f);
             FactionHeat = Mathf.Max(0f, FactionHeat - dt * 0.02f);
-            if (_weatherT <= 0f)
+            if (!kernelFresh && _weatherT <= 0f)
             {
                 _weatherT = 28f + UnityEngine.Random.value * 22f;
                 var kit = Canon.Get(World).weather;
                 var cycle = new[] { kit, "wind", "clear", kit };
                 Weather = cycle[UnityEngine.Random.Range(0, cycle.Length)];
                 LastEvent = Canon.Get(World).title + ": weather shifted. Schedules will.";
+                ApplyWeatherVisuals(force: false);
+                ApplySky();
             }
             _actAge += dt;
             if (_actAge > 8f) NearbyAct = "";
@@ -534,12 +634,77 @@ namespace Concordia
             _actAge = 0f;
         }
 
+        public struct FeedBeat
+        {
+            public string channel;
+            public string line;
+        }
+
+        static readonly FeedBeat[] _feed = new FeedBeat[8];
+        static int _feedN;
+
+        /// <summary>
+        /// Kernel consequence strip — Emergent Event Feed role. Empty line is a no-op.
+        /// </summary>
+        public static void PushFeed(string channel, string line)
+        {
+            NoteAct(line);
+            if (string.IsNullOrEmpty(line)) return;
+            _feed[_feedN % _feed.Length] = new FeedBeat { channel = channel ?? "", line = line };
+            _feedN++;
+        }
+
+        public static int FeedCount => _feedN < _feed.Length ? _feedN : _feed.Length;
+
+        public static FeedBeat FeedAt(int newestIndex)
+        {
+            if (newestIndex < 0 || newestIndex >= FeedCount) return default;
+            int idx = _feedN - 1 - newestIndex;
+            if (idx < 0) return default;
+            return _feed[idx % _feed.Length];
+        }
+
         public static void NoteKill(string id)
         {
             WorldMemory.MarkDead(World, id);
             Ecology = Mathf.Max(0.15f, Ecology - 0.03f);
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
             LastEvent = Canon.Get(World).title + ": a pack thinned.";
+            var who = string.IsNullOrEmpty(id) ? "someone" : id;
+            string heirName = "";
+            string heirId = "";
+            var deadPerson = WorldBook.FindPerson(World, id);
+            var fac = deadPerson != null ? deadPerson.faction_id : "";
+            var guests = UnityEngine.Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude);
+            GuestNpc heir = null;
+            for (int i = 0; i < guests.Length; i++)
+            {
+                var g = guests[i];
+                if (!g) continue;
+                var key = Bonds.Key(g);
+                if (string.IsNullOrEmpty(key) || string.Equals(key, id, StringComparison.OrdinalIgnoreCase)) continue;
+                if (WorldMemory.IsDead(World, key)) continue;
+                var gp = WorldBook.FindPerson(World, key);
+                if (!string.IsNullOrEmpty(fac) && gp != null && gp.faction_id == fac)
+                {
+                    heir = g;
+                    break;
+                }
+                if (heir == null) heir = g;
+            }
+            if (heir != null)
+            {
+                heirName = heir.def != null ? heir.def.name : heir.name;
+                heirId = Bonds.Key(heir);
+                WorldMemory.NoteHeir(World, who, heirName);
+            }
+            var line = string.IsNullOrEmpty(heirName)
+                ? who + " fell. No heir stood."
+                : who + " fell. " + heirName + " carries the thread.";
+            NoteAct(line);
+            ConcordiaHUD.Announce("A thread passes", line);
+            var client = ConcordClient.Live;
+            if (client != null) client.SendInheritance(heirId, id);
         }
 
         /// <summary>Port of events.ts tickEvents / rollEvent — authored strings only.</summary>
@@ -561,6 +726,13 @@ namespace Concordia
             public string text;
             public float ecology, heat, prices;
             public int births;
+        }
+
+        static EvRec SeedScheme(string beat)
+        {
+            var text = "A faction scheme ripened. " + beat;
+            Plots.Seed(text);
+            return new EvRec { text = text, heat = 0.16f, prices = 0.04f };
         }
 
         static EvRec RollEvent()
@@ -587,11 +759,7 @@ namespace Concordia
                     text = w.title + ": stores tightened. " + w.refusal,
                     ecology = -0.08f, heat = 0.1f, prices = 0.14f
                 },
-                "scheme" => new EvRec
-                {
-                    text = "A faction scheme ripened. " + beat,
-                    heat = 0.16f, prices = 0.04f
-                },
+                "scheme" => SeedScheme(beat),
                 "emergence" => new EvRec
                 {
                     text = w.title + ": " + creature + " took the hour.",
@@ -680,13 +848,12 @@ namespace Concordia
 
         static void ApplySky()
         {
-            float day = Mathf.Clamp01(1f - Mathf.Abs(Hour - 13f) / 11f);
-            // Trilight already carries HubLook's sky/equator/ground. Scaling
-            // ambientIntensity on top crushed the HDR sky to mud.
+            HubLook.ApplyHour(World, Hour);
+            float sun01 = HubLook.Sun01(Hour);
             if (RenderSettings.ambientMode == UnityEngine.Rendering.AmbientMode.Trilight)
-                RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
+                RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
             else
-                RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+                RenderSettings.ambientIntensity = 0.12f + 0.88f * sun01;
             var suns = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             Light sun = null;
             for (int i = 0; i < suns.Length; i++)
@@ -698,11 +865,71 @@ namespace Concordia
             }
             if (sun)
             {
+                sun.shadows = LightShadows.Soft;
+                float wx = WeatherDim();
                 if (World == WorldId.Hub)
-                    sun.intensity = 0.92f + 0.38f * day;
+                    sun.intensity = (0.06f + 1.12f * sun01) * wx;
                 else
-                    sun.intensity = 0.35f + 0.9f * day;
+                    sun.intensity = (0.08f + 0.9f * sun01) * wx;
+                sun.color = Color.Lerp(new Color(0.28f, 0.36f, 0.62f), new Color(1f, 0.94f, 0.82f), sun01);
             }
+            var box = RenderSettings.skybox;
+            if (box && box.HasProperty("_Exposure"))
+                box.SetFloat("_Exposure", 0.22f + 0.98f * day);
+        }
+
+        /// <summary>
+        /// DressSky owns the per-world fog floor. Capture it after that write so
+        /// weather can thicken rain/ash/smog without compounding across shifts.
+        /// </summary>
+        public static void NoteFogBase()
+        {
+            _baseFog = RenderSettings.fogDensity;
+            _visualWeather = null;
+        }
+
+        static float WeatherDim()
+        {
+            if (Weather == "rain" || Weather == "ash" || Weather == "smog" || Weather == "storm") return 0.62f;
+            if (Weather == "fog" || Weather == "overcast") return 0.78f;
+            if (Weather == "wind") return 0.88f;
+            return 1f;
+        }
+
+        /// <summary>
+        /// Bind precip + fog to the live Weather string. Build-time PlaceWeather
+        /// used Canon.WorldDef.weather once and then ignored the kernel cycle, so
+        /// Crime rained forever and a "weather shifted" HUD line changed nothing
+        /// on screen. Identity VFX (Hub/Tunya/Fantasy fireflies) stay in DressSky
+        /// / Accents — they are not weather.
+        /// </summary>
+        static void ApplyWeatherVisuals(bool force)
+        {
+            if (!force && Weather == _visualWeather) return;
+            _visualWeather = Weather;
+            var world = GameObject.Find("World");
+            if (!world) return;
+            var holder = world.transform.Find("WeatherFx");
+            if (holder) UnityEngine.Object.DestroyImmediate(holder.gameObject);
+            var go = new GameObject("WeatherFx");
+            go.transform.SetParent(world.transform, false);
+            var kind = WeatherKind(Weather);
+            if (kind != null)
+                DressVocab.PlaceWeather(kind, go.transform, new Vector3(0f, 8f, 0f));
+            if (_baseFog < 0f) _baseFog = RenderSettings.fogDensity;
+            float mul = (Weather == "rain" || Weather == "ash" || Weather == "storm") ? 1.45f
+                : (Weather == "smog" || Weather == "fog") ? 1.7f
+                : Weather == "overcast" ? 1.2f
+                : 1f;
+            RenderSettings.fogDensity = _baseFog * mul;
+        }
+
+        static string WeatherKind(string weather)
+        {
+            if (weather == "rain" || weather == "storm") return "rain";
+            // Ruins kit weather is "ash"; the in-project snow VFX is the ash-fall.
+            if (weather == "ash" || weather == "snow") return "snow";
+            return null;
         }
 
         static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
@@ -908,6 +1135,39 @@ namespace Concordia
 
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
         public static int Births(WorldId id) => Load(id).births;
+
+        /// <summary>T2.2 — last heir named when someone fell.</summary>
+        static string _heirLine;
+
+        public static void NoteHeir(WorldId id, string dead, string heir)
+        {
+            if (string.IsNullOrEmpty(heir)) return;
+            _heirLine = heir + " carries " + (string.IsNullOrEmpty(dead) ? "the dead" : dead);
+        }
+
+        public static string LineageLine(WorldId id)
+        {
+            var dead = DeadCsv(id);
+            var births = Births(id);
+            if (string.IsNullOrEmpty(dead) && births <= 0) return "";
+            var n = 0;
+            string first = "";
+            if (!string.IsNullOrEmpty(dead))
+            {
+                foreach (var p in dead.Split(','))
+                {
+                    var t = (p ?? "").Trim();
+                    if (t.Length == 0) continue;
+                    if (n == 0) first = t;
+                    n++;
+                }
+            }
+            var line = n > 0 ? n + " dead" : "none dead";
+            if (births > 0) line += " · " + births + " births";
+            if (!string.IsNullOrEmpty(first)) line += " · " + first + " still weighs";
+            if (!string.IsNullOrEmpty(_heirLine)) line += " · " + _heirLine;
+            return "lineage · " + line;
+        }
 
         static LivingSaveRec ReadFile()
         {

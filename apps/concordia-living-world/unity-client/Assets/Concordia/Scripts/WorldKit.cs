@@ -56,20 +56,20 @@ namespace Concordia
                     HubLook.Point(root, "AshHearth", new Vector3(0, 4, 10), new Color(1f, 0.55f, 0.22f), 3.5f, 18f, true);
                     break;
                 case WorldId.Tunya:
-                    FreePacks.Spawn(tree, root, new Vector3(0, 0, 8), 0, 16f);
-                    FreePacks.Spawn(tree, root, new Vector3(6, 0, 12), 40, 12f);
-                    FreePacks.Spawn(tree, root, new Vector3(-7, 0, 11), -30, 13f);
+                    FreePacks.SpawnStore(tree, root, new Vector3(0, 0, 8), 0, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(tree, root, new Vector3(6, 0, 12), 40, 8f, required: false, byHeight: false);
+                    FreePacks.SpawnStore(tree, root, new Vector3(-7, 0, 11), -30, 8f, required: false, byHeight: false);
                     for (int i = 0; i < 24; i++)
                         FreePacks.Spawn(DressVocab.FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB"), root, new Vector3(-8 + (i % 8) * 2f, 0, 16 + (i / 8) * 2.2f), 0, 1.5f);
                     break;
                 case WorldId.Fantasy:
-                    FreePacks.Spawn(DressVocab.FirstStem(new[] { "well" }, "fountain-round"), root, new Vector3(0, 0, 8), 0, 4.2f);
+                    FreePacks.SpawnStore(DressVocab.FirstStem(new[] { "well" }, "fountain-round"), root, new Vector3(0, 0, 8), 0, 4.2f, required: false, byHeight: false);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, new Vector3(5, 0, 8), 40, 3.2f);
                     FreePacks.Spawn(tower, root, new Vector3(-8, 0, 14), 0, 10f);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "banner-red" }, "banner-red"), root, new Vector3(3, 0, 5), 20, 3f);
                     break;
                 case WorldId.Crime:
-                    FreePacks.Spawn(house, root, new Vector3(0, 0, 12), 0, 14f);
+                    FreePacks.Spawn(house, root, new Vector3(0, 0, 12), 0, 6.2f);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "Dumpster" }, "dumpster"), root, new Vector3(4, 0, 6), 20, 2f);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "Dumpster" }, "dumpster"), root, new Vector3(-5, 0, 7), -10, 2f);
                     FreePacks.Spawn(prop, root, new Vector3(2, 0, 5), 0, 1f);
@@ -157,6 +157,11 @@ namespace Concordia
                         h = 8f + ring * 2f;
                     if (key.Contains("house")) h = 5.2f + ring * 1.4f;
                     if (key.Contains("tower")) h = 8.4f + ring * 1.6f;
+                    var culture = DressVocab.Culture(w.id);
+                    if (culture == "street") h = Mathf.Min(h, 5.8f);
+                    else if (culture == "grid") h = Mathf.Max(h, 16f + ring * 4f);
+                    else if (culture == "ash" && (key.Contains("tower") || key.Contains("destroyed")))
+                        h = Mathf.Max(h, 9f);
                     FreePacks.Spawn(stem, root, p, yaw, h);
                 }
             }
@@ -176,7 +181,10 @@ namespace Concordia
                 WorldId.Sere => DressVocab.House(w.id),
                 _ => DressVocab.FirstStem(new[] { "LowPoly - Rock A" }, "cliff_stone")
             };
-            float h = w.id == WorldId.Cyber || w.id == WorldId.Superhero ? 22f : 10f;
+            float h = w.id == WorldId.Cyber || w.id == WorldId.Superhero ? 22f
+                : w.id == WorldId.Crime || w.id == WorldId.Sere ? 5.5f
+                : w.id == WorldId.Ruins ? 8.5f
+                : 10f;
             for (int i = 0; i < 14; i++)
             {
                 float a = i / 14f * Mathf.PI * 2f + 0.08f;
@@ -186,10 +194,8 @@ namespace Concordia
 
         static void Accents(Transform root, WorldDef w)
         {
-            if (w.id == WorldId.Crime || w.weather == "rain")
-                DressVocab.PlaceWeather("rain", root, new Vector3(0, 8, 0));
-            if (w.id == WorldId.Ruins)
-                DressVocab.PlaceWeather("snow", root, new Vector3(0, 8, 0));
+            // Rain/ash follow WorldClock.Weather. Grove/wildfireflies stay here
+            // as identity ambience for Tunya and Fantasy.
             if (w.id == WorldId.Tunya || w.id == WorldId.Fantasy)
                 DressVocab.PlaceWeather("fireflies", root, new Vector3(0, 2.2f, 8));
         }

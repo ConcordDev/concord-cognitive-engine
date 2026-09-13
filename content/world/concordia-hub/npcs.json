@@ -16,6 +16,13 @@
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
     "cross_world_hook": "Asbir's hidden cavity is the proof-of-concept for Concordia's cross-world memory bridge. If a player surfaces the sealed letter — by stealth, persuasion, or being given it — the Sanguire-Vessine plotline shifts in tunya.",
     "dialogue_style": "long sentences with pauses; never interrupts; reframes questions before answering",
+    "relationships": [
+      {
+        "npc_id": "scribe_isa_velt",
+        "type": "wary_respect",
+        "notes": "Isa catches what Asbir misses. He has not told her about the sealed cavity."
+      }
+    ],
     "needs": [
       {
         "id": "archive_integrity",
@@ -808,6 +815,13 @@
     "concord_link_resonance": null,
     "cross_world_hook": null,
     "dialogue_style": "considered, formal in public, warm in private",
+    "relationships": [
+      {
+        "npc_id": "oracle_nesha_keep",
+        "type": "wary_truce",
+        "notes": "Nesha told Mira the dome will fail again. Mira has not told the Assembly."
+      }
+    ],
     "needs": [
       {
         "id": "assembly_business",
@@ -1001,6 +1015,13 @@
     "concord_link_resonance": null,
     "cross_world_hook": null,
     "dialogue_style": "quick, articulate, occasionally self-deprecating, sharp under stress",
+    "relationships": [
+      {
+        "npc_id": "lord_curator_asbir_thelane",
+        "type": "reluctant_apprentice",
+        "notes": "She is uncertain whether to admire or resent him. She has noticed the sealed cavity."
+      }
+    ],
     "needs": [
       {
         "id": "archive_work",

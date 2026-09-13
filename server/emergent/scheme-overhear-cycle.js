@@ -11,6 +11,7 @@
 
 import * as cityPresence from "../lib/city-presence.js";
 import { overhearForWorld, OVERHEAR_RADIUS_M } from "../lib/scheme-overhear.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 
 export async function runSchemeOverhearCycle({ db, io } = {}) {
   if (process.env.CONCORD_SCHEME_OVERHEAR === "0") return { ok: false, reason: "disabled" };
@@ -91,6 +92,7 @@ export async function runSchemeOverhearCycle({ db, io } = {}) {
         io?.to?.(`world:${worldId}`)?.emit?.("scheme:overheard-ambient", {
           plotterId: f.plotterId, worldId, ts: payload.ts,
         });
+        mirrorToGateways("scheme:overheard", payload, { userId: f.userId });
       } catch { /* emit best-effort */ }
     }
   }

@@ -13,6 +13,7 @@
 
 import logger from "../logger.js";
 import { runFestivalTriggerPass, loadFestivalsFromContent } from "../lib/festivals.js";
+import { mirrorToGateways } from "../lib/gateway-fanout.js";
 
 let _seeded = false;
 
@@ -32,12 +33,14 @@ export function runFestivalTriggerCycle({ db, worldId, io } = {}) {
     if (!r.ok) return r;
     for (const opened of r.opened) {
       try {
-        io?.emit?.("festival:started", {
+        const festPayload = {
           festivalId: opened.festivalId,
           name: opened.name,
           worldId,
           ts: Math.floor(Date.now() / 1000),
-        });
+        };
+        io?.emit?.("festival:started", festPayload);
+        mirrorToGateways("festival:started", festPayload, { worldId });
       } catch (err) {
         logger.debug?.("festival-trigger-cycle", "emit_failed", { error: err?.message });
       }

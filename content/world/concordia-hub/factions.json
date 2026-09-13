@@ -24,7 +24,7 @@
     "leader_npc_id": "captain_ren_solare",
     "stance": "consolidate",
     "values": ["order", "discretion", "neighborhood_trust"],
-    "rivalries": [],
+    "rivalries": ["bazaar_consortium"],
     "alliances": ["concordant_assembly"]
   },
   {
@@ -38,7 +38,7 @@
     "leader_npc_id": "merchant_velka_ironhand",
     "stance": "expand",
     "values": ["fair_dealing", "haggling_as_craft", "network"],
-    "rivalries": [],
+    "rivalries": ["concordant_watch"],
     "alliances": ["brassgate_foundry", "crosswind_couriers"]
   },
   {
