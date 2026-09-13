@@ -1,6 +1,6 @@
 # Concordia in the website — audit + plan (2026-09-03)
 
-**Status:** W1–W6 + L1/L2 **in the website path**. Unity Personal 6000.5.9f1 WebGL export ran on this Mac 2026-09-03. The player is **committed** (`concord-frontend/public/unity-client/` including `export-index.html`, ~17MB) so `/lenses/world` iframes Unity after deploy — not a gitignored 404 fallback. License was never the gap.
+**Status:** W1–W6 + L1/L2 **in the website path**. The player **is committed** under `public/unity-client/` (~12MB wasm). The 2026-09-12 “missing Unity WebGL” report was **not** a missing export: Next standalone on this Mac had only `export-index.html` copied, so `/unity-client/index.html` was 200 and `Build/*.wasm` was App-Router 500. Fix: `scripts/sync-unity-web-to-standalone.mjs` + catch-all `/unity-client/[...path]` that walks standalone cwd back to git `public/`.
 **Branch:** `cursor/concordia-unity-kernel-1b18` (PR #953).
 **Method:** audit → research → re-audit → execute. Numbers and blockers below were read from this tree, not remembered.
 

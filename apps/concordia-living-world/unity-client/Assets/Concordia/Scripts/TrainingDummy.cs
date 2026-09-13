@@ -7,6 +7,9 @@ namespace Concordia
         public float hp = 80;
         public bool unburied;
         public bool living;
+        [SerializeField] string kernelTargetId = "ArenaDummy";
+        /// <summary>Kernel combat id. GameObject name is presentation-only (L4).</summary>
+        public string KernelId => string.IsNullOrEmpty(kernelTargetId) ? "ArenaDummy" : kernelTargetId;
         float _reviveAt;
         Vector3 _home;
         Vector3 _scale0;

@@ -45,10 +45,10 @@ type UnityStatus = 'checking' | 'ready' | 'missing';
 
 type ShellPanel = null | 'menu' | 'settings' | 'advanced';
 
+/** Committed player first. Env override only if it is a real HTML player. */
 const CANDIDATE_SRCS = [
   UNITY_WEBGL_URL,
   '/unity-client/index.html',
-  '/concordia-webgl/index.html',
 ].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
 
 async function probeUnitySrc(src: string): Promise<boolean> {

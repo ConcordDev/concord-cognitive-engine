@@ -116,5 +116,8 @@ describe('committed Unity WebGL player', () => {
     expect(fs.existsSync(wasm), 'concordia.wasm.unityweb missing from public/').toBe(true);
     expect(fs.statSync(wasm).size).toBeGreaterThan(1_000_000);
     expect(resolveUnityIndexPath()).toBeTruthy();
+    expect(fs.existsSync(path.join(root, 'public', 'unity-client', 'Build', 'concordia.loader.js'))).toBe(
+      true,
+    );
   });
 });

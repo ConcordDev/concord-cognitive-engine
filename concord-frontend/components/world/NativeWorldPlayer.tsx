@@ -32,11 +32,9 @@ const ENV_UNITY_URL =
   process.env.NEXT_PUBLIC_CONCORDIA_UNITY_URL ||
   '';
 
-const CANDIDATES = [
-  ENV_UNITY_URL,
-  '/unity-client/index.html',
-  '/concordia-webgl/index.html',
-].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
+const CANDIDATES = [ENV_UNITY_URL, '/unity-client/index.html'].filter(
+  (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
+);
 
 async function firstLiveUnitySrc(): Promise<string | null> {
   for (const candidate of CANDIDATES) {

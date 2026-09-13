@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs';
-import path from 'node:path';
 import { unityKernelGatewayUrl } from '@/lib/unity-iframe-config';
+import { resolveUnityIndexFile } from '@/lib/unity-web-files';
 
 // Serves the Unity WebGL export's index.html with two request-time injections:
 //
@@ -16,20 +16,12 @@ import { unityKernelGatewayUrl } from '@/lib/unity-iframe-config';
 //    is same-origin /unity-ws; loopback pins ws://127.0.0.1:5050/unity-ws
 //    because Next cannot upgrade WebSockets.
 //
-// Index sources (first hit wins):
-//   1. .unity-web-staging/index.html — local re-export, gitignored
-//   2. public/unity-client/export-index.html — committed copy so CI/deploy
-//      and Next standalone (startup.sh copies public/) serve HTML without
-//      a Unity Editor on the box. Not named index.html: that URL is this
-//      route (CSP nonce). Static bytes: public/unity-client/Build/* etc.
-
-const STAGED_INDEX = path.join(process.cwd(), '.unity-web-staging', 'index.html');
-const COMMITTED_INDEX = path.join(process.cwd(), 'public', 'unity-client', 'export-index.html');
+// Index sources: resolveUnityIndexFile walks cwd/public, gitignored
+// staging, and standalone's ../../public so a partial standalone copy
+// (HTML only, no Build/) still finds the committed player.
 
 export function resolveUnityIndexPath(): string | null {
-  if (fs.existsSync(STAGED_INDEX)) return STAGED_INDEX;
-  if (fs.existsSync(COMMITTED_INDEX)) return COMMITTED_INDEX;
-  return null;
+  return resolveUnityIndexFile();
 }
 
 /** Full-bleed iframe + gzip fallback. Idempotent. */

@@ -385,7 +385,7 @@ namespace Concordia
                 // Kernel resolves HP. Presentation already played the swing.
                 _pendingKernelTarget = dummy;
                 Toast(dummy.name + " — Concord resolving");
-                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon());
+                _ = client.SendAttack(dummy.KernelId, dmg, reach, liveWeapon());
                 return true;
             }
             dummy.Hit(dmg, world);
