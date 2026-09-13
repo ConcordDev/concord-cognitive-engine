@@ -16,6 +16,7 @@ namespace Concordia
         static float _announceT;
         static string _announceTitle, _announceLine;
         Font _font;
+        static bool _p0NoDebug;
 
         public static void Announce(string title, string line)
         {
@@ -64,35 +65,51 @@ namespace Concordia
         void Update()
         {
             if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
+            if (!_p0NoDebug && Input.GetKeyDown(KeyCode.F1))
+                WorldAaa.DebugDump = !WorldAaa.DebugDump;
         }
 
         void OnGUI()
         {
             if (!player || CharacterCreator.IsOpen) return;
             Ensure();
+            if (!_p0NoDebug)
+            {
+                try { _p0NoDebug = System.IO.File.Exists("/tmp/concordia-p0-no-debug"); }
+                catch { }
+                if (_p0NoDebug) WorldAaa.DebugDump = false;
+            }
             float w = Screen.width, h = Screen.height;
-            Compass(w);
             Vitals();
             Rings(w);
-            if (!player.Busy) Minimap(h);
             Prompt(w, h);
             Toast(w);
             Arrival(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
-            Hints(w, h);
+            if (WorldAaa.DebugDump)
+            {
+                Compass(w);
+                if (!player.Busy) Minimap(h);
+                Hints(w, h);
+            }
+            else if (!_p0NoDebug)
+            {
+                GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.45f);
+                GUI.Label(new Rect(18, h - 22, 140, 20), "F1  inspect", _small);
+                GUI.color = Color.white;
+            }
         }
 
         void Hints(float w, float h)
         {
             GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.88f);
-            var style = Canon.Get(player.world).style;
             GUI.Label(new Rect(18, h - 22, w - 36, 20),
                 player.talkOpen
                     ? "Type  ·  Enter  send  ·  Esc  leave  ·  2B " + TwoBStatus()
                     : player.menuOpen
-                        ? "I  close kit  ·  click a weapon  ·  1/2/3  art  ·  Esc  close"
-                        : "I  kit   ·   1/2/3  " + style.light + "/" + style.heavy + "/" + style.special
+                        ? "I  close  ·  click a weapon  ·  1/2/3  skill  ·  [ ]  group  ·  Esc  close"
+                        : "I  kit / inspect   ·   1/2/3  " + SkillLattice.ActiveSkill
                           + "   ·   LMB  swing   ·   E  use   ·   Q  cycle   ·   Tab  cursor",
                 _small);
             GUI.color = Color.white;
@@ -104,18 +121,21 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 92), _white);
+            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
             GUI.color = Color.white;
             GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
             GUI.Label(new Rect(32, 54, 280, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name)
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
-                + "  ·  " + KitBag.ArtName(player.world), _small);
+                + (player.brokenArm ? "  ·  broken arm" : "")
+                + (player.brokenLeg ? "  ·  broken leg" : "")
+                + "  ·  " + SkillLattice.HudLine(), _small);
             GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
             GUI.Label(new Rect(32, 86, 280, 16),
                 !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
+            GUI.Label(new Rect(32, 102, 280, 16), WorldAaa.HudTail(), _small);
         }
 
         static string TwoBStatus()
@@ -156,11 +176,11 @@ namespace Concordia
             GUI.color = new Color(0.04f, 0.03f, 0.02f, 0.9f);
             GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons  ·  arts", _title);
+            GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), "KIT  ·  inventory  ·  weapons  ·  skills", _title);
             float col = (pw - 48f) / 3f;
             DrawInvCol(x + 16, y + 44, col, "Carry", false);
             DrawInvCol(x + 24 + col, y + 44, col, "Weapons", true);
-            DrawArtCol(x + 32 + col * 2f, y + 44, col);
+            DrawSkillCol(x + 32 + col * 2f, y + 44, col);
             GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
         }
 
@@ -192,21 +212,38 @@ namespace Concordia
             }
         }
 
-        void DrawArtCol(float x, float y, float w)
+        void DrawSkillCol(float x, float y, float w)
         {
-            var s = Canon.Get(player.world).style;
-            GUI.Label(new Rect(x, y, w, 20), "Arts", _center);
-            ArtBtn(x, y + 26, w, 0, "1  ·  " + s.light);
-            ArtBtn(x, y + 70, w, 1, "2  ·  " + s.heavy);
-            ArtBtn(x, y + 114, w, 2, "3  ·  " + s.special);
-            GUI.Label(new Rect(x, y + 168, w, 48), "LMB fires the selected art. F and G still cut heavy and special.", _small);
-        }
-
-        void ArtBtn(float x, float y, float w, int art, string label)
-        {
-            var mark = KitBag.Art == art ? "▸ " + label : label;
-            if (GUI.Button(new Rect(x, y, w - 8, 36), mark, _btn))
-                KitBag.Art = art;
+            GUI.Label(new Rect(x, y, w, 20),
+                SkillLattice.FromKernel
+                    ? SkillLattice.Group.ToUpperInvariant() + "  ·  " + SkillLattice.CatalogCount
+                    : "Skills", _center);
+            if (!SkillLattice.FromKernel)
+            {
+                GUI.Label(new Rect(x, y + 26, w - 8, 72),
+                    "skills.mastery unbound. Kit arts stay local until Concord answers.", _small);
+                return;
+            }
+            float yy = y + 26f;
+            if (GUI.Button(new Rect(x, yy, (w - 16) * 0.5f, 22), "<", _btn))
+                SkillLattice.CycleGroup(-1);
+            if (GUI.Button(new Rect(x + (w - 16) * 0.5f + 8, yy, (w - 16) * 0.5f, 22), ">", _btn))
+                SkillLattice.CycleGroup(1);
+            yy += 28f;
+            int shown = 0;
+            for (int i = 0; i < SkillLattice.All.Count; i++)
+            {
+                var row = SkillLattice.All[i];
+                if (row.group != SkillLattice.Group) continue;
+                var mark = row.skillType == SkillLattice.ActiveSkill ? "▸ " : "  ";
+                var label = mark + row.skillType + "  L" + row.level;
+                if (GUI.Button(new Rect(x, yy, w - 8, 26), label, _btn))
+                    SkillLattice.ActiveSkill = row.skillType;
+                yy += 28f;
+                shown++;
+                if (shown >= 8) break;
+            }
+            GUI.Label(new Rect(x, y + 280, w - 8, 36), SkillLattice.HudLine(), _small);
         }
 
         void Rings(float w)

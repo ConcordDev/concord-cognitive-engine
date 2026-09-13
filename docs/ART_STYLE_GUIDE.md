@@ -10,7 +10,8 @@ the *same rules* across all 9 worlds, a *different palette* per world.
 
 This is not a vibe; it's a small set of constants every render pass reads, so styling
 never drifts per-component. The source of truth is
-`concord-frontend/lib/world-lens/concordia-theme.ts`:
+`concord-frontend/lib/world-lens/concordia-theme.ts` (retired Three.js art
+constants — Unity is the live Concordia presenter):
 
 ## The shared rules (`ART_STYLE`)
 | Constant | Value | Rule |

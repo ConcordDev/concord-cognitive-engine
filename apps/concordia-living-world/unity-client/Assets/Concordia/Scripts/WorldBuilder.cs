@@ -33,49 +33,77 @@ namespace Concordia
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
+            PurgeNamed("Megaworld");
             CityAtlas.Invalidate();
-            root = new GameObject("World").transform;
-            ModularPerson.CastingWorld = world;
             FreePacks.Reindex();
-            var w = Canon.Get(world);
-            BuildGround(w);
-            DressSky(w);
-            DressAudio(w);
-            if (world == WorldId.Hub) BuildHub();
-            else BuildRealm(w);
-            SpawnFauna(w);
+            var stream = ContinentStream.Bind(this);
+            stream.Boot(world);
             HubLook.UpgradeStandardMaterials();
             try
             {
                 System.IO.File.WriteAllText("/tmp/concordia-atlas.txt",
-                    System.DateTime.Now.ToString("o") + " world=" + world + "\n" + CityAtlas.Dump());
+                    System.DateTime.Now.ToString("o") + " world=" + world
+                    + " travel=" + ContinentStream.TravelMode + "\n" + CityAtlas.Dump());
             }
             catch { }
         }
 
+        /// <summary>
+        /// Build one civilization at local origin. ContinentStream then parks
+        /// the chunk at MegaworldMap.Present(id). Do not purge other chunks.
+        /// </summary>
+        public Transform BuildChunk(WorldId world, Transform continent)
+        {
+            ModularPerson.CastingWorld = world;
+            var holder = new GameObject("Chunk_" + world).transform;
+            holder.SetParent(continent, false);
+            holder.position = Vector3.zero;
+            root = holder;
+            var w = Canon.Get(world);
+            if (world == WorldId.Hub) BuildHub();
+            else
+            {
+                BuildGround(w);
+                DressAudio(w);
+                BuildRealm(w);
+            }
+            SpawnFauna(w);
+            return holder;
+        }
+
+        public void DressChunkSky(WorldId id)
+        {
+            var prev = root;
+            var chunk = ContinentStream.Live ? ContinentStream.Live.ChunkOf(id) : null;
+            if (chunk) root = chunk;
+            DressSky(Canon.Get(id));
+            if (prev) root = prev;
+        }
+
         static void PurgeWorldRoots()
+        {
+            PurgeNamed("World");
+        }
+
+        static void PurgeNamed(string name)
         {
             var found = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < found.Length; i++)
             {
                 var t = found[i];
                 if (!t || t.parent != null) continue;
-                if (t.name != "World") continue;
+                if (t.name != name) continue;
                 Object.DestroyImmediate(t.gameObject);
             }
         }
 
         void BuildGround(WorldDef w)
         {
-            if (w.id == WorldId.Hub)
-            {
-                HubLook.MakeSun(root, new Color(1f, 0.94f, 0.82f), 1.18f, new Vector3(42f, -38f, 0f));
-                return;
-            }
+            if (w.id == WorldId.Hub) return;
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
             g.name = "Ground";
             g.transform.SetParent(root, false);
-            g.transform.localScale = Vector3.one * 22;
+            g.transform.localScale = Vector3.one * 6;
             var pbrStem = w.id switch
             {
                 WorldId.Ruins => "ash_soil",
@@ -92,21 +120,6 @@ namespace Concordia
             var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
             var gr0 = g.GetComponent<Renderer>();
             if (gr0) gr0.sharedMaterial = pbr;
-
-            var sun = w.id switch
-            {
-                WorldId.Hub => (new Color(1f, 0.84f, 0.58f), 2.05f, new Vector3(18f, 204f, 0f)),
-                WorldId.Ruins => (new Color(0.72f, 0.68f, 0.62f), 0.72f, new Vector3(48f, 40f, 0f)),
-                WorldId.Tunya => (new Color(1f, 0.94f, 0.72f), 1.45f, new Vector3(58f, 30f, 0f)),
-                WorldId.Fantasy => (new Color(1f, 0.55f, 0.28f), 1.55f, new Vector3(8f, 168f, 0f)),
-                WorldId.Crime => (new Color(0.55f, 0.42f, 0.62f), 0.42f, new Vector3(12f, 130f, 0f)),
-                WorldId.Cyber => (new Color(0.55f, 0.18f, 0.85f), 0.85f, new Vector3(22f, 210f, 0f)),
-                WorldId.Frontier => (new Color(1f, 0.88f, 0.55f), 1.85f, new Vector3(38f, 24f, 0f)),
-                WorldId.Superhero => (new Color(1f, 0.62f, 0.38f), 1.7f, new Vector3(6f, 92f, 0f)),
-                WorldId.Sere => (new Color(0.82f, 0.62f, 0.38f), 0.55f, new Vector3(18f, 140f, 0f)),
-                _ => (new Color(0.25f, 1f, 0.85f), 1.2f, new Vector3(28f, 80f, 0f))
-            };
-            HubLook.MakeSun(root, sun.Item1, sun.Item2, sun.Item3);
         }
 
         void DressSky(WorldDef w)
@@ -188,6 +201,7 @@ namespace Concordia
             DressPillars();
             DressCrowd();
             DressLore();
+            DressConcordantArchive();
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
@@ -197,7 +211,7 @@ namespace Concordia
             var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
             dummy.AddComponent<TrainingDummy>();
             FreePacks.EnsureCollider(dummy, 1.8f);
-            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
+            Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court", "unburned_court", "concordant_law_reading");
             Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
             var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
             Beacon(root, east, 7f, "east_gate");
@@ -216,9 +230,9 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 24; i++)
             {
-                var a = i / 16f * Mathf.PI * 2f + 0.4f;
+                var a = i / 24f * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -479,6 +493,7 @@ namespace Concordia
                     case "thorne": weapon = "greatsword"; look.outfit = 1; look.attitude = 2; look.height = 1.12f; break;
                     case "lyra": weapon = "staff"; look.outfit = 0; look.attitude = 0; break;
                     case "asbir": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
+                    case "archivist_maren": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
                     case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
@@ -643,17 +658,27 @@ namespace Concordia
 
         void DressLore()
         {
-            PlaceStone(new Vector3(4.8f, 0f, -3.2f), "The Ground She Made Hers",
-                "Dig far enough beneath any district and you reach the same thing: Concordia, listening. The hub is not built on her. It is built of her.");
-            PlaceStone(new Vector3(-5.1f, 0f, -2.4f), "The Ring of Doors",
-                "Eight gates around the old battlefield, left unpaved. They still call it the Unburned Court, though nothing there ever burned.");
-            PlaceStone(new Vector3(0.4f, 0f, 6.6f), "The Night Someone Tried",
-                "They held the Court four hours. Then the ground spoke in flowers. No one died. You cannot own the heart.");
+            // History beats are placed from authored lore.json by RealmFill.
+            // Flower-law is Court canon, not a history row.
             PlaceStone(new Vector3(8.2f, 0f, 2.1f), "Flower-law",
                 "No live steel in the Court. Blades die as flowers — except in the Arena sand, where the Warden keeps poise, not luck.");
-            PlaceStone(new Vector3(-7.4f, 0f, 3.2f), "The Ninth",
-                "Lyra will not teach a ninth Refusal. It is not spoken. It is stood upon. I refuse to let my own refusal win.");
             DressSereWaystone();
+        }
+
+        void DressConcordantArchive()
+        {
+            // Headquarters named in factions.json (concordant_curators).
+            // Furniture from HubKit; mesh is evo archive.glb when present.
+            var p = new Vector3(-16.2f, 0f, -9.4f);
+            PlaceLandmark(EvoCatalog.Archive, p, 7.2f, "archive");
+            DressArchive(p);
+            PlaceStone(p + new Vector3(2.4f, 0f, -2.2f), "The Concordant Oath",
+                "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture.",
+                "hub_concordant_oath");
+            PlaceStone(p + new Vector3(-1.6f, 0f, 1.8f), "Founding Day drawer",
+                "The drawer sits beneath a blank nameplate. The blank nameplate on the drawer is older than the Archive.",
+                "archive_founding_day_drawer");
+            Beacon(root, p, 7f, "hub_archive", "hub_archive_main_floor", "hub_archive_curator_chambers", "archive_founding_day_drawer");
         }
 
         void DressSereWaystone()
@@ -681,57 +706,72 @@ namespace Concordia
             box.isTrigger = true;
         }
 
-        void PlaceStone(Vector3 pos, string title, string text)
+        void PlaceStone(Vector3 pos, string title, string text, string mark = null)
         {
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
                 HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
             var stone = plinth.AddComponent<LoreStone>();
             stone.title = title;
             stone.text = text;
+            stone.mark = mark;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
                 HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
         }
 
         void SpawnFauna(WorldDef w)
         {
-            if (w.id != WorldId.Hub)
+            if (w.id == WorldId.Hub)
             {
-                if (w.fauna == null) return;
-                for (int i = 0; i < Mathf.Min(6, w.fauna.Length * 2); i++)
+                var bird = DressVocab.Bird();
+                if (string.IsNullOrEmpty(bird)) return;
+                for (int i = 0; i < 8; i++)
                 {
-                    var a = i / 6f * Mathf.PI * 2f;
-                    var p = new Vector3(Mathf.Cos(a) * 18f, 0f, Mathf.Sin(a) * 18f);
-                    var stem = i % 2 == 0 ? "rabbit" : "dog";
-                    if (!FreePacks.Spawn(stem, root, p, a * Mathf.Rad2Deg, 1.2f))
+                    var go = CreatureCompiler.Compile(root, new CreatureCard
                     {
-                        var go = HubLook.Prim(root, PrimitiveType.Sphere, p + Vector3.up * 0.35f, Vector3.one * 0.45f,
-                            HubLook.Lit(new Color(0.45f, 0.35f, 0.25f)), "Beast" + i);
-                        go.AddComponent<CourtBird>().height = 0.4f;
-                    }
+                        id = "hub-flock-" + i,
+                        speciesId = bird,
+                        topology = "winged_biped",
+                        generation = 0,
+                        fly = true,
+                        lifestyle = "omnivore",
+                    }, Vector3.zero, w);
+                    if (!go) break;
+                    var orbit = go.GetComponent<FlockOrbit>() ?? go.AddComponent<FlockOrbit>();
+                    orbit.radius = 10f + (i % 5) * 3.2f;
+                    orbit.height = 6.5f + (i % 4) * 1.4f;
                 }
-                DressGroveBirds(w);
                 return;
             }
-            for (int i = 0; i < 24; i++)
+            if (w.fauna == null) return;
+            int n = 0;
+            for (int i = 0; i < w.fauna.Length && n < 6; i++)
             {
-                var go = new GameObject("Dove" + i);
-                go.transform.SetParent(root, false);
-                var bird = go.AddComponent<CourtBird>();
-                bird.seed = 40 + i * 13;
-                bird.radius = 10f + (i % 5) * 3.2f;
-                bird.height = 6.5f + (i % 4) * 1.4f;
+                var kind = w.fauna[i];
+                if (string.IsNullOrEmpty(kind)) continue;
+                var a = n / 6f * Mathf.PI * 2f;
+                var p = new Vector3(Mathf.Cos(a) * 18f, 0f, Mathf.Sin(a) * 18f);
+                var go = CreatureCompiler.FromKind(root, kind, p, w);
+                if (go) n++;
             }
+            DressGroveBirds(w);
         }
 
         void DressGroveBirds(WorldDef w)
         {
-            if (w.id != WorldId.Tunya && w.id != WorldId.Fantasy) return;
             var bird = DressVocab.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {
                 float a = i / 3f * Mathf.PI * 2f + 0.3f;
-                FreePacks.Spawn(bird, root, new Vector3(Mathf.Cos(a) * 9f, 0f, Mathf.Sin(a) * 9f), a * Mathf.Rad2Deg, 0.28f);
+                var p = new Vector3(Mathf.Cos(a) * 9f, 0f, Mathf.Sin(a) * 9f);
+                CreatureCompiler.Compile(root, new CreatureCard
+                {
+                    id = w.id + "-grove-bird-" + i,
+                    speciesId = bird,
+                    topology = "winged_biped",
+                    generation = 0,
+                    fly = true,
+                }, p, w);
             }
         }
 
@@ -774,6 +814,190 @@ namespace Concordia
         {
             var r = go.GetComponent<Renderer>();
             if (!r || r.sharedMaterial == null) Tint(go, c);
+        }
+
+        static Transform KernelLiveParent()
+        {
+            if (ContinentStream.Live)
+            {
+                var chunk = ContinentStream.Live.ChunkOf(WorldClock.World);
+                if (chunk) return chunk;
+                if (ContinentStream.Live.continent) return ContinentStream.Live.continent;
+            }
+            var megaworld = GameObject.Find("Megaworld");
+            if (megaworld) return megaworld.transform;
+            var world = GameObject.Find("World");
+            return world ? world.transform : null;
+        }
+
+        /// <summary>
+        /// Live kernel buildings from scene:data. Local Kenney dressing stays;
+        /// this overlay is which buildings exist right now, not how the hub looks.
+        /// Parent under the current streamed chunk — never PurgeWorldRoots.
+        /// </summary>
+        public static void ClearKernelLive()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelLive");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelBuilding(string id, string type, Vector3 pos, float yawRad, float maxDim)
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var holder = parent.Find("KernelLive");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelLive");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+            if (maxDim < 1.6f) maxDim = 3.2f;
+            var stem = Houses[Mathf.Abs((id ?? type ?? "b").GetHashCode()) % Houses.Length];
+            var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
+            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+        }
+
+        /// <summary>
+        /// Live kernel NPCs from world:snapshot. Canon plaza guests stay;
+        /// matching names bind to the kernel id instead of duplicating.
+        /// </summary>
+        public static void ClearKernelNpcs()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelNpcs");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelNpc(string id, string name, string title, Vector3 pos, string activity)
+        {
+            if (string.IsNullOrEmpty(id) && string.IsNullOrEmpty(name)) return;
+            var parent = KernelLiveParent();
+            if (!parent) return;
+
+            foreach (var g in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+            {
+                if (!NamesMatchGuest(g, id, name)) continue;
+                if (g.def == null) g.def = new GuestDef();
+                g.personId = id;
+                if (!string.IsNullOrEmpty(name)) g.def.name = name;
+                if (!string.IsNullOrEmpty(title)) g.def.title = title;
+                return;
+            }
+
+            var xz = new Vector2(pos.x, pos.z);
+            if (xz.sqrMagnitude < 2.25f || xz.magnitude > 90f)
+            {
+                var h = Mathf.Abs((id ?? name ?? "npc").GetHashCode());
+                var a = (h % 360) * Mathf.Deg2Rad;
+                var r = 14f + (h % 9);
+                pos = new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+            }
+
+            var holder = parent.Find("KernelNpcs");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelNpcs");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+
+            var look = Appearance.Random(Mathf.Abs((id ?? name).GetHashCode()));
+            look.displayName = string.IsNullOrEmpty(name) ? "Citizen" : name;
+            var job = JobFromActivity(activity);
+            var wander = job == NpcLife.Job.Wander;
+            var go = ModularPerson.SpawnNpc(holder, pos, 180f, look, wander, 10f);
+            go.name = string.IsNullOrEmpty(name) ? "KernelNpc" : name;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = new GuestDef
+            {
+                id = id,
+                name = look.displayName,
+                title = string.IsNullOrEmpty(title) ? "kernel" : title,
+                line = AuthoredLine(id, name, title)
+            };
+            guest.personId = id;
+            var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+            life.job = job;
+        }
+
+        public static void ClearKernelVehicles()
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var old = parent.Find("KernelVehicles");
+            if (old) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+
+        public static void PlaceKernelVehicle(string id, string kind, Vector3 pos, float heading)
+        {
+            var parent = KernelLiveParent();
+            if (!parent) return;
+            var holder = parent.Find("KernelVehicles");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelVehicles");
+                goHolder.transform.SetParent(parent, false);
+                holder = goHolder.transform;
+            }
+            var stem = string.IsNullOrEmpty(kind) || kind == "cart" ? "cart" : kind;
+            var go = FreePacks.Spawn(stem, holder, pos, heading * Mathf.Rad2Deg, 2.4f);
+            if (!go && HubKit.TryGet("cart", out var cart) && cart)
+            {
+                go = Object.Instantiate(cart, holder);
+                go.transform.position = pos;
+                go.transform.rotation = Quaternion.Euler(0f, heading * Mathf.Rad2Deg, 0f);
+            }
+            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelCart" : "KernelCart_" + id;
+        }
+
+        static string AuthoredLine(string id, string name, string title)
+        {
+            foreach (var g in Canon.HubGuests)
+            {
+                if (!string.IsNullOrEmpty(id) && g.id == id) return g.line;
+                if (!string.IsNullOrEmpty(name) && string.Equals(g.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    return g.line;
+            }
+            var world = ConcordiaPlayer.Live != null ? ConcordiaPlayer.Live.world : WorldId.Hub;
+            foreach (var p in WorldBook.People(world))
+            {
+                if (p == null) continue;
+                if (!string.IsNullOrEmpty(id) && p.id == id) return WorldBook.LineFor(p);
+                if (!string.IsNullOrEmpty(name) && string.Equals(p.name, name, System.StringComparison.OrdinalIgnoreCase))
+                    return WorldBook.LineFor(p);
+            }
+            if (!string.IsNullOrEmpty(title)) return title + ".";
+            return "They are on the kernel list. Not plaza dressing.";
+        }
+
+        static bool NamesMatchGuest(GuestNpc g, string id, string name)
+        {
+            if (!g) return false;
+            if (!string.IsNullOrEmpty(id) && (
+                string.Equals(g.personId, id, System.StringComparison.OrdinalIgnoreCase)
+                || (g.def != null && string.Equals(g.def.id, id, System.StringComparison.OrdinalIgnoreCase))))
+                return true;
+            if (string.IsNullOrEmpty(name) || g.def == null) return false;
+            return string.Equals(g.def.name, name, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        static NpcLife.Job JobFromActivity(string activity)
+        {
+            if (string.IsNullOrEmpty(activity)) return NpcLife.Job.Wander;
+            var a = activity.ToLowerInvariant();
+            if (a.IndexOf("watch") >= 0 || a.IndexOf("guard") >= 0 || a.IndexOf("patrol") >= 0)
+                return NpcLife.Job.Watch;
+            if (a.IndexOf("stall") >= 0 || a.IndexOf("shop") >= 0 || a.IndexOf("work") >= 0 || a.IndexOf("merchant") >= 0)
+                return NpcLife.Job.Stall;
+            if (a.IndexOf("sweep") >= 0 || a.IndexOf("clean") >= 0)
+                return NpcLife.Job.Sweep;
+            if (a.IndexOf("sit") >= 0 || a.IndexOf("tavern") >= 0 || a.IndexOf("eat") >= 0)
+                return NpcLife.Job.Sit;
+            return NpcLife.Job.Wander;
         }
     }
 }

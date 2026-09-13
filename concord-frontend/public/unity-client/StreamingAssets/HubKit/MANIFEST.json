@@ -359,6 +359,13 @@
       "license": "CC0",
       "author": "Kay Lousberg",
       "source": "concord-frontend/public/models/building/tower.glb"
+    },
+    {
+      "stem": "soldier",
+      "file": "soldier.glb",
+      "license": "Mixamo",
+      "author": "Mixamo",
+      "source": "apps/concordia-living-world/unity-client/Assets/Concordia/Models/humans/Soldier.glb"
     }
   ],
   "aliases": [

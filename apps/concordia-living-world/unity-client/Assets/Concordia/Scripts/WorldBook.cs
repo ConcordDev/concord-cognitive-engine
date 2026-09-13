@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Concordia
 {
@@ -23,7 +25,7 @@ namespace Concordia
         [Serializable] public class PeopleDoc { public Person[] items; }
         [Serializable] public class Person
         {
-            public string id, name, title, archetype, backstory, background, faction_id, dialogue_style;
+            public string id, name, title, archetype, backstory, background, faction_id, dialogue_style, personality;
             public bool quest_giver;
             public string[] quest_hooks;
         }
@@ -49,6 +51,7 @@ namespace Concordia
         {
             public string id, title, description, giver_npc_id, difficulty;
             public string[] prerequisites;
+            public string[] follow_up_quest_ids;
             public Objective[] objectives;
         }
         [Serializable] public class Objective
@@ -189,7 +192,8 @@ namespace Concordia
 
         public static string LineFor(Person p)
         {
-            var raw = !string.IsNullOrEmpty(p.backstory) ? p.backstory : p.background;
+            var raw = !string.IsNullOrEmpty(p.personality) ? p.personality
+                : !string.IsNullOrEmpty(p.backstory) ? p.backstory : p.background;
             if (string.IsNullOrEmpty(raw))
                 return string.IsNullOrEmpty(p.title) ? p.name : p.name + ", " + p.title + ".";
             var cut = raw.IndexOf(". ", StringComparison.Ordinal);
@@ -433,6 +437,10 @@ namespace Concordia
         static float _actAge;
         static float _threatAt;
         static float _eventCd = 16f;
+        static bool _kernelLive;
+        static float _kernelAt;
+        static float _baseFog = -1f;
+        static string _placedWeather;
 
         public static void Enter(WorldId id)
         {
@@ -452,10 +460,37 @@ namespace Concordia
             KingdomBook.Dump();
         }
 
+        /// <summary>
+        /// Server day-phase [0,1). Hour follows the kernel while frames keep arriving.
+        /// </summary>
+        public static void BindKernelClock(float phase, string segment)
+        {
+            Hour = Mathf.Repeat(phase * 24f, 24f);
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            if (!string.IsNullOrEmpty(segment)) LastEvent = Canon.Get(World).title + " · " + segment;
+            ApplySky();
+        }
+
+        /// <summary>
+        /// Server weather type. Stops the local random cycle from overwriting it.
+        /// </summary>
+        public static void BindKernelWeather(string type)
+        {
+            if (string.IsNullOrEmpty(type)) return;
+            Weather = type;
+            _kernelLive = true;
+            _kernelAt = Time.unscaledTime;
+            ApplyKernelWeatherFx();
+            ApplySky();
+        }
+
         public static void Leave()
         {
             WorldMemory.Write(World, Snapshot());
         }
+
+        public static void RefreshSky() => ApplySky();
 
         public static WorldSliceRec Snapshot()
         {
@@ -481,7 +516,9 @@ namespace Concordia
 
         public static void Tick(float dt)
         {
-            Hour = (Hour + dt * 0.08f) % 24f;
+            var kernelFresh = _kernelLive && Time.unscaledTime - _kernelAt < 90f;
+            if (!kernelFresh)
+                Hour = (Hour + dt * 0.08f) % 24f;
             if (Hour < 0.05f * dt + 0.02f)
             {
                 Day += 1;
@@ -491,7 +528,7 @@ namespace Concordia
             _weatherT -= dt;
             Ecology = Mathf.Clamp(Ecology + dt * 0.004f, 0.15f, 1f);
             FactionHeat = Mathf.Max(0f, FactionHeat - dt * 0.02f);
-            if (_weatherT <= 0f)
+            if (!kernelFresh && _weatherT <= 0f)
             {
                 _weatherT = 28f + UnityEngine.Random.value * 22f;
                 var kit = Canon.Get(World).weather;
@@ -687,22 +724,109 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.92f + 0.08f * day;
             else
                 RenderSettings.ambientIntensity = 0.28f + 0.72f * day;
+            if (day < 0.32f)
+                RenderSettings.ambientIntensity *= Mathf.Lerp(0.18f, 1f, day / 0.32f);
             var suns = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude);
             Light sun = null;
+            Light continent = null;
             for (int i = 0; i < suns.Length; i++)
             {
                 var l = suns[i];
-                if (!l || l.type != LightType.Directional) continue;
-                if (l.name == "Sun") { sun = l; break; }
-                if (sun == null && l.shadows != LightShadows.None) sun = l;
+                if (!l) continue;
+                if (l.name == "LanternLight")
+                    l.intensity = day < 0.32f ? Mathf.Lerp(3.4f, 0.55f, day / 0.32f) : 0.35f;
+                if (l.type != LightType.Directional) continue;
+                if (l.name == "Sun") { sun = l; }
+                else if (l.name == "ContinentSun") continent = l;
+                else if (sun == null && l.shadows != LightShadows.None) sun = l;
             }
             if (sun)
             {
+                var dim = WeatherDim();
                 if (World == WorldId.Hub)
-                    sun.intensity = 0.92f + 0.38f * day;
+                    sun.intensity = (0.92f + 0.38f * day) * dim;
                 else
-                    sun.intensity = 0.35f + 0.9f * day;
+                    sun.intensity = (0.35f + 0.9f * day) * dim;
+                if (day < 0.32f)
+                    sun.intensity *= Mathf.Lerp(0.08f, 1f, day / 0.32f);
             }
+            if (continent && continent != sun)
+            {
+                var dim = WeatherDim();
+                continent.intensity = (0.92f + 0.38f * day) * dim;
+                if (day < 0.32f)
+                    continent.intensity *= Mathf.Lerp(0.08f, 1f, day / 0.32f);
+            }
+            for (int i = 0; i < suns.Length; i++)
+            {
+                var fill = suns[i];
+                if (!fill || fill.name != "Fill" || fill.type != LightType.Directional) continue;
+                fill.intensity = (sun ? sun.intensity : 0.92f + 0.38f * day) * 0.16f;
+            }
+            if (sun)
+            {
+                float yaw = sun.transform.eulerAngles.y;
+                float pitch = Mathf.Lerp(-12f, 52f, day);
+                sun.transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
+                for (int i = 0; i < suns.Length; i++)
+                {
+                    var fill = suns[i];
+                    if (!fill || fill.name != "Fill") continue;
+                    fill.transform.rotation = Quaternion.Euler(pitch + 12f, yaw + 180f, 0f);
+                }
+            }
+            if (continent)
+            {
+                float yaw = continent.transform.eulerAngles.y;
+                continent.transform.rotation = Quaternion.Euler(Mathf.Lerp(-12f, 42f, day), yaw, 0f);
+            }
+            var sky = RenderSettings.skybox;
+            if (sky && sky.HasProperty("_Exposure"))
+            {
+                float noon = World == WorldId.Hub ? 0.78f : 0.62f;
+                if (sky.shader && sky.shader.name.IndexOf("Procedural", StringComparison.OrdinalIgnoreCase) >= 0)
+                    noon = World == WorldId.Hub ? 1.15f : 1.1f;
+                sky.SetFloat("_Exposure", Mathf.Lerp(0.08f, noon, day));
+            }
+            var volGo = GameObject.Find("GlobalVolume");
+            var vol = volGo ? volGo.GetComponent<Volume>() : null;
+            if (vol && vol.profile && vol.profile.TryGet(out ColorAdjustments color))
+            {
+                float dayPost = World == WorldId.Hub ? 0.12f : 0.08f;
+                color.postExposure.Override(Mathf.Lerp(-0.55f, dayPost, day));
+            }
+            DynamicGI.UpdateEnvironment();
+        }
+
+        static float WeatherDim()
+        {
+            if (Weather == "rain" || Weather == "ash" || Weather == "smog" || Weather == "storm") return 0.62f;
+            if (Weather == "fog" || Weather == "overcast") return 0.78f;
+            if (Weather == "wind") return 0.88f;
+            return 1f;
+        }
+
+        static void ApplyKernelWeatherFx()
+        {
+            Transform root = null;
+            if (ContinentStream.Live)
+                root = ContinentStream.Live.ChunkOf(World);
+            if (!root) return;
+            var kind = (Weather == "rain" || Weather == "storm") ? "rain"
+                : (Weather == "ash" || Weather == "snow") ? "snow"
+                : null;
+            if (kind != _placedWeather)
+            {
+                _placedWeather = kind;
+                if (kind != null)
+                    DressVocab.PlaceWeather(kind, root, new Vector3(0f, 8f, 0f));
+            }
+            if (_baseFog < 0f) _baseFog = RenderSettings.fogDensity;
+            float mul = (Weather == "rain" || Weather == "ash" || Weather == "storm") ? 1.45f
+                : (Weather == "smog" || Weather == "fog") ? 1.7f
+                : Weather == "overcast" ? 1.2f
+                : 1f;
+            RenderSettings.fogDensity = _baseFog * mul;
         }
 
         static float Now() => (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;

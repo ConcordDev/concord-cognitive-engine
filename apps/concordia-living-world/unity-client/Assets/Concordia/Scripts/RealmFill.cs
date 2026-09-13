@@ -783,7 +783,8 @@ namespace Concordia // keep-spawn-assign
             gateGo.transform.SetParent(hold, false);
             gateGo.transform.position = mouth;
             var gate = gateGo.AddComponent<DungeonGate>();
-            gate.holdName = "the hold";
+            gate.holdName = w.id == WorldId.Ruins ? "the unburial" : "the hold";
+            if (w.id == WorldId.Ruins) gate.climbVerb = "Climb the unburial";
             gate.inside = inside;
             gate.mouth = mouth + new Vector3(0f, 0.12f, -3.2f);
             var box = gateGo.AddComponent<BoxCollider>();
@@ -794,11 +795,25 @@ namespace Concordia // keep-spawn-assign
             var plaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.05f, -2.6f),
                 new Vector3(1.05f, 1.5f, 0.12f), HubLook.Lit(w.ground, 0.08f, 0.22f), "HoldPlaque");
             var stone = plaque.AddComponent<LoreStone>();
-            stone.title = "A hold";
-            stone.text = "Kenney tiles. Mouth, hall, vault — geometry roles. No authored dungeon name in this world's canon — the geometry is dressing. Live steel applies.";
+            var lore = WorldBook.Lore(w.id);
+            if (w.id == WorldId.Ruins)
+            {
+                var beat = lore.history != null && lore.history.Length > 0 ? lore.history[0] : null;
+                stone.title = beat != null && !string.IsNullOrEmpty(beat.title) ? beat.title : "The Refusal of Death";
+                var body = !string.IsNullOrEmpty(lore.world_description) ? lore.world_description : (beat?.description ?? w.theNo);
+                if (body.Length > 800) body = body.Substring(0, 797) + "…";
+                stone.text = body;
+            }
+            else
+            {
+                stone.title = "A hold";
+                stone.text = "Kenney tiles. Mouth, hall, vault — geometry roles. No authored dungeon name in this world's canon — the geometry is dressing. Live steel applies.";
+            }
 
             var beacon = hold.gameObject.AddComponent<QuestBeacon>();
-            beacon.tokens = new[] { "dungeon", "hold", "training_hollow", WorldBook.Folder(w.id) + "_hold" };
+            beacon.tokens = w.id == WorldId.Ruins
+                ? new[] { "unburial", "climb", "refuse_death", "dungeon", "hold", WorldBook.Folder(w.id) + "_hold" }
+                : new[] { "dungeon", "hold", "training_hollow", WorldBook.Folder(w.id) + "_hold" };
             beacon.radius = 16f;
 
             int packs = w.steelLive ? 3 : 1;

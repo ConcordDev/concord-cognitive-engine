@@ -274,7 +274,7 @@ LOD L0–L3, streaming, shards (protocol exists), proc expansion, background sim
 | P7 | Standalone `/download` |
 | P8 | WebGL later |
 
-**Now:** finish P0 presentation **and** start Phase A item 8 (consequence graph) + NPC LOD design so Unity has something true to show.
+**Now:** Phase A tables/libs exist (`world_consequences`, needs, 12-axis, apply cycle). Remaining is **real writers** (faction/crime now stamp the bus; kernel no longer invents a leader death each tick) + Unity presenting kernel NPCs from `world:snapshot` + the Alive test as a runnable pin (`server/tests/world-kernel-alive.test.js`). Mixamo density, interiors-as-places, and crime witness→warrant are still experience gaps.
 
 ---
 

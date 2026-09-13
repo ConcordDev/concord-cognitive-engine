@@ -84,6 +84,7 @@ namespace Concordia
             new GuestDef { id = "lyra", name = "Lyra Silentchant", title = "Second hour", line = "I have not taught a ninth Refusal because it cannot be taught. It can only be walked into.", color = Hex("3a3850"), x = 5.5f, z = 14.8f, height = 1.68f },
             new GuestDef { id = "warden", name = "Arena Warden Gale", title = "Iron Wardens", line = "The Court forbids conquest. The sand does not. Poise, not luck.", color = Hex("6a6860"), x = 0, z = 18, height = 1.9f },
             new GuestDef { id = "asbir", name = "Asbir Thelane", title = "Lord Curator", line = "I keep three notebooks. One for facts. One for inferences. One for the difference.", color = Hex("8aa0b4"), x = -6.8f, z = -8.4f, height = 1.74f },
+            new GuestDef { id = "archivist_maren", name = "Maren Ashveil", title = "Archivist", line = "Write what you see. Not what the embassies will claim you saw.", color = Hex("7a8aa0"), x = 6.4f, z = -3.1f, height = 1.7f },
             new GuestDef { id = "brackish", name = "Brackish", title = "Plaza urchin", line = "If you stand still the Court will tell you a secret. If you run it will still be there.", color = Hex("6a5a40"), x = 3.2f, z = -8.8f, height = 1.42f },
             new GuestDef { id = "oldseam", name = "Old Seam", title = "Lantern path", line = "I have mended this street since before the gates had names. Walk soft.", color = Hex("7a6a58"), x = -11.2f, z = -4.1f, height = 1.58f },
         };

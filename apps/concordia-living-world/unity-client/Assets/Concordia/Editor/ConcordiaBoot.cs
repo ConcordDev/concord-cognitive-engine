@@ -14,6 +14,8 @@ namespace Concordia.Editor
         {
             EditorApplication.delayCall += KickOnce;
             EditorApplication.update += WatchPlayRequest;
+            EditorApplication.update += WatchWebExport;
+            EditorApplication.update += WatchStopPlay;
         }
 
         static void WatchPlayRequest()
@@ -23,6 +25,23 @@ namespace Concordia.Editor
             if (EditorApplication.isCompiling) return;
             try { System.IO.File.Delete(flag); } catch { return; }
             PlayHubNow();
+        }
+
+        static void WatchStopPlay()
+        {
+            const string flag = "/tmp/concordia-request-stop";
+            if (!System.IO.File.Exists(flag)) return;
+            try { System.IO.File.Delete(flag); } catch { return; }
+            if (EditorApplication.isPlaying) EditorApplication.isPlaying = false;
+        }
+
+        static void WatchWebExport()
+        {
+            const string flag = "/tmp/concordia-request-webgl-export";
+            if (!System.IO.File.Exists(flag)) return;
+            if (EditorApplication.isCompiling || EditorApplication.isPlaying) return;
+            try { System.IO.File.Delete(flag); } catch { return; }
+            ConcordiaWebExport.ExportInEditor();
         }
 
         static void KickOnce()

@@ -47,10 +47,22 @@ namespace Concordia.Editor
             if (report.summary.result != BuildResult.Succeeded)
             {
                 Debug.LogError("Concordia WebGL export failed: " + report.summary.result);
-                EditorApplication.Exit(1);
+                if (Application.isBatchMode)
+                    EditorApplication.Exit(1);
                 return;
             }
             Debug.Log("Concordia WebGL export wrote " + staging);
+        }
+
+        [MenuItem("Concordia/Export WebGL (in Editor)")]
+        public static void ExportInEditor()
+        {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogWarning("[Concordia] Stop Play before WebGL export.");
+                return;
+            }
+            Export();
         }
     }
 }

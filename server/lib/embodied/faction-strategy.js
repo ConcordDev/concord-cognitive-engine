@@ -31,6 +31,7 @@
 // flavour for the *announcement text* is opt-in in the cycle module.)
 
 import crypto from "node:crypto";
+import { tryRecordConsequence } from "../world-consequence.js";
 
 export const STANCES = Object.freeze([
   "consolidate", "expand", "war", "alliance", "rebuild", "isolation",
@@ -520,6 +521,33 @@ export function applyMove(db, factionId, picked, peerStates) {
       }
     }
   } catch { /* emit failure never affects the cycle */ }
+
+  try {
+    const worldId = resolveFactionWorldId(db, factionId) || "concordia-hub";
+    if (picked.move === "DECLARE_WAR" || picked.move === "RAID") {
+      tryRecordConsequence(db, {
+        worldId,
+        actorKind: "faction",
+        actorId: factionId,
+        action: "war",
+        targetKind: "faction",
+        targetId: picked.target || null,
+        importance: picked.move === "DECLARE_WAR" ? 0.9 : 0.65,
+        immediate: { move: picked.move, summary: picked.summary, moveId },
+      });
+    } else if (picked.move === "PROPOSE_ALLIANCE" || picked.move === "FORM_ALLIANCE") {
+      tryRecordConsequence(db, {
+        worldId,
+        actorKind: "faction",
+        actorId: factionId,
+        action: "alliance",
+        targetKind: "faction",
+        targetId: picked.target || null,
+        importance: 0.75,
+        immediate: { move: picked.move, summary: picked.summary, moveId },
+      });
+    }
+  } catch { /* consequence bus optional until mig 416 */ }
 
   // Phase 2 — refresh NPC preoccupations when the faction's stance changes.
   // Best-effort; never throws back into the strategy cycle.

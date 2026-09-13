@@ -32,6 +32,7 @@ namespace Concordia
         async void Start()
         {
             HubObjectives.Reset();
+            WorldAaa.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
 
@@ -39,7 +40,7 @@ namespace Concordia
             camGo.tag = "MainCamera";
             var cam = camGo.AddComponent<Camera>();
             cam.nearClipPlane = 0.18f;
-            cam.farClipPlane = 220f;
+            cam.farClipPlane = 420f;
             camGo.AddComponent<AudioListener>();
             var chase = camGo.AddComponent<ChaseCamera>();
 
@@ -70,6 +71,7 @@ namespace Concordia
             _player.EquipWorldKit();
             _player.onInteract = TryInteract;
             _player.onTalkSend = SubmitTalk;
+            _player.onInspect = TryInspectKey;
             pgo.AddComponent<ConcordiaHUD>().player = _player;
             pgo.AddComponent<Footsteps>();
             var feel = pgo.AddComponent<CombatFeel>();
@@ -86,6 +88,13 @@ namespace Concordia
             _world = wgo.AddComponent<WorldBuilder>();
             _world.player = _player;
             await HubKit.EnsureLoaded();
+            if (soldierPrefab)
+            {
+                _player.avatar = MixamoAvatar.Attach(pgo.transform, soldierPrefab);
+                WorldAaa.MixamoLine = "mixamo soldier (Soldier.glb)";
+            }
+            else
+                WorldAaa.MixamoLine = "rocketbox adult · SoldierLocomotion clips · Soldier.glb in git";
             _world.Build(world);
             WorldClock.Enter(world);
             Grounding.Snap(cc);
@@ -105,6 +114,7 @@ namespace Concordia
                 {
                     ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
                     Debug.Log("Concordia: " + _player.person.look.displayName + " entered the Unburned Court.");
+                    OfferFoundingDay();
                 });
             }
             else
@@ -115,10 +125,29 @@ namespace Concordia
                 Cursor.visible = false;
                 ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
             }
-            Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
+            OfferFoundingDay();
+            Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. " + WorldAaa.MixamoLine);
             StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
+        }
+
+        bool TryInspectKey()
+        {
+            if (_player == null || _npcs == null) RefreshProbe();
+            GuestNpc best = null;
+            float dBest = 3.2f;
+            var pos = _player.transform.position;
+            if (_npcs != null)
+                foreach (var n in _npcs)
+                {
+                    if (!n) continue;
+                    var d = Vector3.Distance(pos, n.transform.position);
+                    if (d < dBest) { dBest = d; best = n; }
+                }
+            if (best == null) return false;
+            InspectNpc(best);
+            return true;
         }
 
         void RefreshProbe()
@@ -137,6 +166,7 @@ namespace Concordia
         void Update()
         {
             if (!_player || CharacterCreator.IsOpen) return;
+            ContinentStream.Live?.Tick(_player.transform.position);
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();
             var pos = _player.transform.position;
             string prompt = null;
@@ -305,7 +335,7 @@ namespace Concordia
                 return cook.Use();
             if (stone != null)
             {
-                QuestLog.NoteLocation(stone.title);
+                QuestLog.NoteLocation(stone.title, stone.mark);
                 return stone.title + "\n" + stone.text;
             }
             var use = UsePlace.Nearest(pos, 2.4f);
@@ -321,7 +351,9 @@ namespace Concordia
                 var life = npc.GetComponent<NpcLife>();
                 if (life) life.NoticePlayer(8f);
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
+                StampWitness(npc);
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
+                InspectNpc(npc);
                 var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
                 if (offered.Length > 0)
                     return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(offered[0], world);
@@ -389,6 +421,11 @@ namespace Concordia
             QuestLog.NoteLocation("dungeon", "hold");
             if (hold.inHold)
             {
+                if (_player.world == WorldId.Ruins)
+                {
+                    ConcordiaHUD.Announce("The unburial", Canon.Get(WorldId.Ruins).theNo);
+                    return "You climb. Nothing here has finished.";
+                }
                 ConcordiaHUD.Announce("A hold", "Kenney tiles. No authored name.");
                 return "You enter the hold. Live steel if the world allows it.";
             }
@@ -410,30 +447,20 @@ namespace Concordia
         {
             var carried = _player != null ? _player.kitWeapon : null;
             var from = world;
-            WorldClock.Leave();
             var crossed = CrossRing.Walk(from, next, carried);
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            var spawn = next == WorldId.Hub ? Canon.Spawn : new Vector3(0f, 0.12f, 2f);
-            _player.cc.enabled = false;
-            _player.transform.position = spawn;
-            _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            _player.cc.enabled = true;
-            if (_player.cam) _player.cam.yaw = Mathf.PI;
-            _world.Build(next);
-            WorldClock.Enter(next);
+            ContinentStream.Live?.Teleport(_player, next);
             _gates = null;
             _cities = null;
             _holds = null;
             _boards = null;
             _loot = null;
             _cooks = null;
-            _player.EquipWorldKit();
-            Grounding.Snap(_player.cc);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
-            var steel = Canon.SteelLive(next, spawn)
+            var steel = Canon.SteelLive(next, _player.transform.position)
                 ? "Live steel. Combat is allowed here."
                 : "Flower-law. Blades die as flowers except in the Arena.";
             ConcordiaHUD.Announce(w.title, string.IsNullOrEmpty(crossed) ? w.refusal : crossed);
@@ -450,7 +477,7 @@ namespace Concordia
         public string EnterCity(WorldBook.CityDef city)
         {
             if (city == null) return null;
-            var dest = new Vector3(city.x, 0.12f, city.z);
+            var dest = MegaworldMap.Present(world) + new Vector3(city.x, 0.12f, city.z);
             if (Vector3.Distance(_player.transform.position, dest) > 6f)
             {
                 _player.cc.enabled = false;
@@ -477,6 +504,41 @@ namespace Concordia
             catch { return; }
             if (env?.data == null) return;
             _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
+            if (env.data.brokenArm || env.data.brokenLeg)
+                _player?.ApplyLimbs(env.data.brokenArm, env.data.brokenLeg);
+        }
+
+        void OfferFoundingDay()
+        {
+            TryOfferHubQuest("founding_day_01_gather");
+            TryOfferHubQuest("founding_day_02_reading");
+            TryOfferHubQuest("founding_day_03_sign");
+        }
+
+        static void TryOfferHubQuest(string id)
+        {
+            var q = WorldBook.QuestById(WorldId.Hub, id);
+            if (q != null) QuestLog.Offer(q, WorldId.Hub);
+        }
+
+        static void StampWitness(GuestNpc npc)
+        {
+            if (npc?.def == null) return;
+            var id = npc.def.id ?? npc.personId;
+            if (id == "concordia") QuestLog.NoteTalk("concordia_first_breath", npc.def.name);
+            if (id == "concord") QuestLog.NoteTalk("concord_first_thought", npc.def.name);
+            if (id == "sovereign") QuestLog.NoteTalk("sovereign_first_refusal", npc.def.name);
+            if (id == "archivist_maren") QuestLog.NoteTalk("archivist_maren", "Maren Ashveil");
+        }
+
+        async void InspectNpc(GuestNpc npc)
+        {
+            var client = ConcordClient.Live;
+            if (client == null || npc == null) return;
+            if (!client.Connected) await client.EnsureConnected();
+            if (!client.Connected) return;
+            var why = await client.RequestInspect(npc.personId ?? npc.def.id);
+            if (!string.IsNullOrEmpty(why)) _player?.Notice(why);
         }
 
         async void SubmitTalk(string typed)
@@ -537,6 +599,8 @@ namespace Concordia
             public float damage;
             public string error;
             public string reason;
+            public bool brokenArm;
+            public bool brokenLeg;
         }
     }
 

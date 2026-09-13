@@ -16,6 +16,7 @@
 
 import logger from "../logger.js";
 import { LruMap, LruSet } from "./lru-map.js";
+import { mirrorToGateways } from "./gateway-fanout.js";
 
 const WEATHER_TYPES = Object.freeze(["clear", "overcast", "rain", "storm", "snow", "fog", "wind"]);
 
@@ -82,11 +83,15 @@ export function advanceWeather(REALTIME = null) {
     // Broadcast a per-world weather event so subscribers in that world re-tune.
     if (REALTIME?.io) {
       try {
-        REALTIME.io.emit("world:weather", {
+        const payload = {
           worldId,
           ...state,
           ts: new Date(now).toISOString(),
-        });
+        };
+        REALTIME.io.emit("world:weather", payload);
+        // socket.io stays global (Three.js listens without a world room).
+        // Gateways join `world:<id>` on connect — mirror world-scoped.
+        mirrorToGateways("world:weather", payload, { worldId });
       } catch { /* socket best-effort */ }
     }
   }
@@ -94,6 +99,16 @@ export function advanceWeather(REALTIME = null) {
 
 export function getWeather(worldId) {
   return ensureWeatherForWorld(worldId);
+}
+
+/** Decay multipliers so rain/storm/snow change NPC needs — the sim, not VFX. */
+export function weatherNeedMods(worldId) {
+  const w = getWeather(worldId);
+  const type = w?.type;
+  if (type === "storm") return { safety: 1.8, comfort: 1.6, energy: 1.25, type, intensity: w.intensity };
+  if (type === "rain") return { safety: 1.25, comfort: 1.2, type, intensity: w.intensity };
+  if (type === "snow") return { comfort: 1.7, energy: 1.3, type, intensity: w.intensity };
+  return { type, intensity: w?.intensity ?? 0 };
 }
 
 export const WEATHER_CONSTANTS = Object.freeze({ types: WEATHER_TYPES });

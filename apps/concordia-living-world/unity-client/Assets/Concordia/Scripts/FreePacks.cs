@@ -696,7 +696,7 @@ namespace Concordia
             if (c == "grid") return FirstStem(new[] { "Room_Big_Part_01", "Wall_Simple_01", "house.002" }, "building-skyscraper-a");
             if (c == "ash") return FirstStem(new[] { "tower_destroyed", "house.003", "house.002" }, "crypt-a");
             if (c == "street") return FirstStem(new[] { "house.002", "House.001", "house.003" }, "building-type-h");
-            if (c == "court") return FirstStem(new[] { "tower", "house.002" }, "building-type-a");
+            if (c == "court") return FirstStem(new[] { "tower", "house.002", "fi_vil_wall01_01" }, "building-type-a");
             return FirstStem(new[] { "house.002", "House.001", "house.003", "House" }, "tent_detailedOpen");
         }
 
@@ -710,38 +710,38 @@ namespace Concordia
         public static string Wall(WorldId id) =>
             Culture(id) == "grid"
                 ? FirstStem(new[] { "Wall_Simple_01", "stone_wall" }, "skyscraper-small-a")
-                : FirstStem(new[] { "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
+                : FirstStem(new[] { "fi_vil_wall01_01", "fi_vil_wall01_02", "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
 
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
             if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
             if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
-            return FirstStem(new[] { "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
+            return FirstStem(new[] { "OakBigTree01", "Tree", "UNS_Bush", "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
+            FirstStem(new[] { "UNS_Grass", "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
 
         public static string Prop(WorldId id)
         {
             var c = Culture(id);
             if (c == "grid") return FirstStem(new[] { "crate", "barrel" }, "barrel");
             if (c == "street") return FirstStem(new[] { "crate", "barrel", "wagon" }, "crate");
-            return FirstStem(new[] { "barrel", "crate", "wagon", "well" }, "barrel");
+            return FirstStem(new[] { "fi_vil_container_barrel_big_empty", "fi_vil_container_crate_big", "barrel", "crate", "wagon", "well" }, "barrel");
         }
 
         public static string Column(WorldId id) =>
-            FirstStem(new[] { "stone_column" }, "column");
+            FirstStem(new[] { "fi_vil_pillar8_02", "stone_column" }, "column");
 
         public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
-        public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
-        public static string Table() => FirstStem(new[] { "table" }, "table");
-        public static string Chair() => FirstStem(new[] { "chair" }, "chair");
+        public static string Crate() => FirstStem(new[] { "fi_vil_container_crate_big", "crate", "barrel" }, "crate");
+        public static string Table() => FirstStem(new[] { "fi_vil_forge_workbensh_large1", "table" }, "table");
+        public static string Chair() => FirstStem(new[] { "fi_vil_forge_stool1", "chair" }, "chair");
         public static string Chest() => FirstStem(new[] { "chest" }, "chest");
         public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
         public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
-        public static string Rock() => FirstStem(new[] { "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+        public static string Rock() => FirstStem(new[] { "UNS_Rock_Cliff_01", "rock01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
         /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace

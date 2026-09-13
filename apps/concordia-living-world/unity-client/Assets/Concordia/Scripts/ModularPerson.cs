@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0022
+namespace Concordia // FORCE_REFRESH_0023
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -32,6 +32,8 @@ namespace Concordia // FORCE_REFRESH_0022
         bool _authored;
         bool _biped;
         bool _clipsFit;
+        bool _kenneyDoll;
+        Transform _kenneyRoot;
         Animator _anim;
         SkinnedMeshRenderer _skinMesh;
         int _plantFrames;
@@ -66,7 +68,8 @@ namespace Concordia // FORCE_REFRESH_0022
             p.Build(hero);
             p.Apply(look ?? new Appearance());
             p.sword = MakeSword();
-            CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
+            if (p.rightHand && p.rightHand != p.transform)
+                CharacterGear.Grip(p.sword, p.rightHand, 1.05f, true, false);
             return p;
         }
 
@@ -169,11 +172,15 @@ namespace Concordia // FORCE_REFRESH_0022
             if (!_hip || !_head || !_uArmL || !_uArmR)
             {
                 // Kenney mini-characters are painted meshes, not Mixamo rigs.
+                // Hands stay null — never parent gear to the body root.
                 _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
                 float h = RendererHeight(body);
                 if (h > 0.15f) body.transform.localScale *= Mathf.Clamp(1.72f / h, 0.05f, 10f);
                 _authored = true;
-                leftHand = rightHand = body.transform;
+                _kenneyDoll = true;
+                _kenneyRoot = body.transform;
+                leftHand = null;
+                rightHand = null;
                 return true;
             }
 
@@ -220,15 +227,14 @@ namespace Concordia // FORCE_REFRESH_0022
             Capture(_head, ref _headRest);
 
             // Mixamo/Kevin clips need a Humanoid avatar. Rocketbox ships Generic
-            // Bip01 — map it, or LateUpdate gait is the honest floor.
+            // Bip01 — TryBipedAvatar maps it. Valid Humanoid + controller drives
+            // walk/run/idle; hip localPosition is locked against sink. BipedHinge
+            // remains the fallback when no controller or the avatar fails.
             var built = TryBipedAvatar(body);
             if (built) _anim.avatar = built;
             var ctrl = LoadLocomotion();
             var av = _anim.avatar;
-            // Mixamo clips on 3ds Max Biped skate and sink the hips. Authored
-            // BipedHinge gait is the accurate walk for this skeleton. Clips
-            // stay available for a true Mixamo humanoid.
-            _clipsFit = !_biped && ctrl && av && av.isHuman && av.isValid;
+            _clipsFit = ctrl && av && av.isHuman && av.isValid;
             bool clipsFit = _clipsFit;
             if (_clipsFit)
             {
@@ -285,7 +291,7 @@ namespace Concordia // FORCE_REFRESH_0022
                 return go;
             }
 #endif
-            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight" };
+            string[] stems = { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Knight", "Soldier" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -295,6 +301,7 @@ namespace Concordia // FORCE_REFRESH_0022
 #endif
                 return go;
             }
+            go = Resources.Load<GameObject>("Concordia/Soldier");
             return go;
         }
 
@@ -662,53 +669,46 @@ namespace Concordia // FORCE_REFRESH_0022
             if (_authored && _plantFrames < 8)
             {
                 StripGiantAndFallback();
-                if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
-                {
-                    float dy = _handL.position.y - _uArmL.position.y;
-                    if (dy > -0.22f)
-                    {
-                        _clipsFit = false;
-                        if (_anim)
-                        {
-                            _anim.runtimeAnimatorController = null;
-                            _anim.enabled = false;
-                        }
-                        HangAuthoredArms(0f);
-                    }
-                }
                 _plantFrames++;
             }
 
-            bool animating = _clipsFit && !_biped && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
-                && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _grounded && _sit < 0.4f
-                && _speed > 0.35f;
+            bool animating = _clipsFit && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
+                && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _grounded && _sit < 0.4f;
             if (!animating)
             {
-                if (_authored) ApplyAuthoredGait();
+                if (_kenneyDoll) ApplyKenneyDoll();
+                else if (_authored) ApplyAuthoredGait();
                 else ApplyPrimitiveGait();
             }
             else
-                ApplyAuthoredAttitude();
-
-            if (_slashT > 0f && _uArmR)
             {
-                _slashT -= Time.deltaTime;
-                var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
-                float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
-                var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
-                float arc = swing * wind;
-                if (_biped)
-                {
-                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
-                    if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
-                }
-                else
-                    _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                if (_hip) _hip.localPosition = _hipPos0;
+                ApplyAuthoredAttitude();
             }
 
-            // Idle plant only. While moving the gait owns the feet — planting
-            // every LateUpdate yanks the whole body and reads as a stomp.
-            if (_authored && _sit < 0.4f && _shown < 0.35f && _grounded) PlantFeet();
+            if (_slashT > 0f)
+            {
+                _slashT -= Time.deltaTime;
+                if (_uArmR && !animating)
+                {
+                    var t = 1f - Mathf.Clamp01(_slashT / 0.48f);
+                    float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
+                    var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
+                    float arc = swing * wind;
+                    if (_biped)
+                    {
+                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
+                        if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
+                    }
+                    else
+                        _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
+                }
+            }
+
+            // Idle plant only, and only when clips are not driving the skeleton.
+            // While moving the gait owns the feet — planting every LateUpdate
+            // yanks the whole body and reads as a stomp.
+            if (!_clipsFit && _authored && _sit < 0.4f && _shown < 0.35f && _grounded) PlantFeet();
 
             if (_eyeL && _eyeR && _eye0.sqrMagnitude > 0.0001f)
             {
@@ -864,6 +864,28 @@ namespace Concordia // FORCE_REFRESH_0022
             }
             if (_uArmL) _uArmL.localRotation = _lArmRest * ArmDelta(0f, hang, true);
             if (_uArmR) _uArmR.localRotation = _rArmRest * ArmDelta(0f, hang, false);
+        }
+
+        void ApplyKenneyDoll()
+        {
+            var body = _kenneyRoot ? _kenneyRoot : transform.Find("AuthoredPerson");
+            if (!body) return;
+            float dt = Time.deltaTime;
+            _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-12f * dt));
+            _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
+            if (_shown > 0.25f) _phase += dt * 5.2f;
+            else _phase += dt * 1.4f;
+            float s = Mathf.Sin(_phase);
+            float walk = Mathf.InverseLerp(0.28f, 3.8f, _shown);
+            float bob = 0.028f * walk * Mathf.Abs(s);
+            float lean = 6f * walk;
+            if (_sitShown > 0.2f)
+            {
+                bob = -0.12f * _sitShown;
+                lean = 18f * _sitShown;
+            }
+            body.localPosition = new Vector3(0f, bob, 0f);
+            body.localRotation = Quaternion.Euler(lean, 8f * s * walk, 0f);
         }
 
         void ApplyAuthoredGait()
@@ -1030,6 +1052,8 @@ namespace Concordia // FORCE_REFRESH_0022
                 Object.Destroy(kenney.gameObject);
             }
             _authored = false;
+            _kenneyDoll = false;
+            _kenneyRoot = null;
             _built = false;
             _skinMesh = null;
             _anim = null;

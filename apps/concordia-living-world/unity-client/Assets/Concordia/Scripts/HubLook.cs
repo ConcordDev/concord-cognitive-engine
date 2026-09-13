@@ -212,6 +212,7 @@ namespace Concordia
             bulb.transform.localScale = Vector3.one * 0.18f;
             Object.Destroy(bulb.GetComponent<Collider>());
             bulb.GetComponent<Renderer>().sharedMaterial = Emit(new Color(1f, 0.72f, 0.38f), 3.5f);
+            Point(parent, "LanternLight", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.8f, 11f, false);
         }
 
         public static Material GroundMat(WorldId world, Color tint)
@@ -360,7 +361,21 @@ namespace Concordia
         static Texture LoadPbrTex(string file)
         {
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + file);
+            var t = AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + file);
+            if (t) return t;
+            var n = (file ?? "").ToLowerInvariant();
+            if (n.Contains("packed_earth") || n.Contains("ash_soil"))
+            {
+                if (n.Contains("nor") || n.Contains("normal"))
+                    return AssetDatabase.LoadAssetAtPath<Texture>("Assets/ADG_Textures/ground_vol1/ground1/ground1_Normal.tga")
+                        ?? AssetDatabase.LoadAssetAtPath<Texture>("Assets/Cartoon_Texture_Pack/DIRT/Dirt_Path/Textures/Dirt_Path_Normal.png");
+                return AssetDatabase.LoadAssetAtPath<Texture>("Assets/ADG_Textures/ground_vol1/ground1/ground1_Diffuse.tga")
+                    ?? AssetDatabase.LoadAssetAtPath<Texture>("Assets/Cartoon_Texture_Pack/DIRT/Dirt_Path/Textures/Dirt_Path_Basecolor.png")
+                    ?? AssetDatabase.LoadAssetAtPath<Texture>("Assets/Free Island Collection/Environment/Terrain/Textures/Dirt_1/Dirt_1_Diffuse.tif");
+            }
+            if (n.Contains("stone_tiles") || n.Contains("plastered_wall"))
+                return AssetDatabase.LoadAssetAtPath<Texture>("Assets/ADG_Textures/walls_vol1/wall01/wall01_Diffuse.tga");
+            return t;
 #else
             return null;
 #endif

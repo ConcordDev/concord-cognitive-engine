@@ -79,6 +79,15 @@ export function recordConsequence(db, opts) {
   return { ok: true, id, importance };
 }
 
+/** Best-effort stamp — never throws into a heartbeat or combat path. */
+export function tryRecordConsequence(db, opts) {
+  try {
+    return recordConsequence(db, opts);
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
 export function listConsequences(db, q = {}) {
   const where = [];
   const args = [];

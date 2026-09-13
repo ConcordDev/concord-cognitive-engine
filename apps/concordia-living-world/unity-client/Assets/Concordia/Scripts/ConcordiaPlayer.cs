@@ -17,6 +17,7 @@ namespace Concordia
         public WorldId world = WorldId.Hub;
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
+        public bool brokenArm, brokenLeg;
         Vector3 _vel;
         float _yaw, _slashUntil, _dodgeUntil, _attackKind, _coyote;
         bool _wasGrounded = true;
@@ -30,6 +31,7 @@ namespace Concordia
         public GuestNpc talkNpc;
         public readonly System.Collections.Generic.List<string> talkLog = new System.Collections.Generic.List<string>();
         public System.Action<string> onTalkSend;
+        public System.Func<bool> onInspect;
         float _toastT;
         public System.Action<string> onToast;
         public System.Func<Vector3, string> onInteract;
@@ -86,9 +88,16 @@ namespace Concordia
             }
             if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
             {
-                _vel += wish.normalized * 12.4f;
-                _dodgeUntil = Time.time + 0.38f;
-                stamina -= 18;
+                if (brokenLeg)
+                {
+                    Toast("Broken leg — dodge locked.");
+                }
+                else
+                {
+                    _vel += wish.normalized * 12.4f;
+                    _dodgeUntil = Time.time + 0.38f;
+                    stamina -= 18;
+                }
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
@@ -246,15 +255,26 @@ namespace Concordia
         void HandleMenuKeys()
         {
             if (talkOpen && KeyDown(KeyCode.Return)) SubmitTalk();
-            if (KeyDown(KeyCode.I) && !talkOpen) ToggleMenu();
+            if (KeyDown(KeyCode.I) && !talkOpen)
+            {
+                if (onInspect != null && onInspect()) { /* kernel inspect */ }
+                else ToggleMenu();
+            }
+            if (menuOpen && KeyDown(KeyCode.LeftBracket)) SkillLattice.CycleGroup(-1);
+            if (menuOpen && KeyDown(KeyCode.RightBracket)) SkillLattice.CycleGroup(1);
             if (Busy) return;
-            if (KeyDown(KeyCode.Alpha1)) { KitBag.Art = 0; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha2)) { KitBag.Art = 1; Toast(KitBag.ArtName(world)); }
-            if (KeyDown(KeyCode.Alpha3)) { KitBag.Art = 2; Toast(KitBag.ArtName(world)); }
+            if (KeyDown(KeyCode.Alpha1)) { SkillLattice.SelectSlot(0); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha2)) { SkillLattice.SelectSlot(1); Toast(SkillLattice.HudLine()); }
+            if (KeyDown(KeyCode.Alpha3)) { SkillLattice.SelectSlot(2); Toast(SkillLattice.HudLine()); }
         }
 
         void TryAttack(bool heavy)
         {
+            if (brokenArm)
+            {
+                Toast("Broken arm — strikes weakened.");
+                heavy = false;
+            }
             var style = Canon.Get(world).style;
             var art = heavy ? style.heavy : style.light;
             var live = Canon.SteelLive(world, transform.position);
@@ -275,10 +295,11 @@ namespace Concordia
                 hostility += 1.2f;
                 if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
             }
+            if (brokenArm) _dmgMul *= 0.62f;
             var connected = HitScan(heavy, 1f);
             SkillLedger.Record(art, connected);
             var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected);
+            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill));
         }
 
         void TrySpecial()
@@ -383,13 +404,21 @@ namespace Concordia
                 // Kernel resolves HP. Presentation already played the swing.
                 _pendingKernelTarget = dummy;
                 Toast(dummy.name + " — Concord resolving");
-                _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon());
+                _ = client.SendAttack(dummy.KernelId, dmg, reach, liveWeapon());
                 return true;
             }
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
             Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
             return true;
+        }
+
+        public void ApplyLimbs(bool arm, bool leg)
+        {
+            brokenArm = arm;
+            brokenLeg = leg;
+            var feel = GetComponent<CombatFeel>();
+            feel?.ApplyAck(false, 0f, arm, leg);
         }
 
         /// <summary>Apply combat:attack:ack from the Concord kernel. Never invent HP.</summary>

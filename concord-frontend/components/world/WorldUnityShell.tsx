@@ -9,8 +9,9 @@
  * opens a minimal overlay: leave lens, settings, advanced OS tools.
  *
  * Advanced tools lazy-load WorldOsSurface (the former page.tsx monolith) so
- * auctions / breeding / workshops / ConKay design HUD / Three path stay
- * reachable without permanently layering on the viewport.
+ * auctions / breeding / workshops / ConKay design HUD stay reachable
+ * without permanently layering on the viewport. ConcordiaScene is not
+ * the world — missing WebGL export is an honest unbuilt state.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,6 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LensShell } from '@/components/lens/LensShell';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
+import { buildUnityIframeSearch } from '@/lib/unity-iframe-config';
 
 const WorldOsSurface = dynamic(() => import('@/components/world/WorldOsSurface'), {
   ssr: false,
@@ -43,10 +45,10 @@ type UnityStatus = 'checking' | 'ready' | 'missing';
 
 type ShellPanel = null | 'menu' | 'settings' | 'advanced';
 
+/** Committed player first. Env override only if it is a real HTML player. */
 const CANDIDATE_SRCS = [
   UNITY_WEBGL_URL,
   '/unity-client/index.html',
-  '/concordia-webgl/index.html',
 ].filter((u, i, arr) => Boolean(u) && arr.indexOf(u) === i);
 
 async function probeUnitySrc(src: string): Promise<boolean> {
@@ -82,9 +84,10 @@ export default function WorldUnityShell() {
         const ok = await probeUnitySrc(candidate);
         if (cancelled) return;
         if (ok) {
-          const params = new URLSearchParams({ CONCORD_WORLD_ID: worldId });
-          const jwt = getInjectedJwt();
-          if (jwt) params.set('CONCORD_AUTH_TOKEN', jwt);
+          const params = buildUnityIframeSearch({
+            worldId,
+            token: getInjectedJwt(),
+          });
           const join = candidate.includes('?') ? '&' : '?';
           setIframeSrc(`${candidate}${join}${params.toString()}`);
           setStatus('ready');
@@ -141,7 +144,9 @@ export default function WorldUnityShell() {
 
   const chromeHint = useMemo(() => {
     if (status === 'checking') return 'Locating Unity WebGL…';
-    if (status === 'missing') return 'Unity export missing — open Advanced for OS / Three surface';
+    if (status === 'missing') {
+      return 'Unity WebGL export is not built — play the Editor client against ws://127.0.0.1:5050/unity-ws';
+    }
     return 'Unity WebGL · /unity-ws';
   }, [status]);
 
@@ -262,7 +267,7 @@ export default function WorldUnityShell() {
                   >
                     Advanced OS tools
                     <span className="mt-0.5 block text-[10px] text-zinc-500">
-                      Hub, district editor, HUD stack, Three path
+                      Hub, district editor, HUD stack
                     </span>
                   </button>
                 </li>

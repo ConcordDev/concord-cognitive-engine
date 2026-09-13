@@ -32,6 +32,10 @@ namespace Concordia
         Renderer[] _rend;
         bool _hidden;
         GameObject _carry;
+        float _mournUntil;
+        bool _mournHurt;
+        static float _kernelThreatUntil;
+        static Vector3 _kernelThreatPos;
 
         void Start()
         {
@@ -62,6 +66,33 @@ namespace Concordia
         public void BindWorkplace(Vector3 pos) => workplace = pos;
         public bool IsTalking => act == "talk";
         public bool IsWalkingJob => job == Job.Wander || job == Job.Sweep || job == Job.Watch;
+
+        /// <summary>
+        /// Presentation only. Hub flower-law mourns; steel worlds may also flee.
+        /// Never invent a death — kernel combat:kill is the only caller.
+        /// </summary>
+        public static void NoteKernelDeath(string who, Vector3 at)
+        {
+            _kernelThreatUntil = Time.time + 8f;
+            _kernelThreatPos = at;
+            foreach (var npc in FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+                npc?.BeginMourn(at);
+        }
+
+        public static void NoteKernelThreat(Vector3 at)
+        {
+            _kernelThreatUntil = Time.time + 4f;
+            _kernelThreatPos = at;
+        }
+
+        void BeginMourn(Vector3 at)
+        {
+            var d = at - transform.position;
+            d.y = 0f;
+            if (d.sqrMagnitude > 400f) return;
+            _mournUntil = Time.time + 6f;
+            _mournHurt = false;
+        }
 
         void Update()
         {
@@ -100,6 +131,23 @@ namespace Concordia
                 if (_insideT > 0f) return;
                 _indoors = false;
                 Show(true);
+            }
+
+            if (Time.time < _mournUntil)
+            {
+                act = "mourn";
+                DropCarry();
+                if (!_mournHurt)
+                {
+                    _person?.Hurt();
+                    _mournHurt = true;
+                }
+                _person?.Sit(true);
+                Hold();
+                _person?.SetGait(0f, true);
+                FaceAt(_kernelThreatPos);
+                if (lod == SimLod.Real) WorldClock.NoteAct(Who() + " " + Phrase(act));
+                return;
             }
 
             if (Threat())
@@ -213,7 +261,7 @@ namespace Concordia
             {
                 if (!other || other == this || other.pinned) continue;
                 if (other.IsWalkingJob) continue;
-                if (other.act == "flee" || other.act == "sleep" || other.act == "inside") continue;
+                if (other.act == "flee" || other.act == "sleep" || other.act == "inside" || other.act == "mourn") continue;
                 var d = other.transform.position - p;
                 d.y = 0f;
                 if (d.sqrMagnitude > 3.2f) continue;
@@ -360,6 +408,12 @@ namespace Concordia
         bool Threat()
         {
             if (!Canon.Get(WorldClock.World).steelLive) return false;
+            if (Time.time < _kernelThreatUntil)
+            {
+                var kd = _kernelThreatPos - transform.position;
+                kd.y = 0f;
+                if (kd.sqrMagnitude < 144f) return true;
+            }
             var threats = WorldClock.Threats;
             if (threats == null) return false;
             var p = transform.position;
@@ -370,6 +424,14 @@ namespace Concordia
                 if (d.sqrMagnitude < 64f) return true;
             }
             return false;
+        }
+
+        void FaceAt(Vector3 world)
+        {
+            var to = world - transform.position;
+            to.y = 0f;
+            if (to.sqrMagnitude < 0.01f) return;
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), Time.deltaTime * 6f);
         }
 
         void FaceRegard()
@@ -423,6 +485,7 @@ namespace Concordia
             "gather" => "walks the street",
             "deliver" => "is carrying something",
             "flee" => "runs from steel",
+            "mourn" => "stands with the fallen",
             "talk" => "stopped to speak",
             "watch" => "holds a post",
             "patrol" => "changes post",

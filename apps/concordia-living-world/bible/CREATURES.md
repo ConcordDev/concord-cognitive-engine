@@ -1,17 +1,23 @@
 # CREATURES
 
-**Status:** PARTIAL  
+**Status:** LIVE compiler · honest skip  
 **Authority:** Concord  
-**Source:** `Canon.fauna`; `EvoSpawner.cs`; `Hostile.cs`; `DungeonHold`; `src/game/creatures.ts`, `evo.ts`
+**Source:** `CreatureCompiler.cs`; `Canon.fauna`; `EvoSpawner.cs`; `FaunaLife`; `src/game/creatures.ts`
 
 ## LIVE
 
-Per-world fauna lists (wraith, sealie, wolf, drone, griffin, basilisk, …). Unity spawns + `FaunaLife` + `Hostile` on steel worlds. Dummy in Hub arena. Each steel world also builds one Kenney **hold** (`DungeonHold`) as mouth → hall → vault with a gatherable chest and a pack per room. City outskirts spawn 1–2 more packs from `WorldBook.Critters` / `Canon.fauna` — no invented names. Geometry is dressing; the hold plaque does not invent an authored dungeon name.
+`CreatureCompiler` is the only spawn path (`EvoSpawner.Spawn` / `SpawnNamed` / `WorldBuilder.SpawnFauna`). Genome card → topology → pack mesh → `FaunaLife`. Generation 0 is founding stock.
+
+Honest stem: wolf is not a Fox, griffin is not a Horse, harpy is not a Parrot. Missing mesh → **no spawn**. Hub air is Living Birds (`FreePacks.Bird` + `FlockOrbit`) or empty sky — not Sphere+Cube `CourtBird`.
+
+Dummy in Hub arena. Steel worlds still build one Kenney **hold**. City outskirts use `WorldBook.Critters` through the compiler. Geometry is dressing; the hold plaque does not invent an authored dungeon name.
+
+Kernel `PresentKernel` places a body only at a streamed presenter xz or beside a parent already in the scene. Far coords stay unplaced.
 
 ## TARGET
 
-Persistent populations, patrols, flying vs ground, evolution under selection. Authored dungeon names when the canon has them.
+Persistent populations, patrols, flying vs ground, evolution under selection. Authored dungeon names when the canon has them. Morphology extras from genome×field when real meshes exist — not cube wings.
 
 ## Gap
 
-Deaths persist as ids, not a full wild.ts graph. Hostile now perceives and strafes; it is still not a humanoid clip graph.
+Deaths persist as ids, not a full wild.ts graph. Hostile now perceives and strafes; it is still not a humanoid clip graph. Quota top-up still exists on the kernel fauna-spawner.

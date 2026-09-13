@@ -304,10 +304,11 @@ module.exports = {
       script: 'node',
       // MUST be server-proxy.js, not .next/standalone/server.js — the
       // vanilla standalone server ignores BACKEND_URL below and has no
-      // /socket.io/* proxy, so a request to it falls into Next's own
-      // routing and gets redirected (observed live 2026-08-24: redirected
-      // all the way to /login), breaking every WebSocket-dependent feature
-      // (chat, presence, live world/game sync) for every user.
+      // /socket.io /unity-ws /godot-ws upgrade proxy, so a request to it
+      // falls into Next's own routing and gets redirected (observed live
+      // 2026-08-24: redirected all the way to /login), breaking every
+      // WebSocket-dependent feature (chat, presence, Unity /unity-ws,
+      // live world/game sync) for every user.
       //
       // server-proxy.js DOES work under the current Next.js 16.2.12 — a
       // same-day false alarm here was corrected by more patient testing.
