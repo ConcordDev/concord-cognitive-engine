@@ -29,6 +29,7 @@ import {
   findSettlementByRegion,
   regionalSummary,
 } from "../lib/concordia-megaworld.js";
+import { getActiveWorldForPlayer, notePlayerWorld } from "../lib/world-loader.js";
 import { composeEntry } from "../lib/chronicle/compose.js";
 import { decaySettlementForRegion, spawnSettlementForRegion } from "../lib/procgen-settlements.js";
 import { listConsequences } from "../lib/world-consequence.js";
@@ -77,6 +78,26 @@ describe("megaworld topology laws", () => {
     );
     assert.match(canon, /steelLive = false/);
     assert.match(canon, /Flower-law is the Court only/);
+  });
+});
+
+describe("presenter world stamp", () => {
+  it("scene:request notePlayerWorld is what getActiveWorldForPlayer reads", () => {
+    const db = new Database(":memory:");
+    db.exec(`
+      CREATE TABLE player_world_state (
+        user_id TEXT PRIMARY KEY,
+        world_id TEXT,
+        city_id TEXT NOT NULL DEFAULT 'concordia-central'
+      )
+    `);
+    assert.equal(getActiveWorldForPlayer(db, "unity-local-guest"), "concordia-hub");
+    assert.equal(notePlayerWorld(db, "unity-local-guest", "fantasy").ok, true);
+    assert.equal(getActiveWorldForPlayer(db, "unity-local-guest"), "fantasy");
+    assert.equal(notePlayerWorld(db, "unity-local-guest", "tunya").ok, true);
+    assert.equal(getActiveWorldForPlayer(db, "unity-local-guest"), "tunya");
+    assert.equal(notePlayerWorld(null, "u", "fantasy").ok, false);
+    db.close();
   });
 });
 

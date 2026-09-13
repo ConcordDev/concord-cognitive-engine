@@ -167,6 +167,14 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /LastTravelKind = kind/);
     assert.doesNotMatch(stream, /LastTravelKind == "link_gate" \? "link_gate"/);
     assert.match(stream, /game\.NoteWorld\(id\)/);
+    const game = src("ConcordiaGame.cs");
+    assert.match(game, /ConcordClient\.JoinWorld\(WorldBook\.Folder/);
+    assert.doesNotMatch(game, /if \(client && client\.Connected\)/);
+    const client = src("ConcordClient.cs");
+    assert.match(client, /public static Task JoinWorld/);
+    assert.match(client, /if \(!Connected\)/);
+    assert.match(client, /EnsureConnected\(\)/);
+    assert.match(client, /_retryAt = Time\.unscaledTime \+ 8f/);
   });
 
   it("ContinentStream.Live survives OnDisable so Travel cannot lose the stream mid-session", () => {

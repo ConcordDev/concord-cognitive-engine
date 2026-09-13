@@ -181,7 +181,7 @@ WORLD SIMULATION  →  WORLD STATE  →  CONSEQUENCE GRAPH
 
 When W7 lands, Unity also dresses **the field**: magic density, tech density, transition weather, faction banners, weakening of *every* combatant. The renderer still does not invent the number.
 
-Current Unity `Travel` is **continent_stream** (`ContinentStream` Bind+Teleport to Present). Walking SoftEnters. Link gates remain the only teleport. WorldField is sampled at the feet. Kernel `CURRENT_TRAVEL_MODE` matches. Overland *intent* (`intendedTravelMode`) is still link-vs-walk law, not a heightmap continent.
+Current Unity `Travel` is **continent_stream** (`ContinentStream` Bind+Teleport to Present). Walking SoftEnters. Link gates remain the only teleport. Both paths `JoinWorld` over `/unity-ws` (EnsureConnected + `scene:request`). Kernel `notePlayerWorld` stamps `player_world_state` so Concord combat, 2B, presence, and `getActiveWorldForPlayer` follow the presenter. WorldField is sampled at the feet. Overland *intent* (`intendedTravelMode`) is still link-vs-walk law, not a heightmap continent.
 
 ---
 

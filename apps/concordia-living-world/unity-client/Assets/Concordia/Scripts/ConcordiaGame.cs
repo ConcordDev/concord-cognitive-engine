@@ -485,21 +485,18 @@ namespace Concordia
                 _player.Notice(crossed);
             else if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
                 _player.Notice(WorldClock.LastEvent);
-            var client = ConcordClient.Live;
-            if (client && client.Connected)
-                _ = client.RequestScene(WorldBook.Folder(next));
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(next));
         }
 
         /// <summary>
         /// SoftEnter / walk-in world change. Same kernel join Travel uses.
         /// Overland players must not keep sending the previous region id.
+        /// JoinWorld connects kitchen if Start() missed it.
         /// </summary>
         public void NoteWorld(WorldId id)
         {
             world = id;
-            var client = ConcordClient.Live;
-            if (client && client.Connected)
-                _ = client.RequestScene(WorldBook.Folder(id));
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(id));
         }
 
         public string EnterCity(WorldBook.CityDef city)

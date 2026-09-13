@@ -48,6 +48,7 @@ namespace Concordia
         public static ConcordClient Live { get; private set; }
         public string DungeonInstanceId { get; private set; } = "";
         string _userId = "";
+        float _retryAt;
         readonly System.Collections.Concurrent.ConcurrentQueue<System.Action> _main =
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
@@ -72,6 +73,13 @@ namespace Concordia
                 catch (Exception e) { Debug.LogWarning("Concord frame: " + e.Message); }
             }
             AdaptiveScore.Tick();
+            if (Connected) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (string.IsNullOrWhiteSpace(gatewayUrl)) return;
+#endif
+            if (Time.unscaledTime < _retryAt) return;
+            _retryAt = Time.unscaledTime + 8f;
+            _ = EnsureConnected();
         }
 
         void RunMain(System.Action a)
@@ -125,6 +133,7 @@ namespace Concordia
             _cts = new CancellationTokenSource();
             LastReason = "connecting";
             StatusJson = "{\"ok\":false,\"reason\":\"connecting\"}";
+            _retryAt = 8f;
 #if UNITY_WEBGL && !UNITY_EDITOR
             if (string.IsNullOrWhiteSpace(gatewayUrl))
             {
@@ -1351,9 +1360,25 @@ namespace Concordia
             return SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
         }
 
+        /// <summary>
+        /// SoftEnter / Travel join. Stamps folder even if kitchen is late so
+        /// AfterOpen / retry send the world Concordia is actually in.
+        /// </summary>
+        public static Task JoinWorld(string folder)
+        {
+            var live = Live;
+            if (live == null) return Task.CompletedTask;
+            return live.RequestScene(folder);
+        }
+
         public async Task RequestScene(string nextWorldId)
         {
             if (!string.IsNullOrEmpty(nextWorldId)) worldId = nextWorldId;
+            if (!Connected)
+            {
+                await EnsureConnected();
+                return;
+            }
             await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
             await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
