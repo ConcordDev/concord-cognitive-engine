@@ -6,10 +6,31 @@ namespace Concordia
     {
         public GateDef def;
         public string Prompt => "E  ·  " + def.name + "  —  " + def.refusal;
+        Light _wind;
+        ParticleSystem _swirl;
 
         void Start()
         {
             GatePost.Ensure(this);
+            var swirlT = transform.Find("Swirl");
+            if (swirlT) _swirl = swirlT.GetComponent<ParticleSystem>();
+            var tint = def != null ? def.color : new Color(1f, 0.86f, 0.62f);
+            _wind = HubLook.Point(transform, "GateWind", transform.position + Vector3.up * 3.4f, tint, 0.12f, 10f, false);
+        }
+
+        void LateUpdate()
+        {
+            bool on = ConcordiaHUD.Bearing == this;
+            if (_swirl)
+            {
+                var em = _swirl.emission;
+                em.rateOverTime = on ? 28f : 7f;
+            }
+            if (_wind)
+            {
+                _wind.intensity = on ? 2.4f : 0.12f;
+                _wind.range = on ? 18f : 8f;
+            }
         }
     }
 

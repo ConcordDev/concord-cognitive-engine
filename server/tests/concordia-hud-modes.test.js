@@ -18,7 +18,7 @@ describe("Concordia HUD modes — AAA density", () => {
     assert.match(hud, /HudMode ResolveMode\(\)/);
     const onGui = hud.slice(hud.indexOf("void OnGUI()"), hud.indexOf("void Hints("));
     assert.match(onGui, /if \(_mode == HudMode\.Combat\) TargetBar/);
-    assert.match(onGui, /if \(_mode == HudMode\.Scheme\) PlotBar/);
+    assert.match(onGui, /if \(_mode == HudMode\.Scheme && !\(_liveFilm && _announceT > 0f\)\) PlotBar/);
     assert.match(onGui, /if \(_mode != HudMode\.Scheme\) Prompt/);
     assert.match(hud, /if \(!DebugHud && !holdTab\) return/);
     assert.match(hud, /KeyCode\.Tab/);
@@ -50,8 +50,27 @@ describe("Concordia HUD modes — AAA density", () => {
     assert.match(hud, /Court bird/);
     assert.doesNotMatch(hud, /dummy\.name : \(host \? host\.name/);
     assert.doesNotMatch(hud, /label\.ToUpperInvariant\(\)/);
-    assert.match(hud, /g\.world\.ToString\(\)/);
+    assert.doesNotMatch(hud, /g\.world\.ToString\(\)/);
     assert.doesNotMatch(hud, /name = g\.shortName/);
+  });
+
+  it("explore is compass + regime glyph; messages queue; lore is hold-C Focus", () => {
+    const hud = src("ConcordiaHUD.cs");
+    const plaza = src("HubPlaza.cs");
+    const gate = src("WorldGate.cs");
+    assert.match(hud, /bool QuietExplore/);
+    assert.match(hud, /if \(QuietExplore\) return/);
+    assert.match(hud, /static void Enqueue\(/);
+    assert.match(hud, /DrainFeed\(/);
+    assert.match(hud, /FocusScan\(/);
+    assert.match(hud, /KeyCode\.C/);
+    assert.match(hud, /WorldField\.HudLine/);
+    assert.match(hud, /GateBearing\(/);
+    assert.match(hud, /public static WorldGate Bearing/);
+    assert.match(gate, /ConcordiaHUD\.Bearing == this/);
+    assert.match(gate, /"GateWind"/);
+    assert.doesNotMatch(plaza, /label\.text = gate\.shortName/);
+    assert.match(hud, /hold C  look/);
   });
 
   it("skill lattice HUD copy never leaks the channel id", () => {

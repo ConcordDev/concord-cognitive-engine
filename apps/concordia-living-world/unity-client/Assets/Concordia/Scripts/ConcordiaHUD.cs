@@ -22,14 +22,34 @@ namespace Concordia
         static float _announceT;
         static string _announceTitle, _announceLine;
         static bool _taughtFlower, _taughtSteel;
+        static readonly Queue<Card> _cards = new Queue<Card>();
+        static bool _liveFilm;
+        static float _liveDur = 4.6f;
+        static string _lastFeed;
+        static string _seenToast;
         Font _font;
         HudMode _mode = HudMode.Explore;
+        float _hurtT;
+        float _lastHp = -1f;
+        public static WorldGate Bearing;
+
+        struct Card
+        {
+            public string title, line;
+            public float duration;
+            public bool film;
+        }
 
         public static void Announce(string title, string line)
         {
-            _announceT = 4.6f;
-            _announceTitle = title;
-            _announceLine = line;
+            Enqueue(title, line, 4.6f, true);
+        }
+
+        static void Enqueue(string title, string line, float duration, bool film)
+        {
+            if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(line)) return;
+            if (_cards.Count >= 5) _cards.Dequeue();
+            _cards.Enqueue(new Card { title = title ?? "", line = line ?? "", duration = duration, film = film });
         }
 
         void Ensure()
@@ -78,13 +98,91 @@ namespace Concordia
                 DebugHud = WorldAaa.DebugDump;
                 PlayerPrefs.SetInt("concordia-p0-no-debug", DebugHud ? 0 : 1);
             }
-            if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
+            TickHurt();
+            TickQueue();
+            DrainFeed();
+            DrainToast();
+            GateBearing();
             TeachRegime();
+        }
+
+        void TickHurt()
+        {
+            if (!player) return;
+            if (_lastHp < 0f) _lastHp = player.hp;
+            if (player.hp < _lastHp - 0.5f) _hurtT = 2.8f;
+            _lastHp = player.hp;
+            if (_hurtT > 0f) _hurtT -= Time.unscaledDeltaTime;
+        }
+
+        void TickQueue()
+        {
+            if (_announceT > 0f)
+            {
+                _announceT -= Time.unscaledDeltaTime;
+                return;
+            }
+            _announceTitle = null;
+            _announceLine = null;
+            _liveFilm = false;
+            if (_cards.Count == 0) return;
+            var card = _cards.Dequeue();
+            _announceTitle = card.title;
+            _announceLine = card.line;
+            _liveFilm = card.film;
+            _liveDur = card.duration > 0.2f ? card.duration : 2.6f;
+            _announceT = _liveDur;
+        }
+
+        void DrainFeed()
+        {
+            if (DebugHud || WorldClock.FeedCount <= 0) return;
+            var beat = WorldClock.FeedAt(0);
+            if (string.IsNullOrEmpty(beat.line) || beat.line == _lastFeed) return;
+            _lastFeed = beat.line;
+            Enqueue(beat.channel ?? "", beat.line, 3.2f, false);
+        }
+
+        void DrainToast()
+        {
+            if (!player || string.IsNullOrEmpty(player.toast))
+            {
+                _seenToast = null;
+                return;
+            }
+            if (player.toast == _seenToast) return;
+            _seenToast = player.toast;
+            Enqueue("", player.toast, 2.6f, false);
+        }
+
+        bool QuietExplore => _mode == HudMode.Explore && _hurtT <= 0f && !DebugHud;
+
+        bool FocusHeld()
+        {
+            return player && !player.talkOpen && !player.menuOpen && !player.skillOpen
+                && Input.GetKey(KeyCode.C);
+        }
+
+        void GateBearing()
+        {
+            Bearing = null;
+            if (!player || player.world != WorldId.Hub || !player.cam) return;
+            var fwd = player.cam.PlanarForward;
+            float best = 0.78f;
+            foreach (var g in FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
+            {
+                if (!g) continue;
+                var to = g.transform.position - player.transform.position;
+                to.y = 0f;
+                if (to.sqrMagnitude < 4f) continue;
+                float dot = Vector3.Dot(fwd.normalized, to.normalized);
+                if (dot > best) { best = dot; Bearing = g; }
+            }
         }
 
         void TeachRegime()
         {
-            if (!player || _announceT > 0f) return;
+            if (!player || _announceT > 0f || _cards.Count > 0) return;
             var live = Canon.SteelLive(player.world, player.transform.position);
             if (!live && !_taughtFlower)
             {
@@ -120,6 +218,7 @@ namespace Concordia
             if (_mode != HudMode.Scheme) Prompt(w, h);
             Toast(w);
             Arrival(w, h);
+            FocusScan(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
             if (DebugHud)
@@ -128,7 +227,7 @@ namespace Concordia
                 if (!player.Busy) Minimap(h);
             }
             if (player.skillOpen) SkillSheet(w, h);
-            if (_mode == HudMode.Scheme) PlotBar(w, h);
+            if (_mode == HudMode.Scheme && !(_liveFilm && _announceT > 0f)) PlotBar(w, h);
             Hints(w, h);
         }
 
@@ -137,10 +236,13 @@ namespace Concordia
             bool holdTab = Input.GetKey(KeyCode.Tab);
             if (!DebugHud && !holdTab) return;
             if (player.talkOpen || player.menuOpen || player.skillOpen) return;
+            var line = _mode == HudMode.Combat
+                ? "LMB  swing   ·   X  dodge   ·   Space  jump   ·   Tab  holds this"
+                : _mode == HudMode.Scheme
+                    ? "Expose  ·  Abet  ·  Ignore   ·   Tab  holds this"
+                    : "E  use   ·   hold C  look   ·   I  kit   ·   Tab  holds this";
             GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.88f);
-            GUI.Label(new Rect(18, h - 22, w - 36, 20),
-                "I  kit   ·   K  skills   ·   1/2/3  arts   ·   LMB  swing   ·   X  dodge   ·   E  use   ·   Tab  holds this",
-                _small);
+            GUI.Label(new Rect(18, h - 22, w - 36, 20), line, _small);
             GUI.color = Color.white;
         }
 
@@ -149,6 +251,8 @@ namespace Concordia
             var world = Canon.Get(player.world);
             var live = Canon.SteelLive(player.world, player.transform.position);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
+            DrawRegime(32, 34, live);
+            if (QuietExplore && !FocusHeld()) return;
             float vh = DebugHud ? 108 : (city != null ? 52 : 36);
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
             GUI.DrawTexture(new Rect(22, 28, 268, vh), _white);
@@ -359,6 +463,7 @@ namespace Concordia
 
         void Rings(float w)
         {
+            if (QuietExplore) return;
             float cx = w - 78f;
             float cy = 78f;
             DrawRing(cx, cy, 62, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
@@ -459,23 +564,10 @@ namespace Concordia
             Tick("E", -Mathf.PI / 2f);
             Tick("S", 0f);
             Tick("W", Mathf.PI / 2f);
-
-            var fwd = player.cam.PlanarForward;
-            float best = 0.78f;
-            string name = null;
-            foreach (var g in Canon.Gates)
-            {
-                var gatePos = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle)) * Canon.RingRadius;
-                var toGate = gatePos - player.transform.position;
-                toGate.y = 0f;
-                if (toGate.sqrMagnitude < 4f) continue;
-                float dot = Vector3.Dot(fwd.normalized, toGate.normalized);
-                if (dot > best) { best = dot; name = g.world.ToString(); }
-            }
-            if (!string.IsNullOrEmpty(name) && player.world == WorldId.Hub)
-                GUI.Label(new Rect(cx - 80, 42, 160, 18), name, _center);
+            // Hub gates speak as wind/light on the arch (WorldGate), not a word here.
             if (player.world != WorldId.Hub)
             {
+                var fwd = player.cam.PlanarForward;
                 float cityBest = 0.72f;
                 string cityName = null;
                 foreach (var c in CityAtlas.For(player.world))
@@ -502,17 +594,22 @@ namespace Concordia
 
         void Toast(float w)
         {
-            if (string.IsNullOrEmpty(player.toast)) return;
-            GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.72f);
+            if (_announceT <= 0f || _liveFilm) return;
+            if (string.IsNullOrEmpty(_announceLine) && string.IsNullOrEmpty(_announceTitle)) return;
+            float t = _announceT / Mathf.Max(_liveDur, 0.2f);
+            float a = t > 0.8f ? (1f - t) / 0.2f : t < 0.2f ? t / 0.2f : 1f;
+            GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.72f * a);
             GUI.DrawTexture(new Rect(w * 0.5f - 280, 118, 560, 48), _white);
+            GUI.color = new Color(1f, 1f, 1f, a);
+            var line = string.IsNullOrEmpty(_announceTitle) ? _announceLine : _announceTitle + "  ·  " + _announceLine;
+            GUI.Label(new Rect(w * 0.5f - 270, 122, 540, 40), line, _center);
             GUI.color = Color.white;
-            GUI.Label(new Rect(w * 0.5f - 270, 122, 540, 40), player.toast, _center);
         }
 
         void Arrival(float w, float h)
         {
-            if (_announceT <= 0f || string.IsNullOrEmpty(_announceTitle)) return;
-            float t = _announceT / 4.6f;
+            if (_announceT <= 0f || !_liveFilm || string.IsNullOrEmpty(_announceTitle)) return;
+            float t = _announceT / Mathf.Max(_liveDur, 0.2f);
             float a = t > 0.75f ? (1f - t) / 0.25f : t < 0.25f ? t / 0.25f : 1f;
             GUI.color = new Color(0f, 0f, 0f, 0.55f * a);
             GUI.DrawTexture(new Rect(0, h * 0.38f, w, h * 0.24f), _white);
@@ -544,8 +641,22 @@ namespace Concordia
             GUI.color = Color.white;
         }
 
+        void FocusScan(float w, float h)
+        {
+            if (!FocusHeld() && !DebugHud) return;
+            var field = WorldField.HudLine(player.world, player.transform.position);
+            if (!FocusHeld()) return;
+            if (string.IsNullOrEmpty(field)) field = WorldClock.NearbyAct;
+            if (string.IsNullOrEmpty(field)) return;
+            GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.62f);
+            GUI.DrawTexture(new Rect(w * 0.5f - 260, h - 148, 520, 40), _white);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(w * 0.5f - 250, h - 144, 500, 32), field, _center);
+        }
+
         void PartyStrip()
         {
+            if (QuietExplore) return;
             var run = ConcordClient.RunLine;
             bool party = !string.IsNullOrEmpty(ConcordClient.PartyLine)
                 && ConcordClient.PartyLine != "PARTY  ·  you";

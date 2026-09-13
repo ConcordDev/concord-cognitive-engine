@@ -83,19 +83,6 @@ namespace Concordia
                 var portalCol = PortalColor(gate);
                 Swirl(hold, new Vector3(0f, 2.4f, 0.2f), portalCol);
 
-                var label = new GameObject("Name").AddComponent<TextMesh>();
-                label.transform.SetParent(hold, false);
-                label.transform.localPosition = new Vector3(0f, 6.4f, 0.2f);
-                label.transform.localRotation = Quaternion.identity;
-                label.text = gate.shortName;
-                label.fontSize = 48;
-                label.characterSize = 0.12f;
-                label.anchor = TextAnchor.MiddleCenter;
-                label.alignment = TextAlignment.Center;
-                label.color = Color.Lerp(portalCol, Color.white, 0.35f);
-                label.fontStyle = FontStyle.Bold;
-                HubLook.DressTextMesh(label);
-
                 var go = hold.gameObject;
                 go.AddComponent<WorldGate>().def = gate;
                 var box = go.AddComponent<BoxCollider>();
