@@ -1,10 +1,12 @@
 # Concordia — AAA Living-World north star + build plan
 
-**Status:** living. Read before any Concordia / Unity work.
-**Date:** 2026-08-25
+**Status:** living. Concordia topology + settlement history: `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md`.
+**Date:** 2026-09-12
 **Durable copy:** `docs/CONCORDIA_UNITY_BUILD_PLAN.md` (sync this file there on execute)
 
 **Unity client lives in this repo:** `apps/concordia-living-world/unity-client/`. Open `concord.code-workspace` so Unity Concordia sits next to Godot, frontend, server, and mobile. Do not copy the project out of the tree. `Library/` is gitignored and regenerates in Unity Hub.
+
+**🔴 Playable Alive Slice gate (2026-09-12):** the simulation is alive in docs/server; the stage is mostly props. Until [`docs/CONCORDIA_PLAYABLE_SLICE.md`](CONCORDIA_PLAYABLE_SLICE.md) is GREEN, do **not** add megaworld / organism / chronicle schema / affinity copy / ConKay features to this client. Clips, grip, Living Birds, fauna meshes (or no spawn), one NPC reaction, pack Hub first. Pinned by `server/tests/concordia-playable-slice.test.js`.
 
 Owner spec (this session): Concordia is **not a bigger Skyrim**. It is a **systemic civilization** that keeps living when the player looks away. Unity is the **full standalone AAA client**. Asset Store is authorized as the evo/procedural corpus. Server sim + DTUs stay the moat.
 
@@ -234,7 +236,7 @@ Owner phases A–G **with repo binding**. Each step: find existing module → cl
 5. Faction strategy **already ticks** — wire succession + economy + rumors into it
 6. Settlement supply/demand cascade (npc-economy + scarcity exist)
 7. World events bus (EmergentEventFeed is UI; need **consequence graph** writer)
-8. **World Consequence Graph** — the missing unifier. Event sourcing: actor/action/target/location/time/evidence/witnesses/immediate/long-term → reducers
+8. **World Consequence Graph** — **SHIPPED as substrate** (`world_consequences` mig 416, `lib/world-consequence.js`, `consequence-apply.js`). The remaining work is writers + settlement location + Unity presentation, not a second graph. See `docs/CONCORDIA_PERSISTENT_MEGAWORLD.md`.
 
 **Alive test is the Phase A exit.**
 
@@ -275,6 +277,8 @@ LOD L0–L3, streaming, shards (protocol exists), proc expansion, background sim
 | P8 | WebGL later |
 
 **Now:** Phase A tables/libs exist (`world_consequences`, needs, 12-axis, apply cycle). Remaining is **real writers** (faction/crime now stamp the bus; kernel no longer invents a leader death each tick) + Unity presenting kernel NPCs from `world:snapshot` + the Alive test as a runnable pin (`server/tests/world-kernel-alive.test.js`). Mixamo density, interiors-as-places, and crime witness→warrant are still experience gaps.
+
+**Also now:** persistent megaworld W0 + W0-field + organism spine (settlement identity, WorldField, Gloom Stalker as catalog organism). Then W1 wrapping `procgen-settlements` and W8 wrapping `fauna-spawner` onto identity rows. Combat still uses discrete `crossWorldPotency` until W3 streams (x,z) and W7 samples the field. Do not claim the 100-hour test. Do not invent Gloom Stalker prey. Do not claim bosses already retreat toward home.
 
 ---
 

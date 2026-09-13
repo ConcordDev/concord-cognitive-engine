@@ -27,12 +27,12 @@ namespace Concordia
         DungeonGate[] _holds;
         Gatherable[] _loot;
         CookStation[] _cooks;
+        KernelTomb[] _tombs;
         float _probeAt;
 
         async void Start()
         {
             HubObjectives.Reset();
-            WorldAaa.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
 
@@ -71,7 +71,6 @@ namespace Concordia
             _player.EquipWorldKit();
             _player.onInteract = TryInteract;
             _player.onTalkSend = SubmitTalk;
-            _player.onInspect = TryInspectKey;
             pgo.AddComponent<ConcordiaHUD>().player = _player;
             pgo.AddComponent<Footsteps>();
             var feel = pgo.AddComponent<CombatFeel>();
@@ -88,19 +87,9 @@ namespace Concordia
             _world = wgo.AddComponent<WorldBuilder>();
             _world.player = _player;
             await HubKit.EnsureLoaded();
-            if (soldierPrefab)
-            {
-                _player.avatar = MixamoAvatar.Attach(pgo.transform, soldierPrefab);
-                WorldAaa.MixamoLine = "mixamo soldier (Soldier.glb)";
-            }
-            else
-                WorldAaa.MixamoLine = "rocketbox adult · SoldierLocomotion clips · Soldier.glb in git";
             _world.Build(world);
             WorldClock.Enter(world);
             Grounding.Snap(cc);
-            var py = pgo.transform.position.y;
-            if (py < 0f || py > 3.5f)
-                pgo.transform.position = new Vector3(Canon.Spawn.x, 0.12f, Canon.Spawn.z);
             camGo.transform.position = pgo.transform.position + new Vector3(1.7f, 2.55f, -5.2f);
             camGo.transform.LookAt(pgo.transform.position + Vector3.up * 1.3f);
             try { HubLook.Apply(cam, world); } catch (Exception e) { Debug.LogException(e); }
@@ -114,7 +103,6 @@ namespace Concordia
                 {
                     ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
                     Debug.Log("Concordia: " + _player.person.look.displayName + " entered the Unburned Court.");
-                    OfferFoundingDay();
                 });
             }
             else
@@ -125,29 +113,10 @@ namespace Concordia
                 Cursor.visible = false;
                 ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
             }
-            OfferFoundingDay();
-            Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. " + WorldAaa.MixamoLine);
+            Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
             StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
-        }
-
-        bool TryInspectKey()
-        {
-            if (_player == null || _npcs == null) RefreshProbe();
-            GuestNpc best = null;
-            float dBest = 3.2f;
-            var pos = _player.transform.position;
-            if (_npcs != null)
-                foreach (var n in _npcs)
-                {
-                    if (!n) continue;
-                    var d = Vector3.Distance(pos, n.transform.position);
-                    if (d < dBest) { dBest = d; best = n; }
-                }
-            if (best == null) return false;
-            InspectNpc(best);
-            return true;
         }
 
         void RefreshProbe()
@@ -160,6 +129,7 @@ namespace Concordia
             _holds = FindObjectsByType<DungeonGate>(FindObjectsInactive.Exclude);
             _loot = FindObjectsByType<Gatherable>(FindObjectsInactive.Exclude);
             _cooks = FindObjectsByType<CookStation>(FindObjectsInactive.Exclude);
+            _tombs = FindObjectsByType<KernelTomb>(FindObjectsInactive.Exclude);
             _probeAt = Time.unscaledTime;
         }
 
@@ -229,6 +199,13 @@ namespace Concordia
                     var d = Vector3.Distance(pos, k.transform.position);
                     if (d < best) { best = d; prompt = k.Prompt; }
                 }
+            if (_tombs != null)
+                foreach (var t in _tombs)
+                {
+                    if (!t) continue;
+                    var d = Vector3.Distance(pos, t.transform.position);
+                    if (d < best) { best = d; prompt = t.Prompt; }
+                }
             var use = UsePlace.Nearest(pos, 2.4f);
             if (use)
             {
@@ -262,62 +239,70 @@ namespace Concordia
             DungeonGate hold = null;
             Gatherable loot = null;
             CookStation cook = null;
+            KernelTomb tomb = null;
             float best = 3.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_cities != null)
                 foreach (var c in _cities)
                 {
                     if (!c) continue;
                     var d = Vector3.Distance(pos, c.transform.position);
-                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; city = c; gate = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_holds != null)
                 foreach (var h in _holds)
                 {
                     if (!h) continue;
                     var d = Vector3.Distance(pos, h.transform.position);
-                    if (d < best) { best = d; hold = h; gate = null; city = null; stone = null; npc = null; board = null; loot = null; cook = null; }
+                    if (d < best) { best = d; hold = h; gate = null; city = null; stone = null; npc = null; board = null; loot = null; cook = null; tomb = null; }
                 }
             if (_boards != null)
                 foreach (var b in _boards)
                 {
                     if (!b) continue;
                     var d = Vector3.Distance(pos, b.transform.position);
-                    if (d < best) { best = d; board = b; gate = null; city = null; stone = null; npc = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; board = b; gate = null; city = null; stone = null; npc = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_loot != null)
                 foreach (var l in _loot)
                 {
                     if (!l || l.taken) continue;
                     var d = Vector3.Distance(pos, l.transform.position);
-                    if (d < best) { best = d; loot = l; gate = null; city = null; stone = null; npc = null; board = null; hold = null; cook = null; }
+                    if (d < best) { best = d; loot = l; gate = null; city = null; stone = null; npc = null; board = null; hold = null; cook = null; tomb = null; }
                 }
             if (_cooks != null)
                 foreach (var k in _cooks)
                 {
                     if (!k) continue;
                     var d = Vector3.Distance(pos, k.transform.position);
-                    if (d < best) { best = d; cook = k; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; }
+                    if (d < best) { best = d; cook = k; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; tomb = null; }
                 }
             if (_stones != null)
                 foreach (var s in _stones)
                 {
                     if (!s) continue;
                     var d = Vector3.Distance(pos, s.transform.position);
-                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; stone = s; gate = null; city = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
                 }
             if (_npcs != null)
                 foreach (var n in _npcs)
                 {
                     if (!n) continue;
                     var d = Vector3.Distance(pos, n.transform.position);
-                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; board = null; hold = null; loot = null; cook = null; }
+                    if (d < best) { best = d; npc = n; gate = null; city = null; stone = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
+                }
+            if (_tombs != null)
+                foreach (var t in _tombs)
+                {
+                    if (!t) continue;
+                    var d = Vector3.Distance(pos, t.transform.position);
+                    if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
             if (gate != null)
             {
@@ -336,8 +321,14 @@ namespace Concordia
                 return cook.Use();
             if (stone != null)
             {
-                QuestLog.NoteLocation(stone.title, stone.mark);
+                QuestLog.NoteLocation(stone.title);
                 return stone.title + "\n" + stone.text;
+            }
+            if (tomb != null)
+            {
+                var said = string.IsNullOrEmpty(tomb.lastWords) ? "a grave with no words" : tomb.lastWords;
+                WorldClock.LastEvent = said;
+                return said;
             }
             var use = UsePlace.Nearest(pos, 2.4f);
             var door = BuildingPlace.NearestDoor(pos, 3.4f);
@@ -352,9 +343,7 @@ namespace Concordia
                 var life = npc.GetComponent<NpcLife>();
                 if (life) life.NoticePlayer(8f);
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
-                StampWitness(npc);
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
-                InspectNpc(npc);
                 var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
                 if (offered.Length > 0)
                     return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(offered[0], world);
@@ -369,6 +358,10 @@ namespace Concordia
                     line += "\n" + extra;
                 if (!string.IsNullOrEmpty(WorldClock.LastEvent))
                     line += "\nThey heard: " + WorldClock.LastEvent;
+                var person = WorldBook.FindPerson(world, npc.personId ?? npc.def.id);
+                var lev = WorldBook.LeverageLine(person);
+                if (!string.IsNullOrEmpty(lev) && Bonds.Get(Bonds.Key(npc)) >= 0.22f)
+                    line += "\nLeverage: " + lev;
                 _player.OpenTalk(npc, line);
                 return "Talking with " + npc.def.name + ".";
             }
@@ -422,13 +415,20 @@ namespace Concordia
             QuestLog.NoteLocation("dungeon", "hold");
             if (hold.inHold)
             {
-                if (_player.world == WorldId.Ruins)
+                var client = ConcordClient.Live;
+                if (client != null) client.SendDungeonOpen(hold.encounterId);
+                if (ConcordClient.HoldLocked)
                 {
-                    ConcordiaHUD.Announce("The unburial", Canon.Get(WorldId.Ruins).theNo);
-                    return "You climb. Nothing here has finished.";
+                    hold.inHold = false;
+                    _player.cc.enabled = false;
+                    _player.transform.position = hold.mouth;
+                    _player.cc.enabled = true;
+                    Grounding.Snap(_player.cc);
+                    return "the hold is sealed — " + ConcordClient.HoldLockReason;
                 }
-                ConcordiaHUD.Announce("A hold", "Kenney tiles. No authored name.");
-                return "You enter the hold. Live steel if the world allows it.";
+                var title = string.IsNullOrEmpty(hold.holdName) ? "The Hollow Warden" : hold.holdName;
+                ConcordiaHUD.Announce(title, string.IsNullOrEmpty(ConcordClient.DungeonLine) ? "the hold opened" : ConcordClient.DungeonLine);
+                return "You enter " + title + ".";
             }
             return "You leave the hold.";
         }
@@ -444,6 +444,12 @@ namespace Concordia
             return "Took " + loot.label + ".";
         }
 
+        /// <summary>
+        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
+        /// topology is one continuous universe with overlapping WorldFields;
+        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
+        /// </summary>
         public void Travel(WorldId next)
         {
             var carried = _player != null ? _player.kitWeapon : null;
@@ -452,13 +458,22 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            ContinentStream.Live?.Teleport(_player, next);
-            _gates = null;
-            _cities = null;
-            _holds = null;
-            _boards = null;
-            _loot = null;
-            _cooks = null;
+            if (ContinentStream.Live != null)
+                ContinentStream.Live.Teleport(_player, next);
+            else
+            {
+                var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
+                _player.cc.enabled = false;
+                _player.transform.position = spawn;
+                _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+                _player.cc.enabled = true;
+                if (_player.cam) _player.cam.yaw = Mathf.PI;
+                _world.Build(next);
+                WorldClock.Enter(next);
+                _player.EquipWorldKit();
+                Grounding.Snap(_player.cc);
+            }
+            ModularPerson.RecastBody(_player.person);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
             var steel = Canon.SteelLive(next, _player.transform.position)
@@ -505,39 +520,6 @@ namespace Concordia
             catch { return; }
             if (env?.data == null) return;
             _player?.ApplyKernelAttackAck(env.data.ok, env.data.refused, env.data.damage, env.data.error, env.data.reason);
-            if (env.data.brokenArm || env.data.brokenLeg)
-                _player?.ApplyLimbs(env.data.brokenArm, env.data.brokenLeg);
-        }
-
-        void OfferFoundingDay()
-        {
-            TryOfferHubQuest("founding_day_01_gather");
-        }
-
-        static void TryOfferHubQuest(string id)
-        {
-            var q = WorldBook.QuestById(WorldId.Hub, id);
-            if (q != null) QuestLog.Offer(q, WorldId.Hub);
-        }
-
-        static void StampWitness(GuestNpc npc)
-        {
-            if (npc?.def == null) return;
-            var id = npc.def.id ?? npc.personId;
-            if (id == "concordia") QuestLog.NoteTalk("concordia_first_breath", npc.def.name);
-            if (id == "concord") QuestLog.NoteTalk("concord_first_thought", npc.def.name);
-            if (id == "sovereign") QuestLog.NoteTalk("sovereign_first_refusal", npc.def.name);
-            if (id == "archivist_maren") QuestLog.NoteTalk("archivist_maren", "Maren Ashveil");
-        }
-
-        async void InspectNpc(GuestNpc npc)
-        {
-            var client = ConcordClient.Live;
-            if (client == null || npc == null) return;
-            if (!client.Connected) await client.EnsureConnected();
-            if (!client.Connected) return;
-            var why = await client.RequestInspect(npc.personId ?? npc.def.id);
-            if (!string.IsNullOrEmpty(why)) _player?.Notice(why);
         }
 
         async void SubmitTalk(string typed)
@@ -598,8 +580,6 @@ namespace Concordia
             public float damage;
             public string error;
             public string reason;
-            public bool brokenArm;
-            public bool brokenLeg;
         }
     }
 

@@ -10,7 +10,7 @@ namespace Concordia
     /// </summary>
     public class NpcLife : MonoBehaviour
     {
-        public enum Job { Wander, Stall, Sit, Sweep, Watch }
+        public enum Job { Wander, Stall, Sit, Sweep, Watch, Companion }
         public Job job = Job.Wander;
         public bool pinned;
         public string act = "idle";
@@ -32,10 +32,14 @@ namespace Concordia
         Renderer[] _rend;
         bool _hidden;
         GameObject _carry;
-        float _mournUntil;
-        bool _mournHurt;
-        static float _kernelThreatUntil;
-        static Vector3 _kernelThreatPos;
+        string _coping;
+        float _walkMul = 1f;
+        bool _withdrawn;
+        Vector3 _headFor;
+        float _headForT;
+        Vector3 _attend;
+        Transform _attendFace;
+        float _attendT;
 
         void Start()
         {
@@ -63,36 +67,55 @@ namespace Concordia
             _pause = Mathf.Max(_pause, seconds);
         }
 
+        /// <summary>
+        /// Kernel coping_trait from npc:stress-break. Uses jobs and Notice
+        /// that already exist — no second AI.
+        /// </summary>
+        public void Cope(string trait)
+        {
+            _coping = trait ?? "";
+            if (_coping == "drink") job = Job.Sit;
+            else if (_coping == "withdraw") _withdrawn = true;
+            else if (_coping == "reckless") _walkMul = 1.55f;
+            else if (_coping == "paranoid") NoticePlayer(12f);
+            else if (_coping == "cruel")
+            {
+                GuestNpc nearest = null;
+                float best = 9f;
+                foreach (var n in FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
+                {
+                    if (!n || n.gameObject == gameObject) continue;
+                    var d = Vector3.Distance(transform.position, n.transform.position);
+                    if (d < best) { best = d; nearest = n; }
+                }
+                if (nearest) Notice(nearest.transform, 8f);
+            }
+        }
+
+        public void HeadFor(Vector3 dest, float seconds = 10f)
+        {
+            _headFor = dest;
+            _headForT = seconds;
+            _attendT = 0f;
+        }
+
+        /// <summary>
+        /// Kernel funeral/wedding: walk to a ring slot around a real site
+        /// and stay. Slot/of come from gatherAttendees — never invented mourners.
+        /// </summary>
+        public void Attend(Vector3 site, Transform face, int slot, int of, float seconds = 28f)
+        {
+            of = Mathf.Max(1, of);
+            float a = (slot / (float)of) * Mathf.PI * 2f + 0.35f;
+            _attend = site + new Vector3(Mathf.Cos(a) * 2.15f, 0f, Mathf.Sin(a) * 2.15f);
+            _attendFace = face;
+            _attendT = seconds;
+            _headForT = 0f;
+        }
+
         public void BindWorkplace(Vector3 pos) => workplace = pos;
         public bool IsTalking => act == "talk";
         public bool IsWalkingJob => job == Job.Wander || job == Job.Sweep || job == Job.Watch;
-
-        /// <summary>
-        /// Presentation only. Hub flower-law mourns; steel worlds may also flee.
-        /// Never invent a death — kernel combat:kill is the only caller.
-        /// </summary>
-        public static void NoteKernelDeath(string who, Vector3 at)
-        {
-            _kernelThreatUntil = Time.time + 8f;
-            _kernelThreatPos = at;
-            foreach (var npc in FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
-                npc?.BeginMourn(at);
-        }
-
-        public static void NoteKernelThreat(Vector3 at)
-        {
-            _kernelThreatUntil = Time.time + 4f;
-            _kernelThreatPos = at;
-        }
-
-        void BeginMourn(Vector3 at)
-        {
-            var d = at - transform.position;
-            d.y = 0f;
-            if (d.sqrMagnitude > 400f) return;
-            _mournUntil = Time.time + 6f;
-            _mournHurt = false;
-        }
 
         void Update()
         {
@@ -101,6 +124,56 @@ namespace Concordia
                 Hold();
                 _person?.SetGait(0f, true);
                 act = "watch";
+                return;
+            }
+
+            if (job == Job.Companion)
+            {
+                Show(true);
+                var p = ConcordiaPlayer.Live;
+                if (p)
+                {
+                    act = "follow";
+                    var follow = p.transform.position - p.transform.forward * 1.6f;
+                    follow.y = transform.position.y;
+                    if (Vector3.Distance(transform.position, follow) > 2.2f)
+                        Walk(follow, 4.2f);
+                    else
+                    {
+                        Hold();
+                        _person?.SetGait(0f, true);
+                    }
+                }
+                else
+                    Hold();
+                return;
+            }
+
+            if (_attendT > 0f)
+            {
+                _attendT -= Time.deltaTime;
+                Show(true);
+                if (!Arrived(_attend))
+                {
+                    act = "gather";
+                    Walk(_attend, 2.6f);
+                    return;
+                }
+                act = "watch";
+                Hold();
+                _person?.Sit(true);
+                _person?.SetGait(0f, true);
+                if (_attendFace) Notice(_attendFace, 0.4f);
+                FaceRegard();
+                return;
+            }
+
+            if (_headForT > 0f)
+            {
+                _headForT -= Time.deltaTime;
+                act = "deliver";
+                Show(true);
+                Walk(_headFor, 2.8f);
                 return;
             }
 
@@ -131,23 +204,6 @@ namespace Concordia
                 if (_insideT > 0f) return;
                 _indoors = false;
                 Show(true);
-            }
-
-            if (Time.time < _mournUntil)
-            {
-                act = "mourn";
-                DropCarry();
-                if (!_mournHurt)
-                {
-                    _person?.Hurt();
-                    _mournHurt = true;
-                }
-                _person?.Sit(true);
-                Hold();
-                _person?.SetGait(0f, true);
-                FaceAt(_kernelThreatPos);
-                if (lod == SimLod.Real) WorldClock.NoteAct(Who() + " " + Phrase(act));
-                return;
             }
 
             if (Threat())
@@ -252,6 +308,7 @@ namespace Concordia
 
         bool TrySocial(SimLod lod)
         {
+            if (_withdrawn) return false;
             if (lod != SimLod.Real) return false;
             if (IsWalkingJob) return false;
             if (Time.time < _socialAt) return false;
@@ -261,7 +318,7 @@ namespace Concordia
             {
                 if (!other || other == this || other.pinned) continue;
                 if (other.IsWalkingJob) continue;
-                if (other.act == "flee" || other.act == "sleep" || other.act == "inside" || other.act == "mourn") continue;
+                if (other.act == "flee" || other.act == "sleep" || other.act == "inside") continue;
                 var d = other.transform.position - p;
                 d.y = 0f;
                 if (d.sqrMagnitude > 3.2f) continue;
@@ -336,6 +393,7 @@ namespace Concordia
 
         void Walk(Vector3 dest, float speed)
         {
+            speed *= _walkMul;
             var to = dest - transform.position;
             to.y = 0f;
             if (to.magnitude < 0.7f) { Hold(); _person?.SetGait(0f, true); return; }
@@ -367,8 +425,16 @@ namespace Concordia
 
         void Snap(Vector3 dest)
         {
-            dest.y = transform.position.y;
-            transform.position = dest;
+            dest = Grounding.SnapPoint(dest, 0.04f, transform);
+            if (_cc)
+            {
+                _cc.enabled = false;
+                transform.position = dest;
+                _cc.enabled = true;
+                Grounding.Snap(_cc);
+            }
+            else
+                transform.position = dest;
         }
 
         Vector3 Dest()
@@ -389,7 +455,8 @@ namespace Concordia
         Vector3 EveningDest()
         {
             if (job == Job.Watch) return post;
-            if (job == Job.Sit)
+            if (_withdrawn) return home;
+            if (job == Job.Sit || _coping == "drink")
             {
                 var tavern = BuildingPlace.Nearest(home, "tavern");
                 if (tavern) return tavern.door;
@@ -408,12 +475,6 @@ namespace Concordia
         bool Threat()
         {
             if (!Canon.Get(WorldClock.World).steelLive) return false;
-            if (Time.time < _kernelThreatUntil)
-            {
-                var kd = _kernelThreatPos - transform.position;
-                kd.y = 0f;
-                if (kd.sqrMagnitude < 144f) return true;
-            }
             var threats = WorldClock.Threats;
             if (threats == null) return false;
             var p = transform.position;
@@ -424,14 +485,6 @@ namespace Concordia
                 if (d.sqrMagnitude < 64f) return true;
             }
             return false;
-        }
-
-        void FaceAt(Vector3 world)
-        {
-            var to = world - transform.position;
-            to.y = 0f;
-            if (to.sqrMagnitude < 0.01f) return;
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), Time.deltaTime * 6f);
         }
 
         void FaceRegard()
@@ -485,7 +538,6 @@ namespace Concordia
             "gather" => "walks the street",
             "deliver" => "is carrying something",
             "flee" => "runs from steel",
-            "mourn" => "stands with the fallen",
             "talk" => "stopped to speak",
             "watch" => "holds a post",
             "patrol" => "changes post",

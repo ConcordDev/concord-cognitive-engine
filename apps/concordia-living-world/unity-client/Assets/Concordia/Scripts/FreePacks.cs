@@ -319,10 +319,44 @@ namespace Concordia
             SitOrHang(go, pos, stem);
             PaintIfBlank(go, PathForStem(stem));
             var kind = stem.ToLowerInvariant();
-            if (IsTree(kind)) TrunkCollider(go);
+            if (IsTree(kind))
+            {
+                var canopy = Encapsulate(go);
+                if (Mathf.Max(canopy.size.x, canopy.size.z) > 18f)
+                {
+                    Object.Destroy(go);
+                    return null;
+                }
+                TrunkCollider(go);
+            }
             else if (WantsSolid(kind, maxDim)) MakeWalkable(go);
             else StripColliders(go);
             return go;
+        }
+
+        /// <summary>
+        /// Imported-pack spawn only. Kenney / primitive foliage is skipped
+        /// (empty dirt &gt; cardboard). required:true yields one Missing_* cube.
+        /// </summary>
+        public static GameObject SpawnStore(string stem, Transform parent, Vector3 pos, float yawDeg = 0, float maxDim = 0, bool required = false, bool byHeight = true)
+        {
+            if (string.IsNullOrEmpty(stem))
+            {
+                if (!required) return null;
+                stem = "missing_prop";
+            }
+            if (!HasStoreStem(stem))
+            {
+                if (!required) return null;
+                var miss = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                miss.name = "Missing_" + stem;
+                miss.transform.SetParent(parent, false);
+                miss.transform.position = pos;
+                miss.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
+                miss.transform.localScale = Vector3.one * 0.35f;
+                return miss;
+            }
+            return Spawn(stem, parent, pos, yawDeg, maxDim, required, byHeight);
         }
 
         static bool IsTree(string s) =>
@@ -339,14 +373,16 @@ namespace Concordia
                 || s.Contains("crops") || s.StartsWith("detail-") || s.Contains("character-")
                 || s.Contains("astronaut") || s.Contains("enemy") || s.Contains("statue"))
                 return false;
-            if (s.Contains("building") || s.Contains("wall") || s.Contains("tower")
-                || s.Contains("crypt") || s.Contains("house") || s.Contains("road")
-                || s.Contains("stairs") || s.Contains("column") || s.Contains("tent")
-                || s.Contains("room") || s.Contains("crate") || s.Contains("table")
-                || s.Contains("barrel") || s.Contains("cart") || s.Contains("desk")
-                || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
-                || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
-                || s.Contains("wagon") || s.Contains("well"))
+                if (s.Contains("building") || s.Contains("wall") || s.Contains("tower")
+                    || s.Contains("crypt") || s.Contains("house") || s.Contains("road")
+                    || s.Contains("stairs") || s.Contains("column") || s.Contains("tent")
+                    || s.Contains("room") || s.Contains("crate") || s.Contains("table")
+                    || s.Contains("barrel") || s.Contains("cart") || s.Contains("desk")
+                    || s.Contains("bookcase") || s.Contains("sofa") || s.Contains("chair")
+                    || s.Contains("coffin") || s.Contains("dumpster") || s.Contains("stove")
+                    || s.Contains("wagon") || s.Contains("well") || s.Contains("platform")
+                    || s.Contains("panel") || s.Contains("granite")
+                    || s.Contains("furnace") || s.Contains("cauldron"))
                 return true;
             return maxDim >= 2.4f;
         }
@@ -517,39 +553,6 @@ namespace Concordia
         /// colormap.png / {stem}.png next to the source GLB.
         /// </summary>
         public static void PaintIfBlank(GameObject go) => PaintIfBlank(go, null);
-
-        public static bool IsMissingMagenta(Color c) =>
-            c.r > 0.7f && c.b > 0.7f && c.g < 0.35f && c.a > 0.05f;
-
-        /// <summary>
-        /// Kenney / missing-albedo magenta is a fallback mesh, not a shirt.
-        /// Repaint only that texel — leave already-painted HubKit/Rocketbox.
-        /// </summary>
-        public static void PaintMagentaIfFallback(GameObject go, Color cloth)
-        {
-            if (!go) return;
-            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
-            {
-                if (!r) continue;
-                var slots = r.sharedMaterials;
-                if (slots == null || slots.Length == 0) continue;
-                Material[] next = null;
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    var src = slots[i];
-                    if (!src) continue;
-                    var col = HubLook.FirstColor(src, src.color);
-                    if (!IsMissingMagenta(col)) continue;
-                    if (next == null)
-                    {
-                        next = new Material[slots.Length];
-                        for (int k = 0; k < slots.Length; k++) next[k] = slots[k];
-                    }
-                    next[i] = HubLook.Lit(cloth, 0.06f, 0.55f);
-                }
-                if (next != null) r.sharedMaterials = next;
-            }
-        }
 
         public static bool IsClothName(string s)
         {
@@ -729,7 +732,7 @@ namespace Concordia
             if (c == "grid") return FirstStem(new[] { "Room_Big_Part_01", "Wall_Simple_01", "house.002" }, "building-skyscraper-a");
             if (c == "ash") return FirstStem(new[] { "tower_destroyed", "house.003", "house.002" }, "crypt-a");
             if (c == "street") return FirstStem(new[] { "house.002", "House.001", "house.003" }, "building-type-h");
-            if (c == "court") return FirstStem(new[] { "tower", "house.002", "fi_vil_wall01_01" }, "building-type-a");
+            if (c == "court") return FirstStem(new[] { "tower", "house.002" }, "building-type-a");
             return FirstStem(new[] { "house.002", "House.001", "house.003", "House" }, "tent_detailedOpen");
         }
 
@@ -743,38 +746,50 @@ namespace Concordia
         public static string Wall(WorldId id) =>
             Culture(id) == "grid"
                 ? FirstStem(new[] { "Wall_Simple_01", "stone_wall" }, "skyscraper-small-a")
-                : FirstStem(new[] { "fi_vil_wall01_01", "fi_vil_wall01_02", "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
+                : FirstStem(new[] { "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
 
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "LowPoly - FirTree A", "tree_1" }, "tree-baobab");
-            if (c == "ash") return FirstStem(new[] { "half_tree", "tree" }, "tree-dead");
-            return FirstStem(new[] { "OakBigTree01", "Tree", "UNS_Bush", "tree_1", "tree", "LowPoly - FirTree A" }, "tree_oak");
+            if (c == "grid") return StoreTree(new[] { "LowPoly - FirTree A", "tree_1", "Tree1" });
+            if (c == "ash") return StoreTree(new[] { "half_tree", "tree_1", "Tree1" });
+            return StoreTree(new[] { "tree_1" });
+        }
+
+        static string StoreTree(string[] prefer)
+        {
+            if (prefer != null)
+                foreach (var n in prefer)
+                    if (!string.IsNullOrEmpty(n) && FreePacks.HasStoreStem(n)) return n;
+            var fuzzy = FreePacks.FirstStoreStemContaining(prefer);
+            if (!string.IsNullOrEmpty(fuzzy)) return fuzzy;
+            return null;
         }
 
         public static string Grass(WorldId id) =>
-            FirstStem(new[] { "UNS_Grass", "grass01", "LowPoly - Grass A", "Grass_01" }, "grass");
+            StoreTree(new[] { "grass01", "LowPoly - Grass A", "Grass_01" });
 
         public static string Prop(WorldId id)
         {
             var c = Culture(id);
             if (c == "grid") return FirstStem(new[] { "crate", "barrel" }, "barrel");
             if (c == "street") return FirstStem(new[] { "crate", "barrel", "wagon" }, "crate");
-            return FirstStem(new[] { "fi_vil_container_barrel_big_empty", "fi_vil_container_crate_big", "barrel", "crate", "wagon", "well" }, "barrel");
+            return FirstStem(new[] { "barrel", "crate", "wagon", "well" }, "barrel");
         }
 
         public static string Column(WorldId id) =>
-            FirstStem(new[] { "fi_vil_pillar8_02", "stone_column" }, "column");
+            FirstStem(new[] { "wood_column.001", "Column_01_Top", "stone_column" }, "column");
 
         public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
-        public static string Crate() => FirstStem(new[] { "fi_vil_container_crate_big", "crate", "barrel" }, "crate");
-        public static string Table() => FirstStem(new[] { "fi_vil_forge_workbensh_large1", "table" }, "table");
-        public static string Chair() => FirstStem(new[] { "fi_vil_forge_stool1", "chair" }, "chair");
+        public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
+        public static string Table() => FirstStem(new[] { "table" }, "table");
+        public static string Chair() => FirstStem(new[] { "chair" }, "chair");
         public static string Chest() => FirstStem(new[] { "chest" }, "chest");
+        public static string Well() => FirstStem(new[] { "well" }, "well");
+        public static string Torch() => FirstStem(new[] { "torch" }, "torch");
         public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
         public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
-        public static string Rock() => FirstStem(new[] { "UNS_Rock_Cliff_01", "rock01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
+        public static string Rock() => FirstStem(new[] { "Rock1B", "Rock2", "Rock1A", "UNS_Standard_Rock_01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
         /// Owned MYFG stems when they exist. Spear / staff / wand / dagger / mace
@@ -857,7 +872,12 @@ namespace Concordia
                 }
                 : kind == "fireflies"
                     ? new[] { "Assets/VFX/VFX_Fireflies.prefab" }
-                    : new[] { "Assets/VFX/VFX_Snow.prefab" };
+                    : new[]
+                    {
+                        "Assets/VFX/VFX_Snow.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/DustStorm.prefab",
+                        "Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/SmokeEffect.prefab"
+                    };
             foreach (var p in paths)
                 if (FreePacks.Load<GameObject>(p) != null) return p;
             return paths[paths.Length - 1];
@@ -867,7 +887,7 @@ namespace Concordia
         {
             var stem = kind == "rain" ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
                 : kind == "fireflies" ? FirstStem(new[] { "FireFlies" }, "")
-                : FirstStem(new[] { "SnowEffect" }, "");
+                : FirstStem(new[] { "SnowEffect", "DustStorm", "SmokeEffect" }, "");
             if (!string.IsNullOrEmpty(stem) && FreePacks.HasStem(stem))
             {
                 FreePacks.Spawn(stem, root, pos, 0, 0);
@@ -880,10 +900,22 @@ namespace Concordia
         {
             var c = Culture(id);
             if (c == "court") return "unpaved Court — no house ring";
-            if (c == "grove" && id == WorldId.Frontier) return "no palm pack — Kenney palm fallback; embassy is road only";
-            if (c == "grove") return "no wheat/hedge pack — Kenney crops/hedge fallback";
+            if (c == "grove" && id == WorldId.Frontier)
+            {
+                var palm = FirstStem(new[] { "Palm" }, "palm-straight");
+                return palm != "palm-straight" ? "SUIMONO palms" : "no palm pack — Kenney palm fallback; embassy is road only";
+            }
+            if (c == "grove")
+            {
+                var wheat = FirstStem(new[] { "Crops", "Wheat" }, "crops_wheatStageB");
+                return wheat != "crops_wheatStageB" ? "store crops" : "no wheat/hedge pack — Kenney crops/hedge fallback";
+            }
             if (c == "ash") return "no crypt/gravestone pack — Kenney fallback";
-            if (c == "street") return "no dumpster pack — Kenney dumpster fallback";
+            if (c == "street")
+            {
+                var dump = FirstStem(new[] { "Dumpster" }, "dumpster");
+                return dump != "dumpster" ? "industrial dumpsters" : "no dumpster pack — Kenney dumpster fallback";
+            }
             if (c == "grid") return "no sci-fi lab / Kyle — modular rooms then Kenney skyline";
             return "no crystal pack — Kenney crystal fallback";
         }
@@ -918,7 +950,7 @@ namespace Concordia
         /// Hero city (index 0) keeps four playable rooms. Cities 1–3 get fake windows.
         /// The rest stay facade-only so Tunya's 17 towns do not hitch.
         /// </summary>
-        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : 0;
+        public static int PlayableRooms(int cityIndex) => cityIndex == 0 ? 4 : cityIndex <= 2 ? 2 : 0;
         public static bool WantsFakeWindows(int cityIndex) => cityIndex >= 1 && cityIndex <= 3;
 
         public static string Audit()
@@ -946,7 +978,8 @@ namespace Concordia
             sb.AppendLine("Tree(Tunya)=" + Tree(WorldId.Tunya));
             sb.AppendLine("Weapon(sword)=" + Weapon("sword") + " Weapon(greatsword)=" + Weapon("greatsword") + " Weapon(spear)=" + Weapon("spear"));
             sb.AppendLine("Dummy=" + Dummy());
-            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " other=" + PlayableRooms(1));
+            sb.AppendLine("PlayableRooms hero=" + PlayableRooms(0) + " city1=" + PlayableRooms(1) + " city3=" + PlayableRooms(3));
+            sb.AppendLine("unique authored .glb per world: none in tree — Culture+Kit is the honest unique presentation");
             sb.AppendLine("FakeWindows cities 1-3=" + WantsFakeWindows(2) + " city4=" + WantsFakeWindows(4));
             sb.AppendLine("WORLD NEED vs HAVE");
             foreach (var id in new[]
@@ -995,9 +1028,9 @@ namespace Concordia
             new PackHint { id = "4387", role = "water (SUIMONO) — imported, not the live water path", needles = new[] { "SUIMONO" } },
             new PackHint { id = "14360", role = "weapon meshes", needles = new[] { "MYFG-Weapon" } },
             new PackHint { id = "267961", role = "controller reference — do not replace Concordia", needles = new[] { "Starter Assets" } },
-            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "Big Oak", "Objective Environment" } },
+            new PackHint { id = "279431", role = "big oak (re-download if truncated)", needles = new[] { "ALP_Assets", "Big Oak" } },
             new PackHint { id = "269772", role = "demo city (re-download if truncated; do not vendor)", needles = new[] { "Demo City", "Versatile Studio" } },
-            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Sound Effects" } }
+            new PackHint { id = "155776", role = "sound fx (re-download if truncated)", needles = new[] { "Free Pack", "Sound Effects" } }
         };
 
         public static bool FolderPresent(string[] needles)

@@ -5,6 +5,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { WebSocket } from "ws";
 import { mountUnityGateway } from "../lib/unity-bridge.js";
 import { getWeather } from "../lib/weather.js";
@@ -109,6 +111,16 @@ describe("world:snapshot", () => {
       assert.ok(Array.isArray(frame.data.authoredCatalog));
       assert.ok(frame.data.authoredCatalog.some((q) => q.id === "founding_day_01_gather"));
       assert.equal(frame.data.refusal.id, "the_ninth");
+      assert.ok(Array.isArray(frame.data.gossip), "gossip must be an array, never omitted as fake rumor");
+      assert.equal(frame.data.gossip.length, 0, "empty substrate stays empty");
+      assert.ok(Array.isArray(frame.data.tombs), "tombs must be an array");
+      assert.equal(frame.data.tombs.length, 0);
+      assert.ok(Array.isArray(frame.data.bosses), "bosses must be an array, never invented");
+      assert.equal(frame.data.bosses.length, 0, "empty substrate stays empty");
+      assert.ok(Array.isArray(frame.data.gear), "gear must be an array");
+      assert.equal(frame.data.gear.length, 0);
+      assert.ok(Array.isArray(frame.data.chronicles), "chronicles must be an array");
+      assert.equal(frame.data.chronicles.length, 0);
       ws.close();
     } finally { await h.stop(); }
   });
@@ -124,6 +136,14 @@ describe("world:snapshot", () => {
       assert.equal(frame.data.reason, "missing_npc");
       ws.close();
     } finally { await h.stop(); }
+  });
+});
+
+describe("gossip snapshot ids", () => {
+  it("gateway maps npc_a_id / npc_b_id onto npcA / npcB for 3D overheard", () => {
+    const src = readFileSync(join(import.meta.dirname, "../lib/godot-gateway.js"), "utf8");
+    assert.match(src, /npcA: r\.npc_a_id/);
+    assert.match(src, /npcB: r\.npc_b_id/);
   });
 });
 

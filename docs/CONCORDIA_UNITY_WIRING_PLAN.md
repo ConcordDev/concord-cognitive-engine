@@ -4,10 +4,6 @@
 behind it that is solid and that Unity can present well gets kept and wired.
 Nothing in the logic tier is being thrown away.
 
-**Viewport (2026-09-12):** ConcordiaScene is no longer mounted as the world.
-`/lenses/world` is Unity WebGL or `{ok:false, reason:'unity_web_export_not_built'}`.
-Play the Editor client against the live kernel at `ws://127.0.0.1:5050/unity-ws`.
-
 **Lane discipline while Cursor is mid-flight.** Cursor owns the Unity C# client
 (`unity-client/Assets/Concordia/Scripts/**`) and the art-direction docs.
 This plan's work is server-side transport (`server/server.js`,
@@ -21,7 +17,7 @@ below, which is additive on both sides.
 
 | Surface | Exists | Three.js consumed | Unity consumes today |
 |---|---:|---:|---:|
-| Realtime broadcast events | 117 | 33 | ~6 handlers |
+| Realtime broadcast events | 117 | 33 | ~30+ handlers + 3D collision (tombs/gossip/stress/banners/score/migration; see `docs/CONCORDIA_UNITY_PRESENTATION_AUDIT.md`) |
 | Gateway RPC verbs | 13 | — | 13 (complete) |
 | REST `/api/` endpoints | 239 | 239 | 0 |
 
@@ -48,11 +44,8 @@ fire. Added `_unityGatewayEmitter` + mirrors at all four fan-out tiers.
 Pinned by `server/tests/invariants/gateway-realtime-mirror-parity.test.js`
 (per-tier parity, bidirectionally verified). 40/40 existing gateway tests pass.
 
-This unblocked the *transport*. Phase 2's client half is now also on this
-tree: `ConcordClient.HandleFrame` consumes `scene:data`, `world:snapshot`,
-clock/weather/combat/crisis/quest events, and `lens:result` (`skills.mastery`).
-The client joins `world:<id>` on connect so the new Unity emitter can actually
-deliver world-scoped frames.
+This unblocked the *transport*. Unity still needs client-side handlers for the
+events it now actually receives — that's Phase 2's client half, Cursor's lane.
 
 **Phase 1 shipped — `lens:run`.** One authenticated WebSocket verb covers the
 entire `/api/lens/*` macro surface. `godot-gateway.js` forwards to injected
@@ -74,13 +67,11 @@ so socket.io is not double-fired. `world:snapshot` returns the live
 
 **Phase 4 decision: consume `scene:data`.** Unity applies live `nodes`
 (real `world_buildings` rows) as a `KernelLive` overlay dressed with local
-packs, parented under the **current streamed civilization chunk** (not a
-second world root — continent streaming must not be purged). Empty nodes
-stay empty. The hub `portals` array in `enrichScene` is Three.js-scale
-scaffold and must not stomp the authored Ring of Doors — those gates stay
-Canon. `toUnityScene` / `getUnityAssetList` remain as server descriptors
-for any remaining non-Unity consumers; they are not the Unity client's
-world, and ConcordiaScene is no longer mounted as the world viewport.
+packs. Empty nodes stay empty. The hub `portals` array in `enrichScene` is
+Three.js-scale scaffold and must not stomp the authored Ring of Doors —
+those gates stay Canon. `toUnityScene` / `getUnityAssetList` remain for the
+Three.js path until that renderer is actually retired; they are no longer
+the Unity client's world.
 
 **Phase 3 buckets (judgment, engines kept either way):**
 - Native 3D (wire): arena, coop/raids, extraction, horde, farming, factory,
@@ -163,8 +154,8 @@ Two honest options; pick one and stop leaving it ambiguous:
    right now, portal placement, live world state) while keeping local assets for
    *how* they look.
 2. **Delete the Unity branch of it** (`toUnityScene`, `getUnityAssetList`,
-   `unityBuildSettings` — the last has zero callers repo-wide). ConcordiaScene
-   is no longer the world viewport; do not keep a second consumer alive for it.
+   `unityBuildSettings` — the last has zero callers repo-wide) and let Three.js
+   keep it until Three.js goes.
 
 Option 1 is probably right, because "which buildings exist" is genuinely server
 truth. But silent scaffold is worse than either choice.

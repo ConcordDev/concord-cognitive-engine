@@ -25,10 +25,24 @@ import { encodeFrame, decodeFrame, isBinaryFrame, encodeMove, decodeMove } from 
 import { WebSocketServer } from "ws";
 import { makeSocketRateLimiter } from "./socket-rate-limit.js";
 import { composeTwoBDialogue } from "./concordia-two-b.js";
+import {
+  handleGiftGive,
+  handleSchemeIntervene,
+  handlePartyRequest,
+  handleInheritanceRequest,
+  handleDodge,
+  handleDungeonOpen,
+  handleDungeonHit,
+  handleRunStart,
+} from "./concordia-play.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
 import { packAaaSnapshot } from "./world-aaa-present.js";
 import { explainNpc } from "./world-inspect.js";
+import { getVillageGossipFeed } from "./npc-relationships.js";
+import { getTombsForWorld } from "./npc-legacy.js";
+import { listActiveBosses } from "./world-bosses.js";
+import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -491,6 +505,54 @@ function isBinaryMovePayload(p) {
         return;
       }
 
+      case "gift:give": {
+        const result = handleGiftGive(db, client.userId, data);
+        send(client.ws, "gift:result", result);
+        return;
+      }
+
+      case "scheme:intervene": {
+        const result = handleSchemeIntervene(db, client.userId, data);
+        send(client.ws, "scheme:intervened", result);
+        return;
+      }
+
+      case "party:request": {
+        const result = handlePartyRequest(client.userId, data);
+        send(client.ws, "party:data", result);
+        return;
+      }
+
+      case "inheritance:request": {
+        const result = handleInheritanceRequest(db, data);
+        send(client.ws, "inheritance:data", result);
+        return;
+      }
+
+      case "combat:dodge": {
+        const result = handleDodge(client.userId, data);
+        send(client.ws, "combat:dodge:ack", result);
+        return;
+      }
+
+      case "dungeon:open": {
+        const result = handleDungeonOpen(db, client.userId, data);
+        send(client.ws, "dungeon:data", result);
+        return;
+      }
+
+      case "dungeon:hit": {
+        const result = handleDungeonHit(db, client.userId, data);
+        send(client.ws, "dungeon:hit:ack", result);
+        return;
+      }
+
+      case "run:start": {
+        const result = handleRunStart(db, client.userId, data);
+        send(client.ws, "run:data", result);
+        return;
+      }
+
       case "world:snapshot": {
         // Phase 2 — clock + weather reads that never go through runMacro.
         // Same public-read surface as GET /api/world/clock and
@@ -505,6 +567,9 @@ function isBinaryMovePayload(p) {
         try {
           const phase = getWorldPhase();
           const weather = getWeather(worldId);
+          const gossipRows = getVillageGossipFeed(db, worldId, { limit: 8 }) || [];
+          const tombRows = getTombsForWorld(db, worldId, 8) || [];
+          const bossRows = listActiveBosses(db, worldId) || [];
           const extra = packAaaSnapshot(db, worldId, { userId: client.userId });
           send(client.ws, "world:snapshot", {
             ok: true,
@@ -522,6 +587,29 @@ function isBinaryMovePayload(p) {
                   since: weather.since,
                 }
               : null,
+            gossip: gossipRows.map((r) => ({
+              summary: r.summary || "",
+              kind: r.event_kind || "",
+              relation: r.relationship_kind || "",
+              npcA: r.npc_a_id || "",
+              npcB: r.npc_b_id || "",
+            })),
+            tombs: tombRows.map((r) => ({
+              npcId: r.npc_id || "",
+              lastWords: r.last_words || "",
+              x: r.tomb_x,
+              z: r.tomb_z,
+            })),
+            bosses: bossRows.map((r) => ({
+              activeId: r.id || "",
+              scheduleId: r.schedule_id || "",
+              bossTemplate: r.boss_template || "",
+              difficultyTier: r.difficulty_tier || "",
+            })),
+            gear: snapshotGear(db, client.userId),
+            chronicles: snapshotChronicles(db, worldId),
+            creatures: snapshotCreatures(db, worldId),
+            ecology: snapshotEcology(db, worldId),
             ...extra,
           });
         } catch (e) {
@@ -802,6 +890,79 @@ function isBinaryMovePayload(p) {
     clients,
     getSeq: () => gatewaySeq,
   };
+}
+
+/** Read-only equipped affixes. Never inserts a default loadout row. Empty stays []. */
+function snapshotGear(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    const row = db.prepare(`SELECT * FROM player_equipment WHERE user_id = ?`).get(userId);
+    if (!row) return [];
+    const slots = [
+      ["rightHand", row.right_hand_id],
+      ["leftHand", row.left_hand_id],
+      ["head", row.head_id],
+      ["body", row.body_id],
+      ["accessory", row.accessory_id],
+    ];
+    const items = [];
+    for (const [slot, invId] of slots) {
+      if (!invId) continue;
+      const it = db.prepare(
+        `SELECT id, item_name, affixes_json FROM player_inventory WHERE id = ? AND user_id = ?`,
+      ).get(invId, userId);
+      if (!it) continue;
+      let affixes = [];
+      try {
+        const parsed = JSON.parse(it.affixes_json || "[]");
+        if (Array.isArray(parsed)) {
+          affixes = parsed.map((a) => ({
+            id: a.id || "",
+            label: a.label || "",
+            stat: a.stat || "",
+            value: a.value,
+            element: a.element || null,
+          }));
+        }
+      } catch { affixes = []; }
+      items.push({
+        id: String(it.id),
+        name: it.item_name || "",
+        slot,
+        affixes,
+      });
+    }
+    return items;
+  } catch { return []; }
+}
+
+/** Recent match chronicles for this world. Empty stays []. */
+function snapshotChronicles(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT id, title, content FROM dtus
+      WHERE content_type = 'match_chronicle'
+      ORDER BY rowid DESC LIMIT 8
+    `).all();
+    const tag = `world:${worldId}`;
+    const out = [];
+    for (const r of rows) {
+      let summary = "";
+      let blob = "";
+      try {
+        const content = typeof r.content === "string" ? JSON.parse(r.content) : r.content;
+        summary = content?.human?.summary || "";
+        blob = typeof r.content === "string" ? r.content : JSON.stringify(content || {});
+      } catch {
+        blob = String(r.content || "");
+      }
+      if (!blob.includes(worldId) && !blob.includes(tag) && !(r.title || "").includes(worldId)) continue;
+      out.push({ id: r.id, title: r.title || "", summary });
+      if (out.length >= 4) break;
+    }
+    return out;
+  } catch { return []; }
 }
 
 /**

@@ -8,6 +8,13 @@ namespace Concordia
     Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible, Sere
 }
 
+    /// <summary>
+    /// Five fighting styles from style-sets.ts. Presentation of the existing
+    /// combat engine — not a second one. Stance / anticipation / strike read
+    /// differently on sight.
+    /// </summary>
+    public enum FightStyle { Karate, MuayThai, WingChun, Capoeira, Sword }
+
     [Serializable]
     public class GateDef
     {
@@ -57,7 +64,17 @@ namespace Concordia
         public const float WallRadius = 56f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
+        /// <summary>
+        /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
+        /// and CharacterController depenetration launched the hero onto roofs.
+        /// </summary>
+        public static readonly Vector3 SteelSpawn = new Vector3(0f, 0.12f, -8f);
 
+        /// <summary>
+        /// MEGAWORLD: these angles are civilization field centers on one
+        /// supercontinent (kernel: concordia-world-field.js), not portals to
+        /// disconnected maps. Travel() still region-rebuilds until W3.
+        /// </summary>
         public static readonly GateDef[] Gates =
         {
             new GateDef { world = WorldId.Cyber, shortName = "CYBER", name = "The Grid", refusal = "Refusal of Numbers", theNo = "I will not be counted.", color = Hex("3dffa0"), angle = 0 },
@@ -130,6 +147,43 @@ namespace Concordia
                 default:
                     return new WorldDef { id = WorldId.Crucible, title = "The Crucible", refusal = "A system that refuses to close can never rest.", theNo = "There is no ninth.", fantasy = "rules that refuse to stay", traversal = "unstable ground", combat = "drift", weather = "drift", ground = Hex("204040"), sun = Hex("20ffd0"), steelLive = true, law = "If it would end, un-end it.", style = S("drift", "Open Lattice", "Shard", "Recycle", "Refuse completion", "Un-end", 1.15f, 1f, 1.1f), fauna = new[] { "drift", "wraith", "construct" } };
             }
+        }
+
+        /// <summary>
+        /// Port of pickStyle({factionId, archetype, preferredStyleId}) plus a
+        /// world default so Hub karate and Crime wing chun actually read apart.
+        /// </summary>
+        public static FightStyle PickFight(string factionId, string archetype, WorldId world)
+        {
+            if (!string.IsNullOrEmpty(factionId))
+            {
+                if (factionId == "iron_wardens") return FightStyle.Sword;
+                if (factionId == "scholars_guild") return FightStyle.WingChun;
+                if (factionId == "shadow_network") return FightStyle.Capoeira;
+                if (factionId == "merchant_collective") return FightStyle.MuayThai;
+            }
+            if (!string.IsNullOrEmpty(archetype))
+            {
+                var a = archetype.ToLowerInvariant();
+                if (a.Contains("warrior") || a.Contains("guard")) return FightStyle.Sword;
+                if (a.Contains("scholar") || a.Contains("mystic")) return FightStyle.WingChun;
+                if (a.Contains("hunter") || a.Contains("acrobat")) return FightStyle.Capoeira;
+                if (a.Contains("trader")) return FightStyle.MuayThai;
+                if (a.Contains("monk")) return FightStyle.Karate;
+            }
+            return world switch
+            {
+                WorldId.Hub => FightStyle.Karate,
+                WorldId.Crime => FightStyle.WingChun,
+                WorldId.Sere => FightStyle.WingChun,
+                WorldId.Cyber => FightStyle.Capoeira,
+                WorldId.Tunya => FightStyle.Capoeira,
+                WorldId.Frontier => FightStyle.MuayThai,
+                WorldId.Fantasy => FightStyle.Sword,
+                WorldId.Ruins => FightStyle.Sword,
+                WorldId.Superhero => FightStyle.Karate,
+                _ => FightStyle.Sword
+            };
         }
 
         public static bool InArena(Vector3 p) => Vector3.Distance(new Vector3(p.x, 0, p.z), Arena) < 8f;

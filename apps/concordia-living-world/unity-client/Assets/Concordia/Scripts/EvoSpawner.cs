@@ -5,6 +5,9 @@ namespace Concordia
     /// <summary>
     /// Evo-asset presentation: Kenney/living fauna GLBs when present.
     /// Live path is FaunaLife (wander / graze / flee / hunt / sleep), not a sine orbit.
+    /// MEGAWORLD: this is the renderer. Organism identity (genome, habitat
+    /// fitness, death remains) lives in server/lib/concordia-organism.js.
+    /// Quota top-up in fauna-spawner is not a persistent organism (W8).
     /// </summary>
     public class EvoSpawner : MonoBehaviour
     {
@@ -48,6 +51,7 @@ namespace Concordia
         public bool hunting;
         public string critterId;
         public string act = "wander";
+        float _walkMps = -1f;
         Vector3 _home;
         Vector3 _dest;
         CharacterController _cc;
@@ -74,7 +78,21 @@ namespace Concordia
             _cc = GetComponent<CharacterController>();
             _body = GetComponent<TrainingDummy>();
             _rend = GetComponentsInChildren<Renderer>(true);
+            var genome = GetComponent<CreatureGenome>();
+            if (genome) BindGenome(genome);
             Pick();
+        }
+
+        /// <summary>
+        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
+        /// </summary>
+        public void BindGenome(CreatureGenome g)
+        {
+            if (!g) return;
+            if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
+            fly = g.fly;
+            predator = g.predator;
+            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Update()
@@ -130,6 +148,15 @@ namespace Concordia
                 return;
             }
 
+            var field = WorldField.At(WorldClock.World, transform.position, "athletics", WorldClock.World);
+            if (field.ok && field.habitatFitness < 0.35f && !field.flowerLaw)
+            {
+                act = "retreat";
+                Step(_home, fly ? 3.2f : 2.4f);
+                if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " retreats toward home field");
+                return;
+            }
+
             if (hunting) { act = "hunt"; return; }
 
             if (_wait > 0f)
@@ -150,7 +177,8 @@ namespace Concordia
                 return;
             }
             act = "wander";
-            Step(_dest, fly ? 2.6f : 1.8f);
+            var walk = _walkMps > 0.1f ? _walkMps : (fly ? 2.6f : 1.8f);
+            Step(_dest, walk);
             if (lod == SimLod.Real && dist < 18f) WorldClock.NoteAct(Label() + " " + act + "s");
         }
 
@@ -167,7 +195,8 @@ namespace Concordia
             }
             if (!prey) return false;
             act = "hunt";
-            Step(prey.transform.position, fly ? 3.8f : 3.1f);
+            var chase = _walkMps > 0.1f ? _walkMps * 1.45f : (fly ? 3.8f : 3.1f);
+            Step(prey.transform.position, chase);
             if (lod == SimLod.Real) WorldClock.NoteAct(Label() + " hunts");
             return true;
         }
@@ -228,6 +257,8 @@ namespace Concordia
 
         string Label()
         {
+            var g = GetComponent<CreatureGenome>();
+            if (g && !string.IsNullOrEmpty(g.Label)) return g.Label;
             if (!string.IsNullOrEmpty(critterId)) return critterId;
             return name.Replace("Evo_", "");
         }
