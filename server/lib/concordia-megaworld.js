@@ -32,8 +32,8 @@ export const CORE_CIVILIZATIONS = Object.freeze([
 
 export const SETTLEMENT_STATUSES = Object.freeze(["active", "abandoned", "conquered", "ghost"]);
 
-/** What Unity Travel() does today. Overland streaming is not implemented. */
-export const CURRENT_TRAVEL_MODE = "region_rebuild";
+/** What Unity Travel() does today. ContinentStream Bind+Teleport; walking SoftEnters. */
+export const CURRENT_TRAVEL_MODE = "continent_stream";
 
 export function flowerLawGoverns(worldId) {
   const id = String(worldId || "").trim().toLowerCase();

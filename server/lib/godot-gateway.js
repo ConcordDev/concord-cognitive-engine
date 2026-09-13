@@ -43,6 +43,7 @@ import { getVillageGossipFeed } from "./npc-relationships.js";
 import { getTombsForWorld } from "./npc-legacy.js";
 import { listActiveBosses } from "./world-bosses.js";
 import { snapshotCreatures, snapshotEcology } from "./concordia-creatures.js";
+import { notePlayerWorld } from "./world-loader.js";
 
 const ROOM_RE = /^(world|user):[A-Za-z0-9_.-]{1,64}$/;
 
@@ -472,8 +473,15 @@ function isBinaryMovePayload(p) {
 
       case "scene:request": {
         const worldId = typeof data.worldId === "string" ? data.worldId : "";
+        const stampWorld = () => {
+          if (worldId && client.userId) {
+            try { notePlayerWorld(db, client.userId, worldId); }
+            catch { /* stub deps / missing table — scene:data still sent */ }
+          }
+        };
         if (typeof exportScene !== "function" || !db) {
           send(client.ws, "scene:data", { ok: false, reason: "scene_export_unavailable" });
+          stampWorld();
           return;
         }
         let scene;
@@ -481,10 +489,14 @@ function isBinaryMovePayload(p) {
           scene = await exportScene(db, worldId);
         } catch (e) {
           send(client.ws, "scene:data", { ok: false, reason: "scene_export_failed", error: String(e?.message || e) });
+          stampWorld();
           return;
         }
         // Passthrough verbatim, including honest {ok:false,...} failures. Never fabricate a scene.
         send(client.ws, "scene:data", scene);
+        // Interest-set stamp. Unity SoftEnter/Travel send scene:request;
+        // getActiveWorldForPlayer must follow or kernel systems stay on Hub.
+        stampWorld();
         return;
       }
 

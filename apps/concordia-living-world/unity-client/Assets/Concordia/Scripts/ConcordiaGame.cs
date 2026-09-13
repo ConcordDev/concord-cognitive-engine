@@ -15,6 +15,7 @@ namespace Concordia
 {
     public class ConcordiaGame : MonoBehaviour
     {
+        public static ConcordiaGame Live { get; private set; }
         public GameObject soldierPrefab;
         public WorldId world = WorldId.Hub;
         ConcordiaPlayer _player;
@@ -32,6 +33,7 @@ namespace Concordia
 
         async void Start()
         {
+            Live = this;
             HubObjectives.Reset();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
@@ -142,14 +144,18 @@ namespace Concordia
             var pos = _player.transform.position;
             string prompt = null;
             float best = 3.2f;
+            WorldGate nearGate = null;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; prompt = g.Prompt; }
+                    if (d < gateBest) { gateBest = d; nearGate = g; }
                     if (d < 9f && g.def.world != WorldId.Hub) HubObjectives.NoteGateWalked(g.def.world);
                 }
+            if (nearGate)
+                prompt = nearGate.Prompt;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -223,6 +229,7 @@ namespace Concordia
                     prompt = bi != null && bi.entered ? "E  ·  Leave" : door.Prompt;
                 }
             }
+            if (nearGate) prompt = nearGate.Prompt;
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
             WorldClock.Tick(Time.deltaTime);
@@ -240,14 +247,20 @@ namespace Concordia
             Gatherable loot = null;
             CookStation cook = null;
             KernelTomb tomb = null;
-            float best = 3.2f;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
+                    if (d < gateBest) { gateBest = d; gate = g; }
                 }
+            if (gate != null)
+            {
+                Travel(gate.def.world);
+                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
+            }
+            float best = 3.2f;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -304,11 +317,6 @@ namespace Concordia
                     var d = Vector3.Distance(pos, t.transform.position);
                     if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
-            if (gate != null)
-            {
-                Travel(gate.def.world);
-                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
-            }
             if (hold != null)
                 return EnterHold(hold);
             if (city != null)
@@ -445,9 +453,11 @@ namespace Concordia
         }
 
         /// <summary>
-        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
-        /// topology is one continuous universe with overlapping WorldFields;
-        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// MEGAWORLD: live path is ContinentStream (one plane). Link gates
+        /// teleport; walking SoftEnters. Travel never calls _world.Build —
+        /// that PurgeNamed("Megaworld") + Canon.SteelSpawn wipe emptied the
+        /// Hub Ring after repeated Travel. Boot is the only Build caller.
+        /// Flower Law is the Unburned Court only.
         /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
         /// </summary>
         public void Travel(WorldId next)
@@ -458,21 +468,11 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            if (ContinentStream.Live != null)
-                ContinentStream.Live.Teleport(_player, next);
+            var stream = ContinentStream.Bind(_world);
+            if (stream)
+                stream.Teleport(_player, next);
             else
-            {
-                var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
-                _player.cc.enabled = false;
-                _player.transform.position = spawn;
-                _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-                _player.cc.enabled = true;
-                if (_player.cam) _player.cam.yaw = Mathf.PI;
-                _world.Build(next);
-                WorldClock.Enter(next);
-                _player.EquipWorldKit();
-                Grounding.Snap(_player.cc);
-            }
+                Debug.LogError("Concordia Travel: ContinentStream missing; refusing single-world Build (SteelSpawn wipe).");
             ModularPerson.RecastBody(_player.person);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
@@ -485,9 +485,18 @@ namespace Concordia
                 _player.Notice(crossed);
             else if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
                 _player.Notice(WorldClock.LastEvent);
-            var client = ConcordClient.Live;
-            if (client && client.Connected)
-                _ = client.RequestScene(WorldBook.Folder(next));
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(next));
+        }
+
+        /// <summary>
+        /// SoftEnter / walk-in world change. Same kernel join Travel uses.
+        /// Overland players must not keep sending the previous region id.
+        /// JoinWorld connects kitchen if Start() missed it.
+        /// </summary>
+        public void NoteWorld(WorldId id)
+        {
+            world = id;
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(id));
         }
 
         public string EnterCity(WorldBook.CityDef city)
@@ -560,6 +569,7 @@ namespace Concordia
 
         void OnDestroy()
         {
+            if (Live == this) Live = null;
             WorldClock.Leave();
             var kernel = ConcordClient.Live;
             if (kernel != null) kernel.OnEvent -= HandleKernelEvent;

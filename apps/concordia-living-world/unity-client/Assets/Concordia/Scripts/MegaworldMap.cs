@@ -60,6 +60,26 @@ namespace Concordia
             return best;
         }
 
+        /// <summary>
+        /// Civilization on the player's bearing from the Hub. Used once the
+        /// Court is left — Nearest stays Hub until halfway to the ring.
+        /// </summary>
+        public static WorldId Toward(Vector3 present)
+        {
+            var flat = new Vector2(present.x, present.z);
+            if (flat.sqrMagnitude < 1f) return WorldId.Hub;
+            var bearing = Mathf.Atan2(present.z, present.x) * Mathf.Rad2Deg;
+            var best = WorldId.Hub;
+            var bestD = float.PositiveInfinity;
+            foreach (var id in All)
+            {
+                if (id == WorldId.Hub) continue;
+                var da = Mathf.Abs(Mathf.DeltaAngle(bearing, AngleOf(id) * Mathf.Rad2Deg));
+                if (da < bestD) { bestD = da; best = id; }
+            }
+            return best;
+        }
+
         static float FieldAngle(WorldId id)
         {
             foreach (var g in Canon.Gates)
