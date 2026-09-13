@@ -92,6 +92,7 @@ namespace Concordia
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F8)) DebugHud = !DebugHud;
+            if (DebugHud && Input.GetKeyDown(KeyCode.F9)) AgentAvatar.KitchenBind();
             if (Input.GetKeyDown(KeyCode.F1))
             {
                 WorldAaa.DebugDump = !WorldAaa.DebugDump;

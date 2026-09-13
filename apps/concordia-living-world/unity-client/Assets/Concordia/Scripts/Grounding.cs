@@ -33,15 +33,20 @@ namespace Concordia
                 if (self && (h.transform == self || h.transform.IsChildOf(self))) continue;
                 if (h.normal.y < 0.35f) continue;
                 var sz = h.collider.bounds.size;
-                // Building AABBs and kit volumes are not floors. Thin
-                // slabs (tiles, HoldGround) stay legal at any world Y —
-                // this is not a 4.5m ceiling hack.
-                if (sz.y > 1.6f) continue;
+                var nm = h.collider.name ?? "";
+                bool namedFloor = nm.IndexOf("Ground", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || nm.IndexOf("Floor", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || nm.IndexOf("Terrain", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                // Building AABBs and kit volumes are not floors. Named ground
+                // meshes (heightfields, ContinentGround) stay legal even when
+                // the AABB is tall.
+                if (!namedFloor && sz.y > 1.6f) continue;
                 if (h.distance < best) { best = h.distance; y = h.point.y + extra; any = true; }
             }
             if (!any && Physics.Raycast(origin, Vector3.down, out var ray, 12f, ~0, QueryTriggerInteraction.Ignore)
                 && ray.normal.y >= 0.35f
-                && ray.collider && ray.collider.bounds.size.y <= 1.6f
+                && ray.collider
+                && IsFloor(ray.collider)
                 && (!self || (ray.transform != self && !ray.transform.IsChildOf(self))))
             {
                 y = ray.point.y + extra;
@@ -49,6 +54,16 @@ namespace Concordia
             }
             if (!any) return p;
             return new Vector3(p.x, y, p.z);
+        }
+
+        static bool IsFloor(Collider col)
+        {
+            if (!col) return false;
+            var nm = col.name ?? "";
+            if (nm.IndexOf("Ground", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (nm.IndexOf("Floor", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            if (nm.IndexOf("Terrain", System.StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            return col.bounds.size.y <= 1.6f;
         }
 
         public static CharacterController EnsureController(GameObject go, float height = 1.8f)

@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0023
+namespace Concordia // FORCE_REFRESH_0024
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -269,8 +269,25 @@ namespace Concordia // FORCE_REFRESH_0023
                     " scale=" + body.transform.localScale + " hip=" + (_hip ? _hip.name : "null") + "\n");
             }
             catch { }
+            PlantAuthoredFeet(body.transform);
             Debug.Log("Concordia ModularPerson bound prefab=" + (_lastPrefabPath ?? "") + " ctrl=" + (ctrl ? ctrl.name : "none"));
             return true;
+        }
+
+        void PlantAuthoredFeet(Transform body)
+        {
+            if (!body) return;
+            float minY = float.MaxValue;
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r || !r.enabled) continue;
+                if (!(r is SkinnedMeshRenderer) && r.bounds.size.y > 6.5f) continue;
+                minY = Mathf.Min(minY, r.bounds.min.y);
+            }
+            if (minY > 1e8f) return;
+            float dy = transform.position.y - minY;
+            if (Mathf.Abs(dy) < 0.02f || Mathf.Abs(dy) > 2.6f) return;
+            body.position += Vector3.up * dy;
         }
 
         static GameObject LoadPersonPrefab(bool hero)
@@ -767,18 +784,13 @@ namespace Concordia // FORCE_REFRESH_0023
             if (!_built) return;
             if (_authored && _plantFrames < 8)
             {
-                StripGiantAndFallback();
+                StripGiantAndFallback(_plantFrames >= 6);
                 if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
                 {
                     float dy = _handL.position.y - _uArmL.position.y;
-                    if (dy > -0.22f)
+                    if (dy > -0.22f && !_anim)
                     {
                         _clipsFit = false;
-                        if (_anim)
-                        {
-                            _anim.runtimeAnimatorController = null;
-                            _anim.enabled = false;
-                        }
                         HangAuthoredArms(0f);
                     }
                 }
@@ -1019,23 +1031,23 @@ namespace Concordia // FORCE_REFRESH_0023
             _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
             float spd = _shown;
             // Walk / jog / run. Old Lerp(6.4, 10.6) + 56° knees was a march.
-            float walk = Mathf.InverseLerp(0.28f, 3.8f, spd);
-            float jog = Mathf.InverseLerp(3.4f, 5.6f, spd);
-            float run = Mathf.InverseLerp(5.4f, 8.0f, spd);
+            float walk = Mathf.InverseLerp(0.28f, 1.7f, spd);
+            float jog = Mathf.InverseLerp(1.6f, 4.2f, spd);
+            float run = Mathf.InverseLerp(4.0f, 7.4f, spd);
             float cadence = spd > 0.28f
-                ? Mathf.Lerp(4.4f, 5.6f, walk) + 1.35f * jog + 1.15f * run
+                ? Mathf.Lerp(3.6f, 8.4f, Mathf.InverseLerp(0.4f, 7.6f, spd))
                 : 1.35f;
             _phase += dt * cadence;
             float s = Mathf.Sin(_phase);
             float sit = _sitShown;
             float breath = Mathf.Sin(Time.time * 1.55f) * 3f;
-            float moving = Mathf.Clamp01(walk + jog * 0.35f);
+            float moving = Mathf.Clamp01(Mathf.InverseLerp(0.2f, 1.4f, spd));
             float hang = Mathf.Lerp(72f, 28f, moving);
-            float hipAmp = 22f * walk + 14f * jog + 10f * run;
-            float kneeSwing = 22f * walk + 6f * jog + 4f * run;
-            float kneeStance = 8f + 4f * jog + 6f * run;
-            float armAmp = 22f * walk + 14f * jog + 10f * run;
-            float lean = 4f * walk + 6f * jog + 8f * run;
+            float hipAmp = Mathf.Lerp(14f, 9f, run) * moving;
+            float kneeSwing = Mathf.Lerp(18f, 8f, run) * moving;
+            float kneeStance = 6f + 4f * jog + 2f * run;
+            float armAmp = Mathf.Lerp(16f, 12f, run) * moving;
+            float lean = 3f * walk + 5f * jog + 7f * run;
             float idle = 1f - moving;
             float shift = Mathf.Sin(Time.time * 1.15f + transform.position.x) * 6f * idle;
             bool talk = Talking();
@@ -1118,7 +1130,7 @@ namespace Concordia // FORCE_REFRESH_0023
         }
 
 
-        void StripGiantAndFallback()
+        void StripGiantAndFallback(bool allowFallback = true)
         {
             bool any = false;
             Bounds enc = default;
@@ -1168,6 +1180,7 @@ namespace Concordia // FORCE_REFRESH_0023
             }
             catch { }
             if (!broken) return;
+            if (!allowFallback) return;
             var kenney = transform.Find("KenneyPerson");
             if (kenney)
             {

@@ -35,6 +35,14 @@ import {
   handleDungeonHit,
   handleRunStart,
 } from "./concordia-play.js";
+import {
+  handleCharacterCreate,
+  handleCharacterLoad,
+  handleCharacterBind,
+  handleCharacterUnbind,
+  handleAgentPerceive,
+  handleAgentIntent,
+} from "./concordia-agent-body.js";
 import { getWeather } from "./weather.js";
 import { getWorldPhase, getDayPhase, WORLD_CLOCK_CONSTANTS } from "./world-clock.js";
 import { packAaaSnapshot } from "./world-aaa-present.js";
@@ -508,6 +516,31 @@ function isBinaryMovePayload(p) {
       case "gift:give": {
         const result = handleGiftGive(db, client.userId, data);
         send(client.ws, "gift:result", result);
+        return;
+      }
+
+      case "character:create": {
+        send(client.ws, "character:created", handleCharacterCreate(db, client.userId, data));
+        return;
+      }
+      case "character:load": {
+        send(client.ws, "character:loaded", handleCharacterLoad(db, client.userId, data));
+        return;
+      }
+      case "character:bind": {
+        send(client.ws, "character:bound", handleCharacterBind(db, client.userId, data));
+        return;
+      }
+      case "character:unbind": {
+        send(client.ws, "character:unbound", handleCharacterUnbind(db, client.userId, data));
+        return;
+      }
+      case "agent:perceive": {
+        send(client.ws, "agent:perceived", handleAgentPerceive(db, client.userId, data));
+        return;
+      }
+      case "agent:intent": {
+        send(client.ws, "agent:intent:ack", handleAgentIntent(db, client.userId, data));
         return;
       }
 

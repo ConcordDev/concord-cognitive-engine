@@ -458,9 +458,8 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            if (ContinentStream.Live != null)
-                ContinentStream.Live.Teleport(_player, next);
-            else
+            ContinentStream.Live?.Teleport(_player, next);
+            if (ContinentStream.Live == null)
             {
                 var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
                 _player.cc.enabled = false;
@@ -468,7 +467,6 @@ namespace Concordia
                 _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
                 _player.cc.enabled = true;
                 if (_player.cam) _player.cam.yaw = Mathf.PI;
-                _world.Build(next);
                 WorldClock.Enter(next);
                 _player.EquipWorldKit();
                 Grounding.Snap(_player.cc);

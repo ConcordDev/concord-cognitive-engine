@@ -159,6 +159,10 @@ namespace Concordia
             WorldClock.Enter(id);
             ApplySky(id);
             ModularPerson.CastingWorld = id;
+            var player = ConcordiaPlayer.Live;
+            if (player) player.world = id;
+            var game = Object.FindAnyObjectByType<ConcordiaGame>();
+            if (game) game.world = id;
             if (LastTravelKind != "link_gate")
             {
                 var w = Canon.Get(id);
