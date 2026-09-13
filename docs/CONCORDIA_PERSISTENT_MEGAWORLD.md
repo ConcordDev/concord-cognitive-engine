@@ -48,7 +48,7 @@ Audited 2026-09-12 against source. If this table disagrees with the tree, the tr
 
 | Law | Already real | Honest gap |
 |---|---|---|
-| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. Unity `ContinentStream` keeps civilizations on one plane; `_world.Build` is the no-stream fallback only. | Kernel `CURRENT_TRAVEL_MODE` is still `region_rebuild`. Continuous heightmap continents are not presented — playable compression is 0.55 m/km. |
+| 1 Topology | Inventory is **user-global** across worlds (CLAUDE.md). Concord Link messages/items exist (`routes/concord-link.js`). CrossRing walks cargo/rumor between Unity `WorldId`s. Unity `ContinentStream` keeps civilizations on one plane. `Travel` is Bind+Teleport only; `_world.Build` is **boot-only** (never mid-session). | Kernel `CURRENT_TRAVEL_MODE` is still `region_rebuild`. Continuous heightmap continents are not presented — playable compression is 0.55 m/km. |
 | 2 Link vs walk | Gates + CrossRing. `WorldBook.Folder` maps Hub→`concordia-hub`, Frontier→`concord-link-frontier`, etc. Ring `WorldGate` trigger teleports; walking between gates SoftEnters. | Fast travel is the Link gate. Overland is the road. |
 | 3 Flower Law | Hub `steelLive = false`; every other `Canon` world `steelLive = true`. Sere law text: Flower-law is the Court only. | Law lives in Unity Canon + HUD copy. Server `flowerLawGoverns` is the kernel pin. |
 | 4 Persistent geography | `world_terrain_deformations` + `world_water_cells` (mig 281) are delta-over-seed. `procgen_regions` persist. | No single `world_seed` → continent → settlement-site pipeline that stamps identity. Two settlement systems: Living Society `settlements` (mig 287) vs `procgen_settlement_npcs` (region NPC packs). |
@@ -89,7 +89,7 @@ native strength
 
 `explainGeographicEffectiveness` speaks in physics (“local magic is 0.12; you trained in fantasy”). It does not mint a combat-log debuff.
 
-Live combat samples `applyGeographicDamage` (W7). Discrete `cross-world-potency.js` remains the kill-switch fallback (`CONCORD_GEOGRAPHIC_FIELD=0`). Unity present metres map through `MegaworldMap.PresentToKm` when `ContinentStream` is live. `_world.Build` is the no-stream fallback only.
+Live combat samples `applyGeographicDamage` (W7). Discrete `cross-world-potency.js` remains the kill-switch fallback (`CONCORD_GEOGRAPHIC_FIELD=0`). Unity present metres map through `MegaworldMap.PresentToKm` when `ContinentStream` is live. `_world.Build` is boot-only; Travel is Bind+Teleport.
 
 ---
 

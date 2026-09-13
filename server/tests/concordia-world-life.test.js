@@ -137,8 +137,9 @@ describe("Concordia world-life — source contracts", () => {
     const game = src("ConcordiaGame.cs");
     assert.match(game, /live path is ContinentStream/);
     assert.match(game, /CONCORDIA_PERSISTENT_MEGAWORLD/);
-    assert.match(game, /_world\.Build\(next\)/);
-    assert.match(game, /ContinentStream\.Live\.Teleport/);
+    assert.doesNotMatch(game, /_world\.Build\(next\)/);
+    assert.match(game, /ContinentStream\.Bind\(_world\)/);
+    assert.match(game, /stream\.Teleport/);
     const field = src("WorldField.cs");
     assert.match(field, /SceneMetresToKm = 0\.4f/);
     assert.match(field, /MegaworldMap\.PresentToKm/);

@@ -90,8 +90,9 @@ namespace Concordia
                 else if (lod == 1) EnsureImpostor(id);
                 else Release(id);
             }
-            if (Vector3.Distance(player, Vector3.zero) <= HubKeepM) Ensure(WorldId.Hub);
-            else Release(WorldId.Hub);
+            // Hub Ring of 8 stays. Travel to Present (~220m) used to
+            // Release Hub past HubKeepM and leave one return WorldGate.
+            Ensure(WorldId.Hub);
 
             if (Canon.InHubCourt(player))
                 SoftEnter(WorldId.Hub);
@@ -103,6 +104,7 @@ namespace Concordia
         {
             if (!player) return;
             LastTravelKind = "link_gate";
+            Ensure(WorldId.Hub);
             Ensure(next);
             var spawn = MegaworldMap.Present(next);
             if (next == WorldId.Hub) spawn = Canon.Spawn;
@@ -114,7 +116,7 @@ namespace Concordia
             if (player.cam) player.cam.yaw = Mathf.PI;
             Grounding.Snap(player.cc);
             player.world = next;
-            SoftEnter(next);
+            SoftEnter(next, "link_gate");
             player.EquipWorldKit();
         }
 
@@ -168,11 +170,11 @@ namespace Concordia
         /// and kit first — WorldClock matching is not enough (Editor proof:
         /// clock Fantasy, player.world still Hub, steel false).
         /// </summary>
-        public void SoftEnter(WorldId id)
+        public void SoftEnter(WorldId id, string kind = "walk")
         {
             SyncActor(id);
             if (WorldClock.World == id) return;
-            LastTravelKind = LastTravelKind == "link_gate" ? "link_gate" : "walk";
+            LastTravelKind = kind;
             WorldClock.Leave();
             WorldClock.Enter(id);
             ApplySky(id);
@@ -192,14 +194,19 @@ namespace Concordia
                 var all = Object.FindObjectsByType<ConcordiaPlayer>(FindObjectsInactive.Include, FindObjectsSortMode.None);
                 if (all != null && all.Length > 0) player = all[0];
             }
+            var changed = false;
             if (player)
             {
-                var changed = player.world != id;
+                changed = player.world != id;
                 player.world = id;
                 if (changed) player.EquipWorldKit();
             }
             var game = ConcordiaGame.Live ?? Object.FindFirstObjectByType<ConcordiaGame>();
-            if (game) game.world = id;
+            if (game)
+            {
+                if (changed || game.world != id) game.NoteWorld(id);
+                else game.world = id;
+            }
         }
 
         void EnsureContinent()

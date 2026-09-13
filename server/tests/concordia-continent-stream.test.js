@@ -22,7 +22,7 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(map, /Canon\.Gates/);
   });
 
-  it("ContinentStream is the live Travel path — Build is fallback only", () => {
+  it("ContinentStream is the live Travel path — Build is boot only", () => {
     const stream = src("ContinentStream.cs");
     const game = src("ConcordiaGame.cs");
     const builder = src("WorldBuilder.cs");
@@ -42,8 +42,9 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(game, /ContinentStream\.Bind\(_world\)/);
     assert.match(game, /stream\.Teleport/);
     assert.match(game, /ContinentStream\.Live\?\.Tick/);
-    assert.match(game, /_world\.Build\(next\)/);
-    assert.match(game, /no-stream fallback/);
+    assert.doesNotMatch(game, /_world\.Build\(next\)/);
+    assert.match(game, /refusing single-world Build/);
+    assert.match(game, /NoteWorld\(/);
   });
 
   it("CreatureCompiler is honest — no Fox-for-wolf, no primitive CourtBird Hub flock", () => {
@@ -152,6 +153,20 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(game, /ContinentStream\.Bind\(_world\)/);
     assert.match(game, /stream\.Teleport/);
     assert.doesNotMatch(game, /if \(ContinentStream\.Live != null\)/);
+    assert.doesNotMatch(game, /_world\.Build\(next\)/);
+    assert.match(game, /refusing single-world Build/);
+  });
+
+  it("Hub Ring stays loaded across Travel; walking SoftEnter is not stuck on link_gate", () => {
+    const stream = src("ContinentStream.cs");
+    const tick = stream.slice(stream.indexOf("public void Tick"), stream.indexOf("public void Teleport"));
+    assert.match(tick, /Ensure\(WorldId\.Hub\)/);
+    assert.doesNotMatch(tick, /Release\(WorldId\.Hub\)/);
+    assert.match(stream, /SoftEnter\(next, "link_gate"\)/);
+    assert.match(stream, /public void SoftEnter\(WorldId id, string kind = "walk"\)/);
+    assert.match(stream, /LastTravelKind = kind/);
+    assert.doesNotMatch(stream, /LastTravelKind == "link_gate" \? "link_gate"/);
+    assert.match(stream, /game\.NoteWorld\(id\)/);
   });
 
   it("ContinentStream.Live survives OnDisable so Travel cannot lose the stream mid-session", () => {

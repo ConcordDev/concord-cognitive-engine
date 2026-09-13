@@ -454,7 +454,9 @@ namespace Concordia
 
         /// <summary>
         /// MEGAWORLD: live path is ContinentStream (one plane). Link gates
-        /// teleport; walking SoftEnters. _world.Build is the no-stream fallback.
+        /// teleport; walking SoftEnters. Travel never calls _world.Build —
+        /// that PurgeNamed("Megaworld") + Canon.SteelSpawn wipe emptied the
+        /// Hub Ring after repeated Travel. Boot is the only Build caller.
         /// Flower Law is the Unburned Court only.
         /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
         /// </summary>
@@ -470,18 +472,7 @@ namespace Concordia
             if (stream)
                 stream.Teleport(_player, next);
             else
-            {
-                var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
-                _player.cc.enabled = false;
-                _player.transform.position = spawn;
-                _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-                _player.cc.enabled = true;
-                if (_player.cam) _player.cam.yaw = Mathf.PI;
-                _world.Build(next);
-                WorldClock.Enter(next);
-                _player.EquipWorldKit();
-                Grounding.Snap(_player.cc);
-            }
+                Debug.LogError("Concordia Travel: ContinentStream missing; refusing single-world Build (SteelSpawn wipe).");
             ModularPerson.RecastBody(_player.person);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
@@ -497,6 +488,18 @@ namespace Concordia
             var client = ConcordClient.Live;
             if (client && client.Connected)
                 _ = client.RequestScene(WorldBook.Folder(next));
+        }
+
+        /// <summary>
+        /// SoftEnter / walk-in world change. Same kernel join Travel uses.
+        /// Overland players must not keep sending the previous region id.
+        /// </summary>
+        public void NoteWorld(WorldId id)
+        {
+            world = id;
+            var client = ConcordClient.Live;
+            if (client && client.Connected)
+                _ = client.RequestScene(WorldBook.Folder(id));
         }
 
         public string EnterCity(WorldBook.CityDef city)

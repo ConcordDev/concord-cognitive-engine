@@ -27,6 +27,10 @@ namespace Concordia
             "building-skyscraper-a", "building-skyscraper-c"
         };
 
+        /// <summary>
+        /// Boot only. Purges Megaworld then ContinentStream.Boot.
+        /// Travel must never call this — it wiped the Hub Ring.
+        /// </summary>
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
