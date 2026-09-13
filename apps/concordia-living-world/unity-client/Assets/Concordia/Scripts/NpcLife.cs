@@ -410,7 +410,7 @@ namespace Concordia
                 transform.position += dir * speed * Time.deltaTime;
             var look = Quaternion.LookRotation(dir);
             transform.rotation = Quaternion.Slerp(transform.rotation, look, Time.deltaTime * 6f);
-            _person?.SetGait(new Vector3(_vel.x, 0f, _vel.z).magnitude, true);
+            _person?.SetGait(new Vector3(_vel.x, 0f, _vel.z).magnitude, !_cc || _cc.isGrounded);
         }
 
         void Hold()

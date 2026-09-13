@@ -261,29 +261,31 @@ namespace Concordia
         }
     }
 
-    /// <summary>T1 nameplate. World-space name over a living person.</summary>
+    /// <summary>Quiet world-space name. Small, camera-facing, planted on feet — not a bouncing billboard.</summary>
     public class PersonLabel : MonoBehaviour
     {
         public string title;
         public string role;
         TextMesh _mesh;
-        const float MaxDist = 22f;
+        TextMesh _shadow;
+        Transform _host;
+        const float MaxDist = 14f;
+        const float Height = 1.92f;
 
         public static PersonLabel Attach(Transform host, string title, string role = null)
         {
             if (!host) return null;
-            var existing = host.GetComponentInChildren<PersonLabel>();
-            if (existing)
+            foreach (var existing in Object.FindObjectsByType<PersonLabel>(FindObjectsInactive.Exclude))
             {
+                if (!existing || existing._host != host) continue;
                 existing.title = title;
                 existing.role = role;
                 existing.Apply();
                 return existing;
             }
             var go = new GameObject("Nameplate");
-            go.transform.SetParent(host, false);
-            go.transform.localPosition = new Vector3(0f, 2.15f, 0f);
             var lab = go.AddComponent<PersonLabel>();
+            lab._host = host;
             lab.title = title;
             lab.role = role;
             lab.Build();
@@ -292,51 +294,76 @@ namespace Concordia
 
         void Build()
         {
-            _mesh = gameObject.AddComponent<TextMesh>();
-            _mesh.anchor = TextAnchor.LowerCenter;
-            _mesh.alignment = TextAlignment.Center;
-            _mesh.characterSize = 0.045f;
-            _mesh.fontSize = 42;
-            _mesh.color = new Color(1f, 0.94f, 0.82f, 0.95f);
+            _shadow = MakeMesh(new Color(0.06f, 0.05f, 0.04f, 0.92f), 0.002f);
+            _mesh = MakeMesh(new Color(0.96f, 0.93f, 0.86f, 0.96f), 0f);
+            Apply();
+        }
+
+        TextMesh MakeMesh(Color color, float z)
+        {
+            var child = new GameObject(z < 0f ? "Ink" : "Face");
+            child.transform.SetParent(transform, false);
+            child.transform.localPosition = new Vector3(0f, 0f, z);
+            var tm = child.AddComponent<TextMesh>();
+            tm.anchor = TextAnchor.LowerCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.characterSize = 0.016f;
+            tm.fontSize = 36;
+            tm.fontStyle = FontStyle.Bold;
+            tm.color = color;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font)
             {
-                _mesh.font = font;
-                var matRend = _mesh.GetComponent<Renderer>();
+                tm.font = font;
+                var matRend = tm.GetComponent<Renderer>();
                 if (matRend && font.material) matRend.sharedMaterial = font.material;
             }
-            var rend = _mesh.GetComponent<Renderer>();
+            var rend = tm.GetComponent<Renderer>();
             if (rend)
             {
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rend.receiveShadows = false;
             }
-            Apply();
+            return tm;
         }
 
         void Apply()
         {
-            if (!_mesh) _mesh = GetComponent<TextMesh>();
-            if (!_mesh) return;
             var line = string.IsNullOrEmpty(title) ? "someone" : title;
             if (!string.IsNullOrEmpty(role)) line += "\n" + role;
-            _mesh.text = line;
+            if (_mesh) _mesh.text = line;
+            if (_shadow) _shadow.text = line;
         }
 
         void LateUpdate()
         {
+            if (!_host)
+            {
+                Destroy(gameObject);
+                return;
+            }
             var cam = Camera.main;
-            var rend = _mesh ? _mesh.GetComponent<Renderer>() : GetComponent<Renderer>();
+            var rend = _mesh ? _mesh.GetComponent<Renderer>() : null;
             if (!cam)
             {
                 if (rend) rend.enabled = false;
+                if (_shadow) _shadow.GetComponent<Renderer>().enabled = false;
                 return;
             }
+            var feet = _host.position;
+            transform.position = feet + Vector3.up * Height;
             var d = Vector3.Distance(cam.transform.position, transform.position);
-            var show = d < MaxDist;
+            var show = d < MaxDist && d > 1.4f;
             if (rend) rend.enabled = show;
+            if (_shadow)
+            {
+                var sr = _shadow.GetComponent<Renderer>();
+                if (sr) sr.enabled = show;
+            }
             if (!show) return;
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
+            float s = Mathf.Clamp(d * 0.045f, 0.7f, 1.15f);
+            transform.localScale = Vector3.one * s;
         }
     }
 

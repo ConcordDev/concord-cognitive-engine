@@ -361,10 +361,10 @@ namespace Concordia
                 pylon.skillType = SkillLattice.FirstInGroup(groups[i]);
                 var label = new GameObject("Name").AddComponent<TextMesh>();
                 label.transform.SetParent(go.transform, false);
-                label.transform.localPosition = new Vector3(0f, 2.6f, 0f);
-                label.text = groups[i].ToUpperInvariant();
-                label.fontSize = 42;
-                label.characterSize = 0.06f;
+                label.transform.localPosition = new Vector3(0f, 2.15f, 0f);
+                label.text = groups[i];
+                label.fontSize = 28;
+                label.characterSize = 0.018f;
                 label.anchor = TextAnchor.MiddleCenter;
                 label.alignment = TextAlignment.Center;
                 label.color = new Color(1f, 0.93f, 0.78f);
@@ -695,8 +695,8 @@ namespace Concordia
             label.transform.SetParent(hold, false);
             label.transform.localPosition = new Vector3(0f, 11.4f, 0.2f);
             label.text = "THE HUB";
-            label.fontSize = 48;
-            label.characterSize = 0.11f;
+            label.fontSize = 28;
+            label.characterSize = 0.032f;
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
             label.color = Color.white;
