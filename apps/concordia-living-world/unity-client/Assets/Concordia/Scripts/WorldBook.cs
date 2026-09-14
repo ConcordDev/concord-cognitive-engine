@@ -531,7 +531,8 @@ namespace Concordia
             Hour = Mathf.Repeat(phase * 24f, 24f);
             _kernelLive = true;
             _kernelAt = Time.unscaledTime;
-            if (!string.IsNullOrEmpty(segment)) LastEvent = Canon.Get(World).title + " · " + segment;
+            if (!string.IsNullOrEmpty(segment) && !JourneyLine(LastEvent))
+                LastEvent = Canon.Get(World).title + " · " + segment;
             ApplySky();
         }
 
@@ -586,12 +587,12 @@ namespace Concordia
                 var remember = ConcordiaPlayer.Live;
                 if (remember) remember.Notice("You remember: " + LastEvent);
             }
-            LivingBody.Hero.Tick(dt, false);
             if (Hour < 0.05f * dt + 0.02f)
             {
                 Day += 1;
                 Prices = Mathf.Clamp(Prices * (0.96f + UnityEngine.Random.value * 0.1f), 0.7f, 1.6f);
-                LastEvent = "Day " + Day + ". Markets " + (Prices > 1.1f ? "tightened" : "eased") + ". The world did not wait.";
+                if (!JourneyLine(LastEvent))
+                    LastEvent = "Day " + Day + ". Markets " + (Prices > 1.1f ? "tightened" : "eased") + ". The world did not wait.";
             }
             _weatherT -= dt;
             Ecology = Mathf.Clamp(Ecology + dt * 0.004f, 0.15f, 1f);
@@ -602,7 +603,8 @@ namespace Concordia
                 var kit = Canon.Get(World).weather;
                 var cycle = new[] { kit, "wind", "clear", kit };
                 Weather = cycle[UnityEngine.Random.Range(0, cycle.Length)];
-                LastEvent = Canon.Get(World).title + ": weather shifted. Schedules will.";
+                if (!JourneyLine(LastEvent))
+                    LastEvent = Canon.Get(World).title + ": weather shifted. Schedules will.";
                 ApplyWeatherVisuals(force: false);
                 ApplySky();
             }
@@ -633,6 +635,12 @@ namespace Concordia
                 Dump();
             }
         }
+
+        public static bool JourneyLine(string line) =>
+            !string.IsNullOrEmpty(line) && (
+                line.StartsWith("You left ") ||
+                line.StartsWith("You came home") ||
+                line.StartsWith("You crossed "));
 
         public static void NoteAct(string line)
         {
@@ -676,7 +684,8 @@ namespace Concordia
             WorldMemory.MarkDead(World, id);
             Ecology = Mathf.Max(0.15f, Ecology - 0.03f);
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
-            LastEvent = Canon.Get(World).title + ": a pack thinned.";
+            if (!WorldClock.JourneyLine(WorldClock.LastEvent))
+                LastEvent = Canon.Get(World).title + ": a pack thinned.";
             var who = string.IsNullOrEmpty(id) ? "someone" : id;
             string heirName = "";
             string heirId = "";
@@ -724,7 +733,8 @@ namespace Concordia
             Ecology = Mathf.Clamp(Ecology + ev.ecology, 0.08f, 1f);
             FactionHeat = Mathf.Clamp(FactionHeat + ev.heat, 0f, 1f);
             Prices = Mathf.Clamp(Prices + ev.prices, 0.6f, 1.8f);
-            LastEvent = ev.text;
+            if (!JourneyLine(LastEvent))
+                LastEvent = ev.text;
             if (ev.births > 0) WorldMemory.NoteBirth(World, ev.births);
         }
 

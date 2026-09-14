@@ -47,7 +47,13 @@ namespace Concordia
         float _moveSentAt;
         WorldId _fightWorld = (WorldId)(-1);
 
-        void OnEnable() => Live = this;
+        void OnEnable()
+        {
+            Live = this;
+            var body = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
+            LivingBody.BindHero(body);
+            body.SyncToClock(WorldClock.Hour);
+        }
         void OnDisable() { if (Live == this) Live = null; }
         void Reset() => cc = GetComponent<CharacterController>();
 
@@ -94,7 +100,7 @@ namespace Concordia
             else _coyote -= dt;
             var wall = (cc.collisionFlags & CollisionFlags.Sides) != 0;
             var climbHeld = !Busy && KeyHeld(KeyCode.Space);
-            var climbing = climbHeld && wall && LivingBody.Hero.CanClimb && stamina > 8f;
+            var climbing = climbHeld && wall && LivingBody.Hero && LivingBody.Hero.CanClimb && stamina > 8f;
             if (climbing)
             {
                 LivingBody.Hero.Climb(dt);
@@ -132,9 +138,12 @@ namespace Concordia
             else if (!climbing) _vel.y += -22f * dt;
 
             var air = grounded ? 1f : (climbing ? 0.55f : 0.86f);
-            if (sprint && wish.sqrMagnitude > 0.04f)
-                LivingBody.Hero.Tick(0f, true);
-            var move = wish * speed * air * LivingBody.Hero.MoveMul;
+            if (LivingBody.Hero)
+            {
+                if (sprint && wish.sqrMagnitude > 0.04f)
+                    LivingBody.Hero.Tick(0f, true);
+            }
+            var move = wish * speed * air * (LivingBody.Hero ? LivingBody.Hero.MoveMul : 1f);
             var accel = grounded ? (sprint ? 14f : 8.2f) : 4.2f;
             _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-accel * dt));
             _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-accel * dt));

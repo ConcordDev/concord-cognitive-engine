@@ -3,14 +3,14 @@ using UnityEngine;
 namespace Concordia
 {
     /// <summary>
-    /// Needs a body can feel. Same class for the hero and AgentMotor —
+    /// Needs a body can feel. Same component type for the hero and AgentMotor —
     /// separate instances, never shared meters. Clock rate matches
     /// WorldClock (dt * 0.08 game-hours per real second). Words, not
     /// fabricated HUD stats. Kernel ATS ticks remain P1.
     /// </summary>
-    public sealed class LivingBody
+    public class LivingBody : MonoBehaviour
     {
-        public static readonly LivingBody Hero = new LivingBody();
+        public static LivingBody Hero { get; private set; }
 
         public float Hunger;
         public float Fatigue;
@@ -24,13 +24,50 @@ namespace Concordia
         {
             get
             {
-                bool hungry = Hunger >= 0.55f;
-                bool tired = Fatigue >= 0.6f;
+                bool hungry = Hunger >= 0.28f;
+                bool tired = Fatigue >= 0.42f;
                 if (hungry && tired) return "hungry · tired";
                 if (hungry) return "hungry";
                 if (tired) return "tired";
                 return null;
             }
+        }
+
+        public static void BindHero(LivingBody body)
+        {
+            if (body) Hero = body;
+        }
+
+        void OnEnable()
+        {
+            if (GetComponent<ConcordiaPlayer>()) Hero = this;
+        }
+
+        void OnDisable()
+        {
+            if (Hero == this) Hero = null;
+        }
+
+        void Start()
+        {
+            SyncToClock(WorldClock.Hour);
+        }
+
+        void Update()
+        {
+            if (Hero == this) Tick(Time.deltaTime, false);
+        }
+
+        /// <summary>
+        /// Morning without food is hunger, not a zero meter. Hour 8.5 → ~0.28.
+        /// </summary>
+        public void SyncToClock(float hour)
+        {
+            float awake = hour - 6f;
+            if (awake < 0f) awake += 24f;
+            if (awake > 16f) awake = 0f;
+            Hunger = Mathf.Max(Hunger, Mathf.Clamp01(awake * 0.12f));
+            Fatigue = Mathf.Max(Fatigue, Mathf.Clamp01(awake * 0.04f));
         }
 
         public void Tick(float dt, bool sprinting)

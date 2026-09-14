@@ -9,7 +9,7 @@ namespace Concordia
     public class AgentMotor : MonoBehaviour
     {
         AgentAvatar _body;
-        LivingBody _life = new LivingBody();
+        LivingBody _life;
         Vector3 _goto;
         bool _hasGoto;
         Transform _engage;
@@ -18,7 +18,11 @@ namespace Concordia
         float _moveSentAt;
         float _counterUntil;
 
-        public void Bind(AgentAvatar body) => _body = body;
+        public void Bind(AgentAvatar body)
+        {
+            _body = body;
+            if (!_life) _life = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
+        }
 
         public void ApplyIntent(string goal, Vector3? gotoPos, Transform engage, string stance)
         {
@@ -57,6 +61,7 @@ namespace Concordia
         void Update()
         {
             if (!_body || !_body.Cc) return;
+            if (!_life) _life = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
             _life.Tick(Time.deltaTime, _hasGoto || _engage);
             CounterTelegraph();
             if (_engage) Hunt();

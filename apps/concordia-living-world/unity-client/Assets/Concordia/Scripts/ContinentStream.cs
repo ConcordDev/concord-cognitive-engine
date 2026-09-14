@@ -118,6 +118,18 @@ namespace Concordia
             SoftEnter(next);
         }
 
+        /// <summary>
+        /// The land underfoot is this stream's job — not ConcordiaGame.Update,
+        /// which used to skip Tick while the creator overlay was open so you
+        /// could stand in Fantasy Present with world still Hub.
+        /// </summary>
+        void LateUpdate()
+        {
+            var p = ConcordiaPlayer.Live;
+            if (!p || p.creatorLocked) return;
+            Tick(p.transform.position);
+        }
+
         public void Teleport(ConcordiaPlayer player, WorldId next)
         {
             if (!player) return;

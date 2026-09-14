@@ -217,7 +217,7 @@ namespace Concordia
             if (!QuestLog.HoldingAny())
                 return "The stove is cold. Take ingredients from a chest or market first.";
             QuestLog.NoteGather("meal");
-            LivingBody.Hero.Eat();
+            LivingBody.Hero?.Eat();
             WorldClock.NoteAct("someone cooks");
             return "You cook what you gathered. The meal is real because the ingredients were.";
         }

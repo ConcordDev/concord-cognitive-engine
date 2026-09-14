@@ -149,10 +149,12 @@ namespace Concordia
         void Update()
         {
             if (!_player) _player = ConcordiaPlayer.Live;
-            if (!_player || CharacterCreator.IsOpen) return;
             if (ContinentStream.Live == null && _world)
                 ContinentStream.Bind(_world);
-            ContinentStream.Live?.Tick(_player.transform.position);
+            if (_player)
+                ContinentStream.Live?.Tick(_player.transform.position);
+            WorldClock.Tick(Time.deltaTime);
+            if (!_player || CharacterCreator.IsOpen) return;
             ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();
             var pos = _player.transform.position;
@@ -246,7 +248,6 @@ namespace Concordia
             if (nearGate) prompt = nearGate.Prompt;
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
-            WorldClock.Tick(Time.deltaTime);
         }
 
         string TryInteract(Vector3 pos)

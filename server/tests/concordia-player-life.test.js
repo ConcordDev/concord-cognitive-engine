@@ -25,25 +25,39 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(stream, /ReceiveTraveler\(/);
     assert.match(stream, /You left Hub for/);
     assert.match(stream, /You came home from/);
+    assert.match(stream, /void LateUpdate\(\)/);
+    const game = src("ConcordiaGame.cs");
+    const upd = game.slice(game.indexOf("void Update()"), game.indexOf("string TryInteract"));
+    assert.match(upd, /ContinentStream\.Live\?\.Tick/);
+    assert.match(upd, /WorldClock\.Tick/);
+    const creatorGate = upd.indexOf("CharacterCreator.IsOpen");
+    const tickAt = upd.indexOf("ContinentStream.Live?.Tick");
+    assert.ok(tickAt >= 0 && (creatorGate < 0 || tickAt < creatorGate));
   });
 
-  it("LivingBody is shared class, separate meters, cook eats, wall climb", () => {
+  it("LivingBody is a component on the hero, cook eats, wall climb", () => {
     const body = src("LivingBody.cs");
     const player = src("ConcordiaPlayer.cs");
     const motor = src("AgentMotor.cs");
     const cook = src("WorldGate.cs");
     const clock = src("WorldBook.cs");
-    assert.match(body, /class LivingBody/);
-    assert.match(body, /static readonly LivingBody Hero/);
+    const hud = src("ConcordiaHUD.cs");
+    assert.match(body, /class LivingBody : MonoBehaviour/);
+    assert.match(body, /BindHero/);
     assert.match(body, /dt \* 0\.08f/);
     assert.match(body, /NeedLine/);
+    assert.match(body, /SyncToClock/);
+    assert.match(player, /AddComponent<LivingBody>/);
     assert.match(player, /LivingBody\.Hero\.Tick/);
     assert.match(player, /CollisionFlags\.Sides/);
     assert.match(player, /LivingBody\.Hero\.Climb/);
-    assert.match(motor, /new LivingBody\(\)/);
+    assert.match(motor, /AddComponent<LivingBody>/);
     assert.match(motor, /_life\.MoveMul/);
-    assert.match(cook, /LivingBody\.Hero\.Eat\(\)/);
+    assert.match(cook, /LivingBody\.Hero\?\.Eat\(\)/);
     assert.match(clock, /You remember:/);
+    assert.match(clock, /JourneyLine/);
+    assert.match(clock, /!JourneyLine\(LastEvent\)/);
+    assert.match(hud, /body \? body\.NeedLine/);
   });
 
   it("crowd can hail the player; road walkers exist", () => {

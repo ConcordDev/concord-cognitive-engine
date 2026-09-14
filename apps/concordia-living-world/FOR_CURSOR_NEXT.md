@@ -10,8 +10,8 @@ If you cannot waste an afternoon climbing, picking a fight, making up, and going
 
 ## This pass shipped (partial)
 
-- `RegionAt` SoftEnter — mid-ring stays Hub-overland; civ receives you at Present
-- `LivingBody` hunger/fatigue/climb for hero + AgentMotor (separate meters)
+- `RegionAt` SoftEnter — mid-ring stays Hub-overland; civ receives you at Present (`LateUpdate`, not only ConcordiaGame)
+- `LivingBody` MonoBehaviour on the hero — HUD hungry/tired, climb, cook; AgentMotor has its own meters
 - Crowd hail + Ring-road travelers (`ConcordiaHost.RoadWalkers`)
 - Combat feel: `CombatMotion` Pulse/Delay, walk≠run gait, dummy Hurt, delayed HitScan
 

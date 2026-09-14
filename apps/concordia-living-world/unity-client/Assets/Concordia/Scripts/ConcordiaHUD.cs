@@ -252,33 +252,49 @@ namespace Concordia
             var world = Canon.Get(player.world);
             var live = Canon.SteelLive(player.world, player.transform.position);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
+            var body = LivingBody.Hero;
+            var need = body ? body.NeedLine : null;
             DrawRegime(32, 34, live);
-            var need = LivingBody.Hero.NeedLine;
-            if (!string.IsNullOrEmpty(need))
+            bool quiet = QuietExplore && !FocusHeld();
+            if (quiet)
             {
-                GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
-                GUI.Label(new Rect(54, 50, 230, 14), need, _small);
-                GUI.color = Color.white;
+                if (!string.IsNullOrEmpty(need))
+                {
+                    GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
+                    GUI.Label(new Rect(54, 34, 230, 14), need, _small);
+                    GUI.color = Color.white;
+                }
+                return;
             }
-            if (QuietExplore && !FocusHeld()) return;
-            float vh = DebugHud ? 108 : (city != null ? 52 : 36);
+            float extra = !string.IsNullOrEmpty(need) ? 16 : 0;
+            float vh = DebugHud ? 124 : (city != null ? 52 : 36) + extra;
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
             GUI.DrawTexture(new Rect(22, 28, 268, vh), _white);
             GUI.color = Color.white;
             DrawRegime(32, 34, live);
             GUI.Label(new Rect(54, 32, 230, 22), world.title, _title);
+            float ny = 50;
             if (city != null)
+            {
                 GUI.Label(new Rect(54, 48, 230, 14), city.name + (city.status == "abandoned" ? "  ·  ruins remain" : ""), _small);
+                ny = 62;
+            }
+            if (!string.IsNullOrEmpty(need))
+            {
+                GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
+                GUI.Label(new Rect(54, ny, 230, 14), need, _small);
+                GUI.color = Color.white;
+            }
 
             if (!DebugHud) return;
-            GUI.Label(new Rect(32, 70, 250, 16),
+            GUI.Label(new Rect(32, 70 + extra, 250, 16),
                 (live ? "LIVE STEEL" : "FLOWER-LAW")
                 + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + KitBag.PrettyWeapon(player.kitWeapon))
                 + "  ·  " + SkillLattice.HudLine(), _small);
-            GUI.Label(new Rect(32, 86, 250, 16), WorldClock.HudClock()
+            GUI.Label(new Rect(32, 86 + extra, 250, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
             var field = WorldField.HudLine(player.world, player.transform.position);
-            GUI.Label(new Rect(32, 102, 250, 16),
+            GUI.Label(new Rect(32, 102 + extra, 250, 16),
                 !string.IsNullOrEmpty(field) ? field
                 : !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
