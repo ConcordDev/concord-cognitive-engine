@@ -13,6 +13,7 @@ If you cannot waste an afternoon climbing, picking a fight, making up, and going
 - `RegionAt` SoftEnter — mid-ring stays Hub-overland; civ receives you at Present
 - `LivingBody` hunger/fatigue/climb for hero + AgentMotor (separate meters)
 - Crowd hail + Ring-road travelers (`ConcordiaHost.RoadWalkers`)
+- Combat feel: `CombatMotion` Pulse/Delay, walk≠run gait, dummy Hurt, delayed HitScan
 
 ## Still TARGET
 

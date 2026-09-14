@@ -169,6 +169,10 @@ namespace Concordia
                 TelegraphFrom = null;
             }
             ShowTell(false);
+            var av = GetComponentInChildren<MixamoAvatar>();
+            av?.Slash();
+            var person = GetComponentInChildren<ModularPerson>();
+            person?.Slash();
             player.TakeHit(damage, name);
         }
 

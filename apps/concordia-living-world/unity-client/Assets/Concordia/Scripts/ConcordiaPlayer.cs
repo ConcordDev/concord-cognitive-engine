@@ -19,6 +19,11 @@ namespace Concordia
         public float hostility;
         Vector3 _vel;
         float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
+        float _strikeAt, _hitstop, _comboUntil;
+        int _comboBeat;
+        bool _strikeHeavy;
+        float _strikeReach = 1f;
+        string _strikeArt;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
@@ -130,19 +135,27 @@ namespace Concordia
             if (sprint && wish.sqrMagnitude > 0.04f)
                 LivingBody.Hero.Tick(0f, true);
             var move = wish * speed * air * LivingBody.Hero.MoveMul;
-            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
-            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
+            var accel = grounded ? (sprint ? 14f : 8.2f) : 4.2f;
+            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-accel * dt));
+            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-accel * dt));
+            if (_hitstop > 0f)
+            {
+                _hitstop -= dt;
+                _vel.x *= 0.42f;
+                _vel.z *= 0.42f;
+            }
             cc.Move(_vel * dt);
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
             if (planar.sqrMagnitude > 0.2f)
             {
                 _yaw = Mathf.Atan2(planar.x, planar.z);
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-12f * dt));
+                var turn = sprint ? 12f : 7.2f;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-turn * dt));
             }
 
-            cam.sprinting = sprint && planar.magnitude > 4f;
-            cam.inCombat = Time.time < _slashUntil;
+            cam.sprinting = sprint && planar.magnitude > 6.2f;
+            cam.inCombat = Time.time < _slashUntil || _strikeAt > 0f;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
@@ -157,6 +170,16 @@ namespace Concordia
             stamina = Mathf.Min(100, stamina + 18f * dt);
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
             if (world == WorldId.Tunya && planar.magnitude < 0.4f) poise = Mathf.Min(12 * style.poiseMul, poise + 8f * dt);
+
+            if (_strikeAt > 0f && Time.time >= _strikeAt)
+            {
+                _strikeAt = 0f;
+                var connected = HitScan(_strikeHeavy, _strikeReach);
+                if (!string.IsNullOrEmpty(_strikeArt)) SkillLedger.Record(_strikeArt, connected);
+                var feel = GetComponent<CombatFeel>();
+                feel?.Strike(_strikeHeavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+                if (connected) _hitstop = 0.045f;
+            }
 
             if (!Busy && MouseDown(0) && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -306,12 +329,18 @@ namespace Concordia
 
         void TryAttack(bool heavy)
         {
+            if (Time.time < _slashUntil) return;
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             var art = heavy ? style.heavy : style.light;
             var live = Canon.SteelLive(world, transform.position);
-            avatar?.Slash();
-            person?.Slash();
-            _slashUntil = Time.time + (heavy ? 0.82f : 0.52f);
+            if (Time.time > _comboUntil) _comboBeat = 0;
+            var beat = _comboBeat;
+            _comboBeat = (_comboBeat + 1) % 3;
+            avatar?.Slash(heavy, beat);
+            person?.Slash(heavy, beat);
+            _slashUntil = Time.time + CombatMotion.ComboOpen(heavy, fs);
+            _comboUntil = Time.time + CombatMotion.Duration(heavy, fs) * 1.25f;
             _attackKind = heavy ? 1 : 0;
             stamina -= heavy ? 28 : 12;
             if (!live)
@@ -326,20 +355,23 @@ namespace Concordia
                 hostility += 1.2f;
                 if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
             }
-            var connected = HitScan(heavy, 1f);
-            SkillLedger.Record(art, connected);
-            var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+            _strikeAt = Time.time + CombatMotion.Delay(heavy, fs);
+            _strikeHeavy = heavy;
+            _strikeReach = 1f;
+            _strikeArt = art;
         }
 
         void TrySpecial()
         {
+            if (Time.time < _slashUntil) return;
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             if (stamina < 22f) { Toast("Winded."); return; }
             stamina -= 22f;
-            person?.Slash();
-            avatar?.Slash();
-            _slashUntil = Time.time + 0.7f;
+            person?.Slash(true, 2);
+            avatar?.Slash(true, 2);
+            _slashUntil = Time.time + CombatMotion.ComboOpen(true, fs);
+            _comboUntil = Time.time + CombatMotion.Duration(true, fs) * 1.25f;
             var live = Canon.SteelLive(world, transform.position);
             if (!live)
             {
@@ -348,57 +380,60 @@ namespace Concordia
                 Toast(style.special + " dies as flowers.");
                 return;
             }
-            bool connected = false;
+            float reach = 1.2f;
             switch (world)
             {
                 case WorldId.Ruins:
                     hp = Mathf.Min(100, hp + 10f);
-                    connected = HitScan(true, 1.15f);
+                    reach = 1.15f;
                     Toast(style.special + " — a fall pulled back.");
                     break;
                 case WorldId.Tunya:
                     poise = 12f * style.poiseMul;
-                    connected = HitScan(false, 1.1f);
+                    reach = 1.1f;
                     Toast(style.special + " — grove restores poise.");
                     break;
                 case WorldId.Fantasy:
                     hostility = Mathf.Max(0f, hostility - 5f);
-                    connected = HitScan(true, 1.05f);
+                    reach = 1.05f;
                     Toast(style.special + " — the curse folds inward, not out.");
                     break;
                 case WorldId.Crime:
                     _dmgMul = 1.55f;
-                    connected = HitScan(true, 1.05f);
+                    reach = 1.05f;
                     Toast(style.special + " — the bill arrives now.");
                     break;
                 case WorldId.Cyber:
-                    connected = HitScan(true, 1.4f);
+                    reach = 1.4f;
                     Toast(style.special + " — pulse.");
                     break;
                 case WorldId.Frontier:
                     _vel += cam.PlanarForward * 11f;
-                    connected = HitScan(true, 1.25f);
+                    reach = 1.25f;
                     Toast(style.special + " — dust sprint.");
                     break;
                 case WorldId.Superhero:
-                    connected = HitScan(true, 1.6f);
+                    reach = 1.6f;
                     Toast(style.special + " — they stand.");
                     break;
                 case WorldId.Crucible:
                     ReviveNearest();
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — un-end it.");
                     break;
                 case WorldId.Sere:
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — " + style.power);
                     break;
                 default:
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — " + style.power);
                     break;
             }
-            SkillLedger.Record(style.special, connected);
+            _strikeAt = Time.time + CombatMotion.Delay(true, fs);
+            _strikeHeavy = true;
+            _strikeReach = reach;
+            _strikeArt = style.special;
         }
 
         bool HitScan(bool heavy, float reachMul)
@@ -519,8 +554,16 @@ namespace Concordia
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             avatar?.Hit();
-            if (knockback > 1.8f || poise < 2.5f) avatar?.Knockdown();
-            else if (poise < 4f || knockback > 1.1f) avatar?.Stagger();
+            if (knockback > 1.8f || poise < 2.5f)
+            {
+                avatar?.Knockdown();
+                person?.Stagger();
+            }
+            else if (poise < 4f || knockback > 1.1f)
+            {
+                avatar?.Stagger();
+                person?.Stagger();
+            }
             var feel = GetComponent<CombatFeel>();
             feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");

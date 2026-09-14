@@ -73,6 +73,13 @@ namespace Concordia
             hp -= dmg;
             _flash = 0.16f;
             transform.position += -transform.forward * 0.42f + Vector3.up * 0.06f;
+            transform.rotation *= Quaternion.Euler(0f, dmg >= 22f ? 16f : 7f, 0f);
+            var person = GetComponentInChildren<ModularPerson>();
+            person?.Hurt();
+            if (dmg >= 22f) person?.Stagger();
+            var av = GetComponentInChildren<MixamoAvatar>();
+            av?.Hit();
+            if (dmg >= 22f) av?.Stagger();
             if (hp > 0) return;
             var boss = GetComponent<WorldBoss>();
             if (boss)
