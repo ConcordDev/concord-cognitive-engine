@@ -73,8 +73,10 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(player, /KitBag\.HasLoot/);
     const canon = src("Canon.cs");
     assert.match(canon, /OnSunderingLane\(/);
+    assert.match(canon, /BlocksSunderingWalk\(/);
     assert.match(canon, /z < 240f/);
-    assert.match(src("ContinentStream.cs"), /OnSunderingLane\(hill\)/);
+    assert.match(src("ContinentStream.cs"), /BlocksSunderingWalk\(hill/);
+    assert.match(src("ContinentStream.cs"), /ClearSunderingWalk\(/);
     assert.match(canon, /11\.2f/);
     assert.doesNotMatch(canon, /Spawn = new Vector3\(0, 0, -11\)/);
     assert.doesNotMatch(canon, /Spawn = new Vector3\(5\.4f/);

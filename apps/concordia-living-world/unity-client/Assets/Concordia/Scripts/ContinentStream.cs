@@ -404,9 +404,9 @@ namespace Concordia
                         int h = StemHash(g.shortName, i);
                         float off = ((h % 1000) / 1000f - 0.5f) * 14f;
                         var hill = p + side * (5.5f + off);
-                        if (Canon.OnSunderingLane(hill)) continue;
                         float ht = 1.6f + (h % 7) * 0.85f;
                         float w = 3.2f + (h % 5) * 0.7f;
+                        if (Canon.BlocksSunderingWalk(hill, w * 0.5f)) continue;
                         var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
                         HubLook.Prim(hold, prim, hill + Vector3.up * (ht * 0.45f),
                             new Vector3(w, ht, w * 0.85f), earth, "Hill_" + g.shortName + "_" + i);
@@ -423,7 +423,26 @@ namespace Concordia
                     }
                 }
             }
+            ClearSunderingWalk(hold);
             RoadWorld.Seed(hold);
+        }
+
+        /// <summary>
+        /// Scene leftovers or a skip that didn't fire still cannot sit in the
+        /// +Z stride. Do not disable ContinentGround to walk past them.
+        /// </summary>
+        static void ClearSunderingWalk(Transform hold)
+        {
+            if (!hold) return;
+            for (int i = hold.childCount - 1; i >= 0; i--)
+            {
+                var c = hold.GetChild(i);
+                if (!c) continue;
+                if (!c.name.StartsWith("Hill_") && !c.name.StartsWith("Rock_")) continue;
+                float half = Mathf.Max(c.lossyScale.x, c.lossyScale.z) * 0.5f;
+                if (Canon.BlocksSunderingWalk(c.position, half))
+                    Object.DestroyImmediate(c.gameObject);
+            }
         }
 
         static int StemHash(string s, int i)

@@ -80,9 +80,19 @@ namespace Concordia
 
         /// <summary>
         /// Clear +Z from spawn so WASD / a north stride can leave the Court.
+        /// Center-only: a hill whose origin sits on this strip.
         /// </summary>
         public static bool OnSunderingLane(Vector3 p) =>
             Mathf.Abs(p.x - Spawn.x) < 2.6f && p.z > Spawn.z - 1.5f && p.z < 240f;
+
+        /// <summary>
+        /// True when a collider of this radius would sit in the Sundering stride.
+        /// Hill_SUNDERING_0 at (10.5, 58.9) scale ~3.2 blocked +Z even when a
+        /// center-only skip should have fired (Play 2026-09-14).
+        /// </summary>
+        public static bool BlocksSunderingWalk(Vector3 p, float radius) =>
+            Mathf.Abs(p.x - Spawn.x) < 2.6f + Mathf.Max(0f, radius)
+            && p.z > Spawn.z - 1.5f && p.z < 240f;
 
         /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one
