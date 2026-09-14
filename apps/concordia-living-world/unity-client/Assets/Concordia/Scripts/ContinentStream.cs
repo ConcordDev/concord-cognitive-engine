@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -115,7 +114,7 @@ namespace Concordia
                     else if (lod == 1) EnsureImpostor(id);
                     else Release(id);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Debug.LogException(e);
                 }
@@ -123,7 +122,7 @@ namespace Concordia
             // Hub Ring of 8 stays. Travel to Present (~220m) used to
             // Release Hub past HubKeepM and leave one return WorldGate.
             try { Ensure(WorldId.Hub); }
-            catch (Exception e) { Debug.LogException(e); }
+            catch (System.Exception e) { Debug.LogException(e); }
             if (!_roadLife && continent)
             {
                 try
@@ -131,7 +130,7 @@ namespace Concordia
                     MakeWilderness();
                     _roadLife = true;
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Debug.LogException(e);
                 }
