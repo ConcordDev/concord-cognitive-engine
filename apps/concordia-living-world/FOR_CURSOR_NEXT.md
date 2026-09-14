@@ -12,34 +12,35 @@ The Elder Scrolls half: body + other minds *and* a dangerous, findable world.
 
 ## Do not Ring-tour next
 
-A Sundering walk as a person found dressing (wreck, signs, bandit, Kest, delve) and **steel live**. World/clock stayed Hub at ~220m while `RegionAt=Fantasy`. Kill/spoils didn’t land (kernel path on a `road-*` body). Signs existed; the readable line did not. LivingBody was on the hero; the word “hungry” was not.
+A 2026-09-14 +Z snap to 222 kept `you=Hub` · `clock=Hub` and froze hour at 17.81 — that execute_code never Ticked. A bare `transform.position =` is not a walk. Kill HP went negative; spoils sat on the berm (~13m) and Hostile stayed enabled.
 
-**Present receive is the gate.** Seven more roads while world/clock stay Hub are copy-paste berms. Report-only Ring tour waits until a walked Present actually takes you.
+**Present receive is the gate.** No Ring tour until `LandLine` shows you+clock off Hub around ~220 after a frame or `Stand()`.
 
 ## This pass shipped (partial)
 
-- SoftEnter `RegionAt` **before** chunk Ensure / wilderness seed; planar ArriveM; F8 `land · you · clock`
-- Road `HitScan` is local unless `TrainingDummy.KernelAuthored` (gym / dungeon). Toast `GuestLabel`, not the HP vessel type. `AgentMotor.Hunt` hits local road bodies.
-- Berm signs billboard + HUD `RoadWorld.NearLine` (`this way The Sundering · Nm · steel ahead`)
-- `LivingBody` NeedLine hungry 0.18; morning `SyncToClock` from 5.5h so spawn is already hungry
-- Mid-ring dressing from the wilderness pass stays: wrecks, hostiles, delves, Kest/Rill
+- `ReceiveHere` SoftEnters `RegionAt` before chunk Ensure; the **body** calls it after Move; `Stand(pos)` receives without waiting on Update
+- `player.LandLine` → `land · you · clock`
+- Road death: Hostile off, renderer refresh-hide, spoils at the walker's feet
+- Berm signs + HUD `NearLine`
+- LivingBody toast `You are hungry.` when NeedLine first appears
+- Mid-ring dressing stays
 
 ## Still TARGET
 
-- Present receive **on foot** at every Ring Present (Play proof, not a warp)
-- Fight that feels won: approach, get hit, kill stays dead, spoils in the pack
-- Delve as an afternoon (cache + boss + loot that matters at home)
+- Present receive **on foot** at ~220
+- Fight that feels won: get hit, kill stays dead, E spoils into the pack
+- Delve as an afternoon
 - Hail that can refuse / escalate / forgive
-- NPC lives *inside* Presents (not only Court nameplates + two road jobs)
+- NPC lives *inside* Presents
 - Ring tour as native cities — after receive lands
-- Agents eat / climb / fight / take sides without a puppet string
-- Deeper wild (fauna, weather stakes, multi-room delves)
-- Kernel ATS ticks → same body (`AFFECT.md` P1)
+- Agents without a puppet string
+- Deeper wild
+- Kernel ATS ticks → same body
 
 ## Mac 16GB Play
 
-1. **Concordia → Shed RAM then Play Hub**, or `scripts/shed-ram-for-unity-qa.sh` then Play Hub Now.
-2. `ConcordiaHost.LeanPlay` thins crowd/impostors/AgentBody auto-spawn. Mid-ring stays thin: `RoadWalkers` 2, `RoadThreats` 4, `RoadDelves` 2.
-3. Play as a person: plaza Flower Law → hungry word → steel → readable sign → kill/spoils → Present receive (title + clock Fantasy) → come home. Not a debug camera. F8 if land/you/clock diverge.
+1. Shed RAM then Play Hub Now.
+2. Probe: `ConcordiaPlayer.Live.Stand(new Vector3(0f, 1f, 222f))` then `LandLine`. Do not only set `transform.position`.
+3. As a person: plaza → readable sign → kill/spoils at your feet → Present `LandLine` Fantasy → home.
 
 Do not drive play via Coplay MCP. Do not invent HP. Do not `Thread.Sleep` on `/unity-ws` from execute_code.

@@ -130,8 +130,13 @@ namespace Concordia
             if (!Gym)
             {
                 if (GetComponent<FaunaLife>() == null)
-                    WorldClock.NoteKill(KernelId);
+                {
+                    try { WorldClock.NoteKill(KernelId); }
+                    catch (System.Exception e) { Debug.LogException(e); }
+                }
                 RoadWorld.DropSpoils(transform);
+                var hostile = GetComponent<Hostile>();
+                if (hostile) hostile.enabled = false;
                 if (world == WorldId.Ruins || world == WorldId.Crucible)
                 {
                     unburied = true;
@@ -164,7 +169,7 @@ namespace Concordia
 
         void SetVisible(bool v)
         {
-            if (_rend == null) _rend = GetComponentsInChildren<Renderer>(true);
+            _rend = GetComponentsInChildren<Renderer>(true);
             foreach (var r in _rend) if (r) r.enabled = v;
             foreach (var c in GetComponentsInChildren<Collider>(true))
                 if (c) c.enabled = v;

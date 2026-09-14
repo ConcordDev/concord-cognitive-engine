@@ -53,9 +53,16 @@ namespace Concordia
             SyncToClock(WorldClock.Hour);
         }
 
+        string _toldNeed;
+
         void Update()
         {
-            if (Hero == this) Tick(Time.deltaTime, false);
+            if (Hero != this) return;
+            Tick(Time.deltaTime, false);
+            var line = NeedLine;
+            if (string.IsNullOrEmpty(line) || line == _toldNeed) return;
+            _toldNeed = line;
+            if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice("You are " + line + ".");
         }
 
         /// <summary>

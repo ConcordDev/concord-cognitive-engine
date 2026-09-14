@@ -104,14 +104,15 @@ describe("Concordia continent streaming + creature compiler", () => {
     const worldGate = src("WorldGate.cs");
     const tick = stream.slice(stream.indexOf("public void Tick"), stream.indexOf("public void Teleport"));
     assert.match(stream, /player\.world = id/);
-    assert.match(tick, /MegaworldMap\.RegionAt/);
+    assert.match(tick, /ReceiveHere\(player\)/);
     assert.doesNotMatch(tick, /SoftEnter\(MegaworldMap\.Toward/);
-    const softAt = tick.indexOf("SoftEnter(next)");
+    const recvAt = tick.indexOf("ReceiveHere(player)");
     const loopAt = tick.indexOf("foreach (var id in MegaworldMap.All)");
-    assert.ok(softAt >= 0 && loopAt >= 0 && softAt < loopAt, "SoftEnter before Ensure loop");
+    assert.ok(recvAt >= 0 && loopAt >= 0 && recvAt < loopAt, "ReceiveHere before Ensure loop");
     assert.match(map, /static WorldId RegionAt\(/);
     assert.match(map, /ArriveM = 68f/);
     assert.match(map, /static float PlanarSqr\(/);
+    assert.match(stream, /public void ReceiveHere\(/);
     assert.match(stream, /Canon\.InHubCourt/);
     assert.match(stream, /MakeWilderness\(/);
     assert.match(src("WorldBuilder.cs"), /ContinentStream\.Live \? 0\.0026f : 0\.0045f/);

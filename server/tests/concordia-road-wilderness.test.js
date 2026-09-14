@@ -26,6 +26,7 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(road, /NearLine/);
     assert.match(road, /characterSize = 0\.16f/);
     assert.match(stream, /RoadWorld\.TickNear/);
+    assert.match(road, /ConcordiaPlayer\.Live/);
     assert.match(road, /Wreck_/);
     assert.match(road, /Watcher_/);
     assert.match(road, /Delve_/);
@@ -61,6 +62,7 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(dummy, /bool Gym =>/);
     assert.match(dummy, /KernelAuthored/);
     assert.match(dummy, /GuestLabel/);
+    assert.match(dummy, /hostile\.enabled = false/);
     assert.match(dummy, /if \(!Gym\)/);
     assert.match(dummy, /RoadWorld\.DropSpoils/);
     assert.match(dummy, /BindId\(/);

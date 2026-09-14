@@ -448,14 +448,24 @@ namespace Concordia
             return role;
         }
 
-        /// <summary>Kill loot that was not on a menu. Idempotent per body.</summary>
+        /// <summary>Kill loot at the walker's feet so E can take it. Idempotent per body.</summary>
         public static void DropSpoils(Transform at)
         {
             if (!at) return;
             var key = "Spoils_" + at.name;
             if (at.parent && at.parent.Find(key)) return;
             if (GameObject.Find(key)) return;
-            var p = at.position + at.right * 0.7f;
+            var player = ConcordiaPlayer.Live;
+            Vector3 p;
+            if (player)
+            {
+                var to = at.position - player.transform.position;
+                to.y = 0f;
+                p = player.transform.position;
+                p += to.sqrMagnitude > 0.04f ? to.normalized * 1.4f : player.transform.forward * 1.4f;
+            }
+            else
+                p = at.position + at.right * 0.7f;
             p.y = at.position.y;
             var hold = at.parent ? at.parent : at;
             var crate = FreePacks.Spawn("crate", hold, p, 25f, 0.65f, required: false);

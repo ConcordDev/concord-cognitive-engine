@@ -154,6 +154,7 @@ namespace Concordia
                 _vel.z *= 0.42f;
             }
             cc.Move(_vel * dt);
+            ContinentStream.Live?.ReceiveHere(transform.position);
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
             if (planar.sqrMagnitude > 0.2f)
@@ -207,6 +208,27 @@ namespace Concordia
         string nearPrompt;
 
         public void SetNearPrompt(string p) => nearPrompt = p;
+
+        /// <summary>
+        /// F8-style land/you/clock without needing MegaworldMap in a probe.
+        /// </summary>
+        public string LandLine =>
+            "land " + MegaworldMap.RegionAt(transform.position)
+            + " · you " + world
+            + " · clock " + WorldClock.World;
+
+        /// <summary>
+        /// Warp that also receives. execute_code that only sets transform.position
+        /// never Ticks — Stand is the walk-in that SoftEnters.
+        /// </summary>
+        public void Stand(Vector3 p)
+        {
+            if (cc) cc.enabled = false;
+            transform.position = p;
+            if (cc) cc.enabled = true;
+            Grounding.Snap(cc);
+            ContinentStream.Live?.ReceiveHere(transform.position);
+        }
 
         public void EquipWorldKit()
         {

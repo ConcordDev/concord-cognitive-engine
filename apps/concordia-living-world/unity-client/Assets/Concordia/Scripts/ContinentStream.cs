@@ -94,14 +94,9 @@ namespace Concordia
 
         public void Tick(Vector3 player)
         {
-            // Law of the land first. Chunk Ensure / wilderness seed must not
-            // swallow SoftEnter — a walked Present used to stay Hub in
-            // world/clock while RegionAt was already Fantasy.
-            var next = Canon.InHubCourt(player)
-                ? WorldId.Hub
-                : MegaworldMap.RegionAt(player);
-            SoftEnter(next);
-            RoadWorld.TickNear(player);
+            // Law of the land first, and also from the body (ReceiveHere)
+            // so a walked Present cannot stay Hub because Ensure hitch.
+            ReceiveHere(player);
 
             foreach (var id in MegaworldMap.All)
             {
@@ -215,6 +210,20 @@ namespace Concordia
         }
 
         /// <summary>
+        /// Sky, kit, clock, journey stamp. Cheap. The body calls this after
+        /// Move so receive does not wait on chunk Ensure. Stand() calls it
+        /// so a warp without a frame still takes you.
+        /// </summary>
+        public void ReceiveHere(Vector3 player)
+        {
+            var next = Canon.InHubCourt(player)
+                ? WorldId.Hub
+                : MegaworldMap.RegionAt(player);
+            SoftEnter(next);
+            RoadWorld.TickNear(player);
+        }
+
+        /// <summary>
         /// Walk-in and debug teleports. Always writes ConcordiaPlayer.world
         /// and kit first — WorldClock matching is not enough (Editor proof:
         /// clock Fantasy, player.world still Hub, steel false).
@@ -238,7 +247,8 @@ namespace Concordia
             WorldClock.Enter(id);
             if (!string.IsNullOrEmpty(journey))
                 WorldClock.LastEvent = journey;
-            ApplySky(id);
+            try { ApplySky(id); }
+            catch (System.Exception e) { Debug.LogException(e); }
             ModularPerson.CastingWorld = id;
             var player = ConcordiaPlayer.Live;
             if (player) player.world = id;
@@ -249,7 +259,8 @@ namespace Concordia
                 var w = Canon.Get(id);
                 ConcordiaHUD.Announce(w.title, w.refusal);
             }
-            ReceiveTraveler(id);
+            try { ReceiveTraveler(id); }
+            catch (System.Exception e) { Debug.LogException(e); }
         }
 
         /// <summary>
