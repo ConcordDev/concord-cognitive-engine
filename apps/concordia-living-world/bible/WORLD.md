@@ -10,7 +10,7 @@ Ten `WorldId`: Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Cr
 
 Hub = Unburned Court. Eight gates with refusal + theNo + color + angle.
 
-`SteelLive`: Hub false except arena; other worlds true.
+`SteelLive`: Flower Law is Hub plaza only (`InHubCourt` / `HubLawRadius` 42m). Arena always steel. Overland Hub is live steel while the clock is still Hub. Other worlds true.
 
 Travel: `ConcordiaGame.Travel` rebuilds `World`. Must `DestroyImmediate` previous root.
 

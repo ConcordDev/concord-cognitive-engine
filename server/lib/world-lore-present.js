@@ -145,8 +145,9 @@ function foundingDayPlazaLine(npcId) {
   const bc = Array.isArray(q?.breadcrumbs) ? q.breadcrumbs[0] : null;
   const content = String(bc?.content || "");
   const quoted = content.match(/'([^']+)'/g);
-  if (quoted && quoted.length)
+  if (quoted && quoted.length) {
     return clip(quoted.map((s) => s.slice(1, -1)).join(" "), 280);
+  }
   return firstSentence(content);
 }
 
