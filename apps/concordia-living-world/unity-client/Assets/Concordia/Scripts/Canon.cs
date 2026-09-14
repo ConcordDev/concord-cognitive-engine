@@ -66,11 +66,12 @@ namespace Concordia
         public const float HubLawRadius = 42f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         /// <summary>
-        /// East of the Founding Day axis. Concordia stands at (0, −6.4); a
-        /// +Z stride from (0, −11) hits her at z≈−7 (QA 2026-09-14). This
-        /// spawn keeps the Sundering bearing a walk, not a collision.
+        /// East of the Founding Day axis and east of the Arena. Concordia
+        /// stands at (0, −6.4); the Arena sits on +Z at z=18. A north stride
+        /// from (0, −11) hits Concordia at z≈−7, and a lane at x=5.4 walked
+        /// into the Arena dummy (QA 2026-09-14).
         /// </summary>
-        public static readonly Vector3 Spawn = new Vector3(5.4f, 0f, -12f);
+        public static readonly Vector3 Spawn = new Vector3(11.2f, 0f, -12f);
         /// <summary>
         /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
         /// and CharacterController depenetration launched the hero onto roofs.

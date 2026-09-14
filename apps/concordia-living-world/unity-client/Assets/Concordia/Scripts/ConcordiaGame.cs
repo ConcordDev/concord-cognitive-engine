@@ -127,6 +127,13 @@ namespace Concordia
                 ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
             }
             Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
+            Application.runInBackground = true;
+#if UNITY_EDITOR
+            // Grab used to unpause and ForceGameView. LeanPlay skips Grab, so
+            // Play froze on frame 1 unless the Game view had focus.
+            UnityEditor.EditorApplication.isPaused = false;
+#endif
+            Time.timeScale = 1f;
             if (!ConcordiaHost.LeanPlay)
                 StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))

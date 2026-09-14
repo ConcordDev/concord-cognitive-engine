@@ -41,6 +41,7 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(upd, /Time\.frameCount < 2/);
     assert.match(game, /if \(!ConcordiaHost\.LeanPlay\)/);
     assert.match(game, /ConcordiaShot\.Grab/);
+    assert.match(game, /runInBackground/);
     const creatorGate = upd.indexOf("CharacterCreator.IsOpen");
     const tickAt = upd.indexOf("ContinentStream.Live?.Tick");
     assert.ok(tickAt >= 0 && (creatorGate < 0 || tickAt < creatorGate));
@@ -72,8 +73,9 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(player, /KitBag\.HasLoot/);
     const canon = src("Canon.cs");
     assert.match(canon, /OnSunderingLane\(/);
-    assert.match(canon, /5\.4f/);
+    assert.match(canon, /11\.2f/);
     assert.doesNotMatch(canon, /Spawn = new Vector3\(0, 0, -11\)/);
+    assert.doesNotMatch(canon, /Spawn = new Vector3\(5\.4f/);
     const builder = src("WorldBuilder.cs");
     assert.match(builder, /OnSunderingLane/);
     assert.match(motor, /AddComponent<LivingBody>/);
