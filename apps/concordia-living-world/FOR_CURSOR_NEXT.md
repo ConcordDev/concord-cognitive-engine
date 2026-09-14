@@ -35,11 +35,17 @@ A 2026-09-14 +Z **position-step** to 222 kept `you=Hub` · `clock=Hub` and froze
 - `RoadWorld.NoticeKill` — nearest Watch (Kest) saw them fall; feed `road` + `gossip`
 - LeanPlay: one far-lod per Tick, skip shot-grab hitch, `runInBackground` so Play actually ticks
 
-## Cold-stranger report (not his walk)
+## Cold-stranger report (2026-09-14 fresh Play)
 
-Editor Play frames *did* SoftEnter at z≈159 (`land Fantasy · you Fantasy · clock Fantasy`, leave stamp). That outing had scars (pause, Arena then hill, ground-disable fall, WalkBearing overshoot that came home and overwrote the leave). Kill was `dummy.Hit` from ~123m — binding ran; melee did not.
+WalkBearing +Z on spawn `(11.2, −12)`, LeanPlay, **no** ground-disable, **no** `Stand`, **no** ranged `dummy.Hit`.
 
-Do not substitute that PASS for the next foot walk.
+1. **Receive** at Present z≈222: `land Fantasy · you Fantasy · clock Fantasy` and *You left Hub for The Sundering.* (this outing). Hour moved. Hill_SUNDERING_0 was gone after the footprint skip.
+2. **Kill** in melee at Present: `TryAttack` → HitScan on `HumanDummy_M White` (Hostile, not Gym). HP 80→54→29→3→**−22**, `active=false`. Body took hits (`… hits.`, hp dipped, one *You fall*). `LandLine` gained `· pack` (`KitBag` road-spoils path).
+3. **Cascade caused by that kill:** feed `road: HumanDummy_M White fell on the road.` and `gossip: a guard saw HumanDummy_M White fall.` Nearest Watch was a Present guard, not Kest (52m). Marrow/Hitch still alive on the mid-ring.
+
+Not his WASD. Same `cc.Move` path. Dummy still smells like a store mesh sitting in the city. Event-bus was not used (dirty tree left alone). No Ring tour.
+
+Do not substitute this for a walk he has not taken.
 
 ## Still TARGET until a walked session reports it
 

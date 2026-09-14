@@ -95,7 +95,7 @@ Otherwise agents are spectators with opinions and humans are the only ones who g
 
 ## TARGET (native, not visitor)
 
-Lived Sundering walk (plaza → ~82m steel → receive still unproven on **his** foot): the road can go wrong. A scarred Editor Play at z≈159 did fire `land Fantasy · you Fantasy · clock Fantasy` and *You left Hub for The Sundering.* — then ground-disable, a fall, WalkBearing overshoot, and a come-home stamp overwrote the leave. Probe `dummy.Hit` from ~123m packed spoils and Kest noticed; that is not a road encounter. **Present receive is the gate. Foot truth beats that Play.**
+Lived Sundering walk (plaza → steel → Present): a 2026-09-14 fresh Play on the east lane **did** fire receive at z≈222 (`land Fantasy · you Fantasy · clock Fantasy`, *You left Hub for The Sundering.*) then a melee kill at Present (Hostile dummy HP −22, stayed inactive, pack, a guard’s gossip feed). That is WalkBearing, not his WASD. **Foot truth still beats it if he disagrees.**
 
 1. **LivingBody on the hero** — hungry / tired / climb / cook changing *you* (component LIVE; felt day still TARGET until a native walk reports the word without F8).
 2. **Present receive on every Ring road** — sky, kit, people notice, journey stamp when the land takes you. SoftEnter-first is the code fix; Play on foot is the proof. Do not HUD-title `RegionAt` while `player.world` stays Hub.
