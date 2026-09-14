@@ -260,9 +260,15 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 16; i++)
+            // LeanPlay (≤16GB Mac) thins ModularPerson storm so Editor holds Play.
+            int walkers = ConcordiaHost.CrowdWalkers;
+            int stalls = ConcordiaHost.CrowdStalls;
+            int sitters = ConcordiaHost.CrowdSit;
+            if (ConcordiaHost.LeanPlay)
+                Debug.Log("[Concordia] LeanPlay crowd walkers=" + walkers + " stalls=" + stalls + " sit=" + sitters);
+            for (int i = 0; i < walkers; i++)
             {
-                var a = i / 16f * Mathf.PI * 2f + 0.4f;
+                var a = i / (float)Mathf.Max(1, walkers) * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -275,7 +281,7 @@ namespace Concordia
                 life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
                 TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
             }
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < stalls && i < Canon.Gates.Length; i++)
             {
                 var g = Canon.Gates[i];
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
@@ -287,9 +293,9 @@ namespace Concordia
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
                 TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
             }
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < sitters; i++)
             {
-                float a = i / 4f * Mathf.PI * 2f + 0.55f;
+                float a = i / (float)Mathf.Max(1, sitters) * Mathf.PI * 2f + 0.55f;
                 var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
                 var bench = FreePacks.Spawn(DressVocab.Table(), root, p, -a * Mathf.Rad2Deg, 0.55f, required: false);

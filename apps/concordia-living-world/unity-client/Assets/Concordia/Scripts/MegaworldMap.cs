@@ -23,6 +23,12 @@ namespace Concordia
         };
 
         public static float RingMeters => CivilizationRadiusKm * PresentMetersPerKm;
+        /// <summary>
+        /// Close enough to a Present that the land, sky, and people can
+        /// actually receive you. Wider than ChunkRadius so arrival isn't a
+        /// point, tighter than StreamIn so mid-ring stays Hub-overland.
+        /// </summary>
+        public const float ArriveM = 68f;
 
         public static float AngleOf(WorldId id)
         {
@@ -61,8 +67,25 @@ namespace Concordia
         }
 
         /// <summary>
-        /// Civilization on the player's bearing from the Hub. Used once the
-        /// Court is left — Nearest stays Hub until halfway to the ring.
+        /// Civilization whose Present actually contains the player.
+        /// Mid-ring returns Hub — Toward is bearing, not the law underfoot.
+        /// </summary>
+        public static WorldId RegionAt(Vector3 present)
+        {
+            WorldId best = WorldId.Hub;
+            var bestD = ArriveM * ArriveM;
+            foreach (var id in All)
+            {
+                if (id == WorldId.Hub) continue;
+                var d = (present - Present(id)).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = id; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Civilization on the player's bearing from the Hub. Signs and
+        /// compass. Not SoftEnter — that is RegionAt.
         /// </summary>
         public static WorldId Toward(Vector3 present)
         {

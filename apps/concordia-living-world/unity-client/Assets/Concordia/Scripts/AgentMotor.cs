@@ -9,6 +9,7 @@ namespace Concordia
     public class AgentMotor : MonoBehaviour
     {
         AgentAvatar _body;
+        LivingBody _life = new LivingBody();
         Vector3 _goto;
         bool _hasGoto;
         Transform _engage;
@@ -56,9 +57,10 @@ namespace Concordia
         void Update()
         {
             if (!_body || !_body.Cc) return;
+            _life.Tick(Time.deltaTime, _hasGoto || _engage);
             CounterTelegraph();
             if (_engage) Hunt();
-            else if (_hasGoto) WalkTo(_goto, 4.6f);
+            else if (_hasGoto) WalkTo(_goto, 4.6f * _life.MoveMul);
             else Hold();
             ReportMove();
         }
@@ -72,7 +74,7 @@ namespace Concordia
                 new Vector3(_engage.position.x, 0, _engage.position.z));
             if (d > 1.7f)
             {
-                WalkTo(dest, 5.2f);
+                WalkTo(dest, 5.2f * _life.MoveMul);
                 return;
             }
             Hold();

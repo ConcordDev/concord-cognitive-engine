@@ -260,7 +260,11 @@ namespace Concordia
                 await LensRun("skills", "mastery");
                 LastReason = "awaiting_kingdom";
                 StatusJson = "{\"ok\":false,\"reason\":\"awaiting_kingdom\"}";
-                RestoreAgentSoul();
+                // AgentBody ModularPerson on connect doubles Hub boot cost — defer on lean Macs.
+                if (ConcordiaHost.AutoSpawnAgentBody)
+                    RestoreAgentSoul();
+                else
+                    Debug.Log("[Concordia] LeanPlay: skip AgentBody auto-spawn at connect (bind later)");
 #if !(UNITY_WEBGL && !UNITY_EDITOR)
                 _ = ReceiveLoop();
 #endif

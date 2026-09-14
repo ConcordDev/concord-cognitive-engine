@@ -31,6 +31,17 @@ namespace Concordia
         KernelTomb[] _tombs;
         float _probeAt;
 
+        void OnEnable()
+        {
+            Live = this;
+            if (!_player) _player = ConcordiaPlayer.Live;
+        }
+
+        void OnDisable()
+        {
+            if (Live == this) Live = null;
+        }
+
         async void Start()
         {
             Live = this;
@@ -137,6 +148,7 @@ namespace Concordia
 
         void Update()
         {
+            if (!_player) _player = ConcordiaPlayer.Live;
             if (!_player || CharacterCreator.IsOpen) return;
             if (ContinentStream.Live == null && _world)
                 ContinentStream.Bind(_world);
@@ -352,6 +364,8 @@ namespace Concordia
             {
                 var life = npc.GetComponent<NpcLife>();
                 if (life) life.NoticePlayer(8f);
+                npc.hailed = false;
+                Bonds.TalkBump(Bonds.Key(npc));
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
                 var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);

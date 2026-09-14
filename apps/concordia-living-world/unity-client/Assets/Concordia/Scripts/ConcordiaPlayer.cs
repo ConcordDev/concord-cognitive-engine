@@ -87,7 +87,18 @@ namespace Concordia
             var grounded = cc.isGrounded;
             if (grounded) _coyote = 0.14f;
             else _coyote -= dt;
-            if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
+            var wall = (cc.collisionFlags & CollisionFlags.Sides) != 0;
+            var climbHeld = !Busy && KeyHeld(KeyCode.Space);
+            var climbing = climbHeld && wall && LivingBody.Hero.CanClimb && stamina > 8f;
+            if (climbing)
+            {
+                LivingBody.Hero.Climb(dt);
+                stamina -= 22f * dt;
+                _vel.y = 2.6f;
+                _coyote = 0f;
+                grounded = false;
+            }
+            else if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
             {
                 _vel.y = 8.2f;
                 _coyote = 0f;
@@ -113,10 +124,12 @@ namespace Concordia
             if (grounded && !_wasGrounded) person?.Land();
             _wasGrounded = grounded;
             if (grounded && _vel.y < 0) _vel.y = -1.5f;
-            else _vel.y += -22f * dt;
+            else if (!climbing) _vel.y += -22f * dt;
 
-            var air = grounded ? 1f : 0.86f;
-            var move = wish * speed * air;
+            var air = grounded ? 1f : (climbing ? 0.55f : 0.86f);
+            if (sprint && wish.sqrMagnitude > 0.04f)
+                LivingBody.Hero.Tick(0f, true);
+            var move = wish * speed * air * LivingBody.Hero.MoveMul;
             _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
             _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
             cc.Move(_vel * dt);

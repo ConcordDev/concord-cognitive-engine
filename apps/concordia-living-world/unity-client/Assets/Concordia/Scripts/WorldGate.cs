@@ -75,7 +75,7 @@ namespace Concordia
                 post.ownerFaction = "Concordant Watch";
             else
                 post.ownerFaction = OwnerOf(WorldClock.World);
-            int n = WorldClock.World == WorldId.Hub ? 2 : 1;
+            int n = WorldClock.World == WorldId.Hub ? ConcordiaHost.GateGuards : 1;
             for (int i = 0; i < n; i++)
             {
                 var pos = gate.transform.position + gate.transform.right * (i == 0 ? -3.4f : 3.4f) + gate.transform.forward * 0.4f + Vector3.up * 0.05f;
@@ -130,7 +130,10 @@ namespace Concordia
         public GuestDef def;
         public string personId;
         public string[] questHooks;
-        public string Prompt => "E  ·  " + def.name + ", " + def.title;
+        public bool hailed;
+        public string Prompt => hailed
+            ? "E  ·  " + def.name + " hailed you"
+            : "E  ·  " + def.name + ", " + def.title;
 
         void Start()
         {
@@ -214,6 +217,7 @@ namespace Concordia
             if (!QuestLog.HoldingAny())
                 return "The stove is cold. Take ingredients from a chest or market first.";
             QuestLog.NoteGather("meal");
+            LivingBody.Hero.Eat();
             WorldClock.NoteAct("someone cooks");
             return "You cook what you gathered. The meal is real because the ingredients were.";
         }

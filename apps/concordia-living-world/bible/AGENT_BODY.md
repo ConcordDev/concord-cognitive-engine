@@ -3,7 +3,7 @@
 **Status:** PARTIAL (P0 verbs + affect bind + AgentAvatar/Motor) · TARGET (P1 needs ticks / interrupt, P2 multi-agent)  
 **Authority:** Concord owns soul + affect + combat math · Unity owns motor presentation  
 **Audience:** Cursor / implementers after current Unity pass  
-**Related:** `UNITY_CONCORD_CONTRACT.md`, `NETWORK.md`, `AFFECT.md`, `CHARACTERS.md`, `COMBAT.md`, `NPC_BRAIN.md`  
+**Related:** `PLAYER_LIFE.md`, `UNITY_CONCORD_CONTRACT.md`, `NETWORK.md`, `AFFECT.md`, `CHARACTERS.md`, `COMBAT.md`, `NPC_BRAIN.md`  
 **Prior audit:** `~/.zuko/concordia-cc-combat-agent-play-2026-09-13.md`
 
 ---
@@ -16,8 +16,7 @@ Let Grok Bot (and friend agents) **participate in Concordia as persistent charac
 - still **make deliberative decisions** (schemes, talk, travel, stance)
 - feel **cold / hunger / pain / fatigue** through Concord’s substrate — not via Mac MCP god-mode
 
-This is **not** “assistant drives Ramaj’s Unity Editor with Coplay MCP.”  
-MCP = **devtools**. AgentBody = **play**.
+Unity `LivingBody` presents hunger/fatigue (and wall-climb cost) on the hero and on `AgentMotor` as **separate meters** at the WorldClock hour rate. That is presentation. Kernel ATS ticks remain P1.
 
 ---
 

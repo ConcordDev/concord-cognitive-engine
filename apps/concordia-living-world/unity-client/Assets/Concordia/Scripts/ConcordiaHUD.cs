@@ -238,10 +238,10 @@ namespace Concordia
             if (!DebugHud && !holdTab) return;
             if (player.talkOpen || player.menuOpen || player.skillOpen) return;
             var line = _mode == HudMode.Combat
-                ? "LMB  swing   ·   X  dodge   ·   Space  jump   ·   Tab  holds this"
+                ? "LMB  swing   ·   X  dodge   ·   Space  jump · hold Space on a wall to climb"
                 : _mode == HudMode.Scheme
                     ? "Expose  ·  Abet  ·  Ignore   ·   Tab  holds this"
-                    : "E  use   ·   hold C  look   ·   I  kit   ·   Tab  holds this";
+                    : "E  use   ·   hold C  look   ·   I  kit   ·   Space on a wall climbs";
             GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.88f);
             GUI.Label(new Rect(18, h - 22, w - 36, 20), line, _small);
             GUI.color = Color.white;
@@ -253,6 +253,13 @@ namespace Concordia
             var live = Canon.SteelLive(player.world, player.transform.position);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
             DrawRegime(32, 34, live);
+            var need = LivingBody.Hero.NeedLine;
+            if (!string.IsNullOrEmpty(need))
+            {
+                GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
+                GUI.Label(new Rect(54, 50, 230, 14), need, _small);
+                GUI.color = Color.white;
+            }
             if (QuietExplore && !FocusHeld()) return;
             float vh = DebugHud ? 108 : (city != null ? 52 : 36);
             GUI.color = new Color(0f, 0f, 0f, 0.4f);

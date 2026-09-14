@@ -29,6 +29,7 @@ namespace Concordia
         readonly Dictionary<WorldId, Transform> _chunks = new Dictionary<WorldId, Transform>();
         readonly Dictionary<WorldId, int> _lod = new Dictionary<WorldId, int>();
         Light _sun;
+        bool _roadLife;
 
         public static int LodOf(float dist)
         {
@@ -60,11 +61,18 @@ namespace Concordia
             EnsureContinent();
             Ensure(WorldId.Hub);
             if (start != WorldId.Hub) Ensure(start);
-            foreach (var id in MegaworldMap.All)
+            // Full boot paints every civilization impostor at once — OOM on 16GB
+            // Macs under Ollama thrash. LeanPlay loads impostors on Tick approach.
+            if (ConcordiaHost.BootContinentImpostors)
             {
-                if (id == WorldId.Hub || id == start) continue;
-                EnsureImpostor(id);
+                foreach (var id in MegaworldMap.All)
+                {
+                    if (id == WorldId.Hub || id == start) continue;
+                    EnsureImpostor(id);
+                }
             }
+            else
+                Debug.Log("[Concordia] LeanPlay: defer continent impostors until approach");
             ApplySky(start);
         }
 
@@ -98,11 +106,16 @@ namespace Concordia
             // Hub Ring of 8 stays. Travel to Present (~220m) used to
             // Release Hub past HubKeepM and leave one return WorldGate.
             Ensure(WorldId.Hub);
+            if (!_roadLife && continent)
+            {
+                MakeWilderness();
+                _roadLife = true;
+            }
 
-            if (Canon.InHubCourt(player))
-                SoftEnter(WorldId.Hub);
-            else
-                SoftEnter(MegaworldMap.Toward(player));
+            var next = Canon.InHubCourt(player)
+                ? WorldId.Hub
+                : MegaworldMap.RegionAt(player);
+            SoftEnter(next);
         }
 
         public void Teleport(ConcordiaPlayer player, WorldId next)
@@ -177,11 +190,23 @@ namespace Concordia
         /// </summary>
         public void SoftEnter(WorldId id, string kind = "walk")
         {
+            string journey = null;
+            if (WorldClock.World != id)
+            {
+                if (id == WorldId.Hub)
+                    journey = "You came home from " + Canon.Get(WorldClock.World).title + ".";
+                else if (WorldClock.World == WorldId.Hub)
+                    journey = "You left Hub for " + Canon.Get(id).title + ".";
+                else
+                    journey = "You crossed into " + Canon.Get(id).title + ".";
+            }
             SyncActor(id);
             if (WorldClock.World == id) return;
             LastTravelKind = kind;
             WorldClock.Leave();
             WorldClock.Enter(id);
+            if (!string.IsNullOrEmpty(journey))
+                WorldClock.LastEvent = journey;
             ApplySky(id);
             ModularPerson.CastingWorld = id;
             var player = ConcordiaPlayer.Live;
@@ -193,6 +218,30 @@ namespace Concordia
                 var w = Canon.Get(id);
                 ConcordiaHUD.Announce(w.title, w.refusal);
             }
+            ReceiveTraveler(id);
+        }
+
+        /// <summary>
+        /// Arrival is being noticed — not a title card. Empty land stays empty.
+        /// </summary>
+        static void ReceiveTraveler(WorldId id)
+        {
+            var player = ConcordiaPlayer.Live;
+            if (!player) return;
+            int n = 0;
+            foreach (var life in Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+            {
+                if (!life) continue;
+                if (Vector3.Distance(life.transform.position, player.transform.position) > 14f) continue;
+                life.NoticePlayer(5f);
+                n++;
+            }
+            if (id == WorldId.Hub && !string.IsNullOrEmpty(WorldClock.LastEvent))
+                player.Notice("They still talk about: " + WorldClock.LastEvent);
+            else if (n > 0)
+                player.Notice(Canon.Get(id).title + " received you.");
+            else if (id != WorldId.Hub)
+                player.Notice(Canon.Get(id).title + " is quiet. No one here yet.");
         }
 
         static void SyncActor(WorldId id)
@@ -272,57 +321,95 @@ namespace Concordia
         /// </summary>
         void MakeWilderness()
         {
-            if (continent.Find("ContinentWilderness")) return;
-            var hold = new GameObject("ContinentWilderness").transform;
-            hold.SetParent(continent, false);
-            var earth = HubLook.Pbr("packed_earth", new Color(0.38f, 0.33f, 0.26f), 0.06f, 0.28f, 16f);
-            var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
-            foreach (var g in Canon.Gates)
+            var hold = continent.Find("ContinentWilderness");
+            if (!hold)
             {
+                hold = new GameObject("ContinentWilderness").transform;
+                hold.SetParent(continent, false);
+                var earth = HubLook.Pbr("packed_earth", new Color(0.38f, 0.33f, 0.26f), 0.06f, 0.28f, 16f);
+                var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
+                foreach (var g in Canon.Gates)
+                {
+                    var dest = MegaworldMap.Present(g.world);
+                    if (dest.sqrMagnitude < 4f) continue;
+                    var dir = dest.normalized;
+                    var side = Vector3.Cross(Vector3.up, dir);
+                    var span = dest.magnitude - Canon.RingRadius - ChunkRadiusM;
+                    if (span < 12f) continue;
+                    int n = Mathf.Max(4, Mathf.FloorToInt(span / 16f));
+                    for (int i = 0; i < n; i++)
+                    {
+                        float t = (i + 1f) / (n + 1f);
+                        float along = Canon.RingRadius + 10f + t * span;
+                        var p = dir * along;
+                        int h = StemHash(g.shortName, i);
+                        float off = ((h % 1000) / 1000f - 0.5f) * 14f;
+                        var hill = p + side * (5.5f + off);
+                        float ht = 1.6f + (h % 7) * 0.85f;
+                        float w = 3.2f + (h % 5) * 0.7f;
+                        var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
+                        HubLook.Prim(hold, prim, hill + Vector3.up * (ht * 0.45f),
+                            new Vector3(w, ht, w * 0.85f), earth, "Hill_" + g.shortName + "_" + i);
+
+                        var rockAt = p - side * (3.4f + (h % 5) * 0.6f);
+                        var rock = FreePacks.Spawn(DressVocab.Rock(), hold, rockAt, (h % 360), 1.1f + (h % 4) * 0.25f, required: false);
+                        if (!rock)
+                            HubLook.Prim(hold, PrimitiveType.Cube, rockAt + Vector3.up * 0.35f,
+                                new Vector3(1.1f, 0.7f, 0.9f), stone, "Rock_" + g.shortName + "_" + i);
+
+                        if (i % 2 != 0) continue;
+                        var mark = p + Vector3.up * 0.08f;
+                        var left = Mathf.Max(0f, dest.magnitude - along);
+                        HubLook.Prim(hold, PrimitiveType.Cube, mark + Vector3.up * 0.85f,
+                            new Vector3(0.22f, 1.7f, 0.22f), stone, "Mark_" + g.shortName + "_" + i);
+                        var label = new GameObject("Sign_" + g.shortName + "_" + i).AddComponent<TextMesh>();
+                        label.transform.SetParent(hold, false);
+                        label.transform.position = mark + Vector3.up * 2.05f;
+                        label.transform.rotation = Quaternion.LookRotation(-dir, Vector3.up);
+                        label.text = g.shortName + "  ·  " + Mathf.RoundToInt(left) + "m";
+                        label.fontSize = 36;
+                        label.characterSize = 0.07f;
+                        label.anchor = TextAnchor.MiddleCenter;
+                        label.alignment = TextAlignment.Center;
+                        label.color = Color.Lerp(g.color, Color.white, 0.35f);
+                        HubLook.DressTextMesh(label);
+                    }
+                }
+            }
+            SeedRoadLife(hold);
+        }
+
+        /// <summary>
+        /// A few travelers on the roads. Not towns. LeanPlay keeps this tiny.
+        /// </summary>
+        void SeedRoadLife(Transform hold)
+        {
+            if (hold.Find("Traveler")) return;
+            int n = ConcordiaHost.RoadWalkers;
+            if (n <= 0 || Canon.Gates.Length == 0) return;
+            int count = Mathf.Min(n, Canon.Gates.Length);
+            for (int i = 0; i < count; i++)
+            {
+                var g = Canon.Gates[i];
                 var dest = MegaworldMap.Present(g.world);
                 if (dest.sqrMagnitude < 4f) continue;
                 var dir = dest.normalized;
-                var side = Vector3.Cross(Vector3.up, dir);
-                var span = dest.magnitude - Canon.RingRadius - ChunkRadiusM;
-                if (span < 12f) continue;
-                int n = Mathf.Max(4, Mathf.FloorToInt(span / 16f));
-                for (int i = 0; i < n; i++)
+                float along = Canon.RingRadius + 28f + (i % 3) * 24f;
+                var p = dir * along + Vector3.up * 0.05f;
+                var look = Appearance.Random(4400 + i * 29);
+                look.displayName = "Traveler";
+                look.outfit = i % 6;
+                var go = ModularPerson.SpawnNpc(hold, p, -g.angle * Mathf.Rad2Deg + 180f, look, true, 14f);
+                var life = go.AddComponent<NpcLife>();
+                life.job = NpcLife.Job.Wander;
+                var guest = go.GetComponent<GuestNpc>() ?? go.AddComponent<GuestNpc>();
+                guest.def = new GuestDef
                 {
-                    float t = (i + 1f) / (n + 1f);
-                    float along = Canon.RingRadius + 10f + t * span;
-                    var p = dir * along;
-                    int h = StemHash(g.shortName, i);
-                    float off = ((h % 1000) / 1000f - 0.5f) * 14f;
-                    var hill = p + side * (5.5f + off);
-                    float ht = 1.6f + (h % 7) * 0.85f;
-                    float w = 3.2f + (h % 5) * 0.7f;
-                    var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
-                    HubLook.Prim(hold, prim, hill + Vector3.up * (ht * 0.45f),
-                        new Vector3(w, ht, w * 0.85f), earth, "Hill_" + g.shortName + "_" + i);
-
-                    var rockAt = p - side * (3.4f + (h % 5) * 0.6f);
-                    var rock = FreePacks.Spawn(DressVocab.Rock(), hold, rockAt, (h % 360), 1.1f + (h % 4) * 0.25f, required: false);
-                    if (!rock)
-                        HubLook.Prim(hold, PrimitiveType.Cube, rockAt + Vector3.up * 0.35f,
-                            new Vector3(1.1f, 0.7f, 0.9f), stone, "Rock_" + g.shortName + "_" + i);
-
-                    if (i % 2 != 0) continue;
-                    var mark = p + Vector3.up * 0.08f;
-                    var left = Mathf.Max(0f, dest.magnitude - along);
-                    HubLook.Prim(hold, PrimitiveType.Cube, mark + Vector3.up * 0.85f,
-                        new Vector3(0.22f, 1.7f, 0.22f), stone, "Mark_" + g.shortName + "_" + i);
-                    var label = new GameObject("Sign_" + g.shortName + "_" + i).AddComponent<TextMesh>();
-                    label.transform.SetParent(hold, false);
-                    label.transform.position = mark + Vector3.up * 2.05f;
-                    label.transform.rotation = Quaternion.LookRotation(-dir, Vector3.up);
-                    label.text = g.shortName + "  ·  " + Mathf.RoundToInt(left) + "m";
-                    label.fontSize = 36;
-                    label.characterSize = 0.07f;
-                    label.anchor = TextAnchor.MiddleCenter;
-                    label.alignment = TextAlignment.Center;
-                    label.color = Color.Lerp(g.color, Color.white, 0.35f);
-                    HubLook.DressTextMesh(label);
-                }
+                    id = "road-" + g.shortName + "-" + i,
+                    name = "Traveler",
+                    title = g.shortName + " road",
+                    line = "The Ring is long. They keep walking it."
+                };
             }
         }
 

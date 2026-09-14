@@ -14,7 +14,7 @@
 
 ## MISSING in Concordia presentation
 
-Hub guests and the human/hero pawn still do **not** round-trip ATS. AgentBody P0 persists `affect_state` for `characterId` on create/bind; combat/weather/hunger ticks are P1.
+Hub guests and the human/hero pawn still do **not** round-trip ATS. Unity `LivingBody` presents hunger/fatigue from the WorldClock hour rate until the gateway ticks. AgentBody P0 persists `affect_state` for `characterId` on create/bind; combat/weather/hunger ticks are P1.
 
 ## TARGET
 

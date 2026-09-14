@@ -578,8 +578,15 @@ namespace Concordia
         public static void Tick(float dt)
         {
             var kernelFresh = _kernelLive && Time.unscaledTime - _kernelAt < 90f;
+            var prevHour = Hour;
             if (!kernelFresh)
                 Hour = (Hour + dt * 0.08f) % 24f;
+            if (prevHour < 6f && Hour >= 6f && !string.IsNullOrEmpty(LastEvent))
+            {
+                var remember = ConcordiaPlayer.Live;
+                if (remember) remember.Notice("You remember: " + LastEvent);
+            }
+            LivingBody.Hero.Tick(dt, false);
             if (Hour < 0.05f * dt + 0.02f)
             {
                 Day += 1;

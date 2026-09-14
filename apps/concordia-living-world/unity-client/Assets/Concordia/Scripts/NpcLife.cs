@@ -35,6 +35,7 @@ namespace Concordia
         string _coping;
         float _walkMul = 1f;
         bool _withdrawn;
+        float _hailAt;
         Vector3 _headFor;
         float _headForT;
         Vector3 _attend;
@@ -222,6 +223,7 @@ namespace Concordia
                 if (lod == SimLod.Real) WorldClock.NoteAct(Who() + " " + Phrase(act));
                 return;
             }
+            if (TryHailPlayer(lod)) return;
             if (TrySocial(lod)) return;
 
             var hour = WorldClock.Hour;
@@ -304,6 +306,35 @@ namespace Concordia
                 var d = Vector3.Distance(ConcordiaPlayer.Live.transform.position, transform.position);
                 if (d < 16f) WorldClock.NoteAct(Who() + " " + Phrase(act));
             }
+        }
+
+        bool TryHailPlayer(SimLod lod)
+        {
+            if (_withdrawn) return false;
+            if (lod != SimLod.Real) return false;
+            if (Time.time < _hailAt) return false;
+            var player = ConcordiaPlayer.Live;
+            if (!player || player.Busy) return false;
+            var d = player.transform.position - transform.position;
+            d.y = 0f;
+            if (d.sqrMagnitude > 20.25f) return false;
+            _hailAt = Time.time + 22f;
+            NoticePlayer(5f);
+            act = "talk";
+            var guest = GetComponent<GuestNpc>();
+            if (guest) guest.hailed = true;
+            var who = HailName();
+            WorldClock.NoteAct(who + " hailed you");
+            player.Notice(who + " hailed you.");
+            return true;
+        }
+
+        string HailName()
+        {
+            var g = GetComponent<GuestNpc>();
+            if (g != null && g.def != null && !string.IsNullOrEmpty(g.def.name))
+                return g.def.name;
+            return Who();
         }
 
         bool TrySocial(SimLod lod)

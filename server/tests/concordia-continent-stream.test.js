@@ -94,7 +94,7 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.ok(inM > 150, `StreamInM ${inM} must load a chunk before the player is on top of it`);
   });
 
-  it("SoftEnter writes player.world; walk-out uses Toward not Nearest", () => {
+  it("SoftEnter writes player.world; walk-out uses RegionAt not Toward", () => {
     const stream = src("ContinentStream.cs");
     const map = src("MegaworldMap.cs");
     const canon = src("Canon.cs");
@@ -102,8 +102,12 @@ describe("Concordia continent streaming + creature compiler", () => {
     const plaza = src("HubPlaza.cs");
     const presence = src("WorldPresence.cs");
     const worldGate = src("WorldGate.cs");
+    const tick = stream.slice(stream.indexOf("public void Tick"), stream.indexOf("public void Teleport"));
     assert.match(stream, /player\.world = id/);
-    assert.match(stream, /SoftEnter\(MegaworldMap\.Toward/);
+    assert.match(tick, /MegaworldMap\.RegionAt/);
+    assert.doesNotMatch(tick, /SoftEnter\(MegaworldMap\.Toward/);
+    assert.match(map, /static WorldId RegionAt\(/);
+    assert.match(map, /ArriveM = 68f/);
     assert.match(stream, /Canon\.InHubCourt/);
     assert.match(stream, /MakeWilderness\(/);
     assert.match(src("WorldBuilder.cs"), /ContinentStream\.Live \? 0\.0026f : 0\.0045f/);
