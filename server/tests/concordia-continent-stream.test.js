@@ -109,6 +109,8 @@ describe("Concordia continent streaming + creature compiler", () => {
     const recvAt = tick.indexOf("ReceiveHere(player)");
     const loopAt = tick.indexOf("foreach (var id in MegaworldMap.All)");
     assert.ok(recvAt >= 0 && loopAt >= 0 && recvAt < loopAt, "ReceiveHere before Ensure loop");
+    assert.match(tick, /MegaworldMap\.Toward\(player\)/);
+    assert.match(tick, /ConcordiaHost\.LeanPlay/);
     assert.match(map, /static WorldId RegionAt\(/);
     assert.match(map, /ArriveM = 68f/);
     assert.match(map, /static float PlanarSqr\(/);

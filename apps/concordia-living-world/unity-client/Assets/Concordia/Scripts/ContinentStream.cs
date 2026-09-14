@@ -98,6 +98,11 @@ namespace Concordia
             // so a walked Present cannot stay Hub because Ensure hitch.
             ReceiveHere(player);
 
+            // LeanPlay: one new far-lod per Tick, Toward first. Loading all
+            // eight impostors on frame 1 froze Play (Time.time stuck at 0).
+            var toward = MegaworldMap.Toward(player);
+            int built = 0;
+            int budget = ConcordiaHost.LeanPlay ? 1 : 8;
             foreach (var id in MegaworldMap.All)
             {
                 if (id == WorldId.Hub) continue;
@@ -105,8 +110,20 @@ namespace Concordia
                 {
                     var d = Vector3.Distance(player, MegaworldMap.Present(id));
                     var lod = LodOf(d);
-                    if (lod >= 2) Ensure(id, lod);
-                    else if (lod == 1) EnsureImpostor(id);
+                    var have = _chunks.TryGetValue(id, out var live) && live;
+                    if (lod >= 2)
+                    {
+                        if (have || built < budget) { Ensure(id, lod); if (!have) built++; }
+                    }
+                    else if (lod == 1)
+                    {
+                        if (have) EnsureImpostor(id);
+                        else if (built < budget && (id == toward || !ConcordiaHost.LeanPlay))
+                        {
+                            EnsureImpostor(id);
+                            built++;
+                        }
+                    }
                     else Release(id);
                 }
                 catch (System.Exception e)

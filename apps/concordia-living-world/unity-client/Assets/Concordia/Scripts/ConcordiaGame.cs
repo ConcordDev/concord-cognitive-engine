@@ -127,7 +127,8 @@ namespace Concordia
                 ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
             }
             Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
-            StartCoroutine(ConcordiaShot.Grab());
+            if (!ConcordiaHost.LeanPlay)
+                StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
         }
@@ -154,6 +155,9 @@ namespace Concordia
             if (_player)
                 ContinentStream.Live?.Tick(_player.transform.position);
             WorldClock.Tick(Time.deltaTime);
+            // Frame 1 is Boot. Probe FindObjects across chunks here used to
+            // keep Time.time at 0 so WalkBearing never took a step.
+            if (Time.frameCount < 2) return;
             if (!_player || CharacterCreator.IsOpen) return;
             ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
             if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();

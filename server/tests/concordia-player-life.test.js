@@ -38,6 +38,9 @@ describe("Concordia player life — a body, a day, other minds", () => {
     const upd = game.slice(game.indexOf("void Update()"), game.indexOf("string TryInteract"));
     assert.match(upd, /ContinentStream\.Live\?\.Tick/);
     assert.match(upd, /WorldClock\.Tick/);
+    assert.match(upd, /Time\.frameCount < 2/);
+    assert.match(game, /if \(!ConcordiaHost\.LeanPlay\)/);
+    assert.match(game, /ConcordiaShot\.Grab/);
     const creatorGate = upd.indexOf("CharacterCreator.IsOpen");
     const tickAt = upd.indexOf("ContinentStream.Live?.Tick");
     assert.ok(tickAt >= 0 && (creatorGate < 0 || tickAt < creatorGate));
