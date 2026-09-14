@@ -82,7 +82,7 @@ namespace Concordia
         /// Clear +Z from spawn so WASD / a north stride can leave the Court.
         /// </summary>
         public static bool OnSunderingLane(Vector3 p) =>
-            Mathf.Abs(p.x - Spawn.x) < 2.6f && p.z > Spawn.z - 1.5f && p.z < WallRadius + 8f;
+            Mathf.Abs(p.x - Spawn.x) < 2.6f && p.z > Spawn.z - 1.5f && p.z < 240f;
 
         /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one

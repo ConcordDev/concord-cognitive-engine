@@ -404,6 +404,7 @@ namespace Concordia
                         int h = StemHash(g.shortName, i);
                         float off = ((h % 1000) / 1000f - 0.5f) * 14f;
                         var hill = p + side * (5.5f + off);
+                        if (Canon.OnSunderingLane(hill)) continue;
                         float ht = 1.6f + (h % 7) * 0.85f;
                         float w = 3.2f + (h % 5) * 0.7f;
                         var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
