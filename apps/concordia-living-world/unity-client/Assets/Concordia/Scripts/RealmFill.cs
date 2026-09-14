@@ -205,8 +205,10 @@ namespace Concordia // keep-spawn-assign
             var people = WorldBook.People(w.id);
             var facs = WorldBook.Factions(w.id);
             int n = 0;
+            int cap = ConcordiaHost.RealmPeopleCap;
             foreach (var person in people)
             {
+                if (n >= cap) break;
                 if (person == null || string.IsNullOrEmpty(person.name)) continue;
                 if (w.id == WorldId.Hub && IsHubGuest(person.name)) continue;
                 Vector3 p;

@@ -27,6 +27,10 @@ namespace Concordia
             "building-skyscraper-a", "building-skyscraper-c"
         };
 
+        /// <summary>
+        /// Boot only. Purges Megaworld then ContinentStream.Boot.
+        /// Travel must never call this — it wiped the Hub Ring.
+        /// </summary>
         public void Build(WorldId world)
         {
             PurgeWorldRoots();
@@ -78,14 +82,31 @@ namespace Concordia
             var holder = new GameObject("Impostor_" + world).transform;
             holder.SetParent(continent, false);
             holder.position = Vector3.zero;
-            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            box.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
-            box.transform.SetParent(holder, false);
-            box.transform.localPosition = Vector3.up * 4f;
-            box.transform.localScale = new Vector3(18f, 8f, 18f);
             var mat = HubLook.Lit(w.ground * 0.55f, 0.08f, 0.2f);
-            var r = box.GetComponent<Renderer>();
-            if (r && mat) r.sharedMaterial = mat;
+            var mass = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mass.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            mass.transform.SetParent(holder, false);
+            mass.transform.localPosition = Vector3.up * 6f;
+            mass.transform.localScale = new Vector3(22f, 12f, 22f);
+            var mr = mass.GetComponent<Renderer>();
+            if (mr && mat) mr.sharedMaterial = mat;
+            var spire = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            spire.name = "Spire";
+            spire.transform.SetParent(holder, false);
+            spire.transform.localPosition = Vector3.up * 16f;
+            spire.transform.localScale = new Vector3(6f, 20f, 6f);
+            var sr = spire.GetComponent<Renderer>();
+            if (sr) sr.sharedMaterial = HubLook.Lit(w.sun * 0.55f, 0.12f, 0.28f);
+            var label = new GameObject("Name").AddComponent<TextMesh>();
+            label.transform.SetParent(holder, false);
+            label.transform.localPosition = new Vector3(0f, 28f, 0f);
+            label.text = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            label.fontSize = 48;
+            label.characterSize = 0.18f;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            label.color = Color.Lerp(w.sun, Color.white, 0.35f);
+            HubLook.DressTextMesh(label);
             return holder;
         }
 
@@ -148,7 +169,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => 0.0045f,
+                WorldId.Hub => ContinentStream.Live ? 0.0026f : 0.0045f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -239,9 +260,15 @@ namespace Concordia
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 16; i++)
+            // LeanPlay (≤16GB Mac) thins ModularPerson storm so Editor holds Play.
+            int walkers = ConcordiaHost.CrowdWalkers;
+            int stalls = ConcordiaHost.CrowdStalls;
+            int sitters = ConcordiaHost.CrowdSit;
+            if (ConcordiaHost.LeanPlay)
+                Debug.Log("[Concordia] LeanPlay crowd walkers=" + walkers + " stalls=" + stalls + " sit=" + sitters);
+            for (int i = 0; i < walkers; i++)
             {
-                var a = i / 16f * Mathf.PI * 2f + 0.4f;
+                var a = i / (float)Mathf.Max(1, walkers) * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
@@ -254,7 +281,7 @@ namespace Concordia
                 life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
                 TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
             }
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < stalls && i < Canon.Gates.Length; i++)
             {
                 var g = Canon.Gates[i];
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
@@ -266,9 +293,9 @@ namespace Concordia
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
                 TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
             }
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < sitters; i++)
             {
-                float a = i / 4f * Mathf.PI * 2f + 0.55f;
+                float a = i / (float)Mathf.Max(1, sitters) * Mathf.PI * 2f + 0.55f;
                 var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
                 var bench = FreePacks.Spawn(DressVocab.Table(), root, p, -a * Mathf.Rad2Deg, 0.55f, required: false);
@@ -361,10 +388,10 @@ namespace Concordia
                 pylon.skillType = SkillLattice.FirstInGroup(groups[i]);
                 var label = new GameObject("Name").AddComponent<TextMesh>();
                 label.transform.SetParent(go.transform, false);
-                label.transform.localPosition = new Vector3(0f, 2.6f, 0f);
-                label.text = groups[i].ToUpperInvariant();
-                label.fontSize = 42;
-                label.characterSize = 0.06f;
+                label.transform.localPosition = new Vector3(0f, 2.15f, 0f);
+                label.text = groups[i];
+                label.fontSize = 28;
+                label.characterSize = 0.018f;
                 label.anchor = TextAnchor.MiddleCenter;
                 label.alignment = TextAlignment.Center;
                 label.color = new Color(1f, 0.93f, 0.78f);
@@ -376,7 +403,7 @@ namespace Concordia
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
         {
             var outDir = p.normalized;
-            var outPos = p + outDir * 8.5f;
+            var outPos = p + outDir * 16f;
             var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
             string plan = "embassy";
@@ -429,7 +456,28 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Column(WorldId.Crucible), root, outPos, yaw, 3.2f, required: false);
                     break;
             }
-            if (shell) BuildingInterior.Open(shell, plan, outPos);
+            if (shell)
+            {
+                BuildingInterior.Open(shell, plan, outPos);
+                KeepRingClear(shell, p);
+            }
+        }
+
+        /// <summary>
+        /// Embassy FreePacks are set-dressing. HubPlaza owns the Link mouth.
+        /// Solid house/tower AABBs that reach the ring made the portal look
+        /// missing — the trigger was there, the walk was not.
+        /// </summary>
+        static void KeepRingClear(GameObject shell, Vector3 ringPos)
+        {
+            if (!shell) return;
+            foreach (var col in shell.GetComponentsInChildren<Collider>())
+            {
+                if (!col || col.isTrigger) continue;
+                var hit = col.ClosestPoint(ringPos);
+                if ((hit - ringPos).sqrMagnitude < 25f)
+                    Object.Destroy(col);
+            }
         }
 
         void DressTavern(Vector3 p)
@@ -695,8 +743,8 @@ namespace Concordia
             label.transform.SetParent(hold, false);
             label.transform.localPosition = new Vector3(0f, 11.4f, 0.2f);
             label.text = "THE HUB";
-            label.fontSize = 48;
-            label.characterSize = 0.11f;
+            label.fontSize = 28;
+            label.characterSize = 0.032f;
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
             label.color = Color.white;
@@ -772,7 +820,7 @@ namespace Concordia
         {
             if (w.id == WorldId.Hub)
             {
-                var bird = FreePacks.Bird();
+                var bird = DressVocab.Bird();
                 if (string.IsNullOrEmpty(bird)) return;
                 for (int i = 0; i < 8; i++)
                 {
@@ -808,7 +856,7 @@ namespace Concordia
 
         void DressGroveBirds(WorldDef w)
         {
-            var bird = FreePacks.Bird();
+            var bird = DressVocab.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {

@@ -20,7 +20,7 @@ Spine pinned by `server/tests/concordia-megaworld.test.js`,
 / `fauna-spawner` / `creature-needs` / `npc-needs`.
 W1–W4/W7/W8 playable loop is wired on this branch (in-region field sample,
 combat samples the field, settlements found/abandon, organism births).
-**W3 continent streaming is still GAP** (Travel remains `region_rebuild`).
+**W3 continent streaming is shipped** (Unity `ContinentStream`; kernel `CURRENT_TRAVEL_MODE = continent_stream`). Heightmap continents are still compressed.
 **W5/W6 live 7-day / 100-hour runs are not claimed.**
 
 **Status update (2026-07-03): Wave 1 is SHIPPED.** Every phase in Track K

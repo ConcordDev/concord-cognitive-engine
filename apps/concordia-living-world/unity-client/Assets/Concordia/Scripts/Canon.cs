@@ -62,6 +62,8 @@ namespace Concordia
         public const float RingRadius = 34f;
         public const float CourtRadius = 16f;
         public const float WallRadius = 56f;
+        /// <summary>Past the gate mouth the Court ends. Flower Law does not follow the road.</summary>
+        public const float HubLawRadius = 42f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
         public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
         /// <summary>
@@ -73,7 +75,7 @@ namespace Concordia
         /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one
         /// supercontinent (kernel: concordia-world-field.js), not portals to
-        /// disconnected maps. Travel() still region-rebuilds until W3.
+        /// disconnected maps. ContinentStream presents them on one plane.
         /// </summary>
         public static readonly GateDef[] Gates =
         {
@@ -188,10 +190,17 @@ namespace Concordia
 
         public static bool InArena(Vector3 p) => Vector3.Distance(new Vector3(p.x, 0, p.z), Arena) < 8f;
 
+        public static bool InHubCourt(Vector3 p) =>
+            p.x * p.x + p.z * p.z <= HubLawRadius * HubLawRadius;
+
         public static bool SteelLive(WorldId world, Vector3 p)
         {
-            if (world != WorldId.Hub) return true;
-            return InArena(p);
+            // Walking a streamed chunk updates WorldClock first; player.world
+            // can lag a frame. Flower Law is Hub plaza only, never a leftover
+            // after the Court is behind you.
+            if (InArena(p)) return true;
+            if (world != WorldId.Hub || WorldClock.World != WorldId.Hub) return true;
+            return !InHubCourt(p);
         }
 
         public static Color Hex(string h)

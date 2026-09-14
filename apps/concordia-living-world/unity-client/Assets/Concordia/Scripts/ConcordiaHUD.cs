@@ -8,22 +8,48 @@ namespace Concordia
 {
     /// <summary>
     /// Diegetic HUD. Inter, letterbox, thin bars. Arrival title is a film card.
+    /// Modes (explore / combat / social / scheme) never stack. Canon voice
+    /// lives on first-visit cards and toasts, not a permanent text wall.
     /// </summary>
     public class ConcordiaHUD : MonoBehaviour
     {
+        public enum HudMode { Explore, Combat, Social, Scheme }
+
         public ConcordiaPlayer player;
         public static bool DebugHud;
         GUIStyle _title, _small, _center, _prompt, _card, _cardSub, _btn, _log;
         Texture2D _white, _ring;
         static float _announceT;
         static string _announceTitle, _announceLine;
+        static bool _taughtFlower, _taughtSteel;
+        static readonly Queue<Card> _cards = new Queue<Card>();
+        static bool _liveFilm;
+        static float _liveDur = 4.6f;
+        static string _lastFeed;
+        static string _seenToast;
         Font _font;
+        HudMode _mode = HudMode.Explore;
+        float _hurtT;
+        float _lastHp = -1f;
+        public static WorldGate Bearing;
+
+        struct Card
+        {
+            public string title, line;
+            public float duration;
+            public bool film;
+        }
 
         public static void Announce(string title, string line)
         {
-            _announceT = 4.6f;
-            _announceTitle = title;
-            _announceLine = line;
+            Enqueue(title, line, 4.6f, true);
+        }
+
+        static void Enqueue(string title, string line, float duration, bool film)
+        {
+            if (string.IsNullOrEmpty(title) && string.IsNullOrEmpty(line)) return;
+            if (_cards.Count >= 5) _cards.Dequeue();
+            _cards.Enqueue(new Card { title = title ?? "", line = line ?? "", duration = duration, film = film });
         }
 
         void Ensure()
@@ -66,7 +92,117 @@ namespace Concordia
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F8)) DebugHud = !DebugHud;
-            if (_announceT > 0f) _announceT -= Time.unscaledDeltaTime;
+            if (DebugHud && Input.GetKeyDown(KeyCode.F9)) AgentAvatar.KitchenBind();
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                WorldAaa.DebugDump = !WorldAaa.DebugDump;
+                DebugHud = WorldAaa.DebugDump;
+                PlayerPrefs.SetInt("concordia-p0-no-debug", DebugHud ? 0 : 1);
+            }
+            TickHurt();
+            TickQueue();
+            DrainFeed();
+            DrainToast();
+            GateBearing();
+            TeachRegime();
+        }
+
+        void TickHurt()
+        {
+            if (!player) return;
+            if (_lastHp < 0f) _lastHp = player.hp;
+            if (player.hp < _lastHp - 0.5f) _hurtT = 2.8f;
+            _lastHp = player.hp;
+            if (_hurtT > 0f) _hurtT -= Time.unscaledDeltaTime;
+        }
+
+        void TickQueue()
+        {
+            if (_announceT > 0f)
+            {
+                _announceT -= Time.unscaledDeltaTime;
+                return;
+            }
+            _announceTitle = null;
+            _announceLine = null;
+            _liveFilm = false;
+            if (_cards.Count == 0) return;
+            var card = _cards.Dequeue();
+            _announceTitle = card.title;
+            _announceLine = card.line;
+            _liveFilm = card.film;
+            _liveDur = card.duration > 0.2f ? card.duration : 2.6f;
+            _announceT = _liveDur;
+        }
+
+        void DrainFeed()
+        {
+            if (DebugHud || WorldClock.FeedCount <= 0) return;
+            var beat = WorldClock.FeedAt(0);
+            if (string.IsNullOrEmpty(beat.line) || beat.line == _lastFeed) return;
+            _lastFeed = beat.line;
+            Enqueue(beat.channel ?? "", beat.line, 3.2f, false);
+        }
+
+        void DrainToast()
+        {
+            if (!player || string.IsNullOrEmpty(player.toast))
+            {
+                _seenToast = null;
+                return;
+            }
+            if (player.toast == _seenToast) return;
+            _seenToast = player.toast;
+            Enqueue("", player.toast, 2.6f, false);
+        }
+
+        bool QuietExplore => _mode == HudMode.Explore && _hurtT <= 0f && !DebugHud;
+
+        bool FocusHeld()
+        {
+            return player && !player.talkOpen && !player.menuOpen && !player.skillOpen
+                && Input.GetKey(KeyCode.C);
+        }
+
+        void GateBearing()
+        {
+            Bearing = null;
+            if (!player || player.world != WorldId.Hub || !player.cam) return;
+            var fwd = player.cam.PlanarForward;
+            float best = 0.78f;
+            foreach (var g in FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
+            {
+                if (!g) continue;
+                var to = g.transform.position - player.transform.position;
+                to.y = 0f;
+                if (to.sqrMagnitude < 4f) continue;
+                float dot = Vector3.Dot(fwd.normalized, to.normalized);
+                if (dot > best) { best = dot; Bearing = g; }
+            }
+        }
+
+        void TeachRegime()
+        {
+            if (!player || _announceT > 0f || _cards.Count > 0) return;
+            var live = Canon.SteelLive(player.world, player.transform.position);
+            if (!live && !_taughtFlower)
+            {
+                _taughtFlower = true;
+                Announce("Flower Law", "Blades do not fully kill in the Court.");
+            }
+            else if (live && !_taughtSteel)
+            {
+                _taughtSteel = true;
+                Announce("Live steel", "Wounds hold. The Court no longer covers you.");
+            }
+        }
+
+        HudMode ResolveMode()
+        {
+            if (player.talkOpen) return HudMode.Social;
+            if (HasFoe() || !string.IsNullOrEmpty(Hostile.TelegraphKind)) return HudMode.Combat;
+            if (Plots.Nearby != null && !player.menuOpen && !player.skillOpen) return HudMode.Scheme;
+            return HudMode.Explore;
         }
 
         void OnGUI()
@@ -74,39 +210,40 @@ namespace Concordia
             if (!player || CharacterCreator.IsOpen) return;
             Ensure();
             float w = Screen.width, h = Screen.height;
+            _mode = ResolveMode();
             Compass(w);
             Vitals();
             PartyStrip();
-            TargetBar(w);
-            Rings(w);
-            Prompt(w, h);
+            if (_mode == HudMode.Combat) TargetBar(w);
+            if (_mode != HudMode.Social) Rings(w);
+            if (_mode != HudMode.Scheme) Prompt(w, h);
             Toast(w);
             Arrival(w, h);
-            ConsequenceFeed(w, h);
+            FocusScan(w, h);
             if (player.talkOpen) TalkPanel(w, h);
             if (player.menuOpen) KitMenu(w, h);
             if (DebugHud)
             {
+                ConsequenceFeed(w, h);
                 if (!player.Busy) Minimap(h);
             }
             if (player.skillOpen) SkillSheet(w, h);
-            PlotBar(w, h);
+            if (_mode == HudMode.Scheme && !(_liveFilm && _announceT > 0f)) PlotBar(w, h);
             Hints(w, h);
         }
 
         void Hints(float w, float h)
         {
+            bool holdTab = Input.GetKey(KeyCode.Tab);
+            if (!DebugHud && !holdTab) return;
+            if (player.talkOpen || player.menuOpen || player.skillOpen) return;
+            var line = _mode == HudMode.Combat
+                ? "LMB  swing   ·   X  dodge   ·   Space  jump · hold Space on a wall to climb"
+                : _mode == HudMode.Scheme
+                    ? "Expose  ·  Abet  ·  Ignore   ·   Tab  holds this"
+                    : "E  use   ·   hold C  look   ·   I  kit   ·   Space on a wall climbs";
             GUI.color = new Color(0.92f, 0.84f, 0.66f, 0.88f);
-            GUI.Label(new Rect(18, h - 22, w - 36, 20),
-                player.talkOpen
-                    ? "Type  ·  Enter  send  ·  Esc  leave  ·  2B " + TwoBStatus()
-                    : player.skillOpen
-                        ? "K  close  ·  click a skill  ·  [ ]  group  ·  Esc  close"
-                        : player.menuOpen
-                            ? "I  close  ·  click a weapon  ·  1/2/3  combat slot  ·  K  lattice  ·  Esc  close"
-                            : "I  kit   ·   K  " + SkillLattice.CatalogCount + " skills   ·   1/2/3  " + SkillLattice.ActiveSkill
-                              + "   ·   H  horde   ·   J  extract   ·   LMB  swing   ·   X  dodge   ·   E  use",
-                _small);
+            GUI.Label(new Rect(18, h - 22, w - 36, 20), line, _small);
             GUI.color = Color.white;
         }
 
@@ -114,27 +251,74 @@ namespace Concordia
         {
             var world = Canon.Get(player.world);
             var live = Canon.SteelLive(player.world, player.transform.position);
-            GUI.color = new Color(0f, 0f, 0f, 0.45f);
             var city = CityAtlas.Nearest(player.world, player.transform.position, 18f);
-            GUI.DrawTexture(new Rect(22, 28, 300, 108), _white);
+            var body = LivingBody.Hero;
+            var need = body ? body.NeedLine : null;
+            DrawRegime(32, 34, live);
+            bool quiet = QuietExplore && !FocusHeld();
+            if (quiet)
+            {
+                if (!string.IsNullOrEmpty(need))
+                {
+                    GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
+                    GUI.Label(new Rect(54, 34, 230, 14), need, _small);
+                    GUI.color = Color.white;
+                }
+                return;
+            }
+            float extra = !string.IsNullOrEmpty(need) ? 16 : 0;
+            float vh = DebugHud ? 124 : (city != null ? 52 : 36) + extra;
+            GUI.color = new Color(0f, 0f, 0f, 0.4f);
+            GUI.DrawTexture(new Rect(22, 28, 268, vh), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(32, 32, 280, 22), world.title.ToUpperInvariant(), _title);
-            GUI.Label(new Rect(32, 54, 280, 16),
-                (live ? "LIVE STEEL" : "FLOWER-LAW") + (city == null ? "" : "  ·  " + city.name + (city.status == "abandoned" ? " (ruins remain)" : ""))
-                + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + player.kitWeapon)
+            DrawRegime(32, 34, live);
+            GUI.Label(new Rect(54, 32, 230, 22), world.title, _title);
+            float ny = 50;
+            if (city != null)
+            {
+                GUI.Label(new Rect(54, 48, 230, 14), city.name + (city.status == "abandoned" ? "  ·  ruins remain" : ""), _small);
+                ny = 62;
+            }
+            if (!string.IsNullOrEmpty(need))
+            {
+                GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
+                GUI.Label(new Rect(54, ny, 230, 14), need, _small);
+                GUI.color = Color.white;
+            }
+
+            if (!DebugHud) return;
+            GUI.Label(new Rect(32, 70 + extra, 250, 16),
+                (live ? "LIVE STEEL" : "FLOWER-LAW")
+                + (string.IsNullOrEmpty(player.kitWeapon) ? "" : "  ·  " + KitBag.PrettyWeapon(player.kitWeapon))
                 + "  ·  " + SkillLattice.HudLine(), _small);
-            GUI.Label(new Rect(32, 70, 280, 16), WorldClock.HudClock()
+            GUI.Label(new Rect(32, 86 + extra, 250, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
             var field = WorldField.HudLine(player.world, player.transform.position);
-            GUI.Label(new Rect(32, 86, 280, 16),
+            GUI.Label(new Rect(32, 102 + extra, 250, 16),
                 !string.IsNullOrEmpty(field) ? field
                 : !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
-            var lineage = WorldMemory.LineageLine(player.world);
-            if (!string.IsNullOrEmpty(lineage))
-                GUI.Label(new Rect(32, 102, 280, 14), lineage, _small);
-            else if (Plots.Nearby != null)
-                GUI.Label(new Rect(32, 102, 280, 14), "scheme nearby — Expose / Abet / Ignore", _small);
+        }
+
+        void DrawRegime(float x, float y, bool liveSteel)
+        {
+            if (liveSteel)
+            {
+                GUI.color = new Color(0.82f, 0.22f, 0.18f, 0.95f);
+                GUI.DrawTexture(new Rect(x + 6, y, 3, 16), _white);
+                GUI.DrawTexture(new Rect(x + 2, y + 2, 11, 3), _white);
+            }
+            else
+            {
+                GUI.color = new Color(0.92f, 0.55f, 0.72f, 0.95f);
+                if (_ring)
+                {
+                    GUI.DrawTexture(new Rect(x + 4, y, 8, 8), _ring);
+                    GUI.DrawTexture(new Rect(x, y + 6, 8, 8), _ring);
+                    GUI.DrawTexture(new Rect(x + 8, y + 6, 8, 8), _ring);
+                }
+            }
+            GUI.color = Color.white;
         }
 
         static string TwoBStatus()
@@ -214,7 +398,7 @@ namespace Concordia
             GUI.Label(new Rect(x + 18, y + ph - 48, pw - 36, 18),
                 SkillLattice.FromKernel
                     ? "K  opens the " + SkillLattice.CatalogCount + "-skill lattice  ·  " + SkillLattice.HudLine()
-                    : "K  opens the lattice. skills.mastery unbound until Concord answers.", _small);
+                    : "K  opens the lattice. Skills stay empty until Concord answers.", _small);
             GUI.Label(new Rect(x + 18, y + ph - 28, pw - 36, 18), QuestLog.HudBlock(), _small);
         }
 
@@ -226,14 +410,14 @@ namespace Concordia
             GUI.DrawTexture(new Rect(x, y, pw, ph), _white);
             GUI.color = Color.white;
             var head = SkillLattice.FromKernel
-                ? SkillLattice.CatalogCount + " SKILLS  ·  " + SkillLattice.TrainedCount + " trained  ·  kernel"
-                : "SKILLS  ·  skills.mastery unbound";
+                ? SkillLattice.CatalogCount + " skills  ·  " + SkillLattice.TrainedCount + " trained"
+                : "Skills  ·  unbound";
             GUI.Label(new Rect(x + 18, y + 12, pw - 36, 24), head, _title);
             GUI.Label(new Rect(x + 18, y + 38, pw - 36, 18), SkillLattice.HudLine(), _small);
             if (!SkillLattice.FromKernel)
             {
                 GUI.Label(new Rect(x + 18, y + 70, pw - 36, 80),
-                    "The catalog lives on Concord. This overlay stays empty until skills.mastery answers. Kit arts are not this lattice.",
+                    "The catalog lives on Concord. This overlay stays empty until Concord answers. Kit arts are not this lattice.",
                     _small);
                 return;
             }
@@ -252,7 +436,7 @@ namespace Concordia
                     var row = SkillLattice.All[i];
                     if (row.group != group) continue;
                     var mark = row.skillType == SkillLattice.ActiveSkill ? "▸ " : "  ";
-                    var label = mark + row.skillType + "  L" + row.level;
+                    var label = mark + SkillLattice.PrettySkill(row.skillType) + "  L" + row.level;
                     if (GUI.Button(new Rect(cx, yy, colW - 10, 22), label, _btn))
                     {
                         SkillLattice.Group = group;
@@ -303,6 +487,7 @@ namespace Concordia
 
         void Rings(float w)
         {
+            if (QuietExplore) return;
             float cx = w - 78f;
             float cy = 78f;
             DrawRing(cx, cy, 62, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
@@ -403,23 +588,10 @@ namespace Concordia
             Tick("E", -Mathf.PI / 2f);
             Tick("S", 0f);
             Tick("W", Mathf.PI / 2f);
-
-            var fwd = player.cam.PlanarForward;
-            float best = 0.78f;
-            string name = null;
-            foreach (var g in Canon.Gates)
-            {
-                var gatePos = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle)) * Canon.RingRadius;
-                var toGate = gatePos - player.transform.position;
-                toGate.y = 0f;
-                if (toGate.sqrMagnitude < 4f) continue;
-                float dot = Vector3.Dot(fwd.normalized, toGate.normalized);
-                if (dot > best) { best = dot; name = g.shortName; }
-            }
-            if (!string.IsNullOrEmpty(name) && player.world == WorldId.Hub)
-                GUI.Label(new Rect(cx - 80, 42, 160, 18), name, _center);
+            // Hub gates speak as wind/light on the arch (WorldGate), not a word here.
             if (player.world != WorldId.Hub)
             {
+                var fwd = player.cam.PlanarForward;
                 float cityBest = 0.72f;
                 string cityName = null;
                 foreach (var c in CityAtlas.For(player.world))
@@ -446,17 +618,22 @@ namespace Concordia
 
         void Toast(float w)
         {
-            if (string.IsNullOrEmpty(player.toast)) return;
-            GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.72f);
+            if (_announceT <= 0f || _liveFilm) return;
+            if (string.IsNullOrEmpty(_announceLine) && string.IsNullOrEmpty(_announceTitle)) return;
+            float t = _announceT / Mathf.Max(_liveDur, 0.2f);
+            float a = t > 0.8f ? (1f - t) / 0.2f : t < 0.2f ? t / 0.2f : 1f;
+            GUI.color = new Color(0.05f, 0.03f, 0.02f, 0.72f * a);
             GUI.DrawTexture(new Rect(w * 0.5f - 280, 118, 560, 48), _white);
+            GUI.color = new Color(1f, 1f, 1f, a);
+            var line = string.IsNullOrEmpty(_announceTitle) ? _announceLine : _announceTitle + "  ·  " + _announceLine;
+            GUI.Label(new Rect(w * 0.5f - 270, 122, 540, 40), line, _center);
             GUI.color = Color.white;
-            GUI.Label(new Rect(w * 0.5f - 270, 122, 540, 40), player.toast, _center);
         }
 
         void Arrival(float w, float h)
         {
-            if (_announceT <= 0f || string.IsNullOrEmpty(_announceTitle)) return;
-            float t = _announceT / 4.6f;
+            if (_announceT <= 0f || !_liveFilm || string.IsNullOrEmpty(_announceTitle)) return;
+            float t = _announceT / Mathf.Max(_liveDur, 0.2f);
             float a = t > 0.75f ? (1f - t) / 0.25f : t < 0.25f ? t / 0.25f : 1f;
             GUI.color = new Color(0f, 0f, 0f, 0.55f * a);
             GUI.DrawTexture(new Rect(0, h * 0.38f, w, h * 0.24f), _white);
@@ -488,17 +665,34 @@ namespace Concordia
             GUI.color = Color.white;
         }
 
+        void FocusScan(float w, float h)
+        {
+            if (!FocusHeld() && !DebugHud) return;
+            var field = WorldField.HudLine(player.world, player.transform.position);
+            if (!FocusHeld()) return;
+            if (string.IsNullOrEmpty(field)) field = WorldClock.NearbyAct;
+            if (string.IsNullOrEmpty(field)) return;
+            GUI.color = new Color(0.04f, 0.05f, 0.06f, 0.62f);
+            GUI.DrawTexture(new Rect(w * 0.5f - 260, h - 148, 520, 40), _white);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(w * 0.5f - 250, h - 144, 500, 32), field, _center);
+        }
+
         void PartyStrip()
         {
+            if (QuietExplore) return;
             var run = ConcordClient.RunLine;
+            bool party = !string.IsNullOrEmpty(ConcordClient.PartyLine)
+                && ConcordClient.PartyLine != "PARTY  ·  you";
+            if (string.IsNullOrEmpty(run) && !party) return;
+            float y = DebugHud ? 142f : 70f;
             float extra = string.IsNullOrEmpty(run) ? 0f : 18f;
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
-            GUI.DrawTexture(new Rect(22, 142, 300, 28 + extra), _white);
+            GUI.DrawTexture(new Rect(22, y, 268, 22 + extra), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(32, 144, 280, 16), ConcordClient.PartyLine, _small);
-            DrawBar(170, 150, 140, 8, player.hp / 100f, new Color(0.78f, 0.18f, 0.16f));
+            GUI.Label(new Rect(32, y + 2, 250, 16), ConcordClient.PartyLine, _small);
             if (!string.IsNullOrEmpty(run))
-                GUI.Label(new Rect(32, 162, 280, 16), run, _small);
+                GUI.Label(new Rect(32, y + 18, 250, 16), run, _small);
         }
 
         void PlotBar(float w, float h)
@@ -519,10 +713,16 @@ namespace Concordia
                 Plots.Intervene("ignore");
         }
 
-        void TargetBar(float w)
+        bool HasFoe()
         {
-            TrainingDummy dummy = null;
-            Hostile host = null;
+            FindFocus(out var host, out _);
+            return host != null;
+        }
+
+        void FindFocus(out Hostile host, out TrainingDummy dummy)
+        {
+            host = null;
+            dummy = null;
             float best = 22f;
             var origin = player.transform.position;
             var fwd = player.cam ? player.cam.PlanarForward : player.transform.forward;
@@ -538,30 +738,56 @@ namespace Concordia
                 host = h;
                 dummy = h.GetComponent<TrainingDummy>() ?? h.GetComponentInParent<TrainingDummy>();
             }
-            if (host == null)
+            if (host != null) return;
+            foreach (var d in FindObjectsByType<TrainingDummy>(FindObjectsInactive.Exclude))
             {
-                foreach (var d in FindObjectsByType<TrainingDummy>(FindObjectsInactive.Exclude))
-                {
-                    if (!d || d.hp <= 0f) continue;
-                    var to = d.transform.position - origin;
-                    to.y = 0f;
-                    var dist = to.magnitude;
-                    if (dist > 8f || dist < 0.4f) continue;
-                    if (Vector3.Dot(fwd.normalized, to.normalized) < 0.35f) continue;
-                    dummy = d;
-                    break;
-                }
+                if (!d || d.hp <= 0f) continue;
+                var to = d.transform.position - origin;
+                to.y = 0f;
+                var dist = to.magnitude;
+                if (dist > 8f || dist < 0.4f) continue;
+                if (Vector3.Dot(fwd.normalized, to.normalized) < 0.35f) continue;
+                dummy = d;
+                return;
             }
+        }
+
+        string ActorLabel(Component c)
+        {
+            if (!c) return "foe";
+            var genome = c.GetComponent<CreatureGenome>() ?? c.GetComponentInParent<CreatureGenome>();
+            if (genome != null)
+            {
+                var species = genome.speciesId;
+                if (string.IsNullOrEmpty(species)) species = "creature";
+                species = KitBag.PrettyWeapon(species);
+                if (genome.fly || CreatureGenome.Winged(genome.topology))
+                    return player.world == WorldId.Hub ? "Court bird" : species;
+                return species;
+            }
+            var n = c.gameObject.name ?? "";
+            if (n.StartsWith("Evo_", System.StringComparison.OrdinalIgnoreCase))
+                n = n.Substring(4);
+            if (n.IndexOf("hub-flock", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Court bird";
+            if (n.IndexOf("grove-bird", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Grove bird";
+            return KitBag.PrettyWeapon(n);
+        }
+
+        void TargetBar(float w)
+        {
+            FindFocus(out var host, out var dummy);
             var peril = Hostile.TelegraphKind;
-            if (dummy == null && string.IsNullOrEmpty(peril)) return;
+            if (dummy == null && host == null && string.IsNullOrEmpty(peril)) return;
             float cx = w * 0.5f;
             float y = 64f;
             GUI.color = new Color(0f, 0f, 0f, 0.5f);
             GUI.DrawTexture(new Rect(cx - 160, y, 320, string.IsNullOrEmpty(peril) ? 36 : 52), _white);
             GUI.color = Color.white;
-            var label = dummy ? dummy.name : (host ? host.name : "foe");
+            var label = dummy ? ActorLabel(dummy) : (host ? ActorLabel(host) : "foe");
             float hpT = dummy ? Mathf.Clamp01(dummy.hp / 80f) : 1f;
-            GUI.Label(new Rect(cx - 150, y + 2, 300, 16), label.ToUpperInvariant(), _center);
+            GUI.Label(new Rect(cx - 150, y + 2, 300, 16), label, _center);
             DrawBar(cx - 140, y + 20, 280, 8, hpT, new Color(0.82f, 0.16f, 0.14f));
             if (!string.IsNullOrEmpty(peril))
             {

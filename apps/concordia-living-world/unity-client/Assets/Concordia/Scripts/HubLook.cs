@@ -24,7 +24,7 @@ namespace Concordia
                 cam.allowHDR = true;
                 cam.allowMSAA = false;
                 cam.nearClipPlane = 0.11f;
-                cam.farClipPlane = world == WorldId.Hub ? 420f : 280f;
+                cam.farClipPlane = ContinentStream.Live || world == WorldId.Hub ? 420f : 280f;
                 var data = cam.GetUniversalAdditionalCameraData();
                 if (data)
                 {
