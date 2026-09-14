@@ -135,6 +135,10 @@ namespace Concordia
                     catch (System.Exception e) { Debug.LogException(e); }
                 }
                 RoadWorld.DropSpoils(transform);
+                KitBag.AddLoot("road-spoils", "road spoils");
+                var who = GuestLabel;
+                RoadWorld.NoticeKill(who, transform.position);
+                if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(who + " down.");
                 var hostile = GetComponent<Hostile>();
                 if (hostile) hostile.enabled = false;
                 if (world == WorldId.Ruins || world == WorldId.Crucible)
@@ -143,7 +147,11 @@ namespace Concordia
                     _reviveAt = Time.time + 7f;
                     SetVisible(false);
                 }
-                else SetVisible(false);
+                else
+                {
+                    SetVisible(false);
+                    gameObject.SetActive(false);
+                }
                 return;
             }
             if (world == WorldId.Ruins || world == WorldId.Crucible)

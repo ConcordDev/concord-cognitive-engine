@@ -164,7 +164,7 @@ namespace Concordia
             if (!player)
             {
                 cam.transform.position = new Vector3(1.7f, 2.6f, -16.2f);
-                cam.transform.LookAt(new Vector3(0f, 1.4f, -11f));
+                cam.transform.LookAt(Canon.Spawn + Vector3.up * 1.4f);
                 return;
             }
             var feet = player.transform.position;

@@ -61,9 +61,18 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(player, /LivingBody\.Hero\.Tick/);
     assert.match(player, /CollisionFlags\.Sides/);
     assert.match(player, /LivingBody\.Hero\.Climb/);
-    assert.match(player, /ReceiveHere\(transform\.position\)/);
+    assert.match(player, /ReceiveHere\(transform\.position\)|ReceiveLand\(\)/);
     assert.match(player, /public void Stand\(/);
     assert.match(player, /public string LandLine/);
+    assert.match(player, /WalkBearing\(/);
+    assert.match(player, /NeedLine/);
+    assert.match(player, /KitBag\.HasLoot/);
+    const canon = src("Canon.cs");
+    assert.match(canon, /OnSunderingLane\(/);
+    assert.match(canon, /5\.4f/);
+    assert.doesNotMatch(canon, /Spawn = new Vector3\(0, 0, -11\)/);
+    const builder = src("WorldBuilder.cs");
+    assert.match(builder, /OnSunderingLane/);
     assert.match(motor, /AddComponent<LivingBody>/);
     assert.match(motor, /_life\.MoveMul/);
     assert.match(cook, /LivingBody\.Hero\?\.Eat\(\)/);
@@ -71,9 +80,10 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(clock, /JourneyLine/);
     assert.match(clock, /!JourneyLine\(LastEvent\)/);
     assert.match(hud, /body \? body\.NeedLine/);
-    assert.match(hud, /land /);
-    assert.match(hud, /MegaworldMap\.RegionAt/);
-    assert.match(hud, /clock /);
+    assert.match(hud, /player\.LandLine/);
+    assert.match(player, /land /);
+    assert.match(player, /MegaworldMap\.RegionAt/);
+    assert.match(player, /clock /);
   });
 
   it("crowd can hail the player; road walkers exist", () => {

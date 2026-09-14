@@ -65,6 +65,10 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(dummy, /hostile\.enabled = false/);
     assert.match(dummy, /if \(!Gym\)/);
     assert.match(dummy, /RoadWorld\.DropSpoils/);
+    assert.match(dummy, /KitBag\.AddLoot/);
+    assert.match(dummy, /RoadWorld\.NoticeKill/);
+    assert.match(dummy, /down\./);
+    assert.match(dummy, /gameObject\.SetActive\(false\)/);
     assert.match(dummy, /BindId\(/);
     const gymBranch = dummy.slice(dummy.indexOf("if (!Gym)"), dummy.indexOf("else if (world == WorldId.Hub)"));
     assert.doesNotMatch(gymBranch, /hp = 80/);
@@ -73,6 +77,10 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(hostile, /_person\?\.SetGait\(0f/);
     assert.match(clock, /JourneyLine\(LastEvent\)/);
     assert.match(clock, /a pack thinned/);
+    const road = src("RoadWorld.cs");
+    assert.match(road, /NoticeKill\(/);
+    assert.match(road, /PushFeed\("road"/);
+    assert.match(road, /saw /);
   });
 
   it("bible names wilderness and whole Ring as the lived-day bar", () => {

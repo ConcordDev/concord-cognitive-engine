@@ -310,9 +310,7 @@ namespace Concordia
             GUI.Label(new Rect(32, 86 + extra, 250, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
             GUI.Label(new Rect(32, 102 + extra, 250, 16),
-                "land " + MegaworldMap.RegionAt(player.transform.position)
-                + " · you " + player.world
-                + " · clock " + WorldClock.World, _small);
+                player.LandLine, _small);
             var field = WorldField.HudLine(player.world, player.transform.position);
             GUI.Label(new Rect(32, 118 + extra, 250, 16),
                 !string.IsNullOrEmpty(field) ? field

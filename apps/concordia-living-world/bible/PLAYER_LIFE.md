@@ -52,11 +52,11 @@ Otherwise agents are spectators with opinions and humans are the only ones who g
 | Beat | What is true |
 |---|---|
 | Flower Law | Plaza only (`Canon.HubLawRadius` 42m). Arena always steel. Overland Hub is live steel while `WorldClock` is still Hub. |
-| Crossing a law | `ReceiveHere` SoftEnters `RegionAt` **before** chunk Ensure. The **body** calls it after `Move`, and `Stand(pos)` calls it without waiting on a frame — a transform warp that never Ticks stays Hub (the 2026-09-14 QA hour froze at 17.81 across plaza→222). `Stand(222)` this pass: `land Fantasy · you Fantasy · clock Fantasy` and *You left Hub for The Sundering.* Mid-ring stays Hub-overland until planar `ArriveM`. F8 and `player.LandLine` print `land · you · clock`. Native WASD walk is still the session that counts. **No Ring tour until that walk shows you+clock off Hub at ~220.** |
+| Crossing a law | `ReceiveHere` SoftEnters `RegionAt` **before** chunk Ensure. The body calls it after `Move` / `WalkBearing` (same `cc.Move` path as WASD) and on planar drift in `LateUpdate`. A bare `transform.position =` with no Play frame stays Hub — that was the 2026-09-14 position-step sheet (`you=Hub clock=Hub` at z222, hour frozen 17.81). `Stand(222)` is a warp, not a walked day; do not cite it as receive. Spawn is `(5.4, 0, -12)` so +Z does not hit Concordia at `(0, −6.4)` (that collision was z≈−7). Mid-ring stays Hub-overland until planar `ArriveM`. `LandLine` is `land · you · clock` plus hungry/pack when those are true. **No Ring tour until a foot/+Z walk shows land·you·clock off Hub together around ~220.** |
 | Journey memory | Real region change stamps `WorldClock.LastEvent` (left / crossed / came home). Weather / day-roll / pack-thinned cannot overwrite a journey line. A **persisted** “You came home from The Sundering.” is last trip’s residue — it is not proof this walk received you. |
-| Body | `LivingBody` is on the hero. NeedLine hungry at 0.18. A persisted evening clock (QA hour 17.81) is Hunger=1 — honest, the world kept its hours. The word is HUD + a one-shot toast (`You are hungry.`), not a TextMesh. |
+| Body | `LivingBody` is on the hero. NeedLine hungry at 0.18. A persisted evening clock (QA hour 17.81) is Hunger=1 — honest, the world kept its hours. The word is `LandLine` + HUD + a one-shot toast (`You are hungry.`), not a berm TextMesh. |
 | Crowd initiates | Nearby `NpcLife` can hail the player (not only each other). `GuestNpc.hailed` changes the E prompt. Answering bumps `Bonds`. Hail that can refuse / escalate / forgive is still TARGET. |
-| Mid-ring world | `RoadWorld` seeds every Ring road. Signs billboard + HUD `NearLine` (`this way The Sundering · Nm · steel ahead`). Road hostiles: local HP unless `KernelAuthored`; on death `Hostile` turns off, renderers refresh-hide, spoils drop **at the walker's feet** (berm offset was ~13m — a probe at 82m saw spoils 0). `Gym` is the Court mannequin only. |
+| Mid-ring world | `RoadWorld` seeds every Ring road. Signs billboard + HUD `NearLine` (`this way The Sundering · Nm · steel ahead`). Road hostiles: local HP unless `KernelAuthored`; on death `Hostile` off, body `SetActive(false)`, spoils crate **and** `KitBag.AddLoot("road-spoils")`. `NoticeKill` PushFeeds the road and the nearest Watch (Kest on Sundering) *saw X fall.* `Gym` is the Court mannequin only. |
 | Whole Ring | Gates remain Crucible, Dawn, Crime, Frontier, Tunya, Sundering, Ruins, Cyber. `RoadWorld` dresses all eight roads. That is berm grammar, **not** eight native cities. Present receive on a *walked* day is the gate; a Ring tour while world/clock stay Hub is copy-paste berms. |
 | AgentBody P0 | CharacterId + `AgentMotor` + Flower Law. `Hunt` now `Hit`s local road hostiles (kernel only if `KernelAuthored`). MCP is still devtools only. Kernel ATS ticks remain P1 (`AFFECT.md`). |
 
@@ -68,7 +68,7 @@ Lived Sundering walk (plaza → ~82m steel → ~220m still Hub): the road can go
 
 1. **LivingBody on the hero** — hungry / tired / climb / cook changing *you* (component LIVE; felt day still TARGET until a native walk reports the word without F8).
 2. **Present receive on every Ring road** — sky, kit, people notice, journey stamp when the land takes you. SoftEnter-first is the code fix; Play on foot is the proof. Do not HUD-title `RegionAt` while `player.world` stays Hub.
-3. **Real combat feel** — approach, get hit, kill stays dead, spoils in the pack. No gym toast on a road kill. No T-poses in a chase. `TrainingDummy` remains the HP vessel on purpose; presentation must not smell like the Arena.
+3. **Real combat feel** — approach, get hit, kill stays dead, spoils in the pack, nearest Watch saw it. No gym toast on a road kill. No T-poses in a chase. `TrainingDummy` remains the HP vessel on purpose; presentation must not smell like the Arena.
 4. **Delve as an afternoon** — enter the camp cache, boss fight, loot that matters when you come home (not only props on the berm).
 5. **Hail that can refuse / escalate / forgive** — bonds that change the room.
 6. **NPC lives inside Presents** — occupations / skills / styles / powers that match role *in the city*, not only Court nameplates + two road jobs.
@@ -82,7 +82,7 @@ Fauna, bandits, crashes, ambushes — stuff that makes the mid-ring worth walkin
 
 ### Real fights
 
-Approach, hit, get hit, kill, loot — not dummy HP that snaps home. Hostiles `Slash` on commit; the hero `HitScan`s at `CombatMotion.Delay`. Dead road bodies stay dead on Hub-overland (`TrainingDummy.Gym` is the Court mannequin only). Kill drops spoils you can take; `WorldClock.NoteKill` can thin a pack without erasing a journey line.
+Approach, hit, get hit, kill, loot — not dummy HP that snaps home. Hostiles `Slash` on commit; the hero `HitScan`s at `CombatMotion.Delay`. Dead road bodies stay dead on Hub-overland (`TrainingDummy.Gym` is the Court mannequin only; `SetActive(false)`). Kill puts spoils in `KitBag` and drops a crate; `RoadWorld.NoticeKill` is the one cascade (Kest/feed). `WorldClock.NoteKill` can thin a pack without erasing a journey line.
 
 ### Travel that discovers
 

@@ -480,5 +480,36 @@ namespace Concordia
             g.label = "road spoils";
             g.taken = false;
         }
+
+        /// <summary>
+        /// One other mind notices the kill — Watch on this road, not a second OS.
+        /// </summary>
+        public static void NoticeKill(string who, Vector3 at)
+        {
+            if (string.IsNullOrEmpty(who)) who = "someone";
+            WorldClock.PushFeed("road", who + " fell on the road.");
+            NpcLife best = null;
+            float bestD = 52f * 52f;
+            foreach (var life in Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+            {
+                if (!life) continue;
+                if (life.GetComponent<Hostile>()) continue;
+                var d = life.transform.position - at;
+                d.y = 0f;
+                var d2 = d.sqrMagnitude;
+                if (d2 >= bestD) continue;
+                bestD = d2;
+                best = life;
+            }
+            if (!best) return;
+            best.NoticePlayer(10f);
+            var guest = best.GetComponent<GuestNpc>();
+            var name = guest != null && guest.def != null && !string.IsNullOrEmpty(guest.def.name)
+                ? guest.def.name
+                : best.name;
+            var line = name + " saw " + who + " fall.";
+            WorldClock.PushFeed("gossip", line);
+            if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(line);
+        }
     }
 }

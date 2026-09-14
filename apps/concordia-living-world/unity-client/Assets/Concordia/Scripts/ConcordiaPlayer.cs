@@ -46,6 +46,9 @@ namespace Concordia
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
         WorldId _fightWorld = (WorldId)(-1);
+        Vector3 _forceWalk = Vector3.forward;
+        float _forceWalkT;
+        Vector3 _recvAt;
 
         void OnEnable()
         {
@@ -88,6 +91,13 @@ namespace Concordia
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
             var wish = fwd * axes.y + right * axes.x;
+            if (_forceWalkT > 0f)
+            {
+                _forceWalkT -= dt;
+                wish = _forceWalk;
+                sprint = true;
+                speed = 8.1f * style.speedMul;
+            }
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
             if (cc.slopeLimit < 50f) cc.slopeLimit = 50f;
@@ -154,7 +164,7 @@ namespace Concordia
                 _vel.z *= 0.42f;
             }
             cc.Move(_vel * dt);
-            ContinentStream.Live?.ReceiveHere(transform.position);
+            ReceiveLand();
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
             if (planar.sqrMagnitude > 0.2f)
@@ -211,15 +221,54 @@ namespace Concordia
 
         /// <summary>
         /// F8-style land/you/clock without needing MegaworldMap in a probe.
+        /// Hungry is a word on this line — not a TextMesh on a berm sign.
         /// </summary>
-        public string LandLine =>
-            "land " + MegaworldMap.RegionAt(transform.position)
-            + " · you " + world
-            + " · clock " + WorldClock.World;
+        public string LandLine
+        {
+            get
+            {
+                var need = LivingBody.Hero ? LivingBody.Hero.NeedLine : null;
+                var line = "land " + MegaworldMap.RegionAt(transform.position)
+                    + " · you " + world
+                    + " · clock " + WorldClock.World;
+                if (!string.IsNullOrEmpty(need)) line += " · " + need;
+                if (KitBag.HasLoot()) line += " · pack";
+                return line;
+            }
+        }
+
+        /// <summary>
+        /// Same cc.Move path as WASD, world bearing (Sundering is +Z). A one-shot
+        /// CharacterController.Move from execute_code is not a walk.
+        /// </summary>
+        public void WalkBearing(Vector3 dir, float seconds)
+        {
+            dir.y = 0f;
+            _forceWalk = dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.forward;
+            _forceWalkT = Mathf.Max(0.2f, seconds);
+        }
+
+        public bool WalkingBearing => _forceWalkT > 0f;
+
+        void LateUpdate()
+        {
+            if (creatorLocked) return;
+            var p = transform.position;
+            var dx = p.x - _recvAt.x;
+            var dz = p.z - _recvAt.z;
+            if (dx * dx + dz * dz < 0.16f) return;
+            ReceiveLand();
+        }
+
+        void ReceiveLand()
+        {
+            _recvAt = transform.position;
+            ContinentStream.Live?.ReceiveHere(_recvAt);
+        }
 
         /// <summary>
         /// Warp that also receives. execute_code that only sets transform.position
-        /// never Ticks — Stand is the walk-in that SoftEnters.
+        /// never Ticks — Stand is not a walked day. Prefer WalkBearing.
         /// </summary>
         public void Stand(Vector3 p)
         {
@@ -227,7 +276,7 @@ namespace Concordia
             transform.position = p;
             if (cc) cc.enabled = true;
             Grounding.Snap(cc);
-            ContinentStream.Live?.ReceiveHere(transform.position);
+            ReceiveLand();
         }
 
         public void EquipWorldKit()

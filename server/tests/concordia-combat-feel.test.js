@@ -65,6 +65,8 @@ describe("Concordia combat feel — gait, delayed hits, dummy flinch", () => {
     const feel = src("CombatFeel.cs");
     assert.match(dummy, /person\?\.Hurt\(\)/);
     assert.match(dummy, /person\?\.Stagger\(\)/);
+    assert.match(dummy, /KitBag\.AddLoot\("road-spoils"/);
+    assert.match(dummy, /who \+ " down\."/);
     assert.match(hostile, /person\?\.Slash\(\)/);
     assert.match(feel, /person\?\.Hurt\(\)/);
   });

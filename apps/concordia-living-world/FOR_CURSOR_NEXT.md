@@ -12,23 +12,22 @@ The Elder Scrolls half: body + other minds *and* a dangerous, findable world.
 
 ## Do not Ring-tour next
 
-A 2026-09-14 +Z snap to 222 kept `you=Hub` · `clock=Hub` and froze hour at 17.81 — that execute_code never Ticked. A bare `transform.position =` is not a walk. Kill HP went negative; spoils sat on the berm (~13m) and Hostile stayed enabled.
+A 2026-09-14 +Z **position-step** to 222 kept `you=Hub` · `clock=Hub` and froze hour at 17.81 — execute_code never Ticked. A one-shot `CharacterController.Move` stuck at z≈−7 because Concordia stands on the origin +Z axis. `Stand(222)` is a warp. Do not cite it as receive.
 
-**Present receive is the gate.** No Ring tour until `LandLine` shows you+clock off Hub around ~220 after a frame or `Stand()`.
+**Present receive is the gate.** No Ring tour until a Play-frame walk (`WalkBearing` / WASD) shows `LandLine` land·you·clock off Hub around ~220.
 
-## This pass shipped (partial)
+## This pass
 
-- `ReceiveHere` SoftEnters `RegionAt` before chunk Ensure; the **body** calls it after Move; `Stand(pos)` receives without waiting on Update
-- `player.LandLine` → `land · you · clock`
-- Road death: Hostile off, renderer refresh-hide, spoils at the walker's feet
-- Berm signs + HUD `NearLine`
-- LivingBody toast `You are hungry.` when NeedLine first appears
-- Mid-ring dressing stays
+- Spawn `(5.4, 0, -12)` + `OnSunderingLane` so +Z does not hit Concordia at `(0, −6.4)`
+- `WalkBearing` drives the same `cc.Move` path as WASD (world +Z = Sundering)
+- `LandLine` includes hungry / pack when those are true
+- Road death: Hostile off, `SetActive(false)`, `KitBag.AddLoot("road-spoils")`, crate at feet
+- `RoadWorld.NoticeKill` — nearest Watch (Kest) saw them fall; feed `road` + `gossip`
 
-## Still TARGET
+## Still TARGET until a walked session reports it
 
-- Present receive **on foot** at ~220
-- Fight that feels won: get hit, kill stays dead, E spoils into the pack
+- Present receive **on foot** at ~220 (code is ready; play is the proof)
+- Get hit on the road, then the kill/pack/Kest chain in one outing
 - Delve as an afternoon
 - Hail that can refuse / escalate / forgive
 - NPC lives *inside* Presents
@@ -40,7 +39,8 @@ A 2026-09-14 +Z snap to 222 kept `you=Hub` · `clock=Hub` and froze hour at 17.8
 ## Mac 16GB Play
 
 1. Shed RAM then Play Hub Now.
-2. Probe: `ConcordiaPlayer.Live.Stand(new Vector3(0f, 1f, 222f))` then `LandLine`. Do not only set `transform.position`.
-3. As a person: plaza → readable sign → kill/spoils at your feet → Present `LandLine` Fantasy → home.
+2. Plaza: `LandLine` should be Hub. Then `WalkBearing(Vector3.forward, 90f)` — wait on Play frames, do not teleport. At z≈220 expect `land Fantasy · you Fantasy · clock Fantasy` and *You left Hub for The Sundering.*
+3. Kill Marrow: toast `Marrow down`, pack has road spoils, Kest/feed saw it.
+4. WASD +Z is the native retest. Same path as WalkBearing.
 
 Do not drive play via Coplay MCP. Do not invent HP. Do not `Thread.Sleep` on `/unity-ws` from execute_code.

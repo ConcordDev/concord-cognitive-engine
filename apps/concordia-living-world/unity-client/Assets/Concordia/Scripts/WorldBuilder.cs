@@ -272,6 +272,7 @@ namespace Concordia
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
+                if (Canon.OnSunderingLane(p)) continue;
                 if (Canon.InArena(p)) continue;
                 var look = Appearance.Random(1100 + i * 17);
                 look.displayName = i % 7 == 0 ? "Petitioner" : i % 5 == 0 ? "Merchant" : "Citizen";
@@ -287,6 +288,7 @@ namespace Concordia
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 var side = Vector3.Cross(Vector3.up, dir).normalized;
                 var p = dir * 26f + side * 5.2f;
+                if (Canon.OnSunderingLane(p)) p += side * 3.4f;
                 var look = Appearance.Random(2200 + i * 31);
                 look.outfit = i % 6;
                 var go = ModularPerson.SpawnNpc(root, p, -g.angle * Mathf.Rad2Deg + 180f, look, false);

@@ -65,12 +65,23 @@ namespace Concordia
         /// <summary>Past the gate mouth the Court ends. Flower Law does not follow the road.</summary>
         public const float HubLawRadius = 42f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
-        public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
+        /// <summary>
+        /// East of the Founding Day axis. Concordia stands at (0, −6.4); a
+        /// +Z stride from (0, −11) hits her at z≈−7 (QA 2026-09-14). This
+        /// spawn keeps the Sundering bearing a walk, not a collision.
+        /// </summary>
+        public static readonly Vector3 Spawn = new Vector3(5.4f, 0f, -12f);
         /// <summary>
         /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
         /// and CharacterController depenetration launched the hero onto roofs.
         /// </summary>
         public static readonly Vector3 SteelSpawn = new Vector3(0f, 0.12f, -8f);
+
+        /// <summary>
+        /// Clear +Z from spawn so WASD / a north stride can leave the Court.
+        /// </summary>
+        public static bool OnSunderingLane(Vector3 p) =>
+            Mathf.Abs(p.x - Spawn.x) < 2.6f && p.z > Spawn.z - 1.5f && p.z < WallRadius + 8f;
 
         /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one
