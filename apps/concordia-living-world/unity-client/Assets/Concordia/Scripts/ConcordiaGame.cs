@@ -246,6 +246,8 @@ namespace Concordia
                 }
             }
             if (nearGate) prompt = nearGate.Prompt;
+            if (string.IsNullOrEmpty(prompt) && !string.IsNullOrEmpty(RoadWorld.NearLine))
+                prompt = RoadWorld.NearLine;
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
         }

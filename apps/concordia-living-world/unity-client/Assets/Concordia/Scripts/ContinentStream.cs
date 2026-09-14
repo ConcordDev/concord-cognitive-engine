@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -94,28 +95,47 @@ namespace Concordia
 
         public void Tick(Vector3 player)
         {
-            foreach (var id in MegaworldMap.All)
-            {
-                if (id == WorldId.Hub) continue;
-                var d = Vector3.Distance(player, MegaworldMap.Present(id));
-                var lod = LodOf(d);
-                if (lod >= 2) Ensure(id, lod);
-                else if (lod == 1) EnsureImpostor(id);
-                else Release(id);
-            }
-            // Hub Ring of 8 stays. Travel to Present (~220m) used to
-            // Release Hub past HubKeepM and leave one return WorldGate.
-            Ensure(WorldId.Hub);
-            if (!_roadLife && continent)
-            {
-                MakeWilderness();
-                _roadLife = true;
-            }
-
+            // Law of the land first. Chunk Ensure / wilderness seed must not
+            // swallow SoftEnter — a walked Present used to stay Hub in
+            // world/clock while RegionAt was already Fantasy.
             var next = Canon.InHubCourt(player)
                 ? WorldId.Hub
                 : MegaworldMap.RegionAt(player);
             SoftEnter(next);
+            RoadWorld.TickNear(player);
+
+            foreach (var id in MegaworldMap.All)
+            {
+                if (id == WorldId.Hub) continue;
+                try
+                {
+                    var d = Vector3.Distance(player, MegaworldMap.Present(id));
+                    var lod = LodOf(d);
+                    if (lod >= 2) Ensure(id, lod);
+                    else if (lod == 1) EnsureImpostor(id);
+                    else Release(id);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
+            // Hub Ring of 8 stays. Travel to Present (~220m) used to
+            // Release Hub past HubKeepM and leave one return WorldGate.
+            try { Ensure(WorldId.Hub); }
+            catch (Exception e) { Debug.LogException(e); }
+            if (!_roadLife && continent)
+            {
+                try
+                {
+                    MakeWilderness();
+                    _roadLife = true;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogException(e);
+                }
+            }
         }
 
         /// <summary>

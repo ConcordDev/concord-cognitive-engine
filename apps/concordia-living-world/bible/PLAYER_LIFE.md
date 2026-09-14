@@ -52,17 +52,29 @@ Otherwise agents are spectators with opinions and humans are the only ones who g
 | Beat | What is true |
 |---|---|
 | Flower Law | Plaza only (`Canon.HubLawRadius` 42m). Arena always steel. Overland Hub is live steel while `WorldClock` is still Hub. |
-| Crossing a law | `ContinentStream.LateUpdate` SoftEnters `MegaworldMap.RegionAt`, not `Toward`. Mid-ring stays Hub-overland (steel on, sky still Court) until you are inside `ArriveM` of a civilization Present. Then sky, kit, title, and nearby `NpcLife` actually receive you. ConcordiaGame still Ticks; it no longer skips the land because the creator overlay is open. |
-| Journey memory | Real region change stamps `WorldClock.LastEvent` (left / crossed / came home). Weather / day-roll / pack-thinned cannot overwrite a journey line. Talk still appends “They heard: …”. Hub return toasts that line when someone is near. |
-| Body | `LivingBody` MonoBehaviour on the hero (and a separate instance on `AgentMotor`). Hunger + fatigue from the same hour rate as `WorldClock` (`dt * 0.08`). Morning without food starts hungry (`SyncToClock`). Sprint costs fatigue. Climb (hold Space against a wall collider) costs fatigue + stamina. Speed falls when hungry/tired. Words on the HUD after the vitals panel (“hungry” / “tired”), not fabricated stats. `CookStation.Use` eats a real gathered meal into that body. |
-| Crowd initiates | Nearby `NpcLife` can hail the player (not only each other). `GuestNpc.hailed` changes the E prompt. Answering bumps `Bonds`. |
-| Mid-ring world | `RoadWorld` seeds every Ring road: berm signs that read as wayfinding (`this way The Sundering · Nm · steel ahead`), a wreck on the berm, a watcher or bandit that uses `Hostile` + real HP (gym dummy does **not** revive them), and LeanPlay-capped roadside delves with a chest and a boss. Travelers are named roles (Iron Warden, Scout, Grove merchant, …) on Sundering first, not generic “Traveler” on Cyber/Ruins only. LeanPlay stays thin (`RoadWalkers` 2, `RoadThreats` 4, `RoadDelves` 2). Not invented towns. |
-| Whole Ring | Gates remain Crucible, Dawn, Crime, Frontier, Tunya, Sundering, Ruins, Cyber. `RoadWorld` dresses all eight roads. Present receive is LIVE. “Alive city with occupations inside each Present” is still TARGET for a Ring tour to verify — destinations exist; native-feeling streets are not claimed from a Fantasy-only walk. |
-| AgentBody P0 | CharacterId + `AgentMotor` + Flower Law. MCP is still devtools only. Kernel ATS ticks remain P1 (`AFFECT.md`). |
+| Crossing a law | `ContinentStream.Tick` SoftEnters `MegaworldMap.RegionAt` **before** chunk `Ensure` / wilderness seed (a walked Present used to stay Hub in world/clock while `RegionAt` was already Fantasy). `LateUpdate` still Ticks so the creator overlay cannot skip the land. Mid-ring stays Hub-overland until inside `ArriveM` (planar XZ). Then sky, kit, title, and nearby `NpcLife` receive you. F8 DebugHud prints `land · you · clock` so a diverge cannot hide. |
+| Journey memory | Real region change stamps `WorldClock.LastEvent` (left / crossed / came home). Weather / day-roll / pack-thinned cannot overwrite a journey line. A **persisted** “You came home from The Sundering.” is last trip’s residue — it is not proof this walk received you. |
+| Body | `LivingBody` is on the hero (`OnEnable` `AddComponent`). The lived miss was the **word**, not the component: NeedLine hungry was 0.28 while spawn hunger sat ~0.16. Hungry now reads at 0.18; `SyncToClock` from 5.5h so Hour 7.2 is already hungry. Climb / cook still write the same meters. |
+| Crowd initiates | Nearby `NpcLife` can hail the player (not only each other). `GuestNpc.hailed` changes the E prompt. Answering bumps `Bonds`. Hail that can refuse / escalate / forgive is still TARGET. |
+| Mid-ring world | `RoadWorld` seeds every Ring road: wreck, watcher or bandit, LeanPlay-capped roadside delve, named travelers (Kest / Rill first). Berm signs billboard and print `this way The Sundering · Nm · steel ahead` on the HUD within 14m (`NearLine`) — mute `Sign_*` props were the lived miss. Road hostiles keep `TrainingDummy` as the HP vessel; `KernelAuthored` is false so `HitScan` applies local HP and `GuestLabel` toasts a person, not the gym type. Dead bodies stay dead (`Gym` is the Court mannequin only). Kill drops spoils. |
+| Whole Ring | Gates remain Crucible, Dawn, Crime, Frontier, Tunya, Sundering, Ruins, Cyber. `RoadWorld` dresses all eight roads. That is berm grammar, **not** eight native cities. Present receive on a *walked* day is the gate; a Ring tour while world/clock stay Hub is copy-paste berms. |
+| AgentBody P0 | CharacterId + `AgentMotor` + Flower Law. `Hunt` now `Hit`s local road hostiles (kernel only if `KernelAuthored`). MCP is still devtools only. Kernel ATS ticks remain P1 (`AFFECT.md`). |
 
 `Toward` still exists. It is bearing (signs, compass), not the law of the land you are standing in.
 
 ## TARGET (native, not visitor)
+
+Lived Sundering walk (plaza → ~82m steel → ~220m still Hub): the road can go wrong. The day still cannot fully receive you, embody you, or send you home changed with a fight that feels won and a city that knows who it is. **Present receive is the gate.**
+
+1. **LivingBody on the hero** — hungry / tired / climb / cook changing *you* (component LIVE; felt day still TARGET until a native walk reports the word without F8).
+2. **Present receive on every Ring road** — sky, kit, people notice, journey stamp when the land takes you. SoftEnter-first is the code fix; Play on foot is the proof. Do not HUD-title `RegionAt` while `player.world` stays Hub.
+3. **Real combat feel** — approach, get hit, kill stays dead, spoils in the pack. No gym toast on a road kill. No T-poses in a chase. `TrainingDummy` remains the HP vessel on purpose; presentation must not smell like the Arena.
+4. **Delve as an afternoon** — enter the camp cache, boss fight, loot that matters when you come home (not only props on the berm).
+5. **Hail that can refuse / escalate / forgive** — bonds that change the room.
+6. **NPC lives inside Presents** — occupations / skills / styles / powers that match role *in the city*, not only Court nameplates + two road jobs.
+7. **Ring tour as native cities** — Cyber / Frontier / Ruins / Tunya / Crime / Dawn / Crucible each feel active. **Not next** until Present receive lands on a walked day.
+8. **Agents as the same day** — eat, climb, fight, take sides without a human puppet string.
+9. **Deeper wild** — fauna, weather stakes, multi-room procedural delves, bosses that aren’t only roadside LeanPlay caps.
 
 ### Wilderness that pushes back
 
@@ -91,7 +103,7 @@ Each world readable on the road. Active when you arrive. NPCs with occupations, 
 - Hero appearance is a history, not a stand-in outfit (`AppearanceStore` is LIVE; biography is not).
 - Crowd density on a full-RAM box; LeanPlay on ≤16GB Macs stays thin on purpose (`ConcordiaHost`).
 - Agents eat, climb, hail, fight, and take sides under the same rules without a human at the keyboard.
-- A lived Ring tour (one afternoon per road) still has to report which Presents feel dead vs alive. Code seeds all eight; play is the proof.
+- A lived Ring tour (one afternoon per road) still has to report which Presents feel dead vs alive. **Do not run it while world/clock stay Hub.** Code seeds all eight; receive is the gate; play is the proof.
 
 ## Honest gaps (do not paper over)
 

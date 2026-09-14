@@ -70,6 +70,13 @@ namespace Concordia
         /// Civilization whose Present actually contains the player.
         /// Mid-ring returns Hub — Toward is bearing, not the law underfoot.
         /// </summary>
+        static float PlanarSqr(Vector3 a, Vector3 b)
+        {
+            var dx = a.x - b.x;
+            var dz = a.z - b.z;
+            return dx * dx + dz * dz;
+        }
+
         public static WorldId RegionAt(Vector3 present)
         {
             WorldId best = WorldId.Hub;
@@ -77,7 +84,7 @@ namespace Concordia
             foreach (var id in All)
             {
                 if (id == WorldId.Hub) continue;
-                var d = (present - Present(id)).sqrMagnitude;
+                var d = PlanarSqr(present, Present(id));
                 if (d < bestD) { bestD = d; best = id; }
             }
             return best;

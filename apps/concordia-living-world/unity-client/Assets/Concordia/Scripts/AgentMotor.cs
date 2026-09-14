@@ -91,9 +91,12 @@ namespace Concordia
             _swingAt = Time.time + (_stance == "aggressive" ? 0.55f : 0.85f);
             _body.Person?.Slash();
             var dummy = _engage.GetComponent<TrainingDummy>() ?? _engage.GetComponentInParent<TrainingDummy>();
+            if (!dummy) return;
             var client = ConcordClient.Live;
-            if (client && client.Connected && dummy)
+            if (client && client.Connected && dummy.KernelAuthored)
                 _ = client.SendAttack(dummy.name, 14f, 2.4f, "sword", transform.position.x, transform.position.z);
+            else
+                dummy.Hit(14f, world);
         }
 
         void WalkTo(Vector3 dest, float speed)

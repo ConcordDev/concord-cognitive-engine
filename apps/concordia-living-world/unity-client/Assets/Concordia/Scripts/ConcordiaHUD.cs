@@ -258,16 +258,25 @@ namespace Concordia
             bool quiet = QuietExplore && !FocusHeld();
             if (quiet)
             {
+                float qy = 34f;
                 if (!string.IsNullOrEmpty(need))
                 {
                     GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
-                    GUI.Label(new Rect(54, 34, 230, 14), need, _small);
+                    GUI.Label(new Rect(54, qy, 230, 14), need, _small);
+                    GUI.color = Color.white;
+                    qy = 48f;
+                }
+                if (!string.IsNullOrEmpty(RoadWorld.NearLine))
+                {
+                    GUI.color = new Color(0.86f, 0.78f, 0.62f, 0.95f);
+                    GUI.Label(new Rect(54, qy, 360, 14), RoadWorld.NearLine, _small);
                     GUI.color = Color.white;
                 }
                 return;
             }
             float extra = !string.IsNullOrEmpty(need) ? 16 : 0;
-            float vh = DebugHud ? 124 : (city != null ? 52 : 36) + extra;
+            if (!string.IsNullOrEmpty(RoadWorld.NearLine) && !DebugHud) extra += 16;
+            float vh = DebugHud ? 140 : (city != null ? 52 : 36) + extra;
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
             GUI.DrawTexture(new Rect(22, 28, 268, vh), _white);
             GUI.color = Color.white;
@@ -284,6 +293,13 @@ namespace Concordia
                 GUI.color = new Color(0.92f, 0.78f, 0.55f, 0.95f);
                 GUI.Label(new Rect(54, ny, 230, 14), need, _small);
                 GUI.color = Color.white;
+                ny += 16;
+            }
+            if (!DebugHud && !string.IsNullOrEmpty(RoadWorld.NearLine))
+            {
+                GUI.color = new Color(0.86f, 0.78f, 0.62f, 0.95f);
+                GUI.Label(new Rect(54, ny, 230, 14), RoadWorld.NearLine, _small);
+                GUI.color = Color.white;
             }
 
             if (!DebugHud) return;
@@ -293,8 +309,12 @@ namespace Concordia
                 + "  ·  " + SkillLattice.HudLine(), _small);
             GUI.Label(new Rect(32, 86 + extra, 250, 16), WorldClock.HudClock()
                 + (string.IsNullOrEmpty(ConcordClient.HudLine) ? "" : "  ·  " + ConcordClient.HudLine), _small);
-            var field = WorldField.HudLine(player.world, player.transform.position);
             GUI.Label(new Rect(32, 102 + extra, 250, 16),
+                "land " + MegaworldMap.RegionAt(player.transform.position)
+                + " · you " + player.world
+                + " · clock " + WorldClock.World, _small);
+            var field = WorldField.HudLine(player.world, player.transform.position);
+            GUI.Label(new Rect(32, 118 + extra, 250, 16),
                 !string.IsNullOrEmpty(field) ? field
                 : !string.IsNullOrEmpty(WorldClock.NearbyAct) ? WorldClock.NearbyAct
                 : HubObjectives.Line(), _small);
@@ -609,11 +629,13 @@ namespace Concordia
 
         void Prompt(float w, float h)
         {
-            if (string.IsNullOrEmpty(player.prompt)) return;
+            var line = player.prompt;
+            if (string.IsNullOrEmpty(line)) line = RoadWorld.NearLine;
+            if (string.IsNullOrEmpty(line)) return;
             GUI.color = new Color(0f, 0f, 0f, 0.5f);
             GUI.DrawTexture(new Rect(w * 0.5f - 240, h - 92, 480, 36), _white);
             GUI.color = Color.white;
-            GUI.Label(new Rect(w * 0.5f - 230, h - 90, 460, 32), player.prompt, _prompt);
+            GUI.Label(new Rect(w * 0.5f - 230, h - 90, 460, 32), line, _prompt);
         }
 
         void Toast(float w)
@@ -685,7 +707,7 @@ namespace Concordia
             bool party = !string.IsNullOrEmpty(ConcordClient.PartyLine)
                 && ConcordClient.PartyLine != "PARTY  ·  you";
             if (string.IsNullOrEmpty(run) && !party) return;
-            float y = DebugHud ? 142f : 70f;
+            float y = DebugHud ? 176f : 70f;
             float extra = string.IsNullOrEmpty(run) ? 0f : 18f;
             GUI.color = new Color(0f, 0f, 0f, 0.4f);
             GUI.DrawTexture(new Rect(22, y, 268, 22 + extra), _white);

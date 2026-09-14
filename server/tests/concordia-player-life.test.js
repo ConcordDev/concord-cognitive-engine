@@ -19,8 +19,13 @@ describe("Concordia player life — a body, a day, other minds", () => {
     const tick = stream.slice(stream.indexOf("public void Tick"), stream.indexOf("public void Teleport"));
     assert.match(map, /ArriveM = 68f/);
     assert.match(map, /static WorldId RegionAt\(/);
+    assert.match(map, /static float PlanarSqr\(/);
     assert.match(tick, /MegaworldMap\.RegionAt/);
     assert.doesNotMatch(tick, /SoftEnter\(MegaworldMap\.Toward/);
+    const soft = tick.indexOf("SoftEnter(next)");
+    const ensure = tick.indexOf("foreach (var id in MegaworldMap.All)");
+    assert.ok(soft >= 0 && ensure >= 0 && soft < ensure, "SoftEnter must run before chunk Ensure");
+    assert.match(tick, /RoadWorld\.TickNear/);
     assert.match(map, /static WorldId Toward\(/);
     assert.match(stream, /ReceiveTraveler\(/);
     assert.match(stream, /You left Hub for/);
@@ -46,6 +51,8 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(body, /BindHero/);
     assert.match(body, /dt \* 0\.08f/);
     assert.match(body, /NeedLine/);
+    assert.match(body, /Hunger >= 0\.18f/);
+    assert.match(body, /hour - 5\.5f/);
     assert.match(body, /SyncToClock/);
     assert.match(player, /AddComponent<LivingBody>/);
     assert.match(player, /LivingBody\.Hero\.Tick/);
@@ -58,6 +65,9 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(clock, /JourneyLine/);
     assert.match(clock, /!JourneyLine\(LastEvent\)/);
     assert.match(hud, /body \? body\.NeedLine/);
+    assert.match(hud, /land /);
+    assert.match(hud, /MegaworldMap\.RegionAt/);
+    assert.match(hud, /clock /);
   });
 
   it("crowd can hail the player; road walkers exist", () => {
@@ -88,6 +98,7 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(sheet, /visitor with cheats/);
     assert.match(sheet, /RegionAt/);
     assert.match(sheet, /LivingBody/);
+    assert.match(sheet, /Present receive is the gate/);
     assert.match(readme, /PLAYER_LIFE/);
   });
 });

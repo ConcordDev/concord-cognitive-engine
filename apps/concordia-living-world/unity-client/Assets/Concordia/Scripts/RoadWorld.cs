@@ -28,6 +28,39 @@ namespace Concordia
             return "this way " + dest + "\n" + metres + "m · " + hint;
         }
 
+        /// <summary>Readable line when a berm sign is within 14m. HUD, not a nameplate storm.</summary>
+        public static string NearLine;
+
+        public static void TickNear(Vector3 player)
+        {
+            NearLine = null;
+            var stream = ContinentStream.Live;
+            var hold = stream && stream.continent ? stream.continent.Find("ContinentWilderness") : null;
+            if (!hold) return;
+            float best = 14f * 14f;
+            for (int i = 0; i < hold.childCount; i++)
+            {
+                var child = hold.GetChild(i);
+                if (!child || !child.name.StartsWith("Sign_")) continue;
+                var to = player - child.position;
+                to.y = 0f;
+                var d2 = to.sqrMagnitude;
+                if (d2 > 0.04f)
+                    child.rotation = Quaternion.LookRotation(to);
+                var tm = child.GetComponent<TextMesh>();
+                if (tm)
+                {
+                    tm.fontSize = 52;
+                    tm.characterSize = 0.16f;
+                    if (d2 < best && !string.IsNullOrEmpty(tm.text))
+                    {
+                        best = d2;
+                        NearLine = tm.text.Replace('\n', ' ');
+                    }
+                }
+            }
+        }
+
         public static Role RoleFor(WorldId id, int salt)
         {
             switch (id)
@@ -85,7 +118,12 @@ namespace Concordia
                 existing.position = at + Vector3.up * 2.05f;
                 existing.rotation = Quaternion.LookRotation(-right, Vector3.up);
                 var tm = existing.GetComponent<TextMesh>();
-                if (tm) tm.text = WayText(g, leftM);
+                if (tm)
+                {
+                    tm.text = WayText(g, leftM);
+                    tm.fontSize = 52;
+                    tm.characterSize = 0.16f;
+                }
                 return;
             }
             var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
@@ -96,11 +134,11 @@ namespace Concordia
             label.transform.position = at + Vector3.up * 2.05f;
             label.transform.rotation = Quaternion.LookRotation(-right, Vector3.up);
             label.text = WayText(g, leftM);
-            label.fontSize = 42;
-            label.characterSize = 0.09f;
+            label.fontSize = 52;
+            label.characterSize = 0.16f;
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
-            label.color = Color.Lerp(g.color, Color.white, 0.35f);
+            label.color = Color.Lerp(g.color, Color.white, 0.55f);
             HubLook.DressTextMesh(label);
         }
 
@@ -112,6 +150,8 @@ namespace Concordia
                 if (!child || !child.name.StartsWith("Sign_")) continue;
                 var tm = child.GetComponent<TextMesh>();
                 if (!tm) continue;
+                tm.fontSize = 52;
+                tm.characterSize = 0.16f;
                 var g = GateFromSignName(child.name);
                 if (g == null) continue;
                 var dest = MegaworldMap.Present(g.world);

@@ -12,6 +12,38 @@ namespace Concordia
         public string KernelId => string.IsNullOrEmpty(kernelTargetId) ? "ArenaDummy" : kernelTargetId;
         /// <summary>Court gym only. Road hostiles and fauna stay dead.</summary>
         public bool Gym => !living && GetComponent<Hostile>() == null && GetComponent<FaunaLife>() == null;
+        /// <summary>
+        /// Kernel owns the Arena dummy and dungeon bosses. Road hostiles are
+        /// Unity-authored (`road-*`) — kernel reject used to eat the kill.
+        /// </summary>
+        public bool KernelAuthored
+        {
+            get
+            {
+                if (living) return false;
+                if (GetComponent<Hostile>()) return false;
+                if (GetComponent<FaunaLife>()) return false;
+                if (!string.IsNullOrEmpty(kernelTargetId) && kernelTargetId.StartsWith("road-"))
+                    return false;
+                return true;
+            }
+        }
+        /// <summary>Toast a person, not the HP vessel type name.</summary>
+        public string GuestLabel
+        {
+            get
+            {
+                var guest = GetComponent<GuestNpc>() ?? GetComponentInParent<GuestNpc>();
+                if (guest != null && guest.def != null && !string.IsNullOrEmpty(guest.def.name))
+                    return guest.def.name;
+                if (name.StartsWith("Bandit_")) return "Bandit";
+                if (name.StartsWith("DelveBoss_")) return "Camp boss";
+                if (name.StartsWith("Watcher_")) return "Watcher";
+                if (name.StartsWith("Fauna_")) return "Beast";
+                if (Gym) return "Dummy";
+                return name;
+            }
+        }
 
         public void BindId(string id)
         {

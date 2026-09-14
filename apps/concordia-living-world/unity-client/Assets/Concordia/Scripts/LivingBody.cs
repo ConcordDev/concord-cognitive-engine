@@ -24,8 +24,8 @@ namespace Concordia
         {
             get
             {
-                bool hungry = Hunger >= 0.28f;
-                bool tired = Fatigue >= 0.42f;
+                bool hungry = Hunger >= 0.18f;
+                bool tired = Fatigue >= 0.32f;
                 if (hungry && tired) return "hungry · tired";
                 if (hungry) return "hungry";
                 if (tired) return "tired";
@@ -59,15 +59,19 @@ namespace Concordia
         }
 
         /// <summary>
-        /// Morning without food is hunger, not a zero meter. Hour 8.5 → ~0.28.
+        /// Morning without food is hunger, not a zero meter. Hour 7.2 → ~0.31.
+        /// A plaza-to-wreck walk should already read hungry.
         /// </summary>
         public void SyncToClock(float hour)
         {
+            float sinceBreakfast = hour - 5.5f;
+            if (sinceBreakfast < 0f) sinceBreakfast += 24f;
+            if (sinceBreakfast > 16f) sinceBreakfast = 0f;
+            Hunger = Mathf.Max(Hunger, Mathf.Clamp01(sinceBreakfast * 0.18f));
             float awake = hour - 6f;
             if (awake < 0f) awake += 24f;
             if (awake > 16f) awake = 0f;
-            Hunger = Mathf.Max(Hunger, Mathf.Clamp01(awake * 0.12f));
-            Fatigue = Mathf.Max(Fatigue, Mathf.Clamp01(awake * 0.04f));
+            Fatigue = Mathf.Max(Fatigue, Mathf.Clamp01(awake * 0.06f));
         }
 
         public void Tick(float dt, bool sprinting)

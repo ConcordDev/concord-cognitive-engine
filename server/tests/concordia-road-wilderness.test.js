@@ -22,6 +22,10 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(road, /this way /);
     assert.match(road, /steel ahead/);
     assert.match(road, /Present close/);
+    assert.match(road, /TickNear\(/);
+    assert.match(road, /NearLine/);
+    assert.match(road, /characterSize = 0\.16f/);
+    assert.match(stream, /RoadWorld\.TickNear/);
     assert.match(road, /Wreck_/);
     assert.match(road, /Watcher_/);
     assert.match(road, /Delve_/);
@@ -55,6 +59,8 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     const hostile = src("Hostile.cs");
     const clock = src("WorldBook.cs");
     assert.match(dummy, /bool Gym =>/);
+    assert.match(dummy, /KernelAuthored/);
+    assert.match(dummy, /GuestLabel/);
     assert.match(dummy, /if \(!Gym\)/);
     assert.match(dummy, /RoadWorld\.DropSpoils/);
     assert.match(dummy, /BindId\(/);
@@ -75,5 +81,6 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(sheet, /RoadWorld/);
     assert.match(sheet, /Training Dummy in the Arena is a gym/);
     assert.match(sheet, /this way The Sundering/);
+    assert.match(sheet, /Do not run it while world\/clock stay Hub/);
   });
 });

@@ -33,6 +33,11 @@ describe("Concordia combat feel — gait, delayed hits, dummy flinch", () => {
       player.slice(player.indexOf("void TryAttack"), player.indexOf("void TrySpecial")),
       /HitScan\(heavy, 1f\)/,
     );
+    assert.match(player, /dummy\.KernelAuthored/);
+    assert.match(player, /dummy\.GuestLabel/);
+    const motor = src("AgentMotor.cs");
+    assert.match(motor, /dummy\.KernelAuthored/);
+    assert.match(motor, /dummy\.Hit\(/);
   });
 
   it("authored gait walks below sprint and consumes Hurt on hips", () => {

@@ -478,22 +478,26 @@ namespace Concordia
             if (boss != null && client && client.Connected && !string.IsNullOrEmpty(client.DungeonInstanceId))
             {
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendDungeonHit(dmg);
                 return true;
             }
-            if (client && client.Connected)
+            if (client && client.Connected && dummy.KernelAuthored)
             {
-                // Kernel resolves HP. Presentation already played the swing.
+                // Kernel resolves gym / dungeon HP. Road hostiles are local.
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon(), transform.position.x, transform.position.z);
                 return true;
             }
             dmg = WorldField.ScaleDamage(dmg, world, transform.position, "athletics");
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
-            Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            var label = dummy.GuestLabel;
+            if (dummy.KernelAuthored)
+                Toast(label + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            else
+                Toast(label + (dummy.hp > 0f ? "  " + Mathf.Ceil(dummy.hp) : "  down"));
             return true;
         }
 
@@ -514,7 +518,7 @@ namespace Concordia
             }
             if (dummy) dummy.ApplyServerHit(damage, world);
             HubObjectives.NoteArenaHit();
-            if (dummy) Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp));
+            if (dummy) Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)
