@@ -10,6 +10,13 @@ namespace Concordia
         [SerializeField] string kernelTargetId = "ArenaDummy";
         /// <summary>Kernel combat id. GameObject name is presentation-only (L4).</summary>
         public string KernelId => string.IsNullOrEmpty(kernelTargetId) ? "ArenaDummy" : kernelTargetId;
+        /// <summary>Court gym only. Road hostiles and fauna stay dead.</summary>
+        public bool Gym => !living && GetComponent<Hostile>() == null && GetComponent<FaunaLife>() == null;
+
+        public void BindId(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) kernelTargetId = id;
+        }
         float _reviveAt;
         Vector3 _home;
         Vector3 _scale0;
@@ -88,6 +95,20 @@ namespace Concordia
                 return;
             }
             QuestLog.NoteDefeat(name);
+            if (!Gym)
+            {
+                if (GetComponent<FaunaLife>() == null)
+                    WorldClock.NoteKill(KernelId);
+                RoadWorld.DropSpoils(transform);
+                if (world == WorldId.Ruins || world == WorldId.Crucible)
+                {
+                    unburied = true;
+                    _reviveAt = Time.time + 7f;
+                    SetVisible(false);
+                }
+                else SetVisible(false);
+                return;
+            }
             if (world == WorldId.Ruins || world == WorldId.Crucible)
             {
                 unburied = true;

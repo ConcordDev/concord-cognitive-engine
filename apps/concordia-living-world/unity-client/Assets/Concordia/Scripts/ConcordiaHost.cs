@@ -35,6 +35,10 @@ namespace Concordia
         public static int GateGuards => LeanPlay ? 0 : 2;
         /// <summary>Wander guests on the Ring roads. Thin on purpose — not a fake city.</summary>
         public static int RoadWalkers => LeanPlay ? 2 : 6;
+        /// <summary>Hostiles watching mid-ring roads. Sundering first. Not a fake army.</summary>
+        public static int RoadThreats => LeanPlay ? 4 : 8;
+        /// <summary>Roadside camps with loot and a boss. LeanPlay keeps two.</summary>
+        public static int RoadDelves => LeanPlay ? 2 : 8;
         public static int RealmPeopleCap => LeanPlay ? 8 : 64;
         public static bool BootContinentImpostors => !LeanPlay;
         public static bool AutoSpawnAgentBody => !LeanPlay;

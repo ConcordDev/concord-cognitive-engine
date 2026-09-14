@@ -74,8 +74,12 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(game, /Bonds\.TalkBump/);
     assert.match(game, /if \(!_player\) _player = ConcordiaPlayer.Live/);
     assert.match(host, /RoadWalkers/);
-    assert.match(stream, /SeedRoadLife\(/);
-    assert.match(stream, /ConcordiaHost\.RoadWalkers/);
+    assert.match(stream, /RoadWorld\.Seed\(/);
+    assert.match(stream, /RoadWorld\.PlaceSign\(/);
+    const road = src("RoadWorld.cs");
+    assert.match(road, /RoleFor\(/);
+    assert.match(road, /Iron Warden/);
+    assert.doesNotMatch(road, /displayName = "Traveler"/);
   });
 
   it("bible names the player-life bar", () => {

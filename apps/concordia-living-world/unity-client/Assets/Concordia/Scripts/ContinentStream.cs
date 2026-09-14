@@ -370,59 +370,12 @@ namespace Concordia
                                 new Vector3(1.1f, 0.7f, 0.9f), stone, "Rock_" + g.shortName + "_" + i);
 
                         if (i % 2 != 0) continue;
-                        var mark = p + Vector3.up * 0.08f;
                         var left = Mathf.Max(0f, dest.magnitude - along);
-                        HubLook.Prim(hold, PrimitiveType.Cube, mark + Vector3.up * 0.85f,
-                            new Vector3(0.22f, 1.7f, 0.22f), stone, "Mark_" + g.shortName + "_" + i);
-                        var label = new GameObject("Sign_" + g.shortName + "_" + i).AddComponent<TextMesh>();
-                        label.transform.SetParent(hold, false);
-                        label.transform.position = mark + Vector3.up * 2.05f;
-                        label.transform.rotation = Quaternion.LookRotation(-dir, Vector3.up);
-                        label.text = g.shortName + "  ·  " + Mathf.RoundToInt(left) + "m";
-                        label.fontSize = 36;
-                        label.characterSize = 0.07f;
-                        label.anchor = TextAnchor.MiddleCenter;
-                        label.alignment = TextAlignment.Center;
-                        label.color = Color.Lerp(g.color, Color.white, 0.35f);
-                        HubLook.DressTextMesh(label);
+                        RoadWorld.PlaceSign(hold, g, p, dir, i, left);
                     }
                 }
             }
-            SeedRoadLife(hold);
-        }
-
-        /// <summary>
-        /// A few travelers on the roads. Not towns. LeanPlay keeps this tiny.
-        /// </summary>
-        void SeedRoadLife(Transform hold)
-        {
-            if (hold.Find("Traveler")) return;
-            int n = ConcordiaHost.RoadWalkers;
-            if (n <= 0 || Canon.Gates.Length == 0) return;
-            int count = Mathf.Min(n, Canon.Gates.Length);
-            for (int i = 0; i < count; i++)
-            {
-                var g = Canon.Gates[i];
-                var dest = MegaworldMap.Present(g.world);
-                if (dest.sqrMagnitude < 4f) continue;
-                var dir = dest.normalized;
-                float along = Canon.RingRadius + 28f + (i % 3) * 24f;
-                var p = dir * along + Vector3.up * 0.05f;
-                var look = Appearance.Random(4400 + i * 29);
-                look.displayName = "Traveler";
-                look.outfit = i % 6;
-                var go = ModularPerson.SpawnNpc(hold, p, -g.angle * Mathf.Rad2Deg + 180f, look, true, 14f);
-                var life = go.AddComponent<NpcLife>();
-                life.job = NpcLife.Job.Wander;
-                var guest = go.GetComponent<GuestNpc>() ?? go.AddComponent<GuestNpc>();
-                guest.def = new GuestDef
-                {
-                    id = "road-" + g.shortName + "-" + i,
-                    name = "Traveler",
-                    title = g.shortName + " road",
-                    line = "The Ring is long. They keep walking it."
-                };
-            }
+            RoadWorld.Seed(hold);
         }
 
         static int StemHash(string s, int i)

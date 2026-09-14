@@ -15,6 +15,7 @@ namespace Concordia
         TrainingDummy _body;
         CharacterController _cc;
         FaunaLife _fauna;
+        ModularPerson _person;
         Vector3 _home;
         float _cd;
         float _seen;
@@ -81,6 +82,7 @@ namespace Concordia
             _body = GetComponent<TrainingDummy>() ?? GetComponentInParent<TrainingDummy>();
             _cc = GetComponent<CharacterController>();
             _fauna = GetComponent<FaunaLife>();
+            _person = GetComponentInChildren<ModularPerson>() ?? GetComponent<ModularPerson>();
             _home = transform.position;
             _style = 0.85f + Mathf.Abs(name.GetHashCode() % 40) / 100f;
             speed *= _style;
@@ -192,6 +194,7 @@ namespace Concordia
             else
                 transform.position += dir * speed * Time.deltaTime;
             Face(dir);
+            _person?.SetGait(speed, !_cc || _cc.isGrounded);
         }
 
         void Hold()
@@ -202,6 +205,7 @@ namespace Concordia
             _vel.x = 0f;
             _vel.z = 0f;
             _cc.Move(_vel * Time.deltaTime);
+            _person?.SetGait(0f, _cc.isGrounded);
         }
 
         void Face(Vector3 dir)
