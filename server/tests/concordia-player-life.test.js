@@ -118,10 +118,19 @@ describe("Concordia player life — a body, a day, other minds", () => {
   it("bible names the player-life bar", () => {
     const sheet = readFileSync(join(bible, "PLAYER_LIFE.md"), "utf8");
     const readme = readFileSync(join(bible, "README.md"), "utf8");
+    const next = readFileSync(join(root, "apps/concordia-living-world/FOR_CURSOR_NEXT.md"), "utf8");
     assert.match(sheet, /visitor with cheats/);
     assert.match(sheet, /RegionAt/);
     assert.match(sheet, /LivingBody/);
     assert.match(sheet, /Present receive is the gate/);
+    assert.match(sheet, /affordance class/);
+    assert.match(sheet, /body, tool, place, other mind, clock, economy/);
+    assert.match(sheet, /Editor-step/);
+    assert.match(sheet, /11\.2/);
+    assert.doesNotMatch(sheet, /Spawn is `\(5\.4/);
+    assert.match(next, /11\.2/);
+    assert.match(next, /Foot truth beats Editor-step|foot wins/);
+    assert.match(next, /One collision at a time/);
     assert.match(readme, /PLAYER_LIFE/);
   });
 });

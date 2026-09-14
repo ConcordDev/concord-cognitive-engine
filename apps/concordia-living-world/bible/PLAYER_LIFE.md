@@ -17,6 +17,37 @@ Concordia already has the substrate. What’s missing is **embodiment** so an ag
 
 The Elder Scrolls half of that bar is not optional: **body + other minds *and* a dangerous, findable world.** A road that is only a corridor with rules is still a visitor with cheats.
 
+**Anything physical** is not a named system. It is an **affordance class** that a player can do, and that the world remembers. The classes are body, tool, place, other mind, clock, economy. A bible line, a wire, and a test are not the class. The class ships when it is playable.
+
+### How we judge (ruthless)
+
+- **One walk that takes you, report-only.** The human decides which collision is marquee. The agent is the cold stranger who says whether it landed.
+- **Foot truth beats Editor-step.** When they disagree, the walk wins. Do not cite `EditorApplication.Step`, `Stand`, `dummy.Hit` from range, or a mocked transition as receive or kill.
+- **Protect RAM / Play.** LeanPlay on ≤16GB. Thrash kills judgment; a frozen `Time.time` is not a day.
+- **One collision at a time:** receive → kill as fact → one cascade notice. Parallel Ring work is bait. No tour until receive takes the walker.
+
+### Affordance classes (ship when playable)
+
+| Class | What the player does | Playable when |
+|---|---|---|
+| **body** | Hunger, fatigue, climb, a stride that is yours | A walk *feels* the need (MoveMul, toast / `LandLine` hungry) without a cheat warp |
+| **tool** | Kit, strike, pack | You walk up and strike; spoils land **in the pack**, not only as a crate toast |
+| **place** | Leave Hub for a Present | `LandLine` is `land · you · clock` off Hub **together** on that outing, around ~160–220 on Sundering |
+| **other mind** | Hail, Watch, gossip | Someone notices **because of what you did** (Kest / feed from that kill), not a later unrelated tick |
+| **clock** | Hours, leave / come-home stamp | The hour moves on Play frames; `LastEvent` is **this** outing, not last trip’s residue |
+| **economy** | Spoils, earned CC | The pack still holds the take after the fight; a toast that lies is not economy |
+
+Code that names a class without a walked afternoon has not shipped it.
+
+### One collision (this queue)
+
+1. **Receive** — land · you · clock leave Hub together **on foot** around ~220. Not teleport.
+2. **Kill as fact** — local road fight, HP 0, stays dead, spoils in the pack, toast like Marrow not a gym dummy. `dummy.Hit` from a probe is not melee.
+3. **One cascade** — after *that* kill, something else notices (Kest / gossip). Caused by the kill. Do not hijack a dirty `server/lib/runtime/event-bus.js` to fake the chain.
+4. **Then** Ring tour / hail refuse / delve-as-afternoon.
+
+Until (1) takes the walker, stop.
+
 ---
 
 ## Four laws
@@ -52,7 +83,7 @@ Otherwise agents are spectators with opinions and humans are the only ones who g
 | Beat | What is true |
 |---|---|
 | Flower Law | Plaza only (`Canon.HubLawRadius` 42m). Arena always steel. Overland Hub is live steel while `WorldClock` is still Hub. |
-| Crossing a law | `ReceiveHere` SoftEnters `RegionAt` **before** chunk Ensure. The body calls it after `Move` / `WalkBearing` (same `cc.Move` path as WASD) and on planar drift in `LateUpdate`. A bare `transform.position =` with no Play frame stays Hub — that was the 2026-09-14 position-step sheet (`you=Hub clock=Hub` at z222, hour frozen 17.81). `Stand(222)` is a warp, not a walked day; do not cite it as receive. Spawn is `(5.4, 0, -12)` so +Z does not hit Concordia at `(0, −6.4)` (that collision was z≈−7). Mid-ring stays Hub-overland until planar `ArriveM`. `LandLine` is `land · you · clock` plus hungry/pack when those are true. **No Ring tour until a foot/+Z walk shows land·you·clock off Hub together around ~220.** |
+| Crossing a law | `ReceiveHere` SoftEnters `RegionAt` **before** chunk Ensure. The body calls it after `Move` / `WalkBearing` (same `cc.Move` path as WASD) and on planar drift in `LateUpdate`. A bare `transform.position =` with no Play frame stays Hub — that was the 2026-09-14 position-step sheet (`you=Hub clock=Hub` at z222, hour frozen 17.81). `Stand(222)` is a warp, not a walked day; do not cite it as receive. Spawn is `(11.2, 0, -12)` — east of Concordia `(0, −6.4)` **and** east of the Arena `(0, 18)` r=8. `(0, −11)` hit Concordia at z≈−7; `x=5.4` walked into the Arena dummy. `OnSunderingLane` keeps crowd/stalls/hills off that +Z strip out to 240. Mid-ring stays Hub-overland until planar `ArriveM`. `LandLine` is `land · you · clock` plus hungry/pack when those are true. **No Ring tour until a walk that takes the player shows land·you·clock off Hub together around ~220.** |
 | Journey memory | Real region change stamps `WorldClock.LastEvent` (left / crossed / came home). Weather / day-roll / pack-thinned cannot overwrite a journey line. A **persisted** “You came home from The Sundering.” is last trip’s residue — it is not proof this walk received you. |
 | Body | `LivingBody` is on the hero. NeedLine hungry at 0.18. A persisted evening clock (QA hour 17.81) is Hunger=1 — honest, the world kept its hours. The word is `LandLine` + HUD + a one-shot toast (`You are hungry.`), not a berm TextMesh. |
 | Crowd initiates | Nearby `NpcLife` can hail the player (not only each other). `GuestNpc.hailed` changes the E prompt. Answering bumps `Bonds`. Hail that can refuse / escalate / forgive is still TARGET. |
@@ -64,7 +95,7 @@ Otherwise agents are spectators with opinions and humans are the only ones who g
 
 ## TARGET (native, not visitor)
 
-Lived Sundering walk (plaza → ~82m steel → ~220m still Hub): the road can go wrong. The day still cannot fully receive you, embody you, or send you home changed with a fight that feels won and a city that knows who it is. **Present receive is the gate.**
+Lived Sundering walk (plaza → ~82m steel → receive still unproven on **his** foot): the road can go wrong. A scarred Editor Play at z≈159 did fire `land Fantasy · you Fantasy · clock Fantasy` and *You left Hub for The Sundering.* — then ground-disable, a fall, WalkBearing overshoot, and a come-home stamp overwrote the leave. Probe `dummy.Hit` from ~123m packed spoils and Kest noticed; that is not a road encounter. **Present receive is the gate. Foot truth beats that Play.**
 
 1. **LivingBody on the hero** — hungry / tired / climb / cook changing *you* (component LIVE; felt day still TARGET until a native walk reports the word without F8).
 2. **Present receive on every Ring road** — sky, kit, people notice, journey stamp when the land takes you. SoftEnter-first is the code fix; Play on foot is the proof. Do not HUD-title `RegionAt` while `player.world` stays Hub.
