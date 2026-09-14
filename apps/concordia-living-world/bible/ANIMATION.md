@@ -1,17 +1,21 @@
 # ANIMATION
 
-**Status:** PARTIAL (hero Soldier bind)  
+**Status:** PARTIAL (Biped authored gait is live; Humanoid clips only where the avatar fits)  
 **Authority:** Unity playback · Concord pose intent  
-**Source:** `Soldier.glb`; `SoldierAnimSetup.cs`; `MixamoAvatar.cs`; `ModularPerson.AttachHero`; browser `mixamo-clips.ts`, `anim.ts`
+**Source:** `ModularPerson.cs`; `CombatMotion.cs`; `MixamoAvatar.cs`; `SoldierAnimSetup.cs`; ExplosiveLLC RPG mecanim (Humanoid only)
 
 ## LIVE
 
-The live player uses `ModularPerson.AttachHero`, which prefers `Soldier.glb` and binds `SoldierLocomotion` (Idle/Walk/Run). NPCs still rotate rocketbox / Kenney and keep the procedural gait when the controller is missing. `Slash` fires `Attack` / `Slash` if the controller has the param. Browser Mixamo path is separate.
+Hub hero is **Rocketbox Biped** (`ModularPerson.AttachHero`). Mixamo Soldier stays unused — clay-white, no albedo. Mixamo / Kevin / ExplosiveLLC clips skate on Bip01, so `_clipsFit` is false and **LateUpdate authored gait is the walk**.
+
+Walk 5.2 and sprint 8.1 are different gaits (jog band 4.4–6.4, run 6.2–8.2), not the same sine played faster. Arms lag legs (`phase - 0.42`). `Hurt` / `Land` / `Stagger` move hips and spine on that gait. Strikes use `CombatMotion.Pulse` with three beats so successive hits are not one Euler.
+
+`MixamoAvatar` (Soldier.glb Humanoid) keeps the animator **enabled while airborne** and remaps Speed onto Idle/Walk/Run. ExplosiveLLC `Unarmed-Attack-R1` overlays the Soldier controller when the Attack trigger exists — Humanoid only.
 
 ## TARGET
 
-Gameplay state → animation presents it. Layers/masks. No root-motion stealing locomotion unless Concord says so.
+Gameplay state → animation presents it. Layers/masks. No root-motion stealing locomotion unless Concord says so. Human Melee Animations FREE (store 165785) still not imported.
 
 ## Gap
 
-NPC gait is still often procedural. No IK/cloth. Soldier clips are locomotion-only — jump/hurt stay procedural. Human Melee Animations FREE (store 165785) is on the curated stack in `VISUAL.md` and is not imported yet — Concordia’s combat state machine stays the authoritative layer when those clips land.
+Rocketbox cannot play the owned Humanoid melee pack. That is a skeleton fact, not a missing import. Cloth/IK still absent. Jump/hurt on Mixamo stay procedural overlays.

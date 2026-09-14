@@ -125,6 +125,39 @@ test("collectDirectSubscriptions + collectLiveServerEvents: a synthetic FE subsc
 
 // ── (b) The checker does NOT flag a live one (Trap 1 regression guard) ─────
 
+test("collectLiveServerEvents resolves emitWorldEvent({ event: '…' }) object-literal helpers", () => {
+  const serverDir = makeTempDir("client-event-contract-server-emit-world-");
+  try {
+    writeFile(
+      serverDir,
+      "routes/worlds-mini.js",
+      [
+        "export function emitWorldEvent({ io, emitToWorld: emitFn, worldId, event, payload }) {",
+        "  if (typeof emitFn === 'function') emitFn(worldId, event, payload);",
+        "  else if (io) io.to('world:' + worldId).emit(event, payload);",
+        "}",
+        "export function hit() {",
+        "  emitWorldEvent({ io, emitToWorld, worldId: 'hub', event: 'boss:state', payload: {} });",
+        "  emitWorldEvent({ event: 'boss:phase-enter', payload: {} });",
+        "}",
+        "export function other() {",
+        "  notAnEmitHelper({ event: 'should:not-count' });",
+        "}",
+      ].join("\n"),
+    );
+
+    const live = collectLiveServerEvents(serverDir);
+    assert.ok(live.has("boss:state"), "emitWorldEvent({ event: 'boss:state' }) must resolve live");
+    assert.ok(live.has("boss:phase-enter"), "emitWorldEvent({ event: 'boss:phase-enter' }) must resolve live");
+    assert.ok(
+      !live.has("should:not-count"),
+      "an object { event } passed to a non-emit helper must not count as a live emitter",
+    );
+  } finally {
+    rmDir(serverDir);
+  }
+});
+
 test("collectLiveServerEvents recognizes a _tickRssDomain-indirect event ('retail:update') as LIVE against the real server/ tree", () => {
   const live = collectLiveServerEvents(path.join(REPO_ROOT, "server"));
   assert.ok(
@@ -141,6 +174,15 @@ test("collectLiveServerEvents recognizes a _tickRssDomain-indirect event ('retai
     live.has("legal:update"),
     "'legal:update' is the other _tickRssDomain-indirect name already used as the " +
       "canonical example in server/tests/invariants/realtime-lens-event-liveness.test.js",
+  );
+  assert.ok(
+    live.has("boss:state"),
+    "boss:state is emitted via emitWorldEvent({ event: 'boss:state' }) in routes/worlds.js — " +
+      "the object-literal helper hop this file pins synthetically must also resolve on the real tree",
+  );
+  assert.ok(
+    live.has("boss:phase-enter"),
+    "boss:phase-enter is the other emitWorldEvent object-literal name the HUD + EmergentEventFeed subscribe to",
   );
 });
 

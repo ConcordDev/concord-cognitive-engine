@@ -19,6 +19,11 @@ namespace Concordia
         public float hostility;
         Vector3 _vel;
         float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
+        float _strikeAt, _hitstop, _comboUntil;
+        int _comboBeat;
+        bool _strikeHeavy;
+        float _strikeReach = 1f;
+        string _strikeArt;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
@@ -41,8 +46,17 @@ namespace Concordia
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
         WorldId _fightWorld = (WorldId)(-1);
+        Vector3 _forceWalk = Vector3.forward;
+        float _forceWalkT;
+        Vector3 _recvAt;
 
-        void OnEnable() => Live = this;
+        void OnEnable()
+        {
+            Live = this;
+            var body = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
+            LivingBody.BindHero(body);
+            body.SyncToClock(WorldClock.Hour);
+        }
         void OnDisable() { if (Live == this) Live = null; }
         void Reset() => cc = GetComponent<CharacterController>();
 
@@ -77,6 +91,13 @@ namespace Concordia
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
             var wish = fwd * axes.y + right * axes.x;
+            if (_forceWalkT > 0f)
+            {
+                _forceWalkT -= dt;
+                wish = _forceWalk;
+                sprint = true;
+                speed = 8.1f * style.speedMul;
+            }
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
             if (cc.slopeLimit < 50f) cc.slopeLimit = 50f;
@@ -87,7 +108,18 @@ namespace Concordia
             var grounded = cc.isGrounded;
             if (grounded) _coyote = 0.14f;
             else _coyote -= dt;
-            if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
+            var wall = (cc.collisionFlags & CollisionFlags.Sides) != 0;
+            var climbHeld = !Busy && KeyHeld(KeyCode.Space);
+            var climbing = climbHeld && wall && LivingBody.Hero && LivingBody.Hero.CanClimb && stamina > 8f;
+            if (climbing)
+            {
+                LivingBody.Hero.Climb(dt);
+                stamina -= 22f * dt;
+                _vel.y = 2.6f;
+                _coyote = 0f;
+                grounded = false;
+            }
+            else if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
             {
                 _vel.y = 8.2f;
                 _coyote = 0f;
@@ -113,23 +145,37 @@ namespace Concordia
             if (grounded && !_wasGrounded) person?.Land();
             _wasGrounded = grounded;
             if (grounded && _vel.y < 0) _vel.y = -1.5f;
-            else _vel.y += -22f * dt;
+            else if (!climbing) _vel.y += -22f * dt;
 
-            var air = grounded ? 1f : 0.86f;
-            var move = wish * speed * air;
-            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
-            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
+            var air = grounded ? 1f : (climbing ? 0.55f : 0.86f);
+            if (LivingBody.Hero)
+            {
+                if (sprint && wish.sqrMagnitude > 0.04f)
+                    LivingBody.Hero.Tick(0f, true);
+            }
+            var move = wish * speed * air * (LivingBody.Hero ? LivingBody.Hero.MoveMul : 1f);
+            var accel = grounded ? (sprint ? 14f : 8.2f) : 4.2f;
+            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-accel * dt));
+            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-accel * dt));
+            if (_hitstop > 0f)
+            {
+                _hitstop -= dt;
+                _vel.x *= 0.42f;
+                _vel.z *= 0.42f;
+            }
             cc.Move(_vel * dt);
+            ReceiveLand();
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
             if (planar.sqrMagnitude > 0.2f)
             {
                 _yaw = Mathf.Atan2(planar.x, planar.z);
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-12f * dt));
+                var turn = sprint ? 12f : 7.2f;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-turn * dt));
             }
 
-            cam.sprinting = sprint && planar.magnitude > 4f;
-            cam.inCombat = Time.time < _slashUntil;
+            cam.sprinting = sprint && planar.magnitude > 6.2f;
+            cam.inCombat = Time.time < _slashUntil || _strikeAt > 0f;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
@@ -144,6 +190,16 @@ namespace Concordia
             stamina = Mathf.Min(100, stamina + 18f * dt);
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
             if (world == WorldId.Tunya && planar.magnitude < 0.4f) poise = Mathf.Min(12 * style.poiseMul, poise + 8f * dt);
+
+            if (_strikeAt > 0f && Time.time >= _strikeAt)
+            {
+                _strikeAt = 0f;
+                var connected = HitScan(_strikeHeavy, _strikeReach);
+                if (!string.IsNullOrEmpty(_strikeArt)) SkillLedger.Record(_strikeArt, connected);
+                var feel = GetComponent<CombatFeel>();
+                feel?.Strike(_strikeHeavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+                if (connected) _hitstop = 0.045f;
+            }
 
             if (!Busy && MouseDown(0) && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -162,6 +218,66 @@ namespace Concordia
         string nearPrompt;
 
         public void SetNearPrompt(string p) => nearPrompt = p;
+
+        /// <summary>
+        /// F8-style land/you/clock without needing MegaworldMap in a probe.
+        /// Hungry is a word on this line — not a TextMesh on a berm sign.
+        /// </summary>
+        public string LandLine
+        {
+            get
+            {
+                var need = LivingBody.Hero ? LivingBody.Hero.NeedLine : null;
+                var line = "land " + MegaworldMap.RegionAt(transform.position)
+                    + " · you " + world
+                    + " · clock " + WorldClock.World;
+                if (!string.IsNullOrEmpty(need)) line += " · " + need;
+                if (KitBag.HasLoot()) line += " · pack";
+                return line;
+            }
+        }
+
+        /// <summary>
+        /// Same cc.Move path as WASD, world bearing (Sundering is +Z). A one-shot
+        /// CharacterController.Move from execute_code is not a walk.
+        /// </summary>
+        public void WalkBearing(Vector3 dir, float seconds)
+        {
+            dir.y = 0f;
+            _forceWalk = dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.forward;
+            _forceWalkT = Mathf.Max(0.2f, seconds);
+        }
+
+        public bool WalkingBearing => _forceWalkT > 0f;
+
+        void LateUpdate()
+        {
+            if (creatorLocked) return;
+            var p = transform.position;
+            var dx = p.x - _recvAt.x;
+            var dz = p.z - _recvAt.z;
+            if (dx * dx + dz * dz < 0.16f) return;
+            ReceiveLand();
+        }
+
+        void ReceiveLand()
+        {
+            _recvAt = transform.position;
+            ContinentStream.Live?.ReceiveHere(_recvAt);
+        }
+
+        /// <summary>
+        /// Warp that also receives. execute_code that only sets transform.position
+        /// never Ticks — Stand is not a walked day. Prefer WalkBearing.
+        /// </summary>
+        public void Stand(Vector3 p)
+        {
+            if (cc) cc.enabled = false;
+            transform.position = p;
+            if (cc) cc.enabled = true;
+            Grounding.Snap(cc);
+            ReceiveLand();
+        }
 
         public void EquipWorldKit()
         {
@@ -186,7 +302,7 @@ namespace Concordia
             var fac = facs[i];
             kitWeapon = PersonKit.WeaponStem(fac, i);
             HoldFromBag(kitWeapon);
-            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+            Toast((fac.name ?? "kit") + " — " + KitBag.PrettyWeapon(kitWeapon));
         }
 
         public void HoldFromBag(string stem)
@@ -293,12 +409,18 @@ namespace Concordia
 
         void TryAttack(bool heavy)
         {
+            if (Time.time < _slashUntil) return;
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             var art = heavy ? style.heavy : style.light;
             var live = Canon.SteelLive(world, transform.position);
-            avatar?.Slash();
-            person?.Slash();
-            _slashUntil = Time.time + (heavy ? 0.82f : 0.52f);
+            if (Time.time > _comboUntil) _comboBeat = 0;
+            var beat = _comboBeat;
+            _comboBeat = (_comboBeat + 1) % 3;
+            avatar?.Slash(heavy, beat);
+            person?.Slash(heavy, beat);
+            _slashUntil = Time.time + CombatMotion.ComboOpen(heavy, fs);
+            _comboUntil = Time.time + CombatMotion.Duration(heavy, fs) * 1.25f;
             _attackKind = heavy ? 1 : 0;
             stamina -= heavy ? 28 : 12;
             if (!live)
@@ -313,20 +435,23 @@ namespace Concordia
                 hostility += 1.2f;
                 if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
             }
-            var connected = HitScan(heavy, 1f);
-            SkillLedger.Record(art, connected);
-            var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+            _strikeAt = Time.time + CombatMotion.Delay(heavy, fs);
+            _strikeHeavy = heavy;
+            _strikeReach = 1f;
+            _strikeArt = art;
         }
 
         void TrySpecial()
         {
+            if (Time.time < _slashUntil) return;
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             if (stamina < 22f) { Toast("Winded."); return; }
             stamina -= 22f;
-            person?.Slash();
-            avatar?.Slash();
-            _slashUntil = Time.time + 0.7f;
+            person?.Slash(true, 2);
+            avatar?.Slash(true, 2);
+            _slashUntil = Time.time + CombatMotion.ComboOpen(true, fs);
+            _comboUntil = Time.time + CombatMotion.Duration(true, fs) * 1.25f;
             var live = Canon.SteelLive(world, transform.position);
             if (!live)
             {
@@ -335,57 +460,60 @@ namespace Concordia
                 Toast(style.special + " dies as flowers.");
                 return;
             }
-            bool connected = false;
+            float reach = 1.2f;
             switch (world)
             {
                 case WorldId.Ruins:
                     hp = Mathf.Min(100, hp + 10f);
-                    connected = HitScan(true, 1.15f);
+                    reach = 1.15f;
                     Toast(style.special + " — a fall pulled back.");
                     break;
                 case WorldId.Tunya:
                     poise = 12f * style.poiseMul;
-                    connected = HitScan(false, 1.1f);
+                    reach = 1.1f;
                     Toast(style.special + " — grove restores poise.");
                     break;
                 case WorldId.Fantasy:
                     hostility = Mathf.Max(0f, hostility - 5f);
-                    connected = HitScan(true, 1.05f);
+                    reach = 1.05f;
                     Toast(style.special + " — the curse folds inward, not out.");
                     break;
                 case WorldId.Crime:
                     _dmgMul = 1.55f;
-                    connected = HitScan(true, 1.05f);
+                    reach = 1.05f;
                     Toast(style.special + " — the bill arrives now.");
                     break;
                 case WorldId.Cyber:
-                    connected = HitScan(true, 1.4f);
+                    reach = 1.4f;
                     Toast(style.special + " — pulse.");
                     break;
                 case WorldId.Frontier:
                     _vel += cam.PlanarForward * 11f;
-                    connected = HitScan(true, 1.25f);
+                    reach = 1.25f;
                     Toast(style.special + " — dust sprint.");
                     break;
                 case WorldId.Superhero:
-                    connected = HitScan(true, 1.6f);
+                    reach = 1.6f;
                     Toast(style.special + " — they stand.");
                     break;
                 case WorldId.Crucible:
                     ReviveNearest();
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — un-end it.");
                     break;
                 case WorldId.Sere:
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — " + style.power);
                     break;
                 default:
-                    connected = HitScan(true, 1.2f);
+                    reach = 1.2f;
                     Toast(style.special + " — " + style.power);
                     break;
             }
-            SkillLedger.Record(style.special, connected);
+            _strikeAt = Time.time + CombatMotion.Delay(true, fs);
+            _strikeHeavy = true;
+            _strikeReach = reach;
+            _strikeArt = style.special;
         }
 
         bool HitScan(bool heavy, float reachMul)
@@ -421,22 +549,26 @@ namespace Concordia
             if (boss != null && client && client.Connected && !string.IsNullOrEmpty(client.DungeonInstanceId))
             {
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendDungeonHit(dmg);
                 return true;
             }
-            if (client && client.Connected)
+            if (client && client.Connected && dummy.KernelAuthored)
             {
-                // Kernel resolves HP. Presentation already played the swing.
+                // Kernel resolves gym / dungeon HP. Road hostiles are local.
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon(), transform.position.x, transform.position.z);
                 return true;
             }
             dmg = WorldField.ScaleDamage(dmg, world, transform.position, "athletics");
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
-            Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            var label = dummy.GuestLabel;
+            if (dummy.KernelAuthored)
+                Toast(label + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            else
+                Toast(label + (dummy.hp > 0f ? "  " + Mathf.Ceil(dummy.hp) : "  down"));
             return true;
         }
 
@@ -457,7 +589,7 @@ namespace Concordia
             }
             if (dummy) dummy.ApplyServerHit(damage, world);
             HubObjectives.NoteArenaHit();
-            if (dummy) Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp));
+            if (dummy) Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)
@@ -506,8 +638,16 @@ namespace Concordia
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             avatar?.Hit();
-            if (knockback > 1.8f || poise < 2.5f) avatar?.Knockdown();
-            else if (poise < 4f || knockback > 1.1f) avatar?.Stagger();
+            if (knockback > 1.8f || poise < 2.5f)
+            {
+                avatar?.Knockdown();
+                person?.Stagger();
+            }
+            else if (poise < 4f || knockback > 1.1f)
+            {
+                avatar?.Stagger();
+                person?.Stagger();
+            }
             var feel = GetComponent<CombatFeel>();
             feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
             Toast(from + " hits.");
@@ -515,7 +655,10 @@ namespace Concordia
             hp = 100f;
             poise = 12f;
             cc.enabled = false;
-            var spawn = world == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
+            var spawn = world == WorldId.Hub ? Canon.Spawn
+                : ContinentStream.Live
+                    ? MegaworldMap.Present(world) + new Vector3(0f, 0.12f, 2f)
+                    : Canon.SteelSpawn;
             transform.position = spawn;
             cc.enabled = true;
             Grounding.Snap(cc);

@@ -23,6 +23,12 @@ namespace Concordia
         };
 
         public static float RingMeters => CivilizationRadiusKm * PresentMetersPerKm;
+        /// <summary>
+        /// Close enough to a Present that the land, sky, and people can
+        /// actually receive you. Wider than ChunkRadius so arrival isn't a
+        /// point, tighter than StreamIn so mid-ring stays Hub-overland.
+        /// </summary>
+        public const float ArriveM = 68f;
 
         public static float AngleOf(WorldId id)
         {
@@ -56,6 +62,50 @@ namespace Concordia
             {
                 var d = (present - Present(id)).sqrMagnitude;
                 if (d < bestD) { bestD = d; best = id; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Civilization whose Present actually contains the player.
+        /// Mid-ring returns Hub — Toward is bearing, not the law underfoot.
+        /// </summary>
+        static float PlanarSqr(Vector3 a, Vector3 b)
+        {
+            var dx = a.x - b.x;
+            var dz = a.z - b.z;
+            return dx * dx + dz * dz;
+        }
+
+        public static WorldId RegionAt(Vector3 present)
+        {
+            WorldId best = WorldId.Hub;
+            var bestD = ArriveM * ArriveM;
+            foreach (var id in All)
+            {
+                if (id == WorldId.Hub) continue;
+                var d = PlanarSqr(present, Present(id));
+                if (d < bestD) { bestD = d; best = id; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Civilization on the player's bearing from the Hub. Signs and
+        /// compass. Not SoftEnter — that is RegionAt.
+        /// </summary>
+        public static WorldId Toward(Vector3 present)
+        {
+            var flat = new Vector2(present.x, present.z);
+            if (flat.sqrMagnitude < 1f) return WorldId.Hub;
+            var bearing = Mathf.Atan2(present.z, present.x) * Mathf.Rad2Deg;
+            var best = WorldId.Hub;
+            var bestD = float.PositiveInfinity;
+            foreach (var id in All)
+            {
+                if (id == WorldId.Hub) continue;
+                var da = Mathf.Abs(Mathf.DeltaAngle(bearing, AngleOf(id) * Mathf.Rad2Deg));
+                if (da < bestD) { bestD = da; best = id; }
             }
             return best;
         }

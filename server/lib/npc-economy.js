@@ -21,6 +21,7 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { performConstruction, performFarming, performLogging, performMining } from "./npc-labor-world.js";
 import { tryRecordConsequence } from "./world-consequence.js";
+import { npcBreakIn } from "./world-crime.js";
 
 // ── Resource taxonomy ───────────────────────────────────────────────────────
 
