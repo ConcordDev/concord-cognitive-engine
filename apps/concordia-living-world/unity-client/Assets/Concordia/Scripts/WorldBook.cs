@@ -67,9 +67,23 @@ namespace Concordia
         [Serializable] public class Country
         {
             public string country_id, faction_id, name, description, theme;
+            public string extends_world;
+            public string[] disputed_border;
             public Capital capital;
+            public CountryAnchor[] anchors;
+            public CountryClimate climate;
         }
         [Serializable] public class Capital { public string name; public float x, z; }
+        [Serializable] public class CountryAnchor
+        {
+            public string id, name, kind;
+            public float x, z;
+        }
+        [Serializable] public class CountryClimate
+        {
+            public float temperature, humidity, airQuality;
+            public string wind;
+        }
 
         [Serializable]
         public class CityDef
@@ -1011,6 +1025,30 @@ namespace Concordia
         public string staple = "";
         public string imports = "";
         public int population;
+        public RegionSliceRec[] regions;
+        public SettlementSliceRec[] settlements;
+    }
+
+    [Serializable]
+    public class RegionSliceRec
+    {
+        public string regionId;
+        public bool discovered;
+        public float ecology = 0.7f;
+        public float activity = 0.5f;
+        public string controlFactionId = "";
+    }
+
+    [Serializable]
+    public class SettlementSliceRec
+    {
+        public string settlementId;
+        public int population;
+        public float prices = 1f;
+        public string controlFactionId = "";
+        public string incidentsCsv = "";
+        public string constructionCsv = "";
+        public string activitiesCsv = "";
     }
 
     [Serializable]
@@ -1023,6 +1061,7 @@ namespace Concordia
         public string crossCsv = "";
         public string caravansCsv = "";
         public string tariffsCsv = "";
+        public string borderCrossingsCsv = "";
     }
 
     /// <summary>

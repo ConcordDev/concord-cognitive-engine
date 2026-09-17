@@ -4,10 +4,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Convai.Runtime.Components;
-using Convai.Runtime.Core.Async;
-using Convai.Runtime.Core.Coordinators;
-using Convai.Runtime.Core.Providers;
 using UnityEngine;
 using UnityEngine.Scripting;
 
@@ -93,8 +89,6 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
-            var convaiGo = new GameObject("ConcordConvai");
-            convaiGo.AddComponent<ConcordConvaiManager>();
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -622,10 +616,10 @@ namespace Concordia
             public string reason;
         }
     }
-
-    /// <summary>
+#if false
     /// Convai talks to Concord 2B, not the Convai cloud LLM.
-    /// </summary>
+    /// Parked: the Convai package is not in this project, and these types
+    /// block HubLook compile. Restore when the SDK is present.
     public class ConcordConvaiManager : ConvaiManager
     {
         protected override IConversationProvider GetConversationProvider() =>
@@ -741,4 +735,5 @@ namespace Concordia
             return default;
         }
     }
+#endif
 }

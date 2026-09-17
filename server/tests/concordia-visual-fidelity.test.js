@@ -89,6 +89,7 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(src("HubPlaza.cs"), /GateMouth/);
     assert.doesNotMatch(src("HubPlaza.cs"), /PortalVeil/);
     assert.match(src("WorldBuilder.cs"), /WetStone\(/);
+    assert.match(src("ContinentStream.cs"), /CourtGround/);
     assert.match(src("ChaseCamera.cs"), /sprinting \? PovFov/);
     assert.match(src("ChaseCamera.cs"), /public void Punch\(/);
     assert.match(src("ChaseCamera.cs"), /farClipPlane = 420f/);
