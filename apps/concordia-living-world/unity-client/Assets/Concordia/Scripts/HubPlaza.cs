@@ -12,12 +12,17 @@ namespace Concordia
         {
             Floor(root);
             Monument(root);
+            Sanctum(root);
             Gates(root);
+            Banners(root);
             Clutter(root);
-            Dust(root, new Color(1f, 0.88f, 0.62f));
-            HubLook.Point(root, "MonumentLight", new Vector3(0f, 4.2f, 0f), new Color(1f, 0.72f, 0.42f), 2.2f, 14f, true);
-            HubLook.Point(root, "RimWarm", new Vector3(18f, 4f, -12f), new Color(1f, 0.55f, 0.28f), 1.1f, 16f, false);
-            HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.42f, 0.52f, 0.62f), 0.85f, 14f, false);
+            Dust(root, new Color(0.55f, 0.82f, 0.88f));
+            HubLook.Point(root, "MonumentLight", new Vector3(0f, 4.2f, 0f), new Color(0.55f, 0.88f, 1f), 2.8f, 16f, true);
+            HubLook.Point(root, "RimWarm", new Vector3(18f, 4f, -12f), new Color(1f, 0.42f, 0.22f), 1.4f, 16f, false);
+            HubLook.Point(root, "RimCool", new Vector3(-16f, 5f, 14f), new Color(0.35f, 0.72f, 0.82f), 1.6f, 18f, false);
+            HubLook.Shaft(root, new Vector3(0f, 16f, 8f), new Vector3(0.12f, -1f, 0.35f), new Color(0.7f, 0.88f, 0.92f), 18f);
+            HubLook.Shaft(root, new Vector3(-6f, 18f, 4f), new Vector3(-0.08f, -1f, 0.22f), new Color(0.62f, 0.84f, 0.90f), 16f);
+            HubLook.Shaft(root, new Vector3(7f, 17f, 10f), new Vector3(0.18f, -1f, 0.28f), new Color(0.78f, 0.90f, 0.94f), 15f);
         }
 
         static void Floor(Transform root)
@@ -146,12 +151,57 @@ namespace Concordia
         static void FallbackArch(Transform hold, Color portalCol)
         {
             var stone = HubLook.WetStone("cobblestone_square", 2.2f);
-            var dark = HubLook.Lit(new Color(0.08f, 0.09f, 0.11f), 0.04f, 0.16f);
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.0f, 4.6f, 0f), new Vector3(1.4f, 9.2f, 1.8f), stone, "PillarL");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.0f, 4.6f, 0f), new Vector3(1.4f, 9.2f, 1.8f), stone, "PillarR");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 9.4f, 0f), new Vector3(7.8f, 1.5f, 2.0f), stone, "Lintel");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 4.0f, 0.55f),
-                new Vector3(5.2f, 7.2f, 0.9f), dark, "GateMouth", false);
+            var dark = HubLook.Lit(new Color(0.05f, 0.07f, 0.08f), 0.04f, 0.12f);
+            var crimson = HubLook.Lit(new Color(0.72f, 0.07f, 0.08f), 0.04f, 0.28f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.4f, 5.2f, 0f), new Vector3(1.8f, 10.4f, 2.2f), stone, "PillarL");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.4f, 5.2f, 0f), new Vector3(1.8f, 10.4f, 2.2f), stone, "PillarR");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 10.6f, 0f), new Vector3(9.2f, 1.8f, 2.4f), stone, "Lintel");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 4.6f, 0.55f),
+                new Vector3(5.4f, 8.4f, 1.1f), dark, "GateMouth", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.4f, 5.6f, -0.9f), new Vector3(1.2f, 7.4f, 0.12f), crimson, "SanctumBannerL", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.4f, 5.6f, -0.9f), new Vector3(1.2f, 7.4f, 0.12f), crimson, "SanctumBannerR", false);
+            HubLook.Point(hold, "SanctumCyan", hold.TransformPoint(new Vector3(-4.2f, 1.1f, 1.4f)), new Color(0.4f, 0.95f, 1f), 2.8f, 10f, false);
+            HubLook.Point(hold, "SanctumCyanR", hold.TransformPoint(new Vector3(4.2f, 1.1f, 1.4f)), new Color(0.4f, 0.95f, 1f), 2.8f, 10f, false);
+            HubLook.Shaft(hold, hold.TransformPoint(new Vector3(0f, 12f, -2f)), hold.TransformDirection(new Vector3(0f, -1f, 0.4f)), new Color(0.75f, 0.9f, 0.95f), 16f);
+        }
+
+        static void Sanctum(Transform root)
+        {
+            var hold = new GameObject("CourtSanctum").transform;
+            hold.SetParent(root, false);
+            hold.position = Canon.Arena;
+            hold.rotation = Quaternion.LookRotation(Vector3.back);
+            FallbackArch(hold, new Color(0.72f, 0.08f, 0.08f));
+            var stone = HubLook.WetStone("cobblestone_square", 2.2f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-7.6f, 4.2f, 1.4f), new Vector3(3.6f, 8.4f, 3.2f), stone, "WingL");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(7.6f, 4.2f, 1.4f), new Vector3(3.6f, 8.4f, 3.2f), stone, "WingR");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 13.4f, 0.6f), new Vector3(16.4f, 2.4f, 3.0f), stone, "Crown");
+            var crimson = HubLook.Lit(new Color(0.74f, 0.08f, 0.09f), 0.05f, 0.32f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-6.2f, 11.4f, -1.2f), new Vector3(2.2f, 8.8f, 0.12f), crimson, "CourtBanner", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(6.2f, 11.4f, -1.2f), new Vector3(2.2f, 8.8f, 0.12f), crimson, "CourtBanner", false);
+            HubLook.Shaft(hold, hold.TransformPoint(new Vector3(-3f, 15f, -3f)), hold.TransformDirection(new Vector3(-0.1f, -1f, 0.35f)), new Color(0.72f, 0.88f, 0.94f), 17f);
+            HubLook.Point(hold, "SanctumFill", hold.TransformPoint(new Vector3(0f, 3.2f, -2.4f)), new Color(0.42f, 0.92f, 1f), 3.2f, 18f, true);
+        }
+
+        static void Banners(Transform root)
+        {
+            var crimson = HubLook.Lit(new Color(0.74f, 0.08f, 0.09f), 0.05f, 0.32f);
+            for (int i = 0; i < 10; i++)
+            {
+                float a = i / 10f * Mathf.PI * 2f + 0.2f;
+                var p = new Vector3(Mathf.Cos(a) * 11.5f, 7.8f, Mathf.Sin(a) * 11.5f);
+                var strip = HubLook.Prim(root, PrimitiveType.Cube, p,
+                    new Vector3(9.4f, 0.07f, 0.42f), crimson, "CourtBanner", false);
+                if (strip)
+                    strip.transform.rotation = Quaternion.LookRotation(Vector3.up, new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a)));
+            }
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i / 6f * Mathf.PI * 2f + 0.4f;
+                var tree = FreePacks.SpawnStore(DressVocab.Tree(WorldId.Hub), root,
+                    new Vector3(Mathf.Cos(a) * 16.5f, 0f, Mathf.Sin(a) * 16.5f), a * Mathf.Rad2Deg, 10f, required: false, byHeight: false);
+                if (tree) tree.name = "CourtTree_" + i;
+            }
         }
 
         static Color PortalColor(GateDef gate)

@@ -4,7 +4,7 @@ namespace Concordia
 {
     /// <summary>
     /// Idle atmosphere owned by HubLook. Ground mist + motes + cloth sway so a
-    /// standing Court still moves. Not volumetric fog. LeanPlay thins count.
+    /// standing Court still moves. Not volumetric fog. LookLean never thins Hub.
     /// </summary>
     [DefaultExecutionOrder(20)]
     public class WorldBreath : MonoBehaviour
@@ -74,9 +74,9 @@ namespace Concordia
 
         void EnsureLayers()
         {
-            bool lean = ConcordiaHost.LeanPlay;
+            bool lean = ConcordiaHost.LookLean;
             if (!_mist) _mist = MakeLayer("GroundMist", lean ? 28 : 70);
-            if (!_motes && !lean) _motes = MakeLayer("Motes", 36);
+            if (!_motes) _motes = MakeLayer("Motes", 36);
             TuneMist(lean);
             if (_motes) TuneMotes();
         }
@@ -145,7 +145,7 @@ namespace Concordia
         void CollectCloth()
         {
             var found = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            int cap = ConcordiaHost.LeanPlay ? 6 : 18;
+            int cap = ConcordiaHost.LookLean ? 6 : 18;
             _cloth = new Transform[cap];
             _clothRest = new Quaternion[cap];
             _clothN = 0;

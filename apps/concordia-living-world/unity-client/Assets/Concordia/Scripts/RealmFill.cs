@@ -129,7 +129,7 @@ namespace Concordia // keep-spawn-assign
                     : w.id == WorldId.Fantasy ? "windmill"
                     : "tent_detailedOpen";
                 FreePacks.Spawn(tent, root, p, -a * Mathf.Rad2Deg, w.id == WorldId.Fantasy ? 6f : 3.4f);
-                var banner = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 3.2f + Vector3.right * 0.01f,
+                var banner = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 1.7f + Vector3.right * 0.01f,
                     new Vector3(0.12f, 3.4f, 0.12f), HubLook.Lit(col, 0.2f, 0.3f), "FactionPole_" + f.id);
                 var cloth = HubLook.Prim(root, PrimitiveType.Quad, p + new Vector3(Mathf.Cos(a + 0.2f), 2.6f, Mathf.Sin(a + 0.2f)) * 0.8f,
                     new Vector3(1.6f, 2.2f, 1f), HubLook.Lit(col, 0.05f, 0.25f), "FactionBanner_" + f.id, false);
@@ -202,10 +202,11 @@ namespace Concordia // keep-spawn-assign
 
         static void People(Transform root, WorldDef w)
         {
+            if (w.id == WorldId.Hub) return;
             var people = WorldBook.People(w.id);
             var facs = WorldBook.Factions(w.id);
             int n = 0;
-            int cap = ConcordiaHost.RealmPeopleCap;
+            int cap = people != null ? people.Length : 0;
             foreach (var person in people)
             {
                 if (n >= cap) break;
@@ -288,7 +289,7 @@ namespace Concordia // keep-spawn-assign
                 var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 board.name = "Quest_" + q.id;
                 board.transform.SetParent(root, false);
-                board.transform.position = p + Vector3.up * 1.35f;
+                board.transform.position = p + Vector3.up * 0.8f;
                 board.transform.localScale = new Vector3(1.1f, 1.6f, 0.12f);
                 var r = board.GetComponent<Renderer>();
                 if (r) r.material = HubLook.Lit(new Color(0.42f, 0.28f, 0.14f), 0.05f, 0.22f);
@@ -318,9 +319,13 @@ namespace Concordia // keep-spawn-assign
                         var go = EvoSpawner.SpawnNamed(root, crit, p, w);
                         if (go)
                         {
-                            var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
-                            h.damage = 8f + c;
-                            h.aggro = 14f + pack * 3f;
+                            var genome = go.GetComponent<CreatureGenome>();
+                            if (genome != null && genome.predator)
+                            {
+                                var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
+                                h.damage = 8f + c;
+                                h.aggro = 14f + pack * 3f;
+                            }
                         }
                         c++;
                     }
@@ -333,7 +338,7 @@ namespace Concordia // keep-spawn-assign
                     var a = i * 2.1f;
                     var p = new Vector3(Mathf.Cos(a) * 16f, 0, 8f + Mathf.Sin(a) * 12f);
                     var go = EvoSpawner.Spawn(root, w.fauna[i], p, w);
-                    if (go) go.AddComponent<Hostile>();
+                    if (go && CreatureCompiler.IsPredatorKind(w.fauna[i])) go.AddComponent<Hostile>();
                 }
             }
         }

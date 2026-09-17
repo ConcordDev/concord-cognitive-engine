@@ -1,0 +1,217 @@
+using UnityEngine;
+
+namespace Concordia
+{
+    /// <summary>
+    /// Makes CX_ plates usable on the live Humanoid: dress tints, grip sockets,
+    /// HUD skins, civic billboards. Does not invent a second skeleton —
+    /// Rocketbox / Mixamo FBX stay the skinned mesh.
+    /// </summary>
+    public static class CxDress
+    {
+        // Resources.Load-relative — the authored content is duplicated (183MB, negligible) under
+        // Assets/Concordia/Resources/Concordia/Generated/ so it actually ships in a Player build.
+        // "Assets/Concordia/Generated" (no Resources/ prefix) still exists untouched, since several
+        // OTHER files (ModularPerson.LoadPersonPrefab/MakeSword, FreePacks.SearchFolders) hold
+        // hardcoded Editor-only AssetDatabase paths into it — moving the original would have broken
+        // those; copying leaves them alone while giving CxDress a genuinely runtime-safe source.
+        const string Root = "Concordia/Generated";
+        static Texture2D _hudHealth, _hudInv, _hudTalk, _hudToast;
+        static bool _hudLoaded;
+
+        public static Color CourtCloth = new Color(0.12f, 0.11f, 0.10f);
+        public static Color CourtSash = new Color(0.78f, 0.52f, 0.16f);
+        public static Color SteelLeather = new Color(0.38f, 0.24f, 0.14f);
+        public static Color SteelIron = new Color(0.55f, 0.56f, 0.58f);
+        public static Color BanditMoss = new Color(0.22f, 0.32f, 0.18f);
+
+        public static void Person(ModularPerson person, Appearance look, bool steelLive)
+        {
+            if (!person) return;
+            EnsureGripSockets(person);
+            var cloth = steelLive ? SteelLeather : CourtCloth;
+            var trim = steelLive ? SteelIron : CourtSash;
+            if (look != null)
+            {
+                if (look.outfit == 4) cloth = new Color(0.42f, 0.10f, 0.14f);
+                if (look.outfit == 5) cloth = new Color(0.12f, 0.12f, 0.16f);
+                if (look.outfit == 2) cloth = new Color(0.10f, 0.22f, 0.24f);
+                if (look.outfit == 3) cloth = new Color(0.28f, 0.20f, 0.12f);
+            }
+            foreach (var r in person.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var n = r.gameObject.name.ToLowerInvariant();
+                if (n.Contains("head") || n.Contains("face") || n.Contains("eye") || n.Contains("hair"))
+                    continue;
+                TintRenderer(r, n.Contains("metal") || n.Contains("armor") ? trim : cloth);
+            }
+        }
+
+        public static void EnsureGripSockets(ModularPerson person)
+        {
+            if (!person) return;
+            person.rightHand = person.rightHand ? person.rightHand : FindHand(person.transform, true);
+            person.leftHand = person.leftHand ? person.leftHand : FindHand(person.transform, false);
+            SocketOn(person.rightHand, "CX_Grip_R");
+            SocketOn(person.leftHand, "CX_Grip_L");
+        }
+
+        static Transform SocketOn(Transform hand, string name)
+        {
+            if (!hand) return null;
+            var existing = hand.Find(name);
+            if (existing) return existing;
+            var s = new GameObject(name).transform;
+            s.SetParent(hand, false);
+            s.localPosition = Vector3.zero;
+            s.localRotation = Quaternion.identity;
+            return s;
+        }
+
+        static Transform FindHand(Transform root, bool right)
+        {
+            var names = right
+                ? new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
+                : new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" };
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (!t) continue;
+                foreach (var n in names)
+                    if (string.Equals(t.name, n, System.StringComparison.OrdinalIgnoreCase))
+                        return t;
+            }
+            return null;
+        }
+
+        public static GameObject HeldWeapon(string stem)
+        {
+            var mesh = FreePacks.Mesh(stem)
+                       ?? FreePacks.Mesh("longsword")
+                       ?? FreePacks.Mesh("Sword16")
+                       ?? FreePacks.Mesh("weapon-sword");
+            GameObject go;
+            if (mesh)
+            {
+                go = Object.Instantiate(mesh);
+                go.name = "CX_Held_" + stem;
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+                FreePacks.PaintIfBlank(go);
+                TintRenderer(go.GetComponentInChildren<Renderer>(), SteelIron);
+                return go;
+            }
+            go = new GameObject("CX_Held_" + stem);
+            var blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            blade.name = "Blade";
+            blade.transform.SetParent(go.transform, false);
+            blade.transform.localPosition = new Vector3(0.42f, 0f, 0f);
+            blade.transform.localScale = new Vector3(0.84f, 0.035f, 0.08f);
+            var bladeCollider = blade.GetComponent<Collider>();
+            if (bladeCollider)
+            {
+                if (Application.isPlaying) Object.Destroy(bladeCollider);
+                else Object.DestroyImmediate(bladeCollider);
+            }
+            var grip = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            grip.name = "Grip";
+            grip.transform.SetParent(go.transform, false);
+            grip.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            grip.transform.localScale = new Vector3(0.04f, 0.07f, 0.04f);
+            var gripCollider = grip.GetComponent<Collider>();
+            if (gripCollider)
+            {
+                if (Application.isPlaying) Object.Destroy(gripCollider);
+                else Object.DestroyImmediate(gripCollider);
+            }
+            var br = blade.GetComponent<Renderer>();
+            if (br) br.sharedMaterial = HubLook.Lit(SteelIron, 0.45f, 0.72f);
+            var gr = grip.GetComponent<Renderer>();
+            if (gr) gr.sharedMaterial = HubLook.Lit(SteelLeather, 0.12f, 0.28f);
+            return go;
+        }
+
+        public static Texture2D Hud(bool steel, string slot)
+        {
+            LoadHud();
+            if (slot == "inventory") return _hudInv;
+            if (slot == "dialogue") return _hudTalk;
+            if (slot == "toast") return _hudToast;
+            return _hudHealth;
+        }
+
+        static void LoadHud()
+        {
+            if (_hudLoaded) return;
+            _hudLoaded = true;
+            bool steel = false;
+            var p = ConcordiaPlayer.Live;
+            if (p) steel = Canon.SteelLive(p.world, p.transform.position);
+            var folder = steel ? "P0/HUD/Steel" : "P0/HUD/Court";
+            var prefix = steel ? "CX_HUD_Steel_" : "CX_HUD_Court_";
+            _hudHealth = Tex(folder + "/" + prefix + "health.jpg");
+            _hudInv = Tex(folder + "/" + prefix + "inventory.jpg");
+            _hudTalk = Tex(folder + "/" + prefix + "dialogue.jpg");
+            _hudToast = Tex(folder + "/" + prefix + "questtoast.jpg");
+        }
+
+        public static GameObject Billboard(Transform parent, Vector3 pos, string relPath, float width, float height)
+        {
+            var tex = Tex(relPath);
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "CX_" + System.IO.Path.GetFileNameWithoutExtension(relPath);
+            go.transform.SetParent(parent, false);
+            go.transform.position = pos;
+            go.transform.localScale = new Vector3(width, height, 1f);
+            Object.Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            if (r)
+            {
+                var m = HubLook.Lit(Color.white, 0.04f, 0.22f);
+                if (tex) m.SetTexture("_BaseMap", tex);
+                r.sharedMaterial = m;
+            }
+            return go;
+        }
+
+        public static void CivicSign(Transform hold, Vector3 at, WorldId world)
+        {
+            if (!hold) return;
+            var rel = world switch
+            {
+                WorldId.Hub => "P4/Hub/CX_Civic_Hub_Waypost.jpg",
+                WorldId.Fantasy => "P4/Sundering/CX_Civic_Sundering_Wardpost.jpg",
+                WorldId.Ruins => "P4/Ruins/CX_Civic_Ruins_GlyphMarker.jpg",
+                WorldId.Tunya => "P4/Tunya/CX_Civic_Tunya_Waystone.jpg",
+                WorldId.Crime => "P4/Crime/CX_Civic_Crime_StreetSign.jpg",
+                WorldId.Cyber => "P4/Grid/CX_Civic_Grid_Pylon.jpg",
+                WorldId.Superhero => "P4/Dawn/CX_Civic_Dawn_SunDisc.jpg",
+                WorldId.Crucible => "P4/Crucible/CX_Civic_Crucible_DriftMarker.jpg",
+                WorldId.Sere => "P4/Sere/CX_Civic_Sere_TesseraPost.jpg",
+                _ => "P2/Signs/CX_Sign_RingPost.jpg"
+            };
+            var plate = Billboard(hold, at + Vector3.up * 1.55f, rel, 0.55f, 0.85f);
+            if (plate) plate.name = "CX_SignFace";
+        }
+
+        static Texture2D Tex(string rel)
+        {
+            if (string.IsNullOrEmpty(rel)) return null;
+            // Resources.Load wants an extension-less path; callers pass "*.jpg"/"*.png" rel paths.
+            var noExt = System.IO.Path.ChangeExtension(rel, null) ?? rel;
+            return Resources.Load<Texture2D>(Root + "/" + noExt);
+        }
+
+        static void TintRenderer(Renderer r, Color cloth)
+        {
+            if (!r) return;
+            var src = r.sharedMaterial;
+            if (!src) return;
+            var m = new Material(src);
+                if (m.HasProperty("_BaseColor"))
+                    m.SetColor("_BaseColor", Color.Lerp(m.GetColor("_BaseColor"), cloth, 0.88f));
+                else
+                    m.color = Color.Lerp(m.color, cloth, 0.88f);
+            r.material = m;
+        }
+    }
+}

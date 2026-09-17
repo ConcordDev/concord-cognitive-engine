@@ -38,21 +38,17 @@ namespace Concordia
             }
 
             var urp = QualitySettings.renderPipeline as UniversalRenderPipelineAsset;
-            bool lean = ConcordiaHost.LeanPlay;
+            bool lean = ConcordiaHost.LookLean;
             if (urp)
             {
-                urp.shadowDistance = lean
-                    ? (world == WorldId.Hub ? 90f : 70f)
-                    : (world == WorldId.Hub ? 140f : 110f);
+                urp.shadowDistance = world == WorldId.Hub ? 180f : (lean ? 70f : 110f);
                 urp.msaaSampleCount = 1;
-                urp.maxAdditionalLightsCount = lean ? 4 : 8;
+                urp.maxAdditionalLightsCount = world == WorldId.Hub ? 8 : (lean ? 4 : 8);
                 urp.colorGradingMode = ColorGradingMode.HighDynamicRange;
                 urp.colorGradingLutSize = 64;
             }
             TryEnableSsao();
-            QualitySettings.shadowDistance = lean
-                ? (world == WorldId.Hub ? 120f : 90f)
-                : (world == WorldId.Hub ? 180f : 140f);
+            QualitySettings.shadowDistance = world == WorldId.Hub ? 220f : (lean ? 90f : 140f);
             QualitySettings.shadowCascades = 4;
             QualitySettings.shadows = (UnityEngine.ShadowQuality)2;
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
@@ -104,11 +100,11 @@ namespace Concordia
             ca.intensity.Override(world == WorldId.Cyber || world == WorldId.Crucible ? 0.12f : 0.04f);
 
             if (!profile.TryGet(out DepthOfField dof)) dof = profile.Add<DepthOfField>(true);
-            dof.active = !lean;
+            dof.active = world == WorldId.Hub || !lean;
             dof.mode.Override(DepthOfFieldMode.Gaussian);
-            dof.gaussianStart.Override(world == WorldId.Hub ? 22f : 16f);
-            dof.gaussianEnd.Override(world == WorldId.Hub ? 62f : 48f);
-            dof.gaussianMaxRadius.Override(lean ? 0.4f : 1.05f);
+            dof.gaussianStart.Override(world == WorldId.Hub ? 14f : 16f);
+            dof.gaussianEnd.Override(world == WorldId.Hub ? 48f : 48f);
+            dof.gaussianMaxRadius.Override(world == WorldId.Hub ? 1.15f : (lean ? 0.4f : 1.05f));
 
             if (!profile.TryGet(out ShadowsMidtonesHighlights smh)) smh = profile.Add<ShadowsMidtonesHighlights>(true);
             smh.active = true;
@@ -189,7 +185,7 @@ namespace Concordia
                 color.postExposure.Override(inside ? _openExp - 0.18f : _openExp);
             }
             if (profile && profile.TryGet(out DepthOfField dof))
-                dof.active = !inside && !ConcordiaHost.LeanPlay;
+                dof.active = !inside;
         }
 
         public static bool InteriorLit => _interior;
@@ -264,8 +260,8 @@ namespace Concordia
                 RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.04f, 0.05f), new Color(0.16f, 0.18f, 0.20f), sun01);
                 RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
                 RenderSettings.reflectionIntensity = 0.38f + 0.67f * sun01;
-                RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.08f, 0.12f), new Color(0.38f, 0.55f, 0.58f), sun01);
-                LiveFog(0.0055f + 0.008f * night);
+                RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.10f, 0.12f), new Color(0.22f, 0.42f, 0.44f), sun01);
+                LiveFog(0.013f + 0.006f * night);
                 TryHdrSky(world);
             }
 
@@ -347,8 +343,8 @@ namespace Concordia
             switch (world)
             {
                 case WorldId.Hub:
-                    bloomI = 0.42f; bloomT = 0.72f; exposure = 0.10f; contrast = 16f; sat = 8f; vigI = 0.22f; temp = -6f;
-                    sky = new Color(0.42f, 0.58f, 0.66f); eq = new Color(0.42f, 0.38f, 0.32f); ground = new Color(0.16f, 0.18f, 0.20f); break;
+                    bloomI = 0.72f; bloomT = 0.58f; exposure = 0.18f; contrast = 22f; sat = 6f; vigI = 0.28f; temp = -10f;
+                    sky = new Color(0.32f, 0.52f, 0.58f); eq = new Color(0.28f, 0.32f, 0.30f); ground = new Color(0.10f, 0.14f, 0.16f); break;
                 case WorldId.Ruins:
                     bloomI = 0.28f; bloomT = 0.72f; exposure = 0.08f; contrast = 16f; sat = 4f; vigI = 0.4f; temp = -8f;
                     sky = new Color(0.55f, 0.52f, 0.48f); eq = new Color(0.32f, 0.26f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
@@ -390,7 +386,7 @@ namespace Concordia
             probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
             probe.size = new Vector3(size, size * 0.7f, size);
             probe.center = Vector3.up * 8f;
-            probe.resolution = ConcordiaHost.LeanPlay ? 128 : 256;
+            probe.resolution = ConcordiaHost.LookLean ? 128 : 256;
             probe.intensity = 1.15f;
             probe.boxProjection = true;
             probe.RenderProbe();
@@ -443,7 +439,39 @@ namespace Concordia
                        ?? FreePacks.SpawnStore("Lantern_01", parent, pos, 0, 1.2f, required: false);
             if (!mesh)
                 CxDress.Billboard(parent, pos + Vector3.up * 1.15f, "P2/Props/CX_Prop_CourtLantern.jpg", 0.42f, 0.9f);
-            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.55f, 11f, true);
+            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(0.45f, 0.92f, 1f), 2.4f, 12f, true);
+        }
+
+        /// <summary>Additive cone so fog reads as light shafts without a volumetric pass.</summary>
+        public static void Shaft(Transform parent, Vector3 pos, Vector3 dir, Color c, float length = 14f)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            go.name = "LightShaft";
+            go.transform.SetParent(parent, false);
+            go.transform.position = pos + dir.normalized * (length * 0.45f);
+            go.transform.rotation = Quaternion.FromToRotation(Vector3.up, dir.normalized);
+            go.transform.localScale = new Vector3(1.8f, length * 0.5f, 1.8f);
+            Object.Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            if (r)
+            {
+                var m = Emit(new Color(c.r, c.g, c.b, 0.32f), 1.8f);
+                r.sharedMaterial = m;
+                r.shadowCastingMode = ShadowCastingMode.Off;
+            }
+        }
+
+        public static void StoneDress(GameObject go)
+        {
+            if (!go) return;
+            var stone = Pbr("cobblestone_square", Color.white, 0.06f, 0.28f, 3.2f);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r || !r.sharedMaterial) continue;
+                var n = r.sharedMaterial.name ?? "";
+                if (n.StartsWith("PH_wet") || n.StartsWith("PH_HDR")) continue;
+                r.sharedMaterial = stone;
+            }
         }
 
         public static Material GroundMat(WorldId world, Color tint)
@@ -722,8 +750,8 @@ namespace Concordia
 
             m.DisableKeyword("_METALLICSPECGLOSSMAP");
             if (m.HasProperty("_MetallicGlossMap")) m.SetTexture("_MetallicGlossMap", null);
-            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.66f);
-            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.12f);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.82f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.18f);
             m.name = "PH_wet_" + stem;
             _pbrCache[key] = m;
             return m;

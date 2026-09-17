@@ -19,7 +19,8 @@ The goal is not to imitate the screenshot. The goal is Concordia’s own world r
 
 | Profile | When | Ceiling |
 |---|---|---|
-| **LeanPlay** | ≤16GB Mac Editor (`ConcordiaHost.LeanPlay`) | 2k PBR, thinned crowd/impostors, exponential fog. Density is cut on purpose so Play ticks. |
+| **LeanPlay** | ≤16GB Mac Editor (`ConcordiaHost.LeanPlay`) | 2k PBR, thinned **continent impostors / AgentBody auto-spawn**. Hub look is never this profile. |
+| **LookLean** | `ConcordiaHost.LookLean` → **false** | Hub cinematic is not a RAM cut. Wet stone, HDRI, DoF, banners, shafts, mist stay on. |
 | **Desktop** | Full-RAM Editor / player | Same 2k library, full crowd/impostor budgets, richer volume, more dressing. |
 | **WebGL** | `ConcordiaWebExport` Hub scene | HubKit StreamingAssets + glTFast. No AssetDatabase. Do not assume Poly Haven 13GB is in the browser. |
 
@@ -31,10 +32,10 @@ Imported Poly Haven maps are **`_2k.jpg`**. That is the physical vocabulary. 4K/
 |---|---|
 | Environment | `HubLook.Pbr` resolves Poly Haven `_diffuse_2k` / `_nor_gl_2k` / `_arm_2k` via semantic aliases. Hub ground is `WetStone` (`CX_Tile_CourtCobble` albedo + `cobblestone_square` normals, not `cobblestone_floor_13` dirt). Displacement files exist; they are not a live tessellation path. DressVocab / FreePacks / WorldVisualDirector dress chunks. Kenney is last fallback (`VISUAL.md`). |
 | Lighting | URP + ACES + Bloom + ColorAdjustments + Vignette + WhiteBalance + FilmGrain + Gaussian DoF (Desktop) + ShadowsMidtonesHighlights. Trilight ambient. One reflection probe. `ApplyHour` drives sun intensity and binds `RenderSettings.sun` (night is moonlight, not noon-minus-UI). SSAO attempted in Editor. ExponentialSquared fog in `WorldBuilder.DressSky` (Hub teal). Interior walk-in drops haze via `HubLook.ApplyInterior`. Hub sky is Poly Haven HDRI (`Assets/Concordia/PolyHaven/HDRIs/`: kloofendal day / the_sky_is_on_fire dusk / dikhololo night) via `HubLook.TryHdrSky` — not BOXOPHOBIC / missing Skybox mats. |
-| Atmosphere | Fog density/color per world + weather mul in `WorldBook`, routed through `HubLook.LiveFog` so interiors do not fight hour ticks. `WorldBreath` ground mist + motes follow the camera (LeanPlay thins count). Not volumetric fog, not atmospheric scattering. |
-| Character | Rocketbox Biped walk (`ModularPerson`). CX Humanoid prefabs + `CX_Grip_R/L`. `HubLook.GroundInLight` forces cast+receive shadows and URP Lit on the cast. CX plates are **albedo/HUD/civic**, not photogrammetry skins (`CX_MANIFEST.md`). |
+| Atmosphere | Fog density/color per world + weather mul in `WorldBook`, routed through `HubLook.LiveFog` so interiors do not fight hour ticks. Hub day fog is teal (`0.013`). `WorldBreath` ground mist + motes follow the camera (`LookLean`, never LeanPlay). Additive `HubLook.Shaft` cones stand in for god rays. Not volumetric fog, not atmospheric scattering. |
+| Character | Rocketbox Biped walk (`ModularPerson`). CX Humanoid prefabs + `CX_Grip_R/L`. `CxDress` Court cloth is dark bronze + gold sash (tint 0.88), not parchment polo. `HubLook.GroundInLight` forces cast+receive shadows and URP Lit on the cast. CX plates are **albedo/HUD/civic**, not photogrammetry skins (`CX_MANIFEST.md`). |
 | Animation | Authored gait + `CombatMotion.Pulse`. Strikes phase through `ActionRunner` (`JustBecameActive` = Delay). Humanoid melee clips do not fit Bip01 (`ANIMATION.md`). |
-| Camera | `ChaseCamera` Cinemachine orbital: shoulder offset, sprint FOV+, combat FOV−, pose damping, far clip 420. `Punch(beat)` FOV/radius from HitResolver outcomes. No deoccluder (plaza discs). `CombatFeel` shake after pose. |
+| Camera | `ChaseCamera` Cinemachine orbital: shoulder offset, sprint FOV+, combat FOV−, Hub still 4.2m / 46fov, pose damping, far clip 420. `Punch(beat)` FOV/radius from HitResolver outcomes. No deoccluder (plaza discs). `CombatFeel` shake after pose. |
 | VFX | `CombatFeel.Present` / `Strike`: one-shot sparks/dust + blade trail keyed to `DefenseOutcome` / connected hit. Pack burst via `SkillLattice.VfxPath` + FreePacks when a prefab exists. Weather FX on continent. SUIMONO imported, **not** the live water path. |
 | Motion | WorldClock hour, weather string, NPC schedules, Hostile hunt, `WorldBreath` cloth/banner sway. Standing still for ten seconds still has mist. Foliage only if the packed shader moves it. |
 | Physics presentation | CharacterController + dummy `Hit` knock. No foliage/door/debris reaction as a general system. |

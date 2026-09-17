@@ -100,7 +100,9 @@ namespace Concordia
             var feetY = Mathf.Clamp(target.position.y, 0f, 3.5f);
             var focus = new Vector3(target.position.x, feetY + 1.35f, target.position.z);
             DecayPunch();
+            var hubStill = WorldClock.World == WorldId.Hub && !inCombat && !sprinting && !creatorFraming;
             var fov = creatorFraming ? 52f : (sprinting ? PovFov[pov] + 6f : inCombat ? PovFov[pov] - 5f : PovFov[pov]);
+            if (hubStill) fov = 46f;
             fov += _punchFov;
 
             if (creatorFraming)
@@ -116,6 +118,7 @@ namespace Concordia
             if (sprinting) dist += 0.7f;
             if (inCombat) dist -= 0.85f;
             dist = Mathf.Clamp(dist + (distance - 6.2f), 2.4f, 14f);
+            if (hubStill) dist = 4.2f;
             if (_punch > 0.01f) dist *= 1f - _punch * 0.08f;
 
             if (_vcam && _orbit)
