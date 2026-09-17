@@ -62,8 +62,16 @@ namespace Concordia
         public const float RingRadius = 34f;
         public const float CourtRadius = 16f;
         public const float WallRadius = 56f;
+        /// <summary>Past the gate mouth the Court ends. Flower Law does not follow the road.</summary>
+        public const float HubLawRadius = 42f;
         public static readonly Vector3 Arena = new Vector3(0, 0, 18);
-        public static readonly Vector3 Spawn = new Vector3(0, 0, -11);
+        /// <summary>
+        /// East of the Founding Day axis and east of the Arena. Concordia
+        /// stands at (0, −6.4); the Arena sits on +Z at z=18. A north stride
+        /// from (0, −11) hits Concordia at z≈−7, and a lane at x=5.4 walked
+        /// into the Arena dummy (QA 2026-09-14).
+        /// </summary>
+        public static readonly Vector3 Spawn = new Vector3(11.2f, 0f, -12f);
         /// <summary>
         /// Open plaza in a steel hold. (0, 0.12, 2) sat inside kit platforms
         /// and CharacterController depenetration launched the hero onto roofs.
@@ -71,9 +79,25 @@ namespace Concordia
         public static readonly Vector3 SteelSpawn = new Vector3(0f, 0.12f, -8f);
 
         /// <summary>
+        /// Clear +Z from spawn so WASD / a north stride can leave the Court.
+        /// Center-only: a hill whose origin sits on this strip.
+        /// </summary>
+        public static bool OnSunderingLane(Vector3 p) =>
+            Mathf.Abs(p.x - Spawn.x) < 2.6f && p.z > Spawn.z - 1.5f && p.z < 240f;
+
+        /// <summary>
+        /// True when a collider of this radius would sit in the Sundering stride.
+        /// Hill_SUNDERING_0 at (10.5, 58.9) scale ~3.2 blocked +Z even when a
+        /// center-only skip should have fired (Play 2026-09-14).
+        /// </summary>
+        public static bool BlocksSunderingWalk(Vector3 p, float radius) =>
+            Mathf.Abs(p.x - Spawn.x) < 2.6f + Mathf.Max(0f, radius)
+            && p.z > Spawn.z - 1.5f && p.z < 240f;
+
+        /// <summary>
         /// MEGAWORLD: these angles are civilization field centers on one
         /// supercontinent (kernel: concordia-world-field.js), not portals to
-        /// disconnected maps. Travel() still region-rebuilds until W3.
+        /// disconnected maps. ContinentStream presents them on one plane.
         /// </summary>
         public static readonly GateDef[] Gates =
         {
@@ -188,10 +212,17 @@ namespace Concordia
 
         public static bool InArena(Vector3 p) => Vector3.Distance(new Vector3(p.x, 0, p.z), Arena) < 8f;
 
+        public static bool InHubCourt(Vector3 p) =>
+            p.x * p.x + p.z * p.z <= HubLawRadius * HubLawRadius;
+
         public static bool SteelLive(WorldId world, Vector3 p)
         {
-            if (world != WorldId.Hub) return true;
-            return InArena(p);
+            // Walking a streamed chunk updates WorldClock first; player.world
+            // can lag a frame. Flower Law is Hub plaza only, never a leftover
+            // after the Court is behind you.
+            if (InArena(p)) return true;
+            if (world != WorldId.Hub || WorldClock.World != WorldId.Hub) return true;
+            return !InHubCourt(p);
         }
 
         public static Color Hex(string h)

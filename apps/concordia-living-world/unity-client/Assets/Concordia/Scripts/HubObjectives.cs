@@ -495,11 +495,18 @@ namespace Concordia
 
         public static string HudLine()
         {
-            if (!FromKernel) return "skills.mastery unbound";
+            if (!FromKernel) return "Skills unbound";
             var row = Find(ActiveSkill);
-            if (row == null) return CatalogCount + " skills · kernel";
-            return row.skillType + "  L" + row.level + "  " + row.tier
+            if (row == null) return CatalogCount + " skills";
+            return PrettySkill(row.skillType) + "  L" + row.level
                 + (row.finisher ? "  finisher" : "");
+        }
+
+        public static string PrettySkill(string skillType)
+        {
+            if (string.IsNullOrEmpty(skillType)) return "skill";
+            var s = skillType.Replace('_', ' ').Replace('-', ' ');
+            return char.ToUpperInvariant(s[0]) + s.Substring(1);
         }
 
         public static float KickMul(string skillType)
@@ -614,6 +621,8 @@ namespace Concordia
             var s = Canon.Get(world).style;
             return Art == 1 ? s.heavy : Art == 2 ? s.special : s.light;
         }
+
+        public static string PrettyWeapon(string stem) => Pretty(stem);
 
         static string Pretty(string s)
         {

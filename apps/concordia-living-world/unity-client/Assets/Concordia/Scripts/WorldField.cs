@@ -4,8 +4,8 @@ namespace Concordia
 {
     /// <summary>
     /// Presentation of kernel WorldField. Constants match
-    /// server/lib/concordia-world-field.js. Travel is still region_rebuild;
-    /// in-region metres sample the field around a civilization center.
+    /// server/lib/concordia-world-field.js. ContinentStream present metres
+    /// map through MegaworldMap.PresentToKm when the stream is live.
     /// Never a fabricated "−42% Magic Damage" sticker.
     /// </summary>
     public static class WorldField
@@ -62,9 +62,11 @@ namespace Concordia
             _ => 0f
         };
 
-        /// <summary>Scene metres → megaworld km. Hub stays in the well.</summary>
+        /// <summary>Scene metres → megaworld km. Streamed present xz is already on the plane.</summary>
         public static Vector2 LocalToMegaworld(WorldId world, float localX, float localZ)
         {
+            if (ContinentStream.Live)
+                return MegaworldMap.PresentToKm(new Vector3(localX, 0f, localZ));
             if (world == WorldId.Hub) return Vector2.zero;
             var c = CenterKm(world);
             float ang = world == WorldId.Sere

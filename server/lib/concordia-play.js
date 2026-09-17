@@ -59,8 +59,9 @@ export function handleSchemeIntervene(db, userId, data = {}) {
     return { ...r, source: r.ok ? "kernel" : (r.reason || "kernel") };
   } catch (e) {
     const msg = String(e?.message || e);
-    if (/no such table/i.test(msg) || /npc_schemes/i.test(msg))
+    if (/no such table/i.test(msg) || /npc_schemes/i.test(msg)) {
       return { ok: false, reason: "scheme_not_found" };
+    }
     return { ok: false, reason: msg };
   }
 }

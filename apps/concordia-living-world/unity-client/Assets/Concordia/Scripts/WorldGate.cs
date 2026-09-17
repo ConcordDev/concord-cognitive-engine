@@ -6,10 +6,44 @@ namespace Concordia
     {
         public GateDef def;
         public string Prompt => "E  ·  " + def.name + "  —  " + def.refusal;
+        static float _travelLock;
+        Light _wind;
+        ParticleSystem _swirl;
 
         void Start()
         {
             GatePost.Ensure(this);
+            var swirlT = transform.Find("Swirl");
+            if (swirlT) _swirl = swirlT.GetComponent<ParticleSystem>();
+            var tint = def != null ? def.color : new Color(1f, 0.86f, 0.62f);
+            _wind = HubLook.Point(transform, "GateWind", transform.position + Vector3.up * 3.4f, tint, 0.12f, 10f, false);
+        }
+
+        void LateUpdate()
+        {
+            bool on = ConcordiaHUD.Bearing == this;
+            if (_swirl)
+            {
+                var em = _swirl.emission;
+                em.rateOverTime = on ? 28f : 7f;
+            }
+            if (_wind)
+            {
+                _wind.intensity = on ? 2.4f : 0.12f;
+                _wind.range = on ? 18f : 8f;
+            }
+        }
+
+        void OnTriggerEnter(Collider other)
+        {
+            if (def == null || Time.unscaledTime < _travelLock) return;
+            var player = other.GetComponent<ConcordiaPlayer>() ?? other.GetComponentInParent<ConcordiaPlayer>();
+            if (!player) return;
+            if (player.world == def.world) return;
+            var game = ConcordiaGame.Live;
+            if (!game) return;
+            _travelLock = Time.unscaledTime + 0.8f;
+            game.Travel(def.world);
         }
     }
 
@@ -41,11 +75,10 @@ namespace Concordia
                 post.ownerFaction = "Concordant Watch";
             else
                 post.ownerFaction = OwnerOf(WorldClock.World);
-            int n = WorldClock.World == WorldId.Hub ? 2 : 1;
+            int n = WorldClock.World == WorldId.Hub ? ConcordiaHost.GateGuards : 1;
             for (int i = 0; i < n; i++)
             {
-                var side = (i == 0 ? -1.6f : 1.6f);
-                var pos = gate.transform.position + gate.transform.right * side + gate.transform.forward * 4.2f + Vector3.up * 0.05f;
+                var pos = gate.transform.position + gate.transform.right * (i == 0 ? -3.4f : 3.4f) + gate.transform.forward * 0.4f + Vector3.up * 0.05f;
                 var look = Appearance.Random(gate.GetHashCode() + i * 17);
                 look.displayName = "a guard";
                 look.outfit = 1;
@@ -97,7 +130,10 @@ namespace Concordia
         public GuestDef def;
         public string personId;
         public string[] questHooks;
-        public string Prompt => "E  ·  " + def.name + ", " + def.title;
+        public bool hailed;
+        public string Prompt => hailed
+            ? "E  ·  " + def.name + " hailed you"
+            : "E  ·  " + def.name + ", " + def.title;
 
         void Start()
         {
@@ -181,6 +217,7 @@ namespace Concordia
             if (!QuestLog.HoldingAny())
                 return "The stove is cold. Take ingredients from a chest or market first.";
             QuestLog.NoteGather("meal");
+            LivingBody.Hero?.Eat();
             WorldClock.NoteAct("someone cooks");
             return "You cook what you gathered. The meal is real because the ingredients were.";
         }
@@ -240,29 +277,31 @@ namespace Concordia
         }
     }
 
-    /// <summary>T1 nameplate. World-space name over a living person.</summary>
+    /// <summary>Quiet world-space name. Small, camera-facing, planted on feet — not a bouncing billboard.</summary>
     public class PersonLabel : MonoBehaviour
     {
         public string title;
         public string role;
         TextMesh _mesh;
-        const float MaxDist = 22f;
+        TextMesh _shadow;
+        Transform _host;
+        const float MaxDist = 14f;
+        const float Height = 1.92f;
 
         public static PersonLabel Attach(Transform host, string title, string role = null)
         {
             if (!host) return null;
-            var existing = host.GetComponentInChildren<PersonLabel>();
-            if (existing)
+            foreach (var existing in Object.FindObjectsByType<PersonLabel>(FindObjectsInactive.Exclude))
             {
+                if (!existing || existing._host != host) continue;
                 existing.title = title;
                 existing.role = role;
                 existing.Apply();
                 return existing;
             }
             var go = new GameObject("Nameplate");
-            go.transform.SetParent(host, false);
-            go.transform.localPosition = new Vector3(0f, 2.15f, 0f);
             var lab = go.AddComponent<PersonLabel>();
+            lab._host = host;
             lab.title = title;
             lab.role = role;
             lab.Build();
@@ -271,83 +310,76 @@ namespace Concordia
 
         void Build()
         {
-            _mesh = gameObject.AddComponent<TextMesh>();
-            _mesh.anchor = TextAnchor.LowerCenter;
-            _mesh.alignment = TextAlignment.Center;
-            _mesh.characterSize = 0.045f;
-            _mesh.fontSize = 42;
-            _mesh.color = new Color(1f, 0.94f, 0.82f, 0.95f);
+            _shadow = MakeMesh(new Color(0.06f, 0.05f, 0.04f, 0.92f), 0.002f);
+            _mesh = MakeMesh(new Color(0.96f, 0.93f, 0.86f, 0.96f), 0f);
+            Apply();
+        }
+
+        TextMesh MakeMesh(Color color, float z)
+        {
+            var child = new GameObject(z < 0f ? "Ink" : "Face");
+            child.transform.SetParent(transform, false);
+            child.transform.localPosition = new Vector3(0f, 0f, z);
+            var tm = child.AddComponent<TextMesh>();
+            tm.anchor = TextAnchor.LowerCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.characterSize = 0.016f;
+            tm.fontSize = 36;
+            tm.fontStyle = FontStyle.Bold;
+            tm.color = color;
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             if (font)
             {
-                _mesh.font = font;
-                var matRend = _mesh.GetComponent<Renderer>();
+                tm.font = font;
+                var matRend = tm.GetComponent<Renderer>();
                 if (matRend && font.material) matRend.sharedMaterial = font.material;
             }
-            var rend = _mesh.GetComponent<Renderer>();
+            var rend = tm.GetComponent<Renderer>();
             if (rend)
             {
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 rend.receiveShadows = false;
             }
-            Apply();
+            return tm;
         }
 
         void Apply()
         {
-            if (!_mesh) _mesh = GetComponent<TextMesh>();
-            if (!_mesh) return;
             var line = string.IsNullOrEmpty(title) ? "someone" : title;
             if (!string.IsNullOrEmpty(role)) line += "\n" + role;
-            _mesh.text = line;
+            if (_mesh) _mesh.text = line;
+            if (_shadow) _shadow.text = line;
         }
 
         void LateUpdate()
         {
+            if (!_host)
+            {
+                Destroy(gameObject);
+                return;
+            }
             var cam = Camera.main;
-            var rend = _mesh ? _mesh.GetComponent<Renderer>() : GetComponent<Renderer>();
+            var rend = _mesh ? _mesh.GetComponent<Renderer>() : null;
             if (!cam)
             {
                 if (rend) rend.enabled = false;
+                if (_shadow) _shadow.GetComponent<Renderer>().enabled = false;
                 return;
             }
+            var feet = _host.position;
+            transform.position = feet + Vector3.up * Height;
             var d = Vector3.Distance(cam.transform.position, transform.position);
-            var show = d < MaxDist;
+            var show = d < MaxDist && d > 1.4f;
             if (rend) rend.enabled = show;
+            if (_shadow)
+            {
+                var sr = _shadow.GetComponent<Renderer>();
+                if (sr) sr.enabled = show;
+            }
             if (!show) return;
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
-        }
-    }
-
-    public static class WorldPresence
-    {
-        public static GuestNpc FindGuest(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return null;
-            foreach (var n in Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude))
-            {
-                if (!n) continue;
-                if (n.personId == id) return n;
-                if (n.def != null && n.def.id == id) return n;
-            }
-            return null;
-        }
-
-        public static WorldGate GateToward(string kernelWorld)
-        {
-            if (string.IsNullOrEmpty(kernelWorld)) return null;
-            foreach (var g in Object.FindObjectsByType<WorldGate>(FindObjectsInactive.Exclude))
-            {
-                if (!g || g.def == null) continue;
-                if (WorldBook.Folder(g.def.world) == kernelWorld) return g;
-            }
-            return null;
-        }
-
-        public static bool InPresenter(float x, float z)
-        {
-            var mag = new Vector2(x, z).magnitude;
-            return mag > 0.4f && mag <= Canon.RingRadius + 16f;
+            float s = Mathf.Clamp(d * 0.045f, 0.7f, 1.15f);
+            transform.localScale = Vector3.one * s;
         }
     }
 

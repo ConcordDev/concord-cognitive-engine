@@ -62,6 +62,9 @@ namespace Concordia
         Renderer[] _rend;
         bool _hidden;
 
+        /// <summary>
+        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
+        /// </summary>
         public void BindGenome(CreatureGenome g)
         {
             if (!g) return;
@@ -69,6 +72,7 @@ namespace Concordia
             predator = g.predator;
             if (!string.IsNullOrEmpty(g.speciesId)) critterId = g.speciesId;
             else if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
+            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Start()
@@ -81,18 +85,6 @@ namespace Concordia
             var genome = GetComponent<CreatureGenome>();
             if (genome) BindGenome(genome);
             Pick();
-        }
-
-        /// <summary>
-        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
-        /// </summary>
-        public void BindGenome(CreatureGenome g)
-        {
-            if (!g) return;
-            if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
-            fly = g.fly;
-            predator = g.predator;
-            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Update()

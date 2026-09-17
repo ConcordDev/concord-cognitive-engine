@@ -18,7 +18,59 @@ namespace Concordia
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
         Vector3 _vel;
+
+        // ---- Gameplay core (Concordia.Core) -------------------------------------------------
+        // ActionRunner owns strike timing and defensive windows. HitResolver is the one
+        // incoming grammar (i-frame / parry / block / hit). ActorState is the feel body
+        // for those windows — it does NOT replace kernel HP. Kernel-authored dummies still
+        // wait on ApplyKernelAttackAck ("Never invent HP"). Road/Present hostiles stay local.
+        readonly Core.ActorState _body = new Core.ActorState();
+        readonly Core.ActionRunner _action = new Core.ActionRunner();
+
+        static readonly Core.ActionDef DodgeAction = new Core.ActionDef
+        {
+            Id = "dodge",
+            Kind = Core.ActionKind.Dodge,
+            StartupMs = 0,
+            ActiveMs = 350,
+            RecoveryMs = 30,     // 380ms total — matches the legacy _dodgeUntil budget
+            IFrameStartMs = 0,
+            IFrameEndMs = 350,   // matches the legacy 0.35s i-frame window
+            StaminaCost = 18f
+        };
+
+        static readonly Core.ActionDef HopIFrame = new Core.ActionDef
+        {
+            Id = "hop",
+            Kind = Core.ActionKind.Dodge,
+            StartupMs = 0,
+            ActiveMs = 280,
+            RecoveryMs = 20,
+            IFrameStartMs = 0,
+            IFrameEndMs = 280,
+            StaminaCost = 0f
+        };
+
+        static readonly Core.ActionDef GuardAction = new Core.ActionDef
+        {
+            Id = "block",
+            Kind = Core.ActionKind.Block,
+            StartupMs = 0,
+            ActiveMs = 500,
+            RecoveryMs = 80,
+            ParryStartMs = 0,
+            ParryEndMs = 120     // early C is a parry; the rest is a held guard
+        };
+
+        /// Single source of truth for "am I currently invulnerable". Reads the core first; falls
+        /// back to the legacy timer so a sweep hop that failed TryBegin still has a window.
+        public bool IsInvulnerable => _action.IsInvulnerable || Time.time < _iframeUntil;
+
         float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
+        float _hitstop, _comboUntil;
+        int _comboBeat;
+        bool _scanArmed;
+        Core.ActionDef _presented;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
@@ -41,13 +93,30 @@ namespace Concordia
         TrainingDummy _pendingKernelTarget;
         float _moveSentAt;
         WorldId _fightWorld = (WorldId)(-1);
+        Vector3 _forceWalk = Vector3.forward;
+        float _forceWalkT;
+        Vector3 _recvAt;
 
-        void OnEnable() => Live = this;
+        void OnEnable()
+        {
+            Live = this;
+            var body = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
+            LivingBody.BindHero(body);
+            body.SyncToClock(WorldClock.Hour);
+        }
         void OnDisable() { if (Live == this) Live = null; }
         void Reset() => cc = GetComponent<CharacterController>();
 
         void Update()
         {
+            // Advance the gameplay core first so IsInvulnerable / CanAct are correct for the rest
+            // of this frame. Integer ms: frame windows are a contract, and float drift across a
+            // long session would quietly move parry/i-frame timing.
+            _action.Tick(Mathf.RoundToInt(Time.deltaTime * 1000f), _body);
+            if (_action.Current == null) _presented = null;
+            else if (_action.ElapsedMs == 0 && IsStrike(_action.Current))
+                CommitStrike(_action.Current);
+
             if (creatorLocked)
             {
                 if (cc)
@@ -77,6 +146,13 @@ namespace Concordia
             var fwd = cam.PlanarForward;
             var right = cam.PlanarRight;
             var wish = fwd * axes.y + right * axes.x;
+            if (_forceWalkT > 0f)
+            {
+                _forceWalkT -= dt;
+                wish = _forceWalk;
+                sprint = true;
+                speed = 8.1f * style.speedMul;
+            }
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
             if (cc.slopeLimit < 50f) cc.slopeLimit = 50f;
@@ -87,49 +163,88 @@ namespace Concordia
             var grounded = cc.isGrounded;
             if (grounded) _coyote = 0.14f;
             else _coyote -= dt;
-            if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
+            var wall = (cc.collisionFlags & CollisionFlags.Sides) != 0;
+            var climbHeld = !Busy && KeyHeld(KeyCode.Space);
+            var climbing = climbHeld && wall && LivingBody.Hero && LivingBody.Hero.CanClimb && stamina > 8f;
+            if (climbing)
+            {
+                LivingBody.Hero.Climb(dt);
+                stamina -= 22f * dt;
+                _vel.y = 2.6f;
+                _coyote = 0f;
+                grounded = false;
+            }
+            else if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
             {
                 _vel.y = 8.2f;
                 _coyote = 0f;
                 grounded = false;
                 if (Hostile.TelegraphKind == "sweep")
                 {
+                    _body.Stamina = stamina;
+                    _action.TryBegin(HopIFrame, _body);
                     _iframeUntil = Time.time + 0.28f;
                     var hop = ConcordClient.Live;
                     if (hop != null) hop.SendDodge(false, "jump");
                 }
             }
-            if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
+            // Dodge now goes through the gameplay core. TryBegin is the gate: it enforces the
+            // phase machine (no dodge-cancelling a dodge) and the stamina cost, and returns false
+            // honestly rather than starting a free action. i-frames come from the ActionDef window.
+            if (!Busy && KeyDown(KeyCode.X))
             {
-                _vel += wish.normalized * 12.4f;
-                _dodgeUntil = Time.time + 0.38f;
-                _iframeUntil = Time.time + 0.35f;
-                stamina -= 18;
-                var client = ConcordClient.Live;
-                if (client != null) client.SendDodge();
+                _body.Stamina = stamina;                    // legacy bar is still the display source
+                if (_action.TryBegin(DodgeAction, _body))
+                {
+                    stamina = _body.Stamina;                // core charged the cost
+                    _vel += wish.normalized * 12.4f;
+                    _dodgeUntil = Time.time + 0.38f;        // kept in sync during migration
+                    _iframeUntil = Time.time + 0.35f;
+                    var client = ConcordClient.Live;
+                    if (client != null) client.SendDodge();
+                }
+            }
+            if (!Busy && KeyHeld(KeyCode.C))
+            {
+                _body.Stamina = stamina;
+                if (_action.CanAct) _action.TryBegin(GuardAction, _body);
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
             if (grounded && !_wasGrounded) person?.Land();
             _wasGrounded = grounded;
             if (grounded && _vel.y < 0) _vel.y = -1.5f;
-            else _vel.y += -22f * dt;
+            else if (!climbing) _vel.y += -22f * dt;
 
-            var air = grounded ? 1f : 0.86f;
-            var move = wish * speed * air;
-            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
-            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-(grounded ? 14f : 4.2f) * dt));
+            var air = grounded ? 1f : (climbing ? 0.55f : 0.86f);
+            if (LivingBody.Hero)
+            {
+                if (sprint && wish.sqrMagnitude > 0.04f)
+                    LivingBody.Hero.Tick(0f, true);
+            }
+            var move = wish * speed * air * (LivingBody.Hero ? LivingBody.Hero.MoveMul : 1f);
+            var accel = grounded ? (sprint ? 14f : 8.2f) : 4.2f;
+            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-accel * dt));
+            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-accel * dt));
+            if (_hitstop > 0f)
+            {
+                _hitstop -= dt;
+                _vel.x *= 0.42f;
+                _vel.z *= 0.42f;
+            }
             cc.Move(_vel * dt);
+            ReceiveLand();
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
             if (planar.sqrMagnitude > 0.2f)
             {
                 _yaw = Mathf.Atan2(planar.x, planar.z);
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-12f * dt));
+                var turn = sprint ? 12f : 7.2f;
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, _yaw * Mathf.Rad2Deg, 0), 1f - Mathf.Exp(-turn * dt));
             }
 
-            cam.sprinting = sprint && planar.magnitude > 4f;
-            cam.inCombat = Time.time < _slashUntil;
+            cam.sprinting = sprint && planar.magnitude > 6.2f;
+            cam.inCombat = Time.time < _slashUntil || !_action.IsIdle;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
@@ -144,6 +259,16 @@ namespace Concordia
             stamina = Mathf.Min(100, stamina + 18f * dt);
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
             if (world == WorldId.Tunya && planar.magnitude < 0.4f) poise = Mathf.Min(12 * style.poiseMul, poise + 8f * dt);
+
+            if (_action.JustBecameActive && IsStrike(_action.Current) && _scanArmed)
+            {
+                var connected = HitScan(_action.Current);
+                if (!string.IsNullOrEmpty(_action.Current.Id)) SkillLedger.Record(_action.Current.Id, connected);
+                var feel = GetComponent<CombatFeel>();
+                var heavy = _action.Current.Kind == Core.ActionKind.HeavyAttack;
+                feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+                if (connected) _hitstop = 0.045f;
+            }
 
             if (!Busy && MouseDown(0) && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -162,6 +287,66 @@ namespace Concordia
         string nearPrompt;
 
         public void SetNearPrompt(string p) => nearPrompt = p;
+
+        /// <summary>
+        /// F8-style land/you/clock without needing MegaworldMap in a probe.
+        /// Hungry is a word on this line — not a TextMesh on a berm sign.
+        /// </summary>
+        public string LandLine
+        {
+            get
+            {
+                var need = LivingBody.Hero ? LivingBody.Hero.NeedLine : null;
+                var line = "land " + MegaworldMap.RegionAt(transform.position)
+                    + " · you " + world
+                    + " · clock " + WorldClock.World;
+                if (!string.IsNullOrEmpty(need)) line += " · " + need;
+                if (KitBag.HasLoot()) line += " · pack";
+                return line;
+            }
+        }
+
+        /// <summary>
+        /// Same cc.Move path as WASD, world bearing (Sundering is +Z). A one-shot
+        /// CharacterController.Move from execute_code is not a walk.
+        /// </summary>
+        public void WalkBearing(Vector3 dir, float seconds)
+        {
+            dir.y = 0f;
+            _forceWalk = dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.forward;
+            _forceWalkT = Mathf.Max(0.2f, seconds);
+        }
+
+        public bool WalkingBearing => _forceWalkT > 0f;
+
+        void LateUpdate()
+        {
+            if (creatorLocked) return;
+            var p = transform.position;
+            var dx = p.x - _recvAt.x;
+            var dz = p.z - _recvAt.z;
+            if (dx * dx + dz * dz < 0.16f) return;
+            ReceiveLand();
+        }
+
+        void ReceiveLand()
+        {
+            _recvAt = transform.position;
+            ContinentStream.Live?.ReceiveHere(_recvAt);
+        }
+
+        /// <summary>
+        /// Warp that also receives. execute_code that only sets transform.position
+        /// never Ticks — Stand is not a walked day. Prefer WalkBearing.
+        /// </summary>
+        public void Stand(Vector3 p)
+        {
+            if (cc) cc.enabled = false;
+            transform.position = p;
+            if (cc) cc.enabled = true;
+            Grounding.Snap(cc);
+            ReceiveLand();
+        }
 
         public void EquipWorldKit()
         {
@@ -186,7 +371,7 @@ namespace Concordia
             var fac = facs[i];
             kitWeapon = PersonKit.WeaponStem(fac, i);
             HoldFromBag(kitWeapon);
-            Toast((fac.name ?? "kit") + " — " + kitWeapon);
+            Toast((fac.name ?? "kit") + " — " + KitBag.PrettyWeapon(kitWeapon));
         }
 
         public void HoldFromBag(string stem)
@@ -294,107 +479,147 @@ namespace Concordia
         void TryAttack(bool heavy)
         {
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             var art = heavy ? style.heavy : style.light;
-            var live = Canon.SteelLive(world, transform.position);
-            avatar?.Slash();
-            person?.Slash();
-            _slashUntil = Time.time + (heavy ? 0.82f : 0.52f);
-            _attackKind = heavy ? 1 : 0;
-            stamina -= heavy ? 28 : 12;
-            if (!live)
-            {
-                FlowerBurst();
-                SkillLedger.Record(art, false);
-                Toast("The ground refuses it.");
-                return;
-            }
-            if (world == WorldId.Fantasy)
-            {
-                hostility += 1.2f;
-                if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
-            }
-            var connected = HitScan(heavy, 1f);
-            SkillLedger.Record(art, connected);
-            var feel = GetComponent<CombatFeel>();
-            feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+            QueueStrike(MakeStrike(heavy, fs, art, 1f, heavy ? 28f : 12f, heavy ? 26f : 14f));
         }
 
         void TrySpecial()
         {
+            if (!_action.CanAct) return;
             var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
             if (stamina < 22f) { Toast("Winded."); return; }
-            stamina -= 22f;
-            person?.Slash();
-            avatar?.Slash();
-            _slashUntil = Time.time + 0.7f;
-            var live = Canon.SteelLive(world, transform.position);
-            if (!live)
+            float reach = 1.2f;
+            switch (world)
             {
-                FlowerBurst();
-                SkillLedger.Record(style.special, false);
-                Toast(style.special + " dies as flowers.");
-                return;
+                case WorldId.Ruins: reach = 1.15f; break;
+                case WorldId.Tunya: reach = 1.1f; break;
+                case WorldId.Fantasy: reach = 1.05f; break;
+                case WorldId.Crime: reach = 1.05f; break;
+                case WorldId.Cyber: reach = 1.4f; break;
+                case WorldId.Frontier: reach = 1.25f; break;
+                case WorldId.Superhero: reach = 1.6f; break;
+                default: reach = 1.2f; break;
             }
-            bool connected = false;
+            var def = MakeStrike(true, fs, style.special, reach, 22f, 26f);
+            _body.Stamina = stamina;
+            if (!_action.TryBegin(def, _body)) return;
+            stamina = _body.Stamina;
+            CommitStrike(def);
+            if (!_scanArmed) return;
             switch (world)
             {
                 case WorldId.Ruins:
                     hp = Mathf.Min(100, hp + 10f);
-                    connected = HitScan(true, 1.15f);
                     Toast(style.special + " — a fall pulled back.");
                     break;
                 case WorldId.Tunya:
                     poise = 12f * style.poiseMul;
-                    connected = HitScan(false, 1.1f);
                     Toast(style.special + " — grove restores poise.");
                     break;
                 case WorldId.Fantasy:
                     hostility = Mathf.Max(0f, hostility - 5f);
-                    connected = HitScan(true, 1.05f);
                     Toast(style.special + " — the curse folds inward, not out.");
                     break;
                 case WorldId.Crime:
                     _dmgMul = 1.55f;
-                    connected = HitScan(true, 1.05f);
                     Toast(style.special + " — the bill arrives now.");
                     break;
                 case WorldId.Cyber:
-                    connected = HitScan(true, 1.4f);
                     Toast(style.special + " — pulse.");
                     break;
                 case WorldId.Frontier:
                     _vel += cam.PlanarForward * 11f;
-                    connected = HitScan(true, 1.25f);
                     Toast(style.special + " — dust sprint.");
                     break;
                 case WorldId.Superhero:
-                    connected = HitScan(true, 1.6f);
                     Toast(style.special + " — they stand.");
                     break;
                 case WorldId.Crucible:
                     ReviveNearest();
-                    connected = HitScan(true, 1.2f);
                     Toast(style.special + " — un-end it.");
                     break;
-                case WorldId.Sere:
-                    connected = HitScan(true, 1.2f);
-                    Toast(style.special + " — " + style.power);
-                    break;
                 default:
-                    connected = HitScan(true, 1.2f);
                     Toast(style.special + " — " + style.power);
                     break;
             }
-            SkillLedger.Record(style.special, connected);
         }
 
-        bool HitScan(bool heavy, float reachMul)
+        static bool IsStrike(Core.ActionDef def) =>
+            def != null && (def.Kind == Core.ActionKind.LightAttack || def.Kind == Core.ActionKind.HeavyAttack);
+
+        Core.ActionDef MakeStrike(bool heavy, FightStyle fs, string id, float reachMul, float staminaCost, float damage)
+        {
+            CombatMotion.StrikeWindows(heavy, fs, out var start, out var active, out var rec, out var cancel);
+            return new Core.ActionDef
+            {
+                Id = id,
+                Kind = heavy ? Core.ActionKind.HeavyAttack : Core.ActionKind.LightAttack,
+                StartupMs = start,
+                ActiveMs = active,
+                RecoveryMs = rec,
+                CancelAfterMs = cancel,
+                StaminaCost = staminaCost,
+                Damage = damage,
+                PoiseDamage = damage * 0.25f,
+                ReachMeters = (heavy ? 3.2f : 2.8f) * reachMul * (world == WorldId.Cyber ? 1.25f : 1f)
+            };
+        }
+
+        void QueueStrike(Core.ActionDef def)
+        {
+            if (def == null) return;
+            _body.Stamina = stamina;
+            if (!_action.CanAct)
+            {
+                _action.Buffer(def, _body);
+                return;
+            }
+            if (!_action.TryBegin(def, _body)) return;
+            stamina = _body.Stamina;
+            CommitStrike(def);
+        }
+
+        void CommitStrike(Core.ActionDef def)
+        {
+            if (def == null || !IsStrike(def) || ReferenceEquals(def, _presented)) return;
+            _presented = def;
+            var heavy = def.Kind == Core.ActionKind.HeavyAttack;
+            var fs = Canon.PickFight(null, null, world);
+            if (Time.time > _comboUntil) _comboBeat = 0;
+            var beat = _comboBeat;
+            _comboBeat = (_comboBeat + 1) % 3;
+            avatar?.Slash(heavy, beat);
+            person?.Slash(heavy, beat);
+            _slashUntil = Time.time + CombatMotion.ComboOpen(heavy, fs);
+            _comboUntil = Time.time + CombatMotion.Duration(heavy, fs) * 1.25f;
+            _attackKind = heavy ? 1 : 0;
+            _scanArmed = Canon.SteelLive(world, transform.position);
+            if (!_scanArmed)
+            {
+                FlowerBurst();
+                SkillLedger.Record(def.Id, false);
+                Toast(def.Id == Canon.Get(world).style.special
+                    ? def.Id + " dies as flowers."
+                    : "The ground refuses it.");
+                return;
+            }
+            if (world == WorldId.Fantasy && def.Id != Canon.Get(world).style.special)
+            {
+                hostility += 1.2f;
+                if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
+            }
+        }
+
+        bool HitScan(Core.ActionDef def)
         {
             var style = Canon.Get(world).style;
-            float reach = (heavy ? 3.2f : 2.8f) * reachMul * (world == WorldId.Cyber ? 1.25f : 1f);
+            var heavy = def != null && def.Kind == Core.ActionKind.HeavyAttack;
+            float reach = def != null ? def.ReachMeters : ((heavy ? 3.2f : 2.8f) * (world == WorldId.Cyber ? 1.25f : 1f));
             var origin = transform.position + Vector3.up * 1.15f;
             var hits = Physics.SphereCastAll(origin, 0.85f, transform.forward, reach, ~0, QueryTriggerInteraction.Collide);
-            float dmg = (heavy ? 26f : 14f) * _dmgMul * style.massMul;
+            float dmg = (def != null ? def.Damage : (heavy ? 26f : 14f)) * _dmgMul * style.massMul;
             _dmgMul = 1f;
             TrainingDummy dummy = FindDummy(hits);
             if (!dummy)
@@ -421,22 +646,26 @@ namespace Concordia
             if (boss != null && client && client.Connected && !string.IsNullOrEmpty(client.DungeonInstanceId))
             {
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendDungeonHit(dmg);
                 return true;
             }
-            if (client && client.Connected)
+            if (client && client.Connected && dummy.KernelAuthored)
             {
-                // Kernel resolves HP. Presentation already played the swing.
+                // Kernel resolves gym / dungeon HP. Road hostiles are local.
                 _pendingKernelTarget = dummy;
-                Toast(dummy.name + " — Concord resolving");
+                Toast(dummy.GuestLabel + " — Concord resolving");
                 _ = client.SendAttack(dummy.name, dmg, reach, liveWeapon(), transform.position.x, transform.position.z);
                 return true;
             }
             dmg = WorldField.ScaleDamage(dmg, world, transform.position, "athletics");
             dummy.Hit(dmg, world);
             HubObjectives.NoteArenaHit();
-            Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            var label = dummy.GuestLabel;
+            if (dummy.KernelAuthored)
+                Toast(label + "  " + Mathf.Ceil(dummy.hp) + "  — local. Concord {ok:false, reason:'no_gateway'}");
+            else
+                Toast(label + (dummy.hp > 0f ? "  " + Mathf.Ceil(dummy.hp) : "  down"));
             return true;
         }
 
@@ -457,7 +686,7 @@ namespace Concordia
             }
             if (dummy) dummy.ApplyServerHit(damage, world);
             HubObjectives.NoteArenaHit();
-            if (dummy) Toast(dummy.name + "  " + Mathf.Ceil(dummy.hp));
+            if (dummy) Toast(dummy.GuestLabel + "  " + Mathf.Ceil(dummy.hp));
         }
 
         static TrainingDummy FindDummy(RaycastHit[] hits)
@@ -486,36 +715,83 @@ namespace Concordia
 
         public void TakeHit(float dmg, string from, float knockback = -1f)
         {
-            if (Time.time < _iframeUntil)
-            {
-                var defense = (!cc.isGrounded && _vel.y > 1f) ? "jump" : "dodge";
-                if (Hostile.CounterMatches(Hostile.TelegraphKind, defense))
-                {
-                    Toast("the cut passes through");
-                    return;
-                }
-            }
             if (!Canon.SteelLive(world, transform.position))
             {
                 FlowerBurst();
                 Toast("The ground refuses " + from + ".");
                 return;
             }
-            hp -= dmg;
-            poise = Mathf.Max(0f, poise - dmg * 0.25f);
+
+            var defenseName = (!cc.isGrounded && _vel.y > 1f) || (_action.Current != null && _action.Current.Id == "hop")
+                ? "jump"
+                : (_action.IsParrying ? "parry" : "dodge");
+            var iframeOk = IsInvulnerable
+                && (string.IsNullOrEmpty(Hostile.TelegraphKind) || Hostile.CounterMatches(Hostile.TelegraphKind, defenseName));
+            if (iframeOk)
+            {
+                Toast("the cut passes through");
+                return;
+            }
+
+            _body.Health = hp;
+            _body.Stamina = stamina;
+            var attack = new Core.AttackContext
+            {
+                Damage = dmg,
+                PoiseDamage = dmg * 0.25f,
+                ReachMeters = 16f,
+                DistanceMeters = 1f,
+                Impulse = knockback > 0f ? knockback : 0f
+            };
+            // Wrong-counter dodge still has i-frames on the runner; don't let them eat this swing.
+            var runner = _action.IsInvulnerable ? null : _action;
+            var result = Core.HitResolver.Resolve(attack, _body, runner);
+            stamina = _body.Stamina;
+
+            if (result.Outcome == Core.DefenseOutcome.Parried)
+            {
+                Toast("Parry.");
+                return;
+            }
+            if (result.Outcome == Core.DefenseOutcome.Dodged)
+            {
+                Toast("the cut passes through");
+                return;
+            }
+            if (result.Outcome == Core.DefenseOutcome.OutOfRange) return;
+
+            hp = _body.Health;
+            if (result.Outcome == Core.DefenseOutcome.Blocked)
+                Toast("Guarded — " + Mathf.Ceil(result.DamageDealt) + " damage.");
+            else
+                Toast(from + " hits.");
+
+            poise = Mathf.Max(0f, poise - result.PoiseDamageDealt);
+            var impulse = result.Impulse > 0f ? result.Impulse : (knockback >= 0f ? knockback : 0f);
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             avatar?.Hit();
-            if (knockback > 1.8f || poise < 2.5f) avatar?.Knockdown();
-            else if (poise < 4f || knockback > 1.1f) avatar?.Stagger();
+            if (result.Outcome == Core.DefenseOutcome.GuardBroken || impulse > 1.8f || poise < 2.5f || result.Stagger == Core.StaggerTier.Knockdown)
+            {
+                avatar?.Knockdown();
+                person?.Stagger();
+            }
+            else if (result.Stagger != Core.StaggerTier.None || poise < 4f || impulse > 1.1f)
+            {
+                avatar?.Stagger();
+                person?.Stagger();
+            }
             var feel = GetComponent<CombatFeel>();
-            feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
-            Toast(from + " hits.");
+            feel?.ApplyAck(true, impulse > 0f ? impulse : Mathf.Min(result.DamageDealt * 0.08f, 2.4f), false, false);
             if (hp > 0f) return;
             hp = 100f;
+            _body.Health = 100f;
             poise = 12f;
             cc.enabled = false;
-            var spawn = world == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
+            var spawn = world == WorldId.Hub ? Canon.Spawn
+                : ContinentStream.Live
+                    ? MegaworldMap.Present(world) + new Vector3(0f, 0.12f, 2f)
+                    : Canon.SteelSpawn;
             transform.position = spawn;
             cc.enabled = true;
             Grounding.Snap(cc);
@@ -675,6 +951,7 @@ namespace Concordia
             KeyCode.LeftShift => Key.LeftShift,
             KeyCode.Space => Key.Space,
             KeyCode.X => Key.X,
+            KeyCode.C => Key.C,
             KeyCode.F => Key.F,
             KeyCode.G => Key.G,
             KeyCode.Q => Key.Q,
