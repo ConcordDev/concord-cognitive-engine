@@ -18,12 +18,59 @@ namespace Concordia
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
         Vector3 _vel;
+
+        // ---- Gameplay core (Concordia.Core) -------------------------------------------------
+        // ActionRunner owns strike timing and defensive windows. HitResolver is the one
+        // incoming grammar (i-frame / parry / block / hit). ActorState is the feel body
+        // for those windows — it does NOT replace kernel HP. Kernel-authored dummies still
+        // wait on ApplyKernelAttackAck ("Never invent HP"). Road/Present hostiles stay local.
+        readonly Core.ActorState _body = new Core.ActorState();
+        readonly Core.ActionRunner _action = new Core.ActionRunner();
+
+        static readonly Core.ActionDef DodgeAction = new Core.ActionDef
+        {
+            Id = "dodge",
+            Kind = Core.ActionKind.Dodge,
+            StartupMs = 0,
+            ActiveMs = 350,
+            RecoveryMs = 30,     // 380ms total — matches the legacy _dodgeUntil budget
+            IFrameStartMs = 0,
+            IFrameEndMs = 350,   // matches the legacy 0.35s i-frame window
+            StaminaCost = 18f
+        };
+
+        static readonly Core.ActionDef HopIFrame = new Core.ActionDef
+        {
+            Id = "hop",
+            Kind = Core.ActionKind.Dodge,
+            StartupMs = 0,
+            ActiveMs = 280,
+            RecoveryMs = 20,
+            IFrameStartMs = 0,
+            IFrameEndMs = 280,
+            StaminaCost = 0f
+        };
+
+        static readonly Core.ActionDef GuardAction = new Core.ActionDef
+        {
+            Id = "block",
+            Kind = Core.ActionKind.Block,
+            StartupMs = 0,
+            ActiveMs = 500,
+            RecoveryMs = 80,
+            ParryStartMs = 0,
+            ParryEndMs = 120     // early C is a parry; the rest is a held guard
+        };
+
+        /// Single source of truth for "am I currently invulnerable". Reads the core first; falls
+        /// back to the legacy timer so a sweep hop that failed TryBegin still has a window.
+        public bool IsInvulnerable => _action.IsInvulnerable || Time.time < _iframeUntil;
+
         float _yaw, _slashUntil, _dodgeUntil, _iframeUntil, _attackKind, _coyote;
-        float _strikeAt, _hitstop, _comboUntil;
+        float _hitstop, _comboUntil;
         int _comboBeat;
-        bool _strikeHeavy;
-        float _strikeReach = 1f;
-        string _strikeArt;
+        bool _scanArmed;
+        Core.ActionDef _presented;
         bool _wasGrounded = true;
         public string prompt;
         public string toast;
@@ -62,6 +109,14 @@ namespace Concordia
 
         void Update()
         {
+            // Advance the gameplay core first so IsInvulnerable / CanAct are correct for the rest
+            // of this frame. Integer ms: frame windows are a contract, and float drift across a
+            // long session would quietly move parry/i-frame timing.
+            _action.Tick(Mathf.RoundToInt(Time.deltaTime * 1000f), _body);
+            if (_action.Current == null) _presented = null;
+            else if (_action.ElapsedMs == 0 && IsStrike(_action.Current))
+                CommitStrike(_action.Current);
+
             if (creatorLocked)
             {
                 if (cc)
@@ -126,19 +181,33 @@ namespace Concordia
                 grounded = false;
                 if (Hostile.TelegraphKind == "sweep")
                 {
+                    _body.Stamina = stamina;
+                    _action.TryBegin(HopIFrame, _body);
                     _iframeUntil = Time.time + 0.28f;
                     var hop = ConcordClient.Live;
                     if (hop != null) hop.SendDodge(false, "jump");
                 }
             }
-            if (!Busy && KeyDown(KeyCode.X) && Time.time > _dodgeUntil)
+            // Dodge now goes through the gameplay core. TryBegin is the gate: it enforces the
+            // phase machine (no dodge-cancelling a dodge) and the stamina cost, and returns false
+            // honestly rather than starting a free action. i-frames come from the ActionDef window.
+            if (!Busy && KeyDown(KeyCode.X))
             {
-                _vel += wish.normalized * 12.4f;
-                _dodgeUntil = Time.time + 0.38f;
-                _iframeUntil = Time.time + 0.35f;
-                stamina -= 18;
-                var client = ConcordClient.Live;
-                if (client != null) client.SendDodge();
+                _body.Stamina = stamina;                    // legacy bar is still the display source
+                if (_action.TryBegin(DodgeAction, _body))
+                {
+                    stamina = _body.Stamina;                // core charged the cost
+                    _vel += wish.normalized * 12.4f;
+                    _dodgeUntil = Time.time + 0.38f;        // kept in sync during migration
+                    _iframeUntil = Time.time + 0.35f;
+                    var client = ConcordClient.Live;
+                    if (client != null) client.SendDodge();
+                }
+            }
+            if (!Busy && KeyHeld(KeyCode.C))
+            {
+                _body.Stamina = stamina;
+                if (_action.CanAct) _action.TryBegin(GuardAction, _body);
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
 
@@ -175,7 +244,7 @@ namespace Concordia
             }
 
             cam.sprinting = sprint && planar.magnitude > 6.2f;
-            cam.inCombat = Time.time < _slashUntil || _strikeAt > 0f;
+            cam.inCombat = Time.time < _slashUntil || !_action.IsIdle;
             avatar?.SetGait(planar.magnitude, grounded, _vel.y);
             person?.SetGait(planar.magnitude, grounded, _vel.y);
 
@@ -191,13 +260,13 @@ namespace Concordia
             poise = Mathf.Min(12 * style.poiseMul, poise + 4.2f * dt);
             if (world == WorldId.Tunya && planar.magnitude < 0.4f) poise = Mathf.Min(12 * style.poiseMul, poise + 8f * dt);
 
-            if (_strikeAt > 0f && Time.time >= _strikeAt)
+            if (_action.JustBecameActive && IsStrike(_action.Current) && _scanArmed)
             {
-                _strikeAt = 0f;
-                var connected = HitScan(_strikeHeavy, _strikeReach);
-                if (!string.IsNullOrEmpty(_strikeArt)) SkillLedger.Record(_strikeArt, connected);
+                var connected = HitScan(_action.Current);
+                if (!string.IsNullOrEmpty(_action.Current.Id)) SkillLedger.Record(_action.Current.Id, connected);
                 var feel = GetComponent<CombatFeel>();
-                feel?.Strike(_strikeHeavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
+                var heavy = _action.Current.Kind == Core.ActionKind.HeavyAttack;
+                feel?.Strike(heavy, connected, SkillLattice.KickMul(SkillLattice.ActiveSkill), SkillLattice.ActiveSkill);
                 if (connected) _hitstop = 0.045f;
             }
 
@@ -409,11 +478,115 @@ namespace Concordia
 
         void TryAttack(bool heavy)
         {
-            if (Time.time < _slashUntil) return;
             var style = Canon.Get(world).style;
             var fs = Canon.PickFight(null, null, world);
             var art = heavy ? style.heavy : style.light;
-            var live = Canon.SteelLive(world, transform.position);
+            QueueStrike(MakeStrike(heavy, fs, art, 1f, heavy ? 28f : 12f, heavy ? 26f : 14f));
+        }
+
+        void TrySpecial()
+        {
+            if (!_action.CanAct) return;
+            var style = Canon.Get(world).style;
+            var fs = Canon.PickFight(null, null, world);
+            if (stamina < 22f) { Toast("Winded."); return; }
+            float reach = 1.2f;
+            switch (world)
+            {
+                case WorldId.Ruins: reach = 1.15f; break;
+                case WorldId.Tunya: reach = 1.1f; break;
+                case WorldId.Fantasy: reach = 1.05f; break;
+                case WorldId.Crime: reach = 1.05f; break;
+                case WorldId.Cyber: reach = 1.4f; break;
+                case WorldId.Frontier: reach = 1.25f; break;
+                case WorldId.Superhero: reach = 1.6f; break;
+                default: reach = 1.2f; break;
+            }
+            var def = MakeStrike(true, fs, style.special, reach, 22f, 26f);
+            _body.Stamina = stamina;
+            if (!_action.TryBegin(def, _body)) return;
+            stamina = _body.Stamina;
+            CommitStrike(def);
+            if (!_scanArmed) return;
+            switch (world)
+            {
+                case WorldId.Ruins:
+                    hp = Mathf.Min(100, hp + 10f);
+                    Toast(style.special + " — a fall pulled back.");
+                    break;
+                case WorldId.Tunya:
+                    poise = 12f * style.poiseMul;
+                    Toast(style.special + " — grove restores poise.");
+                    break;
+                case WorldId.Fantasy:
+                    hostility = Mathf.Max(0f, hostility - 5f);
+                    Toast(style.special + " — the curse folds inward, not out.");
+                    break;
+                case WorldId.Crime:
+                    _dmgMul = 1.55f;
+                    Toast(style.special + " — the bill arrives now.");
+                    break;
+                case WorldId.Cyber:
+                    Toast(style.special + " — pulse.");
+                    break;
+                case WorldId.Frontier:
+                    _vel += cam.PlanarForward * 11f;
+                    Toast(style.special + " — dust sprint.");
+                    break;
+                case WorldId.Superhero:
+                    Toast(style.special + " — they stand.");
+                    break;
+                case WorldId.Crucible:
+                    ReviveNearest();
+                    Toast(style.special + " — un-end it.");
+                    break;
+                default:
+                    Toast(style.special + " — " + style.power);
+                    break;
+            }
+        }
+
+        static bool IsStrike(Core.ActionDef def) =>
+            def != null && (def.Kind == Core.ActionKind.LightAttack || def.Kind == Core.ActionKind.HeavyAttack);
+
+        Core.ActionDef MakeStrike(bool heavy, FightStyle fs, string id, float reachMul, float staminaCost, float damage)
+        {
+            CombatMotion.StrikeWindows(heavy, fs, out var start, out var active, out var rec, out var cancel);
+            return new Core.ActionDef
+            {
+                Id = id,
+                Kind = heavy ? Core.ActionKind.HeavyAttack : Core.ActionKind.LightAttack,
+                StartupMs = start,
+                ActiveMs = active,
+                RecoveryMs = rec,
+                CancelAfterMs = cancel,
+                StaminaCost = staminaCost,
+                Damage = damage,
+                PoiseDamage = damage * 0.25f,
+                ReachMeters = (heavy ? 3.2f : 2.8f) * reachMul * (world == WorldId.Cyber ? 1.25f : 1f)
+            };
+        }
+
+        void QueueStrike(Core.ActionDef def)
+        {
+            if (def == null) return;
+            _body.Stamina = stamina;
+            if (!_action.CanAct)
+            {
+                _action.Buffer(def, _body);
+                return;
+            }
+            if (!_action.TryBegin(def, _body)) return;
+            stamina = _body.Stamina;
+            CommitStrike(def);
+        }
+
+        void CommitStrike(Core.ActionDef def)
+        {
+            if (def == null || !IsStrike(def) || ReferenceEquals(def, _presented)) return;
+            _presented = def;
+            var heavy = def.Kind == Core.ActionKind.HeavyAttack;
+            var fs = Canon.PickFight(null, null, world);
             if (Time.time > _comboUntil) _comboBeat = 0;
             var beat = _comboBeat;
             _comboBeat = (_comboBeat + 1) % 3;
@@ -422,107 +595,31 @@ namespace Concordia
             _slashUntil = Time.time + CombatMotion.ComboOpen(heavy, fs);
             _comboUntil = Time.time + CombatMotion.Duration(heavy, fs) * 1.25f;
             _attackKind = heavy ? 1 : 0;
-            stamina -= heavy ? 28 : 12;
-            if (!live)
+            _scanArmed = Canon.SteelLive(world, transform.position);
+            if (!_scanArmed)
             {
                 FlowerBurst();
-                SkillLedger.Record(art, false);
-                Toast("The ground refuses it.");
+                SkillLedger.Record(def.Id, false);
+                Toast(def.Id == Canon.Get(world).style.special
+                    ? def.Id + " dies as flowers."
+                    : "The ground refuses it.");
                 return;
             }
-            if (world == WorldId.Fantasy)
+            if (world == WorldId.Fantasy && def.Id != Canon.Get(world).style.special)
             {
                 hostility += 1.2f;
                 if (hostility > 8) { hp -= 4; Toast("The curse turns inward."); }
             }
-            _strikeAt = Time.time + CombatMotion.Delay(heavy, fs);
-            _strikeHeavy = heavy;
-            _strikeReach = 1f;
-            _strikeArt = art;
         }
 
-        void TrySpecial()
-        {
-            if (Time.time < _slashUntil) return;
-            var style = Canon.Get(world).style;
-            var fs = Canon.PickFight(null, null, world);
-            if (stamina < 22f) { Toast("Winded."); return; }
-            stamina -= 22f;
-            person?.Slash(true, 2);
-            avatar?.Slash(true, 2);
-            _slashUntil = Time.time + CombatMotion.ComboOpen(true, fs);
-            _comboUntil = Time.time + CombatMotion.Duration(true, fs) * 1.25f;
-            var live = Canon.SteelLive(world, transform.position);
-            if (!live)
-            {
-                FlowerBurst();
-                SkillLedger.Record(style.special, false);
-                Toast(style.special + " dies as flowers.");
-                return;
-            }
-            float reach = 1.2f;
-            switch (world)
-            {
-                case WorldId.Ruins:
-                    hp = Mathf.Min(100, hp + 10f);
-                    reach = 1.15f;
-                    Toast(style.special + " — a fall pulled back.");
-                    break;
-                case WorldId.Tunya:
-                    poise = 12f * style.poiseMul;
-                    reach = 1.1f;
-                    Toast(style.special + " — grove restores poise.");
-                    break;
-                case WorldId.Fantasy:
-                    hostility = Mathf.Max(0f, hostility - 5f);
-                    reach = 1.05f;
-                    Toast(style.special + " — the curse folds inward, not out.");
-                    break;
-                case WorldId.Crime:
-                    _dmgMul = 1.55f;
-                    reach = 1.05f;
-                    Toast(style.special + " — the bill arrives now.");
-                    break;
-                case WorldId.Cyber:
-                    reach = 1.4f;
-                    Toast(style.special + " — pulse.");
-                    break;
-                case WorldId.Frontier:
-                    _vel += cam.PlanarForward * 11f;
-                    reach = 1.25f;
-                    Toast(style.special + " — dust sprint.");
-                    break;
-                case WorldId.Superhero:
-                    reach = 1.6f;
-                    Toast(style.special + " — they stand.");
-                    break;
-                case WorldId.Crucible:
-                    ReviveNearest();
-                    reach = 1.2f;
-                    Toast(style.special + " — un-end it.");
-                    break;
-                case WorldId.Sere:
-                    reach = 1.2f;
-                    Toast(style.special + " — " + style.power);
-                    break;
-                default:
-                    reach = 1.2f;
-                    Toast(style.special + " — " + style.power);
-                    break;
-            }
-            _strikeAt = Time.time + CombatMotion.Delay(true, fs);
-            _strikeHeavy = true;
-            _strikeReach = reach;
-            _strikeArt = style.special;
-        }
-
-        bool HitScan(bool heavy, float reachMul)
+        bool HitScan(Core.ActionDef def)
         {
             var style = Canon.Get(world).style;
-            float reach = (heavy ? 3.2f : 2.8f) * reachMul * (world == WorldId.Cyber ? 1.25f : 1f);
+            var heavy = def != null && def.Kind == Core.ActionKind.HeavyAttack;
+            float reach = def != null ? def.ReachMeters : ((heavy ? 3.2f : 2.8f) * (world == WorldId.Cyber ? 1.25f : 1f));
             var origin = transform.position + Vector3.up * 1.15f;
             var hits = Physics.SphereCastAll(origin, 0.85f, transform.forward, reach, ~0, QueryTriggerInteraction.Collide);
-            float dmg = (heavy ? 26f : 14f) * _dmgMul * style.massMul;
+            float dmg = (def != null ? def.Damage : (heavy ? 26f : 14f)) * _dmgMul * style.massMul;
             _dmgMul = 1f;
             TrainingDummy dummy = FindDummy(hits);
             if (!dummy)
@@ -618,41 +715,77 @@ namespace Concordia
 
         public void TakeHit(float dmg, string from, float knockback = -1f)
         {
-            if (Time.time < _iframeUntil)
-            {
-                var defense = (!cc.isGrounded && _vel.y > 1f) ? "jump" : "dodge";
-                if (Hostile.CounterMatches(Hostile.TelegraphKind, defense))
-                {
-                    Toast("the cut passes through");
-                    return;
-                }
-            }
             if (!Canon.SteelLive(world, transform.position))
             {
                 FlowerBurst();
                 Toast("The ground refuses " + from + ".");
                 return;
             }
-            hp -= dmg;
-            poise = Mathf.Max(0f, poise - dmg * 0.25f);
+
+            var defenseName = (!cc.isGrounded && _vel.y > 1f) || (_action.Current != null && _action.Current.Id == "hop")
+                ? "jump"
+                : (_action.IsParrying ? "parry" : "dodge");
+            var iframeOk = IsInvulnerable
+                && (string.IsNullOrEmpty(Hostile.TelegraphKind) || Hostile.CounterMatches(Hostile.TelegraphKind, defenseName));
+            if (iframeOk)
+            {
+                Toast("the cut passes through");
+                return;
+            }
+
+            _body.Health = hp;
+            _body.Stamina = stamina;
+            var attack = new Core.AttackContext
+            {
+                Damage = dmg,
+                PoiseDamage = dmg * 0.25f,
+                ReachMeters = 16f,
+                DistanceMeters = 1f,
+                Impulse = knockback > 0f ? knockback : 0f
+            };
+            // Wrong-counter dodge still has i-frames on the runner; don't let them eat this swing.
+            var runner = _action.IsInvulnerable ? null : _action;
+            var result = Core.HitResolver.Resolve(attack, _body, runner);
+            stamina = _body.Stamina;
+
+            if (result.Outcome == Core.DefenseOutcome.Parried)
+            {
+                Toast("Parry.");
+                return;
+            }
+            if (result.Outcome == Core.DefenseOutcome.Dodged)
+            {
+                Toast("the cut passes through");
+                return;
+            }
+            if (result.Outcome == Core.DefenseOutcome.OutOfRange) return;
+
+            hp = _body.Health;
+            if (result.Outcome == Core.DefenseOutcome.Blocked)
+                Toast("Guarded — " + Mathf.Ceil(result.DamageDealt) + " damage.");
+            else
+                Toast(from + " hits.");
+
+            poise = Mathf.Max(0f, poise - result.PoiseDamageDealt);
+            var impulse = result.Impulse > 0f ? result.Impulse : (knockback >= 0f ? knockback : 0f);
             _vel -= transform.forward * 1.8f;
             person?.Hurt();
             avatar?.Hit();
-            if (knockback > 1.8f || poise < 2.5f)
+            if (result.Outcome == Core.DefenseOutcome.GuardBroken || impulse > 1.8f || poise < 2.5f || result.Stagger == Core.StaggerTier.Knockdown)
             {
                 avatar?.Knockdown();
                 person?.Stagger();
             }
-            else if (poise < 4f || knockback > 1.1f)
+            else if (result.Stagger != Core.StaggerTier.None || poise < 4f || impulse > 1.1f)
             {
                 avatar?.Stagger();
                 person?.Stagger();
             }
             var feel = GetComponent<CombatFeel>();
-            feel?.ApplyAck(true, knockback >= 0f ? knockback : Mathf.Min(dmg * 0.08f, 2.4f), false, false);
-            Toast(from + " hits.");
+            feel?.ApplyAck(true, impulse > 0f ? impulse : Mathf.Min(result.DamageDealt * 0.08f, 2.4f), false, false);
             if (hp > 0f) return;
             hp = 100f;
+            _body.Health = 100f;
             poise = 12f;
             cc.enabled = false;
             var spawn = world == WorldId.Hub ? Canon.Spawn
@@ -818,6 +951,7 @@ namespace Concordia
             KeyCode.LeftShift => Key.LeftShift,
             KeyCode.Space => Key.Space,
             KeyCode.X => Key.X,
+            KeyCode.C => Key.C,
             KeyCode.F => Key.F,
             KeyCode.G => Key.G,
             KeyCode.Q => Key.Q,

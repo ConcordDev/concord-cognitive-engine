@@ -113,7 +113,7 @@ Fauna, bandits, crashes, ambushes — stuff that makes the mid-ring worth walkin
 
 ### Real fights
 
-Approach, hit, get hit, kill, loot — not dummy HP that snaps home. Hostiles `Slash` on commit; the hero `HitScan`s at `CombatMotion.Delay`. Dead road bodies stay dead on Hub-overland (`TrainingDummy.Gym` is the Court mannequin only; `SetActive(false)`). Kill puts spoils in `KitBag` and drops a crate; `RoadWorld.NoticeKill` is the one cascade (Kest/feed). `WorldClock.NoteKill` can thin a pack without erasing a journey line.
+Approach, hit, get hit, kill, loot — not dummy HP that snaps home. Hostiles `Slash` on commit; the hero `HitScan`s when `ActionRunner` reaches Active at `CombatMotion.Delay`. Incoming hits resolve through `HitResolver`. Dead road bodies stay dead on Hub-overland (`TrainingDummy.Gym` is the Court mannequin only; `SetActive(false)`). Kill puts spoils in `KitBag` and drops a crate; `RoadWorld.NoticeKill` is the one cascade (Kest/feed). `WorldClock.NoteKill` can thin a pack without erasing a journey line.
 
 ### Travel that discovers
 

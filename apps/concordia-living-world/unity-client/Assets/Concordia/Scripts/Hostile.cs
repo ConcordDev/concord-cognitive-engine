@@ -175,7 +175,9 @@ namespace Concordia
             av?.Slash();
             var person = GetComponentInChildren<ModularPerson>();
             person?.Slash();
-            player.TakeHit(damage, name);
+            // One defense grammar: ConcordiaPlayer.TakeHit → Core.HitResolver.
+            // GameplayCore.CombatDefenseEvaluator is not on this path.
+            player.TakeHit(damage, name, 0f);
         }
 
         void Step(Vector3 dir)
@@ -199,7 +201,11 @@ namespace Concordia
 
         void Hold()
         {
-            if (!_cc) return;
+            if (!_cc || !_cc.enabled || !_cc.gameObject.activeInHierarchy)
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             if (_cc.isGrounded) _vel.y = -1.5f;
             else _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;

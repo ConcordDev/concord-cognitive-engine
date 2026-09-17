@@ -44,5 +44,20 @@ namespace Concordia
 
         public static float ComboOpen(bool heavy, FightStyle style) =>
             Duration(heavy, style) * 0.55f;
+
+        /// <summary>
+        /// Integer windows for <see cref="Concordia.Core.ActionRunner"/>. Startup is Delay
+        /// (the SphereCast frame). Cancel is ComboOpen. Duration is the whole strike.
+        /// </summary>
+        public static void StrikeWindows(bool heavy, FightStyle style,
+            out int startupMs, out int activeMs, out int recoveryMs, out int cancelAfterMs)
+        {
+            const int ContactMs = 60;
+            var durationMs = Mathf.Max(ContactMs + 1, Mathf.RoundToInt(Duration(heavy, style) * 1000f));
+            startupMs = Mathf.Clamp(Mathf.RoundToInt(Delay(heavy, style) * 1000f), 0, durationMs - ContactMs - 1);
+            activeMs = ContactMs;
+            recoveryMs = durationMs - startupMs - activeMs;
+            cancelAfterMs = Mathf.RoundToInt(ComboOpen(heavy, style) * 1000f);
+        }
     }
 }

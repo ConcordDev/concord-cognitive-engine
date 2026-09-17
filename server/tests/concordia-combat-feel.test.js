@@ -20,19 +20,33 @@ describe("Concordia combat feel — gait, delayed hits, dummy flinch", () => {
     assert.match(motion, /static float Delay\(/);
     assert.match(motion, /Duration\(heavy, style\) \* 0\.36f/);
     assert.match(motion, /static float ComboOpen\(/);
+    assert.match(motion, /static void StrikeWindows\(/);
+    assert.match(motion, /Delay\(heavy, style\) \* 1000f/);
+    const resolver = src("Core/HitResolver.cs");
+    assert.match(resolver, /DefenseOutcome\.Dodged/);
+    assert.match(resolver, /DefenseOutcome\.Parried/);
+    assert.match(resolver, /DefenseOutcome\.Blocked/);
+    const runner = src("Core/ActionRunner.cs");
+    assert.match(runner, /JustBecameActive/);
   });
 
-  it("player queues HitScan at Delay and combos distinct Slash beats", () => {
+    it("player queues HitScan at Delay and combos distinct Slash beats", () => {
     const player = src("ConcordiaPlayer.cs");
-    assert.match(player, /CombatMotion\.Delay/);
+    const hostile = src("Hostile.cs");
+    assert.match(player, /CombatMotion\.StrikeWindows/);
+    assert.match(player, /JustBecameActive/);
+    assert.match(player, /HitResolver\.Resolve/);
+    assert.match(player, /_action\.TryBegin/);
     assert.match(player, /person\?\.Slash\(heavy, beat\)/);
     assert.match(player, /avatar\?\.Slash\(heavy, beat\)/);
     assert.match(player, /_comboBeat/);
     assert.match(player, /_hitstop = 0\.045f/);
     assert.doesNotMatch(
       player.slice(player.indexOf("void TryAttack"), player.indexOf("void TrySpecial")),
-      /HitScan\(heavy, 1f\)/,
+      /HitScan\(/,
     );
+    assert.doesNotMatch(hostile, /TryResolveIncomingDamage/);
+    assert.match(hostile, /player\.TakeHit\(/);
     assert.match(player, /dummy\.KernelAuthored/);
     assert.match(player, /dummy\.GuestLabel/);
     const motor = src("AgentMotor.cs");
