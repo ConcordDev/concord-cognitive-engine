@@ -443,7 +443,7 @@ namespace Concordia
                 glow.name = "LampGlow";
                 glow.transform.SetParent(parent, false);
                 glow.transform.position = pos + Vector3.up * 1.55f;
-                glow.transform.localScale = Vector3.one * 0.22f;
+                glow.transform.localScale = Vector3.one * 0.08f;
                 Object.Destroy(glow.GetComponent<Collider>());
                 var gr = glow.GetComponent<Renderer>();
                 if (gr)
@@ -463,12 +463,12 @@ namespace Concordia
             go.transform.SetParent(parent, false);
             go.transform.position = pos + dir.normalized * (length * 0.45f);
             go.transform.rotation = Quaternion.FromToRotation(Vector3.up, dir.normalized);
-            go.transform.localScale = new Vector3(1.8f, length * 0.5f, 1.8f);
+            go.transform.localScale = new Vector3(0.55f, length * 0.5f, 0.55f);
             Object.Destroy(go.GetComponent<Collider>());
             var r = go.GetComponent<Renderer>();
             if (r)
             {
-                var m = UnlitAlpha(new Color(c.r, c.g, c.b, 0.18f));
+                var m = UnlitAlpha(new Color(c.r, c.g, c.b, 0.07f));
                 r.sharedMaterial = m;
                 r.shadowCastingMode = ShadowCastingMode.Off;
             }

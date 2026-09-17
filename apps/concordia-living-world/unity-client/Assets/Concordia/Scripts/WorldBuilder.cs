@@ -608,7 +608,7 @@ namespace Concordia
                     case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
-                var wander = job == NpcLife.Job.Wander;
+                var wander = false;
                 var pos = new Vector3(n.x, 0f, n.z);
                 if (pos.sqrMagnitude < 22f * 22f)
                 {
@@ -676,7 +676,13 @@ namespace Concordia
                     look.hairStyle = 1;
                     yaw = 90f;
                 }
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
+                var pos = new Vector3(n.x, 0f, n.z);
+                if (pos.sqrMagnitude < 22f * 22f)
+                {
+                    var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.forward;
+                    pos = dir * 26f;
+                }
+                var go = ModularPerson.SpawnNpc(root, pos, yaw, look, false);
                 go.name = n.name;
                 var guest = go.AddComponent<GuestNpc>();
                 guest.def = n;
@@ -813,13 +819,14 @@ void BuildRealm(WorldDef w)
 
         void PlaceStone(Vector3 pos, string title, string text)
         {
+            var stone = HubLook.WetStone("cobblestone_square", 2.2f);
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
-                HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
+                stone, "Lore_" + title.Replace(" ", ""));
             var stone = plinth.AddComponent<LoreStone>();
             stone.title = title;
             stone.text = text;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
-                HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
+                stone, "LoreBase_" + title.Replace(" ", ""), false);
         }
 
         void SpawnFauna(WorldDef w)

@@ -288,7 +288,7 @@ namespace Concordia // keep-spawn-assign
                 var q = quests[i];
                 if (q == null || string.IsNullOrEmpty(q.title)) continue;
                 float a = i * 0.7f - 0.4f;
-                float rad = w.id == WorldId.Hub ? 19f : 5.5f;
+                float rad = w.id == WorldId.Hub ? 32f : 5.5f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, (w.id == WorldId.Hub ? 0f : 1.5f) + Mathf.Sin(a) * rad);
                 if (w.id == WorldId.Hub && Canon.InArena(p)) continue;
                 var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -297,7 +297,9 @@ namespace Concordia // keep-spawn-assign
                 board.transform.position = p + Vector3.up * 0.8f;
                 board.transform.localScale = new Vector3(1.1f, 1.6f, 0.12f);
                 var r = board.GetComponent<Renderer>();
-                if (r) r.material = HubLook.Lit(new Color(0.42f, 0.28f, 0.14f), 0.05f, 0.22f);
+                if (r) r.material = w.id == WorldId.Hub
+                    ? HubLook.WetStone("cobblestone_square", 2.2f)
+                    : HubLook.Lit(new Color(0.42f, 0.28f, 0.14f), 0.05f, 0.22f);
                 var ls = board.AddComponent<LoreStone>();
                 ls.title = "Quest · " + q.title;
                 ls.text = WorldBook.QuestText(q);

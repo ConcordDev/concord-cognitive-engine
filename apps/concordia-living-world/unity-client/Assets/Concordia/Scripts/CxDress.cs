@@ -207,10 +207,12 @@ namespace Concordia
             var src = r.sharedMaterial;
             if (!src) return;
             var m = new Material(src);
-                if (m.HasProperty("_BaseColor"))
-                    m.SetColor("_BaseColor", Color.Lerp(m.GetColor("_BaseColor"), cloth, 0.88f));
-                else
-                    m.color = Color.Lerp(m.color, cloth, 0.88f);
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", Texture2D.whiteTexture);
+            if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", Texture2D.whiteTexture);
+            if (m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", cloth);
+            else
+                m.color = cloth;
             r.material = m;
         }
     }
