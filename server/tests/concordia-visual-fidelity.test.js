@@ -35,7 +35,8 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(cinematic, /SHOT 10 — Consequence/);
     assert.match(cinematic, /Do not accept asset presence|asset presence as completion|Indexed ≠ bound/i);
     assert.doesNotMatch(cinematic, /4K\/8K is LIVE/);
-    assert.doesNotMatch(cinematic, /volumetric fog is LIVE/i);
+    assert.match(cinematic, /volumetric fog is LIVE/i);
+    assert.match(cinematic, /raymarch/);
   });
 
   it("runtime dump lists the same ten shots and refuses compile-as-pass", () => {
@@ -95,6 +96,21 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(src("HubPlaza.cs"), /CourtSanctum/);
     assert.match(src("HubLook.cs"), /public static void Shaft\(/);
     assert.match(src("HubLook.cs"), /public static void StoneDress\(/);
+    assert.match(src("HubLook.cs"), /TryEnableVolumeFog/);
+    assert.match(src("HubLook.cs"), /PushVolume/);
+    assert.match(src("CharacterGear.cs"), /public static GameObject Equip\(/);
+    assert.match(src("CharacterGear.cs"), /CX_Back/);
+    assert.match(src("CxDress.cs"), /HeroKit/);
+    assert.match(src("CxDress.cs"), /antique_estoc_1k/);
+    const vol = readFileSync(join(scripts, "HubVolumeFogFeature.cs"), "utf8");
+    assert.match(vol, /class HubVolumeFogFeature/);
+    assert.match(vol, /RecordRenderGraph/);
+    const fogSh = readFileSync(
+      join(root, "apps/concordia-living-world/unity-client/Assets/Concordia/Shaders/VolumeFog.shader"),
+      "utf8",
+    );
+    assert.match(fogSh, /Hidden\/Concordia\/VolumeFog/);
+    assert.match(fogSh, /raymarch|STEPS|MainLightRealtimeShadow/);
     assert.match(src("WorldBreath.cs"), /ConcordiaHost\.LookLean/);
     assert.doesNotMatch(src("WorldBreath.cs"), /ConcordiaHost\.LeanPlay/);
     assert.match(src("ChaseCamera.cs"), /sprinting \? PovFov/);

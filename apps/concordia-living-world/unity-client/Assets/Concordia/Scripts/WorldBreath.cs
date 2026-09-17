@@ -4,7 +4,8 @@ namespace Concordia
 {
     /// <summary>
     /// Idle atmosphere owned by HubLook. Ground mist + motes + cloth sway so a
-    /// standing Court still moves. Not volumetric fog. LookLean never thins Hub.
+    /// standing Court still moves. Volumetric fog is HubLook + HubVolumeFogFeature.
+    /// LookLean never thins Hub.
     /// </summary>
     [DefaultExecutionOrder(20)]
     public class WorldBreath : MonoBehaviour

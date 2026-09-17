@@ -46,8 +46,10 @@ namespace Concordia
                 urp.maxAdditionalLightsCount = world == WorldId.Hub ? 8 : (lean ? 4 : 8);
                 urp.colorGradingMode = ColorGradingMode.HighDynamicRange;
                 urp.colorGradingLutSize = 64;
+                urp.supportsCameraDepthTexture = true;
             }
             TryEnableSsao();
+            TryEnableVolumeFog();
             QualitySettings.shadowDistance = world == WorldId.Hub ? 220f : (lean ? 90f : 140f);
             QualitySettings.shadowCascades = 4;
             QualitySettings.shadows = (UnityEngine.ShadowQuality)2;
@@ -149,7 +151,10 @@ namespace Concordia
             WorldBreath.Ensure(world, cam);
             BindSun();
             LightPeople();
+            PushVolume();
         }
+
+        public static bool VolumeFogLive { get; private set; }
 
         static float _openFog = -1f;
         static float _openExp;
@@ -160,6 +165,7 @@ namespace Concordia
         {
             _openFog = Mathf.Max(0f, density);
             RenderSettings.fogDensity = _interior ? _openFog * 0.28f : _openFog;
+            PushVolume();
         }
 
         /// <summary>
@@ -854,6 +860,59 @@ namespace Concordia
             return null;
 #else
             return null;
+#endif
+        }
+
+        public static void PushVolume()
+        {
+            bool hub = WorldClock.World == WorldId.Hub;
+            float dens = hub ? (_interior ? 0.018f : 0.055f) : 0.022f;
+            Shader.SetGlobalFloat("_CxVolDensity", dens);
+            Shader.SetGlobalFloat("_CxVolHeight", hub ? 0.35f : 1.2f);
+            Shader.SetGlobalFloat("_CxVolFalloff", hub ? 7.5f : 10f);
+            Shader.SetGlobalFloat("_CxVolMaxM", hub ? 72f : 48f);
+            Shader.SetGlobalFloat("_CxVolSun", hub ? (_interior ? 0.6f : 2.4f) : 1.1f);
+            var fog = RenderSettings.fogColor;
+            Shader.SetGlobalColor("_CxVolColor", fog * 1.15f);
+            var sun = RenderSettings.sun;
+            var sunCol = sun && sun.enabled ? sun.color * sun.intensity : new Color(0.85f, 0.78f, 0.62f);
+            Shader.SetGlobalColor("_CxVolSunColor", Color.Lerp(sunCol, Color.white, 0.35f));
+        }
+
+        static void TryEnableVolumeFog()
+        {
+#if UNITY_EDITOR
+            try
+            {
+                var urp = UniversalRenderPipeline.asset;
+                if (!urp) return;
+                var so = new SerializedObject(urp);
+                var list = so.FindProperty("m_RendererDataList");
+                if (list == null || list.arraySize < 1) return;
+                var renderer = list.GetArrayElementAtIndex(0).objectReferenceValue as ScriptableRendererData;
+                if (!renderer) return;
+                var featsProp = renderer.GetType().GetProperty("rendererFeatures");
+                var feats = featsProp != null ? featsProp.GetValue(renderer) as System.Collections.IList : null;
+                if (feats == null) return;
+                foreach (var f in feats)
+                {
+                    if (f != null && f.GetType().Name.IndexOf("HubVolumeFog", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        VolumeFogLive = true;
+                        return;
+                    }
+                }
+                var feat = ScriptableObject.CreateInstance<HubVolumeFogFeature>();
+                if (!feat) return;
+                feat.name = "HubVolumeFog";
+                feats.Add(feat);
+                AssetDatabase.AddObjectToAsset(feat, renderer);
+                EditorUtility.SetDirty(renderer);
+                VolumeFogLive = true;
+            }
+            catch { }
+#else
+            VolumeFogLive = Shader.Find("Hidden/Concordia/VolumeFog") != null;
 #endif
         }
 

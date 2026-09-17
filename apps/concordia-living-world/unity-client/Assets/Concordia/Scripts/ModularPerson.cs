@@ -71,12 +71,13 @@ namespace Concordia // FORCE_REFRESH_0024
             var p = root.AddComponent<ModularPerson>();
             p.Build(hero);
             p.Apply(look ?? new Appearance());
-            CxDress.EnsureGripSockets(p);
+            CxDress.EnsureSockets(p);
             CxDress.Person(p, look, Canon.SteelLive(CastingWorld, root.transform.position));
             p.sword = MakeSword();
             var grip = p.rightHand && p.rightHand.Find("CX_Grip_R") ? p.rightHand.Find("CX_Grip_R") : (p.rightHand ? p.rightHand : p.transform);
             CharacterGear.Grip(p.sword, grip, 1.05f, true, false);
             CharacterVisualProfile.Apply(root, CastingWorld, look);
+            if (hero) CxDress.HeroKit(p);
             _castBodyWorld = CastingWorld;
             return p;
         }
@@ -446,11 +447,12 @@ static GameObject LoadPersonPrefab(bool hero)
             sword = null;
             Build(hero);
             Apply(look ?? new Appearance());
-            CxDress.EnsureGripSockets(this);
+            CxDress.EnsureSockets(this);
             CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
             sword = MakeSword();
             var grip = rightHand && rightHand.Find("CX_Grip_R") ? rightHand.Find("CX_Grip_R") : (rightHand ? rightHand : transform);
             CharacterGear.Grip(sword, grip, 1.05f, true, false);
+            if (GetComponentInParent<ConcordiaPlayer>()) CxDress.HeroKit(this);
         }
 
         static void DressFromPrefabFolder(GameObject body)

@@ -175,12 +175,26 @@ namespace Concordia
             var stone = HubLook.WetStone("cobblestone_square", 2.2f);
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-7.6f, 4.2f, 1.4f), new Vector3(3.6f, 8.4f, 3.2f), stone, "WingL");
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(7.6f, 4.2f, 1.4f), new Vector3(3.6f, 8.4f, 3.2f), stone, "WingR");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-11.2f, 3.4f, 2.6f), new Vector3(2.6f, 6.8f, 2.4f), stone, "ButtressL");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(11.2f, 3.4f, 2.6f), new Vector3(2.6f, 6.8f, 2.4f), stone, "ButtressR");
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 13.4f, 0.6f), new Vector3(16.4f, 2.4f, 3.0f), stone, "Crown");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 16.2f, 0.4f), new Vector3(7.4f, 1.6f, 2.2f), stone, "CrownPeak");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.22f, -3.8f), new Vector3(8.8f, 0.44f, 2.4f), stone, "Step0");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.48f, -2.6f), new Vector3(7.6f, 0.44f, 1.8f), stone, "Step1");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.74f, -1.5f), new Vector3(6.4f, 0.44f, 1.4f), stone, "Step2");
+            var colL = FreePacks.SpawnStore("stone_column", hold, hold.TransformPoint(new Vector3(-5.2f, 0f, -2.4f)), 0f, 6.4f, required: false);
+            var colR = FreePacks.SpawnStore("stone_column", hold, hold.TransformPoint(new Vector3(5.2f, 0f, -2.4f)), 0f, 6.4f, required: false);
+            if (colL) HubLook.StoneDress(colL);
+            if (colR) HubLook.StoneDress(colR);
             var crimson = HubLook.Lit(new Color(0.74f, 0.08f, 0.09f), 0.05f, 0.32f);
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-6.2f, 11.4f, -1.2f), new Vector3(2.2f, 8.8f, 0.12f), crimson, "CourtBanner", false);
             HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(6.2f, 11.4f, -1.2f), new Vector3(2.2f, 8.8f, 0.12f), crimson, "CourtBanner", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-2.2f, 10.8f, -1.15f), new Vector3(1.4f, 7.2f, 0.10f), crimson, "CourtBanner", false);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(2.2f, 10.8f, -1.15f), new Vector3(1.4f, 7.2f, 0.10f), crimson, "CourtBanner", false);
             HubLook.Shaft(hold, hold.TransformPoint(new Vector3(-3f, 15f, -3f)), hold.TransformDirection(new Vector3(-0.1f, -1f, 0.35f)), new Color(0.72f, 0.88f, 0.94f), 17f);
             HubLook.Point(hold, "SanctumFill", hold.TransformPoint(new Vector3(0f, 3.2f, -2.4f)), new Color(0.42f, 0.92f, 1f), 3.2f, 18f, true);
+            HubLook.Lantern(hold, hold.TransformPoint(new Vector3(-4.6f, 0f, -4.2f)));
+            HubLook.Lantern(hold, hold.TransformPoint(new Vector3(4.6f, 0f, -4.2f)));
         }
 
         static void Banners(Transform root)

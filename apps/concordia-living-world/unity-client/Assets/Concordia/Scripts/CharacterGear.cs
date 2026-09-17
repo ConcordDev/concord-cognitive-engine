@@ -4,6 +4,11 @@ namespace Concordia
 {
     public static class CharacterGear
     {
+        public enum Slot
+        {
+            HandR, HandL, Back, Chest, ShoulderL, ShoulderR, Head, Hip
+        }
+
         public static GameObject Spawn(
             Transform parent, Vector3 pos, float height, float yaw,
             string body, string weapon, string offhand)
@@ -19,25 +24,96 @@ namespace Concordia
         }
 
         public static GameObject Attach(GameObject body, string stem, bool rightHand, float size)
+            => Equip(body, stem, rightHand ? Slot.HandR : Slot.HandL, size);
+
+        /// <summary>
+        /// Bind a pack mesh onto a Rocketbox bone socket. Hands grip; back/chest/
+        /// shoulders/head hang so the mesh follows gait. Does not replace the Biped.
+        /// </summary>
+        public static GameObject Equip(GameObject body, string stem, Slot slot, float size)
         {
-            stem = DressVocab.Weapon(stem);
+            if (!body || string.IsNullOrEmpty(stem)) return null;
             var mesh = FreePacks.Mesh(stem);
+            if (!mesh && (slot == Slot.HandR || slot == Slot.HandL || slot == Slot.Back || slot == Slot.Hip))
+                mesh = FreePacks.Mesh(DressVocab.Weapon(stem));
             if (!mesh) return null;
             var person = body.GetComponentInChildren<ModularPerson>() ?? body.GetComponent<ModularPerson>();
-            var socket = person != null
-                ? (rightHand ? person.rightHand : person.leftHand)
-                : Bone(body.transform,
-                    rightHand
-                        ? new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" }
-                        : new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" });
-            if (!socket) socket = body.transform;
+            var socket = Socket(body, person, slot);
+            if (!socket) return null;
             var go = Object.Instantiate(mesh);
-            go.name = stem;
+            go.name = "CX_Gear_" + slot + "_" + stem;
             bool shield = stem.ToLowerInvariant().Contains("shield");
-            Grip(go, socket, size, rightHand, shield);
-            if (person && rightHand && person.sword == null) person.sword = go;
+            if (slot == Slot.HandR || slot == Slot.HandL)
+            {
+                Grip(go, socket, size, slot == Slot.HandR, shield);
+                if (person && slot == Slot.HandR && person.sword == null) person.sword = go;
+            }
+            else
+                Hang(go, socket, slot, size, shield);
             return go;
         }
+
+        public static Transform Socket(GameObject body, ModularPerson person, Slot slot)
+        {
+            Transform bone = null;
+            string name = SocketName(slot);
+            if (person != null)
+            {
+                if (slot == Slot.HandR && person.rightHand)
+                    bone = person.rightHand;
+                else if (slot == Slot.HandL && person.leftHand)
+                    bone = person.leftHand;
+            }
+            if (!bone && body)
+                bone = Bone(body.transform, BoneNames(slot));
+            if (!bone) bone = body ? body.transform : null;
+            if (!bone) return null;
+            var existing = bone.Find(name);
+            if (existing) return existing;
+            var s = new GameObject(name).transform;
+            s.SetParent(bone, false);
+            s.localPosition = Vector3.zero;
+            s.localRotation = Quaternion.identity;
+            return s;
+        }
+
+        public static void ClearSlot(Transform socket)
+        {
+            if (!socket) return;
+            for (int i = socket.childCount - 1; i >= 0; i--)
+            {
+                var c = socket.GetChild(i);
+                if (!c) continue;
+                if (c.name.StartsWith("CX_Gear_"))
+                    Object.Destroy(c.gameObject);
+            }
+        }
+
+        public static string SocketName(Slot slot) => slot switch
+        {
+            Slot.HandR => "CX_Grip_R",
+            Slot.HandL => "CX_Grip_L",
+            Slot.Back => "CX_Back",
+            Slot.Chest => "CX_Chest",
+            Slot.ShoulderL => "CX_Shoulder_L",
+            Slot.ShoulderR => "CX_Shoulder_R",
+            Slot.Head => "CX_Head",
+            Slot.Hip => "CX_Hip",
+            _ => "CX_Grip_R"
+        };
+
+        static string[] BoneNames(Slot slot) => slot switch
+        {
+            Slot.HandR => new[] { "Bip01 R Hand", "mixamorig:RightHand", "RightHand", "HandR", "hand_r" },
+            Slot.HandL => new[] { "Bip01 L Hand", "mixamorig:LeftHand", "LeftHand", "HandL", "hand_l" },
+            Slot.Back => new[] { "Bip01 Spine2", "Bip01 Spine1", "UpperChest", "Spine1", "mixamorig:Spine1", "Chest" },
+            Slot.Chest => new[] { "Bip01 Spine2", "Bip01 Spine1", "UpperChest", "Spine1", "mixamorig:Spine1", "Chest" },
+            Slot.ShoulderL => new[] { "Bip01 L UpperArm", "LeftArm", "Left_UpperArm", "mixamorig:LeftArm", "UpperArm.L" },
+            Slot.ShoulderR => new[] { "Bip01 R UpperArm", "RightArm", "Right_UpperArm", "mixamorig:RightArm", "UpperArm.R" },
+            Slot.Head => new[] { "Bip01 Head", "Head", "mixamorig:Head" },
+            Slot.Hip => new[] { "Bip01 Pelvis", "Bip01", "Hips", "mixamorig:Hips" },
+            _ => new[] { "Bip01 Spine2" }
+        };
 
         /// <summary>
         /// Primitive hands extend along local +X (right) / -X (left). Kenney
@@ -55,7 +131,8 @@ namespace Concordia
             held.transform.localPosition = Vector3.zero;
             held.transform.localRotation = Quaternion.identity;
 
-            bool biped = hand.name.IndexOf("Bip", System.StringComparison.OrdinalIgnoreCase) >= 0;
+            bool biped = hand.name.IndexOf("Bip", System.StringComparison.OrdinalIgnoreCase) >= 0
+                         || (hand.parent && hand.parent.name.IndexOf("Bip", System.StringComparison.OrdinalIgnoreCase) >= 0);
             var lb = Local(held);
             Vector3 from;
             if (shield)
@@ -106,6 +183,86 @@ namespace Concordia
                     -lb.center.y,
                     -lb.center.z + (shield ? 0.04f : 0f));
             }
+        }
+
+        /// <summary>
+        /// Sheathed / worn pose. Blade stands on the back; shield faces out;
+        /// helm sits on the skull. Offsets are in socket local space.
+        /// </summary>
+        public static void Hang(GameObject held, Transform socket, Slot slot, float size, bool shield)
+        {
+            if (!held || !socket) return;
+            foreach (var c in held.GetComponentsInChildren<Collider>())
+                Object.Destroy(c);
+            held.transform.SetParent(null);
+            held.transform.localScale = Vector3.one;
+            FreePacks.FitMax(held, size);
+            held.transform.SetParent(socket, false);
+            held.transform.localPosition = Vector3.zero;
+            held.transform.localRotation = Quaternion.identity;
+            var lb = Local(held);
+            var longAxis = longest(lb);
+            var thinAxis = thinnest(lb);
+            switch (slot)
+            {
+                case Slot.Back:
+                    if (shield)
+                    {
+                        held.transform.localRotation = Quaternion.FromToRotation(thinAxis, Vector3.back);
+                        held.transform.localPosition = new Vector3(-0.08f, 0.04f, -0.16f);
+                    }
+                    else
+                    {
+                        held.transform.localRotation = Quaternion.FromToRotation(longAxis, Vector3.up)
+                            * Quaternion.AngleAxis(22f, Vector3.forward)
+                            * Quaternion.AngleAxis(-12f, Vector3.right);
+                        held.transform.localPosition = new Vector3(0.16f, 0.06f, -0.20f);
+                    }
+                    break;
+                case Slot.Chest:
+                    held.transform.localRotation = Quaternion.FromToRotation(thinAxis, Vector3.forward);
+                    held.transform.localPosition = new Vector3(0f, 0.02f, 0.12f);
+                    break;
+                case Slot.ShoulderL:
+                    held.transform.localRotation = Quaternion.FromToRotation(thinAxis, Vector3.left);
+                    held.transform.localPosition = new Vector3(-0.04f, 0.08f, 0f);
+                    break;
+                case Slot.ShoulderR:
+                    held.transform.localRotation = Quaternion.FromToRotation(thinAxis, Vector3.right);
+                    held.transform.localPosition = new Vector3(0.04f, 0.08f, 0f);
+                    break;
+                case Slot.Head:
+                    held.transform.localRotation = Quaternion.FromToRotation(longAxis, Vector3.up);
+                    held.transform.localPosition = new Vector3(0f, 0.10f, 0.02f);
+                    break;
+                case Slot.Hip:
+                    held.transform.localRotation = Quaternion.FromToRotation(longAxis, Vector3.up)
+                        * Quaternion.AngleAxis(70f, Vector3.forward);
+                    held.transform.localPosition = new Vector3(0.14f, -0.04f, 0.02f);
+                    break;
+            }
+        }
+
+        public static GameObject Plate(Transform socket, string name, Vector3 localPos, Vector3 localScale, Material mat)
+        {
+            if (!socket) return null;
+            var existing = socket.Find(name);
+            if (existing) Object.Destroy(existing.gameObject);
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(socket, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = localScale;
+            Object.Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            if (r && mat)
+            {
+                r.sharedMaterial = mat;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
+            }
+            return go;
         }
 
         static Vector3 longest(Bounds b)

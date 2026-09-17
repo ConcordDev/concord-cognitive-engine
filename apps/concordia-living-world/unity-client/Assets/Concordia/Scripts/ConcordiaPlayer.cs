@@ -359,6 +359,7 @@ namespace Concordia
             }
             kitWeapon = PersonKit.WeaponStem(fac, GetHashCode());
             HoldFromBag(kitWeapon);
+            if (person) CxDress.HeroKit(person);
         }
 
         void CycleKit()

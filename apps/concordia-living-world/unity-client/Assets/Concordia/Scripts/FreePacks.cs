@@ -56,6 +56,11 @@ namespace Concordia
             var list = new List<string>
             {
                 "Assets/Concordia/Models",
+                "Assets/Concordia/Generated/RealWorld",
+                "Assets/Concordia/Generated/Prefabs",
+                "Assets/Concordia/Generated/Rig",
+                "Assets/Concordia/PolyHaven/Models",
+                "Assets/Concordia/FreePacks",
                 "Assets/Prefabs",
                 "Assets/SourceFiles",
                 "Assets/VFX",
@@ -79,6 +84,7 @@ namespace Concordia
                 }
             }
             catch { }
+            list.RemoveAll(path => !AssetDatabase.IsValidFolder(path));
             return list.ToArray();
         }
 
@@ -121,7 +127,8 @@ namespace Concordia
         {
             if (string.IsNullOrEmpty(path)) return false;
             var p = path.Replace("\\", "/");
-            if (p.Contains("/Store/") || p.Contains("/AssetStore/") || p.Contains("/FreeAssets/"))
+            if (p.Contains("/Store/") || p.Contains("/AssetStore/") || p.Contains("/FreeAssets/")
+                || p.Contains("/Concordia/Generated/"))
                 return true;
             if (!p.StartsWith("Assets/")) return false;
             var rest = p.Length > 7 ? p.Substring(7) : "";
@@ -179,6 +186,19 @@ namespace Concordia
             return best;
 #else
             return null;
+#endif
+        }
+
+        /// Editor-only, read-only view of the indexed stem->AssetDatabase-path catalog.
+        /// Consumed by HubKitSync (Assets/Concordia/Editor) to bake a player-safe .glb kit —
+        /// the only supported way to reach this catalog outside FreePacks itself.
+        public static IReadOnlyDictionary<string, string> AllIndexed()
+        {
+            Index();
+#if UNITY_EDITOR
+            return _meshes ?? new Dictionary<string, string>();
+#else
+            return new Dictionary<string, string>();
 #endif
         }
 
@@ -297,11 +317,8 @@ namespace Concordia
             }
             else
             {
-                if (!required) return null;
-                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                go.name = "Missing_" + stem;
-                go.transform.SetParent(parent, false);
-                go.transform.localScale = Vector3.one * 0.35f;
+                // Missing content stays empty. Never create a primitive placeholder.
+                return null;
             }
             go.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
             // Named furniture/trees always use the human-scale table. Callers
@@ -347,14 +364,8 @@ namespace Concordia
             }
             if (!HasStoreStem(stem))
             {
-                if (!required) return null;
-                var miss = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                miss.name = "Missing_" + stem;
-                miss.transform.SetParent(parent, false);
-                miss.transform.position = pos;
-                miss.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
-                miss.transform.localScale = Vector3.one * 0.35f;
-                return miss;
+                // Store-only content is optional; never manufacture a cube when absent.
+                return null;
             }
             return Spawn(stem, parent, pos, yawDeg, maxDim, required, byHeight);
         }
@@ -453,12 +464,30 @@ namespace Concordia
 
         public static void Sit(GameObject go, Vector3 pos)
         {
+            if (!go || float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z)
+                || float.IsInfinity(pos.x) || float.IsInfinity(pos.y) || float.IsInfinity(pos.z))
+                return;
+
             go.transform.position = pos;
-            var rends = go.GetComponentsInChildren<Renderer>();
-            if (rends.Length == 0) return;
-            var b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-            go.transform.position += Vector3.up * (pos.y - b.min.y);
+            var rends = go.GetComponentsInChildren<Renderer>(true);
+            bool valid = false;
+            Bounds b = default;
+            foreach (var r in rends)
+            {
+                if (!r || !r.enabled) continue;
+                var rb = r.bounds;
+                if (float.IsNaN(rb.min.x) || float.IsNaN(rb.min.y) || float.IsNaN(rb.min.z)
+                    || float.IsNaN(rb.max.x) || float.IsNaN(rb.max.y) || float.IsNaN(rb.max.z)
+                    || float.IsInfinity(rb.min.x) || float.IsInfinity(rb.min.y) || float.IsInfinity(rb.min.z)
+                    || float.IsInfinity(rb.max.x) || float.IsInfinity(rb.max.y) || float.IsInfinity(rb.max.z))
+                    continue;
+                if (!valid) { b = rb; valid = true; }
+                else b.Encapsulate(rb);
+            }
+            if (!valid) return;
+            var dy = pos.y - b.min.y;
+            if (float.IsNaN(dy) || float.IsInfinity(dy) || Mathf.Abs(dy) > 12f) return;
+            go.transform.position += Vector3.up * dy;
         }
 
         /// <summary>
@@ -544,6 +573,7 @@ namespace Concordia
             var go = Object.Instantiate(p, parent);
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0, yawDeg, 0);
+            Sit(go, pos);
             return go;
         }
 
@@ -553,6 +583,19 @@ namespace Concordia
         /// colormap.png / {stem}.png next to the source GLB.
         /// </summary>
         public static void PaintIfBlank(GameObject go) => PaintIfBlank(go, null);
+
+        /// Fallback tint for a null material slot, biased by object name so a repaired surface
+        /// reads as deliberate material rather than uniform filler grey.
+        static Color BlankSlotTint(string name)
+        {
+            var n = (name ?? "").ToLowerInvariant();
+            if (n.Contains("grass") || n.Contains("leaf") || n.Contains("foliage")) return new Color(0.34f, 0.46f, 0.24f);
+            if (n.Contains("tree") || n.Contains("oak") || n.Contains("bark") || n.Contains("log")) return new Color(0.33f, 0.26f, 0.18f);
+            if (n.Contains("coal") || n.Contains("ember") || n.Contains("forge")) return new Color(0.18f, 0.15f, 0.14f);
+            if (n.Contains("tower") || n.Contains("stone") || n.Contains("crucible") || n.Contains("wall")) return new Color(0.55f, 0.52f, 0.47f);
+            if (n.Contains("road") || n.Contains("path") || n.Contains("dirt")) return new Color(0.46f, 0.36f, 0.24f);
+            return new Color(0.62f, 0.58f, 0.52f);
+        }
 
         public static bool IsClothName(string s)
         {
@@ -606,6 +649,13 @@ namespace Concordia
         public static void PaintIfBlank(GameObject go, string sourcePath)
         {
             if (!go) return;
+
+            // Built-in `Standard` cannot be rendered by URP — it draws magenta. The boot-time
+            // sweep (HubLook.UpgradeStandardMaterials) only sees objects that already exist, so
+            // anything streamed in later stayed magenta. PaintIfBlank is the funnel every spawn
+            // path already calls, so upgrading here catches spawned content too.
+            HubLook.UpgradeStandardOn(go);
+
             if (string.IsNullOrEmpty(sourcePath)) sourcePath = PathForStem(go.name);
             if (IsClothName(go.name) || IsClothName(sourcePath))
             {
@@ -622,6 +672,37 @@ namespace Concordia
                 for (int s = 0; s < slots.Length; s++)
                 {
                     var src = slots[s];
+
+#if UNITY_EDITOR
+                    // Named-skin convention first (Rocketbox humans). Only kicks in when the
+                    // material has no albedo yet, so it never overrides an authored texture.
+                    if (src != null && HubLook.IsBlankAlbedo(HubLook.FirstAlbedo(src)))
+                    {
+                        var skinPath = sourcePath;
+                        if (string.IsNullOrEmpty(skinPath)) skinPath = AssetDatabase.GetAssetPath(go);
+                        var skinned = HubLook.Lit(HubLook.FirstColor(src, Color.white), 0.02f, 0.30f);
+                        if (BindNamedSkin(skinned, src, skinPath))
+                        {
+                            next[s] = skinned;
+                            any = true;
+                            continue;
+                        }
+                    }
+#endif
+
+                    // A genuinely NULL material slot renders magenta — the blankest case there is,
+                    // and precisely what this function exists to prevent. The original code fell
+                    // through to `next[s] = src` below and wrote the null straight back, so 159
+                    // material slots across 12 objects (ImportedTower, HQ_OakTree01_LOD0-3,
+                    // The Crucible, Concordia_Real_Forge/ForestGrass, ...) stayed magenta in the
+                    // live Hub, against the kit's own "no magenta" rule. Paint it instead.
+                    if (src == null)
+                    {
+                        next[s] = HubLook.Lit(BlankSlotTint(go.name), 0.04f, 0.30f);
+                        any = true;
+                        continue;
+                    }
+
                     var tex = HubLook.FirstAlbedo(src);
 #if UNITY_EDITOR
                     if (HubLook.IsBlankAlbedo(tex))
@@ -663,6 +744,67 @@ namespace Concordia
         }
 
 #if UNITY_EDITOR
+        /// Rocketbox humans ship their maps as "<materialName>_color.tga" / "_normal.tga" in a
+        /// sibling Textures/ folder. The FBX import did not bind them, so every human in the world
+        /// — player and all NPCs, 80 renderers of `f001_body` — rendered as an untextured mannequin
+        /// while the real skin/face maps sat on disk unused. Same failure shape as the Poly Haven
+        /// suffix mismatch: correctly imported assets that nothing ever asked for.
+        static bool BindNamedSkin(Material dst, Material src, string sourcePath)
+        {
+            if (dst == null || src == null || string.IsNullOrEmpty(sourcePath)) return false;
+
+            var matName = (src.name ?? "").Replace(" (Instance)", "").Trim();
+            if (matName.Length == 0) return false;
+
+            var dir = Path.GetDirectoryName(sourcePath)?.Replace("\\", "/");
+
+            string[] exts = { ".tga", ".png", ".jpg" };
+
+            // Path-relative first (cheap), then a GLOBAL search by name.
+            //
+            // The global step is the load-bearing one: these humans are instantiated from
+            // Generated/Prefabs/CX_Humanoid_*.prefab while their materials still carry the
+            // Rocketbox names (f001_body, m014_head), and the .tga maps live under
+            // Models/humans/rocketbox/<Character>/Textures/. A path-relative lookup anchored on
+            // the prefab therefore found nothing. Material names are unique enough to key on.
+            Texture2D Find(string suffix)
+            {
+                var wanted = matName + suffix;
+
+                if (!string.IsNullOrEmpty(dir))
+                    for (int e = 0; e < exts.Length; e++)
+                    {
+                        var t = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/" + wanted + exts[e])
+                             ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/" + wanted + exts[e]);
+                        if (t) return t;
+                    }
+
+                foreach (var guid in AssetDatabase.FindAssets(wanted + " t:Texture2D"))
+                {
+                    var p = AssetDatabase.GUIDToAssetPath(guid);
+                    if (Path.GetFileNameWithoutExtension(p) != wanted) continue;   // exact name only
+                    var t = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+                    if (t) return t;
+                }
+                return null;
+            }
+
+            var color = Find("_color");
+            if (!color) return false;
+
+            if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", Color.white);
+            if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", color);
+            if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", color);
+
+            var nrm = Find("_normal");
+            if (nrm && dst.HasProperty("_BumpMap"))
+            {
+                dst.SetTexture("_BumpMap", nrm);
+                dst.EnableKeyword("_NORMALMAP");
+            }
+            return true;
+        }
+
         static Texture2D ColormapNear(string path, string stem)
         {
             if (string.IsNullOrEmpty(path)) return null;
@@ -729,31 +871,27 @@ namespace Concordia
         public static string House(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "Room_Big_Part_01", "Wall_Simple_01", "house.002" }, "building-skyscraper-a");
-            if (c == "ash") return FirstStem(new[] { "tower_destroyed", "house.003", "house.002" }, "crypt-a");
-            if (c == "street") return FirstStem(new[] { "house.002", "House.001", "house.003" }, "building-type-h");
-            if (c == "court") return FirstStem(new[] { "tower", "house.002" }, "building-type-a");
-            return FirstStem(new[] { "house.002", "House.001", "house.003", "House" }, "tent_detailedOpen");
+            if (c == "street" || c == "grid")
+                return FirstStem(new[] { "Concordia_Real_Industrial_Hangar" }, "");
+            return FirstStem(new[] { "Concordia_Real_Forge", "Concordia_Real_Industrial_Hangar" }, "");
         }
 
         public static string Tower(WorldId id)
         {
-            if (Culture(id) == "ash") return FirstStem(new[] { "tower_destroyed", "tower" }, "tower-square-base");
-            if (Culture(id) == "grid") return FirstStem(new[] { "tower", "tower_small", "Wall_Simple_01" }, "watertower");
-            return FirstStem(new[] { "tower", "tower_small", "tower_enter" }, "watchtower");
+            if (Culture(id) == "grid" || Culture(id) == "street")
+                return FirstStem(new[] { "Concordia_Real_Industrial_Hangar" }, "");
+            return FirstStem(new[] { "Concordia_Real_Forge", "Concordia_Real_Industrial_Hangar" }, "");
         }
 
         public static string Wall(WorldId id) =>
-            Culture(id) == "grid"
-                ? FirstStem(new[] { "Wall_Simple_01", "stone_wall" }, "skyscraper-small-a")
-                : FirstStem(new[] { "stone_wall", "wood_wall", "Wall_Simple_01" }, "wall");
+            FirstStem(new[] { "fi_vil_wall01_01", "Wall_Simple_01", "Hangar_v2_outbuilding" }, "");
 
         public static string Tree(WorldId id)
         {
             var c = Culture(id);
-            if (c == "grid") return StoreTree(new[] { "LowPoly - FirTree A", "tree_1", "Tree1" });
-            if (c == "ash") return StoreTree(new[] { "half_tree", "tree_1", "Tree1" });
-            return StoreTree(new[] { "tree_1" });
+            if (c == "grid") return StoreTree(new[] { "Concordia_Real_Oak", "Concordia_Real_ForestTree" });
+            if (c == "ash") return StoreTree(new[] { "Concordia_Real_ForestTree", "Concordia_Real_Oak" });
+            return StoreTree(new[] { "Concordia_Real_Oak", "Concordia_Real_ForestTree" });
         }
 
         static string StoreTree(string[] prefer)
@@ -767,28 +905,30 @@ namespace Concordia
         }
 
         public static string Grass(WorldId id) =>
-            StoreTree(new[] { "grass01", "LowPoly - Grass A", "Grass_01" });
+            StoreTree(new[] { "Concordia_Real_ForestGrass" });
 
         public static string Prop(WorldId id)
         {
-            var c = Culture(id);
-            if (c == "grid") return FirstStem(new[] { "crate", "barrel" }, "barrel");
-            if (c == "street") return FirstStem(new[] { "crate", "barrel", "wagon" }, "crate");
-            return FirstStem(new[] { "barrel", "crate", "wagon", "well" }, "barrel");
+            return FirstStem(new[]
+            {
+                "fi_vil_container_barrel_big_empty",
+                "fi_vil_container_crate_big",
+                "fi_vil_forge_crate_small"
+            }, "");
         }
 
         public static string Column(WorldId id) =>
-            FirstStem(new[] { "wood_column.001", "Column_01_Top", "stone_column" }, "column");
+            FirstStem(new[] { "fi_vil_pillar8_02", "Column_01_Top", "Wall_Simple_01" }, "");
 
-        public static string Cart() => FirstStem(new[] { "wagon" }, "cart");
-        public static string Crate() => FirstStem(new[] { "crate", "barrel" }, "crate");
-        public static string Table() => FirstStem(new[] { "table" }, "table");
-        public static string Chair() => FirstStem(new[] { "chair" }, "chair");
-        public static string Chest() => FirstStem(new[] { "chest" }, "chest");
-        public static string Well() => FirstStem(new[] { "well" }, "well");
-        public static string Torch() => FirstStem(new[] { "torch" }, "torch");
-        public static string Dummy() => FirstStem(new[] { "HumanDummy_M White", "Human_BasicMotionsDummy_M" }, "character-skeleton");
-        public static string Bird() => FirstStem(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" }, "");
+        public static string Cart() => FirstStem(new[] { "wagon" }, "");
+        public static string Crate() => FirstStem(new[] { "fi_vil_container_crate_big", "fi_vil_forge_crate_small" }, "");
+        public static string Table() => FirstStem(new[] { "fi_vil_forge_workbensh_large1", "fi_vil_forge_workbensh_small1" }, "");
+        public static string Chair() => FirstStem(new[] { "fi_vil_forge_stool1" }, "");
+        public static string Chest() => FirstStem(new[] { "fi_vil_container_crate_big_empty02", "fi_vil_container_crate_big" }, "");
+        public static string Well() => "";
+        public static string Torch() => FirstStem(new[] { "fi_vil_light_candle_holder04_lit" }, "");
+        public static string Dummy() => "";
+        public static string Bird() => FirstStem(new[] { "littleBird" }, "");
         public static string Rock() => FirstStem(new[] { "Rock1B", "Rock2", "Rock1A", "UNS_Standard_Rock_01", "LowPoly - Rock A", "LowPoly - Rock B" }, "rock_smallA");
 
         /// <summary>
@@ -799,8 +939,12 @@ namespace Concordia
         {
             if (string.IsNullOrEmpty(kind)) return kind;
             var k = kind.ToLowerInvariant();
+            if (k.Contains("estoc"))
+                return FirstStem(new[] { "antique_estoc_1k" }, "antique_estoc_1k");
+            if (k.Contains("katana"))
+                return FirstStem(new[] { "antique_katana_01_1k" }, "antique_katana_01_1k");
             if (k.Contains("greatsword") || k.Contains("th_sword"))
-                return FirstStem(new[] { "TH_Sword03" }, "weapon-greatsword");
+                return FirstStem(new[] { "antique_estoc_1k", "TH_Sword03" }, "weapon-greatsword");
             if (k.Contains("shortsword") || k == "sword" || k == "weapon-sword" || k.Contains("sword01"))
                 return FirstStem(new[] { "Sword01" }, k.Contains("weapon") ? k : "weapon-shortsword");
             if (k.Contains("axe")) return FirstStem(new[] { "Axe01", "Axe04" }, "weapon-axe");
@@ -885,15 +1029,30 @@ namespace Concordia
 
         public static void PlaceWeather(string kind, Transform root, Vector3 pos)
         {
-            var stem = kind == "rain" ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
-                : kind == "fireflies" ? FirstStem(new[] { "FireFlies" }, "")
+            if (!root || string.IsNullOrEmpty(kind)
+                || float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z)
+                || float.IsInfinity(pos.x) || float.IsInfinity(pos.y) || float.IsInfinity(pos.z))
+                return;
+
+            // The imported FireFlies prefab has corrupt bounds/scripts. Omit it rather
+            // than allowing NaN transforms to poison the scene.
+            if (kind == "fireflies") return;
+
+            var stem = kind == "rain"
+                ? FirstStem(new[] { "RainPrefab", "vfx_Rain_01", "RainEffect" }, "")
                 : FirstStem(new[] { "SnowEffect", "DustStorm", "SmokeEffect" }, "");
             if (!string.IsNullOrEmpty(stem) && FreePacks.HasStem(stem))
             {
-                FreePacks.Spawn(stem, root, pos, 0, 0);
+                var spawned = FreePacks.Spawn(stem, root, pos, 0, 0);
+                if (spawned) FreePacks.Sit(spawned, pos);
                 return;
             }
-            FreePacks.Prefab(WeatherPath(kind), root, pos);
+
+            var path = WeatherPath(kind);
+            var prefab = FreePacks.Load<GameObject>(path);
+            if (!prefab) return;
+            var go = FreePacks.Prefab(path, root, pos);
+            if (go) FreePacks.Sit(go, pos);
         }
 
         public static string Residual(WorldId id)

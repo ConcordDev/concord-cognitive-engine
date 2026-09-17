@@ -71,7 +71,20 @@ namespace Concordia
                 sb.Append(" person=").Append(person ? "yes" : "NO");
                 var grip = person && person.rightHand ? person.rightHand.Find("CX_Grip_R") : null;
                 sb.Append(" grip=").Append(grip ? "yes" : "no");
+                var back = person ? person.transform.Find("CX_Back") : null;
+                if (!back && person)
+                {
+                    foreach (var t in person.GetComponentsInChildren<Transform>(true))
+                        if (t && t.name == "CX_Back") { back = t; break; }
+                }
+                bool geared = false;
+                if (back)
+                    for (int i = 0; i < back.childCount; i++)
+                        if (back.GetChild(i) && back.GetChild(i).name.StartsWith("CX_Gear_"))
+                            geared = true;
+                sb.Append(" back=").Append(geared ? "yes" : "no");
             }
+            sb.Append(" volFog=").Append(HubLook.VolumeFogLive ? "yes" : "no");
             sb.Append(" fog=").Append(RenderSettings.fog);
             sb.Append(" fogMode=").Append(RenderSettings.fogMode);
             var sun = RenderSettings.sun;

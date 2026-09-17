@@ -28,7 +28,7 @@ namespace Concordia
         public static void Person(ModularPerson person, Appearance look, bool steelLive)
         {
             if (!person) return;
-            EnsureGripSockets(person);
+            EnsureSockets(person);
             var cloth = steelLive ? SteelLeather : CourtCloth;
             var trim = steelLive ? SteelIron : CourtSash;
             if (look != null)
@@ -44,29 +44,55 @@ namespace Concordia
                 var n = r.gameObject.name.ToLowerInvariant();
                 if (n.Contains("head") || n.Contains("face") || n.Contains("eye") || n.Contains("hair"))
                     continue;
+                if (n.StartsWith("cx_gear") || n.Contains("cx_held") || n.Contains("estoc") || n.Contains("katana") || n.Contains("shield") || n.Contains("helmet") || n.Contains("pauldron") || n.Contains("plate"))
+                    continue;
                 TintRenderer(r, n.Contains("metal") || n.Contains("armor") ? trim : cloth);
             }
         }
 
-        public static void EnsureGripSockets(ModularPerson person)
+        public static void EnsureGripSockets(ModularPerson person) => EnsureSockets(person);
+
+        public static void EnsureSockets(ModularPerson person)
         {
             if (!person) return;
             person.rightHand = person.rightHand ? person.rightHand : FindHand(person.transform, true);
             person.leftHand = person.leftHand ? person.leftHand : FindHand(person.transform, false);
-            SocketOn(person.rightHand, "CX_Grip_R");
-            SocketOn(person.leftHand, "CX_Grip_L");
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.HandR);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.HandL);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.Back);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.Chest);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.ShoulderL);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.ShoulderR);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.Head);
+            CharacterGear.Socket(person.gameObject, person, CharacterGear.Slot.Hip);
         }
 
-        static Transform SocketOn(Transform hand, string name)
+        /// <summary>
+        /// Bind pack meshes onto Rocketbox sockets so the traveler reads as
+        /// armored with a back weapon. Does not replace the Biped body.
+        /// </summary>
+        public static void HeroKit(ModularPerson person)
         {
-            if (!hand) return null;
-            var existing = hand.Find(name);
-            if (existing) return existing;
-            var s = new GameObject(name).transform;
-            s.SetParent(hand, false);
-            s.localPosition = Vector3.zero;
-            s.localRotation = Quaternion.identity;
-            return s;
+            if (!person) return;
+            EnsureSockets(person);
+            var body = person.gameObject;
+            var steel = HubLook.Lit(SteelIron, 0.62f, 0.78f);
+            var dark = HubLook.Lit(new Color(0.10f, 0.09f, 0.08f), 0.18f, 0.32f);
+            var back = CharacterGear.Socket(body, person, CharacterGear.Slot.Back);
+            CharacterGear.ClearSlot(back);
+            CharacterGear.Equip(body, "antique_estoc_1k", CharacterGear.Slot.Back, 1.28f)
+                ?? CharacterGear.Equip(body, "antique_katana_01_1k", CharacterGear.Slot.Back, 1.22f)
+                ?? CharacterGear.Equip(body, "cx_weapon_longsword", CharacterGear.Slot.Back, 1.18f);
+            CharacterGear.Equip(body, "kite_shield_1k", CharacterGear.Slot.Back, 0.68f);
+            CharacterGear.Equip(body, "vikinghelmet", CharacterGear.Slot.Head, 0.30f);
+
+            var chest = CharacterGear.Socket(body, person, CharacterGear.Slot.Chest);
+            CharacterGear.Plate(chest, "CX_Gear_ChestPlate", new Vector3(0f, 0.02f, 0.11f), new Vector3(0.34f, 0.42f, 0.08f), steel);
+            CharacterGear.Plate(chest, "CX_Gear_Fauld", new Vector3(0f, -0.22f, 0.08f), new Vector3(0.30f, 0.14f, 0.07f), dark);
+            var sl = CharacterGear.Socket(body, person, CharacterGear.Slot.ShoulderL);
+            var sr = CharacterGear.Socket(body, person, CharacterGear.Slot.ShoulderR);
+            CharacterGear.Plate(sl, "CX_Gear_PauldronL", new Vector3(-0.05f, 0.08f, 0f), new Vector3(0.16f, 0.12f, 0.22f), steel);
+            CharacterGear.Plate(sr, "CX_Gear_PauldronR", new Vector3(0.05f, 0.08f, 0f), new Vector3(0.16f, 0.12f, 0.22f), steel);
         }
 
         static Transform FindHand(Transform root, bool right)
