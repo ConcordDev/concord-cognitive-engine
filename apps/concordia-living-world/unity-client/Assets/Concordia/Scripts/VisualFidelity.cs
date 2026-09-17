@@ -94,6 +94,8 @@ namespace Concordia
             sb.Append(" hour=").Append(WorldClock.Hour.ToString("F1"));
             sb.Append(" weather=").Append(WorldClock.Weather ?? "clear");
             sb.Append(" interior=").Append(HubLook.InteriorLit ? "yes" : "no");
+            var sky = RenderSettings.skybox;
+            sb.Append(" sky=").Append(sky ? sky.name : "NO");
             if (p)
             {
                 var rend = p.GetComponentInChildren<Renderer>();

@@ -81,6 +81,14 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(look, /GroundInLight\(/);
     assert.match(look, /ApplyInterior\(/);
     assert.match(look, /RenderSettings\.sun = /);
+    assert.match(look, /PolyHaven\/HDRIs/);
+    assert.match(look, /kloofendal_48d_partly_cloudy_puresky_2k\.hdr/);
+    assert.match(look, /WetStone\(/);
+    assert.match(look, /CX_Tile_CourtCobble/);
+    assert.doesNotMatch(look, /Models\/polyhaven\/" \+ file/);
+    assert.match(src("HubPlaza.cs"), /GateMouth/);
+    assert.doesNotMatch(src("HubPlaza.cs"), /PortalVeil/);
+    assert.match(src("WorldBuilder.cs"), /WetStone\(/);
     assert.match(src("ChaseCamera.cs"), /sprinting \? PovFov/);
     assert.match(src("ChaseCamera.cs"), /public void Punch\(/);
     assert.match(src("ChaseCamera.cs"), /farClipPlane = 420f/);

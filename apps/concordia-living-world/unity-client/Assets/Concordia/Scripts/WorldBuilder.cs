@@ -154,10 +154,12 @@ namespace Concordia
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
                 WorldId.Sere => "wet_asphalt",
-                WorldId.Hub => "cobblestone_floor_13",
+                WorldId.Hub => "cobblestone_square",
                 _ => "stone_tiles"
             };
-            var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
+            var pbr = w.id == WorldId.Hub
+                ? HubLook.WetStone("cobblestone_square", 5.5f)
+                : HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
             var gr0 = g.GetComponent<Renderer>();
             if (gr0) gr0.sharedMaterial = pbr;
         }
@@ -170,7 +172,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => ContinentStream.Live ? 0.0026f : 0.0045f,
+                WorldId.Hub => ContinentStream.Live ? 0.0042f : 0.0065f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -180,7 +182,7 @@ namespace Concordia
             };
             RenderSettings.fogColor = w.id switch
             {
-                WorldId.Hub => new Color(0.62f, 0.68f, 0.74f),
+                WorldId.Hub => new Color(0.38f, 0.55f, 0.58f),
                 WorldId.Fantasy => new Color(0.62f, 0.28f, 0.18f),
                 WorldId.Cyber => new Color(0.18f, 0.06f, 0.28f),
                 WorldId.Crime => new Color(0.12f, 0.08f, 0.10f),

@@ -893,7 +893,7 @@ namespace Concordia
                 sun.color = Color.Lerp(new Color(0.28f, 0.36f, 0.62f), new Color(1f, 0.94f, 0.82f), sun01);
             }
             var box = RenderSettings.skybox;
-            if (box && box.HasProperty("_Exposure"))
+            if (box && box.HasProperty("_Exposure") && World != WorldId.Hub)
                 box.SetFloat("_Exposure", 0.22f + 0.98f * sun01);
         }
 

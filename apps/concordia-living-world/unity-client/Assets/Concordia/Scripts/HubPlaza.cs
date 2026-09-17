@@ -22,6 +22,7 @@ namespace Concordia
 
         static void Floor(Transform root)
         {
+            var court = HubLook.WetStone("cobblestone_square", 5.5f);
             int placed = 0;
             const float step = 5.6f;
             const float extent = 32f;
@@ -35,15 +36,30 @@ namespace Concordia
                            ?? FreePacks.SpawnStore("platform", root, p, 0f, 5.4f, required: false, byHeight: false);
                 if (!tile) continue;
                 tile.name = "CourtTile_" + placed;
+                PaintCourt(tile, court);
                 placed++;
             }
             if (placed == 0)
-                FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: true, byHeight: false);
+            {
+                var floor = FreePacks.SpawnStore("plaza_floor", root, Vector3.zero, 0f, 0.35f, required: true, byHeight: false);
+                PaintCourt(floor, court);
+            }
 
             var arena = FreePacks.SpawnStore("granite_panel", root, Canon.Arena, 0f, 8f, required: false, byHeight: false)
                         ?? FreePacks.SpawnStore("platform.001", root, Canon.Arena, 0f, 8f, required: false, byHeight: false)
                         ?? FreePacks.SpawnStore("platform", root, Canon.Arena, 0f, 8f, required: true, byHeight: false);
-            if (arena) arena.name = "Arena";
+            if (arena)
+            {
+                arena.name = "Arena";
+                PaintCourt(arena, court);
+            }
+        }
+
+        static void PaintCourt(GameObject go, Material court)
+        {
+            if (!go || !court) return;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (r) r.sharedMaterial = court;
         }
 
         static void Monument(Transform root)
@@ -72,7 +88,8 @@ namespace Concordia
                 hold.rotation = yaw;
 
                 var portalCol = PortalColor(gate);
-                var arch = FreePacks.SpawnStore("stone_half_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
+                var arch = FreePacks.SpawnStore("large_iron_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
+                           ?? FreePacks.SpawnStore("stone_half_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
                            ?? FreePacks.SpawnStore("stone_half_gate.001", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 8.5f, required: false)
                            ?? FreePacks.SpawnStore("wood_gate", hold, hold.TransformPoint(Vector3.zero), hold.eulerAngles.y, 6.5f, required: false);
                 if (arch && (arch.name.StartsWith("Missing_") || ThinArch(arch)))
@@ -105,16 +122,15 @@ namespace Concordia
                 stone.title = gate.name;
                 stone.text = gate.refusal + " — " + gate.theNo;
 
-                if (gate.world == WorldId.Frontier || gate.world == WorldId.Cyber)
-                    HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4f, 1.2f)), portalCol, 0.55f, 16f, false);
-
                 var flag = FreePacks.SpawnStore("flag-banner-long", hold, hold.TransformPoint(new Vector3(0f, 0f, -0.6f)), hold.eulerAngles.y, 3.2f, required: false)
                            ?? FreePacks.Spawn("flag-banner-long", hold, hold.TransformPoint(new Vector3(0f, 0f, -0.6f)), hold.eulerAngles.y, 3.2f, required: false);
                 if (flag)
                 {
                     FreePacks.StripColliders(flag);
-                    FreePacks.DyeCloth(flag, Color.Lerp(portalCol, new Color(0.55f, 0.22f, 0.16f), 0.4f));
+                    FreePacks.DyeCloth(flag, Color.Lerp(new Color(0.62f, 0.12f, 0.10f), portalCol, 0.22f));
                 }
+                HubLook.Point(hold, "PortalFill", hold.TransformPoint(new Vector3(0f, 4.2f, 1.2f)),
+                    Color.Lerp(portalCol, new Color(1f, 0.72f, 0.38f), 0.5f), 1.15f, 14f, false);
             }
         }
 
@@ -129,13 +145,13 @@ namespace Concordia
 
         static void FallbackArch(Transform hold, Color portalCol)
         {
-            var bronze = HubLook.Lit(new Color(0.55f, 0.32f, 0.14f), 0.7f, 0.45f);
-            var gold = HubLook.Lit(Color.Lerp(portalCol, new Color(0.78f, 0.58f, 0.22f), 0.4f), 0.85f, 0.7f);
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.0f, 4.6f, 0f), new Vector3(1.1f, 9.2f, 1.4f), bronze, "PillarL");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.0f, 4.6f, 0f), new Vector3(1.1f, 9.2f, 1.4f), bronze, "PillarR");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 9.4f, 0f), new Vector3(7.4f, 1.3f, 1.6f), gold, "Lintel");
-            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 4.2f, 0.1f),
-                new Vector3(5.6f, 7.4f, 0.12f), HubLook.Emit(portalCol, 2.4f), "PortalVeil", false);
+            var stone = HubLook.WetStone("cobblestone_square", 2.2f);
+            var dark = HubLook.Lit(new Color(0.08f, 0.09f, 0.11f), 0.04f, 0.16f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(-3.0f, 4.6f, 0f), new Vector3(1.4f, 9.2f, 1.8f), stone, "PillarL");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(3.0f, 4.6f, 0f), new Vector3(1.4f, 9.2f, 1.8f), stone, "PillarR");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 9.4f, 0f), new Vector3(7.8f, 1.5f, 2.0f), stone, "Lintel");
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 4.0f, 0.55f),
+                new Vector3(5.2f, 7.2f, 0.9f), dark, "GateMouth", false);
         }
 
         static Color PortalColor(GateDef gate)
@@ -182,7 +198,7 @@ namespace Concordia
         {
             var go = new GameObject("Dust");
             go.transform.SetParent(parent, false);
-            go.transform.position = new Vector3(0f, 4f, 0f);
+            go.transform.position = new Vector3(0f, 0.1f, 0f);
             var ps = go.AddComponent<ParticleSystem>();
             var main = ps.main;
             main.startLifetime = 6f;
@@ -213,7 +229,7 @@ namespace Concordia
                 if (flag)
                 {
                     flag.name = "RefusalBanner_" + g.shortName;
-                    FreePacks.DyeCloth(flag, Color.Lerp(g.color, new Color(0.52f, 0.18f, 0.14f), 0.35f));
+                    FreePacks.DyeCloth(flag, Color.Lerp(new Color(0.62f, 0.12f, 0.10f), g.color, 0.18f));
                 }
             }
             var grass = DressVocab.Grass(WorldId.Hub);

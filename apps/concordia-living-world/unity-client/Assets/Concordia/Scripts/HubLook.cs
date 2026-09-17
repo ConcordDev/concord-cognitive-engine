@@ -76,7 +76,7 @@ namespace Concordia
             bloom.active = true;
             bloom.intensity.Override(bloomI);
             bloom.threshold.Override(bloomT);
-            bloom.scatter.Override(0.72f);
+            bloom.scatter.Override(world == WorldId.Hub ? 0.78f : 0.72f);
 
             if (!profile.TryGet(out ColorAdjustments color)) color = profile.Add<ColorAdjustments>(true);
             color.active = true;
@@ -112,15 +112,33 @@ namespace Concordia
 
             if (!profile.TryGet(out ShadowsMidtonesHighlights smh)) smh = profile.Add<ShadowsMidtonesHighlights>(true);
             smh.active = true;
-            smh.shadows.Override(new Vector4(1f, 1.02f, 1.08f, lean ? -0.02f : -0.05f));
-            smh.midtones.Override(new Vector4(1.02f, 1f, 0.98f, 0.02f));
-            smh.highlights.Override(new Vector4(1.04f, 1.01f, 0.96f, 0.04f));
+            if (world == WorldId.Hub)
+            {
+                smh.shadows.Override(new Vector4(0.86f, 1.04f, 1.14f, lean ? -0.03f : -0.06f));
+                smh.midtones.Override(new Vector4(1.02f, 1.0f, 0.96f, 0.02f));
+                smh.highlights.Override(new Vector4(1.10f, 1.02f, 0.90f, 0.06f));
+            }
+            else
+            {
+                smh.shadows.Override(new Vector4(1f, 1.02f, 1.08f, lean ? -0.02f : -0.05f));
+                smh.midtones.Override(new Vector4(1.02f, 1f, 0.98f, 0.02f));
+                smh.highlights.Override(new Vector4(1.04f, 1.01f, 0.96f, 0.04f));
+            }
 
             if (!profile.TryGet(out LiftGammaGain lgg)) lgg = profile.Add<LiftGammaGain>(true);
             lgg.active = true;
-            lgg.lift.Override(new Vector4(1.01f, 1.01f, 1.04f, 0.02f));
-            lgg.gamma.Override(new Vector4(1f, 1f, 1f, 0f));
-            lgg.gain.Override(new Vector4(1.03f, 1.0f, 0.97f, lean ? 0.02f : 0.05f));
+            if (world == WorldId.Hub)
+            {
+                lgg.lift.Override(new Vector4(0.98f, 1.02f, 1.08f, 0.03f));
+                lgg.gamma.Override(new Vector4(1f, 1.01f, 1.02f, 0f));
+                lgg.gain.Override(new Vector4(1.04f, 1.0f, 0.94f, lean ? 0.03f : 0.06f));
+            }
+            else
+            {
+                lgg.lift.Override(new Vector4(1.01f, 1.01f, 1.04f, 0.02f));
+                lgg.gamma.Override(new Vector4(1f, 1f, 1f, 0f));
+                lgg.gain.Override(new Vector4(1.03f, 1.0f, 0.97f, lean ? 0.02f : 0.05f));
+            }
 
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = sky;
@@ -241,20 +259,20 @@ namespace Concordia
 
             if (world == WorldId.Hub)
             {
-                RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.08f, 0.10f, 0.18f), new Color(0.58f, 0.64f, 0.74f), sun01);
-                RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.06f, 0.07f, 0.10f), new Color(0.48f, 0.42f, 0.36f), sun01);
-                RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), new Color(0.22f, 0.18f, 0.14f), sun01);
+                RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.06f, 0.10f, 0.16f), new Color(0.42f, 0.58f, 0.66f), sun01);
+                RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.05f, 0.07f, 0.09f), new Color(0.42f, 0.38f, 0.32f), sun01);
+                RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.04f, 0.05f), new Color(0.16f, 0.18f, 0.20f), sun01);
                 RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
-                RenderSettings.reflectionIntensity = 0.22f + 0.83f * sun01;
-                RenderSettings.fogColor = Color.Lerp(new Color(0.02f, 0.03f, 0.06f), new Color(0.55f, 0.58f, 0.62f), sun01);
-                LiveFog(0.0045f + 0.01f * night);
+                RenderSettings.reflectionIntensity = 0.38f + 0.67f * sun01;
+                RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.08f, 0.12f), new Color(0.38f, 0.55f, 0.58f), sun01);
+                LiveFog(0.0055f + 0.008f * night);
+                TryHdrSky(world);
             }
 
             var sky = RenderSettings.skybox;
-            if (sky && sky.HasProperty("_Exposure"))
+            if (sky && sky.HasProperty("_Exposure") && world != WorldId.Hub)
             {
-                float daySky = world == WorldId.Hub ? 0.78f : 0.62f;
-                sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, daySky, sun01));
+                sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, 0.62f, sun01));
             }
 
             var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
@@ -329,8 +347,8 @@ namespace Concordia
             switch (world)
             {
                 case WorldId.Hub:
-                    bloomI = 0.18f; bloomT = 0.88f; exposure = 0.12f; contrast = 12f; sat = 10f; vigI = 0.18f; temp = 8f;
-                    sky = new Color(0.58f, 0.64f, 0.74f); eq = new Color(0.48f, 0.42f, 0.36f); ground = new Color(0.22f, 0.18f, 0.14f); break;
+                    bloomI = 0.42f; bloomT = 0.72f; exposure = 0.10f; contrast = 16f; sat = 8f; vigI = 0.22f; temp = -6f;
+                    sky = new Color(0.42f, 0.58f, 0.66f); eq = new Color(0.42f, 0.38f, 0.32f); ground = new Color(0.16f, 0.18f, 0.20f); break;
                 case WorldId.Ruins:
                     bloomI = 0.28f; bloomT = 0.72f; exposure = 0.08f; contrast = 16f; sat = 4f; vigI = 0.4f; temp = -8f;
                     sky = new Color(0.55f, 0.52f, 0.48f); eq = new Color(0.32f, 0.26f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
@@ -420,8 +438,12 @@ namespace Concordia
 
         public static void Lantern(Transform parent, Vector3 pos)
         {
-            FreePacks.SpawnStore("lantern", parent, pos, 0, 1.35f, required: false);
-            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.4f, 10f, true);
+            var mesh = FreePacks.SpawnStore("lantern", parent, pos, 0, 1.35f, required: false)
+                       ?? FreePacks.SpawnStore("wooden_lantern_01", parent, pos, 0, 1.35f, required: false)
+                       ?? FreePacks.SpawnStore("Lantern_01", parent, pos, 0, 1.2f, required: false);
+            if (!mesh)
+                CxDress.Billboard(parent, pos + Vector3.up * 1.15f, "P2/Props/CX_Prop_CourtLantern.jpg", 0.42f, 0.9f);
+            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.55f, 11f, true);
         }
 
         public static Material GroundMat(WorldId world, Color tint)
@@ -563,7 +585,8 @@ namespace Concordia
         // real library (so "metal_plate" finds "metal_plate_02" without anyone maintaining it).
         static readonly Dictionary<string, string> StemAliases = new Dictionary<string, string>
         {
-            { "stone_tiles",    "cobblestone_floor_13" },
+            { "stone_tiles",    "cobblestone_square" },
+            { "court_cobble",   "cobblestone_square" },
             { "wet_asphalt",    "asphalt_floor" },
             { "ash_soil",       "brown_mud_dry" },
             { "grove_moss",     "forrest_ground_03" },
@@ -673,6 +696,48 @@ namespace Concordia
             m.name = "PH_" + stem;
             _pbrCache[key] = m;
             return m;
+        }
+
+        /// <summary>
+        /// Wet Court stone: CX cobble albedo when present, Poly Haven cobble
+        /// normals underneath, high smoothness. cobblestone_floor_13 is dirt
+        /// between stones — that was the tire-mud Hub ground.
+        /// </summary>
+        public static Material WetStone(string requested = "cobblestone_square", float tile = 5.5f)
+        {
+            var stem = ResolveStem(string.IsNullOrEmpty(requested) ? "cobblestone_square" : requested);
+            var key = "wet|" + stem + "|" + tile.ToString("F2");
+            if (_pbrCache.TryGetValue(key, out var cached) && cached) return cached;
+
+            var m = new Material(Pbr(stem, Color.white, 0.08f, 0.62f, tile));
+            var cx = LoadCourtCobble();
+            if (cx)
+            {
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", cx); m.SetTextureScale("_BaseMap", Vector2.one * tile); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", cx); m.SetTextureScale("_MainTex", Vector2.one * tile); }
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+            }
+            else if (m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", new Color(0.82f, 0.86f, 0.90f));
+
+            m.DisableKeyword("_METALLICSPECGLOSSMAP");
+            if (m.HasProperty("_MetallicGlossMap")) m.SetTexture("_MetallicGlossMap", null);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.66f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.12f);
+            m.name = "PH_wet_" + stem;
+            _pbrCache[key] = m;
+            return m;
+        }
+
+        static Texture LoadCourtCobble()
+        {
+            var res = Resources.Load<Texture2D>("Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble");
+            if (res) return res;
+#if UNITY_EDITOR
+            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg");
+#else
+            return null;
+#endif
         }
 
         /// True when the Poly Haven set actually resolves — lets callers fall back to flat colour
@@ -901,23 +966,44 @@ namespace Concordia
             r.sharedMaterial = m;
         }
 
-        static bool TryHdrSky(WorldId world)
+        static string _boundHdr;
+
+        static string HdrFile(WorldId world)
         {
-#if UNITY_EDITOR
-            var file = world switch
+            if (world == WorldId.Hub)
+            {
+                float s = Sun01(WorldClock.Hour);
+                if (s < 0.18f) return "dikhololo_night_2k.hdr";
+                if (s < 0.42f) return "the_sky_is_on_fire_2k.hdr";
+                return "kloofendal_48d_partly_cloudy_puresky_2k.hdr";
+            }
+            return world switch
             {
                 WorldId.Ruins => "kloppenheim_06_puresky_2k.hdr",
                 WorldId.Crime => "dikhololo_night_2k.hdr",
                 WorldId.Cyber => "dikhololo_night_2k.hdr",
-                WorldId.Frontier => "industrial_sunset_2k.hdr",
-                WorldId.Superhero => "industrial_sunset_2k.hdr",
+                WorldId.Frontier => "industrial_sunset_puresky_2k.hdr",
+                WorldId.Superhero => "industrial_sunset_puresky_2k.hdr",
                 WorldId.Tunya => "kloofendal_48d_partly_cloudy_puresky_2k.hdr",
                 WorldId.Fantasy => "venice_sunset_2k.hdr",
                 WorldId.Crucible => "kloppenheim_06_puresky_2k.hdr",
-                _ => "kloofendal_48d_partly_cloudy_puresky_2k.hdr"
+                _ => "autumn_field_puresky_2k.hdr"
             };
-            var path = "Assets/Concordia/Models/polyhaven/" + file;
-            float exposure = world == WorldId.Hub ? 0.78f : 0.62f;
+        }
+
+        static bool TryHdrSky(WorldId world)
+        {
+#if UNITY_EDITOR
+            var file = HdrFile(world);
+            if (_boundHdr == file && RenderSettings.skybox && RenderSettings.skybox.name.StartsWith("PH_HDR_"))
+                return true;
+
+            const string root = "Assets/Concordia/PolyHaven/HDRIs/";
+            var path = root + file;
+            float exposure = file.IndexOf("night", System.StringComparison.OrdinalIgnoreCase) >= 0 ? 0.42f
+                : file.IndexOf("fire", System.StringComparison.OrdinalIgnoreCase) >= 0
+                  || file.IndexOf("sunset", System.StringComparison.OrdinalIgnoreCase) >= 0 ? 0.55f
+                : world == WorldId.Hub ? 0.82f : 0.62f;
             // HDRs in this project are imported as Cubemap (textureShape 2).
             // Skybox/Panoramic on a Cubemap is a white void. Use Cubemap shader
             // for cubes; Panoramic only when the asset is actually 2D lat-long.
@@ -926,10 +1012,12 @@ namespace Concordia
             if (cubemap && cubeSh && !IsErrorShader(cubeSh))
             {
                 var m = new Material(cubeSh);
+                m.name = "PH_HDR_" + file;
                 m.SetTexture("_Tex", cubemap);
                 m.SetFloat("_Exposure", exposure);
                 RenderSettings.skybox = m;
                 DynamicGI.UpdateEnvironment();
+                _boundHdr = file;
                 return true;
             }
             var tex2d = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -937,10 +1025,12 @@ namespace Concordia
             if (tex2d && tex2d.dimension == TextureDimension.Tex2D && pano && !IsErrorShader(pano))
             {
                 var m = new Material(pano);
+                m.name = "PH_HDR_" + file;
                 if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex2d);
                 m.SetFloat("_Exposure", exposure);
                 RenderSettings.skybox = m;
                 DynamicGI.UpdateEnvironment();
+                _boundHdr = file;
                 return true;
             }
 #endif
