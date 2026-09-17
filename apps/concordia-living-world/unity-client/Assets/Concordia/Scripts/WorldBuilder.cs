@@ -819,14 +819,14 @@ void BuildRealm(WorldDef w)
 
         void PlaceStone(Vector3 pos, string title, string text)
         {
-            var stone = HubLook.WetStone("cobblestone_square", 2.2f);
+            var mat = HubLook.WetStone("cobblestone_square", 2.2f);
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
-                stone, "Lore_" + title.Replace(" ", ""));
-            var stone = plinth.AddComponent<LoreStone>();
-            stone.title = title;
-            stone.text = text;
+                mat, "Lore_" + title.Replace(" ", ""));
+            var lore = plinth.AddComponent<LoreStone>();
+            lore.title = title;
+            lore.text = text;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
-                stone, "LoreBase_" + title.Replace(" ", ""), false);
+                mat, "LoreBase_" + title.Replace(" ", ""), false);
         }
 
         void SpawnFauna(WorldDef w)
