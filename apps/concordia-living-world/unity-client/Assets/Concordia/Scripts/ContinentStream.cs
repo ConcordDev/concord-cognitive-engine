@@ -235,7 +235,7 @@ namespace Concordia
         {
             var next = Canon.InHubCourt(player)
                 ? WorldId.Hub
-                : MegaworldMap.RegionAt(player);
+                : WorldGeography.CountryAt(player);
             SoftEnter(next);
             RoadWorld.TickNear(player);
         }
@@ -248,6 +248,7 @@ namespace Concordia
         public void SoftEnter(WorldId id, string kind = "walk")
         {
             string journey = null;
+            var from = WorldClock.World;
             if (WorldClock.World != id)
             {
                 if (id == WorldId.Hub)
@@ -262,6 +263,12 @@ namespace Concordia
             LastTravelKind = kind;
             WorldClock.Leave();
             WorldClock.Enter(id);
+            if (kind == "walk" && from != id)
+            {
+                var route = WorldGeography.RouteBetween(from, id);
+                if (route != null)
+                    WorldGeography.RecordBorderCrossing(route.border, from, id, "physical");
+            }
             if (!string.IsNullOrEmpty(journey))
                 WorldClock.LastEvent = journey;
             try { ApplySky(id); }
@@ -334,20 +341,33 @@ namespace Concordia
             continent.position = Vector3.zero;
             MakeGround();
             MakeRoads();
+            GeographyRuntime.BuildRoutes(continent);
+            WorldVisualDirector.EnsureContinent(continent);
             MakeWilderness();
             MakeSun();
         }
 
         void MakeGround()
         {
-            if (continent.Find("ContinentGround")) return;
-            var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            g.name = "ContinentGround";
-            g.transform.SetParent(continent, false);
-            g.transform.localScale = Vector3.one * 72f;
-            var mat = HubLook.Pbr("packed_earth", new Color(0.42f, 0.38f, 0.32f), 0.05f, 0.22f, 28f);
-            var r = g.GetComponent<Renderer>();
-            if (r && mat) r.sharedMaterial = mat;
+            if (!continent.Find("ContinentGround"))
+            {
+                var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                g.name = "ContinentGround";
+                g.transform.SetParent(continent, false);
+                g.transform.localScale = Vector3.one * 72f;
+                var mat = HubLook.Pbr("packed_earth", new Color(0.42f, 0.38f, 0.32f), 0.05f, 0.22f, 28f);
+                var r = g.GetComponent<Renderer>();
+                if (r && mat) r.sharedMaterial = mat;
+            }
+            if (continent.Find("CourtGround")) return;
+            var court = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            court.name = "CourtGround";
+            court.transform.SetParent(continent, false);
+            court.transform.localPosition = new Vector3(0f, 0.04f, 0f);
+            court.transform.localScale = Vector3.one * (Canon.RingRadius * 2.2f / 10f);
+            var courtMat = HubLook.WetStone("cobblestone_square", 5.5f);
+            var cr = court.GetComponent<Renderer>();
+            if (cr && courtMat) cr.sharedMaterial = courtMat;
         }
 
         void MakeRoads()

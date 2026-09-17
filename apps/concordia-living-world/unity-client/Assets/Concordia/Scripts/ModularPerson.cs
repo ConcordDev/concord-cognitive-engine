@@ -37,6 +37,8 @@ namespace Concordia // FORCE_REFRESH_0024
         bool _clipsFit;
         Animator _anim;
         SkinnedMeshRenderer _skinMesh;
+        Renderer _modelRenderer;
+        Transform _modelTransform;
         int _plantFrames;
         NpcLife _life;
         static int _bodySeq;
@@ -69,8 +71,13 @@ namespace Concordia // FORCE_REFRESH_0024
             var p = root.AddComponent<ModularPerson>();
             p.Build(hero);
             p.Apply(look ?? new Appearance());
+            CxDress.EnsureSockets(p);
+            CxDress.Person(p, look, Canon.SteelLive(CastingWorld, root.transform.position));
             p.sword = MakeSword();
-            CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
+            var grip = p.rightHand && p.rightHand.Find("CX_Grip_R") ? p.rightHand.Find("CX_Grip_R") : (p.rightHand ? p.rightHand : p.transform);
+            CharacterGear.Grip(p.sword, grip, 1.05f, true, false);
+            CharacterVisualProfile.Apply(root, CastingWorld, look);
+            if (hero) CxDress.HeroKit(p);
             _castBodyWorld = CastingWorld;
             return p;
         }
@@ -84,6 +91,8 @@ namespace Concordia // FORCE_REFRESH_0024
             var person = go.AddComponent<ModularPerson>();
             person.Build();
             person.Apply(look ?? Appearance.Random(go.GetHashCode()));
+            CxDress.EnsureGripSockets(person);
+            CxDress.Person(person, look, Canon.SteelLive(CastingWorld, pos));
             var h = 1.7f * (look != null ? look.height : 1f);
             var cc = Grounding.EnsureController(go, h);
             Grounding.Snap(cc);
@@ -93,6 +102,7 @@ namespace Concordia // FORCE_REFRESH_0024
                 w.roam = roam;
             }
             PersonLabel.Attach(go.transform, look != null ? look.displayName : go.name, null);
+            CharacterVisualProfile.Apply(go, CastingWorld, look);
             return go;
         }
 
@@ -151,7 +161,11 @@ namespace Concordia // FORCE_REFRESH_0024
             if (_built) return;
             _built = true;
             if (TryBindAuthored(hero)) return;
-            BuildPrimitive();
+
+            // No primitive people. A missing imported human stays invisible and is
+            // reported once instead of degrading the world into training dummies.
+            _built = false;
+            Debug.LogWarning("Concordia ModularPerson has no usable imported human asset; visual body omitted.");
         }
 
         bool TryBindAuthored(bool hero)
@@ -160,6 +174,21 @@ namespace Concordia // FORCE_REFRESH_0024
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
+            body.SetActive(true);
+            _modelRenderer = FindRendererBearingChild(body);
+            _modelTransform = _modelRenderer ? _modelRenderer.transform : null;
+            if (!_modelRenderer)
+            {
+                body.SetActive(false);
+                Debug.LogWarning("Concordia ModularPerson imported human has no renderer-bearing child; visual body omitted.");
+                return false;
+            }
+            foreach (var renderer in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer) continue;
+                renderer.gameObject.SetActive(true);
+                renderer.enabled = true;
+            }
             DressFromPrefabFolder(body);
             FreePacks.PaintIfBlank(body, _lastPrefabPath);
             body.transform.localPosition = Vector3.zero;
@@ -167,30 +196,37 @@ namespace Concordia // FORCE_REFRESH_0024
             body.transform.localScale = Vector3.one;
             foreach (var c in body.GetComponentsInChildren<Collider>()) Object.Destroy(c);
 
+            // Quaternius (Casual_Male/Female etc.) uses its own dot-notation naming —
+            // "UpperArm.L", "Fist.L", "Foot.L" — that matched none of the existing Bip01/Mixamo
+            // candidates, so every Quaternius character silently fell into the "painted mesh, not
+            // Mixamo-rigged" fallback below: a static bind pose with no procedural motion at all.
+            // Confirmed via the live bone hierarchy (Hips, Head, Neck, Torso, Abdomen, UpperArm.L/R,
+            // LowerArm.L/R, Fist.L/R, UpperLeg.L/R, LowerLeg.L/R, Foot.L/R). Added as another
+            // aliased convention, same pattern as Bip01/mixamorig: — not a parallel system.
             _hip = FindBone(body.transform, "Bip01 Pelvis", "Bip01", "Hips", "mixamorig:Hips");
-            _spine = FindBone(body.transform, "Bip01 Spine", "Spine", "mixamorig:Spine");
-            _chest = FindBone(body.transform, "Bip01 Spine2", "Bip01 Spine1", "Chest", "UpperChest", "Spine1", "mixamorig:Spine1") ?? _spine;
+            _spine = FindBone(body.transform, "Bip01 Spine", "Spine", "mixamorig:Spine", "Abdomen");
+            _chest = FindBone(body.transform, "Bip01 Spine2", "Bip01 Spine1", "Chest", "UpperChest", "Spine1", "mixamorig:Spine1", "Torso") ?? _spine;
             _neck = FindBone(body.transform, "Bip01 Neck", "Neck", "mixamorig:Neck");
             _head = FindBone(body.transform, "Bip01 Head", "Head", "mixamorig:Head");
-            _uArmL = FindBone(body.transform, "Bip01 L UpperArm", "LeftArm", "Left_UpperArm", "mixamorig:LeftArm");
-            _fArmL = FindBone(body.transform, "Bip01 L Forearm", "LeftForeArm", "Left_LowerArm", "mixamorig:LeftForeArm");
-            _handL = FindBone(body.transform, "Bip01 L Hand", "LeftHand", "Left_Hand", "mixamorig:LeftHand");
-            _uArmR = FindBone(body.transform, "Bip01 R UpperArm", "RightArm", "Right_UpperArm", "mixamorig:RightArm");
-            _fArmR = FindBone(body.transform, "Bip01 R Forearm", "RightForeArm", "Right_LowerArm", "mixamorig:RightForeArm");
-            _handR = FindBone(body.transform, "Bip01 R Hand", "RightHand", "Right_Hand", "mixamorig:RightHand");
-            _uLegL = FindBone(body.transform, "Bip01 L Thigh", "LeftUpLeg", "Left_UpperLeg", "mixamorig:LeftUpLeg");
-            _lLegL = FindBone(body.transform, "Bip01 L Calf", "LeftLeg", "Left_LowerLeg", "mixamorig:LeftLeg");
-            _footL = FindBone(body.transform, "Bip01 L Foot", "LeftFoot", "Left_Foot", "mixamorig:LeftFoot");
-            _uLegR = FindBone(body.transform, "Bip01 R Thigh", "RightUpLeg", "Right_UpperLeg", "mixamorig:RightUpLeg");
-            _lLegR = FindBone(body.transform, "Bip01 R Calf", "RightLeg", "Right_LowerLeg", "mixamorig:RightLeg");
-            _footR = FindBone(body.transform, "Bip01 R Foot", "RightFoot", "Right_Foot", "mixamorig:RightFoot");
+            _uArmL = FindBone(body.transform, "Bip01 L UpperArm", "LeftArm", "Left_UpperArm", "mixamorig:LeftArm", "UpperArm.L");
+            _fArmL = FindBone(body.transform, "Bip01 L Forearm", "LeftForeArm", "Left_LowerArm", "mixamorig:LeftForeArm", "LowerArm.L");
+            _handL = FindBone(body.transform, "Bip01 L Hand", "LeftHand", "Left_Hand", "mixamorig:LeftHand", "Fist.L");
+            _uArmR = FindBone(body.transform, "Bip01 R UpperArm", "RightArm", "Right_UpperArm", "mixamorig:RightArm", "UpperArm.R");
+            _fArmR = FindBone(body.transform, "Bip01 R Forearm", "RightForeArm", "Right_LowerArm", "mixamorig:RightForeArm", "LowerArm.R");
+            _handR = FindBone(body.transform, "Bip01 R Hand", "RightHand", "Right_Hand", "mixamorig:RightHand", "Fist.R");
+            _uLegL = FindBone(body.transform, "Bip01 L Thigh", "LeftUpLeg", "Left_UpperLeg", "mixamorig:LeftUpLeg", "UpperLeg.L");
+            _lLegL = FindBone(body.transform, "Bip01 L Calf", "LeftLeg", "Left_LowerLeg", "mixamorig:LeftLeg", "LowerLeg.L");
+            _footL = FindBone(body.transform, "Bip01 L Foot", "LeftFoot", "Left_Foot", "mixamorig:LeftFoot", "Foot.L");
+            _uLegR = FindBone(body.transform, "Bip01 R Thigh", "RightUpLeg", "Right_UpperLeg", "mixamorig:RightUpLeg", "UpperLeg.R");
+            _lLegR = FindBone(body.transform, "Bip01 R Calf", "RightLeg", "Right_LowerLeg", "mixamorig:RightLeg", "LowerLeg.R");
+            _footR = FindBone(body.transform, "Bip01 R Foot", "RightFoot", "Right_Foot", "mixamorig:RightFoot", "Foot.R");
             leftHand = _handL;
             rightHand = _handR;
             if (!_hip || !_head || !_uArmL || !_uArmR)
             {
                 // Kenney mini-characters are painted meshes, not Mixamo rigs.
-                _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
-                float h = RendererHeight(body);
+                _skinMesh = _modelRenderer as SkinnedMeshRenderer;
+                float h = _modelRenderer ? RendererBoundsForValidation(_modelRenderer).size.y : RendererHeight(body);
                 if (h > 0.15f) body.transform.localScale *= Mathf.Clamp(1.72f / h, 0.05f, 10f);
                 _authored = true;
                 leftHand = rightHand = body.transform;
@@ -209,13 +245,13 @@ namespace Concordia // FORCE_REFRESH_0024
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity;
 
-            _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
+            _skinMesh = _modelRenderer as SkinnedMeshRenderer;
             if (_skinMesh)
             {
                 _skinMesh.updateWhenOffscreen = true;
                 _skinMesh.enabled = true;
             }
-            float worldH = RendererHeight(body);
+            float worldH = _modelRenderer ? RendererBoundsForValidation(_modelRenderer).size.y : RendererHeight(body);
             if (worldH > 0.2f && (worldH < 1.2f || worldH > 2.4f))
                 body.transform.localScale *= Mathf.Clamp(1.72f / worldH, 0.05f, 8f);
 
@@ -280,7 +316,11 @@ namespace Concordia // FORCE_REFRESH_0024
             }
             catch { }
             PlantAuthoredFeet(body.transform);
-            Debug.Log("Concordia ModularPerson bound prefab=" + (_lastPrefabPath ?? "") + " ctrl=" + (ctrl ? ctrl.name : "none"));
+            CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
+            Debug.Log("Concordia ModularPerson bound owner=" + name +
+                " model=" + (_modelTransform ? _modelTransform.name : "null") +
+                " prefab=" + (_lastPrefabPath ?? "") +
+                " ctrl=" + (ctrl ? ctrl.name : "none"));
             return true;
         }
 
@@ -292,7 +332,7 @@ namespace Concordia // FORCE_REFRESH_0024
             {
                 if (!r || !r.enabled) continue;
                 if (!(r is SkinnedMeshRenderer) && r.bounds.size.y > 6.5f) continue;
-                minY = Mathf.Min(minY, r.bounds.min.y);
+                minY = Mathf.Min(minY, RendererBoundsForValidation(r).min.y);
             }
             if (minY > 1e8f) return;
             float dy = transform.position.y - minY;
@@ -300,56 +340,36 @@ namespace Concordia // FORCE_REFRESH_0024
             body.position += Vector3.up * dy;
         }
 
-        static GameObject LoadPersonPrefab(bool hero)
+static GameObject LoadPersonPrefab(bool hero)
         {
             GameObject go = null;
 
-            // World-appropriate body (2026-09-11, root-caused this session): CastingWorld
-            // is set per-world by WorldBuilder but was never read here, so every world —
-            // Fantasy, Tunya, Ruins, all of them — got the same Rocketbox photoreal adult,
-            // whose baked texture is business-casual civilian wear by design (it's a
-            // Microsoft crowd-sim asset, not a game character). That's the actual "polo
-            // shirt hero" bug: not a missing tint (Rocketbox bakes skin+clothes into one
-            // continuous photo texture with no separate cloth UV region, so a multiplied
-            // tint would discolor visible skin too — a real dead end, not just untried),
-            // but a missing per-world body choice on an already-existing hook. Hub is the
-            // one world with solid textual grounding as modern/neutral (concordia-hub =
-            // "neutral baseline" in the retired ART_STYLE_GUIDE) — Rocketbox reads
-            // correctly there and keeps its current behavior. Everywhere else, prefer the
-            // already-painted, already-in-project KayKit Knight (no new assets needed).
-            // FreePacks.Mesh resolves in both Editor (AssetDatabase index) and Player/
-            // WebGL (HubKit/StreamingAssets), so this fixes the real shipped web client,
-            // not just the Editor. Whether every non-Hub world is genuinely "knight-coded"
-            // (Cyber/Crime plausibly want modern too) is a first-pass call, not verified
-            // lore — tune per-world as real per-world body assets are added.
-            if (CastingWorld != WorldId.Hub)
-            {
-                go = FreePacks.Mesh("Knight");
-                if (go)
-                {
+            // REVERTED (2026-09-17): Aura's work order said "Quaternius Humanoid replace
+            // polo/khakis", and CX_Humanoid_Female.prefab (below) does wrap Rocketbox's f001 mesh
+            // — but that instruction predates the FreePacks.PaintIfBlank skin-texture fix earlier
+            // this session (real f001_body_color/f001_head_color photo-scanned maps, previously
+            // imported but never bound). "Polo/khakis" described an UNTEXTURED grey mannequin; that
+            // no longer exists. The real fix was binding the textures Rocketbox already had, not
+            // swapping the model. Quaternius (Casual_Male/Female — tried here) is a flat-shaded
+            // toon/low-poly pack with no texture maps at all — wrong aesthetic entirely for a
+            // photorealistic target. Left corrected (real-world import scale + Concordia dot-
+            // notation bone aliases now match) in case a genuinely stylized use ever needs it, but
+            // it is not the hero and must not be checked first here.
 #if UNITY_EDITOR
-                    _lastPrefabPath = AssetDatabase.GetAssetPath(go);
-#endif
-                    return go;
-                }
-                // Knight unresolved (asset missing) — honest fallback to Rocketbox below
-                // rather than returning no body at all.
-            }
-#if UNITY_EDITOR
-            // Hub may keep one modern Rocketbox adult. Every steel world wears
-            // that world's imported costume (KayKit Knight / dress). CastingWorld
-            // is the dress code — never ignore it for a polo default.
-            if (CastingWorld != WorldId.Hub)
+            var cx = hero
+                ? "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab"
+                : "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab";
+            go = AssetDatabase.LoadAssetAtPath<GameObject>(cx);
+            if (!go)
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(
+                    hero
+                        ? "Assets/Concordia/Generated/Rig/CX_Humanoid_Male.fbx"
+                        : "Assets/Concordia/Generated/Rig/CX_Humanoid_Female.fbx");
+            if (go)
             {
-                var steel = SteelCostumePath(CastingWorld);
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(steel);
-                if (go)
-                {
-                    _lastPrefabPath = steel;
-                    return go;
-                }
+                _lastPrefabPath = AssetDatabase.GetAssetPath(go);
+                return go;
             }
-            // Mixamo Vanguard has no folder albedo. Rocketbox is the painted adult.
             var adult = new[]
             {
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
@@ -368,9 +388,7 @@ namespace Concordia // FORCE_REFRESH_0024
                 return go;
             }
 #endif
-            string[] stems = CastingWorld == WorldId.Hub
-                ? new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01" }
-                : new[] { "Knight", "Barbarian", "Mage", "Male_Adult_01" };
+            var stems = new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Female_Adult_04" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -380,7 +398,7 @@ namespace Concordia // FORCE_REFRESH_0024
 #endif
                 return go;
             }
-            return go;
+            return null;
         }
 
         static string SteelCostumePath(WorldId world)
@@ -419,6 +437,8 @@ namespace Concordia // FORCE_REFRESH_0024
             _clipsFit = false;
             _anim = null;
             _skinMesh = null;
+            _modelRenderer = null;
+            _modelTransform = null;
             _hip = _spine = _chest = _neck = _head = null;
             _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
             _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
@@ -427,8 +447,12 @@ namespace Concordia // FORCE_REFRESH_0024
             sword = null;
             Build(hero);
             Apply(look ?? new Appearance());
+            CxDress.EnsureSockets(this);
+            CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
             sword = MakeSword();
-            CharacterGear.Grip(sword, rightHand ? rightHand : transform, 1.05f, true, false);
+            var grip = rightHand && rightHand.Find("CX_Grip_R") ? rightHand.Find("CX_Grip_R") : (rightHand ? rightHand : transform);
+            CharacterGear.Grip(sword, grip, 1.05f, true, false);
+            if (GetComponentInParent<ConcordiaPlayer>()) CxDress.HeroKit(this);
         }
 
         static void DressFromPrefabFolder(GameObject body)
@@ -554,12 +578,50 @@ namespace Concordia // FORCE_REFRESH_0024
             return false;
         }
 
+        static Bounds RendererBoundsForValidation(Renderer renderer)
+        {
+            if (!renderer) return default;
+            var skinned = renderer as SkinnedMeshRenderer;
+            if (skinned)
+            {
+                var local = skinned.localBounds;
+                if (local.size.sqrMagnitude < 0.000001f && skinned.sharedMesh)
+                    local = skinned.sharedMesh.bounds;
+                if (local.size.sqrMagnitude >= 0.000001f)
+                {
+                    var t = skinned.transform;
+                    var min = local.min;
+                    var max = local.max;
+                    var b = new Bounds(t.TransformPoint(new Vector3(min.x, min.y, min.z)), Vector3.zero);
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, min.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, max.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, max.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, min.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, min.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, max.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, max.y, max.z)));
+                    return b;
+                }
+            }
+            return renderer.bounds;
+        }
+
+        static Renderer FindRendererBearingChild(GameObject go)
+        {
+            if (!go) return null;
+            foreach (var r in go.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                if (r && r.sharedMesh) return r;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (r) return r;
+            return null;
+        }
+
         static float RendererHeight(GameObject go)
         {
-            var rends = go.GetComponentsInChildren<Renderer>();
+            var rends = go.GetComponentsInChildren<Renderer>(true);
             if (rends.Length == 0) return 0f;
-            var b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var b = RendererBoundsForValidation(rends[0]);
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(RendererBoundsForValidation(rends[i]));
             return b.size.y;
         }
 
@@ -792,9 +854,12 @@ namespace Concordia // FORCE_REFRESH_0024
         void LateUpdate()
         {
             if (!_built) return;
-            if (_authored && _plantFrames < 8)
+            if (_authored && _plantFrames < 24)
             {
-                StripGiantAndFallback(_plantFrames >= 6);
+                StripGiantAndFallback(_plantFrames >= 20);
+                var authoredBody = transform.Find("AuthoredPerson");
+                if (authoredBody && authoredBody.gameObject.activeInHierarchy)
+                    PlantAuthoredFeet(authoredBody);
                 if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
                 {
                     float dy = _handL.position.y - _uArmL.position.y;
@@ -1201,18 +1266,30 @@ namespace Concordia // FORCE_REFRESH_0024
         }
 
 
-        void StripGiantAndFallback(bool allowFallback = true)
+void StripGiantAndFallback(bool allowFallback = true)
         {
             bool any = false;
             Bounds enc = default;
-            Renderer biggest = null;
             float maxDim = 0f;
+            if (_modelRenderer)
+            {
+                if (!_modelRenderer.gameObject.activeSelf) _modelRenderer.gameObject.SetActive(true);
+                if (!_modelRenderer.enabled) _modelRenderer.enabled = true;
+                var primaryBounds = RendererBoundsForValidation(_modelRenderer);
+                var primarySize = primaryBounds.size;
+                if (primarySize.sqrMagnitude >= 0.000001f)
+                {
+                    enc = primaryBounds;
+                    any = true;
+                    maxDim = Mathf.Max(primarySize.x, Mathf.Max(primarySize.y, primarySize.z));
+                }
+            }
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
-                if (!r) continue;
-                var s = r.bounds.size;
+                if (!r || !r.enabled || r == _modelRenderer) continue;
+                var s = RendererBoundsForValidation(r).size;
                 float d = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
-                if (d > maxDim) { maxDim = d; biggest = r; }
+                if (d > maxDim) maxDim = d;
                 string n = r.gameObject.name;
                 bool extra = n == "Crop" || n == "Short" || n == "Sweep" || n == "Bun" || n == "BunKnot"
                     || n == "Long" || n == "LongFall" || n == "Topknot" || n == "Knot"
@@ -1228,47 +1305,34 @@ namespace Concordia // FORCE_REFRESH_0024
                     r.enabled = false;
                     continue;
                 }
-                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
-                if (!any) { enc = r.bounds; any = true; }
-                else enc.Encapsulate(r.bounds);
+                var rb = RendererBoundsForValidation(r);
+                if (!any) { enc = rb; any = true; }
+                else enc.Encapsulate(rb);
             }
+
             float hy = any ? enc.size.y : 0f;
-            bool broken = !any || hy < 0.45f || hy > 6.5f;
-            try
+            if (any && hy >= 0.45f && hy <= 6.5f) return;
+
+            var body = transform.Find("AuthoredPerson") ?? transform.Find("KenneyPerson");
+            if (body && hy > 6.5f)
             {
-                var kenneyXf = transform.Find("KenneyPerson");
-                System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
-                    System.DateTime.Now.ToString("o")
-                    + " authored=" + _authored
-                    + " enc=" + (any ? enc.ToString() : "none")
-                    + " hy=" + hy.ToString("0.000")
-                    + " maxDim=" + maxDim.ToString("0.000")
-                    + " biggest=" + (biggest ? biggest.name : "null")
-                    + " broken=" + broken
-                    + " kenneyLossy=" + (kenneyXf ? kenneyXf.lossyScale.ToString() : "none")
-                    + " personLossy=" + transform.lossyScale
-                    + "\n");
+                body.localScale *= Mathf.Clamp(1.72f / hy, 0.1f, 1f);
+                PlantAuthoredFeet(body);
+                return;
             }
-            catch { }
-            if (!broken) return;
-            if (!allowFallback) return;
-            var kenney = transform.Find("KenneyPerson");
-            if (kenney)
+
+            if (body) body.gameObject.SetActive(false);
+            if (allowFallback)
             {
-                kenney.gameObject.SetActive(false);
-                Object.Destroy(kenney.gameObject);
+                var skinned = _modelRenderer as SkinnedMeshRenderer;
+                Debug.LogWarning("Concordia ModularPerson imported body invalid owner=" + name +
+                    " model=" + (_modelTransform ? _modelTransform.name : "null") +
+                    " active=" + (_modelRenderer && _modelRenderer.gameObject.activeInHierarchy) +
+                    " enabled=" + (_modelRenderer && _modelRenderer.enabled) +
+                    " localBounds=" + (skinned ? skinned.localBounds.ToString() : "n/a") +
+                    " meshBounds=" + (skinned && skinned.sharedMesh ? skinned.sharedMesh.bounds.ToString() : "n/a") +
+                    " hy=" + hy + " maxDim=" + maxDim + "; body disabled with no primitive fallback.");
             }
-            _authored = false;
-            _built = false;
-            _skinMesh = null;
-            _anim = null;
-            _hip = _spine = _chest = _neck = _head = null;
-            _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
-            _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
-            _hairRoot = _coat = _coatL = _coatR = _tunic = _sash = _pelvisMesh = _skull = _jaw = null;
-            Build();
-            Apply(look);
-            Debug.LogWarning("Concordia ModularPerson Kenney unusable (hy=" + hy + " maxDim=" + maxDim + ") — primitive visible fallback");
         }
 
         static void StripPrefabWeapons(GameObject body)
@@ -1443,42 +1507,28 @@ namespace Concordia // FORCE_REFRESH_0024
             if (r) r.sharedMaterial = HubLook.Lit(col, 0.08f, 0.28f);
         }
 
-        static GameObject MakeSword()
+static GameObject MakeSword()
         {
-            // "Oversized sword" root-caused live in Unity (2026-09-12): not a scale
-            // bug — FitMax's uniform-scale-to-1.05m target math is correct — but the
-            // Kenney weapon-sword.glb mesh it fell back to is chibi-proportioned
-            // (width is 52% of its length), so scaling its length up to a realistic
-            // sword also drags its already-fat width/thickness up with it, reading
-            // as a giant slab. "longsword" (tried first below) has never actually
-            // resolved to anything — confirmed live via FreePacks.Mesh returning
-            // null — so every hero silently fell through to the Kenney mesh. The
-            // MYFG Weapon Pack Lite (already in the project) has real,
-            // human-sword-proportioned meshes; Sword16 measured live at a 0.14
-            // width/length ratio vs Kenney's 0.52 — prefer it.
-            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
-            if (mesh)
+#if UNITY_EDITOR
+            var baked = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab");
+            if (baked)
             {
-                var held = Object.Instantiate(mesh);
+                var held = Object.Instantiate(baked);
                 held.name = "HeldSword";
                 foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-                FreePacks.PaintIfBlank(held);
                 return held;
             }
-            var g = new GameObject("HeldSword");
-            void Bit(PrimitiveType t, Vector3 p, Vector3 s, Color c)
-            {
-                var m = GameObject.CreatePrimitive(t);
-                m.transform.SetParent(g.transform, false);
-                m.transform.localPosition = p;
-                m.transform.localScale = s;
-                Object.Destroy(m.GetComponent<Collider>());
-                m.GetComponent<Renderer>().sharedMaterial = HubLook.Lit(c, 0.6f, 0.7f);
-            }
-            Bit(PrimitiveType.Cylinder, new Vector3(0, 0.07f, 0), new Vector3(0.04f, 0.07f, 0.04f), new Color(0.3f, 0.2f, 0.12f));
-            Bit(PrimitiveType.Cube, new Vector3(0, 0.16f, 0), new Vector3(0.22f, 0.03f, 0.04f), new Color(0.85f, 0.82f, 0.75f));
-            Bit(PrimitiveType.Cube, new Vector3(0, 0.55f, 0), new Vector3(0.035f, 0.75f, 0.09f), new Color(0.9f, 0.88f, 0.82f));
-            return g;
+#endif
+            var fromCx = CxDress.HeldWeapon("longsword");
+            if (fromCx) return fromCx;
+            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
+            if (!mesh) return null;
+            var go = Object.Instantiate(mesh);
+            go.name = "HeldSword";
+            foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            FreePacks.PaintIfBlank(go);
+            return go;
         }
     }
 }

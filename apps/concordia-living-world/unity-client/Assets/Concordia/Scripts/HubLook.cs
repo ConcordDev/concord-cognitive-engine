@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -10,6 +11,7 @@ namespace Concordia
     /// <summary>
     /// URP look for the Unburned Court: warm skylight vs cool portals.
     /// Stay on URP — HDRP would drop Kenney/glTFast materials.
+    /// Cinematic completion is bible/CINEMATIC.md — this class is the live look stack, not a second renderer.
     /// </summary>
     public static class HubLook
     {
@@ -36,16 +38,19 @@ namespace Concordia
             }
 
             var urp = QualitySettings.renderPipeline as UniversalRenderPipelineAsset;
+            bool lean = ConcordiaHost.LookLean;
             if (urp)
             {
-                urp.shadowDistance = world == WorldId.Hub ? 110f : 90f;
+                urp.shadowDistance = world == WorldId.Hub ? 180f : (lean ? 70f : 110f);
                 urp.msaaSampleCount = 1;
-                urp.maxAdditionalLightsCount = 8;
+                urp.maxAdditionalLightsCount = world == WorldId.Hub ? 8 : (lean ? 4 : 8);
                 urp.colorGradingMode = ColorGradingMode.HighDynamicRange;
                 urp.colorGradingLutSize = 64;
+                urp.supportsCameraDepthTexture = true;
             }
             TryEnableSsao();
-            QualitySettings.shadowDistance = world == WorldId.Hub ? 160f : 120f;
+            TryEnableVolumeFog();
+            QualitySettings.shadowDistance = world == WorldId.Hub ? 220f : (lean ? 90f : 140f);
             QualitySettings.shadowCascades = 4;
             QualitySettings.shadows = (UnityEngine.ShadowQuality)2;
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
@@ -69,7 +74,7 @@ namespace Concordia
             bloom.active = true;
             bloom.intensity.Override(bloomI);
             bloom.threshold.Override(bloomT);
-            bloom.scatter.Override(0.72f);
+            bloom.scatter.Override(world == WorldId.Hub ? 0.78f : 0.72f);
 
             if (!profile.TryGet(out ColorAdjustments color)) color = profile.Add<ColorAdjustments>(true);
             color.active = true;
@@ -96,6 +101,43 @@ namespace Concordia
             ca.active = true;
             ca.intensity.Override(world == WorldId.Cyber || world == WorldId.Crucible ? 0.12f : 0.04f);
 
+            if (!profile.TryGet(out DepthOfField dof)) dof = profile.Add<DepthOfField>(true);
+            dof.active = world == WorldId.Hub || !lean;
+            dof.mode.Override(DepthOfFieldMode.Gaussian);
+            dof.gaussianStart.Override(world == WorldId.Hub ? 14f : 16f);
+            dof.gaussianEnd.Override(world == WorldId.Hub ? 48f : 48f);
+            dof.gaussianMaxRadius.Override(world == WorldId.Hub ? 1.15f : (lean ? 0.4f : 1.05f));
+
+            if (!profile.TryGet(out ShadowsMidtonesHighlights smh)) smh = profile.Add<ShadowsMidtonesHighlights>(true);
+            smh.active = true;
+            if (world == WorldId.Hub)
+            {
+                smh.shadows.Override(new Vector4(0.86f, 1.04f, 1.14f, lean ? -0.03f : -0.06f));
+                smh.midtones.Override(new Vector4(1.02f, 1.0f, 0.96f, 0.02f));
+                smh.highlights.Override(new Vector4(1.10f, 1.02f, 0.90f, 0.06f));
+            }
+            else
+            {
+                smh.shadows.Override(new Vector4(1f, 1.02f, 1.08f, lean ? -0.02f : -0.05f));
+                smh.midtones.Override(new Vector4(1.02f, 1f, 0.98f, 0.02f));
+                smh.highlights.Override(new Vector4(1.04f, 1.01f, 0.96f, 0.04f));
+            }
+
+            if (!profile.TryGet(out LiftGammaGain lgg)) lgg = profile.Add<LiftGammaGain>(true);
+            lgg.active = true;
+            if (world == WorldId.Hub)
+            {
+                lgg.lift.Override(new Vector4(0.98f, 1.02f, 1.08f, 0.03f));
+                lgg.gamma.Override(new Vector4(1f, 1.01f, 1.02f, 0f));
+                lgg.gain.Override(new Vector4(1.04f, 1.0f, 0.94f, lean ? 0.03f : 0.06f));
+            }
+            else
+            {
+                lgg.lift.Override(new Vector4(1.01f, 1.01f, 1.04f, 0.02f));
+                lgg.gamma.Override(new Vector4(1f, 1f, 1f, 0f));
+                lgg.gain.Override(new Vector4(1.03f, 1.0f, 0.97f, lean ? 0.02f : 0.05f));
+            }
+
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = eq;
@@ -106,6 +148,94 @@ namespace Concordia
             DynamicGI.UpdateEnvironment();
             PlaceProbe(world == WorldId.Hub ? 120f : 95f);
             ApplyHour(world, WorldClock.Hour);
+            WorldBreath.Ensure(world, cam);
+            BindSun();
+            LightPeople();
+            PushVolume();
+        }
+
+        public static bool VolumeFogLive { get; private set; }
+
+        static float _openFog = -1f;
+        static float _openExp;
+        static bool _haveOpenExp;
+        static bool _interior;
+
+        public static void LiveFog(float density)
+        {
+            _openFog = Mathf.Max(0f, density);
+            RenderSettings.fogDensity = _interior ? _openFog * 0.28f : _openFog;
+            PushVolume();
+        }
+
+        /// <summary>
+        /// Interior vs plaza: drop distant haze, keep the room lamp as the key.
+        /// Fake-window LOD is not this path — BuildingInterior walk-in / E is.
+        /// </summary>
+        public static void ApplyInterior(bool inside)
+        {
+            if (_openFog < 0f) _openFog = RenderSettings.fogDensity;
+            if (_interior == inside) return;
+            _interior = inside;
+            LiveFog(_openFog);
+            var volGo = GameObject.Find("GlobalVolume");
+            var vol = volGo ? volGo.GetComponent<Volume>() : null;
+            var profile = vol && vol.profile ? vol.profile : null;
+            if (profile && profile.TryGet(out ColorAdjustments color))
+            {
+                if (!_haveOpenExp)
+                {
+                    _openExp = color.postExposure.value;
+                    _haveOpenExp = true;
+                }
+                color.postExposure.Override(inside ? _openExp - 0.18f : _openExp);
+            }
+            if (profile && profile.TryGet(out DepthOfField dof))
+                dof.active = !inside;
+        }
+
+        public static bool InteriorLit => _interior;
+
+        /// <summary>
+        /// Characters belong in the same sun as the plaza. Cast + receive, URP Lit.
+        /// </summary>
+        public static int GroundInLight(GameObject go)
+        {
+            if (!go) return 0;
+            int n = UpgradeStandardOn(go);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                r.shadowCastingMode = ShadowCastingMode.On;
+                r.receiveShadows = true;
+                n++;
+            }
+            return n;
+        }
+
+        static void BindSun()
+        {
+            if (RenderSettings.sun && RenderSettings.sun.enabled && RenderSettings.sun.type == LightType.Directional)
+                return;
+            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Light sun = null;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                var l = lights[i];
+                if (!l || !l.enabled || l.type != LightType.Directional) continue;
+                if (l.name == "Fill") continue;
+                if (l.name == "Sun") { sun = l; break; }
+                if (l.name.IndexOf("sun", System.StringComparison.OrdinalIgnoreCase) >= 0) { sun = l; continue; }
+                if (sun == null) sun = l;
+            }
+            if (sun) RenderSettings.sun = sun;
+        }
+
+        static void LightPeople()
+        {
+            var people = Object.FindObjectsByType<ModularPerson>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < people.Length; i++)
+                GroundInLight(people[i].gameObject);
         }
 
         /// <summary>
@@ -131,29 +261,55 @@ namespace Concordia
 
             if (world == WorldId.Hub)
             {
-                RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.08f, 0.10f, 0.18f), new Color(0.58f, 0.64f, 0.74f), sun01);
-                RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.06f, 0.07f, 0.10f), new Color(0.48f, 0.42f, 0.36f), sun01);
-                RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.03f, 0.04f), new Color(0.22f, 0.18f, 0.14f), sun01);
+                RenderSettings.ambientSkyColor = Color.Lerp(new Color(0.06f, 0.10f, 0.16f), new Color(0.42f, 0.58f, 0.66f), sun01);
+                RenderSettings.ambientEquatorColor = Color.Lerp(new Color(0.05f, 0.07f, 0.09f), new Color(0.42f, 0.38f, 0.32f), sun01);
+                RenderSettings.ambientGroundColor = Color.Lerp(new Color(0.03f, 0.04f, 0.05f), new Color(0.16f, 0.18f, 0.20f), sun01);
                 RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
-                RenderSettings.reflectionIntensity = 0.22f + 0.83f * sun01;
-                RenderSettings.fogColor = Color.Lerp(new Color(0.02f, 0.03f, 0.06f), new Color(0.55f, 0.58f, 0.62f), sun01);
-                RenderSettings.fogDensity = 0.0045f + 0.01f * night;
+                RenderSettings.reflectionIntensity = 0.38f + 0.67f * sun01;
+                RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.10f, 0.12f), new Color(0.22f, 0.42f, 0.44f), sun01);
+                LiveFog(0.032f + 0.008f * night);
+                TryHdrSky(world);
             }
 
             var sky = RenderSettings.skybox;
-            if (sky && sky.HasProperty("_Exposure"))
+            if (sky && sky.HasProperty("_Exposure") && world != WorldId.Hub)
             {
-                float daySky = world == WorldId.Hub ? 0.78f : 0.62f;
-                sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, daySky, sun01));
+                sky.SetFloat("_Exposure", Mathf.Lerp(0.16f, 0.62f, sun01));
             }
 
             var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
+
+            // Pick the sun BEFORE the loop.
+            //
+            // This used to match only `name == "Sun"`, and the final else-branch below disabled
+            // every other directional light. The scene's actual lights are named "Directional
+            // Light" (Unity's default) and "ContinentSun" — neither matched, so BOTH were disabled
+            // on every sky tick and the world had no directional light at all. That is why a 14:43
+            // afternoon rendered nearly black and every surface looked flat: ambient-only lighting
+            // produces no directional shading, no shadows and no specular, which hides normal and
+            // metallic/smoothness maps completely. Textures were never the problem.
+            //
+            // Preference order: exact "Sun" -> any directional whose name contains "sun" -> the
+            // brightest directional present. Never leave the world with zero suns.
+            Light sun = null;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                var l = lights[i];
+                if (!l || l.type != LightType.Directional) continue;
+                if (l.name == "Fill") continue;
+                if (l.name == "Sun") { sun = l; break; }
+                if (l.name.IndexOf("sun", System.StringComparison.OrdinalIgnoreCase) >= 0) { sun = l; continue; }
+                if (sun == null) sun = l;
+            }
+
             for (int i = 0; i < lights.Length; i++)
             {
                 var l = lights[i];
                 if (!l) continue;
-                if (l.type == LightType.Directional && l.name == "Sun")
+                if (l.type == LightType.Directional && l == sun)
                 {
+                    l.enabled = true;
+                    l.gameObject.SetActive(true);
                     l.color = Color.Lerp(new Color(0.42f, 0.52f, 0.78f), new Color(1f, 0.94f, 0.82f), sun01);
                     l.intensity = world == WorldId.Hub
                         ? 0.06f + 1.12f * sun01
@@ -162,9 +318,10 @@ namespace Concordia
                     l.shadowStrength = 0.88f + 0.08f * sun01;
                     float pitch = Mathf.Lerp(8f, 42f, sun01);
                     l.transform.rotation = Quaternion.Euler(pitch, l.transform.eulerAngles.y, 0f);
+                    RenderSettings.sun = l;
                 }
                 else if (l.type == LightType.Directional && l.name == "Fill")
-                    l.intensity = 0.02f + 0.16f * sun01;
+                    l.intensity = 0.04f + 0.22f * sun01;
                 else if (l.type == LightType.Directional)
                 {
                     l.intensity = 0f;
@@ -192,8 +349,8 @@ namespace Concordia
             switch (world)
             {
                 case WorldId.Hub:
-                    bloomI = 0.18f; bloomT = 0.88f; exposure = 0.12f; contrast = 12f; sat = 10f; vigI = 0.18f; temp = 8f;
-                    sky = new Color(0.58f, 0.64f, 0.74f); eq = new Color(0.48f, 0.42f, 0.36f); ground = new Color(0.22f, 0.18f, 0.14f); break;
+                    bloomI = 0.72f; bloomT = 0.58f; exposure = 0.18f; contrast = 22f; sat = 6f; vigI = 0.28f; temp = -10f;
+                    sky = new Color(0.32f, 0.52f, 0.58f); eq = new Color(0.28f, 0.32f, 0.30f); ground = new Color(0.10f, 0.14f, 0.16f); break;
                 case WorldId.Ruins:
                     bloomI = 0.28f; bloomT = 0.72f; exposure = 0.08f; contrast = 16f; sat = 4f; vigI = 0.4f; temp = -8f;
                     sky = new Color(0.55f, 0.52f, 0.48f); eq = new Color(0.32f, 0.26f, 0.20f); ground = new Color(0.10f, 0.08f, 0.06f); break;
@@ -235,7 +392,7 @@ namespace Concordia
             probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
             probe.size = new Vector3(size, size * 0.7f, size);
             probe.center = Vector3.up * 8f;
-            probe.resolution = 256;
+            probe.resolution = ConcordiaHost.LookLean ? 128 : 256;
             probe.intensity = 1.15f;
             probe.boxProjection = true;
             probe.RenderProbe();
@@ -261,8 +418,9 @@ namespace Concordia
             var fl = fill.AddComponent<Light>();
             fl.type = LightType.Directional;
             fl.color = Color.Lerp(color, Color.white, 0.35f);
-            fl.intensity = intensity * 0.16f;
+            fl.intensity = intensity * 0.22f;
             fl.shadows = LightShadows.None;
+            RenderSettings.sun = light;
             return light;
         }
 
@@ -282,8 +440,57 @@ namespace Concordia
 
         public static void Lantern(Transform parent, Vector3 pos)
         {
-            FreePacks.SpawnStore("lantern", parent, pos, 0, 1.35f, required: false);
-            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(1f, 0.72f, 0.38f), 1.4f, 10f, true);
+            var mesh = FreePacks.SpawnStore("lantern", parent, pos, 0, 1.35f, required: false)
+                       ?? FreePacks.SpawnStore("wooden_lantern_01", parent, pos, 0, 1.35f, required: false)
+                       ?? FreePacks.SpawnStore("Lantern_01", parent, pos, 0, 1.2f, required: false);
+            if (!mesh)
+            {
+                var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                glow.name = "LampGlow";
+                glow.transform.SetParent(parent, false);
+                glow.transform.position = pos + Vector3.up * 1.55f;
+                glow.transform.localScale = Vector3.one * 0.08f;
+                Object.Destroy(glow.GetComponent<Collider>());
+                var gr = glow.GetComponent<Renderer>();
+                if (gr)
+                {
+                    gr.sharedMaterial = UnlitAlpha(new Color(0.55f, 0.95f, 1f, 0.55f));
+                    gr.shadowCastingMode = ShadowCastingMode.Off;
+                }
+            }
+            HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(0.45f, 0.92f, 1f), 2.4f, 12f, true);
+        }
+
+        /// <summary>Additive cone so fog reads as light shafts without a volumetric pass.</summary>
+        public static void Shaft(Transform parent, Vector3 pos, Vector3 dir, Color c, float length = 14f)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            go.name = "LightShaft";
+            go.transform.SetParent(parent, false);
+            go.transform.position = pos + dir.normalized * (length * 0.45f);
+            go.transform.rotation = Quaternion.FromToRotation(Vector3.up, dir.normalized);
+            go.transform.localScale = new Vector3(0.55f, length * 0.5f, 0.55f);
+            Object.Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            if (r)
+            {
+                var m = UnlitAlpha(new Color(c.r, c.g, c.b, 0.07f));
+                r.sharedMaterial = m;
+                r.shadowCastingMode = ShadowCastingMode.Off;
+            }
+        }
+
+        public static void StoneDress(GameObject go)
+        {
+            if (!go) return;
+            var stone = Pbr("cobblestone_square", Color.white, 0.06f, 0.28f, 3.2f);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r || !r.sharedMaterial) continue;
+                var n = r.sharedMaterial.name ?? "";
+                if (n.StartsWith("PH_wet") || n.StartsWith("PH_HDR")) continue;
+                r.sharedMaterial = stone;
+            }
         }
 
         public static Material GroundMat(WorldId world, Color tint)
@@ -388,7 +595,12 @@ namespace Concordia
                 if (!src.HasProperty(names[i])) continue;
                 return src.GetColor(names[i]);
             }
-            return src.color.a > 0.01f ? src.color : fallback;
+            if (src.HasProperty("_Color"))
+            {
+                var legacy = src.GetColor("_Color");
+                return legacy.a > 0.01f ? legacy : fallback;
+            }
+            return fallback;
         }
 
         public static Texture FirstNormal(Material src)
@@ -404,37 +616,303 @@ namespace Concordia
             return null;
         }
 
-        public static Material Pbr(string stem, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
+        // Poly Haven CC0 kit: Assets/Concordia/PolyHaven/Textures/<stem>/<stem>_<map>_2k.jpg
+        // Maps shipped per set: _diffuse_ (sRGB), _nor_gl_ (normal), _arm_ (AO/Rough/Metal, linear),
+        // _displacement_. Import settings are enforced by Concordia.EditorTools.PolyHavenPipeline.
+        static readonly Dictionary<string, Material> _pbrCache = new Dictionary<string, Material>();
+
+        // ---- Stem resolution ------------------------------------------------------------------
+        // The world builders ask for SEMANTIC surfaces ("stone_tiles", "wet_asphalt", "ash_soil").
+        // Poly Haven ships CONCRETE set names ("cobblestone_floor_13", "asphalt_floor",
+        // "brown_mud_dry"). Before this, every one of those semantic names missed an exact-path
+        // lookup and Pbr() silently returned an untextured flat tint — which is why 13.5GB of
+        // imported CC0 material was on disk, correctly imported, and visible nowhere.
+        //
+        // Resolution order: exact set -> hand-authored semantic alias -> prefix match against the
+        // real library (so "metal_plate" finds "metal_plate_02" without anyone maintaining it).
+        static readonly Dictionary<string, string> StemAliases = new Dictionary<string, string>
         {
+            { "stone_tiles",    "cobblestone_square" },
+            { "court_cobble",   "cobblestone_square" },
+            { "wet_asphalt",    "asphalt_floor" },
+            { "ash_soil",       "brown_mud_dry" },
+            { "grove_moss",     "forrest_ground_03" },
+            { "neon_grid",      "blue_floor_tiles_01" },
+            { "packed_earth",   "aerial_mud_1" },
+            { "concrete_floor", "anti_slip_concrete" },
+            { "metal_plate",    "metal_plate_02" },
+            { "grass",          "aerial_grass_rock" },
+            { "dirt",           "brown_mud_02" },
+            { "sand",           "aerial_sand" },
+            { "gravel",         "bicolour_gravel" },
+            { "snow",           "asphalt_snow" },
+            { "brick",          "brick_floor" },
+            { "wall",           "concrete_wall_009" },
+            { "road",           "asphalt_02" },
+        };
+
+        static List<string> _stemIndex;
+
+        static List<string> StemIndex()
+        {
+            if (_stemIndex != null) return _stemIndex;
+            _stemIndex = new List<string>();
+#if UNITY_EDITOR
+            const string root = "Assets/Concordia/PolyHaven/Textures";
+            if (AssetDatabase.IsValidFolder(root))
+                foreach (var sub in AssetDatabase.GetSubFolders(root))
+                    _stemIndex.Add(sub.Substring(sub.LastIndexOf('/') + 1));
+#endif
+            return _stemIndex;
+        }
+
+        /// Maps a requested surface name onto a set that actually exists on disk.
+        public static string ResolveStem(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return stem;
+            if (LoadPbrTex(stem, "_diffuse_2k") != null) return stem;
+
+            if (StemAliases.TryGetValue(stem, out var alias) &&
+                LoadPbrTex(alias, "_diffuse_2k") != null)
+                return alias;
+
+            var idx = StemIndex();
+            for (int i = 0; i < idx.Count; i++)
+                if (idx[i].StartsWith(stem, System.StringComparison.OrdinalIgnoreCase))
+                    return idx[i];
+
+            // Last resort: any set whose name contains the request (e.g. "moss" -> "brick_moss_001").
+            for (int i = 0; i < idx.Count; i++)
+                if (idx[i].IndexOf(stem, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return idx[i];
+
+            return stem;   // genuine miss — caller still gets an honest flat tint
+        }
+
+        public static Material Pbr(string requested, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
+        {
+            var stem = ResolveStem(requested);
+            var key = stem + "|" + tile.ToString("F2");
+            if (_pbrCache.TryGetValue(key, out var cached) && cached) return cached;
+
             var m = Lit(tint, metallic, smooth);
-            var diff = LoadPbrTex(stem + "_diff_2k.jpg") ?? LoadPbrTex(stem + "_diff_2k");
-            var nrm = LoadPbrTex(stem + "_nor_gl_2k.jpg") ?? LoadPbrTex(stem + "_nor_gl_2k");
-            var rough = LoadPbrTex(stem + "_rough_2k.jpg") ?? LoadPbrTex(stem + "_rough_2k");
+            var diff = LoadPbrTex(stem, "_diffuse_2k");
+            var nrm = LoadPbrTex(stem, "_nor_gl_2k");
+
             if (diff)
             {
-                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", diff);
-                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", diff);
-                m.SetTextureScale("_BaseMap", Vector2.one * tile);
-                m.SetTextureScale("_MainTex", Vector2.one * tile);
+                // Textured surfaces must not be double-tinted by the flat fallback colour.
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", Color.white);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", diff); m.SetTextureScale("_BaseMap", Vector2.one * tile); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", diff); m.SetTextureScale("_MainTex", Vector2.one * tile); }
             }
             if (nrm)
             {
                 if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
                 m.EnableKeyword("_NORMALMAP");
                 m.SetTextureScale("_BumpMap", Vector2.one * tile);
-                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.35f);
+                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.0f);
             }
-            if (rough && m.HasProperty("_Smoothness"))
-                m.SetFloat("_Smoothness", Mathf.Min(smooth, 0.22f));
+
+            // ARM -> real metallic/smoothness/occlusion response. Without this the surface has
+            // correct albedo and normals but a flat, uniform material response.
+            var armSrc = LoadPbrTex(stem, "_arm_2k");
+            var packed = RepackArm(stem, armSrc);
+            if (packed)
+            {
+                if (m.HasProperty("_MetallicGlossMap"))
+                {
+                    m.SetTexture("_MetallicGlossMap", packed);
+                    m.SetTextureScale("_MetallicGlossMap", Vector2.one * tile);
+                    m.EnableKeyword("_METALLICSPECGLOSSMAP");
+                    // URP does `specGloss.a *= _Smoothness`, so the multiplier must be 1 for the
+                    // packed alpha to survive as the authored smoothness.
+                    if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 1f);
+                    if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 1f);
+                }
+                if (m.HasProperty("_OcclusionMap"))
+                {
+                    m.SetTexture("_OcclusionMap", packed);
+                    m.SetTextureScale("_OcclusionMap", Vector2.one * tile);
+                    m.EnableKeyword("_OCCLUSIONMAP");
+                    if (m.HasProperty("_OcclusionStrength")) m.SetFloat("_OcclusionStrength", 1f);
+                }
+            }
+
+            m.name = "PH_" + stem;
+            _pbrCache[key] = m;
             return m;
         }
 
-        static Texture LoadPbrTex(string file)
+        /// <summary>
+        /// Wet Court stone: CX cobble albedo when present, Poly Haven cobble
+        /// normals underneath, high smoothness. cobblestone_floor_13 is dirt
+        /// between stones — that was the tire-mud Hub ground.
+        /// </summary>
+        public static Material WetStone(string requested = "cobblestone_square", float tile = 5.5f)
         {
+            var stem = ResolveStem(string.IsNullOrEmpty(requested) ? "cobblestone_square" : requested);
+            var key = "wet|" + stem + "|" + tile.ToString("F2");
+            if (_pbrCache.TryGetValue(key, out var cached) && cached) return cached;
+
+            var m = new Material(Pbr(stem, Color.white, 0.08f, 0.62f, tile));
+            var cx = LoadCourtCobble();
+            if (cx)
+            {
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", cx); m.SetTextureScale("_BaseMap", Vector2.one * tile); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", cx); m.SetTextureScale("_MainTex", Vector2.one * tile); }
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+            }
+            else if (m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", new Color(0.82f, 0.86f, 0.90f));
+
+            m.DisableKeyword("_METALLICSPECGLOSSMAP");
+            if (m.HasProperty("_MetallicGlossMap")) m.SetTexture("_MetallicGlossMap", null);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.82f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.18f);
+            m.name = "PH_wet_" + stem;
+            _pbrCache[key] = m;
+            return m;
+        }
+
+        static Texture LoadCourtCobble()
+        {
+            var res = Resources.Load<Texture2D>("Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble");
+            if (res) return res;
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + file);
+            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg");
 #else
             return null;
+#endif
+        }
+
+        /// True when the Poly Haven set actually resolves — lets callers fall back to flat colour
+        /// honestly instead of rendering an untextured surface that pretends to be dressed.
+        public static bool HasPbrSet(string stem) => LoadPbrTex(ResolveStem(stem), "_diffuse_2k") != null;
+
+        static readonly Dictionary<string, Texture2D> _armCache = new Dictionary<string, Texture2D>();
+        static Material _armRepackMat;
+
+        /// Repacks a Poly Haven ARM map into URP's expected channel layout on the GPU.
+        /// See Shaders/ArmRepack.shader for the channel contract. Returns one texture usable as
+        /// BOTH _MetallicGlossMap (.r/.a) and _OcclusionMap (.g) — their channels don't overlap.
+        ///
+        /// Done as a Graphics.Blit rather than CPU GetPixels so the source texture does not need
+        /// "Read/Write Enabled" (which would double its memory) and so the work happens on the GPU.
+        /// Cached per stem; the readback is one-time per set.
+        static Texture2D RepackArm(string stem, Texture arm)
+        {
+            if (arm == null) return null;
+            if (_armCache.TryGetValue(stem, out var cached) && cached) return cached;
+
+            if (_armRepackMat == null)
+            {
+                var sh = Shader.Find("Hidden/Concordia/ArmRepack");
+                if (sh == null) return null;          // honest miss — caller keeps flat smoothness
+                _armRepackMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+            }
+
+            int w = arm.width, h = arm.height;
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            var prev = RenderTexture.active;
+            try
+            {
+                Graphics.Blit(arm, rt, _armRepackMat);
+                RenderTexture.active = rt;
+
+                // Linear, mip-mapped: this carries material response data, not colour.
+                var outTex = new Texture2D(w, h, TextureFormat.RGBA32, true, true)
+                {
+                    name = stem + "_MetalSmoothAO",
+                    wrapMode = TextureWrapMode.Repeat
+                };
+                outTex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
+                outTex.Apply(true, true);             // makeNoLongerReadable: free the CPU copy
+                _armCache[stem] = outTex;
+                return outTex;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+            }
+        }
+
+        // TODO(ship): editor-only resolution. A player build needs these under Resources/ or
+        // Addressables; AssetDatabase does not exist at runtime.
+        static Texture LoadPbrTex(string stem, string suffix)
+        {
+#if UNITY_EDITOR
+            const string root = "Assets/Concordia/PolyHaven/Textures/";
+            string[] exts = { ".jpg", ".png" };
+            for (int i = 0; i < exts.Length; i++)
+            {
+                var t = AssetDatabase.LoadAssetAtPath<Texture>(root + stem + "/" + stem + suffix + exts[i]);
+                if (t) return t;
+            }
+            // Legacy flat layout kept for older non-Poly-Haven packs.
+            for (int i = 0; i < exts.Length; i++)
+            {
+                var t = AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + stem + suffix + exts[i]);
+                if (t) return t;
+            }
+            return null;
+#else
+            return null;
+#endif
+        }
+
+        public static void PushVolume()
+        {
+            bool hub = WorldClock.World == WorldId.Hub;
+            float dens = hub ? (_interior ? 0.018f : 0.055f) : 0.022f;
+            Shader.SetGlobalFloat("_CxVolDensity", dens);
+            Shader.SetGlobalFloat("_CxVolHeight", hub ? 0.35f : 1.2f);
+            Shader.SetGlobalFloat("_CxVolFalloff", hub ? 7.5f : 10f);
+            Shader.SetGlobalFloat("_CxVolMaxM", hub ? 72f : 48f);
+            Shader.SetGlobalFloat("_CxVolSun", hub ? (_interior ? 0.6f : 2.4f) : 1.1f);
+            var fog = RenderSettings.fogColor;
+            Shader.SetGlobalColor("_CxVolColor", fog * 1.15f);
+            var sun = RenderSettings.sun;
+            var sunCol = sun && sun.enabled ? sun.color * sun.intensity : new Color(0.85f, 0.78f, 0.62f);
+            Shader.SetGlobalColor("_CxVolSunColor", Color.Lerp(sunCol, Color.white, 0.35f));
+        }
+
+        static void TryEnableVolumeFog()
+        {
+#if UNITY_EDITOR
+            try
+            {
+                var urp = UniversalRenderPipeline.asset;
+                if (!urp) return;
+                var so = new SerializedObject(urp);
+                var list = so.FindProperty("m_RendererDataList");
+                if (list == null || list.arraySize < 1) return;
+                var renderer = list.GetArrayElementAtIndex(0).objectReferenceValue as ScriptableRendererData;
+                if (!renderer) return;
+                var featsProp = renderer.GetType().GetProperty("rendererFeatures");
+                var feats = featsProp != null ? featsProp.GetValue(renderer) as System.Collections.IList : null;
+                if (feats == null) return;
+                foreach (var f in feats)
+                {
+                    if (f != null && f.GetType().Name.IndexOf("HubVolumeFog", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        VolumeFogLive = true;
+                        return;
+                    }
+                }
+                var feat = ScriptableObject.CreateInstance<HubVolumeFogFeature>();
+                if (!feat) return;
+                feat.name = "HubVolumeFog";
+                feats.Add(feat);
+                AssetDatabase.AddObjectToAsset(feat, renderer);
+                EditorUtility.SetDirty(renderer);
+                VolumeFogLive = true;
+            }
+            catch { }
+#else
+            VolumeFogLive = Shader.Find("Hidden/Concordia/VolumeFog") != null;
 #endif
         }
 
@@ -588,23 +1066,44 @@ namespace Concordia
             r.sharedMaterial = m;
         }
 
-        static bool TryHdrSky(WorldId world)
+        static string _boundHdr;
+
+        static string HdrFile(WorldId world)
         {
-#if UNITY_EDITOR
-            var file = world switch
+            if (world == WorldId.Hub)
+            {
+                float s = Sun01(WorldClock.Hour);
+                if (s < 0.18f) return "dikhololo_night_2k.hdr";
+                if (s < 0.42f) return "the_sky_is_on_fire_2k.hdr";
+                return "kloofendal_48d_partly_cloudy_puresky_2k.hdr";
+            }
+            return world switch
             {
                 WorldId.Ruins => "kloppenheim_06_puresky_2k.hdr",
                 WorldId.Crime => "dikhololo_night_2k.hdr",
                 WorldId.Cyber => "dikhololo_night_2k.hdr",
-                WorldId.Frontier => "industrial_sunset_2k.hdr",
-                WorldId.Superhero => "industrial_sunset_2k.hdr",
+                WorldId.Frontier => "industrial_sunset_puresky_2k.hdr",
+                WorldId.Superhero => "industrial_sunset_puresky_2k.hdr",
                 WorldId.Tunya => "kloofendal_48d_partly_cloudy_puresky_2k.hdr",
                 WorldId.Fantasy => "venice_sunset_2k.hdr",
                 WorldId.Crucible => "kloppenheim_06_puresky_2k.hdr",
-                _ => "kloofendal_48d_partly_cloudy_puresky_2k.hdr"
+                _ => "autumn_field_puresky_2k.hdr"
             };
-            var path = "Assets/Concordia/Models/polyhaven/" + file;
-            float exposure = world == WorldId.Hub ? 0.78f : 0.62f;
+        }
+
+        static bool TryHdrSky(WorldId world)
+        {
+#if UNITY_EDITOR
+            var file = HdrFile(world);
+            if (_boundHdr == file && RenderSettings.skybox && RenderSettings.skybox.name.StartsWith("PH_HDR_"))
+                return true;
+
+            const string root = "Assets/Concordia/PolyHaven/HDRIs/";
+            var path = root + file;
+            float exposure = file.IndexOf("night", System.StringComparison.OrdinalIgnoreCase) >= 0 ? 0.42f
+                : file.IndexOf("fire", System.StringComparison.OrdinalIgnoreCase) >= 0
+                  || file.IndexOf("sunset", System.StringComparison.OrdinalIgnoreCase) >= 0 ? 0.55f
+                : world == WorldId.Hub ? 0.82f : 0.62f;
             // HDRs in this project are imported as Cubemap (textureShape 2).
             // Skybox/Panoramic on a Cubemap is a white void. Use Cubemap shader
             // for cubes; Panoramic only when the asset is actually 2D lat-long.
@@ -613,10 +1112,12 @@ namespace Concordia
             if (cubemap && cubeSh && !IsErrorShader(cubeSh))
             {
                 var m = new Material(cubeSh);
+                m.name = "PH_HDR_" + file;
                 m.SetTexture("_Tex", cubemap);
                 m.SetFloat("_Exposure", exposure);
                 RenderSettings.skybox = m;
                 DynamicGI.UpdateEnvironment();
+                _boundHdr = file;
                 return true;
             }
             var tex2d = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
@@ -624,10 +1125,12 @@ namespace Concordia
             if (tex2d && tex2d.dimension == TextureDimension.Tex2D && pano && !IsErrorShader(pano))
             {
                 var m = new Material(pano);
+                m.name = "PH_HDR_" + file;
                 if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", tex2d);
                 m.SetFloat("_Exposure", exposure);
                 RenderSettings.skybox = m;
                 DynamicGI.UpdateEnvironment();
+                _boundHdr = file;
                 return true;
             }
 #endif
@@ -678,6 +1181,88 @@ namespace Concordia
             return false;
         }
 
+        // ---- Prop model substitution ----------------------------------------------------------
+        // 53% of the world's renderers were Unity primitives (306 cubes, 77 quads, 26 spheres)
+        // while 758 real CC0 models sat imported and unused. A textured cube is still a cube —
+        // that, not lighting or materials, is what made the world read as a 2009 greybox.
+        //
+        // Prim() keeps building the primitive (so colliders, bounds and gameplay placement are
+        // byte-for-byte unchanged) and then hides its RENDERER and parents a real model inside it,
+        // fitted to the same footprint. Purely a visual upgrade; nothing gameplay-facing moves.
+        //
+        // Curated table, NO fuzzy fallback. Geometry is not like textures: a fuzzy "contains"
+        // match happily resolves "bench" to "bench_vice_01_1k" (a workshop vice), and a confidently
+        // wrong model looks worse than an honest primitive. Unmapped names keep their primitive.
+        static readonly Dictionary<string, string> PropModels = new Dictionary<string, string>
+        {
+            { "barrel",   "barrel_01_1k" },
+            { "crate",    "old_military_crate_1k" },
+            { "chest",    "treasure_chest_1k" },
+            { "lantern",  "lantern_01_1k" },
+            { "lamp",     "wooden_lantern_01_1k" },
+            { "statue",   "statue_block" },
+            { "pot",      "ceramic_pot_1k" },
+            { "vase",     "antique_ceramic_vase_01_1k" },
+            { "fence",    "fence_bend" },
+            { "bush",     "plant_bush" },
+            { "tree",     "concordia_real_foresttree" },
+            { "sword",    "cx_weapon_longsword" },
+            { "shield",   "kite_shield_1k" },
+            { "pillar",   "statue_column" },
+            { "post",     "log_large" },
+        };
+
+        /// Confident semantic match only — returns null when we should keep the primitive.
+        static string PropStemFor(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            var n = name.ToLowerInvariant();
+            foreach (var kv in PropModels)
+                if (n.Contains(kv.Key)) return kv.Value;
+            return null;
+        }
+
+        /// Hides the primitive's renderer and nests a real model scaled into its footprint.
+        static void DressWithModel(GameObject prim, string semanticName, Vector3 footprint)
+        {
+            var stem = PropStemFor(semanticName);
+            if (string.IsNullOrEmpty(stem)) return;
+
+            var prefab = FreePacks.Mesh(stem);
+            if (!prefab) return;                       // kit miss — keep the honest primitive
+
+            var model = Object.Instantiate(prefab, prim.transform);
+            model.name = "Model_" + stem;
+            model.transform.localPosition = Vector3.zero;
+            model.transform.localRotation = Quaternion.identity;
+
+            // Fit the model into the primitive's footprint. The parent's own localScale already
+            // applies, so measure in the model's local space and divide it back out.
+            var rends = model.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) { Object.Destroy(model); return; }
+
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var size = b.size;
+            float largest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            if (largest <= 0.0001f) { Object.Destroy(model); return; }
+
+            float target = Mathf.Max(footprint.x, Mathf.Max(footprint.y, footprint.z));
+            float k = target / largest;
+            // Divide out the parent scale so the fit is absolute, not compounded.
+            model.transform.localScale = new Vector3(
+                Mathf.Approximately(footprint.x, 0f) ? k : k / Mathf.Max(0.0001f, footprint.x),
+                Mathf.Approximately(footprint.y, 0f) ? k : k / Mathf.Max(0.0001f, footprint.y),
+                Mathf.Approximately(footprint.z, 0f) ? k : k / Mathf.Max(0.0001f, footprint.z));
+
+            foreach (var c in model.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
+
+            var primRend = prim.GetComponent<Renderer>();
+            if (primRend) primRend.enabled = false;    // keep collider + bounds, drop the cube look
+
+            FreePacks.PaintIfBlank(model);
+        }
+
         public static GameObject Prim(Transform parent, PrimitiveType t, Vector3 pos, Vector3 scale, Material mat, string n, bool collider = true)
         {
             var go = GameObject.CreatePrimitive(t);
@@ -697,6 +1282,7 @@ namespace Concordia
             }
             var r = go.GetComponent<Renderer>();
             if (r && mat) r.sharedMaterial = mat;
+            DressWithModel(go, n, scale);
             return go;
         }
 
@@ -711,6 +1297,85 @@ namespace Concordia
             if (n.StartsWith("TextMeshPro")) return false;
             if (n.StartsWith("Shader Graphs/")) return true;
             return true;
+        }
+
+        static readonly Dictionary<Material, Material> _urpUpgradeCache = new Dictionary<Material, Material>();
+
+        /// Converts one built-in-pipeline material to URP Lit, preserving albedo/normal/colour and
+        /// metallic-smoothness. Shared by the global sweep and the per-object path so the two can
+        /// never diverge. Cached per source material — the same source converts once.
+        static Material ConvertToUrp(Material src)
+        {
+            if (_urpUpgradeCache.TryGetValue(src, out var hit) && hit) return hit;
+
+            var dst = new Material(_lit);
+            var col = FirstColor(src, Color.white);
+            if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", col);
+            dst.color = col;
+
+            var tex = FirstAlbedo(src);
+            if (tex)
+            {
+                if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", tex);
+                if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", tex);
+            }
+            var nrm = FirstNormal(src);
+            if (nrm)
+            {
+                if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
+                dst.EnableKeyword("_NORMALMAP");
+            }
+            if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
+            else if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
+            else if (dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", 0.04f);
+
+            if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
+            else if (src.HasProperty("_Smoothness") && dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", src.GetFloat("_Smoothness"));
+            else if (dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", 0.22f);
+
+            _urpUpgradeCache[src] = dst;
+            return dst;
+        }
+
+        /// Per-object Standard->URP upgrade.
+        ///
+        /// UpgradeStandardMaterials() below is a ONE-SHOT scene sweep run at boot (ConcordiaGame,
+        /// WorldBuilder). Anything streamed in afterwards — the Megaworld content: rock_smallA,
+        /// tent_detailedOpen, statue, trophy, crops_wheatStageB — kept its built-in `Standard`
+        /// shader, which URP cannot render, so it drew MAGENTA in the live Hub despite the boot
+        /// sweep having "already handled it". This is the same fix applied at spawn time instead.
+        public static int UpgradeStandardOn(GameObject go)
+        {
+            if (!go) return 0;
+            EnsureShaders();
+            if (_lit == null) return 0;
+
+            int n = 0;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var slots = r.sharedMaterials;
+                if (slots == null || slots.Length == 0) continue;
+
+                var next = new Material[slots.Length];
+                bool any = false;
+                for (int s = 0; s < slots.Length; s++)
+                {
+                    var src = slots[s];
+                    if (src == null || !ShaderNeedsUrp(src.shader)) { next[s] = src; continue; }
+                    next[s] = ConvertToUrp(src);
+                    any = true;
+                    n++;
+                }
+                if (any) r.sharedMaterials = next;
+            }
+            return n;
         }
 
         public static int UpgradeStandardMaterials()

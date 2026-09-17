@@ -154,10 +154,12 @@ namespace Concordia
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
                 WorldId.Sere => "wet_asphalt",
-                WorldId.Hub => "cobblestone_floor_13",
+                WorldId.Hub => "cobblestone_square",
                 _ => "stone_tiles"
             };
-            var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
+            var pbr = w.id == WorldId.Hub
+                ? HubLook.WetStone("cobblestone_square", 5.5f)
+                : HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
             var gr0 = g.GetComponent<Renderer>();
             if (gr0) gr0.sharedMaterial = pbr;
         }
@@ -170,7 +172,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => ContinentStream.Live ? 0.0026f : 0.0045f,
+                WorldId.Hub => ContinentStream.Live ? 0.022f : 0.032f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -180,7 +182,7 @@ namespace Concordia
             };
             RenderSettings.fogColor = w.id switch
             {
-                WorldId.Hub => new Color(0.62f, 0.68f, 0.74f),
+                WorldId.Hub => new Color(0.22f, 0.42f, 0.44f),
                 WorldId.Fantasy => new Color(0.62f, 0.28f, 0.18f),
                 WorldId.Cyber => new Color(0.18f, 0.06f, 0.28f),
                 WorldId.Crime => new Color(0.12f, 0.08f, 0.10f),
@@ -193,6 +195,7 @@ namespace Concordia
             };
             DynamicGI.UpdateEnvironment();
             WorldClock.NoteFogBase();
+            HubLook.LiveFog(RenderSettings.fogDensity);
             // Hub fireflies are identity ambience, not weather. Rain/ash/snow
             // follow WorldClock.Weather from Enter/Tick (see ApplyWeatherVisuals).
             if (w.id == WorldId.Hub)
@@ -230,7 +233,8 @@ namespace Concordia
 
             DressGuests();
             DressPillars();
-            DressCrowd();
+            // Court plaza stays empty like the reference still — polo walkers
+            // were LeanPlay density, not cinematic density.
             DressLore();
             DressForest();
             RealmFill.Populate(root, WorldId.Hub);
@@ -324,7 +328,6 @@ namespace Concordia
         void DressArena()
         {
             var c = Canon.Arena;
-            var wall = DressVocab.Wall(WorldId.Hub);
             var col = DressVocab.Column(WorldId.Hub);
             var sword = DressVocab.Weapon("sword");
             var tower = DressVocab.Tower(WorldId.Hub);
@@ -333,12 +336,14 @@ namespace Concordia
             for (int i = 0; i < 12; i++)
             {
                 var a = (i / 12f) * Mathf.PI * 2;
-                FreePacks.Spawn(wall, root, c + new Vector3(Mathf.Cos(a) * 8.4f, 0, Mathf.Sin(a) * 8.4f),
-                    -a * Mathf.Rad2Deg + 90, 3.2f);
-                if (i % 3 == 0)
-                    FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 7.2f, 0, Mathf.Sin(a) * 7.2f), 0, 2.6f);
                 if (i % 2 == 0)
-                    HubLook.Lantern(root, c + new Vector3(Mathf.Cos(a) * 9.2f, 0, Mathf.Sin(a) * 9.2f));
+                {
+                    var pillar = FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 9.4f, 0, Mathf.Sin(a) * 9.4f),
+                        -a * Mathf.Rad2Deg, 4.8f, required: false);
+                    HubLook.StoneDress(pillar);
+                }
+                if (i % 2 == 0)
+                    HubLook.Lantern(root, c + new Vector3(Mathf.Cos(a) * 10.2f, 0, Mathf.Sin(a) * 10.2f));
             }
             FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, c + new Vector3(6, 0, 6), 40, 2.2f, required: false);
             FreePacks.Spawn(sword, root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f, required: false);
@@ -405,13 +410,11 @@ namespace Concordia
             var outPos = p + outDir * 16f;
             var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
-            string plan = "embassy";
             switch (gate.world)
             {
                 case WorldId.Ruins:
                     shell = FreePacks.Spawn(DressVocab.House(WorldId.Ruins), root, outPos, yaw, 5.5f);
                     FreePacks.Spawn(DressVocab.Column(WorldId.Ruins), root, outPos + side * 3.4f, yaw, 2.4f, required: false);
-                    plan = "archive";
                     break;
                 case WorldId.Tunya:
                     shell = FreePacks.Spawn(DressVocab.House(WorldId.Tunya), root, outPos, yaw, 4.2f);
@@ -428,7 +431,6 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Crate(), root, outPos + side * 2.2f, yaw, 0.9f);
                     FreePacks.Spawn(DressVocab.Prop(WorldId.Crime), root, outPos - side * 1.8f, yaw, 0.8f);
                     FreePacks.Spawn(DressVocab.Crate(), root, outPos + outDir * 1.6f, 15f, 0.9f, required: false);
-                    plan = "market";
                     break;
                 case WorldId.Cyber:
                     FreePacks.Spawn(DressVocab.Column(WorldId.Cyber), root, outPos + side * 2.4f, yaw, 3.2f);
@@ -447,7 +449,6 @@ namespace Concordia
                     return;
                 case WorldId.Superhero:
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Superhero), root, outPos, yaw, 8.5f);
-                    plan = "tower";
                     break;
                 case WorldId.Crucible:
                     FreePacks.Spawn(DressVocab.Rock(), root, outPos + side * 2.1f, yaw, 1.2f, required: false);
@@ -457,7 +458,7 @@ namespace Concordia
             }
             if (shell)
             {
-                BuildingInterior.Open(shell, plan, outPos);
+                HubLook.StoneDress(shell);
                 KeepRingClear(shell, p);
             }
         }
@@ -607,8 +608,14 @@ namespace Concordia
                     case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
-                var wander = job == NpcLife.Job.Wander;
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), 180f, look, wander, n.id == "warden" ? 5f : 10f);
+                var wander = false;
+                var pos = new Vector3(n.x, 0f, n.z);
+                if (pos.sqrMagnitude < 22f * 22f)
+                {
+                    var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.right;
+                    pos = dir * 26f;
+                }
+                var go = ModularPerson.SpawnNpc(root, pos, 180f, look, wander, n.id == "warden" ? 5f : 10f);
                 go.name = n.name;
                 if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, DressVocab.Weapon(weapon), true, 0.95f);
                 if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);
@@ -669,7 +676,13 @@ namespace Concordia
                     look.hairStyle = 1;
                     yaw = 90f;
                 }
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
+                var pos = new Vector3(n.x, 0f, n.z);
+                if (pos.sqrMagnitude < 22f * 22f)
+                {
+                    var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.forward;
+                    pos = dir * 26f;
+                }
+                var go = ModularPerson.SpawnNpc(root, pos, yaw, look, false);
                 go.name = n.name;
                 var guest = go.AddComponent<GuestNpc>();
                 guest.def = n;
@@ -806,13 +819,14 @@ void BuildRealm(WorldDef w)
 
         void PlaceStone(Vector3 pos, string title, string text)
         {
+            var mat = HubLook.WetStone("cobblestone_square", 2.2f);
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
-                HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
-            var stone = plinth.AddComponent<LoreStone>();
-            stone.title = title;
-            stone.text = text;
+                mat, "Lore_" + title.Replace(" ", ""));
+            var lore = plinth.AddComponent<LoreStone>();
+            lore.title = title;
+            lore.text = text;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
-                HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
+                mat, "LoreBase_" + title.Replace(" ", ""), false);
         }
 
         void SpawnFauna(WorldDef w)

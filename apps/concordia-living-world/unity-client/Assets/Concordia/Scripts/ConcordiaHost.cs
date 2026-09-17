@@ -15,6 +15,12 @@ namespace Concordia
         const string PrefForceLean = "Concordia.ForceLeanPlay";
         const string PrefForceFull = "Concordia.ForceFullPlay";
 
+        /// <summary>
+        /// Hub cinematic look is never a RAM profile. Continent impostors may
+        /// still LeanPlay; the Court must read at the reference bar.
+        /// </summary>
+        public static bool LookLean => false;
+
         /// <summary>True when this machine should thin Hub boot (≤18GB RAM or forced).</summary>
         public static bool LeanPlay
         {
