@@ -26,7 +26,7 @@ describe("Concordia player life — a body, a day, other minds", () => {
     const ensure = tick.indexOf("foreach (var id in MegaworldMap.All)");
     assert.ok(recv >= 0 && ensure >= 0 && recv < ensure, "ReceiveHere must run before chunk Ensure");
     const here = stream.slice(stream.indexOf("public void ReceiveHere"), stream.indexOf("public void SoftEnter"));
-    assert.match(here, /MegaworldMap\.RegionAt/);
+    assert.match(here, /WorldGeography\.CountryAt|MegaworldMap\.RegionAt/);
     assert.match(here, /SoftEnter\(next\)/);
     assert.match(here, /RoadWorld\.TickNear/);
     assert.match(map, /static WorldId Toward\(/);

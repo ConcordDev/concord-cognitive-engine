@@ -68,6 +68,8 @@ namespace Concordia
                 DressAudio(w);
                 BuildRealm(w);
             }
+            GeographyRuntime.BuildLocalSamples(holder, world);
+            WorldVisualDirector.BuildChunk(holder, world);
             SpawnFauna(w);
             return holder;
         }
@@ -82,21 +84,13 @@ namespace Concordia
             var holder = new GameObject("Impostor_" + world).transform;
             holder.SetParent(continent, false);
             holder.position = Vector3.zero;
-            var mat = HubLook.Lit(w.ground * 0.55f, 0.08f, 0.2f);
-            var mass = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            mass.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
-            mass.transform.SetParent(holder, false);
-            mass.transform.localPosition = Vector3.up * 6f;
-            mass.transform.localScale = new Vector3(22f, 12f, 22f);
-            var mr = mass.GetComponent<Renderer>();
-            if (mr && mat) mr.sharedMaterial = mat;
-            var spire = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            spire.name = "Spire";
-            spire.transform.SetParent(holder, false);
-            spire.transform.localPosition = Vector3.up * 16f;
-            spire.transform.localScale = new Vector3(6f, 20f, 6f);
-            var sr = spire.GetComponent<Renderer>();
-            if (sr) sr.sharedMaterial = HubLook.Lit(w.sun * 0.55f, 0.12f, 0.28f);
+
+            // Far LOD uses imported geometry, never a cube/spire silhouette.
+            var building = FreePacks.Spawn(DressVocab.House(world), holder, Vector3.zero, 0f, 22f, false, false);
+            var tower = FreePacks.Spawn(DressVocab.Tower(world), holder, new Vector3(0f, 0f, 10f), 0f, 18f, false, false);
+            if (building) building.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            if (tower) tower.name = "ImportedTower";
+
             var label = new GameObject("Name").AddComponent<TextMesh>();
             label.transform.SetParent(holder, false);
             label.transform.localPosition = new Vector3(0f, 28f, 0f);
@@ -138,11 +132,17 @@ namespace Concordia
 
         void BuildGround(WorldDef w)
         {
-            if (w.id == WorldId.Hub) return;
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
             g.name = "Ground";
             g.transform.SetParent(root, false);
-            g.transform.localScale = Vector3.one * 6;
+            g.transform.localScale = Vector3.one * 24;
+
+            // The Hub used to return early here and rely solely on HubPlaza's granite tiles, so
+            // any gap between tiles showed flat void — the single largest untextured area on
+            // screen. It now gets a real ground plane too, dropped just under the tiles so it
+            // reads as the courtyard floor beneath them rather than z-fighting with them.
+            if (w.id == WorldId.Hub)
+                g.transform.localPosition = new Vector3(0f, -0.04f, 0f);
             var pbrStem = w.id switch
             {
                 WorldId.Ruins => "ash_soil",
@@ -154,6 +154,7 @@ namespace Concordia
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
                 WorldId.Sere => "wet_asphalt",
+                WorldId.Hub => "cobblestone_floor_13",
                 _ => "stone_tiles"
             };
             var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
@@ -235,12 +236,8 @@ namespace Concordia
             RealmFill.Populate(root, WorldId.Hub);
             StoreDress.Hub(root);
 
-            var dummyLook = Appearance.Random(77);
-            dummyLook.outfit = 1;
-            dummyLook.displayName = "Training Dummy";
-            var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
-            dummy.AddComponent<TrainingDummy>();
-            FreePacks.EnsureCollider(dummy, 1.8f);
+            // The arena remains an authored combat space; never populate it with a
+            // visible training dummy or primitive stand-in.
             Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
             Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
             var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
@@ -476,7 +473,9 @@ namespace Concordia
             foreach (var col in shell.GetComponentsInChildren<Collider>())
             {
                 if (!col || col.isTrigger) continue;
-                var hit = col.ClosestPoint(ringPos);
+                // Bounds.ClosestPoint is safe for imported non-convex MeshColliders;
+                // Collider.ClosestPoint throws on those assets.
+                var hit = col.bounds.ClosestPoint(ringPos);
                 if ((hit - ringPos).sqrMagnitude < 25f)
                     Object.Destroy(col);
             }
@@ -703,7 +702,7 @@ namespace Concordia
             }
         }
 
-        void BuildRealm(WorldDef w)
+void BuildRealm(WorldDef w)
         {
             ReturnPortal(w);
             var lore = WorldBook.Lore(w.id);
@@ -715,15 +714,13 @@ namespace Concordia
 
             ModularPerson.CastingWorld = w.id;
             WorldKit.Build(root, w);
+            if (w.id == WorldId.Fantasy)
+                DressSunderingArrival();
             RealmFill.Populate(root, w.id);
             StoreDress.Realm(root, w);
-            var dummy = FreePacks.Spawn(DressVocab.Dummy(), root, new Vector3(4, 0, 8), 180, 1.85f);
-            if (dummy)
-            {
-                FreePacks.EnsureCollider(dummy);
-                dummy.AddComponent<TrainingDummy>().unburied = w.id == WorldId.Ruins || w.id == WorldId.Crucible;
-                dummy.AddComponent<Hostile>().damage = 11f;
-            }
+            // Gym dummy stays in the Hub Arena. A Present that greets you with
+            // HumanDummy_M White is not a city — 2026-09-14 kill smelled like kit.
+            RoadWorld.PlaceArrivalFight(root, w);
         }
 
         void ReturnPortal(WorldDef w)
@@ -944,5 +941,43 @@ namespace Concordia
             var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
             if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
         }
-    }
+    
+
+void DressSunderingArrival()
+        {
+            var arrival = new GameObject("SunderingArrival").transform;
+            arrival.SetParent(root, false);
+
+            var pathMat = HubLook.Pbr("stone_tiles", new Color(0.20f, 0.32f, 0.20f), 0.02f, 0.22f, 8f);
+            var start = new Vector3(0f, 0.06f, -7f);
+            var end = new Vector3(4f, 0.06f, 8f);
+            var dir = end - start;
+            dir.y = 0f;
+            var count = Mathf.Max(3, Mathf.CeilToInt(dir.magnitude / 4.2f));
+            var yaw = Quaternion.LookRotation(dir.normalized).eulerAngles.y;
+
+            for (int i = 0; i < count; i++)
+            {
+                var t = (i + 0.5f) / count;
+                var p = Vector3.Lerp(start, end, t);
+                var tile = FreePacks.Spawn("road-straight", arrival, p, yaw, 4.2f, false, false)
+                           ?? FreePacks.Spawn("road-straight-half", arrival, p, yaw, 4.2f, false, false);
+                if (!tile)
+                    HubLook.Prim(arrival, PrimitiveType.Cube, p, new Vector3(2.2f, 0.08f, 2.8f), pathMat,
+                        "SunderingPath_" + i, false);
+            }
+
+            FreePacks.Spawn("tower-square-base", arrival, new Vector3(-3.4f, 0f, -5.8f), 0f, 5.2f, false);
+            FreePacks.Spawn("tower-square-base", arrival, new Vector3(3.4f, 0f, -5.8f), 180f, 5.2f, false);
+            FreePacks.Spawn("banner-red", arrival, new Vector3(-3.4f, 3.8f, -5.8f), 0f, 2.8f, false);
+            FreePacks.Spawn("banner-red", arrival, new Vector3(3.4f, 3.8f, -5.8f), 180f, 2.8f, false);
+            FreePacks.Spawn("campfire_stones", arrival, new Vector3(-5.2f, 0f, 2.2f), 0f, 1.25f, false);
+            HubLook.Point(arrival, "SunderingEntryLight", new Vector3(0f, 3.4f, -6.4f), new Color(0.82f, 1f, 0.42f), 1.5f, 12f, true);
+            HubLook.Point(arrival, "SunderingEncounterLight", new Vector3(4f, 2.6f, 8f), new Color(1f, 0.28f, 0.12f), 1.25f, 10f, false);
+
+            PlaceStone(new Vector3(1.8f, 0f, -1.6f), "The Sundering Road",
+                "Past the Court, steel is live. The road does not promise that the thing ahead will wait for you.");
+            Beacon(root, new Vector3(4f, 0f, 8f), 8f, "sundering", "first_fight", "live_steel");
+        }
+}
 }

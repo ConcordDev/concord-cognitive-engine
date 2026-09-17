@@ -140,6 +140,7 @@ namespace Concordia
             label.alignment = TextAlignment.Center;
             label.color = Color.Lerp(g.color, Color.white, 0.55f);
             HubLook.DressTextMesh(label);
+            CxDress.CivicSign(hold, at, g.world);
         }
 
         static void DressSigns(Transform hold)
@@ -214,6 +215,15 @@ namespace Concordia
                 if (n >= cap) break;
                 if (idx < 0 || idx >= Canon.Gates.Length) continue;
                 var g = Canon.Gates[idx];
+                // Sundering is the lived road: bandit AND watcher. Watcher-or-bandit
+                // left Marrow missing the morning Play had a Watcher instead.
+                if (g.world == WorldId.Fantasy)
+                {
+                    if (PlaceBandit(hold, g, n)) n++;
+                    if (n >= cap) break;
+                    if (PlaceWatcher(hold, g, n)) n++;
+                    continue;
+                }
                 if (PlaceWatcher(hold, g, n) || PlaceBandit(hold, g, n)) n++;
             }
         }
@@ -280,6 +290,40 @@ namespace Concordia
             guest.def = new GuestDef
             {
                 id = "road-bandit-" + g.shortName,
+                name = who.name,
+                title = who.title,
+                line = who.line
+            };
+            PersonLabel.Attach(go.transform, who.name, who.title);
+            return true;
+        }
+
+        /// <summary>
+        /// Person at Present arrival — same fight as the road, not Arena kit.
+        /// Sundering lights this spot as first_fight (4, 8).
+        /// </summary>
+        public static bool PlaceArrivalFight(Transform root, WorldDef w)
+        {
+            if (!root || w == null || w.id == WorldId.Hub) return false;
+            var at = new Vector3(4f, 0.05f, 8f);
+            var who = BanditFor(w.id, 21);
+            var look = Appearance.Random(1200 + (int)w.id * 17);
+            look.displayName = who.name;
+            look.outfit = who.outfit;
+            var go = ModularPerson.SpawnNpc(root, at, 180f, look, false);
+            go.name = "Arrival_" + w.id;
+            var dummy = go.AddComponent<TrainingDummy>();
+            dummy.living = true;
+            dummy.BindId("present-" + w.id);
+            dummy.hp = 64f;
+            FreePacks.EnsureCollider(go, 1.8f);
+            var hostile = go.AddComponent<Hostile>();
+            hostile.aggro = 14f;
+            hostile.damage = 10f;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = new GuestDef
+            {
+                id = "present-" + w.id,
                 name = who.name,
                 title = who.title,
                 line = who.line
@@ -449,7 +493,7 @@ namespace Concordia
         }
 
         /// <summary>Kill loot at the walker's feet so E can take it. Idempotent per body.</summary>
-        public static void DropSpoils(Transform at)
+public static void DropSpoils(Transform at)
         {
             if (!at) return;
             var key = "Spoils_" + at.name;
@@ -479,37 +523,102 @@ namespace Concordia
             g.itemId = "road-spoils";
             g.label = "road spoils";
             g.taken = false;
+            PresentSpoils(crate);
         }
 
         /// <summary>
         /// One other mind notices the kill — Watch on this road, not a second OS.
         /// </summary>
-        public static void NoticeKill(string who, Vector3 at)
+public static void NoticeKill(string who, Vector3 at)
         {
             if (string.IsNullOrEmpty(who)) who = "someone";
             WorldClock.PushFeed("road", who + " fell on the road.");
-            NpcLife best = null;
-            float bestD = 52f * 52f;
+
+            NpcLife first = null;
+            NpcLife second = null;
+            float firstD = 52f * 52f;
+            float secondD = 52f * 52f;
             foreach (var life in Object.FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
             {
-                if (!life) continue;
-                if (life.GetComponent<Hostile>()) continue;
+                if (!life || life.GetComponent<Hostile>()) continue;
                 var d = life.transform.position - at;
                 d.y = 0f;
                 var d2 = d.sqrMagnitude;
-                if (d2 >= bestD) continue;
-                bestD = d2;
-                best = life;
+                if (d2 >= secondD) continue;
+                if (d2 < firstD)
+                {
+                    second = first;
+                    secondD = firstD;
+                    first = life;
+                    firstD = d2;
+                }
+                else
+                {
+                    second = life;
+                    secondD = d2;
+                }
             }
-            if (!best) return;
-            best.NoticePlayer(10f);
-            var guest = best.GetComponent<GuestNpc>();
-            var name = guest != null && guest.def != null && !string.IsNullOrEmpty(guest.def.name)
-                ? guest.def.name
-                : best.name;
-            var line = name + " saw " + who + " fall.";
-            WorldClock.PushFeed("gossip", line);
-            if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(line);
+
+            if (!first) return;
+            first.NoticePlayer(10f);
+            var firstGuest = first.GetComponent<GuestNpc>();
+            var firstName = firstGuest != null && firstGuest.def != null && !string.IsNullOrEmpty(firstGuest.def.name)
+                ? firstGuest.def.name
+                : first.name;
+            var firstLine = firstName + " saw " + who + " fall.";
+            WorldClock.PushFeed("gossip", firstLine);
+            if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(firstLine);
+
+            if (!second) return;
+            second.NoticePlayer(7f);
+            var secondGuest = second.GetComponent<GuestNpc>();
+            var secondName = secondGuest != null && secondGuest.def != null && !string.IsNullOrEmpty(secondGuest.def.name)
+                ? secondGuest.def.name
+                : second.name;
+            WorldClock.PushFeed("gossip", secondName + " heard that " + who + " fell nearby.");
         }
-    }
+    
+
+static void PresentSpoils(GameObject crate)
+        {
+            if (!crate || crate.transform.Find("SpoilsMarker")) return;
+
+            var marker = new GameObject("SpoilsMarker");
+            marker.transform.SetParent(crate.transform, false);
+            marker.transform.localPosition = Vector3.up * 0.9f;
+
+            var ps = marker.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true;
+            main.startLifetime = 1.6f;
+            main.startSpeed = 0.25f;
+            main.startSize = 0.08f;
+            main.startColor = new Color(1f, 0.72f, 0.2f, 0.85f);
+            main.maxParticles = 24;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+
+            var emission = ps.emission;
+            emission.rateOverTime = 8f;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.18f;
+
+            var rotation = ps.rotationOverLifetime;
+            rotation.enabled = true;
+            rotation.z = 0.7f;
+
+            var fade = ps.colorOverLifetime;
+            fade.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(new Color(1f, 0.75f, 0.24f), 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.8f, 0.25f), new GradientAlphaKey(0f, 1f) });
+            fade.color = gradient;
+
+            var renderer = marker.GetComponent<ParticleSystemRenderer>();
+            if (renderer) renderer.sharedMaterial = HubLook.ParticleMat(new Color(1f, 0.64f, 0.12f), false);
+            HubLook.Point(crate.transform, "SpoilsLight", crate.transform.position + Vector3.up * 0.9f,
+                new Color(1f, 0.58f, 0.16f), 1.2f, 6f, false);
+        }
+}
 }

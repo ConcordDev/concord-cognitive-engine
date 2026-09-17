@@ -81,6 +81,12 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(road, /NoticeKill\(/);
     assert.match(road, /PushFeed\("road"/);
     assert.match(road, /saw /);
+    assert.match(road, /PlaceArrivalFight\(/);
+    assert.match(road, /present-/);
+    assert.match(road, /g\.world == WorldId\.Fantasy/);
+    const builder = src("WorldBuilder.cs");
+    assert.match(builder, /PlaceArrivalFight\(root, w\)/);
+    assert.doesNotMatch(builder, /DressVocab\.Dummy\(\)/);
   });
 
   it("bible names wilderness and whole Ring as the lived-day bar", () => {

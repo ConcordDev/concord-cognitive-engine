@@ -32,6 +32,8 @@ A 2026-09-14 +Z **position-step** to 222 kept `you=Hub` · `clock=Hub` and froze
 - `WalkBearing` drives the same `cc.Move` path as WASD (world +Z = Sundering) — probe only, not his walk
 - `LandLine` includes hungry / pack when those are true
 - Road death: Hostile off, `SetActive(false)`, `KitBag.AddLoot("road-spoils")`, crate at feet
+- Present arrival fight is a **person** (`Arrival_Fantasy`, BindId `present-Fantasy`) — not `DressVocab.Dummy` / HumanDummy_M White
+- Sundering seeds **Marrow and** a Watcher (Watcher-or-bandit used to drop the bandit)
 - `RoadWorld.NoticeKill` — nearest Watch (Kest) saw them fall; feed `road` + `gossip`
 - LeanPlay: one far-lod per Tick, skip shot-grab hitch, `runInBackground` so Play actually ticks
 
