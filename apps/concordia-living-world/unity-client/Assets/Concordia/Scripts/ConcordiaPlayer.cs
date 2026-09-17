@@ -727,8 +727,11 @@ namespace Concordia
                 : (_action.IsParrying ? "parry" : "dodge");
             var iframeOk = IsInvulnerable
                 && (string.IsNullOrEmpty(Hostile.TelegraphKind) || Hostile.CounterMatches(Hostile.TelegraphKind, defenseName));
+            var feel = GetComponent<CombatFeel>();
             if (iframeOk)
             {
+                feel?.Present(new Core.HitResult { Outcome = Core.DefenseOutcome.Dodged },
+                    transform.position + transform.forward * 1.15f + Vector3.up * 1.05f);
                 Toast("the cut passes through");
                 return;
             }
@@ -747,6 +750,7 @@ namespace Concordia
             var runner = _action.IsInvulnerable ? null : _action;
             var result = Core.HitResolver.Resolve(attack, _body, runner);
             stamina = _body.Stamina;
+            feel?.Present(result, transform.position + transform.forward * 1.15f + Vector3.up * 1.05f);
 
             if (result.Outcome == Core.DefenseOutcome.Parried)
             {
@@ -781,7 +785,6 @@ namespace Concordia
                 avatar?.Stagger();
                 person?.Stagger();
             }
-            var feel = GetComponent<CombatFeel>();
             feel?.ApplyAck(true, impulse > 0f ? impulse : Mathf.Min(result.DamageDealt * 0.08f, 2.4f), false, false);
             if (hp > 0f) return;
             hp = 100f;

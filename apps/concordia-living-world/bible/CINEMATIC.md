@@ -30,19 +30,19 @@ Imported Poly Haven maps are **`_2k.jpg`**. That is the physical vocabulary. 4K/
 | Pillar | What actually runs |
 |---|---|
 | Environment | `HubLook.Pbr` resolves Poly Haven `_diffuse_2k` / `_nor_gl_2k` / `_arm_2k` via semantic aliases. Displacement files exist; they are not a live tessellation path. DressVocab / FreePacks / WorldVisualDirector dress chunks. Kenney is last fallback (`VISUAL.md`). |
-| Lighting | URP + ACES + Bloom + ColorAdjustments + Vignette + WhiteBalance + FilmGrain. Trilight ambient. One reflection probe. `ApplyHour` drives sun intensity (night is moonlight, not noon-minus-UI). SSAO attempted in Editor. ExponentialSquared fog in `WorldBuilder.DressSky`. |
-| Atmosphere | Fog density/color per world + weather mul in `WorldBook`. Not volumetric fog, not atmospheric scattering. |
-| Character | Rocketbox Biped walk (`ModularPerson`). CX Humanoid prefabs + `CX_Grip_R/L`. CX plates are **albedo/HUD/civic**, not photogrammetry skins (`CX_MANIFEST.md`). |
-| Animation | Authored gait + `CombatMotion.Pulse`. Strikes now phase through `ActionRunner` (`JustBecameActive` = Delay). Humanoid melee clips do not fit Bip01 (`ANIMATION.md`). |
-| Camera | `ChaseCamera` Cinemachine orbital: shoulder offset, sprint FOV+, combat FOV−, pose damping. No deoccluder (plaza discs). `CombatFeel` shake + FOV punch after pose. |
-| VFX | `CombatFeel.Burst` via `SkillLattice.VfxPath` + FreePacks prefab. Weather FX component on continent. SUIMONO imported, **not** the live water path. |
-| Motion | WorldClock hour, weather string, NPC schedules, Hostile hunt, foliage only if the packed shader moves it. Standing still for ten seconds can still look frozen. |
+| Lighting | URP + ACES + Bloom + ColorAdjustments + Vignette + WhiteBalance + FilmGrain + Gaussian DoF (Desktop) + ShadowsMidtonesHighlights. Trilight ambient. One reflection probe. `ApplyHour` drives sun intensity and binds `RenderSettings.sun` (night is moonlight, not noon-minus-UI). SSAO attempted in Editor. ExponentialSquared fog in `WorldBuilder.DressSky`. Interior walk-in drops haze via `HubLook.ApplyInterior`. |
+| Atmosphere | Fog density/color per world + weather mul in `WorldBook`, routed through `HubLook.LiveFog` so interiors do not fight hour ticks. `WorldBreath` ground mist + motes follow the camera (LeanPlay thins count). Not volumetric fog, not atmospheric scattering. |
+| Character | Rocketbox Biped walk (`ModularPerson`). CX Humanoid prefabs + `CX_Grip_R/L`. `HubLook.GroundInLight` forces cast+receive shadows and URP Lit on the cast. CX plates are **albedo/HUD/civic**, not photogrammetry skins (`CX_MANIFEST.md`). |
+| Animation | Authored gait + `CombatMotion.Pulse`. Strikes phase through `ActionRunner` (`JustBecameActive` = Delay). Humanoid melee clips do not fit Bip01 (`ANIMATION.md`). |
+| Camera | `ChaseCamera` Cinemachine orbital: shoulder offset, sprint FOV+, combat FOV−, pose damping, far clip 420. `Punch(beat)` FOV/radius from HitResolver outcomes. No deoccluder (plaza discs). `CombatFeel` shake after pose. |
+| VFX | `CombatFeel.Present` / `Strike`: one-shot sparks/dust + blade trail keyed to `DefenseOutcome` / connected hit. Pack burst via `SkillLattice.VfxPath` + FreePacks when a prefab exists. Weather FX on continent. SUIMONO imported, **not** the live water path. |
+| Motion | WorldClock hour, weather string, NPC schedules, Hostile hunt, `WorldBreath` cloth/banner sway. Standing still for ten seconds still has mist. Foliage only if the packed shader moves it. |
 | Physics presentation | CharacterController + dummy `Hit` knock. No foliage/door/debris reaction as a general system. |
 | UI | Court parchment vs Steel HUD is the identity split (`CxDress` `CX_HUD_Court_` / `CX_HUD_Steel_`). |
 
 `GameplayCore.CombatDefenseEvaluator` is **not** the live combat grammar. Incoming hits resolve through `HitResolver`. Cinematic animation and camera must read `ActionRunner` phases, not a second clip telegraph.
 
-## TARGET (Aura — one integrated visual system)
+## TARGET (one integrated visual system)
 
 Audit and raise, in Play, not in the Project window:
 
@@ -59,7 +59,7 @@ Audit and raise, in Play, not in the Project window:
 
 ## Shot QA (the only visual gate)
 
-Aura may not close a visual pass on compile. Capture or stand in Play and report these. Foot truth still beats Editor-step.
+Aura may not close a visual pass on compile. This pass implements the look stack in Unity; capture or stand in Play and report these. Foot truth still beats Editor-step.
 
 | Shot | Must show |
 |---|---|

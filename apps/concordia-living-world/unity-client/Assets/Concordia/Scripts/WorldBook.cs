@@ -940,7 +940,7 @@ namespace Concordia
                 : (Weather == "smog" || Weather == "fog") ? 1.7f
                 : Weather == "overcast" ? 1.2f
                 : 1f;
-            RenderSettings.fogDensity = _baseFog * mul;
+            HubLook.LiveFog(_baseFog * mul);
         }
 
         static string WeatherKind(string weather)

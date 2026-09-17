@@ -193,6 +193,7 @@ namespace Concordia
             };
             DynamicGI.UpdateEnvironment();
             WorldClock.NoteFogBase();
+            HubLook.LiveFog(RenderSettings.fogDensity);
             // Hub fireflies are identity ambience, not weather. Rain/ash/snow
             // follow WorldClock.Weather from Enter/Tick (see ApplyWeatherVisuals).
             if (w.id == WorldId.Hub)

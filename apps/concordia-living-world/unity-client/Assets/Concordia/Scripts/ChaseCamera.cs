@@ -29,7 +29,11 @@ namespace Concordia
         CinemachineOrbitalFollow _orbit;
         CinemachineHardLookAt _look;
         Camera _cam;
+        float _punch;
+        float _punchFov;
+        string _punchBeat;
 
+        public string PunchBeat => _punchBeat;
         public Vector3 PlanarForward => new Vector3(-Mathf.Sin(yaw), 0, -Mathf.Cos(yaw));
         public Vector3 PlanarRight => new Vector3(-Mathf.Cos(yaw), 0, Mathf.Sin(yaw));
 
@@ -89,13 +93,15 @@ namespace Concordia
             if (_cam)
             {
                 _cam.nearClipPlane = 0.18f;
-                _cam.farClipPlane = 220f;
+                _cam.farClipPlane = 420f;
                 _cam.clearFlags = CameraClearFlags.Skybox;
             }
 
             var feetY = Mathf.Clamp(target.position.y, 0f, 3.5f);
             var focus = new Vector3(target.position.x, feetY + 1.35f, target.position.z);
+            DecayPunch();
             var fov = creatorFraming ? 52f : (sprinting ? PovFov[pov] + 6f : inCombat ? PovFov[pov] - 5f : PovFov[pov]);
+            fov += _punchFov;
 
             if (creatorFraming)
             {
@@ -110,6 +116,7 @@ namespace Concordia
             if (sprinting) dist += 0.7f;
             if (inCombat) dist -= 0.85f;
             dist = Mathf.Clamp(dist + (distance - 6.2f), 2.4f, 14f);
+            if (_punch > 0.01f) dist *= 1f - _punch * 0.08f;
 
             if (_vcam && _orbit)
             {
@@ -144,7 +151,7 @@ namespace Concordia
                 var lens = _vcam.Lens;
                 lens.FieldOfView = fov;
                 lens.NearClipPlane = 0.18f;
-                lens.FarClipPlane = 220f;
+                lens.FarClipPlane = 420f;
                 _vcam.Lens = lens;
                 return;
             }
@@ -177,6 +184,54 @@ namespace Concordia
             transform.rotation = Quaternion.Slerp(transform.rotation, look, 1f - Mathf.Exp(-14f * Time.deltaTime));
             if (_cam)
                 _cam.fieldOfView = Mathf.Lerp(_cam.fieldOfView <= 1f ? fov : _cam.fieldOfView, fov, Time.deltaTime * 7f);
+        }
+
+        /// <summary>
+        /// Cinematic kick from a real HitResolver / strike beat. Not a cutscene.
+        /// </summary>
+        public void Punch(string beat)
+        {
+            _punchBeat = beat ?? "hit";
+            _punch = StrengthFor(_punchBeat);
+            _punchFov = FovFor(_punchBeat);
+        }
+
+        public static float StrengthFor(string beat)
+        {
+            switch (beat)
+            {
+                case "parry": return 0.34f;
+                case "dodge": return 0.16f;
+                case "heavy": return 0.38f;
+                case "block": return 0.14f;
+                case "guardbreak": return 0.42f;
+                default: return 0.22f;
+            }
+        }
+
+        public static float FovFor(string beat)
+        {
+            switch (beat)
+            {
+                case "parry": return 5.5f;
+                case "dodge": return -2.4f;
+                case "heavy": return 8f;
+                case "block": return 1.8f;
+                case "guardbreak": return 9f;
+                default: return 3.2f;
+            }
+        }
+
+        void DecayPunch()
+        {
+            if (_punch <= 0.001f)
+            {
+                _punch = 0f;
+                _punchFov = Mathf.Lerp(_punchFov, 0f, 1f - Mathf.Exp(-14f * Time.deltaTime));
+                return;
+            }
+            _punch = Mathf.Lerp(_punch, 0f, 1f - Mathf.Exp(-9f * Time.deltaTime));
+            _punchFov = Mathf.Lerp(_punchFov, 0f, 1f - Mathf.Exp(-10f * Time.deltaTime));
         }
 
         public void Look(Vector2 delta)

@@ -89,6 +89,16 @@ namespace Concordia
                 }
             }
             sb.Append(" sun=").Append(sun && sun.enabled ? sun.intensity.ToString("F2") : "NO");
+            sb.Append(" farClip=").Append(Camera.main ? Camera.main.farClipPlane.ToString("F0") : "NO");
+            sb.Append(" breath=").Append(WorldBreath.Live ? "yes" : "NO");
+            sb.Append(" hour=").Append(WorldClock.Hour.ToString("F1"));
+            sb.Append(" weather=").Append(WorldClock.Weather ?? "clear");
+            sb.Append(" interior=").Append(HubLook.InteriorLit ? "yes" : "no");
+            if (p)
+            {
+                var rend = p.GetComponentInChildren<Renderer>();
+                sb.Append(" recvShadow=").Append(rend && rend.receiveShadows ? "yes" : "NO");
+            }
             sb.Append(" shots=").Append(Shots.Length);
             return sb.ToString();
         }

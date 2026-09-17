@@ -38,16 +38,21 @@ namespace Concordia
             }
 
             var urp = QualitySettings.renderPipeline as UniversalRenderPipelineAsset;
+            bool lean = ConcordiaHost.LeanPlay;
             if (urp)
             {
-                urp.shadowDistance = world == WorldId.Hub ? 110f : 90f;
+                urp.shadowDistance = lean
+                    ? (world == WorldId.Hub ? 90f : 70f)
+                    : (world == WorldId.Hub ? 140f : 110f);
                 urp.msaaSampleCount = 1;
-                urp.maxAdditionalLightsCount = 8;
+                urp.maxAdditionalLightsCount = lean ? 4 : 8;
                 urp.colorGradingMode = ColorGradingMode.HighDynamicRange;
                 urp.colorGradingLutSize = 64;
             }
             TryEnableSsao();
-            QualitySettings.shadowDistance = world == WorldId.Hub ? 160f : 120f;
+            QualitySettings.shadowDistance = lean
+                ? (world == WorldId.Hub ? 120f : 90f)
+                : (world == WorldId.Hub ? 180f : 140f);
             QualitySettings.shadowCascades = 4;
             QualitySettings.shadows = (UnityEngine.ShadowQuality)2;
             QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
@@ -98,6 +103,25 @@ namespace Concordia
             ca.active = true;
             ca.intensity.Override(world == WorldId.Cyber || world == WorldId.Crucible ? 0.12f : 0.04f);
 
+            if (!profile.TryGet(out DepthOfField dof)) dof = profile.Add<DepthOfField>(true);
+            dof.active = !lean;
+            dof.mode.Override(DepthOfFieldMode.Gaussian);
+            dof.gaussianStart.Override(world == WorldId.Hub ? 22f : 16f);
+            dof.gaussianEnd.Override(world == WorldId.Hub ? 62f : 48f);
+            dof.gaussianMaxRadius.Override(lean ? 0.4f : 1.05f);
+
+            if (!profile.TryGet(out ShadowsMidtonesHighlights smh)) smh = profile.Add<ShadowsMidtonesHighlights>(true);
+            smh.active = true;
+            smh.shadows.Override(new Vector4(1f, 1.02f, 1.08f, lean ? -0.02f : -0.05f));
+            smh.midtones.Override(new Vector4(1.02f, 1f, 0.98f, 0.02f));
+            smh.highlights.Override(new Vector4(1.04f, 1.01f, 0.96f, 0.04f));
+
+            if (!profile.TryGet(out LiftGammaGain lgg)) lgg = profile.Add<LiftGammaGain>(true);
+            lgg.active = true;
+            lgg.lift.Override(new Vector4(1.01f, 1.01f, 1.04f, 0.02f));
+            lgg.gamma.Override(new Vector4(1f, 1f, 1f, 0f));
+            lgg.gain.Override(new Vector4(1.03f, 1.0f, 0.97f, lean ? 0.02f : 0.05f));
+
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = sky;
             RenderSettings.ambientEquatorColor = eq;
@@ -108,6 +132,90 @@ namespace Concordia
             DynamicGI.UpdateEnvironment();
             PlaceProbe(world == WorldId.Hub ? 120f : 95f);
             ApplyHour(world, WorldClock.Hour);
+            WorldBreath.Ensure(world, cam);
+            BindSun();
+            LightPeople();
+        }
+
+        static float _openFog = -1f;
+        static float _openExp;
+        static bool _haveOpenExp;
+        static bool _interior;
+
+        public static void LiveFog(float density)
+        {
+            _openFog = Mathf.Max(0f, density);
+            RenderSettings.fogDensity = _interior ? _openFog * 0.28f : _openFog;
+        }
+
+        /// <summary>
+        /// Interior vs plaza: drop distant haze, keep the room lamp as the key.
+        /// Fake-window LOD is not this path — BuildingInterior walk-in / E is.
+        /// </summary>
+        public static void ApplyInterior(bool inside)
+        {
+            if (_openFog < 0f) _openFog = RenderSettings.fogDensity;
+            if (_interior == inside) return;
+            _interior = inside;
+            LiveFog(_openFog);
+            var volGo = GameObject.Find("GlobalVolume");
+            var vol = volGo ? volGo.GetComponent<Volume>() : null;
+            var profile = vol && vol.profile ? vol.profile : null;
+            if (profile && profile.TryGet(out ColorAdjustments color))
+            {
+                if (!_haveOpenExp)
+                {
+                    _openExp = color.postExposure.value;
+                    _haveOpenExp = true;
+                }
+                color.postExposure.Override(inside ? _openExp - 0.18f : _openExp);
+            }
+            if (profile && profile.TryGet(out DepthOfField dof))
+                dof.active = !inside && !ConcordiaHost.LeanPlay;
+        }
+
+        public static bool InteriorLit => _interior;
+
+        /// <summary>
+        /// Characters belong in the same sun as the plaza. Cast + receive, URP Lit.
+        /// </summary>
+        public static int GroundInLight(GameObject go)
+        {
+            if (!go) return 0;
+            int n = UpgradeStandardOn(go);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                r.shadowCastingMode = ShadowCastingMode.On;
+                r.receiveShadows = true;
+                n++;
+            }
+            return n;
+        }
+
+        static void BindSun()
+        {
+            if (RenderSettings.sun && RenderSettings.sun.enabled && RenderSettings.sun.type == LightType.Directional)
+                return;
+            var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            Light sun = null;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                var l = lights[i];
+                if (!l || !l.enabled || l.type != LightType.Directional) continue;
+                if (l.name == "Fill") continue;
+                if (l.name == "Sun") { sun = l; break; }
+                if (l.name.IndexOf("sun", System.StringComparison.OrdinalIgnoreCase) >= 0) { sun = l; continue; }
+                if (sun == null) sun = l;
+            }
+            if (sun) RenderSettings.sun = sun;
+        }
+
+        static void LightPeople()
+        {
+            var people = Object.FindObjectsByType<ModularPerson>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            for (int i = 0; i < people.Length; i++)
+                GroundInLight(people[i].gameObject);
         }
 
         /// <summary>
@@ -139,7 +247,7 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
                 RenderSettings.reflectionIntensity = 0.22f + 0.83f * sun01;
                 RenderSettings.fogColor = Color.Lerp(new Color(0.02f, 0.03f, 0.06f), new Color(0.55f, 0.58f, 0.62f), sun01);
-                RenderSettings.fogDensity = 0.0045f + 0.01f * night;
+                LiveFog(0.0045f + 0.01f * night);
             }
 
             var sky = RenderSettings.skybox;
@@ -190,9 +298,10 @@ namespace Concordia
                     l.shadowStrength = 0.88f + 0.08f * sun01;
                     float pitch = Mathf.Lerp(8f, 42f, sun01);
                     l.transform.rotation = Quaternion.Euler(pitch, l.transform.eulerAngles.y, 0f);
+                    RenderSettings.sun = l;
                 }
                 else if (l.type == LightType.Directional && l.name == "Fill")
-                    l.intensity = 0.02f + 0.16f * sun01;
+                    l.intensity = 0.04f + 0.22f * sun01;
                 else if (l.type == LightType.Directional)
                 {
                     l.intensity = 0f;
@@ -263,7 +372,7 @@ namespace Concordia
             probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.AllFacesAtOnce;
             probe.size = new Vector3(size, size * 0.7f, size);
             probe.center = Vector3.up * 8f;
-            probe.resolution = 256;
+            probe.resolution = ConcordiaHost.LeanPlay ? 128 : 256;
             probe.intensity = 1.15f;
             probe.boxProjection = true;
             probe.RenderProbe();
@@ -289,8 +398,9 @@ namespace Concordia
             var fl = fill.AddComponent<Light>();
             fl.type = LightType.Directional;
             fl.color = Color.Lerp(color, Color.white, 0.35f);
-            fl.intensity = intensity * 0.16f;
+            fl.intensity = intensity * 0.22f;
             fl.shadows = LightShadows.None;
+            RenderSettings.sun = light;
             return light;
         }
 

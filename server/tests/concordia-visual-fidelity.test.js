@@ -77,7 +77,17 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(look, /_nor_gl_2k/);
     assert.match(look, /_arm_2k/);
     assert.match(look, /TonemappingMode\.ACES/);
+    assert.match(look, /LiveFog\(/);
+    assert.match(look, /GroundInLight\(/);
+    assert.match(look, /ApplyInterior\(/);
+    assert.match(look, /RenderSettings\.sun = /);
     assert.match(src("ChaseCamera.cs"), /sprinting \? PovFov/);
-    assert.match(src("CombatFeel.cs"), /_fovKick/);
+    assert.match(src("ChaseCamera.cs"), /public void Punch\(/);
+    assert.match(src("ChaseCamera.cs"), /farClipPlane = 420f/);
+    assert.match(src("CombatFeel.cs"), /public void Present\(/);
+    assert.match(src("CombatFeel.cs"), /BeatFor\(/);
+    assert.match(src("CombatFeel.cs"), /DefenseOutcome/);
+    assert.match(readFileSync(join(scripts, "WorldBreath.cs"), "utf8"), /class WorldBreath/);
+    assert.match(src("ConcordiaPlayer.cs"), /feel\?\.Present\(/);
   });
 });
