@@ -111,7 +111,8 @@ namespace Concordia
             var person = GetComponentInChildren<ModularPerson>();
             if (!person || !person.sword) return;
             var blade = person.sword.transform;
-            var tr = blade.GetComponent<TrailRenderer>() ?? blade.gameObject.AddComponent<TrailRenderer>();
+            var tr = blade.GetComponent<TrailRenderer>();
+            if (tr == null) tr = blade.gameObject.AddComponent<TrailRenderer>();
             tr.time = heavy ? 0.22f : 0.12f;
             tr.startWidth = heavy ? 0.055f : 0.035f;
             tr.endWidth = 0.008f;
