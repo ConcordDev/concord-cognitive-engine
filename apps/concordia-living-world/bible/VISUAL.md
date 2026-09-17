@@ -72,8 +72,8 @@ Editor: **Concordia → Asset Store → Open My Assets**. Downloads require a si
 
 ## TARGET
 
-`KINGDOM + BIOME + CULTURE` (from authored WorldId / staple / ecology) dresses roads, stone, farms, vegetation, markets, walls, clutter, occupations. A toxic/industrial world uses the grid vocabulary, not the grove kit. Concordia never becomes visually dependent on a single store pack.
+Cinematic completion is `bible/CINEMATIC.md`. Kits from `KINGDOM + BIOME + CULTURE` still dress the world; a bound pack is not a finished shot. Concordia never becomes visually dependent on a single store pack.
 
 ## Gap
 
-Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired). No owned wheat / palm / hedge / dumpster / crypt / gravestone / crystal / sci-fi lab — those stay Kenney. Point Grass is not owned. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs (Tree Collection, Ultimate Nature, Outdoor Ground, Stylized PBR, URP Terrain sample, Meta XR, AnyRPG, …) stay in My Assets until the next import pass. SUIMONO stays imported, not the live water path. Starter Assets stay reference-only. Convai's conversation provider is Concord 2B.
+The look stack (`HubLook` PBR 2k, ACES volume, exponential fog, ChaseCamera FOV, CombatFeel punch) is live and **not** the reference image. Volumetric fog, skin SSS, 4K/8K maps, seated dense dressing, and the ten Play shots are TARGET. Combat clip graph is still incomplete until Human Basic Motions is **wired** (imported ≠ wired) **and** the Biped can play it. No owned wheat / palm / hedge / dumpster / crypt / gravestone / crystal / sci-fi lab — those stay Kenney. Point Grass is not owned. Truncated cache files (Demo City, Big Oak, Sound FX) need a re-download when disk has room. Remaining owned-but-not-yet-cached packs stay in My Assets until the next import pass. SUIMONO stays imported, not the live water path. Starter Assets stay reference-only. Convai's conversation provider is Concord 2B.

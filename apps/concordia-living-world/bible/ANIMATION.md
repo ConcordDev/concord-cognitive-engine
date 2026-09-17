@@ -14,7 +14,7 @@ Walk 5.2 and sprint 8.1 are different gaits (jog band 4.4–6.4, run 6.2–8.2),
 
 ## TARGET
 
-Gameplay state → animation presents it. Layers/masks. No root-motion stealing locomotion unless Concord says so. Human Melee Animations FREE (store 165785) still not imported.
+Gameplay state → animation presents it. Cinematic bar is `CINEMATIC.md`: ActionRunner phases (startup/active/recovery, parry/block/dodge) drive anticipation, follow-through, and hit reaction. Layers/masks. No root-motion stealing locomotion unless Concord says so. Human Melee Animations FREE (store 165785) still not imported.
 
 ## Gap
 

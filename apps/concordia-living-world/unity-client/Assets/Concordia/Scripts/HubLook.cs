@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -10,6 +11,7 @@ namespace Concordia
     /// <summary>
     /// URP look for the Unburned Court: warm skylight vs cool portals.
     /// Stay on URP — HDRP would drop Kenney/glTFast materials.
+    /// Cinematic completion is bible/CINEMATIC.md — this class is the live look stack, not a second renderer.
     /// </summary>
     public static class HubLook
     {
@@ -148,12 +150,38 @@ namespace Concordia
             }
 
             var lights = Object.FindObjectsByType<Light>(FindObjectsInactive.Include);
+
+            // Pick the sun BEFORE the loop.
+            //
+            // This used to match only `name == "Sun"`, and the final else-branch below disabled
+            // every other directional light. The scene's actual lights are named "Directional
+            // Light" (Unity's default) and "ContinentSun" — neither matched, so BOTH were disabled
+            // on every sky tick and the world had no directional light at all. That is why a 14:43
+            // afternoon rendered nearly black and every surface looked flat: ambient-only lighting
+            // produces no directional shading, no shadows and no specular, which hides normal and
+            // metallic/smoothness maps completely. Textures were never the problem.
+            //
+            // Preference order: exact "Sun" -> any directional whose name contains "sun" -> the
+            // brightest directional present. Never leave the world with zero suns.
+            Light sun = null;
+            for (int i = 0; i < lights.Length; i++)
+            {
+                var l = lights[i];
+                if (!l || l.type != LightType.Directional) continue;
+                if (l.name == "Fill") continue;
+                if (l.name == "Sun") { sun = l; break; }
+                if (l.name.IndexOf("sun", System.StringComparison.OrdinalIgnoreCase) >= 0) { sun = l; continue; }
+                if (sun == null) sun = l;
+            }
+
             for (int i = 0; i < lights.Length; i++)
             {
                 var l = lights[i];
                 if (!l) continue;
-                if (l.type == LightType.Directional && l.name == "Sun")
+                if (l.type == LightType.Directional && l == sun)
                 {
+                    l.enabled = true;
+                    l.gameObject.SetActive(true);
                     l.color = Color.Lerp(new Color(0.42f, 0.52f, 0.78f), new Color(1f, 0.94f, 0.82f), sun01);
                     l.intensity = world == WorldId.Hub
                         ? 0.06f + 1.12f * sun01
@@ -388,7 +416,12 @@ namespace Concordia
                 if (!src.HasProperty(names[i])) continue;
                 return src.GetColor(names[i]);
             }
-            return src.color.a > 0.01f ? src.color : fallback;
+            if (src.HasProperty("_Color"))
+            {
+                var legacy = src.GetColor("_Color");
+                return legacy.a > 0.01f ? legacy : fallback;
+            }
+            return fallback;
         }
 
         public static Texture FirstNormal(Material src)
@@ -404,35 +437,205 @@ namespace Concordia
             return null;
         }
 
-        public static Material Pbr(string stem, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
+        // Poly Haven CC0 kit: Assets/Concordia/PolyHaven/Textures/<stem>/<stem>_<map>_2k.jpg
+        // Maps shipped per set: _diffuse_ (sRGB), _nor_gl_ (normal), _arm_ (AO/Rough/Metal, linear),
+        // _displacement_. Import settings are enforced by Concordia.EditorTools.PolyHavenPipeline.
+        static readonly Dictionary<string, Material> _pbrCache = new Dictionary<string, Material>();
+
+        // ---- Stem resolution ------------------------------------------------------------------
+        // The world builders ask for SEMANTIC surfaces ("stone_tiles", "wet_asphalt", "ash_soil").
+        // Poly Haven ships CONCRETE set names ("cobblestone_floor_13", "asphalt_floor",
+        // "brown_mud_dry"). Before this, every one of those semantic names missed an exact-path
+        // lookup and Pbr() silently returned an untextured flat tint — which is why 13.5GB of
+        // imported CC0 material was on disk, correctly imported, and visible nowhere.
+        //
+        // Resolution order: exact set -> hand-authored semantic alias -> prefix match against the
+        // real library (so "metal_plate" finds "metal_plate_02" without anyone maintaining it).
+        static readonly Dictionary<string, string> StemAliases = new Dictionary<string, string>
         {
+            { "stone_tiles",    "cobblestone_floor_13" },
+            { "wet_asphalt",    "asphalt_floor" },
+            { "ash_soil",       "brown_mud_dry" },
+            { "grove_moss",     "forrest_ground_03" },
+            { "neon_grid",      "blue_floor_tiles_01" },
+            { "packed_earth",   "aerial_mud_1" },
+            { "concrete_floor", "anti_slip_concrete" },
+            { "metal_plate",    "metal_plate_02" },
+            { "grass",          "aerial_grass_rock" },
+            { "dirt",           "brown_mud_02" },
+            { "sand",           "aerial_sand" },
+            { "gravel",         "bicolour_gravel" },
+            { "snow",           "asphalt_snow" },
+            { "brick",          "brick_floor" },
+            { "wall",           "concrete_wall_009" },
+            { "road",           "asphalt_02" },
+        };
+
+        static List<string> _stemIndex;
+
+        static List<string> StemIndex()
+        {
+            if (_stemIndex != null) return _stemIndex;
+            _stemIndex = new List<string>();
+#if UNITY_EDITOR
+            const string root = "Assets/Concordia/PolyHaven/Textures";
+            if (AssetDatabase.IsValidFolder(root))
+                foreach (var sub in AssetDatabase.GetSubFolders(root))
+                    _stemIndex.Add(sub.Substring(sub.LastIndexOf('/') + 1));
+#endif
+            return _stemIndex;
+        }
+
+        /// Maps a requested surface name onto a set that actually exists on disk.
+        public static string ResolveStem(string stem)
+        {
+            if (string.IsNullOrEmpty(stem)) return stem;
+            if (LoadPbrTex(stem, "_diffuse_2k") != null) return stem;
+
+            if (StemAliases.TryGetValue(stem, out var alias) &&
+                LoadPbrTex(alias, "_diffuse_2k") != null)
+                return alias;
+
+            var idx = StemIndex();
+            for (int i = 0; i < idx.Count; i++)
+                if (idx[i].StartsWith(stem, System.StringComparison.OrdinalIgnoreCase))
+                    return idx[i];
+
+            // Last resort: any set whose name contains the request (e.g. "moss" -> "brick_moss_001").
+            for (int i = 0; i < idx.Count; i++)
+                if (idx[i].IndexOf(stem, System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    return idx[i];
+
+            return stem;   // genuine miss — caller still gets an honest flat tint
+        }
+
+        public static Material Pbr(string requested, Color tint, float metallic = 0.08f, float smooth = 0.28f, float tile = 8f)
+        {
+            var stem = ResolveStem(requested);
+            var key = stem + "|" + tile.ToString("F2");
+            if (_pbrCache.TryGetValue(key, out var cached) && cached) return cached;
+
             var m = Lit(tint, metallic, smooth);
-            var diff = LoadPbrTex(stem + "_diff_2k.jpg") ?? LoadPbrTex(stem + "_diff_2k");
-            var nrm = LoadPbrTex(stem + "_nor_gl_2k.jpg") ?? LoadPbrTex(stem + "_nor_gl_2k");
-            var rough = LoadPbrTex(stem + "_rough_2k.jpg") ?? LoadPbrTex(stem + "_rough_2k");
+            var diff = LoadPbrTex(stem, "_diffuse_2k");
+            var nrm = LoadPbrTex(stem, "_nor_gl_2k");
+
             if (diff)
             {
-                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", diff);
-                if (m.HasProperty("_MainTex")) m.SetTexture("_MainTex", diff);
-                m.SetTextureScale("_BaseMap", Vector2.one * tile);
-                m.SetTextureScale("_MainTex", Vector2.one * tile);
+                // Textured surfaces must not be double-tinted by the flat fallback colour.
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", Color.white);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", diff); m.SetTextureScale("_BaseMap", Vector2.one * tile); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", diff); m.SetTextureScale("_MainTex", Vector2.one * tile); }
             }
             if (nrm)
             {
                 if (m.HasProperty("_BumpMap")) m.SetTexture("_BumpMap", nrm);
                 m.EnableKeyword("_NORMALMAP");
                 m.SetTextureScale("_BumpMap", Vector2.one * tile);
-                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.35f);
+                if (m.HasProperty("_BumpScale")) m.SetFloat("_BumpScale", 1.0f);
             }
-            if (rough && m.HasProperty("_Smoothness"))
-                m.SetFloat("_Smoothness", Mathf.Min(smooth, 0.22f));
+
+            // ARM -> real metallic/smoothness/occlusion response. Without this the surface has
+            // correct albedo and normals but a flat, uniform material response.
+            var armSrc = LoadPbrTex(stem, "_arm_2k");
+            var packed = RepackArm(stem, armSrc);
+            if (packed)
+            {
+                if (m.HasProperty("_MetallicGlossMap"))
+                {
+                    m.SetTexture("_MetallicGlossMap", packed);
+                    m.SetTextureScale("_MetallicGlossMap", Vector2.one * tile);
+                    m.EnableKeyword("_METALLICSPECGLOSSMAP");
+                    // URP does `specGloss.a *= _Smoothness`, so the multiplier must be 1 for the
+                    // packed alpha to survive as the authored smoothness.
+                    if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 1f);
+                    if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 1f);
+                }
+                if (m.HasProperty("_OcclusionMap"))
+                {
+                    m.SetTexture("_OcclusionMap", packed);
+                    m.SetTextureScale("_OcclusionMap", Vector2.one * tile);
+                    m.EnableKeyword("_OCCLUSIONMAP");
+                    if (m.HasProperty("_OcclusionStrength")) m.SetFloat("_OcclusionStrength", 1f);
+                }
+            }
+
+            m.name = "PH_" + stem;
+            _pbrCache[key] = m;
             return m;
         }
 
-        static Texture LoadPbrTex(string file)
+        /// True when the Poly Haven set actually resolves — lets callers fall back to flat colour
+        /// honestly instead of rendering an untextured surface that pretends to be dressed.
+        public static bool HasPbrSet(string stem) => LoadPbrTex(ResolveStem(stem), "_diffuse_2k") != null;
+
+        static readonly Dictionary<string, Texture2D> _armCache = new Dictionary<string, Texture2D>();
+        static Material _armRepackMat;
+
+        /// Repacks a Poly Haven ARM map into URP's expected channel layout on the GPU.
+        /// See Shaders/ArmRepack.shader for the channel contract. Returns one texture usable as
+        /// BOTH _MetallicGlossMap (.r/.a) and _OcclusionMap (.g) — their channels don't overlap.
+        ///
+        /// Done as a Graphics.Blit rather than CPU GetPixels so the source texture does not need
+        /// "Read/Write Enabled" (which would double its memory) and so the work happens on the GPU.
+        /// Cached per stem; the readback is one-time per set.
+        static Texture2D RepackArm(string stem, Texture arm)
+        {
+            if (arm == null) return null;
+            if (_armCache.TryGetValue(stem, out var cached) && cached) return cached;
+
+            if (_armRepackMat == null)
+            {
+                var sh = Shader.Find("Hidden/Concordia/ArmRepack");
+                if (sh == null) return null;          // honest miss — caller keeps flat smoothness
+                _armRepackMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+            }
+
+            int w = arm.width, h = arm.height;
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            var prev = RenderTexture.active;
+            try
+            {
+                Graphics.Blit(arm, rt, _armRepackMat);
+                RenderTexture.active = rt;
+
+                // Linear, mip-mapped: this carries material response data, not colour.
+                var outTex = new Texture2D(w, h, TextureFormat.RGBA32, true, true)
+                {
+                    name = stem + "_MetalSmoothAO",
+                    wrapMode = TextureWrapMode.Repeat
+                };
+                outTex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
+                outTex.Apply(true, true);             // makeNoLongerReadable: free the CPU copy
+                _armCache[stem] = outTex;
+                return outTex;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+            }
+        }
+
+        // TODO(ship): editor-only resolution. A player build needs these under Resources/ or
+        // Addressables; AssetDatabase does not exist at runtime.
+        static Texture LoadPbrTex(string stem, string suffix)
         {
 #if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + file);
+            const string root = "Assets/Concordia/PolyHaven/Textures/";
+            string[] exts = { ".jpg", ".png" };
+            for (int i = 0; i < exts.Length; i++)
+            {
+                var t = AssetDatabase.LoadAssetAtPath<Texture>(root + stem + "/" + stem + suffix + exts[i]);
+                if (t) return t;
+            }
+            // Legacy flat layout kept for older non-Poly-Haven packs.
+            for (int i = 0; i < exts.Length; i++)
+            {
+                var t = AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + stem + suffix + exts[i]);
+                if (t) return t;
+            }
+            return null;
 #else
             return null;
 #endif
@@ -678,6 +881,88 @@ namespace Concordia
             return false;
         }
 
+        // ---- Prop model substitution ----------------------------------------------------------
+        // 53% of the world's renderers were Unity primitives (306 cubes, 77 quads, 26 spheres)
+        // while 758 real CC0 models sat imported and unused. A textured cube is still a cube —
+        // that, not lighting or materials, is what made the world read as a 2009 greybox.
+        //
+        // Prim() keeps building the primitive (so colliders, bounds and gameplay placement are
+        // byte-for-byte unchanged) and then hides its RENDERER and parents a real model inside it,
+        // fitted to the same footprint. Purely a visual upgrade; nothing gameplay-facing moves.
+        //
+        // Curated table, NO fuzzy fallback. Geometry is not like textures: a fuzzy "contains"
+        // match happily resolves "bench" to "bench_vice_01_1k" (a workshop vice), and a confidently
+        // wrong model looks worse than an honest primitive. Unmapped names keep their primitive.
+        static readonly Dictionary<string, string> PropModels = new Dictionary<string, string>
+        {
+            { "barrel",   "barrel_01_1k" },
+            { "crate",    "old_military_crate_1k" },
+            { "chest",    "treasure_chest_1k" },
+            { "lantern",  "lantern_01_1k" },
+            { "lamp",     "wooden_lantern_01_1k" },
+            { "statue",   "statue_block" },
+            { "pot",      "ceramic_pot_1k" },
+            { "vase",     "antique_ceramic_vase_01_1k" },
+            { "fence",    "fence_bend" },
+            { "bush",     "plant_bush" },
+            { "tree",     "concordia_real_foresttree" },
+            { "sword",    "cx_weapon_longsword" },
+            { "shield",   "kite_shield_1k" },
+            { "pillar",   "statue_column" },
+            { "post",     "log_large" },
+        };
+
+        /// Confident semantic match only — returns null when we should keep the primitive.
+        static string PropStemFor(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            var n = name.ToLowerInvariant();
+            foreach (var kv in PropModels)
+                if (n.Contains(kv.Key)) return kv.Value;
+            return null;
+        }
+
+        /// Hides the primitive's renderer and nests a real model scaled into its footprint.
+        static void DressWithModel(GameObject prim, string semanticName, Vector3 footprint)
+        {
+            var stem = PropStemFor(semanticName);
+            if (string.IsNullOrEmpty(stem)) return;
+
+            var prefab = FreePacks.Mesh(stem);
+            if (!prefab) return;                       // kit miss — keep the honest primitive
+
+            var model = Object.Instantiate(prefab, prim.transform);
+            model.name = "Model_" + stem;
+            model.transform.localPosition = Vector3.zero;
+            model.transform.localRotation = Quaternion.identity;
+
+            // Fit the model into the primitive's footprint. The parent's own localScale already
+            // applies, so measure in the model's local space and divide it back out.
+            var rends = model.GetComponentsInChildren<Renderer>(true);
+            if (rends.Length == 0) { Object.Destroy(model); return; }
+
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var size = b.size;
+            float largest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            if (largest <= 0.0001f) { Object.Destroy(model); return; }
+
+            float target = Mathf.Max(footprint.x, Mathf.Max(footprint.y, footprint.z));
+            float k = target / largest;
+            // Divide out the parent scale so the fit is absolute, not compounded.
+            model.transform.localScale = new Vector3(
+                Mathf.Approximately(footprint.x, 0f) ? k : k / Mathf.Max(0.0001f, footprint.x),
+                Mathf.Approximately(footprint.y, 0f) ? k : k / Mathf.Max(0.0001f, footprint.y),
+                Mathf.Approximately(footprint.z, 0f) ? k : k / Mathf.Max(0.0001f, footprint.z));
+
+            foreach (var c in model.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
+
+            var primRend = prim.GetComponent<Renderer>();
+            if (primRend) primRend.enabled = false;    // keep collider + bounds, drop the cube look
+
+            FreePacks.PaintIfBlank(model);
+        }
+
         public static GameObject Prim(Transform parent, PrimitiveType t, Vector3 pos, Vector3 scale, Material mat, string n, bool collider = true)
         {
             var go = GameObject.CreatePrimitive(t);
@@ -697,6 +982,7 @@ namespace Concordia
             }
             var r = go.GetComponent<Renderer>();
             if (r && mat) r.sharedMaterial = mat;
+            DressWithModel(go, n, scale);
             return go;
         }
 
@@ -711,6 +997,85 @@ namespace Concordia
             if (n.StartsWith("TextMeshPro")) return false;
             if (n.StartsWith("Shader Graphs/")) return true;
             return true;
+        }
+
+        static readonly Dictionary<Material, Material> _urpUpgradeCache = new Dictionary<Material, Material>();
+
+        /// Converts one built-in-pipeline material to URP Lit, preserving albedo/normal/colour and
+        /// metallic-smoothness. Shared by the global sweep and the per-object path so the two can
+        /// never diverge. Cached per source material — the same source converts once.
+        static Material ConvertToUrp(Material src)
+        {
+            if (_urpUpgradeCache.TryGetValue(src, out var hit) && hit) return hit;
+
+            var dst = new Material(_lit);
+            var col = FirstColor(src, Color.white);
+            if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", col);
+            dst.color = col;
+
+            var tex = FirstAlbedo(src);
+            if (tex)
+            {
+                if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", tex);
+                if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", tex);
+            }
+            var nrm = FirstNormal(src);
+            if (nrm)
+            {
+                if (dst.HasProperty("_BumpMap")) dst.SetTexture("_BumpMap", nrm);
+                dst.EnableKeyword("_NORMALMAP");
+            }
+            if (src.HasProperty("_Metallic") && dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", src.GetFloat("_Metallic"));
+            else if (src.HasProperty("metallicFactor") && dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", src.GetFloat("metallicFactor"));
+            else if (dst.HasProperty("_Metallic"))
+                dst.SetFloat("_Metallic", 0.04f);
+
+            if (src.HasProperty("_Glossiness") && dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", src.GetFloat("_Glossiness"));
+            else if (src.HasProperty("_Smoothness") && dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", src.GetFloat("_Smoothness"));
+            else if (dst.HasProperty("_Smoothness"))
+                dst.SetFloat("_Smoothness", 0.22f);
+
+            _urpUpgradeCache[src] = dst;
+            return dst;
+        }
+
+        /// Per-object Standard->URP upgrade.
+        ///
+        /// UpgradeStandardMaterials() below is a ONE-SHOT scene sweep run at boot (ConcordiaGame,
+        /// WorldBuilder). Anything streamed in afterwards — the Megaworld content: rock_smallA,
+        /// tent_detailedOpen, statue, trophy, crops_wheatStageB — kept its built-in `Standard`
+        /// shader, which URP cannot render, so it drew MAGENTA in the live Hub despite the boot
+        /// sweep having "already handled it". This is the same fix applied at spawn time instead.
+        public static int UpgradeStandardOn(GameObject go)
+        {
+            if (!go) return 0;
+            EnsureShaders();
+            if (_lit == null) return 0;
+
+            int n = 0;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var slots = r.sharedMaterials;
+                if (slots == null || slots.Length == 0) continue;
+
+                var next = new Material[slots.Length];
+                bool any = false;
+                for (int s = 0; s < slots.Length; s++)
+                {
+                    var src = slots[s];
+                    if (src == null || !ShaderNeedsUrp(src.shader)) { next[s] = src; continue; }
+                    next[s] = ConvertToUrp(src);
+                    any = true;
+                    n++;
+                }
+                if (any) r.sharedMaterials = next;
+            }
+            return n;
         }
 
         public static int UpgradeStandardMaterials()

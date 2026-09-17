@@ -60,6 +60,7 @@ Do not substitute this for a walk he has not taken.
 - Agents without a puppet string
 - Deeper wild
 - Kernel ATS ticks → same body
+- Cinematic shots in `bible/CINEMATIC.md` (reference image is the visual bar; compile is not a pass)
 
 Do not hijack dirty `server/lib/runtime/event-bus.js` to paper the cascade.
 

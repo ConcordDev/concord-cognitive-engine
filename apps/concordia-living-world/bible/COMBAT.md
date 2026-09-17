@@ -18,7 +18,7 @@ Poise is a HUD bar, not a stagger resolver. Socket down stays `{ok:false, reason
 
 ## TARGET
 
-2B chooses action. Engine resolves i-frame/parry/hit. Telemetry → personal style. No model-declared dodge.
+2B chooses action. Engine resolves i-frame/parry/hit. Cinematic presentation (`CINEMATIC.md` SHOT 03) reads those outcomes — camera punch, VFX, body — without a second combat stack. Telemetry → personal style. No model-declared dodge.
 
 ## Gap
 
