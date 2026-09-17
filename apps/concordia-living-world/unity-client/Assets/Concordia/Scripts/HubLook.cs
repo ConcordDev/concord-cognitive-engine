@@ -261,7 +261,7 @@ namespace Concordia
                 RenderSettings.ambientIntensity = 0.35f + 0.65f * sun01;
                 RenderSettings.reflectionIntensity = 0.38f + 0.67f * sun01;
                 RenderSettings.fogColor = Color.Lerp(new Color(0.04f, 0.10f, 0.12f), new Color(0.22f, 0.42f, 0.44f), sun01);
-                LiveFog(0.013f + 0.006f * night);
+                LiveFog(0.032f + 0.008f * night);
                 TryHdrSky(world);
             }
 
@@ -438,7 +438,20 @@ namespace Concordia
                        ?? FreePacks.SpawnStore("wooden_lantern_01", parent, pos, 0, 1.35f, required: false)
                        ?? FreePacks.SpawnStore("Lantern_01", parent, pos, 0, 1.2f, required: false);
             if (!mesh)
-                CxDress.Billboard(parent, pos + Vector3.up * 1.15f, "P2/Props/CX_Prop_CourtLantern.jpg", 0.42f, 0.9f);
+            {
+                var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                glow.name = "LampGlow";
+                glow.transform.SetParent(parent, false);
+                glow.transform.position = pos + Vector3.up * 1.55f;
+                glow.transform.localScale = Vector3.one * 0.22f;
+                Object.Destroy(glow.GetComponent<Collider>());
+                var gr = glow.GetComponent<Renderer>();
+                if (gr)
+                {
+                    gr.sharedMaterial = UnlitAlpha(new Color(0.55f, 0.95f, 1f, 0.55f));
+                    gr.shadowCastingMode = ShadowCastingMode.Off;
+                }
+            }
             HubLook.Point(parent, "CourtLamp", pos + Vector3.up * 1.65f, new Color(0.45f, 0.92f, 1f), 2.4f, 12f, true);
         }
 
@@ -455,7 +468,7 @@ namespace Concordia
             var r = go.GetComponent<Renderer>();
             if (r)
             {
-                var m = Emit(new Color(c.r, c.g, c.b, 0.32f), 1.8f);
+                var m = UnlitAlpha(new Color(c.r, c.g, c.b, 0.18f));
                 r.sharedMaterial = m;
                 r.shadowCastingMode = ShadowCastingMode.Off;
             }

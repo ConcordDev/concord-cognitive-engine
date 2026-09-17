@@ -115,20 +115,24 @@ namespace Concordia // keep-spawn-assign
         static void Factions(Transform root, WorldDef w)
         {
             var facs = WorldBook.Factions(w.id);
+            float rad = w.id == WorldId.Hub ? 32f : 24f;
             for (int i = 0; i < facs.Length; i++)
             {
                 var f = facs[i];
                 float a = i / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
-                var p = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
+                var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 Color.RGBToHSV(w.sun, out var hh, out var ss, out var vv);
                 var col = w.sun;
                 if (f.visual != null && !string.IsNullOrEmpty(f.visual.primary_color))
                     ColorUtility.TryParseHtmlString(f.visual.primary_color, out col);
-                var tent = w.id == WorldId.Cyber ? "corridor_end"
-                    : w.id == WorldId.Crime ? "building-type-c"
-                    : w.id == WorldId.Fantasy ? "windmill"
-                    : "tent_detailedOpen";
-                FreePacks.Spawn(tent, root, p, -a * Mathf.Rad2Deg, w.id == WorldId.Fantasy ? 6f : 3.4f);
+                if (w.id != WorldId.Hub)
+                {
+                    var tent = w.id == WorldId.Cyber ? "corridor_end"
+                        : w.id == WorldId.Crime ? "building-type-c"
+                        : w.id == WorldId.Fantasy ? "windmill"
+                        : "tent_detailedOpen";
+                    FreePacks.Spawn(tent, root, p, -a * Mathf.Rad2Deg, w.id == WorldId.Fantasy ? 6f : 3.4f);
+                }
                 var banner = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 1.7f + Vector3.right * 0.01f,
                     new Vector3(0.12f, 3.4f, 0.12f), HubLook.Lit(col, 0.2f, 0.3f), "FactionPole_" + f.id);
                 var cloth = HubLook.Prim(root, PrimitiveType.Quad, p + new Vector3(Mathf.Cos(a + 0.2f), 2.6f, Mathf.Sin(a + 0.2f)) * 0.8f,
@@ -174,6 +178,7 @@ namespace Concordia // keep-spawn-assign
 
         static void Lore(Transform root, WorldDef w)
         {
+            if (w.id == WorldId.Hub) return;
             var lore = WorldBook.Lore(w.id);
             if (lore.history == null) return;
             int i = 0;

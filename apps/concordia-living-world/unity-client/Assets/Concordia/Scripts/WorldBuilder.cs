@@ -172,7 +172,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => ContinentStream.Live ? 0.0095f : 0.013f,
+                WorldId.Hub => ContinentStream.Live ? 0.022f : 0.032f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -609,7 +609,13 @@ namespace Concordia
                     case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
                 }
                 var wander = job == NpcLife.Job.Wander;
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), 180f, look, wander, n.id == "warden" ? 5f : 10f);
+                var pos = new Vector3(n.x, 0f, n.z);
+                if (pos.sqrMagnitude < 22f * 22f)
+                {
+                    var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.right;
+                    pos = dir * 26f;
+                }
+                var go = ModularPerson.SpawnNpc(root, pos, 180f, look, wander, n.id == "warden" ? 5f : 10f);
                 go.name = n.name;
                 if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, DressVocab.Weapon(weapon), true, 0.95f);
                 if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);

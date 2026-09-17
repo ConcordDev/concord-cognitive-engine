@@ -118,7 +118,7 @@ namespace Concordia
             if (sprinting) dist += 0.7f;
             if (inCombat) dist -= 0.85f;
             dist = Mathf.Clamp(dist + (distance - 6.2f), 2.4f, 14f);
-            if (hubStill) dist = 4.2f;
+            if (hubStill) dist = 5.8f;
             if (_punch > 0.01f) dist *= 1f - _punch * 0.08f;
 
             if (_vcam && _orbit)

@@ -191,9 +191,9 @@ namespace Concordia
                 float a = i / 10f * Mathf.PI * 2f + 0.2f;
                 var p = new Vector3(Mathf.Cos(a) * 11.5f, 7.8f, Mathf.Sin(a) * 11.5f);
                 var strip = HubLook.Prim(root, PrimitiveType.Cube, p,
-                    new Vector3(9.4f, 0.07f, 0.42f), crimson, "CourtBanner", false);
+                    new Vector3(9.4f, 0.08f, 0.42f), crimson, "CourtBanner", false);
                 if (strip)
-                    strip.transform.rotation = Quaternion.LookRotation(Vector3.up, new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a)));
+                    strip.transform.rotation = Quaternion.Euler(0f, -a * Mathf.Rad2Deg + 90f, 0f);
             }
             for (int i = 0; i < 6; i++)
             {

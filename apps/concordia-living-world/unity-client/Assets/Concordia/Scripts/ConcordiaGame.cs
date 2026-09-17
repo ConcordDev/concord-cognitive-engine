@@ -65,6 +65,7 @@ namespace Concordia
             _player.world = world;
             chase.target = pgo.transform;
             chase.yaw = Mathf.PI;
+            chase.pitch = 0.08f;
             chase.pov = 0;
             chase.distance = 3.4f;
             chase.shoulder = 0.62f;
@@ -116,6 +117,7 @@ namespace Concordia
             {
                 pgo.transform.rotation = Quaternion.identity;
                 chase.yaw = Mathf.PI;
+                chase.pitch = 0.08f;
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
                 ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
