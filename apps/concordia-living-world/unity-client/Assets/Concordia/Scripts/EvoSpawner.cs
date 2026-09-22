@@ -220,7 +220,8 @@ namespace Concordia
                 _vel.x = Mathf.Lerp(_vel.x, dir.x * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
                 _vel.z = Mathf.Lerp(_vel.z, dir.z * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
                 if (fly) _vel.y = Mathf.Sin(Time.time) * 0.35f;
-                _cc.Move(_vel * Time.deltaTime);
+                if (Grounding.CanMove(_cc))
+                    _cc.Move(_vel * Time.deltaTime);
             }
             else
                 transform.position += dir * speed * Time.deltaTime;
@@ -235,7 +236,8 @@ namespace Concordia
             else if (!fly) _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;
             _vel.z = 0f;
-            _cc.Move(_vel * Time.deltaTime);
+            if (Grounding.CanMove(_cc))
+                _cc.Move(_vel * Time.deltaTime);
         }
 
         void Show(bool on)

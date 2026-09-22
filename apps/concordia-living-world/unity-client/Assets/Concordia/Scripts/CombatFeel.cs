@@ -70,7 +70,7 @@ namespace Concordia
 
         public void ApplyAck(bool hit, float knockback, bool brokenArm, bool brokenLeg)
         {
-            if (hit && body && knockback > 0)
+            if (hit && Grounding.CanMove(body) && knockback > 0)
                 body.Move(-transform.forward * Mathf.Min(knockback, 2.4f) * 0.15f);
             _shake = hit ? 0.16f : 0.05f;
             var av = GetComponentInChildren<MixamoAvatar>();

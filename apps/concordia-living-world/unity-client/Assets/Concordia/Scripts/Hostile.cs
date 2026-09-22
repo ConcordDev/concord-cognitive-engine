@@ -93,6 +93,11 @@ namespace Concordia
         void Update()
         {
             if (_body && _body.hp <= 0) { if (_fauna) _fauna.hunting = false; return; }
+            if (_cc && !CanMove())
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             var player = ConcordiaPlayer.Live;
             if (!player) return;
             if (!Canon.SteelLive(player.world, player.transform.position))
@@ -180,6 +185,11 @@ namespace Concordia
             player.TakeHit(damage, name, 0f);
         }
 
+        bool CanMove()
+        {
+            return isActiveAndEnabled && Grounding.CanMove(_cc);
+        }
+
         void Step(Vector3 dir)
         {
             dir.y = 0f;
@@ -187,6 +197,11 @@ namespace Concordia
             dir.Normalize();
             if (_cc)
             {
+                if (!CanMove())
+                {
+                    _vel = Vector3.zero;
+                    return;
+                }
                 if (_cc.isGrounded && _vel.y < 0f) _vel.y = -1.5f;
                 else _vel.y += -22f * Time.deltaTime;
                 _vel.x = Mathf.Lerp(_vel.x, dir.x * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
@@ -201,7 +216,12 @@ namespace Concordia
 
         void Hold()
         {
-            if (!_cc || !_cc.enabled || !_cc.gameObject.activeInHierarchy)
+            if (!CanMove())
+            {
+                _vel = Vector3.zero;
+                return;
+            }
+            if (!Grounding.CanMove(_cc))
             {
                 _vel = Vector3.zero;
                 return;
@@ -210,6 +230,11 @@ namespace Concordia
             else _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;
             _vel.z = 0f;
+            if (!Grounding.CanMove(_cc))
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             _cc.Move(_vel * Time.deltaTime);
             _person?.SetGait(0f, _cc.isGrounded);
         }

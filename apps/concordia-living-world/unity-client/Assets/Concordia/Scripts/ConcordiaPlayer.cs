@@ -1,4 +1,8 @@
 using UnityEngine;
+using Concordia.GameplayCore;
+using Concordia.GameplayCore.Movement;
+using Concordia.GameplayCore.Presentation;
+using Concordia.Vehicles;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -18,6 +22,8 @@ namespace Concordia
         public float hp = 100, stamina = 100, poise = 12;
         public float hostility;
         Vector3 _vel;
+        LocomotionKernel _locomotion;
+        public LocomotionSnapshot LocomotionSnapshot => _locomotion != null ? _locomotion.Snapshot : default(LocomotionSnapshot);
 
         // ---- Gameplay core (Concordia.Core) -------------------------------------------------
         // ActionRunner owns strike timing and defensive windows. HitResolver is the one
@@ -100,6 +106,9 @@ namespace Concordia
         void OnEnable()
         {
             Live = this;
+            cc = cc ? cc : GetComponent<CharacterController>();
+            _locomotion = GetComponent<LocomotionKernel>() ?? gameObject.AddComponent<LocomotionKernel>();
+            if (cc) _locomotion.Bind(cc, new LayerMask { value = ~0 }, 0.08f);
             var body = GetComponent<LivingBody>() ?? gameObject.AddComponent<LivingBody>();
             LivingBody.BindHero(body);
             body.SyncToClock(WorldClock.Hour);
@@ -117,6 +126,13 @@ namespace Concordia
             else if (_action.ElapsedMs == 0 && IsStrike(_action.Current))
                 CommitStrike(_action.Current);
 
+            var seatedVehicle = GetComponentInParent<VehicleEntity>();
+            if (seatedVehicle && seatedVehicle.gameObject != gameObject)
+            {
+                if (KeyDown(KeyCode.E)) Interact();
+                return;
+            }
+
             if (creatorLocked)
             {
                 if (cc)
@@ -125,7 +141,8 @@ namespace Concordia
                     else _vel.y += -22f * Time.deltaTime;
                     _vel.x = 0f;
                     _vel.z = 0f;
-                    cc.Move(_vel * Time.deltaTime);
+                    if (Grounding.CanMove(cc))
+                        cc.Move(_vel * Time.deltaTime);
                 }
                 return;
             }
@@ -155,8 +172,9 @@ namespace Concordia
             }
             if (wish.sqrMagnitude > 1f) wish.Normalize();
 
+            if (!Grounding.CanMove(cc)) return;
             if (cc.slopeLimit < 50f) cc.slopeLimit = 50f;
-            if (cc.stepOffset < 0.4f) cc.stepOffset = 0.48f;
+            Grounding.ClampStepOffset(cc, Mathf.Min(0.48f, Mathf.Max(0.05f, cc.height * 0.5f)));
             cc.minMoveDistance = 0f;
             cc.skinWidth = 0.08f;
 
@@ -164,21 +182,32 @@ namespace Concordia
             if (grounded) _coyote = 0.14f;
             else _coyote -= dt;
             var wall = (cc.collisionFlags & CollisionFlags.Sides) != 0;
-            var climbHeld = !Busy && KeyHeld(KeyCode.Space);
-            var climbing = climbHeld && wall && LivingBody.Hero && LivingBody.Hero.CanClimb && stamina > 8f;
-            if (climbing)
+            var input = new LocomotionInput
             {
-                LivingBody.Hero.Climb(dt);
-                stamina -= 22f * dt;
-                _vel.y = 2.6f;
-                _coyote = 0f;
-                grounded = false;
-            }
-            else if (!Busy && KeyDown(KeyCode.Space) && _coyote > 0f)
+                Move = axes,
+                Sprint = sprint,
+                Jump = !Busy && KeyDown(KeyCode.Space) && _coyote > 0f,
+                Ascend = !Busy && KeyHeld(KeyCode.Space),
+                Descend = !Busy && KeyHeld(KeyCode.LeftControl),
+                Brake = KeyHeld(KeyCode.S)
+            };
+            GameplayCoreBridge.Live?.NotifyLocomotionInput(input);
+            var environment = new LocomotionEnvironment
             {
-                _vel.y = 8.2f;
+                Grounded = grounded,
+                WallContact = wall,
+                InSwimVolume = false,
+                InFlightVolume = false,
+                SuperspeedAllowed = world != WorldId.Hub,
+                SlopeAngle = 0f,
+                GroundNormal = Vector3.up,
+                WallNormal = wall ? -transform.forward : Vector3.zero,
+                Surface = LocomotionSurfaceData.Default
+            };
+            if (input.Jump)
+            {
                 _coyote = 0f;
-                grounded = false;
+                person?.Jump();
                 if (Hostile.TelegraphKind == "sweep")
                 {
                     _body.Stamina = stamina;
@@ -188,18 +217,18 @@ namespace Concordia
                     if (hop != null) hop.SendDodge(false, "jump");
                 }
             }
-            // Dodge now goes through the gameplay core. TryBegin is the gate: it enforces the
-            // phase machine (no dodge-cancelling a dodge) and the stamina cost, and returns false
-            // honestly rather than starting a free action. i-frames come from the ActionDef window.
+            // Dodge now injects momentum into the gameplay-core motor; the motor performs the
+            // single authoritative CharacterController.Move for this frame.
             if (!Busy && KeyDown(KeyCode.X))
             {
-                _body.Stamina = stamina;                    // legacy bar is still the display source
+                _body.Stamina = stamina;
                 if (_action.TryBegin(DodgeAction, _body))
                 {
-                    stamina = _body.Stamina;                // core charged the cost
-                    _vel += wish.normalized * 12.4f;
-                    _dodgeUntil = Time.time + 0.38f;        // kept in sync during migration
+                    stamina = _body.Stamina;
+                    _locomotion.AddVelocity((wish.sqrMagnitude > 0.01f ? wish.normalized : transform.forward) * 12.4f);
+                    _dodgeUntil = Time.time + 0.38f;
                     _iframeUntil = Time.time + 0.35f;
+                    person?.Dodge(wish.sqrMagnitude > 0.01f ? wish : transform.forward);
                     var client = ConcordClient.Live;
                     if (client != null) client.SendDodge();
                 }
@@ -210,29 +239,24 @@ namespace Concordia
                 if (_action.CanAct) _action.TryBegin(GuardAction, _body);
             }
             if (person && wish.sqrMagnitude > 0.04f) person.Sit(false);
+            if (LivingBody.Hero && sprint && wish.sqrMagnitude > 0.04f)
+                LivingBody.Hero.Tick(0f, true);
 
+            if (_locomotion == null)
+            {
+                _locomotion = GetComponent<LocomotionKernel>() ?? gameObject.AddComponent<LocomotionKernel>();
+                _locomotion.Bind(cc, new LayerMask { value = ~0 }, 0.08f);
+            }
+            var bodySpeed = style.speedMul * (LivingBody.Hero ? LivingBody.Hero.MoveMul : 1f);
+            var snapshot = _locomotion.Step(input, environment, wish, LocomotionTuning.Default,
+                                            ref stamina, bodySpeed,
+                                            LivingBody.Hero && LivingBody.Hero.CanClimb, dt);
+            if (snapshot.Context == LocomotionContext.Climbing)
+                LivingBody.Hero?.Climb(dt);
+            _vel = snapshot.Velocity;
+            grounded = snapshot.Grounded;
             if (grounded && !_wasGrounded) person?.Land();
             _wasGrounded = grounded;
-            if (grounded && _vel.y < 0) _vel.y = -1.5f;
-            else if (!climbing) _vel.y += -22f * dt;
-
-            var air = grounded ? 1f : (climbing ? 0.55f : 0.86f);
-            if (LivingBody.Hero)
-            {
-                if (sprint && wish.sqrMagnitude > 0.04f)
-                    LivingBody.Hero.Tick(0f, true);
-            }
-            var move = wish * speed * air * (LivingBody.Hero ? LivingBody.Hero.MoveMul : 1f);
-            var accel = grounded ? (sprint ? 14f : 8.2f) : 4.2f;
-            _vel.x = Mathf.Lerp(_vel.x, move.x, 1f - Mathf.Exp(-accel * dt));
-            _vel.z = Mathf.Lerp(_vel.z, move.z, 1f - Mathf.Exp(-accel * dt));
-            if (_hitstop > 0f)
-            {
-                _hitstop -= dt;
-                _vel.x *= 0.42f;
-                _vel.z *= 0.42f;
-            }
-            cc.Move(_vel * dt);
             ReceiveLand();
 
             var planar = new Vector3(_vel.x, 0, _vel.z);
@@ -712,6 +736,39 @@ namespace Concordia
                 if (d) return d;
             }
             return null;
+        }
+
+        public void ApplyCombatImpulse(Vector3 impulse)
+        {
+            if (impulse.sqrMagnitude <= 0.0001f) return;
+            if (_locomotion != null) _locomotion.AddVelocity(impulse);
+            else _vel += impulse;
+        }
+
+        public void ReactCombat(Concordia.GameplayCore.Combat.CombatDamagePacket packet)
+        {
+            PresentationEventContracts.Reaction(new PresentationReactionContract
+            {
+                Kind = packet.PoiseDamage > 6f ? PresentationReactionKind.Stagger : PresentationReactionKind.Flinch,
+                Direction = -transform.forward,
+                Intensity = Mathf.Clamp01(packet.Amount / 30f),
+                Duration = packet.PoiseDamage > 6f ? 0.55f : 0.25f
+            }, gameObject);
+            if (packet.Amount > 0f)
+            {
+                avatar?.Hit();
+                person?.Hurt();
+            }
+            if (packet.Impulse > 1.8f || packet.PoiseDamage > 6f)
+            {
+                avatar?.Stagger();
+                person?.Stagger();
+            }
+        }
+
+        public void QueueCounter(string actionId)
+        {
+            Toast(string.IsNullOrEmpty(actionId) ? "Counter ready." : "Counter ready — " + actionId + ".");
         }
 
         public void TakeHit(float dmg, string from, float knockback = -1f)

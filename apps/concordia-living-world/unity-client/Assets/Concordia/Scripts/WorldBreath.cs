@@ -20,6 +20,7 @@ namespace Concordia
         Transform[] _cloth;
         Quaternion[] _clothRest;
         int _clothN;
+        bool _started;
 
         public static Vector3 Wind
         {
@@ -49,6 +50,16 @@ namespace Concordia
             Live = this;
             _world = world;
             _follow = follow;
+            if (_started)
+            {
+                EnsureLayers();
+                CollectCloth();
+            }
+        }
+
+        void Start()
+        {
+            _started = true;
             EnsureLayers();
             CollectCloth();
         }
@@ -76,6 +87,13 @@ namespace Concordia
         void EnsureLayers()
         {
             bool lean = ConcordiaHost.LookLean;
+            // Hub was blown out by additive motes + dense mist — keep cloth sway only.
+            if (_world == WorldId.Hub)
+            {
+                if (_mist) { _mist.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); _mist.gameObject.SetActive(false); }
+                if (_motes) { _motes.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear); _motes.gameObject.SetActive(false); }
+                return;
+            }
             if (!_mist) _mist = MakeLayer("GroundMist", lean ? 28 : 70);
             if (!_motes) _motes = MakeLayer("Motes", 36);
             TuneMist(lean);
@@ -87,7 +105,9 @@ namespace Concordia
             var hold = transform.Find(n);
             var go = hold ? hold.gameObject : new GameObject(n);
             if (!hold) go.transform.SetParent(transform, false);
-            var ps = go.GetComponent<ParticleSystem>() ?? go.AddComponent<ParticleSystem>();
+            var ps = go.GetComponent<ParticleSystem>();
+            if (!ps) ps = go.AddComponent<ParticleSystem>();
+            if (!ps) return null;
             var main = ps.main;
             main.loop = true;
             main.maxParticles = max;

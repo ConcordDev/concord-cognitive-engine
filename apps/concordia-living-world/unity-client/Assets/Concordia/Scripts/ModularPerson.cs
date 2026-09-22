@@ -14,6 +14,7 @@ namespace Concordia // FORCE_REFRESH_0024
         public Appearance look = new Appearance();
         public Transform rightHand, leftHand;
         public GameObject sword;
+        public bool HasAuthoredBody => _authored;
 
         Transform _hip, _spine, _chest, _neck, _head;
         Transform _uArmL, _fArmL, _handL, _uArmR, _fArmR, _handR;
@@ -26,7 +27,7 @@ namespace Concordia // FORCE_REFRESH_0024
         Quaternion _hipsRest, _spineRest, _chestRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
         Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
         Vector3 _hipPos0;
-        float _speed, _vert, _slashT, _slashDur, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT, _staggerT;
+        float _speed, _vert, _slashT, _slashDur, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT, _staggerT, _dodgeT, _dodgeYaw;
         int _slashBeat;
         bool _slashHeavy;
         bool _grounded = true;
@@ -69,7 +70,7 @@ namespace Concordia // FORCE_REFRESH_0024
             root.transform.localPosition = Vector3.zero;
             root.transform.localRotation = Quaternion.identity;
             var p = root.AddComponent<ModularPerson>();
-            p.Build(hero);
+            p.Build(hero, hero ? CxDress.HeroPrefabPath(CastingWorld, root.transform.position) : null);
             p.Apply(look ?? new Appearance());
             CxDress.EnsureSockets(p);
             CxDress.Person(p, look, Canon.SteelLive(CastingWorld, root.transform.position));
@@ -89,7 +90,7 @@ namespace Concordia // FORCE_REFRESH_0024
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0, yaw, 0);
             var person = go.AddComponent<ModularPerson>();
-            person.Build();
+            person.Build(false, CxDress.NamedPrefabPath(look != null ? look.displayName : null));
             person.Apply(look ?? Appearance.Random(go.GetHashCode()));
             CxDress.EnsureGripSockets(person);
             CxDress.Person(person, look, Canon.SteelLive(CastingWorld, pos));
@@ -103,6 +104,7 @@ namespace Concordia // FORCE_REFRESH_0024
             }
             PersonLabel.Attach(go.transform, look != null ? look.displayName : go.name, null);
             CharacterVisualProfile.Apply(go, CastingWorld, look);
+            if (!go.GetComponent<StreamNpcPresence>()) go.AddComponent<StreamNpcPresence>();
             return go;
         }
 
@@ -114,7 +116,7 @@ namespace Concordia // FORCE_REFRESH_0024
             if (_anim && _anim.runtimeAnimatorController)
             {
                 _anim.enabled = true;
-                if (HasParam(_anim, "Speed")) _anim.SetFloat("Speed", grounded ? speed : 0f);
+                if (HasParam(_anim, "Speed")) _anim.SetFloat("Speed", grounded ? speed : 0f, 0.12f, Time.deltaTime);
                 if (HasParam(_anim, "Grounded")) _anim.SetBool("Grounded", grounded);
                 if (HasParam(_anim, "MotionSpeed")) _anim.SetFloat("MotionSpeed", grounded ? 1f : 0f);
             }
@@ -141,11 +143,33 @@ namespace Concordia // FORCE_REFRESH_0024
         {
             _style = s;
             if (sword) sword.SetActive(s == FightStyle.Sword);
+            if (_anim && HasParam(_anim, "Sword")) _anim.SetBool("Sword", s == FightStyle.Sword);
         }
         public void Sit(bool on) => _sit = on ? 1f : 0f;
-        public void Hurt() => _hitT = 0.42f;
+        public void Hurt()
+        {
+            _hitT = 0.42f;
+            if (_anim && _anim.runtimeAnimatorController && HasParam(_anim, "Hit")) _anim.SetTrigger("Hit");
+        }
         public void Stagger() => _staggerT = 0.55f;
         public void Land() => _landT = 0.28f;
+        public void Dodge() => Dodge(Vector3.zero);
+
+        public void Dodge(Vector3 planar)
+        {
+            _dodgeT = CombatMotion.DodgeDuration;
+            if (planar.sqrMagnitude > 0.01f)
+            {
+                var local = transform.InverseTransformDirection(new Vector3(planar.x, 0f, planar.z));
+                _dodgeYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+            }
+            else _dodgeYaw = 0f;
+            Concordia.Animation.AnimationVerbPlayback.TrySetTrigger(_anim, "trav.dodge", "Dodge");
+        }
+        public void Jump()
+        {
+            if (_anim && _anim.runtimeAnimatorController && HasParam(_anim, "Jump")) _anim.SetTrigger("Jump");
+        }
         public float PlanarSpeed => _speed;
 
         bool Talking()
@@ -154,13 +178,15 @@ namespace Concordia // FORCE_REFRESH_0024
             return _life && _life.IsTalking;
         }
 
-        public void Build() => Build(false);
+        public void Build() => Build(false, null);
 
-        public void Build(bool hero)
+        public void Build(bool hero) => Build(hero, null);
+
+        public void Build(bool hero, string preferredPrefabPath)
         {
             if (_built) return;
             _built = true;
-            if (TryBindAuthored(hero)) return;
+            if (TryBindAuthored(hero, preferredPrefabPath)) return;
 
             // No primitive people. A missing imported human stays invisible and is
             // reported once instead of degrading the world into training dummies.
@@ -168,9 +194,9 @@ namespace Concordia // FORCE_REFRESH_0024
             Debug.LogWarning("Concordia ModularPerson has no usable imported human asset; visual body omitted.");
         }
 
-        bool TryBindAuthored(bool hero)
+        bool TryBindAuthored(bool hero, string preferredPrefabPath)
         {
-            var prefab = LoadPersonPrefab(hero);
+            var prefab = LoadPersonPrefab(hero, preferredPrefabPath);
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
@@ -276,16 +302,24 @@ namespace Concordia // FORCE_REFRESH_0024
             Capture(_lLegR, ref _rLegRest);
             Capture(_head, ref _headRest);
 
-            // Mixamo/Kevin clips need a Humanoid avatar. Rocketbox ships Generic
-            // Bip01 — map it, or LateUpdate gait is the honest floor.
-            var built = TryBipedAvatar(body);
-            if (built) _anim.avatar = built;
-            var ctrl = LoadLocomotion();
+            // Rocketbox FBX import is now set to Humanoid/CreateFromThisModel (Playable
+            // Alive Slice rank 1 fix, 2026-09-20) — Unity's own importer builds a clean
+            // avatar for the Bip01 skeleton and the instantiated prefab already carries
+            // it on this Animator. Prefer that; only hand-roll one (TryBipedAvatar) for
+            // a body whose import never produced a valid Humanoid avatar.
             var av = _anim.avatar;
-            // Mixamo clips on 3ds Max Biped skate and sink the hips. Authored
-            // BipedHinge gait is the accurate walk for this skeleton. Clips
-            // stay available for a true Mixamo humanoid.
-            _clipsFit = !_biped && ctrl && av && av.isHuman && av.isValid;
+            if (!av || !av.isHuman || !av.isValid)
+            {
+                var built = TryBipedAvatar(body);
+                if (built) { _anim.avatar = built; av = built; }
+            }
+            var ctrl = LoadLocomotion();
+            // Verified 2026-09-20 (edit-mode AnimationMode sample of HumanoidWalk onto
+            // the import-baked Rocketbox avatar): hips bob a clean ~0.86-0.92m, feet
+            // swing -1.5..+0.35 in Z with no skate/sink. The old "Mixamo skates on 3ds
+            // Max Biped" finding was about the runtime-built avatar, not this one — do
+            // not reintroduce a !_biped exclusion without a fresh measured regression.
+            _clipsFit = ctrl && av && av.isHuman && av.isValid;
             bool clipsFit = _clipsFit;
             if (_clipsFit)
             {
@@ -340,36 +374,43 @@ namespace Concordia // FORCE_REFRESH_0024
             body.position += Vector3.up * dy;
         }
 
-static GameObject LoadPersonPrefab(bool hero)
+static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         {
             GameObject go = null;
-
-            // REVERTED (2026-09-17): Aura's work order said "Quaternius Humanoid replace
-            // polo/khakis", and CX_Humanoid_Female.prefab (below) does wrap Rocketbox's f001 mesh
-            // — but that instruction predates the FreePacks.PaintIfBlank skin-texture fix earlier
-            // this session (real f001_body_color/f001_head_color photo-scanned maps, previously
-            // imported but never bound). "Polo/khakis" described an UNTEXTURED grey mannequin; that
-            // no longer exists. The real fix was binding the textures Rocketbox already had, not
-            // swapping the model. Quaternius (Casual_Male/Female — tried here) is a flat-shaded
-            // toon/low-poly pack with no texture maps at all — wrong aesthetic entirely for a
-            // photorealistic target. Left corrected (real-world import scale + Concordia dot-
-            // notation bone aliases now match) in case a genuinely stylized use ever needs it, but
-            // it is not the hero and must not be checked first here.
 #if UNITY_EDITOR
-            var cx = hero
-                ? "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab"
-                : "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab";
-            go = AssetDatabase.LoadAssetAtPath<GameObject>(cx);
-            if (!go)
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(
-                    hero
-                        ? "Assets/Concordia/Generated/Rig/CX_Humanoid_Male.fbx"
-                        : "Assets/Concordia/Generated/Rig/CX_Humanoid_Female.fbx");
-            if (go)
+            if (!string.IsNullOrEmpty(preferredPrefabPath))
             {
-                _lastPrefabPath = AssetDatabase.GetAssetPath(go);
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(preferredPrefabPath);
+                if (go)
+                {
+                    _lastPrefabPath = preferredPrefabPath;
+                    return go;
+                }
+            }
+
+            // CX is the authored character path for both the live player and road NPCs.
+            // Keep the existing Rocketbox pool only as an honest import fallback.
+            var cxPaths = hero
+                ? new[] { "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab" }
+                : ((Mathf.Abs(_bodySeq++) & 1) == 0
+                    ? new[]
+                    {
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab",
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab"
+                    }
+                    : new[]
+                    {
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab",
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab"
+                    });
+            foreach (var path in cxPaths)
+            {
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (!go) continue;
+                _lastPrefabPath = path;
                 return go;
             }
+
             var adult = new[]
             {
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
@@ -552,7 +593,19 @@ static GameObject LoadPersonPrefab(bool hero)
 
         static RuntimeAnimatorController LoadLocomotion()
         {
-            var c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
+            // ConcordiaLocomotion (Playable Alive Slice rank 1) is the real controller —
+            // real Idle/Walk/Run/Sprint/JumpStart clips on a Humanoid avatar. SoldierLocomotion
+            // and the rest are pre-slice leftovers kept only as a last-resort fallback.
+            var c = Resources.Load<RuntimeAnimatorController>("Concordia/ConcordiaLocomotion");
+#if UNITY_EDITOR
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Anim/ConcordiaLocomotion.controller");
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Resources/Concordia/ConcordiaLocomotion.controller");
+#endif
+            if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
 #if UNITY_EDITOR
             if (!c)
                 c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
@@ -860,19 +913,10 @@ static GameObject LoadPersonPrefab(bool hero)
                 var authoredBody = transform.Find("AuthoredPerson");
                 if (authoredBody && authoredBody.gameObject.activeInHierarchy)
                     PlantAuthoredFeet(authoredBody);
-                if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
-                {
-                    float dy = _handL.position.y - _uArmL.position.y;
-                    if (dy > -0.22f && !_anim)
-                    {
-                        _clipsFit = false;
-                        HangAuthoredArms(0f);
-                    }
-                }
                 _plantFrames++;
             }
 
-            bool animating = _clipsFit && !_biped && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
+            bool animating = _clipsFit && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
                 && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _sit < 0.4f;
             if (!animating)
             {
@@ -882,8 +926,32 @@ static GameObject LoadPersonPrefab(bool hero)
             else
                 ApplyAuthoredAttitude();
 
+            // Owner-flagged 2026-09-20: HumanoidIdle (the only validated
+            // clip-driven idle loop, from the KinematicCharacterController
+            // Ethan pack) is an authored "at ease, hands behind the back"
+            // stance — measured, its right hand sits ~0.28m BEHIND the hip
+            // line vs ~0 neutral for a relaxed standing pose. Fine unarmed;
+            // with a weapon gripped, the blade reads as floating through the
+            // back because no one holds a sword that way. Swing the upper arm
+            // to BipedArm's straight-hang-at-the-side pose while a weapon is
+            // held and the body is idle-ish; fades out as Speed rises so it
+            // never fights the walk/run clip's own (already-natural) arm
+            // swing. This overrides the clip pose for this one bone only,
+            // same LateUpdate-overlay pattern as ApplyAuthoredAttitude/Strike.
+            if (animating && sword && _uArmR && _speed < 1.4f)
+            {
+                float idleFactor = Mathf.Clamp01(1f - _speed / 1.4f);
+                _uArmR.localRotation = Quaternion.Slerp(_uArmR.localRotation, BipedArm(_uArmR, _rArmRest, 6f, false), idleFactor);
+            }
+
+            ApplyDodgeOverlay();
             if (_slashT > 0f && _uArmR)
-                ApplyAuthoredStrike();
+            {
+                var authoredStrike = Concordia.Animation.AnimationVerbCatalog.HasAuthoredClip(
+                    _style == FightStyle.Sword ? "combat.sword.slash" : "combat.light");
+                if (authoredStrike) _slashT -= Time.deltaTime;
+                else ApplyAuthoredStrike();
+            }
             else if (_anticipateT > 0f && _uArmR)
             {
                 _anticipateT -= Time.deltaTime;
@@ -905,6 +973,18 @@ static GameObject LoadPersonPrefab(bool hero)
                 _eyeL.localScale = new Vector3(_eye0.x, _eye0.y * lid, _eye0.z);
                 _eyeR.localScale = new Vector3(_eye0.x, _eye0.y * lid, _eye0.z);
             }
+        }
+
+        void ApplyDodgeOverlay()
+        {
+            if (_dodgeT <= 0f || !_hip) return;
+            _dodgeT -= Time.deltaTime;
+            var u = 1f - Mathf.Clamp01(_dodgeT / CombatMotion.DodgeDuration);
+            var w = CombatMotion.DodgePulse(u);
+            _hip.localRotation *= Quaternion.Euler(16f * w, _dodgeYaw * 0.35f * w, 0f);
+            if (_uLegL) _uLegL.localRotation *= Quaternion.Euler(26f * w, 0f, 0f);
+            if (_uLegR) _uLegR.localRotation *= Quaternion.Euler(20f * w, 0f, 0f);
+            if (_spine) _spine.localRotation *= Quaternion.Euler(8f * w, _dodgeYaw * 0.2f * w, 0f);
         }
 
         void ApplyAuthoredStrike()

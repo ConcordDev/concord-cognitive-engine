@@ -1,0 +1,137 @@
+UNITY-CLIENT CHAT ONLY. ConcordiaHub / unity-client.
+FULL-SCALE OPEN-WORLD RPG — DO NOT STOP until FULL_RPG_REPORT.txt is written.
+This is not a polish wave and not “next layer.” Build the full essential RPG experience against the research bar in ~/.zuko/FULL_SCALE_RPG_RESEARCH_AND_CONCORD_AUDIT.md (and Generated copy). Chain R0→R12 continuously. If blocked, append exact blocker + URL/path to ~/.zuko/NEED_DUTCH.md and CONTINUE every unblocked phase.
+
+## RESEARCH BAR (ESSENTIAL — must become real in Play)
+Continuously traversable world · structural player agency · systemic simulation that evolves unobserved · RPG pillars: persistent build, choice-with-consequence, long-form progression · denser world than empty map · traversal that stays session-legible · quests completable regardless of order · branching dialogue with persisted state · scoped faction/reputation · combat that stays satisfying · economy/crafting that gates meaning if claimed · legible NPC schedules · stable save identity · basic accessibility · measurable perf · proofs, not vibes.
+
+Reference maturity exit for THIS order: one Alpha-complete living megaworld RPG — all main systems functionally present end-to-end with enough authored content to play a multi-hour loop, not AAA content volume. Content-complete / ship volume is OUT OF SCOPE for this paste; systems+seed content+proofs are IN SCOPE.
+
+## ALREADY DONE — SKIP (do not redo)
+- 147 mats / ~146 CX prefabs / CxDress
+- LIFE_PROOF A–F PASS (kill→spoils→gossip→Hub remembers) — KEEP WORKING; do not regress
+- ContinentStream / SoftEnter / SettlementCompiler (tested)
+- HitResolver / ActionRunner / Hostile melee core
+- UAL1 clip extract + UAL1_CLIP_INDEX.txt
+- Research/audit docs under ~/.zuko/FULL_SCALE_*
+
+## HARD RULES
+- Do NOT wipe Library, kill Concord, kill Claude RC, or bulk-reimport Poly Haven.
+- Prefer SURFACE backend systems (WebSocket) over reinventing thinner Unity-only models: server/lib/hooks.js, npc_nemesis / server/lib/npc-relationships.js, server/emergent/quest-engine.js, Skill/kingdom/combat feeds already on ConcordClient.
+- Prefer WIRE GameplayCore (Fabrication/Gunsmithing/Spellcrafting/Vehicles/Containers ~9k LOC already live-input-wired) over rewriting it — spawn content so players can reach it.
+- Prefer ONE persistence source of truth (reconcile WorldMemory + ConcordiaPersistenceService).
+- Do NOT claim PASS without proof files + Play evidence under Assets/Concordia/Generated/Proof/FullRpg/…
+- Disk tight (~12 GB): no giant new packs unless free ≥8 GB; bind UAL1 first; login downloads → NEED_DUTCH + continue.
+- Animation: Quaternius clips only — never Quaternius meshes as CX identity. No motion-matching moonshot.
+- After every Rn append to Assets/Concordia/Generated/FULL_RPG_PROGRESS.txt and proceed immediately.
+
+────────────────────────────────────────
+## R0 — CLOSE THE STALLED SLICE (foundation; finish first)
+1) Bind UAL1 Humanoid into ConcordiaLocomotion (Idle/Walk/Jog/Sprint/Jump/Roll/Sword/Hit/Death). Damped SetFloat("Speed", v, 0.12f, dt). When _clipsFit, kill full-body procedural gait + moving PlantFeet.
+2) Combat sync: HitResolver contact ↔ Sword_Attack apex; dodge i-frames ↔ Roll; honesty in AnimationLiveBindings (no Idle-as-Attack).
+3) Glide: body turn, stop inertia, ChaseCamera damp; run ConcordiaVisualBenchmarkController 30s → GLIDE_PERF_PROOF.txt (p95≤20ms / p99≤33ms or fix top spike).
+4) Re-smoke LIFE_PROOF A–F (must still PASS).
+Write: AURA_MOCAP_BIND_PROOF.txt, AURA_GLIDE_PROOF.txt, GLIDE_PERF_PROOF.txt (both ~/.zuko and Generated/).
+
+## R1 — PERSISTENCE TRUTH
+1) Reconcile WorldMemory + ConcordiaPersistenceService into one authoritative save path (DTO snapshot, versioned).
+2) Persist: dead/named state, inventory/gear, quest Active/Done, faction standings, skill/build points, event memory log, player world+kit, companion ids.
+3) Proof: Play → change all of the above → SoftEnter out-and-back → Editor domain reload / quit-reenter → state survives.
+Write: Proof/FullRpg/R1_SAVE.md
+
+## R2 — WORLD MEMORY AS A SYSTEM (not one kill string)
+1) Replace single rolling LastEvent with a bounded WorldEventLog (queue, typed events, timestamps, actor ids, world id). Kill must not silently overwrite quest/dialogue events.
+2) Per-NPC memory stubs client-side OR (preferred) subscribe to backend npc_nemesis + hooks via ConcordClient WebSocket — surface grudges, leverage, inheritance-on-death in HUD/dialogue/gossip.
+3) Generalize GossipEar + cascade writers beyond kill: quest complete, dialogue choice, faction shift, theft/crime, gift/aid.
+4) Proof: do THREE different event types in Fantasy, SoftEnter Hub, hear/see all three remembered distinctly.
+Write: Proof/FullRpg/R2_MEMORY.md
+
+## R3 — QUESTS (real RPG quest architecture)
+1) Decision: connect Unity boards to server/emergent/quest-engine.js (prereqs, breadcrumbs, LLM dialogue) OR commit client QuestLog + real persistence + data-driven JSON authoring. Pick ONE and finish it — do not leave two half-systems.
+2) Author ≥1 mainline chain + ≥3 side objectives across Hub + Fantasy (+ one more spoke if ready). Completable in any sensible order; no softlock; cross-quest state consistent after save/load.
+3) Quest UI: Active / Done / failed-or-abandoned; objective breadcrumbs in world (SoftEnter path, not menu teleport).
+4) Proof: start mid-chain, SoftEnter, reload, finish; second route order still completes.
+Write: Proof/FullRpg/R3_QUESTS.md
+
+## R4 — DIALOGUE + CHOICE-WITH-CONSEQUENCE
+1) Branching choice UI (not only AskTwoB monologue). Persist choice ids into WorldEventLog + backend if available.
+2) Later content MUST read earlier choices (quest gates, prices, gossip lines, NPC hostility).
+3) Wire GossipEar + nemesis/hooks so dialogue can reference real grudges.
+4) Proof: two playthroughs of the same conversation → different Hub gossip / quest availability / price.
+Write: Proof/FullRpg/R4_DIALOGUE.md
+
+## R5 — FACTIONS / REPUTATION / CRIME
+1) Replace factionHeat scalar with per-faction standings (Court, Vinewood, Sundering bandits, ≥1 more). Prefer backend reputation cache / hooks; else data-driven Unity FactionBook.
+2) NPC dialogue, prices, quest gates, and guard responses read standing. Recovery path exists (atonement / bribe / quest).
+3) Crime: witness-gated wanted (theft/assault in Court vs road). Flower Law preserved (no steel wounds in Court).
+4) Proof: raise/lower two factions; see price + dialogue + gate change; commit witnessed crime → reaction; leave and return → standing persists.
+Write: Proof/FullRpg/R5_FACTIONS.md
+
+## R6 — PROGRESSION / BUILD (replace SkillLattice scaffold)
+1) Real SkillLattice: skill points, ≥3 meaningful branches (e.g. Steel / Presence / Craft), unlocks that change play (moves, dialogue options, craft recipes, travel perks) — not VFX path lookup only.
+2) Respec path or clear permanent choices; HUD shows build.
+3) Proof: two distinct builds feel different in the same Sundering fight + one dialogue gate.
+Write: Proof/FullRpg/R6_BUILD.md
+
+## R7 — ITEMS / LOOT / CRAFTING / ECONOMY (wake GameplayCore)
+1) Spawn authored content that reaches live GameplayCore systems: Fabrication, Gunsmithing, Spellcrafting, Vehicles, Containers — benches, recipes, materials, at least one craftable weapon/armor, one vehicle or mount-related craft if applicable.
+2) CharacterGear + spoils economy: materials drop from kills/chests; vendors with faction-modified prices; currency retains mid-slice value.
+3) Crafting gates ≥1 exploration or combat advantage.
+4) Proof: gather → craft → equip → win a fight you couldn’t equally win uncrafted; save/load keeps craft unlocks.
+Write: Proof/FullRpg/R7_CRAFT.md
+
+## R8 — COMBAT DEPTH + ENEMY ECOLOGY + BOSS
+1) Expand beyond one bandit kit: ≥3 enemy archetypes with distinct telegraphs (brute / skirmisher / ranged-or-caster). Use UAL1/UAL2/Kevin/Mixamo if on disk; else procedural honesty until packs land (NEED_DUTCH).
+2) One boss encounter with distinct phases/personality (not HP sponge) on Fantasy or a dedicated arena spoke.
+3) Enemy ecology: patrols replace kills; faction heat / nemesis escalates survivors; RoadWorld notices absence.
+4) CombatFeel + CounterMatches mandatory on player-facing hits.
+5) Proof: 60s multi-archetype fight; boss kill; return later → world/NPC reaction.
+Write: Proof/FullRpg/R8_COMBAT.md
+
+## R9 — NPC LIFE / SCHEDULES / SOCIAL
+1) NpcLife schedules readable in Play (sleep/work/eat/gather/hide) across Hub Court + Vinewood + Fantasy camp — not static idle loops.
+2) Social verbs where anim exists; otherwise dialogue+schedule proof.
+3) Settlements stay SettlementCompiler-quality; dress gates/props; kill PlazaPad identity (Kaykit/Kenney/BOXOPHOBIC + CX mats).
+4) Proof: watch one NPC through ≥2 schedule blocks; interrupt; recover; SoftEnter back — schedule continues.
+Write: Proof/FullRpg/R9_NPC.md
+
+## R10 — TRAVERSAL / MOUNTS / INTER-MEGAWORLD
+1) SoftEnter Hub↔Fantasy↔third spoke: breadcrumbs every 40–80m; ≥3 horizon POI types; sky/fog/kit/civic shift; WorldGate teleport ONLY at Canon gates.
+2) Mount riding: CX_Mount_Horse gets real ride/dismount/gallop (or honest NEED_DUTCH if anim missing — still implement locomotion mount with placeholder clip).
+3) ContinentStream IsReady / ReceiveTraveler; player.world+kit sync; ban empty commute / house spam.
+4) Proof: walk Hub→Fantasy→third→Hub without menu teleport; mount segment; shots in Proof/FullRpg/Travel/.
+Write: Proof/FullRpg/R10_TRAVEL.md
+
+## R11 — COMPANIONS / PARTY
+1) At least one companion with follow AI, enter-combat assist, basic dialogue, and persistence (not HUD PartyCount only).
+2) Companion reacts to WorldEventLog (comments on kill/quest/faction).
+3) Proof: recruit → SoftEnter → fight together → reload → still following.
+Write: Proof/FullRpg/R11_PARTY.md
+
+## R12 — PRESENTATION / UI / AUDIO / A11Y BASELINE / CONCORD LIVE
+1) Look: Court weenie + Vinewood densify; dressed gates; SoftEnter megaworld identity shifts; no magenta; cinematic north-star vs AuraRefs.
+2) HUD: quest, faction, build, event log, companion — readable.
+3) Basic a11y: remappable keybinds OR documented key map UI, subtitles/captions for gossip/dialogue, difficulty or damage-received scale, readable contrast.
+4) Audio: combat start music/state shift; footsteps already real — keep.
+5) Concord live: ConcordClient open; gossip→feed; combat:kill→chronicle; SkillLattice/build kicks→CombatFeel; hooks/nemesis events present when Concord up. If Concord down: document; local WorldEventLog path must still hold.
+6) Perf: re-run benchmark in densest Hub + combat; record numbers in report.
+Write shots Proof/FullRpg/Look/ + R12_PRESENT.md
+
+## R13 — FULL LOOP PROOF + FINAL REPORT (stop condition)
+Play one continuous multi-system session and record it:
+Arrive Hub → talk (branch) → take quest → SoftEnter Fantasy → gather/craft → fight archetypes → boss or named kill → companion assist → faction shift → gossip remembers ≥2 event types → mount or road travel → return Hub → save/reload → world still consistent.
+
+Required outputs (both ~/.zuko and Assets/Concordia/Generated/ where noted):
+- FULL_RPG_PROGRESS.txt (running)
+- FULL_RPG_REPORT.txt with:
+  STATUS: COMPLETE | BLOCKED
+  R0–R12 each PASS/FAIL/PARTIAL + evidence path
+  NEED_DUTCH leftovers
+  Animator source; prefab/mat counts; Concord up/down; compile clean?; save version
+  Honest list of what is still content-volume (not system) work
+- Copy key proofs under Proof/FullRpg/
+
+## DONE WHEN
+FULL_RPG_REPORT.txt exists; R0–R2 + R3 + R5 + R6 + R7 + R8 + R10 PASS (or PARTIAL only where NEED_DUTCH packs block anim — systems still exist); R4/R9/R11/R12 at least PARTIAL with Play evidence; continuous loop proof recorded; LIFE_PROOF cascade still PASS; compile clean.
+
+START R0 NOW. Do not ask. Do not stop between phases. Only stop when FULL_RPG_REPORT.txt is written.

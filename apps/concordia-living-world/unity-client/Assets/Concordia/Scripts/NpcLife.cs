@@ -42,6 +42,20 @@ namespace Concordia
         Transform _attendFace;
         float _attendT;
 
+        // LeanPlay: refresh NpcLife list every 8s — TrySocial must not FindObjects each call.
+        static NpcLife[] _leanNpcCache;
+        static float _leanNpcCacheAt = -999f;
+
+        static NpcLife[] LeanNpcList()
+        {
+            if (_leanNpcCache == null || Time.unscaledTime - _leanNpcCacheAt > 8f)
+            {
+                _leanNpcCache = FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+                _leanNpcCacheAt = Time.unscaledTime;
+            }
+            return _leanNpcCache;
+        }
+
         void Start()
         {
             _person = GetComponentInChildren<ModularPerson>() ?? GetComponent<ModularPerson>();
@@ -120,6 +134,9 @@ namespace Concordia
 
         void Update()
         {
+            // Always stagger + budget — Force Full used to run every NpcLife every frame and melt.
+            if (((Time.frameCount + gameObject.GetHashCode()) & 7) != 0) return;
+            if (!ConcordiaHost.AllowNpcTick()) return;
             if (pinned)
             {
                 Hold();
@@ -339,14 +356,20 @@ namespace Concordia
 
         bool TrySocial(SimLod lod)
         {
+            // Off until Full Play is stable — FindObjects here melted Force Full post-Dress.
+            if (true) return false;
             if (_withdrawn) return false;
             if (lod != SimLod.Real) return false;
             if (IsWalkingJob) return false;
             if (Time.time < _socialAt) return false;
             _socialAt = Time.time + 8f;
             var p = transform.position;
-            foreach (var other in FindObjectsByType<NpcLife>(FindObjectsInactive.Exclude))
+            var others = LeanNpcList();
+            if (others == null) return false;
+            var scanned = 0;
+            foreach (var other in others)
             {
+                if (scanned++ > 48) break; // budget dense Court
                 if (!other || other == this || other.pinned) continue;
                 if (other.IsWalkingJob) continue;
                 if (other.act == "flee" || other.act == "sleep" || other.act == "inside") continue;
@@ -364,6 +387,7 @@ namespace Concordia
 
         bool TryEnter(string reason)
         {
+            // LeanPlay: BuildingPlace.Nearest uses 8s cache — enter is safe again.
             var place = BuildingPlace.Nearest(transform.position, PlanFor(job));
             if (!place) return false;
             var to = place.door - transform.position;
@@ -435,7 +459,8 @@ namespace Concordia
                 else _vel.y += -22f * Time.deltaTime;
                 _vel.x = Mathf.Lerp(_vel.x, dir.x * speed, 1f - Mathf.Exp(-8f * Time.deltaTime));
                 _vel.z = Mathf.Lerp(_vel.z, dir.z * speed, 1f - Mathf.Exp(-8f * Time.deltaTime));
-                _cc.Move(_vel * Time.deltaTime);
+                if (Grounding.CanMove(_cc))
+                    _cc.Move(_vel * Time.deltaTime);
             }
             else
                 transform.position += dir * speed * Time.deltaTime;
@@ -451,7 +476,8 @@ namespace Concordia
             else _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;
             _vel.z = 0f;
-            _cc.Move(_vel * Time.deltaTime);
+            if (Grounding.CanMove(_cc))
+                _cc.Move(_vel * Time.deltaTime);
         }
 
         void Snap(Vector3 dest)
@@ -629,12 +655,28 @@ namespace Concordia
             return u;
         }
 
+        static UsePlace[] _leanUseCache;
+        static float _leanUseCacheAt = -999f;
+
+        static UsePlace[] UsePlaces()
+        {
+            // Always cache — Force Full used to FindObjects every Nearest() and melted Update.
+            if (_leanUseCache == null || Time.unscaledTime - _leanUseCacheAt > 8f)
+            {
+                _leanUseCache = FindObjectsByType<UsePlace>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+                _leanUseCacheAt = Time.unscaledTime;
+            }
+            return _leanUseCache;
+        }
+
         public static UsePlace Nearest(Vector3 from, float max = 2.4f)
         {
             UsePlace best = null;
             float bestD = max;
-            foreach (var u in FindObjectsByType<UsePlace>(FindObjectsInactive.Exclude))
+            var list = UsePlaces();
+            for (var i = 0; i < list.Length; i++)
             {
+                var u = list[i];
                 if (!u) continue;
                 var d = Vector3.Distance(from, u.transform.position);
                 if (d < bestD) { bestD = d; best = u; }
@@ -649,12 +691,28 @@ namespace Concordia
         public Vector3 door;
         public string Prompt => "E  ·  Enter";
 
+        static BuildingPlace[] _leanPlaceCache;
+        static float _leanPlaceCacheAt = -999f;
+
+        static BuildingPlace[] Places()
+        {
+            // Always cache — same Force Full FindObjects storm as UsePlaces.
+            if (_leanPlaceCache == null || Time.unscaledTime - _leanPlaceCacheAt > 8f)
+            {
+                _leanPlaceCache = FindObjectsByType<BuildingPlace>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+                _leanPlaceCacheAt = Time.unscaledTime;
+            }
+            return _leanPlaceCache;
+        }
+
         public static BuildingPlace NearestDoor(Vector3 from, float max = 3.4f)
         {
             BuildingPlace best = null;
             float bestD = max;
-            foreach (var p in FindObjectsByType<BuildingPlace>(FindObjectsInactive.Exclude))
+            var list = Places();
+            for (var i = 0; i < list.Length; i++)
             {
+                var p = list[i];
                 if (!p) continue;
                 var d = Vector3.Distance(from, p.door);
                 if (d < bestD) { bestD = d; best = p; }
@@ -666,8 +724,10 @@ namespace Concordia
         {
             BuildingPlace best = null;
             float bestD = 28f;
-            foreach (var p in FindObjectsByType<BuildingPlace>(FindObjectsInactive.Exclude))
+            var list = Places();
+            for (var i = 0; i < list.Length; i++)
             {
+                var p = list[i];
                 if (!p) continue;
                 if (!string.IsNullOrEmpty(plan) && p.plan != plan && p.plan != "tavern") continue;
                 var d = Vector3.Distance(from, p.door);

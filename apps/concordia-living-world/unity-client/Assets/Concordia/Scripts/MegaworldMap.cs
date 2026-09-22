@@ -77,7 +77,11 @@ namespace Concordia
             return dx * dx + dz * dz;
         }
 
-        public static WorldId RegionAt(Vector3 present)
+        /// <summary>
+        /// Legacy country-scale lookup retained as the final fallback for the
+        /// first-class geography layer.
+        /// </summary>
+        public static WorldId LegacyCountryAt(Vector3 present)
         {
             WorldId best = WorldId.Hub;
             var bestD = ArriveM * ArriveM;
@@ -89,6 +93,8 @@ namespace Concordia
             }
             return best;
         }
+
+        public static WorldId RegionAt(Vector3 present) => WorldGeography.CountryAt(present);
 
         /// <summary>
         /// Civilization on the player's bearing from the Hub. Signs and

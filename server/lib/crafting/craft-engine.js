@@ -16,6 +16,7 @@ import { validateDesign, estimateStats } from './recipe-validator.js';
 import { resolveCraft } from '../craft-resolve.js';
 import { onPlayerCraft } from '../gameplay-asset-bridge.js';
 import { recordTransaction as recordWorldMarketTxn } from '../world-economy.js';
+import { publish as publishRuntimeEvent } from '../runtime/event-bus.js';
 
 // ── Living Society P0 — resource-grounded quality ────────────────────────────────
 //
@@ -307,6 +308,32 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
         quality: Math.max(0, Math.min(10, Math.round((out.qualityMultiplier ?? 1) * 2))),
       });
     } catch { /* evo-asset best-effort */ }
+  }
+
+  // Concord Runtime event bus (docs/CONCORD_RUNTIME_MASTER_SPEC.md §9) —
+  // the actual "forge sword -> other lenses react" chain a full-Concord
+  // audit named as the real remaining gap: crafting produces a DTU, but
+  // until this point nothing told any OTHER lens that happened. This is
+  // the first hook in that chain; lib/runtime/reactions.js is the first
+  // subscriber (a real player-facing notification, not a demo). Publish
+  // AFTER the transaction has committed (never inside db.transaction —
+  // a subscriber must only ever see a craft that actually happened) and
+  // best-effort like every other post-commit side effect in this
+  // function: a reaction-graph hiccup must never make a real craft look
+  // like it failed to the player who just paid real resources for it.
+  if (resultDtu?.id) {
+    try {
+      publishRuntimeEvent("item.crafted", {
+        userId,
+        worldId,
+        dtuId: resultDtu.id,
+        recipeId,
+        itemName: resultDtu.name,
+        outputType: resultDtu.type,
+        qualityMultiplier: out.qualityMultiplier ?? 1,
+        failed: !!out.failed,
+      });
+    } catch { /* event-bus publish is best-effort — never affects a real craft */ }
   }
 
   return out;

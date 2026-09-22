@@ -82,14 +82,21 @@ namespace Concordia
             Places.Clear();
             Kills.Clear();
             Held.Clear();
+            ConcordiaDialogueService.Reset();
         }
 
-        public static string Offer(WorldBook.Quest q, WorldId world)
+public static string Offer(WorldBook.Quest q, WorldId world)
         {
             if (q == null || string.IsNullOrEmpty(q.id)) return null;
             if (Done.Contains(q.id)) return q.title + " — already complete.";
             var live = Find(q.id);
             if (live != null) return ProgressLine(live);
+            var factionId = FactionStandingIntegration.FactionForNpc(world, q.giver_npc_id);
+            if (!FactionStandingIntegration.CanAcceptQuest(world, factionId, out var standingReason))
+            {
+                FactionStandingIntegration.RecordDecision("quest-block", q.title + " blocked: " + standingReason, factionId);
+                return q.title + " — locked. " + standingReason;
+            }
             if (!PrereqsMet(q))
                 return q.title + " — locked. Finish " + string.Join(", ", q.prerequisites ?? Array.Empty<string>()) + " first.";
             if (Active.Count >= MaxActive)

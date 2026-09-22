@@ -51,7 +51,7 @@ namespace Concordia.Editor
         {
             { 85732, new[] { "Barking_Dog" } },
             { 107400, new[] { "BOXOPHOBIC" } },
-            { 235621, new[] { "Convai" } },
+
             { 56841, new[] { "Earth" } },
             { 987, new[] { "EasyRoads3D" } },
             { 65284, new[] { "ExplosiveLLC" } },

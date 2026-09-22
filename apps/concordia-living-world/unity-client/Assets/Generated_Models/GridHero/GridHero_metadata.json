@@ -1,0 +1,23 @@
+{
+  "task_id": "d924facc-2caf-46cc-85c8-cab99a52300b",
+  "original_generation_task_id": "fcc68bf9-4f55-47f3-9779-78a46d3e8ea0",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/fcc68bf9-4f55-47f3-9779-78a46d3e8ea0/tripo_model_fcc68bf9-4f55-47f3-9779-78a46d3e8ea0.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvZmNjNjhiZjktNGY1NS00N2YzLTk3NzktNzhhNDZkM2U4ZWEwL3RyaXBvX21vZGVsX2ZjYzY4YmY5LTRmNTUtNDdmMy05Nzc5LTc4YTQ2ZDNlOGVhMC5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzcwMjJ9fX1dfQ__&Signature=on4m~lpAgochQTUzJeqje7SlRjGn2qr0FJQB5hStSRu7~4sS~7vCTQxgFA~EkVyZdAW~j7BWafpZYmVka7avVNxAZ4CQMk1jIcr9VMT1y111CXEqwKlUTNsN0IsutpmGcVT3V7ELOhUraOt4QTrX0Nrcj6-D7i2cBjmLBKVBysG3C-7bI3JZ8JNHLLh6kuUULsnnAXtMmtMINcONuCoBkra9o8vJOebwfZeDtq227j9c~4toNpRFjxxZ3Zg78mC1-uJp4MUnrCGmJYzggzZVqlhDnrIp5ulF2qjjcxCOxF1VzHuK5Tbuj25B74vlTUUpjsToT5ay~qSj9H9PIoei~Q__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:50:29.008255",
+  "description": "Provisional, non-canon generation brief: compose a neon megacity hero landmark that makes the mainframe/substation and blackout-zone contrast legible, grounded in lore_the_upload, lore_first_blackout, and cyber_quarter_blackout. Hold the opposing visual grammar of Zero Collective distributed governance and Blackout Resistance offline civic infrastructure. Reserve binding at Chunk_Cyber/VisualFidelity/GridHero; do not instantiate until the regional grammar and runtime audit pass.",
+  "negative_prompt": "No generic neon tower without infrastructure, fantasy magic, superhero monument, numbered Grid streets, invented AI verdicts, invented faction alliances, or a clean uninterrupted power-city silhouette.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/GridHero/GridHero_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/GridHero/GridHero.fbx"
+}

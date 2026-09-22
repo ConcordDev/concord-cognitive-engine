@@ -29,6 +29,20 @@ namespace Concordia
         readonly Dictionary<WorldId, Transform> _chunks = new Dictionary<WorldId, Transform>();
         readonly Dictionary<WorldId, int> _lod = new Dictionary<WorldId, int>();
         Light _sun;
+        int _lastTickFrame = -1;
+        Coroutine _fullBuild;
+        Coroutine _wildernessBuild;
+        Coroutine _continentBootstrap;
+
+        WorldId _fullBuildWorld;
+        int _fullBuildGeneration;
+        int _continentGeneration;
+        int _continentBootstrapGeneration;
+
+        readonly Dictionary<WorldId, ChunkReadiness> _readiness = new Dictionary<WorldId, ChunkReadiness>();
+        readonly Dictionary<WorldId, int> _chunkGenerations = new Dictionary<WorldId, int>();
+
+        bool _continentReady;
         bool _roadLife;
 
         public static int LodOf(float dist)
@@ -54,32 +68,97 @@ namespace Concordia
             Live = this;
         }
 
-        public void Boot(WorldId start)
+public void Boot(WorldId start)
         {
             Live = this;
             LastTravelKind = "boot";
             EnsureContinent();
-            Ensure(WorldId.Hub);
-            if (start != WorldId.Hub) Ensure(start);
-            // Full boot paints every civilization impostor at once — OOM on 16GB
-            // Macs under Ollama thrash. LeanPlay loads impostors on Tick approach.
-            if (ConcordiaHost.BootContinentImpostors)
+            // ROOT CAUSE FIX: Force Full used sync BuildChunk/BuildHub and starved Play.
+            RequestFull(WorldId.Hub);
+            if (start != WorldId.Hub)
+                EnsureImpostor(start);
+            Debug.Log("[Concordia] Boot: staged Hub RequestFull + SeedImpostorsStaged (Full and Lean)");
+            StartCoroutine(SeedImpostorsStaged(start));
+            ApplySky(start);
+        }
+
+        System.Collections.IEnumerator SeedImpostorsStaged(WorldId start)
+        {
+            // Let Hub plaza/cast get a few frames first — keep short so LeanPlay doesn't starve seed.
+            for (int i = 0; i < 3; i++) yield return null;
+            int n = 0;
+            int failed = 0;
+            foreach (var id in MegaworldMap.All)
             {
-                foreach (var id in MegaworldMap.All)
+                if (id == WorldId.Hub || id == start) continue;
+                try
                 {
-                    if (id == WorldId.Hub || id == start) continue;
-                    EnsureImpostor(id);
+                    var chunk = EnsureImpostor(id);
+                    if (chunk) n++;
+                    else { failed++; Debug.LogWarning("[Concordia] FarGeographySeed EnsureImpostor null for " + id); }
+                }
+                catch (System.Exception ex)
+                {
+                    failed++;
+                    Debug.LogWarning("[Concordia] LeanPlay: impostor " + id + " failed: " + ex.Message);
+                }
+                yield return null;
+            }
+            Debug.Log("[Concordia] FarGeographySeed impostors=" + n + " failed=" + failed + " (continent Present masses)");
+            Debug.Log("[Concordia] LeanPlay: continent impostors seeded count=" + n);
+        }
+
+        /// <summary>
+        /// Sync seed for stills / recovery — LeanPlay-safe (impostors only, no RequestFull).
+        /// </summary>
+        public int EnsureFarGeographyNow()
+        {
+            int n = 0;
+            foreach (var id in MegaworldMap.All)
+            {
+                if (id == WorldId.Hub) continue;
+                try
+                {
+                    if (EnsureImpostor(id)) n++;
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning("[Concordia] EnsureFarGeographyNow " + id + ": " + ex.Message);
                 }
             }
-            else
-                Debug.Log("[Concordia] LeanPlay: defer continent impostors until approach");
-            ApplySky(start);
+            Debug.Log("[Concordia] FarGeographySeed impostors=" + n + " failed=0 (EnsureFarGeographyNow sync)");
+            return n;
         }
 
         public bool IsLoaded(WorldId id) => _chunks.TryGetValue(id, out var t) && t;
 
         public Transform ChunkOf(WorldId id) =>
             _chunks.TryGetValue(id, out var t) && t ? t : null;
+
+        public enum ChunkReadiness
+        {
+            Impostor,
+            Building,
+            Ready,
+            Retiring
+        }
+
+        public bool IsContinentReady => _continentReady;
+
+        public bool IsReady(WorldId id)
+        {
+            return _readiness.TryGetValue(id, out var state)
+                && state == ChunkReadiness.Ready
+                && _lod.TryGetValue(id, out var lod)
+                && lod >= 2
+                && _chunks.TryGetValue(id, out var chunk)
+                && chunk;
+        }
+
+        public bool TryGetReadiness(WorldId id, out ChunkReadiness state)
+        {
+            return _readiness.TryGetValue(id, out state);
+        }
 
         public bool InPresenter(Vector3 present)
         {
@@ -92,14 +171,16 @@ namespace Concordia
             return false;
         }
 
-        public void Tick(Vector3 player)
+public void Tick(Vector3 player)
         {
-            // Law of the land first, and also from the body (ReceiveHere)
-            // so a walked Present cannot stay Hub because Ensure hitch.
-            ReceiveHere(player);
+            // ConcordiaGame.Update and this component's LateUpdate can both reach
+            // streaming in the same frame. Serialize that path before any build work.
+            if (_lastTickFrame == Time.frameCount) return;
+            _lastTickFrame = Time.frameCount;
 
-            // LeanPlay: one new far-lod per Tick, Toward first. Loading all
-            // eight impostors on frame 1 froze Play (Time.time stuck at 0).
+            // LeanPlay: same LOD loop as desktop, but budget=1 so at most one RequestFull
+            // / EnsureImpostor per frame. Impostors already seeded at Boot.
+            ReceiveHere(player);
             var toward = MegaworldMap.Toward(player);
             int built = 0;
             int budget = ConcordiaHost.LeanPlay ? 1 : 8;
@@ -111,17 +192,41 @@ namespace Concordia
                     var d = Vector3.Distance(player, MegaworldMap.Present(id));
                     var lod = LodOf(d);
                     var have = _chunks.TryGetValue(id, out var live) && live;
-                    if (lod >= 2)
+                    int currentLod = _lod.TryGetValue(id, out var recordedLod) ? recordedLod : 0;
+                    if (lod >= 3)
                     {
-                        if (have || built < budget) { Ensure(id, lod); if (!have) built++; }
+                        if (!have || currentLod < 2)
+                        {
+                            if (built < budget)
+                            {
+                                // LeanPlay: never RequestFull foreign continents — FarGeography impostors only.
+                                // Hub full path is RequestFull(Hub) from Boot; untouched here (loop skips Hub).
+                                if (ConcordiaHost.LeanPlay)
+                                {
+                                    EnsureImpostor(id);
+                                    built++;
+                                }
+                                else
+                                {
+                                    RequestFull(id);
+                                    built++;
+                                }
+                            }
+                        }
                     }
-                    else if (lod == 1)
+                    else if (lod >= 1)
                     {
                         if (have) EnsureImpostor(id);
-                        else if (built < budget && (id == toward || !ConcordiaHost.LeanPlay))
+                        else if (built < budget)
                         {
-                            EnsureImpostor(id);
-                            built++;
+                            // LeanPlay: SeedImpostorsStaged can starve under Hub RequestFull.
+                            // Finish missing Present geography near Hub (1/frame) — never RequestFull here.
+                            bool nearHub = player.sqrMagnitude <= HubKeepM * HubKeepM;
+                            if (id == toward || !ConcordiaHost.LeanPlay || nearHub)
+                            {
+                                EnsureImpostor(id);
+                                built++;
+                            }
                         }
                     }
                     else Release(id);
@@ -131,22 +236,13 @@ namespace Concordia
                     Debug.LogException(e);
                 }
             }
-            // Hub Ring of 8 stays. Travel to Present (~220m) used to
-            // Release Hub past HubKeepM and leave one return WorldGate.
-            try { Ensure(WorldId.Hub); }
-            catch (System.Exception e) { Debug.LogException(e); }
-            if (!_roadLife && continent)
+            if (_fullBuild == null)
             {
-                try
-                {
-                    MakeWilderness();
-                    _roadLife = true;
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogException(e);
-                }
+                try { Ensure(WorldId.Hub); }
+                catch (System.Exception e) { Debug.LogException(e); }
             }
+            if (_continentReady && !_roadLife && continent && _wildernessBuild == null)
+                _wildernessBuild = StartCoroutine(BuildWildernessStaged(_continentGeneration));
         }
 
         /// <summary>
@@ -158,6 +254,8 @@ namespace Concordia
         {
             var p = ConcordiaPlayer.Live;
             if (!p || p.creatorLocked) return;
+            // Budget Tick — every-frame stream after CompileOne melted Editor update.
+            if ((Time.frameCount % 8) != 0) return;
             Tick(p.transform.position);
         }
 
@@ -167,18 +265,12 @@ namespace Concordia
             LastTravelKind = "link_gate";
             Ensure(WorldId.Hub);
             Ensure(next);
-            var spawn = MegaworldMap.Present(next);
-            if (next == WorldId.Hub) spawn = Canon.Spawn;
-            else spawn += new Vector3(0f, 0.12f, 2f);
-            player.cc.enabled = false;
-            player.transform.position = spawn;
-            player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-            player.cc.enabled = true;
-            if (player.cam) player.cam.yaw = Mathf.PI;
-            Grounding.Snap(player.cc);
-            player.world = next;
-            SoftEnter(next, "link_gate");
-            player.EquipWorldKit();
+            if (!IsReady(WorldId.Hub) || !IsReady(next))
+            {
+                StartCoroutine(CompleteTeleportWhenReady(player, next));
+                return;
+            }
+            CompleteTeleport(player, next);
         }
 
         public Transform Ensure(WorldId id, int lod = 2)
@@ -194,13 +286,84 @@ namespace Concordia
                 Release(id);
             }
             EnsureContinent();
-            var chunk = _builder.BuildChunk(id, continent);
-            if (!chunk) return null;
-            chunk.position = MegaworldMap.Present(id);
-            _chunks[id] = chunk;
-            _lod[id] = lod < 2 ? 2 : lod;
-            return chunk;
+            // Never sync BuildChunk — Full Play hit the same CX/visual storm LeanPlay avoided.
+            Debug.Log("[Concordia] Ensure routes to RequestFull for " + id);
+            RequestFull(id);
+            return _chunks.TryGetValue(id, out var pending) ? pending : EnsureImpostor(id);
         }
+
+void RequestFull(WorldId id)
+        {
+            // Slice 6 hard cap: LeanPlay keeps non-Hub at FarGeography impostor — no sync/staged BuildChunk.
+            if (ConcordiaHost.LeanPlay && id != WorldId.Hub)
+            {
+                EnsureImpostor(id);
+                return;
+            }
+            if (_fullBuild != null) return;
+            if (_lod.TryGetValue(id, out var lod) && lod >= 2 && _chunks.TryGetValue(id, out var existing) && existing)
+            {
+                SetReadiness(id, ChunkReadiness.Ready);
+                return;
+            }
+
+            var generation = NextChunkGeneration(id);
+            _fullBuildWorld = id;
+            _fullBuildGeneration = generation;
+            SetReadiness(id, ChunkReadiness.Building, generation);
+            _fullBuild = StartCoroutine(BuildFull(id, generation));
+        }
+
+System.Collections.IEnumerator BuildFull(WorldId id, int generation)
+        {
+            Transform built = null;
+            try
+            {
+                yield return StartCoroutine(WaitForContinentReady());
+                if (!_continentReady)
+                {
+                    Debug.LogError("[Concordia] BuildFull aborted: continent never reached ready for " + id);
+                    yield break;
+                }
+                if (!IsCurrentGeneration(id, generation) || !OwnsFullBuild(id, generation)) yield break;
+                if (!_builder || !continent) yield break;
+
+                yield return StartCoroutine(_builder.BuildChunkStaged(id, continent, chunk => built = chunk));
+                if (!IsCurrentGeneration(id, generation) || !OwnsFullBuild(id, generation))
+                {
+                    if (built) Object.Destroy(built.gameObject);
+                    yield break;
+                }
+
+                var current = _chunks.TryGetValue(id, out var currentChunk) && currentChunk ? currentChunk : null;
+                if (built)
+                {
+                    built.position = MegaworldMap.Present(id);
+                    if (current && current != built) Object.Destroy(current.gameObject);
+                    _chunks[id] = built;
+                    _lod[id] = 2;
+                    SetReadiness(id, ChunkReadiness.Ready, generation);
+                }
+                else if (current)
+                {
+                    _chunks[id] = current;
+                    _lod[id] = 1;
+                    SetReadiness(id, ChunkReadiness.Impostor, generation);
+                }
+                else
+                {
+                    _chunks.Remove(id);
+                    _lod.Remove(id);
+                    SetReadiness(id, ChunkReadiness.Retiring, generation);
+                }
+            }
+            finally
+            {
+                if (OwnsFullBuild(id, generation))
+                    _fullBuild = null;
+            }
+        }
+
 
         Transform EnsureImpostor(WorldId id)
         {
@@ -210,18 +373,25 @@ namespace Concordia
                 return existing;
             if (_chunks.TryGetValue(id, out var stale) && stale) Release(id);
             EnsureContinent();
+            if (!_builder || !continent) return null;
             var chunk = _builder.BuildImpostor(id, continent);
             if (!chunk) return null;
             chunk.position = MegaworldMap.Present(id);
             _chunks[id] = chunk;
             _lod[id] = 1;
+            if (!IsBuildRequested(id)) SetReadiness(id, ChunkReadiness.Impostor);
             return chunk;
         }
 
         void Release(WorldId id)
         {
-            if (!_chunks.TryGetValue(id, out var chunk) || !chunk) return;
-            Object.Destroy(chunk.gameObject);
+            bool hasChunk = _chunks.TryGetValue(id, out var chunk) && chunk;
+            bool hasState = _readiness.ContainsKey(id);
+            if (!hasChunk && !hasState) return;
+
+            var generation = NextChunkGeneration(id);
+            SetReadiness(id, ChunkReadiness.Retiring, generation);
+            if (hasChunk) Object.Destroy(chunk.gameObject);
             _chunks.Remove(id);
             _lod.Remove(id);
         }
@@ -249,6 +419,7 @@ namespace Concordia
         {
             string journey = null;
             var from = WorldClock.World;
+            var preservedKill = WorldClock.KillLine(WorldClock.LastEvent) ? WorldClock.LastEvent : null;
             if (WorldClock.World != id)
             {
                 if (id == WorldId.Hub)
@@ -263,13 +434,16 @@ namespace Concordia
             LastTravelKind = kind;
             WorldClock.Leave();
             WorldClock.Enter(id);
+            if (!string.IsNullOrEmpty(preservedKill))
+                WorldClock.LastEvent = preservedKill;
             if (kind == "walk" && from != id)
             {
                 var route = WorldGeography.RouteBetween(from, id);
                 if (route != null)
                     WorldGeography.RecordBorderCrossing(route.border, from, id, "physical");
             }
-            if (!string.IsNullOrEmpty(journey))
+            // Do not clobber a kill summary with the journey home stamp.
+            if (string.IsNullOrEmpty(preservedKill) && !string.IsNullOrEmpty(journey) && !WorldClock.KillLine(WorldClock.LastEvent))
                 WorldClock.LastEvent = journey;
             try { ApplySky(id); }
             catch (System.Exception e) { Debug.LogException(e); }
@@ -333,18 +507,182 @@ namespace Concordia
             }
         }
 
-        void EnsureContinent()
+void EnsureContinent()
         {
-            if (continent) return;
-            var go = GameObject.Find("Megaworld");
-            continent = go ? go.transform : new GameObject("Megaworld").transform;
-            continent.position = Vector3.zero;
-            MakeGround();
-            MakeRoads();
-            GeographyRuntime.BuildRoutes(continent);
-            WorldVisualDirector.EnsureContinent(continent);
-            MakeWilderness();
-            MakeSun();
+            if (!continent)
+            {
+                var go = GameObject.Find("Megaworld");
+                continent = go ? go.transform : new GameObject("Megaworld").transform;
+                continent.position = Vector3.zero;
+            }
+
+            if (_continentReady || _continentBootstrap != null) return;
+            _continentBootstrapGeneration = ++_continentGeneration;
+            _continentBootstrap = StartCoroutine(BuildContinentStaged(_continentBootstrapGeneration));
+        }
+
+System.Collections.IEnumerator BuildContinentStaged(int generation)
+        {
+            try
+            {
+                if (!continent) yield break;
+                // Readiness is the minimum physical bootstrap needed to begin the
+                // Hub full chunk. Route geometry, weather, sun, and wilderness are
+                // presentation work and continue independently after this gate.
+                Debug.Log("[Concordia] continent stage=ground");
+                try { MakeGround(); }
+                catch (System.Exception ex) { Debug.LogException(ex); }
+                yield return null;
+                if (generation != _continentGeneration) yield break;
+
+                Debug.Log("[Concordia] continent stage=court_horizon");
+                try { CourtWalkableHorizon.Ensure(continent); }
+                catch (System.Exception ex) { Debug.LogException(ex); }
+                yield return null;
+                if (generation != _continentGeneration) yield break;
+
+                StartCoroutine(FinishContinentPresentationStaged(generation));
+            }
+            finally
+            {
+                if (generation == _continentBootstrapGeneration)
+                {
+                    _continentReady = generation == _continentGeneration && continent != null;
+                    _continentBootstrap = null;
+                    Debug.Log("[Concordia] continent stage=ready ready=" + _continentReady);
+                }
+            }
+        }
+
+System.Collections.IEnumerator FinishContinentPresentationStaged(int generation)
+        {
+            if (generation != _continentGeneration || !continent) yield break;
+
+            Debug.Log("[Concordia] continent stage=hub_wilderness");
+            try { HubWilderness.Ensure(continent); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            if (generation != _continentGeneration) yield break;
+
+            Debug.Log("[Concordia] continent stage=roads");
+            try { MakeRoads(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            if (generation != _continentGeneration) yield break;
+
+            Debug.Log("[Concordia] continent stage=routes");
+            System.Collections.IEnumerator routes = null;
+            try { routes = GeographyRuntime.BuildRoutesStaged(continent); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            if (routes != null) yield return routes;
+            if (generation != _continentGeneration) yield break;
+
+            Debug.Log("[Concordia] continent stage=visuals");
+            System.Collections.IEnumerator visuals = null;
+            try { visuals = WorldVisualDirector.EnsureContinentStaged(continent); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            if (visuals != null) yield return visuals;
+            if (generation != _continentGeneration) yield break;
+
+            Debug.Log("[Concordia] continent stage=sun");
+            try { MakeSun(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            if (generation != _continentGeneration) yield break;
+
+            Debug.Log("[Concordia] continent stage=wilderness");
+            if (_wildernessBuild == null)
+                _wildernessBuild = StartCoroutine(BuildWildernessStaged(generation));
+            if (_wildernessBuild != null)
+                yield return _wildernessBuild;
+        }
+
+
+        System.Collections.IEnumerator WaitForContinentReady()
+        {
+            const int maxFrames = 1800;
+            int frames = 0;
+            while (!_continentReady && frames++ < maxFrames)
+            {
+                if (_continentBootstrap == null)
+                    EnsureContinent();
+                yield return null;
+            }
+            if (!_continentReady)
+                Debug.LogError("[Concordia] WaitForContinentReady timed out after " + maxFrames + " frames");
+        }
+
+        int NextChunkGeneration(WorldId id)
+        {
+            int next = 1;
+            if (_chunkGenerations.TryGetValue(id, out var current)) next = current + 1;
+            _chunkGenerations[id] = next;
+            return next;
+        }
+
+        void SetReadiness(WorldId id, ChunkReadiness state, int generation = -1)
+        {
+            _readiness[id] = state;
+            if (generation >= 0) _chunkGenerations[id] = generation;
+        }
+
+        bool IsCurrentGeneration(WorldId id, int generation)
+        {
+            return _chunkGenerations.TryGetValue(id, out var current) && current == generation;
+        }
+
+        bool OwnsFullBuild(WorldId id, int generation)
+        {
+            return _fullBuild != null && _fullBuildWorld == id && _fullBuildGeneration == generation;
+        }
+
+        bool IsBuildRequested(WorldId id)
+        {
+            return _fullBuild != null && _fullBuildWorld == id;
+        }
+
+        void CompleteTeleport(ConcordiaPlayer player, WorldId next)
+        {
+            if (!player) return;
+            var spawn = MegaworldMap.Present(next);
+            if (next == WorldId.Hub) spawn = Canon.Spawn;
+            else spawn += new Vector3(0f, 0.12f, 2f);
+            player.cc.enabled = false;
+            player.transform.position = spawn;
+            player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            player.cc.enabled = true;
+            if (player.cam) player.cam.yaw = Mathf.PI;
+            Grounding.Snap(player.cc);
+            player.world = next;
+            SoftEnter(next, "link_gate");
+            player.EquipWorldKit();
+        }
+
+        System.Collections.IEnumerator CompleteTeleportWhenReady(ConcordiaPlayer player, WorldId next)
+        {
+            const int timeoutFrames = 1800;
+            const int readinessDiagnosticAfterFrames = 60;
+            int frames = 0;
+            bool readinessDiagnosticLogged = false;
+            while (player && frames++ < timeoutFrames && (!IsReady(WorldId.Hub) || !IsReady(next)))
+            {
+                if (!readinessDiagnosticLogged && frames > readinessDiagnosticAfterFrames)
+                {
+                    var hubState = _readiness.TryGetValue(WorldId.Hub, out var hubReadiness)
+                        ? hubReadiness.ToString()
+                        : "Missing";
+                    var destinationState = _readiness.TryGetValue(next, out var destinationReadiness)
+                        ? destinationReadiness.ToString()
+                        : "Missing";
+                    Debug.LogWarning("[Concordia] Link-gate readiness wait exceeded "
+                        + readinessDiagnosticAfterFrames + " frames: next=" + next
+                        + " Hub=" + hubState + " ready=" + IsReady(WorldId.Hub)
+                        + " destination=" + destinationState + " ready=" + IsReady(next));
+                    readinessDiagnosticLogged = true;
+                }
+                yield return null;
+            }
+            if (player && IsReady(next)) CompleteTeleport(player, next);
         }
 
         void MakeGround()
@@ -354,10 +692,18 @@ namespace Concordia
                 var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
                 g.name = "ContinentGround";
                 g.transform.SetParent(continent, false);
-                g.transform.localScale = Vector3.one * 72f;
+                // Cover Court mid-hills + horizon mask (~210m) with margin — void-drop guard.
+                g.transform.localScale = Vector3.one * 88f;
                 var mat = HubLook.Pbr("packed_earth", new Color(0.42f, 0.38f, 0.32f), 0.05f, 0.22f, 28f);
                 var r = g.GetComponent<Renderer>();
                 if (r && mat) r.sharedMaterial = mat;
+            }
+            else
+            {
+                // Existing scenes may still carry the pre-SLICE-1 72× plane.
+                var existing = continent.Find("ContinentGround");
+                if (existing && existing.localScale.x < 85f)
+                    existing.localScale = Vector3.one * 88f;
             }
             if (continent.Find("CourtGround")) return;
             var court = GameObject.CreatePrimitive(PrimitiveType.Plane);
@@ -398,7 +744,7 @@ namespace Concordia
         /// Rocks, hills, and road marks between the Hub ring and each
         /// civilization. Not towns. A missing pack stays a primitive.
         /// </summary>
-        void MakeWilderness()
+void MakeWilderness()
         {
             var hold = continent.Find("ContinentWilderness");
             if (!hold)
@@ -408,44 +754,86 @@ namespace Concordia
                 var earth = HubLook.Pbr("packed_earth", new Color(0.38f, 0.33f, 0.26f), 0.06f, 0.28f, 16f);
                 var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
                 foreach (var g in Canon.Gates)
-                {
-                    var dest = MegaworldMap.Present(g.world);
-                    if (dest.sqrMagnitude < 4f) continue;
-                    var dir = dest.normalized;
-                    var side = Vector3.Cross(Vector3.up, dir);
-                    var span = dest.magnitude - Canon.RingRadius - ChunkRadiusM;
-                    if (span < 12f) continue;
-                    int n = Mathf.Max(4, Mathf.FloorToInt(span / 16f));
-                    for (int i = 0; i < n; i++)
-                    {
-                        float t = (i + 1f) / (n + 1f);
-                        float along = Canon.RingRadius + 10f + t * span;
-                        var p = dir * along;
-                        int h = StemHash(g.shortName, i);
-                        float off = ((h % 1000) / 1000f - 0.5f) * 14f;
-                        var hill = p + side * (5.5f + off);
-                        float ht = 1.6f + (h % 7) * 0.85f;
-                        float w = 3.2f + (h % 5) * 0.7f;
-                        if (Canon.BlocksSunderingWalk(hill, w * 0.5f)) continue;
-                        var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
-                        HubLook.Prim(hold, prim, hill + Vector3.up * (ht * 0.45f),
-                            new Vector3(w, ht, w * 0.85f), earth, "Hill_" + g.shortName + "_" + i);
-
-                        var rockAt = p - side * (3.4f + (h % 5) * 0.6f);
-                        var rock = FreePacks.Spawn(DressVocab.Rock(), hold, rockAt, (h % 360), 1.1f + (h % 4) * 0.25f, required: false);
-                        if (!rock)
-                            HubLook.Prim(hold, PrimitiveType.Cube, rockAt + Vector3.up * 0.35f,
-                                new Vector3(1.1f, 0.7f, 0.9f), stone, "Rock_" + g.shortName + "_" + i);
-
-                        if (i % 2 != 0) continue;
-                        var left = Mathf.Max(0f, dest.magnitude - along);
-                        RoadWorld.PlaceSign(hold, g, p, dir, i, left);
-                    }
-                }
+                    BuildWildernessGate(hold, g, earth, stone);
             }
             ClearSunderingWalk(hold);
-            RoadWorld.Seed(hold);
+            // Never sync RoadWorld.Seed — WorldStreamManager / SeedStaged only.
+            if (_wildernessBuild == null)
+                _wildernessBuild = StartCoroutine(BuildWildernessStaged(_continentGeneration));
         }
+
+System.Collections.IEnumerator BuildWildernessStaged(int generation)
+        {
+            try
+            {
+                var hold = continent.Find("ContinentWilderness");
+                if (!hold)
+                {
+                    hold = new GameObject("ContinentWilderness").transform;
+                    hold.SetParent(continent, false);
+                    var earth = HubLook.Pbr("packed_earth", new Color(0.38f, 0.33f, 0.26f), 0.06f, 0.28f, 16f);
+                    var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
+                    foreach (var g in Canon.Gates)
+                    {
+                        if (generation != _continentGeneration) yield break;
+                        BuildWildernessGate(hold, g, earth, stone);
+                        yield return null;
+                    }
+                }
+                if (generation != _continentGeneration) yield break;
+                ClearSunderingWalk(hold);
+                yield return null;
+                if (generation != _continentGeneration) yield break;
+                yield return RoadWorld.SeedStaged(hold);
+                if (generation != _continentGeneration) yield break;
+                _roadLife = true;
+            }
+            finally
+            {
+                if (generation == _continentGeneration)
+                    _wildernessBuild = null;
+            }
+        }
+
+        static void BuildWildernessGate(Transform hold, GateDef g, Material earth, Material stone)
+        {
+            var dest = MegaworldMap.Present(g.world);
+            if (dest.sqrMagnitude < 4f) return;
+            var dir = dest.normalized;
+            var side = Vector3.Cross(Vector3.up, dir);
+            var span = dest.magnitude - Canon.RingRadius - ChunkRadiusM;
+            if (span < 12f) return;
+            int n = Mathf.Max(4, Mathf.FloorToInt(span / 16f));
+            for (int i = 0; i < n; i++)
+            {
+                float t = (i + 1f) / (n + 1f);
+                float along = Canon.RingRadius + 10f + t * span;
+                var p = dir * along;
+                int h = StemHash(g.shortName, i);
+                float off = ((h % 1000) / 1000f - 0.5f) * 14f;
+                var hill = p + side * (5.5f + off);
+                float ht = 1.6f + (h % 7) * 0.85f;
+                float w = 3.2f + (h % 5) * 0.7f;
+                if (Canon.BlocksSunderingWalk(hill, w * 0.5f)) continue;
+                var prim = (h % 3 == 0) ? PrimitiveType.Sphere : PrimitiveType.Cube;
+                HubLook.Prim(hold, prim, hill + Vector3.up * (ht * 0.45f),
+                    new Vector3(w, ht, w * 0.85f), earth, "Hill_" + g.shortName + "_" + i);
+
+                var rockAt = p - side * (3.4f + (h % 5) * 0.6f);
+                var rock = FreePacks.Spawn(DressVocab.Rock(), hold, rockAt, h % 360,
+                    1.1f + (h % 4) * 0.25f, required: false);
+                if (!rock)
+                    HubLook.Prim(hold, PrimitiveType.Cube, rockAt + Vector3.up * 0.35f,
+                        new Vector3(1.1f, 0.7f, 0.9f), stone, "Rock_" + g.shortName + "_" + i);
+
+                if (i % 2 == 0)
+                {
+                    var left = Mathf.Max(0f, dest.magnitude - along);
+                    RoadWorld.PlaceSign(hold, g, p, dir, i, left);
+                }
+            }
+        }
+
 
         /// <summary>
         /// Scene leftovers or a skip that didn't fire still cannot sit in the
@@ -481,9 +869,11 @@ namespace Concordia
             go.transform.rotation = Quaternion.Euler(42f, -38f, 0f);
             _sun = go.AddComponent<Light>();
             _sun.type = LightType.Directional;
-            _sun.color = new Color(1f, 0.94f, 0.82f);
-            _sun.intensity = 1.18f;
+            _sun.color = new Color(1f, 0.86f, 0.68f); // warm key ~4000K
+            _sun.intensity = 0.62f;
             _sun.shadows = LightShadows.Soft;
+            RenderSettings.sun = _sun;
+            HubLook.EnsureCourtRig(WorldId.Hub);
         }
 
         void ApplySky(WorldId id)

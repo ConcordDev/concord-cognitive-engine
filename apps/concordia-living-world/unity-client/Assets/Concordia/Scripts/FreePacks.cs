@@ -123,12 +123,43 @@ namespace Concordia
             }
         }
 
+        /// <summary>
+        /// "Imported pack" = art good enough to be the look, as opposed to the Kenney
+        /// missing-prop tier. SpawnStore gates on this, so anything false here is
+        /// invisible to every SpawnStore callsite (the whole Court, via HubPlaza).
+        ///
+        /// PolyHaven and FreePacks live UNDER Assets/Concordia, whose top folder is
+        /// reserved — so the generic rule below classified 13GB of photogrammetry and
+        /// 535MB of packs as non-store, and SpawnStore resolved against the 12 assets
+        /// in Concordia/Generated. That is why granite_panel / stone_column / plaza_floor
+        /// silently produced nothing and the Court fell back to primitives. Name them
+        /// explicitly, ahead of the reserved-top check.
+        ///
+        /// StreamingAssets/HubKit stays OUT on purpose: it is Kenney-majority (368 of 800
+        /// entries), and UNITY_ART_LOCK.md calls Kenney-in-the-Court a bug (P0-5). HubKit
+        /// is still reachable through FreePacks.Mesh / HubKit.TryGet as the fallback tier —
+        /// this predicate only decides what counts as "good enough to lead with".
+        ///
+        /// Concordia/FreePacks is NOT uniform — it also holds the raw Kenney Nature Kit
+        /// (Nature/) and Quaternius characters/animals (Quaternius/, Fauna/), the exact
+        /// low-poly/toon tier the two rules above exist to keep out of the Hub. Carve those
+        /// three back out explicitly rather than let a blanket FreePacks allow quietly
+        /// re-admit them under a different path.
+        /// </summary>
+        static bool IsKenneyOrQuaterniusFreePack(string p) =>
+            p.Contains("/Concordia/FreePacks/Nature/")
+            || p.Contains("/Concordia/FreePacks/Quaternius/")
+            || p.Contains("/Concordia/FreePacks/Fauna/");
+
         static bool IsStorePath(string path)
         {
             if (string.IsNullOrEmpty(path)) return false;
             var p = path.Replace("\\", "/");
+            if (IsKenneyOrQuaterniusFreePack(p)) return false;
             if (p.Contains("/Store/") || p.Contains("/AssetStore/") || p.Contains("/FreeAssets/")
-                || p.Contains("/Concordia/Generated/"))
+                || p.Contains("/Concordia/Generated/")
+                || p.Contains("/Concordia/PolyHaven/")
+                || p.Contains("/Concordia/FreePacks/"))
                 return true;
             if (!p.StartsWith("Assets/")) return false;
             var rest = p.Length > 7 ? p.Substring(7) : "";
@@ -486,7 +517,10 @@ namespace Concordia
             }
             if (!valid) return;
             var dy = pos.y - b.min.y;
-            if (float.IsNaN(dy) || float.IsInfinity(dy) || Mathf.Abs(dy) > 12f) return;
+            // Was: Abs(dy)>12 silent return — that buried CourtHeroTree (~29m lift) after scale.
+            // Only reject non-finite / absurd jumps; hero trees and tall FreePacks must Sit.
+            if (float.IsNaN(dy) || float.IsInfinity(dy)) return;
+            if (Mathf.Abs(dy) > 200f) return;
             go.transform.position += Vector3.up * dy;
         }
 

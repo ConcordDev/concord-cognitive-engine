@@ -1,0 +1,23 @@
+{
+  "task_id": "8bffb9bd-cbbd-4646-8511-b693fdcf7d64",
+  "original_generation_task_id": "03e6c32b-7959-4746-a3da-79c53b5a2842",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/03e6c32b-7959-4746-a3da-79c53b5a2842/tripo_model_03e6c32b-7959-4746-a3da-79c53b5a2842.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvMDNlNmMzMmItNzk1OS00NzQ2LWEzZGEtNzljNTNiNWEyODQyL3RyaXBvX21vZGVsXzAzZTZjMzJiLTc5NTktNDc0Ni1hM2RhLTc5YzUzYjVhMjg0Mi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzU2MDd9fX1dfQ__&Signature=U4hTbqXqsLrtQ1pi4MEMyspfso-0jDm82joqNAgxNH~dIkrtTmIMGUn67Vb9-Rb311xInE7JimnplzYJXFcEtWxmwO8NmDfXQHDJJg2v5ku6IX-AigtO4U42qQL3TyRgsKHIKYnyAQyWQ28YHHQ8LwtY6qHRy98IcIQ6PL21CQvP1A0v-b38bi3u-Tbi1HJaN2i-2BG1bHXdtTYP9QcV8fXmHJB69elkttNWeWWGUA9VsRveSQKG0DEx5Xnnh48kcKaILQ46RB0lGi86XrpIEiXyDC9Sn2DHourYYUGO7AfI31Y6eTHUQOTSKNCwAWw79oj0odaA~m2IptrJIqKcJw__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:26:51.145674",
+  "description": "Bespoke Sovereign Ruins hero archive: a weathered sister-city archive landmark organized around readable six-fold Refusal glyph geometry, incomplete ritual loops, dark organic and ascetic massing, and visibly still-running spell work. Include durable archive surfaces, restrained interaction/socket points, and a silhouette that reads as a place of recording rather than a generic castle. Bind as one authored hero through WorldVisualDirector.BuildChunkStaged and the source-aware resolver; keep primitive geometry collider-only and preserve LeanPlay staged yields. Semantic id ruins/refusal-cascade-archive.",
+  "negative_prompt": "No generic fantasy castle, intact modern city, steampunk machinery, sci-fi space station, clean new masonry, floating glyphs, or invented faction insignia.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/RefusalCascadeArchive/RefusalCascadeArchive_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/RefusalCascadeArchive/RefusalCascadeArchive.fbx"
+}

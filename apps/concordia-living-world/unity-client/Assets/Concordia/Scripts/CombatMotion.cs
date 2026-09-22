@@ -45,6 +45,18 @@ namespace Concordia
         public static float ComboOpen(bool heavy, FightStyle style) =>
             Duration(heavy, style) * 0.55f;
 
+        /// <summary>Matches ConcordiaPlayer dodge i-frame budget. Overlay, not a clip.</summary>
+        public const float DodgeDuration = 0.38f;
+
+        /// <summary>0..1 dodge clock → crouch-and-recover weight.</summary>
+        public static float DodgePulse(float t)
+        {
+            t = Mathf.Clamp01(t);
+            if (t < 0.22f) return Smooth(t / 0.22f);
+            if (t < 0.55f) return 1f;
+            return 1f - Smooth((t - 0.55f) / 0.45f);
+        }
+
         /// <summary>
         /// Integer windows for <see cref="Concordia.Core.ActionRunner"/>. Startup is Delay
         /// (the SphereCast frame). Cancel is ComboOpen. Duration is the whole strike.

@@ -1,7 +1,4 @@
 using UnityEngine;
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 namespace Concordia
 {
@@ -13,6 +10,12 @@ namespace Concordia
         AudioClip[] _clips;
         float _accum;
 
+        // Real Kenney RPG footstep SFX (footstep00..09.ogg), copied 2026-09-16 from
+        // FreePacks/Audio/RPGsounds_Kenney into Resources/Concordia/Footsteps. The prior source,
+        // "Assets/SourceFiles/TimmyRobot", never existed on disk — this had no working audio in
+        // the Editor either, not just in builds; the synthetic click below was the only sound
+        // anyone ever actually heard. Resources.LoadAll works identically in Editor and Player, so
+        // there is no #if UNITY_EDITOR branch here at all now — one code path, both contexts.
         void Awake()
         {
             _cc = GetComponent<CharacterController>();
@@ -20,12 +23,9 @@ namespace Concordia
             _src.playOnAwake = false;
             _src.spatialBlend = 0.35f;
             _src.volume = 0.35f;
-#if UNITY_EDITOR
-            var guids = AssetDatabase.FindAssets("Player_Footstep t:AudioClip", new[] { "Assets/SourceFiles/TimmyRobot" });
-            _clips = new AudioClip[guids.Length];
-            for (int i = 0; i < guids.Length; i++)
-                _clips[i] = AssetDatabase.LoadAssetAtPath<AudioClip>(AssetDatabase.GUIDToAssetPath(guids[i]));
-#endif
+
+            _clips = Resources.LoadAll<AudioClip>("Concordia/Footsteps");
+
             if (_clips == null || _clips.Length == 0)
             {
                 var clip = AudioClip.Create("step", 1800, 1, 44100, false);

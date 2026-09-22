@@ -1,0 +1,42 @@
+UNITY-CLIENT CHAT ONLY. ConcordiaHub / unity-client.
+RESUME FULL-SCALE RPG — DO NOT STOP until FULL_RPG_REPORT.txt is written.
+
+## FIRST — UNSTICK COMPILE (do before any new features)
+1) Confirm NO git merge conflict markers (`<<<<<<<` `=======` `>>>>>>>`) remain in:
+   - Assets/Concordia/Scripts/WorldBook.cs
+   - Assets/Concordia/Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs
+   If any remain, resolve them (keep the unified persistence + WorldEventLog / FactionStanding work). Do not leave markers.
+2) Fix Assets/Concordia/Tests/PlayMode/L0Ual1SequenceProofTest.cs InputSystem / KeyControl errors (remove InputSystem dependency or add asmdef ref). Tests must not block Concordia.Runtime compile.
+3) check_compile_errors → clean. If dirty, fix until clean. Then proceed.
+
+## ALREADY DONE — SKIP
+- LIFE_PROOF A–F PASS (keep green; do not regress)
+- CX mats/prefabs / CxDress
+- UAL1 extract + UAL1_CLIP_INDEX
+- WorldEventLog.cs, FactionStandingBook + Integration (partial — finish proofs)
+- Art style north-star on disk: ~/.zuko/ART_STYLE_GTA_PALWORLD_TEN_WORLD.md (GTA×Palworld) — obey when doing look
+- Pine/fir giant unused trees removed from PolyHaven+HubKit on purpose — do NOT re-download them
+- Library must stay; do not wipe Library / kill Concord / Claude RC
+
+## CONTINUE from AURA_FULL_SCALE_RPG (R0→R13)
+Read and execute: ~/.zuko/AURA_FULL_SCALE_RPG.txt
+(also Assets/Concordia/Generated/AURA_FULL_SCALE_RPG.txt)
+
+Priority order now:
+R0 UAL1 bind + glide + LIFE_PROOF re-smoke → proofs
+R1 persistence truth (WorldMemory + ConcordiaPersistenceService unified) → Proof/FullRpg/R1_SAVE.md
+R2 WorldEventLog multi-event + gossip beyond kill → R2_MEMORY.md
+R3–R12 as in the full order
+R13 FULL_RPG_REPORT.txt
+
+## HARD RULES
+- Chain continuously. Blocked → append ~/.zuko/NEED_DUTCH.md and CONTINUE.
+- No PASS without proof files under Assets/Concordia/Generated/Proof/FullRpg/…
+- Disk ~11 GB free — no Poly Haven bulk reimport; no giant tree re-downloads.
+- Prefer surface backend hooks/nemesis/quest-engine via ConcordClient WebSocket.
+- Prefer wake GameplayCore with content, not rewrite.
+
+## DONE WHEN
+FULL_RPG_REPORT.txt exists with required PASS/PARTIAL evidence; compile clean; LIFE_PROOF still PASS.
+
+START with compile unstick NOW, then R0 immediately. Do not ask. Do not idle on get_unity_editor_state loops.

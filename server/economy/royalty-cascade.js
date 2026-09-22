@@ -6,6 +6,7 @@
 // Formula: royalty(n) = max(initialRate / 2^n, 0.0005)
 
 import { randomUUID } from "crypto";
+import { publish as publishRuntimeEvent } from "../lib/runtime/event-bus.js";
 import { recordTransactionBatch, generateTxId } from "./ledger.js";
 import { PLATFORM_ACCOUNT_ID } from "./fees.js";
 import { canCiteDtu, canCiteSpecificDtu } from "../lib/consent.js";
@@ -113,10 +114,19 @@ export function registerCitation(db, { childId, parentId, creatorId, parentCreat
 
   const id = uid("lin");
   try {
-    db.prepare(`
+    const _insertResult = db.prepare(`
       INSERT OR IGNORE INTO royalty_lineage (id, child_id, parent_id, generation, creator_id, parent_creator, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(id, childId, parentId, generation, creatorId, parentCreatorId, nowISO());
+    // INSERT OR IGNORE silently no-ops on a duplicate (child_id, parent_id)
+    // pair rather than throwing — the pre-existing code never checked
+    // .changes and always returned {ok:true} either way, which was fine
+    // for the caller's contract (idempotent success either way) but would
+    // have made a naive "publish on every registerCitation success" wrong:
+    // it would fire once per attempt, not once per REAL new citation,
+    // spamming a notification on every repeat call. _isNewCitation is
+    // that distinction, checked before this wave publishes anything.
+    const _isNewCitation = _insertResult.changes > 0;
 
     // Phase AA1 — emit a cross-world hop realtime event when applicable.
     // The cross-world feed surfacing reads this; the heatmap aggregates.
@@ -165,6 +175,20 @@ export function registerCitation(db, { childId, parentId, creatorId, parentCreat
         })
         .catch(() => { /* module may not be loaded yet */ });
     } catch { /* understanding hook must not affect citation outcome */ }
+
+    // Concord Runtime — a citation is the "someone built on your work"
+    // signal, distinct from and often earlier than any royalty.paid event
+    // (a citation can sit uncompensated for a long time before any sale
+    // ever triggers a payout, or forever if nothing downstream ever
+    // sells). Checked before this wave: zero notification of any kind
+    // existed for this. Gated on _isNewCitation so a repeat/duplicate
+    // registerCitation call (INSERT OR IGNORE's real, intended behavior)
+    // never re-notifies for the same (child, parent) pair.
+    if (_isNewCitation) {
+      try {
+        publishRuntimeEvent("dtu.cited", { parentCreatorId, childId, parentId, generation });
+      } catch { /* event-bus publish is best-effort — never affects a real citation registration */ }
+    }
 
     return { ok: true, lineageId: id, childId, parentId, generation };
   } catch (err) {
@@ -476,6 +500,28 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
 
   try {
     const results = doRoyalties();
+
+    // Concord Runtime — "Creator system sees authorship," the audit's own
+    // framing. Before this, an ancestor creator who earns a royalty from
+    // this cascade gets ZERO signal — not a toast, not a persisted
+    // notification, nothing (checked: this file had no realtimeEmit/
+    // createNotification call on this path at all, only the unrelated
+    // royalty:cross-world signal on the citation-registration path).
+    // One event per real payout — each recipient gets their own, since
+    // a cascade can pay out to several different creators at different
+    // amounts in one call. Best-effort, after the transaction committed:
+    // a reaction-graph hiccup must never affect money that already moved.
+    for (const p of payouts) {
+      try {
+        publishRuntimeEvent("royalty.paid", {
+          recipientId: p.recipientId,
+          contentId: p.contentId,
+          generation: p.generation,
+          amount: p.amount,
+        });
+      } catch { /* event-bus publish is best-effort — never affects a real, already-paid royalty */ }
+    }
+
     return {
       ok: true,
       batchId,

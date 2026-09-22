@@ -1,0 +1,497 @@
+{
+  "countries": [
+    {
+      "country_id": "the_tessera",
+      "faction_id": "the_tessera",
+      "name": "The Tessera",
+      "theme": "spire_city-old_capital",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Continue. Not to win \u2014 winning would end the game and the game is the revenue. To keep every conflict on Sere unresolved, every productive realm extractable, and every challenger either bought, hollowed, or buried, across generations, without anyone alive ever having decided to.",
+      "capital": {
+        "name": "The Tessera",
+        "x": -21.55,
+        "z": -46.22
+      },
+      "anchors": [
+        {
+          "id": "the_tessera_gate",
+          "name": "The Tessera Gate",
+          "x": -21.55,
+          "z": -46.22,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_tessera_district",
+          "name": "the_clearing_spire",
+          "x": -13.55,
+          "z": -52.22,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "house_aldermere",
+      "faction_id": "house_aldermere",
+      "name": "House Aldermere",
+      "theme": "offshore_haven-old_capital",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Remain the ledger every other ledger settles against \u2014 the bank both armies bank with, so that whoever wins the war, Aldermere has already won the peace.",
+      "capital": {
+        "name": "House Aldermere",
+        "x": 44.5,
+        "z": -17.98
+      },
+      "anchors": [
+        {
+          "id": "house_aldermere_gate",
+          "name": "House Aldermere Gate",
+          "x": 44.5,
+          "z": -17.98,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "house_aldermere_district",
+          "name": "the_settled_isles",
+          "x": 52.5,
+          "z": -23.98,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "the_tally_house",
+      "faction_id": "the_tally_house",
+      "name": "The Tally House",
+      "theme": "spire_city",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Hold the sole right to issue the Mark and to set its price, so that every realm's labor is denominated in a thing only the Tally House can make from nothing.",
+      "capital": {
+        "name": "The Tally House",
+        "x": -6.52,
+        "z": 28.26
+      },
+      "anchors": [
+        {
+          "id": "the_tally_house_gate",
+          "name": "The Tally House Gate",
+          "x": -6.52,
+          "z": 28.26,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_tally_house_district",
+          "name": "the_clearing_spire",
+          "x": 1.48,
+          "z": 22.26,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "the_clearing_spire",
+      "faction_id": "the_clearing_spire",
+      "name": "The Clearing Spire",
+      "theme": "spire_city",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Be the one tower where the banks of warring realms settle their accounts in peace \u2014 sovereign-immune, untouchable, the still point that lets the wars below run forever.",
+      "capital": {
+        "name": "The Clearing Spire",
+        "x": -52.6,
+        "z": 16.08
+      },
+      "anchors": [
+        {
+          "id": "the_clearing_spire_gate",
+          "name": "The Clearing Spire Gate",
+          "x": -52.6,
+          "z": 16.08,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_clearing_spire_district",
+          "name": "the_clearing_spire",
+          "x": -44.6,
+          "z": 10.08,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 20.5
+    },
+    {
+      "country_id": "the_mercy_fund",
+      "faction_id": "the_mercy_fund",
+      "name": "The Mercy Fund",
+      "theme": "old_capital-flooded_lowland",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Find realms in crisis (or wait for the crisis the Tessera arranged), arrive as rescue, and leave owning the thing that was worth rescuing.",
+      "capital": {
+        "name": "The Mercy Fund",
+        "x": -25.35,
+        "z": -47.68
+      },
+      "anchors": [
+        {
+          "id": "the_mercy_fund_gate",
+          "name": "The Mercy Fund Gate",
+          "x": -25.35,
+          "z": -47.68,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_mercy_fund_district",
+          "name": "old_capital",
+          "x": -17.35,
+          "z": -53.68,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table",
+        "dovrane",
+        "keshar"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "the_curtain",
+      "faction_id": "the_curtain",
+      "name": "The Curtain",
+      "theme": "spire_city",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Decide what Sere is allowed to see. Not to hide truth so much as to bury it in volume, classification, and ridicule until no one can hold the whole chain at once.",
+      "capital": {
+        "name": "The Curtain",
+        "x": -31.69,
+        "z": 4.45
+      },
+      "anchors": [
+        {
+          "id": "the_curtain_gate",
+          "name": "The Curtain Gate",
+          "x": -31.69,
+          "z": 4.45,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_curtain_district",
+          "name": "spire_city",
+          "x": -23.69,
+          "z": -1.55,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "verge_dynamics",
+      "faction_id": "verge_dynamics",
+      "name": "Verge Dynamics",
+      "theme": "furnace_belt-old_capital",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Keep every front in the world supplied \u2014 ideally both sides of it \u2014 and ensure that no war ends and no peace lasts long enough to thin the order book.",
+      "capital": {
+        "name": "Verge Dynamics",
+        "x": -31.52,
+        "z": -12.74
+      },
+      "anchors": [
+        {
+          "id": "verge_dynamics_gate",
+          "name": "Verge Dynamics Gate",
+          "x": -31.52,
+          "z": -12.74,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "verge_dynamics_district",
+          "name": "the_furnace_belt",
+          "x": -23.52,
+          "z": -18.74,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 7,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "hollowford_seed",
+      "faction_id": "hollowford_seed",
+      "name": "Hollowford Seed",
+      "theme": "breadlands-flooded_lowland",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Replace every realm's self-sufficient farming with high-yield seed that only Hollowford can supply, so that the most basic act \u2014 eating \u2014 runs through a Hollowford contract forever.",
+      "capital": {
+        "name": "Hollowford Seed",
+        "x": -47.97,
+        "z": -1.68
+      },
+      "anchors": [
+        {
+          "id": "hollowford_seed_gate",
+          "name": "Hollowford Seed Gate",
+          "x": -47.97,
+          "z": -1.68,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "hollowford_seed_district",
+          "name": "the_drowned_provinces",
+          "x": -39.97,
+          "z": -7.68,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 8,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_open_table",
+        "keshar"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "the_open_table",
+      "faction_id": "the_open_table",
+      "name": "The Open Table",
+      "theme": "highland-river_delta",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Build the institutions of a world outside the Mark \u2014 shared ledgers, mutual aid, seed-libraries, a price for the Black Tithe set by those who pump it \u2014 before the Tessera can buy, split, or bury the coalition.",
+      "capital": {
+        "name": "The Open Table",
+        "x": -14.17,
+        "z": 61.39
+      },
+      "anchors": [
+        {
+          "id": "the_open_table_gate",
+          "name": "The Open Table Gate",
+          "x": -14.17,
+          "z": 61.39,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "the_open_table_district",
+          "name": "the_unbound_provinces",
+          "x": -6.17,
+          "z": 55.39,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 9,
+      "climate_warning": null,
+      "disputed_border": [
+        "the_tessera",
+        "the_mercy_fund",
+        "verge_dynamics",
+        "the_curtain",
+        "hollowford_seed"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "dovrane",
+      "faction_id": "dovrane",
+      "name": "The Dovrane Reach",
+      "theme": "river_delta-breadlands",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Lead the unbound realms \u2014 but the Reach has spent half its strength on a border war it half-suspects it was maneuvered into, against the one realm whose partnership would make the Open Table unstoppable.",
+      "capital": {
+        "name": "The Dovrane Reach",
+        "x": 34.44,
+        "z": 16.06
+      },
+      "anchors": [
+        {
+          "id": "dovrane_gate",
+          "name": "The Dovrane Reach Gate",
+          "x": 34.44,
+          "z": 16.06,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "dovrane_district",
+          "name": "dovrane_capital",
+          "x": 42.44,
+          "z": 10.06,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 10,
+      "climate_warning": null,
+      "disputed_border": [
+        "keshar",
+        "the_mercy_fund"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "keshar",
+      "faction_id": "keshar",
+      "name": "Keshar",
+      "theme": "furnace_belt-highland",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Survive as the other anchor of the unbound world \u2014 the larger productive base, the harder to trap by debt, and therefore the one the Tessera is ensnaring slowly instead of buying.",
+      "capital": {
+        "name": "Keshar",
+        "x": -32.0,
+        "z": 55.43
+      },
+      "anchors": [
+        {
+          "id": "keshar_gate",
+          "name": "Keshar Gate",
+          "x": -32.0,
+          "z": 55.43,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "keshar_district",
+          "name": "keshar_capital",
+          "x": -24.0,
+          "z": 49.43,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "sere",
+      "preferred_visit_order": 11,
+      "climate_warning": null,
+      "disputed_border": [
+        "dovrane",
+        "the_tessera"
+      ],
+      "territory_radius": 25.5
+    }
+  ]
+}

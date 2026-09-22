@@ -1,0 +1,1498 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "architecture_kits",
+  "count": 13,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "arch_kit_hub_court",
+      "display_name": "Unburned Court",
+      "lore_blurb": "Hub civic kit. Pre-industrial court, Flower Law plaza, lanterns, limestone. Pinewood Crossing is a sub-dress of this kit outside the walls, not a second city named Vinewood.",
+      "taxonomy_tags": [
+        "architecture",
+        "court civic",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_hub_court/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "court"
+      },
+      "aura_prompt": "Unburned Court limestone hall, warm lanterns, cobbles, flower boxes, GTA wear, Palworld sun, no neon.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_fantasy_sunder at the salt road",
+          "arch_kit_crime_coast only as wagon cargo, not as buildings inside 42m"
+        ],
+        "biome_dress": "court civic"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m orthogonal, 8m halls, pivots on inner corner, loops must close"
+      },
+      "snap_intent": "4m orthogonal, 8m halls, pivots on inner corner, loops must close",
+      "reuse_tier": "high",
+      "materials": [
+        "weathered limestone",
+        "court cobble CX_Tile_CourtCobble",
+        "warm brass",
+        "timber lintel",
+        "flower boxes"
+      ],
+      "traversal_anchors": [
+        "lantern bracket 2.2m",
+        "quoin ledge 0.6m",
+        "arena sand stair",
+        "scaffold outside HubLawRadius only",
+        "market awning rail"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_court_lantern_post",
+          "prop_flower_law_urn",
+          "prop_archive_lectern",
+          "prop_market_crate",
+          "prop_flower_wreath"
+        ],
+        "named_sets": [
+          "council_chamber",
+          "archive_quarter",
+          "market_district",
+          "warden_ring",
+          "arena",
+          "pinewood_crossing",
+          "three_refusals_tavern"
+        ]
+      },
+      "style_sector": "court civic",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "court",
+      "law": "No live steel meshes mounted as set dressing inside 42m. Arena sub-set may show racks."
+    },
+    {
+      "id": "arch_kit_fantasy_sunder",
+      "display_name": "Sundering Wild Build",
+      "lore_blurb": "Mythical sector as Concordia Fantasy. Weathered granite, moss, timber, gold leaf used sparingly. Titan pillars and a held-curse shrine, not a shiny castle set.",
+      "taxonomy_tags": [
+        "architecture",
+        "mythical",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#6a5438",
+        "#c8a060"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_fantasy_sunder/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "grove"
+      },
+      "aura_prompt": "Sundering granite and timber hall, moss, thin worn gold leaf, pine, overcast-bright Palworld light.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_hub_court",
+          "arch_kit_tunya_veil",
+          "arch_ix_sunder_dawn"
+        ],
+        "biome_dress": "mythical"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, with a round tower piece whose diameter is 8m so it sits on the grid"
+      },
+      "snap_intent": "4m, with a round tower piece whose diameter is 8m so it sits on the grid",
+      "reuse_tier": "high",
+      "materials": [
+        "weathered granite",
+        "mossy jade accent",
+        "timber",
+        "gold leaf worn thin",
+        "pine shake"
+      ],
+      "traversal_anchors": [
+        "pillar band 1.2m and 2.4m",
+        "root ledge",
+        "shrine chain as a swing line",
+        "pine scaffold"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_root_bend"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_pine_milepost",
+          "prop_bench_forge"
+        ],
+        "named_sets": [
+          "blackroot_road",
+          "cursefold_shrine",
+          "ward_barrack"
+        ]
+      },
+      "style_sector": "mythical",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "grove"
+    },
+    {
+      "id": "arch_kit_tunya_veil",
+      "display_name": "Tunya Veil",
+      "lore_blurb": "Solarpunk sector. CLT timber, solar tile, limestone, terrace farms, facade water that is a mesh sheet not a full water sim.",
+      "taxonomy_tags": [
+        "architecture",
+        "solarpunk",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#8aa0b4"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_tunya_veil/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "grove"
+      },
+      "aura_prompt": "Tunya timber terrace hall, solar tiles, vines, bright sun, limestone base.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_fantasy_sunder",
+          "arch_kit_frontier_road"
+        ],
+        "biome_dress": "solarpunk"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m terrace step of 0.5m vertical, snap both plan and terrace"
+      },
+      "snap_intent": "4m terrace step of 0.5m vertical, snap both plan and terrace",
+      "reuse_tier": "high",
+      "materials": [
+        "CLT timber",
+        "solar tile",
+        "limestone",
+        "living trellis",
+        "clay"
+      ],
+      "traversal_anchors": [
+        "terrace lip",
+        "trellis 2m",
+        "solar roof rail",
+        "irrigation ledge"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_terrace"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_solar_tile",
+          "prop_basket",
+          "prop_graft_scar",
+          "prop_scale_wood"
+        ],
+        "named_sets": [
+          "nil_shoal_stair",
+          "terrace_farm",
+          "veil_hall"
+        ]
+      },
+      "style_sector": "solarpunk",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "grove"
+    },
+    {
+      "id": "arch_kit_ruins_ash",
+      "display_name": "Sovereign Ash",
+      "lore_blurb": "Underworld and ash. Igneous stone, fossil bone, cold iron. Stalactite language even outdoors as broken ribs. Death is not finished, so doors are often slabs that do not sit true.",
+      "taxonomy_tags": [
+        "architecture",
+        "abyssal-ash",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_ruins_ash/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "ash"
+      },
+      "aura_prompt": "Ash and fossil-bone hall, cold iron staples, crooked slab door, Sovereign Ruins, dull warm sun.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_sere_mark",
+          "arch_kit_fantasy_sunder"
+        ],
+        "biome_dress": "abyssal-ash"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, slab doors may be offset 0.2m and still use the standard clear width"
+      },
+      "snap_intent": "4m, slab doors may be offset 0.2m and still use the standard clear width",
+      "reuse_tier": "high",
+      "materials": [
+        "igneous rock",
+        "fossil bone",
+        "cold iron",
+        "ash plaster",
+        "sulfur stain sparse"
+      ],
+      "traversal_anchors": [
+        "rib crawl",
+        "iron staple rung",
+        "broken stair",
+        "cairn top"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_rib"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_ash_cairn",
+          "prop_fossil_rib",
+          "prop_stylus"
+        ],
+        "named_sets": [
+          "catalogue_hall",
+          "unburial_court",
+          "bone_yard"
+        ]
+      },
+      "style_sector": "abyssal-ash",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "ash"
+    },
+    {
+      "id": "arch_kit_crime_coast",
+      "display_name": "Iron Coast",
+      "lore_blurb": "Crime sector plus diesel grit. Stained brick, rust corrugate, asphalt, rebar, fire escapes. Tenements and armored warehouses. Steampunk accents only on foundry sub-set.",
+      "taxonomy_tags": [
+        "architecture",
+        "crime",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#5c3038"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_crime_coast/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "street"
+      },
+      "aura_prompt": "Iron Coast tenement, stained brick, rust corrugate, fire escape, rain, sodium light.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_cyber_grid",
+          "arch_kit_sere_mark",
+          "arch_ix_grid_coast",
+          "arch_ix_crucible_foundry"
+        ],
+        "biome_dress": "crime"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, fire escape lands on a 1m balcony that is still inside the module"
+      },
+      "snap_intent": "4m, fire escape lands on a 1m balcony that is still inside the module",
+      "reuse_tier": "high",
+      "materials": [
+        "stained brick",
+        "rust corrugate",
+        "asphalt",
+        "rebar",
+        "wet timber",
+        "brass only on foundry"
+      ],
+      "traversal_anchors": [
+        "fire escape",
+        "rebar stub",
+        "loading-dock edge",
+        "sodium bracket",
+        "pipe run"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_alley"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_sodium_lamp",
+          "prop_dock_crate",
+          "prop_dock_hook",
+          "prop_rose_pin",
+          "prop_gunsmith_vise"
+        ],
+        "named_sets": [
+          "tenement",
+          "armored_warehouse",
+          "foundry_steam",
+          "wharf"
+        ]
+      },
+      "style_sector": "crime",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "street"
+    },
+    {
+      "id": "arch_kit_cyber_grid",
+      "display_name": "The Grid",
+      "lore_blurb": "Cyber sector. Carbon, scratched glass, gunmetal, acrylic. Midnight blue, magenta, cyan. Sky-bridges and neon ad sheets that are physical banners, not floating UI.",
+      "taxonomy_tags": [
+        "architecture",
+        "cyber",
+        "reuse:high"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_cyber_grid/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "grid"
+      },
+      "aura_prompt": "Grid block, scratched glass, gunmetal, one cyan practical, magenta banner cloth, rain.",
+      "stats_hooks": {
+        "reuse_tier": "high",
+        "allowed_kitbash": [
+          "arch_kit_crime_coast",
+          "arch_kit_superhero_dawn",
+          "arch_ix_grid_coast"
+        ],
+        "biome_dress": "cyber"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, sky-bridge is 2 modules long and 1 wide, snap at both decks"
+      },
+      "snap_intent": "4m, sky-bridge is 2 modules long and 1 wide, snap at both decks",
+      "reuse_tier": "high",
+      "materials": [
+        "carbon panel",
+        "scratched glass",
+        "gunmetal",
+        "acrylic",
+        "cable tray"
+      ],
+      "traversal_anchors": [
+        "sky-bridge rail",
+        "cable tray",
+        "sign lip",
+        "maintenance scaffold",
+        "pipe-as-fiber"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_bridge"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_junction_box",
+          "prop_cable_coil",
+          "prop_count_slate"
+        ],
+        "named_sets": [
+          "census_block",
+          "uncounted_alley",
+          "sky_bridge"
+        ]
+      },
+      "style_sector": "cyber",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "grid"
+    },
+    {
+      "id": "arch_kit_frontier_road",
+      "display_name": "Open Road",
+      "lore_blurb": "Wasteland and frontier. Armor plate, salvage, mesh, timber forts, wagon yards. No dome pieces in the default set; a broken dome rib exists as one rare hero.",
+      "taxonomy_tags": [
+        "architecture",
+        "wasteland-frontier",
+        "reuse:medium"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_frontier_road/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "grove"
+      },
+      "aura_prompt": "Frontier timber fort and canvas, dust, armor-plate patch, open sky, no sci-fi dome.",
+      "stats_hooks": {
+        "reuse_tier": "medium",
+        "allowed_kitbash": [
+          "arch_kit_tunya_veil",
+          "arch_kit_crime_coast",
+          "arch_kit_hub_court"
+        ],
+        "biome_dress": "wasteland-frontier"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m yard, palisade snaps to the same grid"
+      },
+      "snap_intent": "4m yard, palisade snaps to the same grid",
+      "reuse_tier": "medium",
+      "materials": [
+        "sun-baked timber",
+        "armor plate salvage",
+        "canvas",
+        "dust stone",
+        "rope"
+      ],
+      "traversal_anchors": [
+        "wagon rail",
+        "palisade ledge",
+        "canvas awning",
+        "windmill rung rare"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_wagon",
+          "prop_hitching_rail",
+          "prop_canteen",
+          "prop_yoke"
+        ],
+        "named_sets": [
+          "wagon_yard",
+          "wind_camp",
+          "broken_dome_rib"
+        ]
+      },
+      "style_sector": "wasteland-frontier",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "grove"
+    },
+    {
+      "id": "arch_kit_superhero_dawn",
+      "display_name": "Permanent Dawn",
+      "lore_blurb": "Superhero sector. White marble composite, chrome, self-cleaning glass that is already dirty at the edges. Crystalline spires, roof launch pads. Bright gold daylight.",
+      "taxonomy_tags": [
+        "architecture",
+        "superhero",
+        "reuse:medium"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#c8a060"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_superhero_dawn/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "grid"
+      },
+      "aura_prompt": "Dawn tower, cracked white marble, chrome, dirty glass edges, gold daylight, roof pad.",
+      "stats_hooks": {
+        "reuse_tier": "medium",
+        "allowed_kitbash": [
+          "arch_kit_cyber_grid",
+          "arch_ix_sunder_dawn",
+          "arch_kit_ruins_ash"
+        ],
+        "biome_dress": "superhero"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, launch pad is a 2\u00d72 module with a chalk edge"
+      },
+      "snap_intent": "4m, launch pad is a 2\u00d72 module with a chalk edge",
+      "reuse_tier": "medium",
+      "materials": [
+        "white marble composite",
+        "chrome",
+        "glass",
+        "brass circlet rails"
+      ],
+      "traversal_anchors": [
+        "launch pad lip",
+        "spire band",
+        "chrome rail",
+        "roof garden low wall"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_atrium"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_mercy_circlet",
+          "prop_launch_chalk",
+          "prop_bread"
+        ],
+        "named_sets": [
+          "aegis_spire",
+          "roof_pad",
+          "street_kitchen"
+        ]
+      },
+      "style_sector": "superhero",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "grid"
+    },
+    {
+      "id": "arch_kit_crucible_lattice",
+      "display_name": "Open Lattice",
+      "lore_blurb": "Arcane plus cosmic, as the Crucible. Obsidian glass, basalt, iridescent quartz, dark oak. Non-Euclidean lean is a kit-bash of stairs that share footprints but change which edge is up \u2014 not a broken navmesh.",
+      "taxonomy_tags": [
+        "architecture",
+        "arcane-cosmic",
+        "reuse:medium"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#c8b4ff"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_crucible_lattice/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "drift"
+      },
+      "aura_prompt": "Crucible basalt hall, quartz ribs that do not close, teal practical, dark oak.",
+      "stats_hooks": {
+        "reuse_tier": "medium",
+        "allowed_kitbash": [
+          "arch_ix_crucible_foundry",
+          "arch_kit_cyber_grid",
+          "arch_kit_ruins_ash"
+        ],
+        "biome_dress": "arcane-cosmic"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, stair pieces may swap up-edge but landings still meet"
+      },
+      "snap_intent": "4m, stair pieces may swap up-edge but landings still meet",
+      "reuse_tier": "medium",
+      "materials": [
+        "obsidian glass",
+        "basalt",
+        "iridescent quartz",
+        "dark oak",
+        "liquid polymer trim"
+      ],
+      "traversal_anchors": [
+        "quartz rib",
+        "leaning stair rail",
+        "polymer pipe",
+        "unclosed arch"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "stair_unclosed"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_unclosed_shard",
+          "prop_spell_basin"
+        ],
+        "named_sets": [
+          "unend_hall",
+          "shard_yard",
+          "leaning_stack"
+        ]
+      },
+      "style_sector": "arcane-cosmic",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "drift"
+    },
+    {
+      "id": "arch_kit_sere_mark",
+      "display_name": "Sere Mark",
+      "lore_blurb": "Wasteland wound and abyssal bleed. Furnace belt, spire, soot brick, oil, brand tiles as architectural inlay. No Flower Law dressing.",
+      "taxonomy_tags": [
+        "architecture",
+        "wasteland-wound",
+        "reuse:medium"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_kit_sere_mark/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": "street"
+      },
+      "aura_prompt": "Sere furnace tenement, soot brick, brand-tile course, oil, one furnace eye of light.",
+      "stats_hooks": {
+        "reuse_tier": "medium",
+        "allowed_kitbash": [
+          "arch_kit_crime_coast",
+          "arch_kit_ruins_ash"
+        ],
+        "biome_dress": "wasteland-wound"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "4m, furnace hall is 2 modules wide minimum"
+      },
+      "snap_intent": "4m, furnace hall is 2 modules wide minimum",
+      "reuse_tier": "medium",
+      "materials": [
+        "soot brick",
+        "armor plate",
+        "oil-stained concrete",
+        "brand tile inlay",
+        "furnace iron"
+      ],
+      "traversal_anchors": [
+        "furnace lip",
+        "tile course as a thin ledge",
+        "spire rung",
+        "pipe run"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner",
+          "hall_furnace"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_brand_tile",
+          "prop_furnace_bellows",
+          "prop_sodium_lamp",
+          "prop_gunsmith_vise"
+        ],
+        "named_sets": [
+          "furnace_belt",
+          "tessera_spire",
+          "mark_tenement"
+        ]
+      },
+      "style_sector": "wasteland-wound",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "culture": "street"
+    },
+    {
+      "id": "arch_ix_grid_coast",
+      "display_name": "Uncounted Wharf",
+      "lore_blurb": "Blend zone. Cyber-Crime slums of tomorrow. Unified wet asphalt floor. Grid cables enter Coast pipes. Neon banners stained with sodium soot. One intersection, not a whole world.",
+      "taxonomy_tags": [
+        "architecture",
+        "blend cyber-crime",
+        "reuse:rare"
+      ],
+      "world_ids": [
+        "Cyber",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#1a1228",
+        "#c8a060",
+        "#3dffa0",
+        "#3a342c"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_ix_grid_coast/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": null
+      },
+      "aura_prompt": "Wharf where neon banners are soot-stained and fiber runs inside a rusted pipe, rain, unified asphalt.",
+      "stats_hooks": {
+        "reuse_tier": "rare",
+        "allowed_kitbash": [
+          "arch_kit_cyber_grid",
+          "arch_kit_crime_coast"
+        ],
+        "biome_dress": "blend cyber-crime"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "same 4m as both parents; glue pieces are 1 module"
+      },
+      "snap_intent": "same 4m as both parents; glue pieces are 1 module",
+      "reuse_tier": "rare",
+      "materials": [
+        "wet asphalt",
+        "stained brick",
+        "scratched acrylic",
+        "shared pipe"
+      ],
+      "traversal_anchors": [
+        "shared pipe",
+        "half-neon fire escape",
+        "wharf edge"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_pipe_run",
+          "prop_sodium_lamp",
+          "prop_junction_box"
+        ],
+        "glue": [
+          "glue_pipe_to_fiber",
+          "glue_banner_soot",
+          "glue_door_both_frames"
+        ]
+      },
+      "style_sector": "blend cyber-crime",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "blend": true,
+      "canonical_name": "Uncounted Wharf",
+      "art_guide_name": "Cyber-Crime Slums of Tomorrow"
+    },
+    {
+      "id": "arch_ix_sunder_dawn",
+      "display_name": "Held Crown Stair",
+      "lore_blurb": "Blend zone. Mythical-Superhero pantheon of champions. Sundering granite as the foundation, Dawn marble as a retrofit crown and launch lip. Gold leaf meets chrome. The stair is the whole set.",
+      "taxonomy_tags": [
+        "architecture",
+        "blend mythical-superhero",
+        "reuse:rare"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a6a48",
+        "#d8d4dc",
+        "#c8a060",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_ix_sunder_dawn/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": null
+      },
+      "aura_prompt": "Stair of weathered granite crowned with cracked white marble and a chrome lip, gold leaf worn through.",
+      "stats_hooks": {
+        "reuse_tier": "rare",
+        "allowed_kitbash": [
+          "arch_kit_fantasy_sunder",
+          "arch_kit_superhero_dawn"
+        ],
+        "biome_dress": "blend mythical-superhero"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "stair run is 4 modules, landing shared"
+      },
+      "snap_intent": "stair run is 4 modules, landing shared",
+      "reuse_tier": "rare",
+      "materials": [
+        "weathered granite",
+        "white marble composite",
+        "worn gold leaf",
+        "chrome"
+      ],
+      "traversal_anchors": [
+        "granite tread",
+        "marble crown lip",
+        "chain that is Sundering, rail that is Dawn"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_launch_chalk",
+          "prop_pine_milepost"
+        ],
+        "glue": [
+          "glue_granite_to_marble",
+          "glue_gold_to_chrome"
+        ]
+      },
+      "style_sector": "blend mythical-superhero",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "blend": true,
+      "canonical_name": "Held Crown Stair",
+      "art_guide_name": "Mythical-Superhero Pantheon of Champions"
+    },
+    {
+      "id": "arch_ix_crucible_foundry",
+      "display_name": "Unclosed Foundry",
+      "lore_blurb": "Blend zone. Arcane-industrial tech-magic foundry. Crucible quartz grown through Crime brass and soot brick. Steampunk clocks exist here as foundry instruments, not as a separate world. Pipes become fiber mid-run.",
+      "taxonomy_tags": [
+        "architecture",
+        "blend arcane-industrial",
+        "reuse:rare"
+      ],
+      "world_ids": [
+        "Crucible",
+        "Crime",
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Functional mashup. Foundation is this world's identity. Bevels on every jamb. Unified flooring inside a blend zone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#204040",
+        "#c8a060",
+        "#8a6a48",
+        "#20ffd0"
+      ],
+      "scale_vs_player": "module 4m; door clear 1.2\u00d72.2m; min corridor 2.4m (two characters)",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/NativeBible/Kits/arch_ix_crucible_foundry/",
+        "snap_grid_m": "4",
+        "door_standard": "1.2 x 2.2 clear, frame outside the footprint",
+        "settlement_compiler": "SettlementCompiler module hooks: plot, facade, roof",
+        "dress_vocab_culture": null
+      },
+      "aura_prompt": "Foundry where quartz ribs pierce soot brick and a brass clock face is missing its last numeral.",
+      "stats_hooks": {
+        "reuse_tier": "rare",
+        "allowed_kitbash": [
+          "arch_kit_crucible_lattice",
+          "arch_kit_crime_coast",
+          "arch_kit_frontier_road"
+        ],
+        "biome_dress": "blend arcane-industrial"
+      },
+      "verb_ids": [
+        "verb_traverse_ledge",
+        "verb_traverse_mantle"
+      ],
+      "footprint": {
+        "module_m": "4",
+        "wall_thickness_m": "0.4",
+        "min_corridor_m": "2.4",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "snap": "foundry bay 2\u00d72, snap to Crime and Crucible"
+      },
+      "snap_intent": "foundry bay 2\u00d72, snap to Crime and Crucible",
+      "reuse_tier": "rare",
+      "materials": [
+        "soot brick",
+        "brass",
+        "quartz",
+        "basalt",
+        "copper pipe"
+      ],
+      "traversal_anchors": [
+        "brass catwalk",
+        "quartz rib",
+        "clock gantry",
+        "pipe-to-fiber"
+      ],
+      "sub_kits": {
+        "hall": [
+          "hall_1",
+          "hall_2",
+          "hall_3",
+          "hall_4",
+          "hall_end",
+          "hall_corner"
+        ],
+        "room": [
+          "room_small",
+          "room_large",
+          "room_gallery"
+        ],
+        "stair": [
+          "stair_straight",
+          "stair_switch",
+          "shaft_open"
+        ],
+        "door": [
+          "door_standard",
+          "door_double",
+          "door_gate"
+        ],
+        "facade": [
+          "facade_bay",
+          "facade_blank",
+          "facade_shop",
+          "roof_edge",
+          "corner_quoin"
+        ],
+        "prop_clutter": [
+          "prop_furnace_bellows",
+          "prop_unclosed_shard",
+          "prop_bench_forge"
+        ],
+        "glue": [
+          "glue_pipe_to_fiber",
+          "glue_brick_to_basalt",
+          "glue_clock_face_unclosed"
+        ]
+      },
+      "style_sector": "blend arcane-industrial",
+      "layering_rule": "Foundation = base world. Upper storeys = faction retrofit (awnings, cables, iron) that must not erase the foundation silhouette.",
+      "blend": true,
+      "canonical_name": "Unclosed Foundry",
+      "art_guide_name": "Arcane-Industrial Tech-Magic Foundries"
+    }
+  ]
+}

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Concordia.GameplayCore.Persistence;
 
 namespace Concordia
 {
@@ -29,6 +30,7 @@ namespace Concordia
         [Serializable] public class Person
         {
             public string id, name, title, archetype, backstory, background, faction_id, dialogue_style;
+            public string personality, appearance;
             public bool quest_giver;
             public string[] quest_hooks;
             public Narrative narrative_context;
@@ -64,6 +66,8 @@ namespace Concordia
             public int required_count;
         }
         [Serializable] public class CountriesDoc { public Country[] countries; }
+        /// <summary>Hub (and future authored city lists) — Compact forbids countries/kingdoms on Hub.</summary>
+        [Serializable] public class CitiesDoc { public CityDef[] cities; }
         [Serializable] public class Country
         {
             public string country_id, faction_id, name, description, theme;
@@ -72,6 +76,8 @@ namespace Concordia
             public Capital capital;
             public CountryAnchor[] anchors;
             public CountryClimate climate;
+            /// <summary>Authoritative kingdom footprint radius in local Present metres.</summary>
+            public float territory_radius;
         }
         [Serializable] public class Capital { public string name; public float x, z; }
         [Serializable] public class CountryAnchor
@@ -107,6 +113,24 @@ namespace Concordia
             WorldId.Sere => "sere",
             _ => "lattice-crucible"
         };
+
+        /// <summary>
+        /// Reverse of Folder(). The kernel's scene:data/world:snapshot payloads carry the
+        /// server's slug ("concordia-hub", "concord-link-frontier", …), not the C# enum
+        /// name — a raw Enum.TryParse&lt;WorldId&gt; silently fails for 8 of the 10 worlds.
+        /// </summary>
+        public static bool TryParseFolder(string folder, out WorldId id)
+        {
+            id = WorldId.Hub;
+            if (string.IsNullOrEmpty(folder)) return false;
+            foreach (WorldId w in Enum.GetValues(typeof(WorldId)))
+            {
+                if (!string.Equals(Folder(w), folder, StringComparison.OrdinalIgnoreCase)) continue;
+                id = w;
+                return true;
+            }
+            return false;
+        }
 
         public static LoreDoc Lore(WorldId id)
         {
@@ -318,28 +342,50 @@ namespace Concordia
     {
         static readonly Dictionary<WorldId, WorldBook.CityDef[]> Cache = new Dictionary<WorldId, WorldBook.CityDef[]>();
 
-        public static void Invalidate() => Cache.Clear();
+        public static void Invalidate()
+        {
+            Cache.Clear();
+            WorldGeography.Invalidate();
+        }
 
         public static WorldBook.CityDef[] For(WorldId world)
         {
             if (Cache.TryGetValue(world, out var hit)) return hit;
+            // Hub is a Compact city-state — no countries.json kingdom. Authored cities.json
+            // (atlas § Hub — the Heart) is the sole authority; never invent a crown.
             if (world == WorldId.Hub)
             {
-                Cache[world] = Array.Empty<WorldBook.CityDef>();
+                Cache[world] = AuthoredHubCities();
                 return Cache[world];
             }
             var list = new List<WorldBook.CityDef>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var countryFactionIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var factions = WorldBook.Factions(world);
 
             foreach (var c in WorldBook.Countries(world))
             {
                 if (c == null || string.IsNullOrEmpty(c.name)) continue;
-                var id = string.IsNullOrEmpty(c.country_id) ? c.name : c.country_id;
+                // Prefer faction_id so SettlementDef ids match GoldenSlice / kernel
+                // (e.g. settlement/tunya/sandrun_sanguire), not the country slug alone.
+                var id = !string.IsNullOrEmpty(c.faction_id) ? c.faction_id
+                    : (!string.IsNullOrEmpty(c.country_id) ? c.country_id : c.name);
                 if (!seen.Add(id)) continue;
                 seen.Add(c.name);
+                if (!string.IsNullOrEmpty(c.country_id)) seen.Add(c.country_id);
+                if (!string.IsNullOrEmpty(c.faction_id)) countryFactionIds.Add(c.faction_id);
                 var cap = c.capital != null && !string.IsNullOrEmpty(c.capital.name) ? c.capital.name : c.name;
                 float x = c.capital != null ? c.capital.x : 0f;
                 float z = c.capital != null ? c.capital.z : 0f;
+                if (Mathf.Abs(x) <= 2f && Mathf.Abs(z) <= 2f && c.anchors != null)
+                {
+                    foreach (var a in c.anchors)
+                    {
+                        if (a == null) continue;
+                        if (Mathf.Abs(a.x) > 2f || Mathf.Abs(a.z) > 2f) { x = a.x; z = a.z; break; }
+                    }
+                }
+                var districts = DistrictsForCountry(c, factions);
                 list.Add(new WorldBook.CityDef
                 {
                     id = id,
@@ -349,13 +395,14 @@ namespace Concordia
                     world = world,
                     x = x,
                     z = z,
-                    districts = new[] { cap }
+                    districts = districts
                 });
             }
 
-            foreach (var f in WorldBook.Factions(world))
+            foreach (var f in factions)
             {
                 if (f == null || string.IsNullOrEmpty(f.name)) continue;
+                if (!string.IsNullOrEmpty(f.id) && countryFactionIds.Contains(f.id)) continue;
                 if (!string.IsNullOrEmpty(f.id) && seen.Contains(f.id)) continue;
                 if (seen.Contains(f.name)) continue;
                 var districts = f.controlled_districts;
@@ -377,6 +424,80 @@ namespace Concordia
             var arr = list.ToArray();
             Cache[world] = arr;
             return arr;
+        }
+
+        /// <summary>
+        /// Concordant Megaworld Atlas § Hub — the Heart. Loaded from
+        /// Resources/.../concordia-hub/cities.json. Fallback constants only if the file
+        /// is missing (never invents a kingdom / crown).
+        /// </summary>
+        static WorldBook.CityDef[] AuthoredHubCities()
+        {
+            var t = Resources.Load<TextAsset>("Concordia/Canon/concordia-hub/cities");
+            if (t)
+            {
+                try
+                {
+                    var doc = JsonUtility.FromJson<WorldBook.CitiesDoc>(t.text);
+                    if (doc?.cities != null && doc.cities.Length > 0)
+                    {
+                        foreach (var c in doc.cities)
+                        {
+                            if (c == null) continue;
+                            c.world = WorldId.Hub;
+                        }
+                        return doc.cities;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("CityAtlas Hub cities.json: " + e.Message);
+                }
+            }
+            Debug.LogWarning("CityAtlas: Hub cities.json missing — using atlas fallback constants");
+            return new[]
+            {
+                new WorldBook.CityDef
+                {
+                    id = "hub",
+                    name = "Hub",
+                    factionId = "concordant_assembly",
+                    description = "Walled concentric Compact capital — city-state, no single crown.",
+                    world = WorldId.Hub,
+                    x = 0f,
+                    z = 0f,
+                    districts = new[]
+                    {
+                        "council_chamber",
+                        "archive_quarter",
+                        "market_district",
+                        "warden_ring_wall"
+                    },
+                    status = "living"
+                }
+            };
+        }
+
+        /// <summary>
+        /// Country capital districts come from the matching faction's controlled_districts
+        /// when authored; otherwise a single capital district. Never invents fake streets.
+        /// </summary>
+        static string[] DistrictsForCountry(WorldBook.Country country, WorldBook.Faction[] factions)
+        {
+            if (country == null) return Array.Empty<string>();
+            if (!string.IsNullOrEmpty(country.faction_id) && factions != null)
+            {
+                foreach (var f in factions)
+                {
+                    if (f == null || !string.Equals(f.id, country.faction_id, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    if (f.controlled_districts != null && f.controlled_districts.Length > 0)
+                        return f.controlled_districts;
+                }
+            }
+            var cap = country.capital != null && !string.IsNullOrEmpty(country.capital.name)
+                ? country.capital.name : country.name;
+            return new[] { PlaceId.Normalize(cap) };
         }
 
         /// <summary>
@@ -511,6 +632,7 @@ namespace Concordia
         static float _weatherT = 40f;
         static float _dumpAt;
         static float _actAge;
+        static float _noteActAt;
         static float _threatAt;
         static float _eventCd = 16f;
         static string _visualWeather;
@@ -522,6 +644,11 @@ namespace Concordia
         {
             World = id;
             var slice = WorldMemory.Load(id);
+            // WorldGeography.EnsurePersistence had zero callers — slice.regions/settlements
+            // were permanently null, so every RegionSliceRec/SettlementSliceRec query on a
+            // live save silently came back empty. This is the one place that already loads
+            // the slice on every world entry; a no-op once a slice is already populated.
+            WorldGeography.EnsurePersistence(slice, id);
             var away = WorldMemory.AwayHours(slice);
             if (away > 0.05f) WorldMemory.Advance(slice, away, id);
             Hour = slice.hour;
@@ -566,6 +693,9 @@ namespace Concordia
         public static void Leave()
         {
             WorldMemory.Write(World, Snapshot());
+            string error;
+            if (!ConcordiaPersistenceService.TrySave(out error) && !string.IsNullOrEmpty(error))
+                Debug.LogWarning("[Concordia] world leave save failed: " + error);
         }
 
         public static WorldSliceRec Snapshot()
@@ -625,13 +755,14 @@ namespace Concordia
             _actAge += dt;
             if (_actAge > 8f) NearbyAct = "";
             TickEvents(dt);
-            CrossRing.TickCaravans(dt * 0.08f);
-            CrossRing.PresentNearPlayer();
+            TradeRouteTraffic.Tick(dt);
             if (Mathf.FloorToInt(Hour * 4f) != Mathf.FloorToInt((Hour - dt * 0.08f) * 4f))
                 ApplySky();
+            // RuntimeBudget: threat + Dump FindObjects storms melted BehaviourUpdate (~48–52s).
+            float threatEvery = ConcordiaHost.RuntimeBudget ? 2.0f : 0.45f;
             if (Time.unscaledTime >= _threatAt)
             {
-                _threatAt = Time.unscaledTime + 0.45f;
+                _threatAt = Time.unscaledTime + threatEvery;
                 var hs = UnityEngine.Object.FindObjectsByType<Hostile>(FindObjectsInactive.Exclude);
                 var list = new List<Vector3>(hs.Length);
                 foreach (var h in hs)
@@ -643,12 +774,17 @@ namespace Concordia
                 }
                 Threats = list.ToArray();
             }
+            // Dump is rare always — never the old 2–8s FindObjects storm.
+            float dumpEvery = ConcordiaHost.RuntimeBudget ? 45f : 15f;
             if (Time.unscaledTime >= _dumpAt)
             {
-                _dumpAt = Time.unscaledTime + 2f;
+                _dumpAt = Time.unscaledTime + dumpEvery;
                 Dump();
             }
         }
+
+        public static bool KillLine(string line) =>
+            !string.IsNullOrEmpty(line) && line.IndexOf(" fell", System.StringComparison.OrdinalIgnoreCase) >= 0;
 
         public static bool JourneyLine(string line) =>
             !string.IsNullOrEmpty(line) && (
@@ -659,6 +795,12 @@ namespace Concordia
         public static void NoteAct(string line)
         {
             if (string.IsNullOrEmpty(line)) return;
+            // RuntimeBudget: NPC NoteAct string spam melted GC — throttle always.
+            if (ConcordiaHost.RuntimeBudget)
+            {
+                if (Time.unscaledTime < _noteActAt) return;
+                _noteActAt = Time.unscaledTime + 1.0f;
+            }
             NearbyAct = line;
             _actAge = 0f;
         }
@@ -681,6 +823,7 @@ namespace Concordia
             if (string.IsNullOrEmpty(line)) return;
             _feed[_feedN % _feed.Length] = new FeedBeat { channel = channel ?? "", line = line };
             _feedN++;
+            WorldEventLog.Record(channel ?? "world-feed", line);
         }
 
         public static int FeedCount => _feedN < _feed.Length ? _feedN : _feed.Length;
@@ -698,13 +841,21 @@ namespace Concordia
             WorldMemory.MarkDead(World, id);
             Ecology = Mathf.Max(0.15f, Ecology - 0.03f);
             FactionHeat = Mathf.Min(1f, FactionHeat + 0.04f);
-            if (!WorldClock.JourneyLine(WorldClock.LastEvent))
-                LastEvent = Canon.Get(World).title + ": a pack thinned.";
+            // Kill always wins over journey stamps. SoftEnter used to clobber this
+            // with "You came home from …" and NoteKill refused to overwrite JourneyLine.
             var who = string.IsNullOrEmpty(id) ? "someone" : id;
+            LastEvent = Canon.Get(World).title + ": " + who + " fell.";
+            WorldEventLog.Record("kill", LastEvent, "player", who);
+            PushFeed("kill", LastEvent);
             string heirName = "";
             string heirId = "";
             var deadPerson = WorldBook.FindPerson(World, id);
             var fac = deadPerson != null ? deadPerson.faction_id : "";
+            if (!string.IsNullOrEmpty(fac))
+            {
+                FactionStandingBook.Adjust(World, fac, -0.08f, false, "kill");
+                FactionStandingBook.AddWitnessHeat(World, fac, 0.08f, "kill-witnessed");
+            }
             var guests = UnityEngine.Object.FindObjectsByType<GuestNpc>(FindObjectsInactive.Exclude);
             GuestNpc heir = null;
             for (int i = 0; i < guests.Length; i++)
@@ -749,6 +900,7 @@ namespace Concordia
             Prices = Mathf.Clamp(Prices + ev.prices, 0.6f, 1.8f);
             if (!JourneyLine(LastEvent))
                 LastEvent = ev.text;
+            WorldEventLog.Record("world-simulation", ev.text);
             if (ev.births > 0) WorldMemory.NoteBirth(World, ev.births);
         }
 
@@ -940,12 +1092,16 @@ namespace Concordia
         {
             if (!force && Weather == _visualWeather) return;
             _visualWeather = Weather;
-            var world = GameObject.Find("World");
+            // Same dead-Find bug as WorldBuilder's three (GameObject.Find("World") never
+            // resolves — the real root is "Chunk_<world>"). This one silently dropped every
+            // rain/snow precipitation VFX placement; the fog-density half of this function
+            // below doesn't touch `world` and was the only part that ever actually ran.
+            var world = WorldBuilder.ChunkRoot(World);
             if (!world) return;
-            var holder = world.transform.Find("WeatherFx");
+            var holder = world.Find("WeatherFx");
             if (holder) UnityEngine.Object.DestroyImmediate(holder.gameObject);
             var go = new GameObject("WeatherFx");
-            go.transform.SetParent(world.transform, false);
+            go.transform.SetParent(world, false);
             var kind = WeatherKind(Weather);
             if (kind != null)
                 DressVocab.PlaceWeather(kind, go.transform, new Vector3(0f, 8f, 0f));
@@ -1092,25 +1248,108 @@ namespace Concordia
 
         public static void Write(WorldId id, WorldSliceRec slice)
         {
+            if (slice == null) return;
             slice.world = id.ToString();
             slice.savedAt = (float)(DateTime.UtcNow - new DateTime(2026, 1, 1)).TotalSeconds;
             Cache[id] = slice;
-            var map = new Dictionary<string, WorldSliceRec>();
-            foreach (WorldId w in Enum.GetValues(typeof(WorldId)))
-                map[w.ToString()] = Load(w);
-            map[id.ToString()] = slice;
-            var list = new List<WorldSliceRec>();
-            foreach (var kv in map) list.Add(kv.Value);
-            var rec = All();
-            rec.v = 1;
-            rec.slices = list.ToArray();
+            RebuildFileCacheSlices();
+            ConcordiaPersistenceService.NotifyWorldMemoryChanged();
+        }
+
+        public static void ApplyPersistence(WorldPersistenceRecord record)
+        {
+            if (record == null) return;
+            Cache.Clear();
+            var rec = new LivingSaveRec
+            {
+                v = 1, plotsCsv = record.plotsCsv ?? "", travelersCsv = record.travelersCsv ?? "",
+                crossCsv = record.crossCsv ?? "", caravansCsv = record.caravansCsv ?? "",
+                tariffsCsv = record.tariffsCsv ?? "", borderCrossingsCsv = record.borderCrossingsCsv ?? "",
+                slices = new WorldSliceRec[0]
+            };
+            var slices = new List<WorldSliceRec>();
+            if (record.slices != null)
+                foreach (var source in record.slices)
+                {
+                    if (source == null) continue;
+                    WorldId id;
+                    if (!Enum.TryParse(source.world, true, out id)) continue;
+                    var slice = new WorldSliceRec
+                    {
+                        world = id.ToString(), ecology = source.ecology, prices = source.prices,
+                        factionHeat = source.factionHeat, hour = source.hour, day = source.day,
+                        births = source.births, lastEvent = source.lastEvent, savedAt = source.savedAt,
+                        deadCsv = source.deadCsv, stock = source.stock, need = source.need,
+                        staple = source.staple, imports = source.imports, population = source.population
+                    };
+                    if (source.regions != null)
+                    {
+                        var regions = new List<RegionSliceRec>();
+                        foreach (var region in source.regions)
+                            if (region != null) regions.Add(new RegionSliceRec
+                            {
+                                regionId = region.regionId, discovered = region.discovered,
+                                ecology = region.ecology, activity = region.activity,
+                                controlFactionId = region.controlFactionId
+                            });
+                        slice.regions = regions.ToArray();
+                    }
+                    if (source.settlements != null)
+                    {
+                        var settlements = new List<SettlementSliceRec>();
+                        foreach (var settlement in source.settlements)
+                            if (settlement != null) settlements.Add(new SettlementSliceRec
+                            {
+                                settlementId = settlement.settlementId, population = settlement.population,
+                                prices = settlement.prices, controlFactionId = settlement.controlFactionId,
+                                incidentsCsv = settlement.incidentsCsv, constructionCsv = settlement.constructionCsv,
+                                activitiesCsv = settlement.activitiesCsv
+                            });
+                        slice.settlements = settlements.ToArray();
+                    }
+                    KingdomBook.Ensure(slice, id);
+                    Cache[id] = slice; slices.Add(slice);
+                }
+            rec.slices = slices.ToArray();
             FileCache = rec;
+        }
+
+        public static bool TryImportLegacy(string json, out string error)
+        {
+            error = null;
+            if (string.IsNullOrEmpty(json)) { error = "Legacy world memory data is empty."; return false; }
             try
             {
-                var path = Path.Combine(Application.persistentDataPath, "concordia-living-v1.json");
-                File.WriteAllText(path, JsonUtility.ToJson(rec, true));
+                var rec = JsonUtility.FromJson<LivingSaveRec>(json);
+                if (rec == null || rec.v <= 0) { error = "Unsupported legacy world memory schema."; return false; }
+                if (rec.slices == null) rec.slices = new WorldSliceRec[0];
+                if (rec.plotsCsv == null) rec.plotsCsv = "";
+                if (rec.travelersCsv == null) rec.travelersCsv = "";
+                if (rec.crossCsv == null) rec.crossCsv = "";
+                if (rec.caravansCsv == null) rec.caravansCsv = "";
+                if (rec.tariffsCsv == null) rec.tariffsCsv = "";
+                if (rec.borderCrossingsCsv == null) rec.borderCrossingsCsv = "";
+                Cache.Clear();
+                var valid = new List<WorldSliceRec>();
+                foreach (var slice in rec.slices)
+                {
+                    if (slice == null) continue;
+                    WorldId id;
+                    if (!Enum.TryParse(slice.world, true, out id)) continue;
+                    slice.world = id.ToString(); KingdomBook.Ensure(slice, id);
+                    Cache[id] = slice; valid.Add(slice);
+                }
+                rec.slices = valid.ToArray(); FileCache = rec; return true;
             }
-            catch { }
+            catch (Exception exception) { error = exception.Message; return false; }
+        }
+
+        static void RebuildFileCacheSlices()
+        {
+            var rec = All(); rec.v = 1;
+            var list = new List<WorldSliceRec>();
+            foreach (WorldId world in Enum.GetValues(typeof(WorldId))) list.Add(Load(world));
+            rec.slices = list.ToArray(); FileCache = rec;
         }
 
         public static LivingSaveRec All()
@@ -1187,8 +1426,8 @@ namespace Concordia
         public static void Put(WorldId id, WorldSliceRec slice)
         {
             if (slice == null) return;
-            slice.world = id.ToString();
-            Cache[id] = slice;
+            slice.world = id.ToString(); Cache[id] = slice;
+            ConcordiaPersistenceService.NotifyWorldMemoryChanged();
         }
 
         public static string DeadCsv(WorldId id) => Load(id).deadCsv ?? "";
@@ -1229,13 +1468,13 @@ namespace Concordia
 
         static LivingSaveRec ReadFile()
         {
-            try
+            string error;
+            if (!ConcordiaPersistenceService.TryImportLegacyWorldMemoryFromDisk(out error))
             {
-                var path = Path.Combine(Application.persistentDataPath, "concordia-living-v1.json");
-                if (!File.Exists(path)) return null;
-                return JsonUtility.FromJson<LivingSaveRec>(File.ReadAllText(path));
+                if (!string.IsNullOrEmpty(error)) Debug.LogWarning("[Concordia] legacy world-memory import failed: " + error);
+                return null;
             }
-            catch { return null; }
+            return FileCache;
         }
     }
 
@@ -1395,6 +1634,9 @@ namespace Concordia
             WorldMemory.Write(from, fromSlice);
             WorldMemory.Write(to, toSlice);
             WorldClock.LastEvent = toSlice.lastEvent;
+            string error;
+            if (!ConcordiaPersistenceService.TrySave(out error) && !string.IsNullOrEmpty(error))
+                Debug.LogWarning("[Concordia] cross-ring save failed: " + error);
             return toSlice.lastEvent;
         }
 
@@ -1663,7 +1905,22 @@ namespace Concordia
             var list = ListCaravans();
             list.Add(c);
             WriteCaravans(list);
-            if (why == "away") WorldMemory.Put(from, fromSlice);
+            if (why == "away" || why == "opening") WorldMemory.Put(from, fromSlice);
+        }
+
+        /// <summary>Opening-day dispatch for an authored TradeRouteDef (TradeRouteTraffic).</summary>
+        public static void DispatchOpeningCaravan(WorldId from, WorldId to, WorldSliceRec fromSlice, float qty)
+            => DispatchCaravan(from, to, fromSlice, qty, "opening");
+
+        /// <summary>True if a non-finished caravan already covers this world pair.</summary>
+        public static bool HasActiveCaravan(WorldId from, WorldId to)
+        {
+            foreach (var c in ListCaravans())
+            {
+                if (c.status == "arrived" || c.status == "returned" || c.status == "raided") continue;
+                if ((c.from == from && c.to == to) || (c.from == to && c.to == from)) return true;
+            }
+            return false;
         }
 
         static void Arrive(CaravanRec c)

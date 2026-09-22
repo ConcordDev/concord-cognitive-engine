@@ -1,0 +1,314 @@
+{
+  "countries": [
+    {
+      "country_id": "enforcers_movement",
+      "faction_id": "enforcers_movement",
+      "name": "The Enforcers' Movement",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Ensure power \u2014 economic, cognitive, narrative \u2014 stays with the people who generate it.",
+      "capital": {
+        "name": "The Enforcers' Movement",
+        "x": -37.16,
+        "z": 17.33
+      },
+      "anchors": [
+        {
+          "id": "enforcers_movement_gate",
+          "name": "The Enforcers' Movement Gate",
+          "x": -37.16,
+          "z": 17.33,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "enforcers_movement_district",
+          "name": "bronx_arterials",
+          "x": -29.16,
+          "z": 11.33,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "luminary_empire"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "luminary_empire",
+      "faction_id": "luminary_empire",
+      "name": "Luminary Industries",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Centralize economic, cognitive, and security infrastructure under a single benevolent stewardship \u2014 Vesper Kane's.",
+      "capital": {
+        "name": "Luminary Industries",
+        "x": -44.76,
+        "z": 19.93
+      },
+      "anchors": [
+        {
+          "id": "luminary_empire_gate",
+          "name": "Luminary Industries Gate",
+          "x": -44.76,
+          "z": 19.93,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "luminary_empire_district",
+          "name": "upper_manhattan_grid",
+          "x": -36.76,
+          "z": 13.93,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "enforcers_movement"
+      ],
+      "territory_radius": 28.0
+    },
+    {
+      "country_id": "superhero_civic_super_taskforce",
+      "faction_id": "superhero_civic_super_taskforce",
+      "name": "The Civic Super Task Force",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Provide the city government a registered, deployable team of bio-powered operators. Maintain political legitimacy by being deliberately less-powerful than Enforcer apex tier. Investigate criminal supers without provoking the Enforcers' Movement.",
+      "capital": {
+        "name": "The Civic Super Task Force",
+        "x": -22.87,
+        "z": 35.22
+      },
+      "anchors": [
+        {
+          "id": "superhero_civic_super_taskforce_gate",
+          "name": "The Civic Super Task Force Gate",
+          "x": -22.87,
+          "z": 35.22,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "superhero_civic_super_taskforce_district",
+          "name": "task_force_HQ_municipal",
+          "x": -14.87,
+          "z": 29.22,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "enforcers_movement",
+        "superhero_criminal_supers"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "superhero_criminal_supers",
+      "faction_id": "superhero_criminal_supers",
+      "name": "The Crimson Spire Cartel (Criminal Supers)",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Operate as the city's organized crime apex by leveraging bio-powers. Maintain a cartel of seven super-powered crime lords who carve the city by district.",
+      "capital": {
+        "name": "The Crimson Spire Cartel (Criminal Supers)",
+        "x": 25.27,
+        "z": -34.79
+      },
+      "anchors": [
+        {
+          "id": "superhero_criminal_supers_gate",
+          "name": "The Crimson Spire Cartel (Criminal Supers) Gate",
+          "x": 25.27,
+          "z": -34.79,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "superhero_criminal_supers_district",
+          "name": "crimson_spire_lounge",
+          "x": 33.27,
+          "z": -40.79,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [
+        "superhero_civic_super_taskforce",
+        "enforcers_movement"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "superhero_civil_rights_emerged",
+      "faction_id": "superhero_civil_rights_emerged",
+      "name": "The Movement for Emerged Civil Rights",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Achieve full civil rights for the bio-powered. Resist the Registration Act. Build alliances with sympathetic normie residents. Document Enforcer overreach without becoming the Enforcers.",
+      "capital": {
+        "name": "The Movement for Emerged Civil Rights",
+        "x": -55.95,
+        "z": -10.88
+      },
+      "anchors": [
+        {
+          "id": "superhero_civil_rights_emerged_gate",
+          "name": "The Movement for Emerged Civil Rights Gate",
+          "x": -55.95,
+          "z": -10.88,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "superhero_civil_rights_emerged_district",
+          "name": "movement_office_storefront",
+          "x": -47.95,
+          "z": -16.88,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "superhero_normie_resistance"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "superhero_normie_resistance",
+      "faction_id": "superhero_normie_resistance",
+      "name": "The Baseline Resistance",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Resist the bio-powered cultural and economic dominance of the city. Pass the Registration Act. Protect normie citizens from collateral damage in super-on-super conflicts.",
+      "capital": {
+        "name": "The Baseline Resistance",
+        "x": -34.07,
+        "z": -40.6
+      },
+      "anchors": [
+        {
+          "id": "superhero_normie_resistance_gate",
+          "name": "The Baseline Resistance Gate",
+          "x": -34.07,
+          "z": -40.6,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "superhero_normie_resistance_district",
+          "name": "resistance_headquarters",
+          "x": -26.07,
+          "z": -46.6,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [
+        "enforcers_movement",
+        "superhero_criminal_supers",
+        "superhero_civil_rights_emerged"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "superhero_biokinetics_college",
+      "faction_id": "superhero_biokinetics_college",
+      "name": "The College of Applied Biokinetics",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Train newly-emerged bio-powered citizens in their abilities. Maintain the only academic institution sanctioned by all factions to teach bio-power discipline. Research the substrate's emergence patterns.",
+      "capital": {
+        "name": "The College of Applied Biokinetics",
+        "x": 51.16,
+        "z": 22.78
+      },
+      "anchors": [
+        {
+          "id": "superhero_biokinetics_college_gate",
+          "name": "The College of Applied Biokinetics Gate",
+          "x": 51.16,
+          "z": 22.78,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "superhero_biokinetics_college_district",
+          "name": "college_main_campus",
+          "x": 59.16,
+          "z": 16.78,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "superhero",
+      "preferred_visit_order": 7,
+      "climate_warning": null,
+      "disputed_border": [],
+      "territory_radius": 25.5
+    }
+  ]
+}

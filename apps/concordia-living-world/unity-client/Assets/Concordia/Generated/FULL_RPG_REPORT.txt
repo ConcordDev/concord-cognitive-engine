@@ -1,0 +1,119 @@
+CONCORDIA FULL-SCALE RPG REPORT
+Date: 2026-09-22
+Project: unity-client / ConcordiaHub
+
+STATUS: BLOCKED
+
+The report is intentionally honest. The required Unity PlayMode gates could not be completed because the Unity TCP bridge/editor endpoint on port 49382 was unavailable and timed out during refresh, compile checks, asset queries, and editor-state queries. No runtime PASS is claimed without Play evidence.
+
+## Startup compile unstick
+
+- Merge conflict scan: PASS — no `<<<<<<<`, `=======`, or `>>>>>>>` markers remain in:
+  - `Assets/Concordia/Scripts/WorldBook.cs`
+  - `Assets/Concordia/Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs`
+  - `Assets/Concordia/Scripts/*.cs` scan returned no matches.
+- Source fix: removed a duplicate `RecordedEvents` property from `ConcordiaPersistenceService.cs`.
+- Source fix: corrected `WorldBook.NoteKill()` so faction standing and witness heat are both scoped to a non-empty faction id.
+- L0 PlayMode assembly: `Assets/Concordia/Tests/PlayMode/Concordia.Tests.PlayMode.asmdef` already has a direct `Unity.InputSystem` reference. `L0Ual1SequenceProofTest.cs` keeps the guarded Input System path. The previous proof asset records that the Input System path errors had been fixed.
+- `refresh_unity` timed out.
+- `check_compile_errors` could not connect to Unity. Compile status: UNVERIFIED, not PASS.
+
+## R0–R12 status
+
+### R0 — UAL1 / glide / LIFE_PROOF: PARTIAL
+Evidence:
+- `Assets/Concordia/Generated/Proof/FullRpg/R0_ANIMATION.md`
+- `Assets/Concordia/Generated/UAL1_CLIP_INDEX.txt`
+- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_20260922_031125915_0_idle.png`
+- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof_INCONCLUSIVE.md`
+- `Assets/Concordia/Generated/AURA_LIFE_PROOF.txt`
+
+Prior static/focused evidence is strong: UAL1 bindings exist, focused animation tests previously passed 8/8, and coverage previously reported 442 verbs with 0 honesty failures. The full visible sequence, fresh LIFE_PROOF smoke, and 30-second glide benchmark were not executed in this run.
+
+### R1 — persistence truth: PARTIAL
+Evidence:
+- `Assets/Concordia/Generated/Proof/FullRpg/R1_SAVE.md`
+- `Assets/Concordia/Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs`
+
+Unified versioned capture/restore and legacy import are present. Runtime one-writer reconciliation and a PlayMode save/reload round trip are unverified.
+
+### R2 — world memory: PARTIAL
+Evidence:
+- `Assets/Concordia/Generated/Proof/FullRpg/R2_MEMORY.md`
+- `Assets/Concordia/Scripts/WorldEventLog.cs`
+- `Assets/Concordia/Scripts/FactionStandingBook.cs`
+
+The bounded typed event log and persistence integration are present. The required three-distinct-event PlayMode proof and broader gossip consumer proof are unverified.
+
+### R3 — quests: PARTIAL
+Existing quest data, QuestLog persistence, and authored quest infrastructure remain in the project. The required order-independent mainline/side-chain PlayMode proof was not executed.
+
+### R4 — dialogue and consequence: PARTIAL
+Local dialogue and event recording remain present. A two-branch choice run with persisted downstream price/quest/gossip divergence was not executed.
+
+### R5 — factions / reputation / crime: PARTIAL
+Evidence:
+- `Assets/Concordia/Scripts/FactionStandingBook.cs`
+- `Assets/Concordia/Scripts/FactionStandingIntegration.cs`
+- `Assets/Concordia/Scripts/WorldBook.cs`
+
+Standing, witness heat, dialogue/quest/trade gates, market multiplier, and guard reaction policy exist. Runtime raise/lower, crime reaction, recovery, and persistence proof are unverified.
+
+### R6 — progression / build: PARTIAL
+SkillLattice and SkillLedger integration exist, but two-build combat and dialogue-gate differentiation was not executed.
+
+### R7 — items / loot / crafting / economy: PARTIAL
+GameplayCore fabrication, gunsmithing, spellcrafting, containers, vehicles, and economy surfaces exist. A gather → craft → equip → advantaged fight → save/load proof was not executed.
+
+### R8 — combat / ecology / boss: PARTIAL
+ActionRunner, HitResolver, hostile combat, combat feedback, and world consequences exist. The required 60-second multi-archetype, boss, survivor/nemesis, and return-reaction proof was not executed.
+
+### R9 — NPC life / schedules / social: PARTIAL
+NpcLife, GuestNpc, modular authored bodies, and settlement systems exist. Two schedule blocks, interruption, recovery, and return proof was not executed.
+
+### R10 — traversal / mounts / inter-megaworld: PARTIAL
+ContinentStream, SoftEnter, readiness gates, and vehicle/mount persistence surfaces exist. Continuous Hub → Fantasy → third world → Hub travel and a mount segment were not executed.
+
+### R11 — companions / party: PARTIAL
+Companion-related persistence and NPC infrastructure exist, but recruit → travel → fight assist → reload proof was not executed.
+
+### R12 — presentation / UI / audio / accessibility / Concord live: PARTIAL
+HubLook, HUD, authored CX/Rocketbox presentation, footsteps, local dialogue, and optional ConcordClient paths exist. Dense-Hub presentation, accessibility, audio-state, Concord-connected, and measured performance evidence were not completed.
+
+## Required continuous loop
+
+Status: NOT PROVEN.
+
+The required continuous session — Hub arrival, branch, quest, Fantasy travel, gather/craft, archetype fight, named/boss consequence, companion assist, faction shift, remembered events, travel, return, save/reload — was not executed because Unity was unavailable.
+
+## LIFE_PROOF
+
+Latest recorded evidence remains:
+- `Assets/Concordia/Generated/AURA_LIFE_PROOF.txt`
+- Result: PASS for the prior A–F direct PlayMode probes.
+
+A fresh post-edit re-smoke was not possible. The prior PASS was not overwritten or falsely upgraded.
+
+## Runtime / project inventory
+
+- Animator source: `Assets/Concordia/Anim/ConcordiaLocomotion.controller` and Resources copy.
+- UAL1 source: `Assets/Concordia/FreePacks/Quaternius/Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/UAL1_Standard.fbx`.
+- Persistence save version: `concordia-unified-v1.json`, schema version 1.
+- Legacy import: `concordia-living-v1.json` compatibility retained.
+- ConcordClient: optional path exists; live connection status was not reachable in this run.
+- Compile clean: UNVERIFIED because Unity TCP bridge was unavailable.
+
+## NEED_DUTCH leftovers
+
+1. Restore a responsive Unity editor/TCP bridge on port 49382 without deleting Library or killing Concord/Claude RC.
+2. Run `refresh_unity` and `check_compile_errors`; resolve any remaining compiler output.
+3. Run the L0 PlayMode sequence and write the PASS marker plus eight rendered images.
+4. Run the 30-second visual benchmark and write measured p95/p99/GPU evidence.
+5. Run R1/R2 persistence and multi-event PlayMode proofs.
+6. Run the remaining R3–R12 runtime gates and update this report from PARTIAL only when proof files exist.
+
+## Honest content-volume remainder
+
+The systems are not content-complete at AAA volume. Remaining content-volume work includes broader authored settlements, NPC populations, quests, creatures, faction rosters, interiors, businesses, roads, dungeons, vehicles, mounts, and authored animation coverage. Those content gaps are distinct from the current verification block.
+
+Generated by the full-scale resume pass on 2026-09-22.

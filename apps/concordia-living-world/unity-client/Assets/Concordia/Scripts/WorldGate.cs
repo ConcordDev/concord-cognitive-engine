@@ -75,7 +75,11 @@ namespace Concordia
                 post.ownerFaction = "Concordant Watch";
             else
                 post.ownerFaction = OwnerOf(WorldClock.World);
-            int n = WorldClock.World == WorldId.Hub ? ConcordiaHost.GateGuards : 1;
+            // WorldClock may still be unset while Hub gates Start during BuildHubStaged.
+            // LeanPlay: always GateGuards (1) — PlaceGate yields so one CX bind per frame.
+            int n = ConcordiaHost.LeanPlay
+                ? ConcordiaHost.GateGuards
+                : (WorldClock.World == WorldId.Hub ? ConcordiaHost.GateGuards : 1);
             for (int i = 0; i < n; i++)
             {
                 var pos = gate.transform.position + gate.transform.right * (i == 0 ? -3.4f : 3.4f) + gate.transform.forward * 0.4f + Vector3.up * 0.05f;
@@ -550,10 +554,10 @@ namespace Concordia
             presented.encounterId = hold.encounterId ?? "";
             presented._rend = go.GetComponent<Renderer>();
             presented._scale0 = go.transform.localScale;
-            var cc = go.GetComponent<CharacterController>() ?? go.AddComponent<CharacterController>();
-            cc.height = 3.2f;
+            var cc = Grounding.EnsureController(go, 3.2f);
             cc.radius = 0.7f;
             cc.center = Vector3.up * 0.2f;
+            Grounding.ClampStepOffset(cc, 0.4f);
             presented._dummy = go.GetComponent<TrainingDummy>() ?? go.AddComponent<TrainingDummy>();
             presented._dummy.living = true;
             presented._dummy.hp = 80f;

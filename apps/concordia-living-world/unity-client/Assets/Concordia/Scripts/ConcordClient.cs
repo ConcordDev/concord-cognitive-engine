@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using Concordia.Settlement;
 
 namespace Concordia
 {
@@ -136,6 +137,13 @@ namespace Concordia
 
         async void Start()
         {
+            if (ConcordiaHost.LeanPlay)
+            {
+                // Connect after Hub staged via ConcordiaGame.DressHeroAfterHub → EnsureConnected.
+                Debug.Log("[Concordia] LeanPlay: defer ConcordClient websocket until Hub staged");
+                return;
+            }
+
             _cts = new CancellationTokenSource();
             LastReason = "connecting";
             StatusJson = "{\"ok\":false,\"reason\":\"connecting\"}";
@@ -252,6 +260,21 @@ namespace Concordia
                 StampPresenterWorld();
                 var token = string.IsNullOrEmpty(bearerToken) ? "unity-local-guest" : bearerToken;
                 await SendEvt("auth", "{\"token\":\"" + Escape(token) + "\"}");
+                if (ConcordiaHost.LeanPlay)
+                {
+                    await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
+                    await SendEvt("party:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    await SendEvt("world:snapshot", "{\"worldId\":\"" + Escape(worldId) + "\"}");
+                    LastReason = "lean_connected";
+                    StatusJson = "{\"ok\":true,\"reason\":\"lean_connected\"}";
+                    Debug.Log("[Concordia] LeanPlay: WS full handshake (ApplyScene staged; AgentBody later)");
+#if !(UNITY_WEBGL && !UNITY_EDITOR)
+                    _ = ReceiveLoop();
+#endif
+                    return;
+                }
                 await SendEvt("scene:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("kingdom:request", "{\"worldId\":\"" + Escape(worldId) + "\"}");
                 await SendEvt("room:join", "{\"room\":\"world:" + Escape(worldId) + "\"}");
@@ -315,7 +338,12 @@ namespace Concordia
             }
             if (evt == "character:created" || evt == "character:bound" || evt == "character:loaded")
             {
-                RunMain(() => PresentAgentSoul(text, evt == "character:bound" || JsonFlagTrue(text, "spawn")));
+                RunMain(() =>
+                {
+                    try { PresentAgentSoul(text, evt == "character:bound" || JsonFlagTrue(text, "spawn")); }
+                    catch (System.Exception ex)
+                    { Debug.LogWarning("[Concordia] LeanPlay: PresentAgentSoul failed: " + ex.Message); }
+                });
                 return;
             }
             if (evt == "agent:intent:ack")
@@ -325,6 +353,7 @@ namespace Concordia
             }
             if (evt == "scene:data")
             {
+                // LeanPlay: ApplyScene stages PlaceKernelBuilding one/frame (Court still owns local plaza).
                 RunMain(() => ApplyScene(text));
                 return;
             }
@@ -908,7 +937,7 @@ namespace Concordia
         }
 
         /// <summary>
-        /// Concord 2B line for Convai / Talk. Empty string is honest failure
+        /// Optional gateway dialogue line for the talk panel. Empty string is honest failure
         /// (no_gateway, timeout, or ok:false) — never a fabricated voice.
         /// </summary>
         public async Task<string> AskTwoB(string npcId, string npcName, string line, string text)
@@ -989,6 +1018,27 @@ namespace Concordia
             var w = JsonNestedString(json, "type");
             if (string.IsNullOrEmpty(w)) w = JsonString(json, "type");
             WorldClock.BindKernelWeather(w);
+            if (ConcordiaHost.LeanPlay)
+            {
+                // Gossip live; PresentKernelCreatures/Ecology still skip (compile storm).
+                var leanGossip = JsonArrayCount(json, "gossip");
+                if (leanGossip > 0)
+                {
+                    var shown = 0;
+                    ForEachArrayObject(json, "gossip", row =>
+                    {
+                        var summary = JsonString(row, "summary");
+                        if (string.IsNullOrEmpty(summary)) return;
+                        if (shown < 3)
+                        {
+                            WorldClock.PushFeed("gossip", summary);
+                            shown++;
+                        }
+                    });
+                }
+                Debug.Log("[Concordia] LeanPlay: ApplyWorldSnapshot soft (gossip on; skip creatures/ecology)");
+                return;
+            }
             var gossipN = JsonArrayCount(json, "gossip");
             if (gossipN > 0)
             {
@@ -1214,6 +1264,7 @@ namespace Concordia
 
         void Consequence(string channel, string title, string line, bool announce, float heatDelta)
         {
+            Concordia.GameplayCore.GameplayCoreBridge.Live?.RecordConsequence(channel, title, title, line, "kernel", null, null, heatDelta);
             RunMain(() =>
             {
                 WorldClock.PushFeed(channel, line);
@@ -1281,26 +1332,208 @@ namespace Concordia
         /// </summary>
         void ApplyScene(string json)
         {
-            if (JsonFlagFalse(json, "ok"))
+if (JsonFlagFalse(json, "ok"))
             {
                 var reason = JsonString(json, "reason");
                 if (!string.IsNullOrEmpty(reason) && string.IsNullOrEmpty(HudLine))
                     LastReason = reason;
                 return;
             }
-            WorldBuilder.ClearKernelLive();
+            // The slug is the server's folder id ("concordia-hub", "concord-link-frontier",
+            // …), not the C# enum name — a request/response pair can also straddle a travel,
+            // so trust the payload's own worldId rather than assuming "whatever world we're
+            // in now". Falls back to the current world only if the field is somehow absent.
+            var slug = JsonString(json, "worldId");
+            if (!WorldBook.TryParseFolder(slug, out var world))
+                world = WorldClock.World;
+
+            WorldBuilder.ClearKernelLive(world);
             var n = JsonArrayCount(json, "nodes");
             if (n <= 0) return;
+            if (world == Concordia.WorldId.Hub || ConcordiaHost.LeanPlay)
+            {
+                // Court/full Play uses the same staged realization as LeanPlay:
+                // roads first, then nearest real SettlementCompiler buildings.
+                // No cube stubs — PlaceKernelBuildingTask now CompileOne.
+                var leanCap = ConcordiaHost.LeanApplySceneCap;
+                var batch = new System.Collections.Generic.List<string>(leanCap);
+                ForEachArrayObject(json, "nodes", node =>
+                {
+                    if (batch.Count < leanCap) batch.Add(node);
+                });
+                // Nearest Canon.Spawn first so the camera sees real architecture soonest.
+                batch.Sort((a, b) =>
+                {
+                    var pa = JsonVec3(JsonObject(a, "transform"), "translation");
+                    var pb = JsonVec3(JsonObject(b, "transform"), "translation");
+                    var da = (pa - Canon.Spawn).sqrMagnitude;
+                    var db = (pb - Canon.Spawn).sqrMagnitude;
+                    return da.CompareTo(db);
+                });
+                var realizeCap = ConcordiaHost.LeanRealizeBuildingCap;
+                if (batch.Count > realizeCap) batch.RemoveRange(realizeCap, batch.Count - realizeCap);
+                Debug.Log("[Concordia] Court staged ApplyScene realize queue=" + batch.Count + " (of " + n + " raw, roads+CompileOne)");
+                if (_sceneApplyCo != null) StopCoroutine(_sceneApplyCo);
+                _sceneApplyCo = StartCoroutine(RealizeSceneStaged(world, batch));
+                return;
+            }
             ForEachArrayObject(json, "nodes", node =>
             {
                 var id = JsonString(node, "id");
                 var type = JsonString(node, "type");
-                var pos = JsonVec3(node, "translation");
-                var yaw = JsonFloat(node, "rotationY", 0f);
-                var scale = JsonVec3(node, "scale");
-                var maxDim = Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
-                WorldBuilder.PlaceKernelBuilding(id, type, pos, yaw, maxDim);
+                var name = JsonString(node, "name");
+                var material = JsonString(node, "material");
+
+                // scene-export.js nests the transform: { transform: { translation, rotationY,
+                // scale } }. Reading these keys straight off `node` (the prior code) always
+                // missed and silently defaulted every kernel building to (0,0,0) — a bug
+                // masked for months by PlaceKernelBuilding's own dead GameObject.Find("World").
+                var xform = JsonObject(node, "transform");
+                var pos = JsonVec3(xform, "translation");
+                var yaw = JsonFloat(xform, "rotationY", 0f);
+                var scale = JsonVec3(xform, "scale");
+
+                var extras = JsonObject(node, "extras");
+                var state = JsonString(extras, "state");
+                var floors = JsonInt(extras, "floors", 1);
+                var purpose = JsonString(extras, "purpose");
+                var districtId = JsonString(extras, "district_id");
+
+                WorldBuilder.PlaceKernelBuilding(world, id, type, name, material, pos, yaw, scale,
+                                                 state, floors, purpose, districtId);
             });
+        }
+
+
+        Coroutine _sceneApplyCo;
+
+        System.Collections.IEnumerator RealizeSceneStaged(WorldId world, System.Collections.Generic.List<string> nodes)
+        {
+            // Phase 1 — road skeleton (no yield inside try/catch — CS1626).
+            System.Threading.Tasks.Task<int> roadTask = null;
+            try
+            {
+                var chunk = WorldBuilder.ChunkRootPublic(world);
+                if (!chunk) chunk = transform;
+                SettlementDef def = null;
+                foreach (var s in WorldGeography.Settlements(world))
+                { def = s; break; }
+                if (def != null)
+                    roadTask = SettlementCompiler.CompileRoadsOnly(chunk, world, def, null);
+                else
+                    Debug.LogWarning("[Concordia] LeanPlay: no SettlementDef for roads on " + world);
+            }
+            catch (System.Exception ex)
+            { Debug.LogWarning("[Concordia] LeanPlay: realize roads kick failed: " + ex.Message); }
+
+            if (roadTask != null)
+            {
+                while (!roadTask.IsCompleted) yield return null;
+                if (roadTask.IsFaulted)
+                    Debug.LogWarning("[Concordia] LeanPlay: realize roads faulted: " + roadTask.Exception?.GetBaseException().Message);
+                else
+                    Debug.Log("[Concordia] LeanPlay: realize roads done paved=" + roadTask.Result);
+            }
+
+            // Phase 2 — building modules one CompileOne at a time.
+            int placed = 0;
+            var gap = ConcordiaHost.LeanCompileFrameGap;
+            for (var i = 0; i < nodes.Count; i++)
+            {
+                var node = nodes[i];
+                var id = JsonString(node, "id");
+                var type = JsonString(node, "type");
+                var name = JsonString(node, "name");
+                var material = JsonString(node, "material");
+                var xform = JsonObject(node, "transform");
+                var pos = JsonVec3(xform, "translation");
+                var yaw = JsonFloat(xform, "rotationY", 0f);
+                var scale = JsonVec3(xform, "scale");
+                var extras = JsonObject(node, "extras");
+                System.Threading.Tasks.Task task = null;
+                try
+                {
+                    task = WorldBuilder.PlaceKernelBuildingTask(world, id, type, name, material, pos, yaw, scale,
+                        JsonString(extras, "state"), JsonInt(extras, "floors", 1),
+                        JsonString(extras, "purpose"), JsonString(extras, "district_id"));
+                }
+                catch (System.Exception ex)
+                { Debug.LogWarning("[Concordia] LeanPlay: CompileOne kick failed: " + ex.Message); }
+                if (task != null)
+                {
+                    var wait = 0;
+                    while (!task.IsCompleted)
+                    {
+                        wait++;
+                        // Soft timeout: one building should not freeze Play forever.
+                        if (wait > 180)
+                        {
+                            Debug.LogWarning("[Concordia] LeanPlay: CompileOne soft-timeout id=" + id);
+                            break;
+                        }
+                        yield return null;
+                    }
+                    if (task.IsCompleted && !task.IsFaulted)
+                    {
+                        placed++;
+                        Debug.Log("[Concordia] LeanPlay: CompileOne placed=" + placed + "/" + nodes.Count + " id=" + id);
+                        var chunk = WorldBuilder.ChunkRootPublic(world);
+                        var holder = chunk ? chunk.Find("KernelLive") : null;
+                        var compiled = holder
+                            ? holder.Find(string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id)
+                            : null;
+                        // Idempotent; CompileOne already dresses — re-hit nearest 12 only.
+                        if (compiled && placed <= 12)
+                            SettlementCompiler.DressBuilding(compiled.gameObject, world);
+                    }
+                }
+                for (var g = 0; g < gap; g++) yield return null;
+            }
+            Debug.Log("[Concordia] Court staged ApplyScene realize done buildings=" + placed);
+            _sceneApplyCo = null;
+        }
+
+        System.Collections.IEnumerator ApplySceneNodesStaged(WorldId world, System.Collections.Generic.List<string> nodes)
+        {
+            int placed = 0;
+            const int perFrame = 6;
+            for (var i = 0; i < nodes.Count; )
+            {
+                var budget = perFrame;
+                while (budget-- > 0 && i < nodes.Count)
+                {
+                    var node = nodes[i++];
+                    var id = JsonString(node, "id");
+                    var type = JsonString(node, "type");
+                    var name = JsonString(node, "name");
+                    var material = JsonString(node, "material");
+                    var xform = JsonObject(node, "transform");
+                    var pos = JsonVec3(xform, "translation");
+                    var yaw = JsonFloat(xform, "rotationY", 0f);
+                    var scale = JsonVec3(xform, "scale");
+                    var extras = JsonObject(node, "extras");
+                    var state = JsonString(extras, "state");
+                    var floors = JsonInt(extras, "floors", 1);
+                    var purpose = JsonString(extras, "purpose");
+                    var districtId = JsonString(extras, "district_id");
+                    System.Threading.Tasks.Task task = null;
+                    try
+                    {
+                        task = WorldBuilder.PlaceKernelBuildingTask(world, id, type, name, material, pos, yaw, scale,
+                                                         state, floors, purpose, districtId);
+                    }
+                    catch (System.Exception ex)
+                    { Debug.LogWarning("[Concordia] LeanPlay: PlaceKernelBuilding failed: " + ex.Message); }
+                    if (task != null)
+                    {
+                        while (!task.IsCompleted) yield return null;
+                        if (!task.IsFaulted) placed++;
+                    }
+                }
+                yield return null;
+            }
+            Debug.Log("[Concordia] LeanPlay: ApplyScene staged done placed=" + placed);
+            _sceneApplyCo = null;
         }
 
         void ApplyLensResult(string json)
@@ -1462,10 +1695,17 @@ namespace Concordia
             else worldId = WorldBook.Folder(WorldClock.World);
         }
 
-        void RestoreAgentSoul()
+        public void RestoreAgentSoul()
         {
             var last = PlayerPrefs.GetString("concordia-agent-character", "");
-            if (string.IsNullOrEmpty(last)) return;
+            if (string.IsNullOrEmpty(last))
+            {
+                if (ConcordiaHost.LeanPlay)
+                    Debug.Log("[Concordia] LeanPlay: RestoreAgentSoul no saved character");
+                return;
+            }
+            if (ConcordiaHost.LeanPlay)
+                Debug.Log("[Concordia] LeanPlay: RestoreAgentSoul bind id=" + last + " (PresentAgentSoul live)");
             _ = BindAgentCharacter(last);
         }
 

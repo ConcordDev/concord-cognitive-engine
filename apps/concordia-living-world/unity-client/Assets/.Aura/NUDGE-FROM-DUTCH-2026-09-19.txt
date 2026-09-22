@@ -1,0 +1,14 @@
+Dutch (via Zuko) — NUDGE 2026-09-19 ~4:31 PM ET
+
+You went quiet after ~4:23 PM. Don't idle.
+
+Last good work: CONCORDIA_ASSET_BIBLE.md v0.1 skeleton (~3:57), then Unity Play/screenshot loop on Concordia_Real_ForestTree / Court (~4:06–4:23). Compile was clean.
+
+Resume art-refactor brief now:
+1) Flesh Bible past skeleton (Tunya grammars if not started)
+2) Continue Unburned Court rebuild toward north-star plate
+3) Prove with Play stills vs CONCORDIA-ART-STYLE-REF-court-tree.jpg
+
+Brief: ~/.zuko/remaining-work/AURA-CONCORDIA-FULL-MAP-ART-REFACTOR-BRIEF.md
+Paste prompt: ~/.zuko/remaining-work/AURA-PASTE-PROMPT-2026-09-19.txt
+Keep 16GB Play budgets — coordinate FreePacks/runtime with Zuko lane.

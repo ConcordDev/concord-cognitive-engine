@@ -1,0 +1,37 @@
+CONCORDIA FULL-SCALE RPG PROGRESS
+Date: 2026-09-22
+Project: unity-client / ConcordiaHub
+
+STARTUP / COMPILE UNSTICK
+- Conflict-marker scan: PASS for Assets/Concordia/Scripts/WorldBook.cs.
+- Conflict-marker scan: PASS for Assets/Concordia/Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs.
+- Conflict-marker scan: PASS for Assets/Concordia/Scripts/*.cs.
+- Fixed a duplicate RecordedEvents property in ConcordiaPersistenceService.cs.
+- Fixed missing braces around faction standing + witness heat updates in WorldBook.NoteKill().
+- PlayMode test assembly already contains a direct Unity.InputSystem reference in Concordia.Tests.PlayMode.asmdef; L0Ual1SequenceProofTest.cs retains its guarded Input System path.
+- Unity TCP bridge is unavailable on port 49382, so refresh/compile/check_compile_errors could not complete. Compile status remains UNVERIFIED, not PASS.
+
+R0 — UAL1 / GLIDE / LIFE PROOF
+- UAL1 controller structure and authored-body binding exist from prior work.
+- Existing focused EditMode animation evidence: 8/8 passed; coverage audit previously reported 442 verbs and 0 honesty failures.
+- L0 visible sequence remains INCONCLUSIVE: idle evidence exists, but no complete PlayMode sequence marker.
+- LIFE_PROOF A–F remains the latest recorded PASS in Assets/Concordia/Generated/AURA_LIFE_PROOF.txt; no fresh smoke run was possible because Unity was unavailable.
+- Glide 30-second benchmark remains UNVERIFIED.
+
+R1 — PERSISTENCE TRUTH
+- Unified persistence service captures world slices, event log, faction standings, player, NPC, quests, skills, economy, fabrication, gunsmithing, spellcrafting, containers, vehicles, consequences, and plots.
+- Legacy WorldMemory import path remains present.
+- Runtime one-writer reconciliation and PlayMode round trip remain UNVERIFIED because Unity was unavailable.
+
+R2 — WORLD MEMORY
+- WorldEventLog is bounded to 128 typed causal records and is captured/restored by unified persistence.
+- FactionStandingBook writes causal standing and witness-heat events.
+- Multi-event PlayMode memory proof remains UNVERIFIED.
+
+R3–R12
+- Existing partial implementations were preserved and not falsely promoted to PASS.
+- Runtime proofs for quests, branching choices, faction consumers, progression, crafting, enemy ecology, schedules, mounts, companions, presentation, accessibility, audio, and benchmark remain pending.
+
+R13
+- This progress file and the honest final report have been written.
+- Final status is BLOCKED until Unity reconnects and the required PlayMode evidence is produced.

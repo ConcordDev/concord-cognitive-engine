@@ -8,5 +8,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/ConcordiaHub.unity
     guid: 330f4de1823a9426a8e663807ff103be
+  - enabled: 1
+    path: Assets/Concordia/Generated/Performance/ConcordiaVisualBenchmark.unity
+    guid: 93c13842d11044d8dab48b1d9a5368ee
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

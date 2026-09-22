@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Concordia
 {
@@ -33,7 +36,13 @@ namespace Concordia
         public static GameObject Equip(GameObject body, string stem, Slot slot, float size)
         {
             if (!body || string.IsNullOrEmpty(stem)) return null;
-            var mesh = FreePacks.Mesh(stem);
+            GameObject mesh = null;
+#if UNITY_EDITOR
+            var generatedPath = CxDress.GeneratedGearPrefabPath(stem);
+            if (!string.IsNullOrEmpty(generatedPath))
+                mesh = AssetDatabase.LoadAssetAtPath<GameObject>(generatedPath);
+#endif
+            if (!mesh) mesh = FreePacks.Mesh(stem);
             if (!mesh && (slot == Slot.HandR || slot == Slot.HandL || slot == Slot.Back || slot == Slot.Hip))
                 mesh = FreePacks.Mesh(DressVocab.Weapon(stem));
             if (!mesh) return null;
@@ -53,21 +62,31 @@ namespace Concordia
             return go;
         }
 
+        /// <summary>
+        /// Playable Alive Slice grip contract: a socket parented to the character
+        /// root is not a bone — no root-parented weapons. ModularPerson signals "no
+        /// real hand" by setting leftHand/rightHand to body.transform (Kenney/bad-bind
+        /// bodies with no matched skeleton); Bone() falls back to its root argument on
+        /// a miss for the same reason. Both must be rejected here, not accepted.
+        /// </summary>
         public static Transform Socket(GameObject body, ModularPerson person, Slot slot)
         {
             Transform bone = null;
             string name = SocketName(slot);
+            Transform root = body ? body.transform : null;
             if (person != null)
             {
-                if (slot == Slot.HandR && person.rightHand)
+                if (slot == Slot.HandR && person.rightHand && person.rightHand != root)
                     bone = person.rightHand;
-                else if (slot == Slot.HandL && person.leftHand)
+                else if (slot == Slot.HandL && person.leftHand && person.leftHand != root)
                     bone = person.leftHand;
             }
             if (!bone && body)
-                bone = Bone(body.transform, BoneNames(slot));
-            if (!bone) bone = body ? body.transform : null;
-            if (!bone) return null;
+            {
+                var found = Bone(root, BoneNames(slot));
+                if (found != root) bone = found;
+            }
+            if (!bone) return null; // no matched bone — empty hands, not a glued weapon
             var existing = bone.Find(name);
             if (existing) return existing;
             var s = new GameObject(name).transform;

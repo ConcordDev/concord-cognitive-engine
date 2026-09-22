@@ -45,10 +45,14 @@ namespace Concordia
             }
             else
             {
-                go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                go.name = "Missing_" + System.IO.Path.GetFileNameWithoutExtension(path);
+                // Missing imported content must not become a visible primitive cube.
+                // Keep a non-rendered diagnostic marker so callers retain a stable
+                // transform without violating the visual-quality floor.
+                go = new GameObject("Missing_" + System.IO.Path.GetFileNameWithoutExtension(path));
                 go.transform.SetParent(parent, false);
-                go.transform.localScale = Vector3.one * 2f;
+                var marker = go.AddComponent<WorldContentMissingMarker>();
+                marker.assetPath = path;
+                Debug.LogWarning("[Concordia] Missing authored visual asset: " + path);
             }
             go.transform.SetParent(parent, true);
             go.transform.rotation = rot;
@@ -71,5 +75,11 @@ namespace Concordia
 #endif
             return Resources.Load<GameObject>("Concordia/" + stem);
         }
+    }
+
+    [DisallowMultipleComponent]
+    public sealed class WorldContentMissingMarker : MonoBehaviour
+    {
+        public string assetPath;
     }
 }

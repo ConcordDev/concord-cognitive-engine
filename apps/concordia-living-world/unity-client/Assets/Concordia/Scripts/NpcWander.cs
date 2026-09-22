@@ -27,6 +27,8 @@ namespace Concordia
 
         void Update()
         {
+            if (((Time.frameCount + gameObject.GetHashCode()) & 7) != 0) return;
+            if (!ConcordiaHost.AllowNpcTick()) return;
             var dt = Time.deltaTime;
             if (_wait > 0f)
             {
@@ -57,7 +59,8 @@ namespace Concordia
             else _vel.y += -22f * dt;
             _vel.x = Mathf.Lerp(_vel.x, dir.x * walkSpeed, 1f - Mathf.Exp(-8f * dt));
             _vel.z = Mathf.Lerp(_vel.z, dir.z * walkSpeed, 1f - Mathf.Exp(-8f * dt));
-            _cc.Move(_vel * dt);
+            if (Grounding.CanMove(_cc))
+                _cc.Move(_vel * dt);
             var spd = new Vector3(_vel.x, 0f, _vel.z).magnitude;
             _avatar?.SetGait(spd, _cc.isGrounded, _vel.y);
             _person?.SetGait(spd, _cc.isGrounded, _vel.y);
@@ -69,7 +72,8 @@ namespace Concordia
             else _vel.y += -22f * dt;
             _vel.x = 0f;
             _vel.z = 0f;
-            _cc.Move(_vel * dt);
+            if (Grounding.CanMove(_cc))
+                _cc.Move(_vel * dt);
         }
 
         void Pick()

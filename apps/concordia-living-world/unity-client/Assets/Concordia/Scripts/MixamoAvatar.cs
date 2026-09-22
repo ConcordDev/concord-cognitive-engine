@@ -129,7 +129,7 @@ namespace Concordia
                         ? Mathf.Lerp(1.6f, 2.8f, Mathf.InverseLerp(0.35f, 6.4f, speed))
                         : Mathf.Lerp(5.4f, 7.0f, Mathf.InverseLerp(6.4f, 8.4f, speed));
                 animator.enabled = true;
-                animator.SetFloat("Speed", shown);
+                animator.SetFloat("Speed", shown, 0.12f, Time.deltaTime);
                 if (HasParam("Grounded")) animator.SetBool("Grounded", grounded);
             }
         }
@@ -152,6 +152,12 @@ namespace Concordia
         public void Hit() => _hitT = 0.32f;
         public void Stagger() => _staggerT = 0.55f;
         public void Knockdown() => _knockT = 0.72f;
+        public void Dodge()
+        {
+            // Legacy SoldierLocomotion may not expose the Dodge parameter; the playback
+            // helper refuses the trigger when the active controller lacks it.
+            Concordia.Animation.AnimationVerbPlayback.TrySetTrigger(animator, "trav.dodge", "Dodge");
+        }
 
         float StanceWidth() => style switch
         {

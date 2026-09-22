@@ -67,6 +67,12 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, new Vector3(5, 0, 8), 40, 3.2f);
                     FreePacks.Spawn(tower, root, new Vector3(-8, 0, 14), 0, 10f);
                     FreePacks.Spawn(DressVocab.FirstStem(new[] { "banner-red" }, "banner-red"), root, new Vector3(3, 0, 5), 20, 3f);
+                    CxDress.SpawnPrefab(
+                        "Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_WreckWagon.prefab",
+                        root, new Vector3(6f, 0f, 3f), 35f, "SunderingWagon");
+                    CxDress.SpawnPrefab(
+                        "Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Crate.prefab",
+                        root, new Vector3(4.2f, 0f, 2.4f), 12f, "SunderingCrate");
                     break;
                 case WorldId.Crime:
                     FreePacks.Spawn(house, root, new Vector3(0, 0, 12), 0, 6.2f);

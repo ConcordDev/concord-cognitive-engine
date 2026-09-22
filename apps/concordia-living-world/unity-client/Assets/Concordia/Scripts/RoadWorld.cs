@@ -91,17 +91,49 @@ namespace Concordia
         static Role R(string name, string title, string line, NpcLife.Job job, int outfit) =>
             new Role { name = name, title = title, line = line, job = job, outfit = outfit };
 
+        /// <summary>
+        /// SYNC Seed is banned — use <see cref="SeedStaged"/> via WorldStreamManager.
+        /// </summary>
         public static void Seed(Transform hold)
         {
             if (!hold) return;
-            DressSigns(hold);
             if (hold.Find("RoadWorldSeed")) return;
+            Debug.LogWarning("[Concordia] RoadWorld.Seed sync blocked — starting SeedStaged");
+            var mgr = WorldStreamManager.Ensure();
+            var cell = StreamCellId.ForWorld(WorldClock.World, StreamCellKind.Road);
+            var host = ContinentStream.Live;
+            if (host)
+                host.StartCoroutine(SeedStaged(hold));
+            else
+            {
+                var runner = hold.gameObject.GetComponent<StreamSeedRunner>()
+                    ?? hold.gameObject.AddComponent<StreamSeedRunner>();
+                runner.StartCoroutine(SeedStaged(hold));
+            }
+            mgr.Enqueue(cell, StreamLodBand.Visual, 20, "road-seed-staged",
+                () => hold && hold.Find("RoadWorldSeed") != null);
+        }
+
+        /// <summary>Frame-budgeted road life seed — only path WorldStreamManager allows.</summary>
+        public static System.Collections.IEnumerator SeedStaged(Transform hold)
+        {
+            if (!hold) yield break;
+            DressSigns(hold);
+            yield return null;
+            if (hold.Find("RoadWorldSeed")) yield break;
             SeedWrecks(hold);
+            yield return null;
             SeedThreats(hold);
+            yield return null;
             SeedDelves(hold);
+            yield return null;
             SeedTravelers(hold);
-            var mark = new GameObject("RoadWorldSeed");
-            mark.transform.SetParent(hold, false);
+            yield return null;
+            if (!hold.Find("RoadWorldSeed"))
+            {
+                var mark = new GameObject("RoadWorldSeed");
+                mark.transform.SetParent(hold, false);
+            }
         }
 
         public static void PlaceSign(Transform hold, GateDef g, Vector3 roadPoint, Vector3 alongDir, int i, float leftM)
@@ -126,9 +158,15 @@ namespace Concordia
                 }
                 return;
             }
-            var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
-            HubLook.Prim(hold, PrimitiveType.Cube, at + Vector3.up * 0.85f,
-                new Vector3(0.22f, 1.7f, 0.22f), stone, "Mark_" + g.shortName + "_" + i);
+            var civic = CxDress.SpawnPrefab(CxDress.CivicPrefabPath(g.world), hold, at,
+                Quaternion.LookRotation(-right.normalized, Vector3.up).eulerAngles.y,
+                "Civic_" + g.shortName + "_" + i);
+            if (!civic)
+            {
+                var stone = HubLook.Pbr("stone_tiles", new Color(0.46f, 0.42f, 0.36f), 0.04f, 0.22f, 12f);
+                HubLook.Prim(hold, PrimitiveType.Cube, at + Vector3.up * 0.85f,
+                    new Vector3(0.22f, 1.7f, 0.22f), stone, "Mark_" + g.shortName + "_" + i);
+            }
             var label = new GameObject(name).AddComponent<TextMesh>();
             label.transform.SetParent(hold, false);
             label.transform.position = at + Vector3.up * 2.05f;
@@ -187,7 +225,10 @@ namespace Concordia
                 float along = Canon.RingRadius + 48f;
                 var berm = dir * along - side * 4.6f;
                 var yaw = -g.angle * Mathf.Rad2Deg + 70f;
-                var cart = FreePacks.Spawn(DressVocab.Cart(), hold, berm, yaw, 1.6f, required: false);
+                var cart = CxDress.SpawnPrefab(
+                    "Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_WreckWagon.prefab",
+                    hold, berm, yaw, "Wreck_" + g.shortName);
+                if (!cart) cart = FreePacks.Spawn(DressVocab.Cart(), hold, berm, yaw, 1.6f, required: false);
                 if (!cart)
                     cart = HubLook.Prim(hold, PrimitiveType.Cube, berm + Vector3.up * 0.45f,
                         new Vector3(2.2f, 0.9f, 1.1f),
@@ -196,7 +237,10 @@ namespace Concordia
                 else
                     cart.name = "Wreck_" + g.shortName;
                 var crateAt = berm + side * 1.4f;
-                var crate = FreePacks.Spawn("crate", hold, crateAt, yaw + 20f, 0.7f, required: false);
+                var crate = CxDress.SpawnPrefab(
+                    "Assets/Concordia/Generated/Prefabs/P2/Props/CX_Prop_Crate.prefab",
+                    hold, crateAt, yaw + 20f, "WreckCrate_" + g.shortName);
+                if (!crate) crate = FreePacks.Spawn("crate", hold, crateAt, yaw + 20f, 0.7f, required: false);
                 if (!crate)
                     HubLook.Prim(hold, PrimitiveType.Cube, crateAt + Vector3.up * 0.28f,
                         new Vector3(0.7f, 0.55f, 0.7f),
@@ -210,20 +254,29 @@ namespace Concordia
             int cap = ConcordiaHost.RoadThreats;
             if (cap <= 0) return;
             int n = 0;
+
+            // Sundering is the authored threat road. Keep the full named CX bandit
+            // cast visible in one Play session, then reserve one slot for a watcher.
+            GateDef fantasy = null;
+            foreach (var idx in WalkerOrder)
+            {
+                if (idx < 0 || idx >= Canon.Gates.Length) continue;
+                if (Canon.Gates[idx].world == WorldId.Fantasy) { fantasy = Canon.Gates[idx]; break; }
+            }
+            if (fantasy != null)
+            {
+                int bandits = Mathf.Min(5, cap);
+                for (int i = 0; i < bandits; i++)
+                    if (PlaceBandit(hold, fantasy, i)) n++;
+                if (n < cap && PlaceWatcher(hold, fantasy, n)) n++;
+            }
+
             foreach (var idx in WalkerOrder)
             {
                 if (n >= cap) break;
                 if (idx < 0 || idx >= Canon.Gates.Length) continue;
                 var g = Canon.Gates[idx];
-                // Sundering is the lived road: bandit AND watcher. Watcher-or-bandit
-                // left Marrow missing the morning Play had a Watcher instead.
-                if (g.world == WorldId.Fantasy)
-                {
-                    if (PlaceBandit(hold, g, n)) n++;
-                    if (n >= cap) break;
-                    if (PlaceWatcher(hold, g, n)) n++;
-                    continue;
-                }
+                if (g == fantasy) continue;
                 if (PlaceWatcher(hold, g, n) || PlaceBandit(hold, g, n)) n++;
             }
         }
@@ -247,6 +300,7 @@ namespace Concordia
                     speciesId = kind,
                     topology = CreatureCompiler.TopologyFor(kind),
                     generation = 0,
+                    variant = "cx-watcher",
                     predator = true,
                     lifestyle = "carnivore"
                 }, hill, w);
@@ -260,6 +314,30 @@ namespace Concordia
             var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
             h.aggro = 18f;
             h.damage = 8f + salt;
+
+            if (g.world == WorldId.Fantasy)
+            {
+                var wolf = CreatureCompiler.Compile(hold, new CreatureCard
+                {
+                    id = "wolf-road-" + g.shortName,
+                    speciesId = "wolf",
+                    topology = "quadruped",
+                    generation = 0,
+                    predator = true,
+                    lifestyle = "carnivore"
+                }, hill + side * 5.2f + Vector3.up * 0.05f, w);
+                if (wolf)
+                {
+                    wolf.name = "Wolf_" + g.shortName;
+                    var wolfDummy = wolf.GetComponent<TrainingDummy>() ?? wolf.AddComponent<TrainingDummy>();
+                    wolfDummy.living = true;
+                    wolfDummy.BindId("road-wolf-" + g.shortName);
+                    wolfDummy.hp = 48f;
+                    var wolfHostile = wolf.GetComponent<Hostile>() ?? wolf.AddComponent<Hostile>();
+                    wolfHostile.aggro = 16f;
+                    wolfHostile.damage = 7f;
+                }
+            }
             return true;
         }
 
@@ -269,8 +347,8 @@ namespace Concordia
             if (dest.sqrMagnitude < 4f) return false;
             var dir = dest.normalized;
             var side = Vector3.Cross(Vector3.up, dir).normalized;
-            float along = Canon.RingRadius + 70f;
-            var p = dir * along - side * 5.8f + Vector3.up * 0.05f;
+            float along = Canon.RingRadius + 70f + (salt % 5) * 11f;
+            var p = dir * along - side * (5.8f + ((salt % 3) - 1) * 2.2f) + Vector3.up * 0.05f;
             var who = BanditFor(g.world, salt);
             var look = Appearance.Random(8800 + salt * 17);
             look.displayName = who.name;
@@ -278,6 +356,8 @@ namespace Concordia
             var yaw = Quaternion.LookRotation(-side, Vector3.up).eulerAngles.y;
             var go = ModularPerson.SpawnNpc(hold, p, yaw, look, false);
             go.name = "Bandit_" + g.shortName;
+            CharacterGear.Attach(go, "cx_weapon_hatchet", true, 1.0f);
+            CharacterGear.Equip(go, "CX_Gear_BanditScrap", CharacterGear.Slot.Chest, 0.95f);
             var dummy = go.AddComponent<TrainingDummy>();
             dummy.living = true;
             dummy.BindId("road-bandit-" + g.shortName);
@@ -482,7 +562,7 @@ namespace Concordia
 
         static Role BanditFor(WorldId id, int salt)
         {
-            var names = new[] { "Marrow", "Hitch", "Dusk", "Nettle" };
+            var names = new[] { "Marrow", "Hitch", "Dusk", "Nettle", "Captain" };
             var name = names[Mathf.Abs(salt) % names.Length];
             var role = RoleFor(id, salt);
             role.name = name;
@@ -511,8 +591,16 @@ public static void DropSpoils(Transform at)
             else
                 p = at.position + at.right * 0.7f;
             p.y = at.position.y;
-            var hold = at.parent ? at.parent : at;
-            var crate = FreePacks.Spawn("crate", hold, p, 25f, 0.65f, required: false);
+            // Parent spoils to the world root, not the corpse — SetActive(false) on the body hid loot.
+            Transform hold = null;
+            var stream = Object.FindAnyObjectByType<ContinentStream>();
+            if (stream) hold = stream.transform;
+            if (!hold) hold = at.root;
+            var crate = CxDress.SpawnPrefab(
+                "Assets/Concordia/Generated/Prefabs/P0/Spoils/CX_Prop_Spoils_pouch.prefab",
+                hold, p, 25f, key);
+            if (!crate)
+                crate = FreePacks.Spawn("crate", hold, p, 25f, 0.65f, required: false);
             if (!crate)
                 crate = HubLook.Prim(hold, PrimitiveType.Cube, p + Vector3.up * 0.22f,
                     new Vector3(0.5f, 0.38f, 0.45f),
@@ -568,6 +656,9 @@ public static void NoticeKill(string who, Vector3 at)
             var firstLine = firstName + " saw " + who + " fall.";
             WorldClock.PushFeed("gossip", firstLine);
             if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(firstLine);
+            var summary = who + " fell on the road.";
+            var firstGuestNpc = first.GetComponent<GuestNpc>();
+            if (firstGuestNpc) GossipEar.Attach(firstGuestNpc, summary);
 
             if (!second) return;
             second.NoticePlayer(7f);
@@ -576,6 +667,8 @@ public static void NoticeKill(string who, Vector3 at)
                 ? secondGuest.def.name
                 : second.name;
             WorldClock.PushFeed("gossip", secondName + " heard that " + who + " fell nearby.");
+            var secondGuestNpc = second.GetComponent<GuestNpc>();
+            if (secondGuestNpc) GossipEar.Attach(secondGuestNpc, summary);
         }
     
 

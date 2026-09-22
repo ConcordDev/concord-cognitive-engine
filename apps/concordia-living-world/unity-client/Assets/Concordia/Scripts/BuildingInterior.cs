@@ -207,7 +207,7 @@ namespace Concordia
 
         void LateUpdate()
         {
-            var player = FindFirstObjectByType<ConcordiaPlayer>();
+            var player = ConcordiaPlayer.Live;
             if (!player || _shell == null) return;
             var lp = transform.InverseTransformPoint(player.transform.position);
             bool inside = Mathf.Abs(lp.x) < _w * 0.5f - 0.2f

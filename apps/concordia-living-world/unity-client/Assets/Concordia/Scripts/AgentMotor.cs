@@ -113,7 +113,8 @@ namespace Concordia
             var dir = to.normalized;
             var vel = dir * speed;
             vel.y = cc.isGrounded ? -1.5f : -22f * Time.deltaTime;
-            cc.Move(vel * Time.deltaTime);
+            if (Grounding.CanMove(cc))
+                cc.Move(vel * Time.deltaTime);
             Face(dest);
             _body.Person?.SetGait(speed, cc.isGrounded);
         }
@@ -123,7 +124,8 @@ namespace Concordia
             var cc = _body.Cc;
             var vel = Vector3.zero;
             vel.y = cc.isGrounded ? -1.5f : -22f * Time.deltaTime;
-            cc.Move(vel * Time.deltaTime);
+            if (Grounding.CanMove(cc))
+                cc.Move(vel * Time.deltaTime);
             _body.Person?.SetGait(0f, cc.isGrounded);
         }
 
@@ -148,13 +150,15 @@ namespace Concordia
             if (counter == "jump")
             {
                 var cc = _body.Cc;
-                cc.Move(Vector3.up * 0.35f);
+                if (Grounding.CanMove(cc))
+                    cc.Move(Vector3.up * 0.35f);
                 if (client) _ = client.SendDodge(false, "jump");
             }
             else
             {
                 var away = transform.right * (Random.value > 0.5f ? 1f : -1f);
-                _body.Cc.Move(away * 1.6f);
+                if (Grounding.CanMove(_body.Cc))
+                    _body.Cc.Move(away * 1.6f);
                 if (client) _ = client.SendDodge(counter == "parry", counter);
             }
         }
