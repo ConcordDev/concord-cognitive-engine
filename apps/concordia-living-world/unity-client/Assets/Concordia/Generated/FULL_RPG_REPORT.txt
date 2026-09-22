@@ -15,8 +15,9 @@ The report is intentionally honest. The required Unity PlayMode gates could not 
 - Source fix: removed a duplicate `RecordedEvents` property from `ConcordiaPersistenceService.cs`.
 - Source fix: corrected `WorldBook.NoteKill()` so faction standing and witness heat are both scoped to a non-empty faction id.
 - L0 PlayMode assembly: `Assets/Concordia/Tests/PlayMode/Concordia.Tests.PlayMode.asmdef` already has a direct `Unity.InputSystem` reference. `L0Ual1SequenceProofTest.cs` keeps the guarded Input System path. The previous proof asset records that the Input System path errors had been fixed.
-- `refresh_unity` timed out.
-- `check_compile_errors` could not connect to Unity. Compile status: UNVERIFIED, not PASS.
+- `refresh_unity` was requested and Unity subsequently reported no compilation errors.
+- `check_compile_errors`: PASS — `No compile errors` after the L0 input harness and camera cleanup edits.
+- Unity test infrastructure remains unstable: repeated MCP port churn caused later PlayMode/EditMode initialization failures.
 
 ## R0–R12 status
 
@@ -28,7 +29,7 @@ Evidence:
 - `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof_INCONCLUSIVE.md`
 - `Assets/Concordia/Generated/AURA_LIFE_PROOF.txt`
 
-Prior static/focused evidence is strong: UAL1 bindings exist, focused animation tests previously passed 8/8, and coverage previously reported 442 verbs with 0 honesty failures. The full visible sequence, fresh LIFE_PROOF smoke, and 30-second glide benchmark were not executed in this run.
+Prior static/focused evidence is strong: UAL1 bindings exist, and the focused EditMode animation suite was rerun successfully at 8/8. Coverage previously reported 442 verbs with 0 honesty failures. The visible PlayMode sequence was retried after replacing bitfield delta events with KeyboardState events and making the capture camera follow the moving body. One retry reached the real sequence but failed at the roll beat; later retries were blocked by test-runner initialization and MCP port churn. Fresh LIFE_PROOF smoke and the 30-second glide benchmark remain unverified.
 
 ### R1 — persistence truth: PARTIAL
 Evidence:
@@ -84,7 +85,7 @@ HubLook, HUD, authored CX/Rocketbox presentation, footsteps, local dialogue, and
 
 Status: NOT PROVEN.
 
-The required continuous session — Hub arrival, branch, quest, Fantasy travel, gather/craft, archetype fight, named/boss consequence, companion assist, faction shift, remembered events, travel, return, save/reload — was not executed because Unity was unavailable.
+The required continuous session — Hub arrival, branch, quest, Fantasy travel, gather/craft, archetype fight, named/boss consequence, companion assist, faction shift, remembered events, travel, return, save/reload — remains unproven. Unity is reachable for compilation and some EditMode tests, but PlayMode initialization is currently unstable.
 
 ## LIFE_PROOF
 
@@ -101,7 +102,7 @@ A fresh post-edit re-smoke was not possible. The prior PASS was not overwritten 
 - Persistence save version: `concordia-unified-v1.json`, schema version 1.
 - Legacy import: `concordia-living-v1.json` compatibility retained.
 - ConcordClient: optional path exists; live connection status was not reachable in this run.
-- Compile clean: UNVERIFIED because Unity TCP bridge was unavailable.
+- Compile clean: PASS — `check_compile_errors` returned `No compile errors`.
 
 ## NEED_DUTCH leftovers
 

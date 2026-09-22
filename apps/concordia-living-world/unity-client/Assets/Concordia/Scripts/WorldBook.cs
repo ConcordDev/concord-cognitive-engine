@@ -1232,7 +1232,11 @@ namespace Concordia
         public static WorldSliceRec Load(WorldId id)
         {
             if (Cache.TryGetValue(id, out var hit) && hit != null) return hit;
-            var all = ReadFile();
+            // Once the unified persistence boundary has supplied a FileCache, do not
+            // re-import the legacy file for every uncached world. That silently cleared
+            // a freshly Put() slice during Capture() and made unified saves read stale
+            // concordia-living-v1.json values.
+            var all = FileCache ?? ReadFile();
             WorldSliceRec found = null;
             if (all?.slices != null)
                 foreach (var s in all.slices)

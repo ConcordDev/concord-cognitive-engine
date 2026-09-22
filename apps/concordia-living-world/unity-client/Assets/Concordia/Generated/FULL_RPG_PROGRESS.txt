@@ -9,13 +9,14 @@ STARTUP / COMPILE UNSTICK
 - Fixed a duplicate RecordedEvents property in ConcordiaPersistenceService.cs.
 - Fixed missing braces around faction standing + witness heat updates in WorldBook.NoteKill().
 - PlayMode test assembly already contains a direct Unity.InputSystem reference in Concordia.Tests.PlayMode.asmdef; L0Ual1SequenceProofTest.cs retains its guarded Input System path.
-- Unity TCP bridge is unavailable on port 49382, so refresh/compile/check_compile_errors could not complete. Compile status remains UNVERIFIED, not PASS.
+- Unity is reachable again for compilation. `check_compile_errors` returned `No compile errors` after the L0 Input System and capture cleanup edits.
+- The PlayMode runner still experiences MCP port churn and intermittent initialization failures.
 
 R0 — UAL1 / GLIDE / LIFE PROOF
 - UAL1 controller structure and authored-body binding exist from prior work.
-- Existing focused EditMode animation evidence: 8/8 passed; coverage audit previously reported 442 verbs and 0 honesty failures.
-- L0 visible sequence remains INCONCLUSIVE: idle evidence exists, but no complete PlayMode sequence marker.
-- LIFE_PROOF A–F remains the latest recorded PASS in Assets/Concordia/Generated/AURA_LIFE_PROOF.txt; no fresh smoke run was possible because Unity was unavailable.
+- Focused EditMode animation suite rerun: 8/8 passed; coverage audit previously reported 442 verbs and 0 honesty failures.
+- L0 visible sequence remains INCONCLUSIVE: the harness was corrected for bitfield keyboard events and moving-body capture, but one retry failed at the roll beat and later PlayMode initialization was unstable.
+- LIFE_PROOF A–F remains the latest recorded PASS in Assets/Concordia/Generated/AURA_LIFE_PROOF.txt; a fresh full smoke run is still pending.
 - Glide 30-second benchmark remains UNVERIFIED.
 
 R1 — PERSISTENCE TRUTH
@@ -34,4 +35,4 @@ R3–R12
 
 R13
 - This progress file and the honest final report have been written.
-- Final status is BLOCKED until Unity reconnects and the required PlayMode evidence is produced.
+- Compile gate is now PASS, but final status remains BLOCKED until PlayMode runner stability and the required runtime evidence are produced.

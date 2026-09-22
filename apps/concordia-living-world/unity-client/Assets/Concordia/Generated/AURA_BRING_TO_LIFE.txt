@@ -1,0 +1,69 @@
+# AURA — BRING CONCORDIA TO LIFE (FULL STACK)
+# Paste into Aura unity-client chat. Continuous. Do not stop early.
+# Law: bind existing systems — do NOT invent parallel quest/faction/combat engines.
+# Art: GTA × Palworld stylized realism. Leave Library/ intact. No pine re-download.
+
+READ FIRST (Mac):
+- ~/.zuko/BRING_TO_LIFE_MASTER.md
+- ~/.zuko/DEEP_BUILT_VS_PRESENTED.md
+- ~/.zuko/LIVING_SURFACE_TLDR.md
+- Assets/Concordia/Generated/AURA_LIFE_PROOF.txt (prior PASS A–F — preserve; extend)
+
+RULES
+1. One fact → three surfaces (toast/HUD + world dress + ambient/diegetic echo).
+2. Hub MVP density: ≥2 jobbing NPCs + ambient line 20–40s + faction dress + reactive greeting + board/vendor that reflects state. No 9+ alert spam.
+3. Honest PASS/FAIL only with Play evidence. If Unity bridge dies → BLOCKED + NEED_DUTCH, no fake PASSes.
+4. Prefer Canon JSON + existing C# (QuestLog, WorldEventLog, FactionStandingBook, NpcLife, RoadWorld, Vehicle*, Gunsmithing*, Fabrication*, Spellcrafting*, ConcordClient, WorldBoss).
+
+L0 — BRIDGE
+ping / refresh_unity / check_compile_errors. Fix only real errors. Ignore stale conflict markers in last_compile_errors.json if sources are clean.
+
+L1 — CONSEQUENCE THEATER
+1) Hub onboarding (+ first-day-arc as needed): accept → objectives tick → turn-in. Board + giver NPC both update.
+2) Named kill → lootable spoils token → WorldEventLog → gossip/witness line same visit.
+3) FactionStandingBook delta → sash AND one gate or vendor reaction.
+4) SoftEnter out (Sundering-class) and back → Hub feed still knows.
+5) ConcordiaPersistenceService save/load round-trip for quest + events + standing.
+Write Proof/BringToLife/L1_*.md
+
+L2 — CIVIC LIFE
+6) NpcLife hour schedules with job props (sweep/stall/watch) for ≥2 Hub NPCs.
+7) StoreDress vendor: buy/sell mirrors standing when possible.
+8) One BuildingInterior enter/exit functional.
+9) Traveler Present + road ambient.
+10) PresentationHumanActivity + ecology/weather directors on Hub (subtle).
+11) Nested inspect card: role, faction, last interaction.
+12) Absence feedback: dead/fled NPC removed or replaced (no silent identical respawn).
+Write Proof/BringToLife/L2_*.md — confirm 3–5 concurrent hub signals.
+
+L3 — GAMEPLAYCORE SURFACES
+13) Vehicle spawn + enter/exit + short drive; persist ownership.
+14) One gunsmith bench → held weapon change.
+15) One fabrication bench → placeable result.
+16) One spellcraft → SkillLattice slot.
+17) GoldenSlice beat tying one of the above to a quest or kill flag.
+Write Proof/BringToLife/L3_*.md
+
+L4 — CONCORD DEPTH
+18) ConcordClient: real /unity-ws OR labeled offline path (never silent lie).
+19) One phased WorldBoss/delve with telegraph (board/scout/sound) before combat + remembrance/spoils.
+20) Mount ritual OR deepen vehicle if mounts blocked.
+21) Companion follow + banter trio bound to real flags (intro / mid / post-boss).
+22) Skill mastery tier VFX on one verb if server path available; else client-honest tier.
+Write Proof/BringToLife/L4_*.md
+
+L5 — DENSITY (after pipes)
+23) Bind remaining Hub Canon quests (all 8) to givers; then surface existing non-Hub Canon chains at SoftEnter destinations.
+24) Named raid roster stub + schedule telegraph (content thin OK if telegraph+boss loop real).
+25) Prefer native-bible meshes when present; no giant pine re-download.
+Write Proof/BringToLife/L5_*.md
+
+L6 — DO NOT START until L1–L4 PASS
+§AD minigames (mahjong, factory, restaurant, detective, hacking, etc.) stay parked.
+
+REPORTING
+- Live: Assets/Concordia/Generated/BRING_TO_LIFE_PROGRESS.txt
+- Final: Assets/Concordia/Generated/BRING_TO_LIFE_PROOF.txt (STATUS + which ranks 1–12 felt)
+- Append human blockers to ~/.zuko/NEED_DUTCH.md
+
+Go. Continuous through L5 unless BLOCKED.
