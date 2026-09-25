@@ -1,0 +1,78 @@
+fileFormatVersion: 2
+guid: 75139535ac82d48f3b0952708d062642
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 715df9372183c47e389bb6e19fbc3b52, type: 3}
+  editorImportSettings:
+    generateSecondaryUVSet: 0
+  importSettings:
+    nodeNameMethod: 1
+    animationMethod: 2
+    generateMipMaps: 1
+    texturesReadable: 0
+    defaultMinFilterMode: 9729
+    defaultMagFilterMode: 9729
+    anisotropicFilterLevel: 1
+  instantiationSettings:
+    mask: -1
+    layer: 0
+    skinUpdateWhenOffscreen: 1
+    lightIntensityFactor: 1
+    sceneObjectCreation: 2
+  assetDependencies:
+  - type: 0
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/Prop_Rail_Incline_Long_L.bin
+    assetPath: Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/Prop_Rail_Incline_Long_L.bin
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_Normal.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_BaseColor_Red.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_ORM.png
+    assetPath: 
+  reportItems:
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_Normal.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_Normal.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_BaseColor_Red.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_BaseColor_Red.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_ORM.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Modular_SciFi_MegaKit_Standard/Modular
+      SciFi MegaKit[Standard]/glTF/Props/T_Trim_02_ORM.png
+  - type: 0
+    code: 45
+    messages:
+    - 1
+  - type: 0
+    code: 45
+    messages:
+    - 2
+  - type: 0
+    code: 45
+    messages:
+    - 0

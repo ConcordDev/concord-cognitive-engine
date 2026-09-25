@@ -78,16 +78,22 @@ namespace Concordia.Tests
                 yield return new WaitForSeconds(PollIntervalSeconds);
 
                 chunks = 0; settlements = 0; buildings = 0; roofs = 0; places = 0;
-                var all = GameObject.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                var all = GameObject.FindObjectsByType<Transform>(FindObjectsInactive.Include);
                 foreach (var t in all)
                 {
                     if (!t) continue;
                     if (t.name.StartsWith("Chunk_")) chunks++;
-                    else if (t.name.StartsWith("Settlement_")) settlements++;
-                    else if (t.name.StartsWith("Building_")) buildings++;
-                    else if (t.name == "Roof") roofs++;
+                    else if (t.name.StartsWith("Settlement_", System.StringComparison.Ordinal)
+                             || t.name.StartsWith("SettlementStreetscape_", System.StringComparison.Ordinal)
+                             || t.name == "KernelLive") settlements++;
+                    else if (t.name.StartsWith("Building_", System.StringComparison.Ordinal)
+                             || t.name.StartsWith("LeanBuilding_", System.StringComparison.Ordinal)
+                             || t.name.StartsWith("KernelBuilding_", System.StringComparison.Ordinal)
+                             || t.name == "KernelBuilding"
+                             || t.name.StartsWith("ApproachLandmark", System.StringComparison.Ordinal)) buildings++;
+                    else if (t.name == "Roof" || t.name == "ShellRoof") roofs++;
                 }
-                places = GameObject.FindObjectsByType<Concordia.BuildingPlace>(FindObjectsInactive.Include, FindObjectsSortMode.None).Length;
+                places = GameObject.FindObjectsByType<Concordia.BuildingPlace>(FindObjectsInactive.Include).Length;
 
                 lastSummary = $"t={sw.Elapsed.TotalSeconds:F1}s chunks={chunks} settlements={settlements} buildings={buildings} roofs={roofs} places={places} hardErrors={hardErrors.Count} otherLogged={allErrors.Count}";
                 UnityEngine.Debug.Log("Concordia SettlementLiveBootTest poll: " + lastSummary);
@@ -112,12 +118,12 @@ namespace Concordia.Tests
 
             Assert.Greater(chunks, 0, "no Chunk_<world> root ever appeared — world build never ran. " + lastSummary);
             Assert.Greater(settlements, 0,
-                "SettlementCompiler.Compile never produced a Settlement_* root within " + TimeoutSeconds +
-                "s — CityTown.Build's call into it is not firing, or every SettlementDef lookup missed. " + lastSummary);
+                "no settlement container (Settlement_*, SettlementStreetscape_*, or KernelLive) appeared within " + TimeoutSeconds +
+                "s — the active settlement realization path did not publish a container. " + lastSummary);
             Assert.Greater(buildings, 0,
-                "a Settlement_* root exists but zero Building_* children were emitted — FacadeComposer/ModuleKit " +
-                "produced nothing (kit not ready, or every Emit() call returned null). " + lastSummary);
-            Assert.Greater(roofs, 0, "buildings exist but RoofMesher never attached a Roof child. " + lastSummary);
+                "a settlement container exists but no real building object (Building_*, LeanBuilding_*, KernelBuilding_*, " +
+                "or ApproachLandmark*) was emitted — the active compiler produced nothing. " + lastSummary);
+            Assert.Greater(roofs, 0, "buildings exist but RoofMesher never attached a Roof or ShellRoof child. " + lastSummary);
             Assert.Greater(places, 0,
                 "buildings exist but no BuildingPlace was stamped — NpcLife's schedule still can't route to any " +
                 "of them, the exact defect this pass was meant to close. " + lastSummary);

@@ -530,6 +530,12 @@ namespace Concordia.Settlement
             await Task.Yield();
             if (!parent) return null;
 
+            var kernelDistrict = string.IsNullOrEmpty(kb.DistrictId)
+                ? (string.IsNullOrEmpty(kb.Type) ? "kernel" : kb.Type)
+                : kb.DistrictId;
+            var kernelPurpose = string.IsNullOrEmpty(kb.Purpose)
+                ? (string.IsNullOrEmpty(kb.Type) ? "house" : kb.Type)
+                : kb.Purpose;
             var plot = new Plot
             {
                 Centre = new Vector2(kb.Position.x, kb.Position.z),
@@ -537,9 +543,9 @@ namespace Concordia.Settlement
                 Frontage = Mathf.Max(PlotPlanner.BayMeters, kb.Width),
                 Depth = Mathf.Max(PlotPlanner.BayMeters, kb.Depth),
                 Storeys = Mathf.Clamp(kb.Floors > 0 ? kb.Floors : 2, 1, 8),
-                DistrictId = string.IsNullOrEmpty(kb.DistrictId) ? kb.Type : kb.DistrictId,
-                Purpose = string.IsNullOrEmpty(kb.Purpose) ? kb.Type : kb.Purpose,
-                Seed = Det.Hash(kb.Id)
+                DistrictId = kernelDistrict,
+                Purpose = kernelPurpose,
+                Seed = Det.Hash(string.IsNullOrEmpty(kb.Id) ? kernelDistrict : kb.Id)
             };
             Emit(parent, plot, look.Kit, look.WallMat, look.RoofMat, look.Roof, look.Pitch, kb.Name, out var go);
             await Task.Yield();

@@ -1,0 +1,570 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S20_sere_culture_sidequests",
+  "world_id": "Sere",
+  "canon_world_id": "sere",
+  "display_world": "Sere",
+  "facet": "culture_quests",
+  "title": "Sere — culture, politics, side quests, backstory",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Sere lore, factions, countries, npc sheets, volume quests, density weights, S19 caps, or the enc_compound_mark, enc_chest_stamp, enc_one_tile, and enc_empty_post clocks.",
+  "canon_pins": {
+    "world_id": "Sere",
+    "canon_folder": "sere",
+    "canon_world_def_title": "Sere",
+    "lore_display_name": "Corrupt Earth",
+    "fiction": "Satire. Invented houses, wars, and institutions. Claims are about Sere.",
+    "refusal": "No Refusal ever held here.",
+    "the_no": "Every attempt to build outside the machine was bought, hollowed, or crushed.",
+    "law_text": "The Mark is the only law that compounds. Live steel is allowed. Flower-law is the Court only.",
+    "style_id": "tessera",
+    "style_name": "Tessera Hold",
+    "style_verbs": ["Invoice", "Clearing", "Name the holder", "Broken tile"],
+    "steel_live": true,
+    "fight_style_people": "Wing Chun, Canon.PickFight for WorldId.Sere. This facet stands no person, so the style is the rule a later binder uses if a sheet ever gains an anchor. Empty hands. Firearm verb coverage is zero. No firearm mesh.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern a Sere country disc. The nearest capital to a Sere-local origin is the Tally House at 29.00 m. That nearness is not the Court disk.",
+    "hub_law_radius_m": 42,
+    "gate": "Sere is absent from Canon.Gates. Eight spokes only. MegaworldMap.HasLinkGate is false. AngleOf is Crime's 5π/4 plus 0.35 rad, which is 4.277 rad. Present radius is 1.35 × 220 m. The continent's point is (−125.27, −269.29). It is not an interior floor. GatePost for a Sere destination writes tariff 0, inspection 0, and an empty owner.",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "Hub salt road. No board in this slice is lettered with that name. No survivor is stood on that verge."
+    },
+    "humanoid_body": "CX male or CX female, Concordia face, when a person is stood. This facet stands none. The S19 enforcers remain the only Sere CX pins, and they stay on S19's two opens. A Quaternius body is not. A child is not stood in for an adult.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#3a3428", "#c8a060", "#8a3030", "#1a140e"],
+    "canon_ground": "#3a3428",
+    "canon_sun": "#c8a060",
+    "materials": ["soot brick", "oil concrete", "brand tile", "furnace iron"],
+    "kit": "arch_kit_sere_mark",
+    "kit_allowed_kitbash": ["arch_kit_crime_coast", "arch_kit_ruins_ash"],
+    "layering": "Ground floor stays soot, oil, and brand tile. A faction retrofit may sit on an upper storey and must leave the mark silhouette. Named sets furnace_belt, tessera_spire, and mark_tenement stay unplaced, as in S19.",
+    "weather": "smog",
+    "traversal": "spire and furnace belt",
+    "combat": "close and paid-for",
+    "fantasy": "extraction that outlived its authors"
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/sere/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/sere/factions.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/sere/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/sere/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/sere/npcs-extra.json",
+    "meta": "Assets/Concordia/Resources/Concordia/Canon/sere/meta.json",
+    "canon_cs": "Canon.cs WorldId.Sere. Title Sere. Refusal and the No as pinned. Steel live. Wing Chun. Fauna aliases hound and drone. Law: the Mark compounds, live steel allowed, Flower-law is the Court only.",
+    "taxonomy": "native-bible/01_TAXONOMY.md Sere line: marked hound, roach, compound mark, drone skin, arch_kit_sere_mark. Sere is a waystone, not a ninth Refusal gate.",
+    "art": "native-bible/00_ART_DIRECTION.md Sere row: soot brick, oil concrete, brand tile, #3a3428 #c8a060 #8a3030. Furnace belt, compound Mark, no Flower Law.",
+    "kit": "native-bible/architecture/KITS.json arch_kit_sere_mark named sets furnace_belt, tessera_spire, mark_tenement",
+    "density": "native-bible/volume/DENSITY_TABLES.json Sere block, cited via S19",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Sere eight",
+    "volume_encounters": "native-bible/volume/BOSSES_AND_RAIDS.json enc_compound_mark",
+    "prior_slice": "S19_sere_wound_ecology"
+  },
+  "left_in_place": [
+    "q_sere_half_tile",
+    "q_sere_open_table",
+    "q_sere_curtain_line",
+    "q_sere_mark_price",
+    "q_sere_roach_count",
+    "q_sere_one_brand",
+    "q_sere_same_truth",
+    "q_sere_furnace_scout",
+    "q_s19_lip_not_omen",
+    "q_s19_no_second_pan",
+    "q_s19_heat_not_a_name",
+    "q_s19_empty_tariff",
+    "enc_compound_mark",
+    "enc_chest_stamp",
+    "enc_one_tile",
+    "enc_empty_post"
+  ],
+  "unresolved_on_purpose": [
+    "No unique sheet has an interactable daily_schedule location equal to a countries.json anchor id. Homes and rooms stay the strings the sheets already use. This facet stands nobody, because a district pin would invent a coordinate the schedule does not name.",
+    "Esha Varan's home string is the_unbound_provinces, which is the Open Table district's name. Her interactable blocks are the_unbound_provinces_field_edge, the_open_table_meeting_ground, a_shared_long_table, kesh_orans_workshop, and the_seed_beds. Night is a_plain_room_in_the_provinces and is not interactable. She is not stood on the district.",
+    "The Tessera has no head, no roster, and no meeting. That sentence is the meta description. Wend's holder's-eye account and Marda Voss's testimony stay their weaponise lines. Neither is stood. The slate posts the absence and does not recruit a second holder.",
+    "The charter's public word is temporarily. Hale Emberwick's renewal practice and the reason conditions never stabilize stay off the plaque. He is not stood. Imo Reck is not stood. q_sere_mark_price already owns paying the Mark.",
+    "The Spire's public sentence is sovereign-immune, answerable to no realm, motto Above the realms, answerable to none. The charter text, the absence of a flag, and Thea Grell's clauses stay off the board. Isolde Marr is not stood. tessera_spire has no Canon transform.",
+    "The Long Mirror's public sentence is that every breakthrough was matched within a season, far too neatly. The annual-report phrase and Dell Sarn's safe stay off the board. He is not stood. The furnace lip stays S19's.",
+    "The Quiet Fall's public sentence is that the Curtain, Verge's war-arm, and the classification charter were founded in one season, the evidence is on the record, and the verdict is not shipped. The candidate causes stay off the plaque. The Archivist is not stood. q_sere_curtain_line already owns the walked redaction.",
+    "The three attempts are public names: Almsfolk, Lamplighters, Table-of-All, each bought, hollowed, or broken. The particular method of each ending stays the lore file. Esha's plain room stays q_sere_open_table.",
+    "Seven arks left the First Launch Cradle. That string, the gantry, the terminal room, and the manifest office have no x,z. Sefa Lund is not stood. The refused-berth list, the Tunya end of the umbilical, and who cleared the pad stay off the board. This facet does not open Tunya.",
+    "Dovrane's motto and Keshar's motto are the public border. Amon's letters and Sarn's manifests stay unjoined. Amon and Pell are not stood. The 26.23 m brother-gap stays S19's watcher and q_s19_empty_tariff. q_sere_same_truth already carries one sentence both ways.",
+    "Keshar was not lent to, because it is a creditor. The next workshop was built elsewhere. Customers stopped calling. Dahl Revik's figures, Aurel Pace's forecast, and the Mercy Fund's conditions stay off the board. Tomas Reib is not stood. The 10.80 m hollow–keshar open stays empty of beasts and of a tent.",
+    "Oren Dask's priced district, Brann Holloway's jar, Vael Morrow's deeds, Lysandra Aldermere's second ledger, and Julian's choice stay their sheets. Aldermere district, Hollowford district, and Mercy district spawn no board.",
+    "Volume faction strings tessera, open_table, and court_witness are not the canon ids the_tessera, the_open_table, and the Curtain. This slice writes no delta under either spelling. npc_role_sere_enforcer's faction string tessera_hold is not corrected. The role budget stays 4, with S19's two pins left where they are.",
+    "The drone alias on WorldDef stays unresolved. S11 set mon_grid_drone Sere cap to 0. This facet does not field a sodium disc."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_compound_mark, enc_chest_stamp, enc_one_tile, and enc_empty_post stay S19. A politics walker who reaches an open while a window is armed does not become the finisher, does not place furnace_belt, and does not take item_rem_furnace_eye. Boards have no health table. There is no clerk to kill.",
+  "standing_ecology": {
+    "owner": "S19_sere_wound_ecology",
+    "retune": false,
+    "political_reading": [
+      {
+        "id": "faun_smog_roach",
+        "reading": "Cap 8, day and night, on the Keshar-facing 4 m lip of the 19.67 m Verge–Keshar open. A count of bodies on a leak. Politics adds no ninth roach, does not move them onto verge_dynamics_district, and does not turn the count into a Quiet Fall omen. q_sere_roach_count and q_s19_lip_not_omen already own that sentence."
+      },
+      {
+        "id": "faun_sodium_rat",
+        "reading": "Night 6, day 2, on the 5.13 m Tally–Hollowford seam only. The issuer and the seed house, with a spill between them and no room for a hall. Politics does not widen the seam and does not set a seed library in it. Crime street caps stay S09."
+      },
+      {
+        "id": "faun_mark_hound",
+        "reading": "Cap 1 by day on the 22.86 m Aldermere–Tally open. One tile between the house that clears and the house that issues. Politics does not add a second brand. q_sere_one_brand and q_s19_no_second_pan already refuse it. enc_one_tile does not gain a second hound."
+      },
+      {
+        "id": "hyb_markharpy",
+        "reading": "Ambient 1, window 2, peak 2, while furnace_belt is unplaced, on the Verge–Keshar open. She files a faction as a debtor and misses when one chest tile is knocked off. Politics does not place the hall to retire her, and does not move the pair onto a capital. enc_chest_stamp stays hours 10–12 when day_index % 2 == 0."
+      },
+      {
+        "id": "mon_road_watcher",
+        "reading": "Skin sere_invoice, cap 1, on the 26.23 m Dovrane–Keshar open, all hours. Three blank lines. enc_empty_post stays hours 5–7 when day_index % 4 == 1 and does not add a body. q_s19_empty_tariff already leaves the owner empty. Politics reads the mottos on the district pins inside the circles and does not fill the post."
+      },
+      {
+        "id": "mon_boss_compound_mark",
+        "reading": "Ambient 0. Volume hours 17–20, cron 0 17 */3 * *, on unplaced furnace_belt. Recommended seat remains the Verge-side 8 m of the 19.67 m open. A culture errand does not cool the eye, does not sell the open ledger into the circle, and does not carry item_rem_furnace_eye into the Crucible bay."
+      },
+      {
+        "id": "mon_grid_drone",
+        "reading": "S11. Sere cap 0. Unchanged. A disc is not stood in for a clerk."
+      },
+      {
+        "id": "npc_role_sere_enforcer",
+        "reading": "Budget 4, unchanged. S19 stands one on the lip and one on the Aldermere–Tally open. The other two stay on desks and the belt with no new pin. Boards in this facet do not spend the budget and do not equip wpn_throw_sere_marktile."
+      }
+    ]
+  },
+  "geography": {
+    "method": "Country centers and radii are countries.json, the same floors S19 published. Every district anchor is the capital plus (8, −6), length 10 m, inside the parent radius. A politics pin in this slice is one of those district anchors, or the player standing on an open S19 already measured and left empty of beasts. The four beast floors are not moved. Kit sets stay unplaced. The waystone present is named so it is not confused with a country floor.",
+    "s19_floors_not_moved": {
+      "gap_verge_keshar": {"x": -31.76, "z": 21.34, "gap_m": 19.67, "note": "Verge (−31.52, −12.74) r 23 and Keshar (−32.0, 55.43) r 25.5. Roaches, harpy, stamp, and the unplaced hall."},
+      "gap_aldermere_tally": {"x": 18.99, "z": 5.14, "gap_m": 22.86, "note": "One hound. One tile."},
+      "gap_dovrane_keshar": {"x": 1.22, "z": 35.74, "gap_m": 26.23, "note": "Invoice watcher. Blank tariff. This facet's mottos are read inside the circles, not on this post."},
+      "gap_tally_hollow": {"x": -27.24, "z": 13.29, "gap_m": 5.13, "note": "Rats. No hall."},
+      "gap_hollow_keshar": {"x": -39.98, "z": 26.88, "gap_m": 10.80, "note": "Empty of beasts in S19. q_s20_calls_stopped stands the player here and adds no body."},
+      "gap_curtain_table": {"x": -22.93, "z": 32.92, "gap_m": 11.07, "note": "Empty of beasts. q_sere_open_table and q_sere_curtain_line own the people. This facet does not add a third errand on that open."},
+      "overlap_tessera_mercy_m": 44.43,
+      "tessera_mercy_center_distance_m": 4.07,
+      "tessera_mercy_district_distance_m": 4.07,
+      "overlap_open_table_keshar_m": 32.20,
+      "wilds_ring_m": [90, 126],
+      "keshar_far_rim_m": 89.5,
+      "open_table_far_rim_m": 88.5,
+      "furnace_belt": "unplaced",
+      "tessera_spire": "unplaced",
+      "mark_tenement": "unplaced"
+    },
+    "staffed_anchors": [
+      {
+        "id": "the_tessera_district",
+        "country_id": "the_tessera",
+        "name": "the_clearing_spire",
+        "x": -13.55,
+        "z": -52.22,
+        "parent_capital": {"x": -21.55, "z": -46.22, "radius_m": 25.5},
+        "step_m": 10,
+        "note": "Inside the Tessera circle and inside the Mercy circle. The Mercy district is 4.07 m away and is left empty so the pile is not two desks. Name string the_clearing_spire also labels the Tally district and the Spire district. Bind by anchor id."
+      },
+      {
+        "id": "the_tally_house_district",
+        "country_id": "the_tally_house",
+        "name": "the_clearing_spire",
+        "x": 1.48,
+        "z": 22.26,
+        "parent_capital": {"x": -6.52, "z": 28.26, "radius_m": 23.0},
+        "step_m": 10,
+        "note": "Inside the Tally circle. The 4.16 m tally–spire corridor is not this pin."
+      },
+      {
+        "id": "the_clearing_spire_district",
+        "country_id": "the_clearing_spire",
+        "name": "the_clearing_spire",
+        "x": -44.6,
+        "z": 10.08,
+        "parent_capital": {"x": -52.6, "z": 16.08, "radius_m": 20.5},
+        "step_m": 10,
+        "note": "Inside the Spire circle, the only capital with radius 20.5. The windowless kit is a different object and stays unplaced."
+      },
+      {
+        "id": "verge_dynamics_district",
+        "country_id": "verge_dynamics",
+        "name": "the_furnace_belt",
+        "x": -23.52,
+        "z": -18.74,
+        "parent_capital": {"x": -31.52, "z": -12.74, "radius_m": 23.0},
+        "step_m": 10,
+        "note": "Inside the Verge circle. S19 already marked this step as not the 19.67 m open. The curtain district sits in the same circle, 13.66 m from the Verge capital."
+      },
+      {
+        "id": "the_curtain_district",
+        "country_id": "the_curtain",
+        "name": "spire_city",
+        "x": -23.69,
+        "z": -1.55,
+        "parent_capital": {"x": -31.69, "z": 4.45, "radius_m": 23.0},
+        "step_m": 10,
+        "distance_to_verge_capital_m": 13.66,
+        "note": "Inside the Curtain circle and inside Verge's circle. The Curtain capital is also inside Hollowford. This district pin is outside Hollowford, 1.28 m past that rim. Classification, as a walkable step, sits in the arms company's disc."
+      },
+      {
+        "id": "the_open_table_district",
+        "country_id": "the_open_table",
+        "name": "the_unbound_provinces",
+        "x": -6.17,
+        "z": 55.39,
+        "parent_capital": {"x": -14.17, "z": 61.39, "radius_m": 25.5},
+        "step_m": 10,
+        "distance_outside_keshar_rim_m": 0.33,
+        "note": "Inside the Open Table circle. 25.83 m from the Keshar capital, 0.33 m outside Keshar's 25.5 m rim. The capitals still overlap by 32.20 m. This pin is not the furnace lip."
+      },
+      {
+        "id": "dovrane_district",
+        "country_id": "dovrane",
+        "name": "dovrane_capital",
+        "x": 42.44,
+        "z": 10.06,
+        "parent_capital": {"x": 34.44, "z": 16.06, "radius_m": 25.5},
+        "step_m": 10,
+        "note": "Inside the Reach. The contested passes on Amon's sheet have no x,z. This pin is the motto, not the pass."
+      },
+      {
+        "id": "keshar_district",
+        "country_id": "keshar",
+        "name": "keshar_capital",
+        "x": -24.0,
+        "z": 49.43,
+        "parent_capital": {"x": -32.0, "z": 55.43, "radius_m": 25.5},
+        "step_m": 10,
+        "distance_inside_open_table_m": 10.02,
+        "note": "Inside Keshar and inside the Open Table circle (15.48 m from the Open Table capital). The creditor's public step stands in the unbound disc. Pell's tea-house has no x,z."
+      }
+    ],
+    "empty_on_purpose": [
+      {"id": "the_mercy_fund_district", "x": -17.35, "z": -53.68, "why": "4.07 m from the Tessera district, same overlap. A second board would pretend the pile is two houses. Tomas and Aurel are not stood. Conditions are not posted."},
+      {"id": "house_aldermere_district", "x": 52.5, "z": -23.98, "why": "Lysandra and Julian keep the counting house, which is not this id. The launch-clearance stays off any plaque here."},
+      {"id": "hollowford_seed_district", "x": -39.97, "z": -7.68, "why": "Brann's yard and Mira's boat are not this id. The seed motto is not given a clerk. The 10.80 m open is the walk, and it stays empty."},
+      {"id": "eleven_gates", "why": "Capitals are claims. A quest may stand the player on a gate for one sentence. It leaves no body there."}
+    ]
+  },
+  "cultures": [
+    {
+      "id": "culture_no_roster",
+      "faction_id": "the_tessera",
+      "motto": "We are not a hand. We are the shape the hand keeps making.",
+      "public_sentence": "No head. No roster. No meeting. Continuation is the goal, and winning would end the revenue.",
+      "where": "the_tessera_district",
+      "who_is_not_stood": ["the_ferryman_wend", "tessera_holder_marda_voss", "assembly_speaker_dane_orrin"]
+    },
+    {
+      "id": "culture_temporary",
+      "faction_id": "the_tally_house",
+      "motto": "A Mark is a promise we make to ourselves and you keep.",
+      "public_sentence": "The house was chartered temporarily, out of the First Twin Siege, to issue the Mark and steady the realms.",
+      "where": "the_tally_house_district",
+      "who_is_not_stood": ["governor_hale_emberwick", "tally_house_pageturner_imo_reck"]
+    },
+    {
+      "id": "culture_above",
+      "faction_id": "the_clearing_spire",
+      "motto": "Above the realms, answerable to none.",
+      "public_sentence": "Sovereign-immune. Answerable to no realm. The still point that lets the wars below run.",
+      "where": "the_clearing_spire_district",
+      "who_is_not_stood": ["settlements_master_corwin_vane", "doorkeeper_isolde_marr", "spire_immunity_counsel_thea_grell"]
+    },
+    {
+      "id": "culture_season",
+      "faction_id": "verge_dynamics",
+      "motto": "Peace is a gap in the order book.",
+      "public_sentence": "A forty-year cold standoff. Every breakthrough matched within a season, far too neatly.",
+      "where": "verge_dynamics_district",
+      "who_is_not_stood": ["minister-for-hire_dell_sarn", "verge_quartermaster_sela_korr", "verge_lobbyist_pol_renfield"]
+    },
+    {
+      "id": "culture_unshipped",
+      "faction_id": "the_curtain",
+      "motto": "Some truths are a danger to the people who hold them.",
+      "public_sentence": "One season founded the Curtain, the war-arm, and the classification charter. The evidence is on the record. The verdict is not shipped.",
+      "where": "the_curtain_district",
+      "who_is_not_stood": ["archivist_of_the_curtain", "curtain_ridiculer_vesna_dorl", "curtain_field_agent_renn_sable"]
+    },
+    {
+      "id": "culture_small_table",
+      "faction_id": "the_open_table",
+      "motto": "There is another way. They keep killing the people who say so.",
+      "public_sentence": "Three attempts failed. The table that replaced them is small, and it works. Seven arks already left the ground.",
+      "where": "the_open_table_district",
+      "who_is_not_stood": ["esha_of_the_open_table", "open_table_engineer_kesh_oran", "ark_engineer_sefa_lund", "black_tithe_pumper_oren_dask", "drowned_provinces_elder_vael_morrow"]
+    },
+    {
+      "id": "culture_brothers",
+      "faction_ids": ["dovrane", "keshar"],
+      "mottos": [
+        "We were brothers with Keshar once. We remember who taught us we weren't.",
+        "Brotherhood is a luxury for realms no one is trying to divide."
+      ],
+      "public_sentence": "The Twin Pact. An incident in the passes. Enemies in a single season. Sixty years.",
+      "where": ["dovrane_district", "keshar_district"],
+      "who_is_not_stood": ["dreamer_amon_dov", "pell_of_keshar", "dovrane_general_torin_vael", "keshar_widow_sora_pell"]
+    },
+    {
+      "id": "culture_calls_stopped",
+      "faction_id": "keshar",
+      "also_read_from": "hollowford_seed",
+      "public_sentence": "A creditor cannot be trapped by a loan. The next workshop was built elsewhere. The customers stopped calling.",
+      "where": ["keshar_district", "gap_hollow_keshar"],
+      "who_is_not_stood": ["keshar_foreman_dahl_revik", "officer_tomas_reib", "mercy_fund_director_aurel_pace", "agronomist_brann_holloway"]
+    }
+  ],
+  "presences": [
+    {
+      "id": "notice_no_roster",
+      "where": "the_tessera_district",
+      "point": [-13.55, -52.22],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board. No head, no roster, no meeting. The Mercy district 4.07 m away stays blank."
+    },
+    {
+      "id": "notice_temporary_charter",
+      "where": "the_tally_house_district",
+      "point": [1.48, 22.26],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board. The single public word is temporarily."
+    },
+    {
+      "id": "notice_above_the_realms",
+      "where": "the_clearing_spire_district",
+      "point": [-44.6, 10.08],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board. The motto, and the word sovereign-immune. The charter text is not nailed up. The kit tower is not this pin."
+    },
+    {
+      "id": "notice_within_a_season",
+      "where": "verge_dynamics_district",
+      "point": [-23.52, -18.74],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board inside the Verge circle, off the furnace open. Matched within a season."
+    },
+    {
+      "id": "notice_verdict_unshipped",
+      "where": "the_curtain_district",
+      "point": [-23.69, -1.55],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board inside Verge's circle. Three foundings. Verdict unshipped."
+    },
+    {
+      "id": "notice_small_table",
+      "where": "the_open_table_district",
+      "point": [-6.17, 55.39],
+      "bodies": [],
+      "hours": "all",
+      "what": "A board 0.33 m outside Keshar's rim. Three names. Seven arks. The cradle has no coordinate on this board."
+    },
+    {
+      "id": "notice_brothers_dovrane",
+      "where": "dovrane_district",
+      "point": [42.44, 10.06],
+      "bodies": [],
+      "hours": "all",
+      "what": "The Reach motto. The teacher's name is not filled in."
+    },
+    {
+      "id": "notice_brothers_keshar",
+      "where": "keshar_district",
+      "point": [-24.0, 49.43],
+      "bodies": [],
+      "hours": "all",
+      "what": "Keshar's motto, and the public line that the customers stopped. This pin is inside the Open Table circle. Pell is not behind the board."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s20_no_roster",
+      "title": "Tessera District — No Roster",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_no_roster at (−13.55, −52.22), all hours. Spawn count 0.",
+      "backstory_id": "story_q_roster",
+      "extends_lore_id": "lore_sere_first_twin_siege",
+      "extends_faction_id": "the_tessera",
+      "does_not_replace": ["q_sere_half_tile", "q_sere_same_truth"],
+      "objectives": [
+        {"id": "obj_q_s20_roster_1", "verb": "witness", "target": "notice_no_roster", "count": 1, "text": "At (−13.55, −52.22), read three absences: no head, no roster, no meeting. The motto underneath is the shape the hand keeps making. Do not write a name into the blank."},
+        {"id": "obj_q_s20_roster_2", "verb": "reach", "target": "the_mercy_fund_district", "count": 1, "text": "Walk the 4.07 m to (−17.35, −53.68). The Mercy district is inside the same pile. It has no board. Do not post conditions. Do not stand a rescue officer."},
+        {"id": "obj_q_s20_roster_3", "verb": "reach", "target": "the_tessera_gate", "count": 1, "text": "Walk the 10 m back to the Tessera capital at (−21.55, −46.22). Leave the three absences on the gate. Do not call a meeting to make the absences official."},
+        {"id": "obj_q_s20_roster_4", "verb": "deliver", "target": "notice_no_roster", "count": 1, "text": "Return to the district board. Wend is not there to explain a tile. Marda is not there to corroborate him. The errand ends on the empty roster."}
+      ],
+      "fail": ["Write a chair's name", "Stand Wend, Marda, or Dane", "Post Mercy conditions", "Hand over a holder's-eye account", "Treat the Mercy district as a separate house", "Change a faction number"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "No head. No roster. No meeting. The next board is 4.07 m away and blank.", "gossip_on_complete": "The pile was read as one shape. Nobody was appointed to it.", "prop_or_door": "Tessera district board. No meeting room is built."},
+      "turn_in": {"npc_id": null, "board_id": "notice_no_roster", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_still_temporary",
+      "title": "Tally District — The Word Is Temporary",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_temporary_charter at (1.48, 22.26), all hours.",
+      "backstory_id": "story_q_temporary",
+      "extends_lore_id": "lore_sere_first_twin_siege",
+      "extends_faction_id": "the_tally_house",
+      "does_not_replace": ["q_sere_mark_price", "q_s19_no_second_pan"],
+      "objectives": [
+        {"id": "obj_q_s20_temp_1", "verb": "witness", "target": "notice_temporary_charter", "count": 1, "text": "At (1.48, 22.26), read the charter plaque. The public word is temporarily. It authorizes the Mark and the steadying of the realms. Do not add a closing year."},
+        {"id": "obj_q_s20_temp_2", "verb": "reach", "target": "the_tally_house_gate", "count": 1, "text": "Walk the 10 m to the Tally capital at (−6.52, 28.26). The 4.16 m corridor toward the Spire is not a path you take. The 5.13 m seam toward Hollowford belongs to the rats. Leave both floors alone."},
+        {"id": "obj_q_s20_temp_3", "verb": "witness", "target": "price_left_to_its_quest", "count": 1, "text": "Do not pay a permit. q_sere_mark_price already sits at Tomas's desk, and that desk is not this pin. Do not ask the hound's open to confirm the mint."},
+        {"id": "obj_q_s20_temp_4", "verb": "deliver", "target": "notice_temporary_charter", "count": 1, "text": "Bring the single word back to the district board. Hale is not stood to show a renewal. Imo is not stood to show a spike."}
+      ],
+      "fail": ["Date the charter's end", "Stand Hale or Imo", "Pay the Mark from this errand", "Widen the rat seam", "Walk the 4.16 m corridor as if it were a hall", "Mint a second remembrance"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Charter: temporary. No closing year.", "gossip_on_complete": "The plaque kept the word and kept the ledger in the vault.", "prop_or_door": "Tally district board. No issuance vault mesh is built."},
+      "turn_in": {"npc_id": null, "board_id": "notice_temporary_charter", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_above_the_realms",
+      "title": "Spire District — Answerable to None",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_above_the_realms at (−44.6, 10.08), all hours.",
+      "backstory_id": "story_q_above",
+      "extends_lore_id": "lore_sere_second_twin_siege",
+      "extends_faction_id": "the_clearing_spire",
+      "does_not_replace": ["q_s20_no_roster"],
+      "objectives": [
+        {"id": "obj_q_s20_above_1", "verb": "witness", "target": "notice_above_the_realms", "count": 1, "text": "At (−44.6, 10.08), read the motto: above the realms, answerable to none. Read the public rank: sovereign-immune. The charter text is not on the board. Do not recite a clause you were not given."},
+        {"id": "obj_q_s20_above_2", "verb": "reach", "target": "the_clearing_spire_gate", "count": 1, "text": "Walk the 10 m to the Spire capital at (−52.6, 16.08), radius 20.5. This circle is not the Tessera circle and not the Tally circle, even though those districts reuse the name string the_clearing_spire. Bind the anchor id."},
+        {"id": "obj_q_s20_above_3", "verb": "witness", "target": "tower_kit_unplaced", "count": 1, "text": "Look for tessera_spire. It has no Canon transform. The district board is not a windowless tower. Do not drop the kit on the capital to finish the look of immunity."},
+        {"id": "obj_q_s20_above_4", "verb": "deliver", "target": "notice_above_the_realms", "count": 1, "text": "Return the motto to the same board. Isolde is not in the lobby, because the lobby has no pin. Thea is not in chambers. Corwin is not at a settlement desk."}
+      ],
+      "fail": ["Nail up the charter text", "Invent a flag rule", "Stand Isolde, Thea, or Corwin", "Place tessera_spire", "Confuse this pin with the Tessera district or the Tally district", "Open an audit"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Above the realms. The charter text was not posted.", "gossip_on_complete": "The Spire district kept the motto and kept the tower unplaced.", "prop_or_door": "Spire district board. No windowless kit is built."},
+      "turn_in": {"npc_id": null, "board_id": "notice_above_the_realms", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_within_a_season",
+      "title": "Furnace District — Within a Season",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_within_a_season at (−23.52, −18.74), all hours. This pin is inside Verge, not on the open.",
+      "backstory_id": "story_q_season",
+      "extends_lore_id": "lore_sere_the_long_mirror",
+      "extends_faction_id": "verge_dynamics",
+      "does_not_replace": ["q_s19_lip_not_omen", "q_s19_heat_not_a_name", "q_sere_furnace_scout"],
+      "objectives": [
+        {"id": "obj_q_s20_season_1", "verb": "witness", "target": "notice_within_a_season", "count": 1, "text": "At (−23.52, −18.74), read the public standoff: every breakthrough matched within a season, far too neatly. The motto under it says peace is a gap in the order book. Do not add a phrase from an annual report."},
+        {"id": "obj_q_s20_season_2", "verb": "reach", "target": "verge_dynamics_gate", "count": 1, "text": "Walk the 10 m to the Verge capital at (−31.52, −12.74). Stop at the gate. The 19.67 m open begins at the rim and belongs to roaches, harpies, and an unplaced hall. Do not count animals. Do not stamp a chest. Do not scout the eye."},
+        {"id": "obj_q_s20_season_3", "verb": "witness", "target": "safe_left_shut", "count": 1, "text": "Dell Sarn's residence, boardroom, and safe have no country anchor. Leave them shut. Do not carry a manifest to either brother-realm."},
+        {"id": "obj_q_s20_season_4", "verb": "deliver", "target": "notice_within_a_season", "count": 1, "text": "Bring the season-sentence back to the district board. The lip enforcer is not this giver. The hall is still unplaced, and this errand does not place it."}
+      ],
+      "fail": ["Quote the report's name for the standoff", "Open Sarn's safe", "Stand Dell, Sela, or Pol", "Enter the lip, the stamp circle, or the hall seat as the objective", "Place furnace_belt", "Finish enc_chest_stamp or enc_compound_mark"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Matched within a season. The report's name for it was not added.", "gossip_on_complete": "The furnace district kept the standoff public and kept the safe shut.", "prop_or_door": "Verge district board. The open stays S19's."},
+      "turn_in": {"npc_id": null, "board_id": "notice_within_a_season", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_verdict_unshipped",
+      "title": "Curtain District — The Verdict Is Not Shipped",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_verdict_unshipped at (−23.69, −1.55), all hours.",
+      "backstory_id": "story_q_verdict",
+      "extends_lore_id": "lore_sere_the_quiet_fall",
+      "extends_faction_id": "the_curtain",
+      "does_not_replace": ["q_sere_curtain_line", "q_s20_within_a_season"],
+      "objectives": [
+        {"id": "obj_q_s20_verd_1", "verb": "witness", "target": "notice_verdict_unshipped", "count": 1, "text": "At (−23.69, −1.55), read three foundings in one season: the Curtain, Verge Dynamics' war-arm, and the classification charter. Read that the evidence is on the record and the verdict is not shipped. Do not write a cause."},
+        {"id": "obj_q_s20_verd_2", "verb": "reach", "target": "the_curtain_gate", "count": 1, "text": "Walk the 10 m to the Curtain capital at (−31.69, 4.45). You are still inside Verge's radius on the way out of the district: the district pin itself is 13.66 m from the Verge capital. File that as geography. Do not turn it into an accusation."},
+        {"id": "obj_q_s20_verd_3", "verb": "witness", "target": "redaction_left_to_its_quest", "count": 1, "text": "Do not copy a line for Maren. q_sere_curtain_line already walks a redaction to the Hub. The Archivist's desk, filing room, and misfiling corridor have no anchor. Do not invent one."},
+        {"id": "obj_q_s20_verd_4", "verb": "deliver", "target": "notice_verdict_unshipped", "count": 1, "text": "Bring the unshipped verdict back. Vesna is not stood. Renn is not stood. The roaches on the lip are not asked to be the omen."}
+      ],
+      "fail": ["Name a munition or an arrival", "Stand the Archivist, Vesna, or Renn", "Copy a line to the Hub from this errand", "Send the player through q_sere_curtain_line's lectern", "Treat a roach as the Quiet Fall", "Place a curtain desk mesh"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Three foundings. Verdict unshipped. The pin sits inside Verge.", "gossip_on_complete": "The Curtain district kept the season and kept the cause blank.", "prop_or_door": "Curtain district board. No archive mesh is built."},
+      "turn_in": {"npc_id": null, "board_id": "notice_verdict_unshipped", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_small_and_leaving",
+      "title": "Provinces — Small, and Already Leaving",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_small_table at (−6.17, 55.39), all hours.",
+      "backstory_id": "story_q_small",
+      "extends_lore_id": "lore_sere_open_table_rises",
+      "also_lore_ids": ["lore_sere_crushed_refusals", "lore_sere_the_ark_exodus"],
+      "extends_faction_id": "the_open_table",
+      "does_not_replace": ["q_sere_open_table", "q_sere_roach_count", "q_sere_furnace_scout"],
+      "objectives": [
+        {"id": "obj_q_s20_small_1", "verb": "witness", "target": "notice_small_table", "count": 1, "text": "At (−6.17, 55.39), read three names: Almsfolk, Lamplighters, Table-of-All. Read that each was bought, hollowed, or broken, and that the table built after them is small and works. Do not write the method under any name."},
+        {"id": "obj_q_s20_small_2", "verb": "witness", "target": "seven_arks_public", "count": 1, "text": "On the same board, read that seven arks left the First Launch Cradle, carrying who they could, because a Refusal could not be held on the ground. Do not read a manifest. Do not list who was refused a berth. Do not name the far world."},
+        {"id": "obj_q_s20_small_3", "verb": "reach", "target": "the_open_table_gate", "count": 1, "text": "Walk the 10 m to the Open Table capital at (−14.17, 61.39). The district you left is 0.33 m outside Keshar's rim. Do not step onto the furnace lip to prove the overlap. The capitals overlap by 32.20 m without your help. Do not enter a plain room. That room is q_sere_open_table, and it has no pin."},
+        {"id": "obj_q_s20_small_4", "verb": "deliver", "target": "notice_small_table", "count": 1, "text": "Bring both sentences back: the table is small, and the cradle is unpinned. Esha is not stood. Sefa is not stood. Kesh is not stood. Oren's pumps are not a coordinate. You do not cross to Tunya from this board."}
+      ],
+      "fail": ["Write how each of the three was ended", "Stand Esha, Kesh, Sefa, Oren, or Vael", "Enter the plain room", "Open a cradle manifest", "Name who cleared the pad", "Walk Tunya", "Place a gantry", "Announce the ledger in either capital"],
+      "rewards": {"xp": 55, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Three names. The table is small. Seven arks. The cradle has no pin.", "gossip_on_complete": "The provinces board kept the failures unnamed in their method and kept the gantry off the map.", "prop_or_door": "Open Table district board. No cradle mesh is built."},
+      "turn_in": {"npc_id": null, "board_id": "notice_small_table", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_brothers_on_the_boards",
+      "title": "Two Districts — Brothers, Then the Motto",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_brothers_dovrane at (42.44, 10.06), all hours. Turn-in is the same board.",
+      "backstory_id": "story_q_brothers",
+      "extends_lore_id": "lore_sere_the_border_mirror",
+      "extends_faction_id": "dovrane",
+      "also_faction_id": "keshar",
+      "does_not_replace": ["q_sere_same_truth", "q_s19_empty_tariff"],
+      "objectives": [
+        {"id": "obj_q_s20_bro_1", "verb": "witness", "target": "notice_brothers_dovrane", "count": 1, "text": "At (42.44, 10.06), read the Reach motto: we were brothers with Keshar once, we remember who taught us we weren't. Do not supply the teacher's name."},
+        {"id": "obj_q_s20_bro_2", "verb": "reach", "target": "keshar_district", "count": 1, "text": "Go to Keshar's district at (−24.0, 49.43). Read Keshar's motto: brotherhood is a luxury for realms no one is trying to divide. This pin is inside the Open Table circle by 10.02 m. File that. Do not hold a meeting with the provinces board."},
+        {"id": "obj_q_s20_bro_3", "verb": "witness", "target": "gap_left_to_the_post", "count": 1, "text": "The brother-gap at (1.22, 35.74) is 26.23 m of open ground with one invoice watcher and a blank tariff. Do not enter it. Do not fill the three lines. q_s19_empty_tariff and q_sere_same_truth already have mouths there and on Wend, and Wend is not stood."},
+        {"id": "obj_q_s20_bro_4", "verb": "deliver", "target": "notice_brothers_dovrane", "count": 1, "text": "Bring both mottos back to the Reach district. Amon is not at a boundary stone. Pell is not at a counter. The letters stay in their two rooms, and those rooms have no pin."}
+      ],
+      "fail": ["Name the teacher", "Open the letters", "Open the manifests", "Stand Amon, Pell, Torin, or Sora", "Enter gap_dovrane_keshar", "Fill the tariff", "Edit Wend's sentence", "Heal the pact on the board"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Two mottos. The gap was not entered. The teacher was not named.", "gossip_on_complete": "The districts kept the brotherhood and kept the proof in the unpinned rooms.", "prop_or_door": "Two district boards. The pass is not plotted."},
+      "turn_in": {"npc_id": null, "board_id": "notice_brothers_dovrane", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s20_calls_stopped",
+      "title": "Keshar District — The Calls Stopped",
+      "world_id": "Sere",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_brothers_keshar at (−24.0, 49.43), all hours. Second loop on that board. The brothers errand does not have to be finished first.",
+      "backstory_id": "story_q_calls",
+      "extends_lore_id": "lore_sere_eastern_acquisition",
+      "extends_faction_id": "keshar",
+      "does_not_replace": ["q_s20_brothers_on_the_boards", "q_sere_mark_price", "q_s19_empty_tariff"],
+      "objectives": [
+        {"id": "obj_q_s20_calls_1", "verb": "witness", "target": "notice_brothers_keshar", "count": 1, "text": "At (−24.0, 49.43), read the acquisition as the public record has it: Keshar is a creditor, so it was not lent to. The next workshop was built elsewhere. The customers stopped calling, one by one. Do not attach a rescue schedule."},
+        {"id": "obj_q_s20_calls_2", "verb": "reach", "target": "gap_hollow_keshar", "count": 1, "text": "Stand at (−39.98, 26.88). Write 10.80 m. The open is empty of beasts. It stays empty. Do not raise a tent. Do not stand a seed clerk. Hollowford's district at (−39.97, −7.68) is a different pin and is not this open."},
+        {"id": "obj_q_s20_calls_3", "verb": "witness", "target": "conditions_unposted", "count": 1, "text": "Do not walk the Mercy district to fetch terms. That board was left blank on purpose, 4.07 m from the Tessera slate. Tomas's waterline, tent, and signing table have no anchor. Dahl's furnaces have no anchor. Leave the figures in the accounts room you cannot place."},
+        {"id": "obj_q_s20_calls_4", "verb": "deliver", "target": "notice_brothers_keshar", "count": 1, "text": "Bring the empty open back to the Keshar district. The customers remain stopped. The conditions remain unwritten. No coin moves."}
+      ],
+      "fail": ["Draft Mercy conditions", "Stand Dahl, Tomas, Aurel, or Brann", "Place a tent on the 10.80 m open", "Spawn a beast there", "Show loss-leader figures", "Pay a Mark", "Open Hollowford's drawer"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Not lent to. Workshop elsewhere. Calls stopped. 10.80 m left empty.", "gossip_on_complete": "Keshar's district kept the creditor line and kept the rescue off the open.", "prop_or_door": "Keshar district board. The hollow–keshar open gains no prop."},
+      "turn_in": {"npc_id": null, "board_id": "notice_brothers_keshar", "requires_all_objectives": true}
+    }
+  ]
+}

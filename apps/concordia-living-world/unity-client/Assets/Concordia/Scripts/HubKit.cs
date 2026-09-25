@@ -33,6 +33,12 @@ namespace Concordia
         /// and the world falls back to primitive cubes. Built once per import.
         static readonly Dictionary<string, Dictionary<string, Transform>> Modules =
             new Dictionary<string, Dictionary<string, Transform>>(8);
+        // Keep the importer alive for the lifetime of its runtime template. GLTFast owns the
+        // imported mesh resources through GltfImport; allowing the local import variable to be
+        // collected can unload MeshFilter.sharedMesh after the first test/runtime pass, leaving
+        // cached module nodes with zero Renderer.bounds on the next use.
+        static readonly Dictionary<string, GltfImport> Imports =
+            new Dictionary<string, GltfImport>(64);
         static Transform _cache;
         static bool _loaded;
         // Distinguishes a completed manifest read from a failed load. This matters in EditMode,
@@ -168,6 +174,10 @@ namespace Concordia
             go.transform.localRotation = template.localRotation;
             go.transform.localScale = template.localScale;
             go.SetActive(true);
+            foreach (var child in go.GetComponentsInChildren<Transform>(true))
+                if (child) child.gameObject.SetActive(true);
+            foreach (var renderer in go.GetComponentsInChildren<Renderer>(true))
+                if (renderer) renderer.enabled = true;
             return holder;
         }
 
@@ -304,7 +314,10 @@ namespace Concordia
             else
                 go.hideFlags = HideFlags.HideAndDontSave;
 
-            go.SetActive(false);
+            // Keep the hidden cache active so glTFast keeps imported mesh data bound in both
+            // EditMode and PlayMode. Imported template renderers are disabled after indexing,
+            // so the library remains invisible while placed instances can be enabled reliably.
+            go.SetActive(true);
             _cache = go.transform;
         }
 
@@ -327,7 +340,12 @@ namespace Concordia
             EnsureCache();
             var tmpl = new GameObject(key);
             tmpl.transform.SetParent(_cache, false);
+            tmpl.SetActive(true);
             await import.InstantiateMainSceneAsync(tmpl.transform);
+            // The editor glTFast path can defer mesh binding until the imported hierarchy has
+            // lived through one player-loop turn. Yield once before disabling the template so
+            // callers never receive an indexed node with a null MeshFilter/sharedMesh.
+            await Task.Yield();
 
             // glTFast usually emits URP materials, but some import paths fall back to built-in
             // `Standard`, which URP cannot render — it draws magenta. This is the single upstream
@@ -340,7 +358,14 @@ namespace Concordia
             // single-mesh stems; load-bearing for the three modular kits.
             IndexModules(key, tmpl.transform);
 
-            tmpl.SetActive(false);
+            // Keep the imported hierarchy alive for the lifetime of the cache. GLTFast can
+            // leave MeshFilter.sharedMesh unresolved when a whole template is deactivated;
+            // disabling renderers instead preserves the mesh binding without drawing the hidden
+            // source library.
+            foreach (var renderer in tmpl.GetComponentsInChildren<Renderer>(true))
+                if (renderer) renderer.enabled = false;
+            tmpl.SetActive(true);
+            Imports[key] = import;
             Runtime[key] = tmpl;
         }
 

@@ -57,3 +57,22 @@ Required list is present in both trees: README, art direction, taxonomy, creatur
 3. Second slice: Sundering wolf (native mesh), fold basilisk, ward-blade, `arch_kit_fantasy_sunder` graybox.
 4. Only then bosses and hybrids.
 5. Do not retarget Quaternius over CX. Do not mark SkillLattice "done" until a rank changes an `ActionRunner` window or an effect magnitude in play.
+
+## Addendum — content volume (2026-09-22)
+
+The catalogs above were not rewritten. Playable volume sits beside them in `volume/` (mirror `Assets/Concordia/Generated/NativeBible/volume/`).
+
+- 81 quest loops (`volume/QUESTS_BY_WORLD.json`), at least 8 per WorldId. Canon ids kept where the chain was already a full loop; new ids are `q_<world>_<slug>`.
+- 14 raid encounters, 12 companions, 52 items, 14 vendors, density for all 10 worlds, 3 mounts and 4 vehicles with the ride-clip gap stated.
+- Bind order for EVERYTHING paste Phase 7: `volume/AURA_BIND_ORDER.md`.
+- Prompt addendum is B12–B17 in `aura/AURA_GENERATION_BATCHES.md` (B10–B11 were already props and skill cues).
+- Status and gaps: `volume/VOLUME_MISSION_REPORT.md` (**STATUS: COMPLETE**).
+
+
+## Addendum — look, feel, map (2026-09-24)
+
+Catalogs in this bible were not rewritten. The megaworld look pack sits beside them at `~/.zuko/lookfeel/` (mirror `Assets/Concordia/Generated/LookFeel/`).
+
+- Master map, ten style boards, ten geography briefs, UI / light / cue language, and the organic feed notes.
+- Prompt rows appended to `aura/PROMPTS_INDEX.json`: batches `B18_lookfeel_env`, `B19_lookfeel_arch`, `B20_lookfeel_flora`. Prior 215 ids are unchanged. B12–B17 in the batch file remain the volume sheets.
+- Status: `lookfeel/LOOKFEEL_MISSION_REPORT.md`.

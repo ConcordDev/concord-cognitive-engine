@@ -33,6 +33,9 @@ import {
 } from "../lib/asset-gen/generate-asset.js";
 import { submitAssetCandidateToGate } from "../lib/evo-asset/quality-gate-bridge.js";
 import { resolveCurrentBest, promoteVersion } from "../lib/evo-asset/registry.js";
+import crypto from "crypto";
+import { planFor, planForPrompt } from "../lib/asset-gen/organic/prompts.js";
+import { startOrganicJob, getOrganicJob, listOrganicJobs } from "../lib/asset-gen/organic/jobs.js";
 
 // optimizeToPass's own bounded search loop already caps iterations
 // internally; this is an additional ceiling on what a macro CALLER can ask
@@ -166,5 +169,52 @@ export default function registerEvoAssetMacros(register) {
     };
   }, {
     description: "On-demand custom asset design generation — parametric mesh -> real FEA structural gate -> mass grounding -> pack .glb -> register -> Atlas quality gate -> promote -> resolve, the SAME validated pipeline the fixed-target GENERATION_TARGETS heartbeat uses (server/lib/asset-gen/generate-asset.js). Honest failure (no file, no registration) when the design never structurally converges. Previously this pipeline had no macro or HTTP trigger at all — only the heartbeat could invoke it, and only for its one hardcoded 'sword' target.",
+  });
+
+  /**
+   * evo-asset.generate-organic — queue an organic (creature/monster/prop)
+   * asset generation: FLUX concept → TRELLIS image-to-3D → normalize →
+   * budget LODs → registry (source 'trellis').
+   * input: { id, seed? }                    → curated native-bible entry
+   *      | { prompt, tags?, displayName?, lod0MaxTris?, seed? } → ad-hoc free
+   *        text (the ConKay "artifact → interactive-3D" path — no bible entry
+   *        needed; a synthetic id is minted per request).
+   * → { ok, jobId, status } | { ok:false, reason }
+   * Returns immediately; poll evo-asset.organic-job. A bible id is validated
+   * before queueing so a typo never spends GPU quota; an ad-hoc prompt is
+   * validated (non-empty, ≤600 chars) the same way.
+   */
+  register("evo-asset", "generate-organic", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const seed = Number.isInteger(input.seed) ? input.seed : 0;
+
+    if (typeof input.prompt === "string" && input.prompt.trim()) {
+      const plan = planForPrompt(input.prompt, {
+        tags: input.tags, displayName: input.displayName, lod0MaxTris: input.lod0MaxTris,
+      });
+      if (!plan.ok) return plan;
+      const id = `adhoc_${crypto.randomUUID().slice(0, 8)}`;
+      return { ...startOrganicJob({ id, seed, db, plan }), plan: { category: plan.category, lod0MaxTris: plan.lod0MaxTris } };
+    }
+
+    const id = typeof input.id === "string" ? input.id.trim() : "";
+    if (!id) return { ok: false, reason: "missing_id_or_prompt" };
+    const plan = planFor(id);
+    if (!plan.ok) return plan;
+    return { ...startOrganicJob({ id, seed, db }), plan: { category: plan.category, lod0MaxTris: plan.lod0MaxTris } };
+  }, {
+    description: "Queue organic 3D asset generation, either for a native-bible id ({id}) or a free-text prompt ({prompt}) — the latter is ConKay's live artifact→interactive-3D path, needing no pre-authored entry (FLUX.1-schnell concept → TRELLIS.2/TRELLIS on Hugging Face ZeroGPU / a self-hosted GPU pod → Concord normalize + budget LODs → evo_assets source 'trellis'). Returns a jobId immediately; jobs run one at a time. Honest failures: quota_exhausted, provider_down, bad_token, no_python_env, empty_prompt, prompt_too_long. No automatic fidelity check yet.",
+  });
+
+  /**
+   * evo-asset.organic-job — status of one job, or all jobs when no jobId.
+   * input: { jobId? } → { ok, status, stage, result? } | { ok, jobs }
+   */
+  register("evo-asset", "organic-job", async (_ctx, input = {}) => {
+    if (typeof input.jobId === "string" && input.jobId) return getOrganicJob(input.jobId);
+    return { ok: true, jobs: listOrganicJobs() };
+  }, {
+    description: "Status of organic asset generation jobs started by evo-asset.generate-organic (queued/running/done/failed, current stage, final result).",
   });
 }

@@ -1,0 +1,29 @@
+{
+  "batch": "B21_anim_mobility",
+  "slice": "A01_anim_master",
+  "cycle": 2,
+  "count": 1,
+  "generate": false,
+  "mesh": false,
+  "entries": [
+    {
+      "id": "anim_spec_mobility_bind",
+      "display_name": "Atlas mobility clip bind",
+      "batch": "B21_anim_mobility",
+      "world_ids": ["Hub", "Fantasy", "Tunya", "Ruins", "Crime", "Cyber", "Frontier", "Superhero", "Crucible", "Sere"],
+      "taxonomy_tags": ["anim_spec", "no_mesh", "controller", "mobility"],
+      "triangle_budget": 0,
+      "generate": false,
+      "mesh_bound": false,
+      "prompt": "SPEC ONLY. Not a mesh. W05 travel kinds reuse ConcordiaLocomotion, CreatureGraph, and VehicleRoll. Do not render.",
+      "silhouette_notes": "No silhouette. Gates use Walk_Formal_Loop. Roads and walker paths use Walk_Loop. Sea edges have no hull. Driving_Loop stays unbound.",
+      "palette": ["#888780"],
+      "unity_bind": {
+        "controller": "ConcordiaLocomotion",
+        "lod0_tris": 0,
+        "generate": false,
+        "doc": "animations/MOBILITY_BIND.md"
+      }
+    }
+  ]
+}

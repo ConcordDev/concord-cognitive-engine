@@ -62,6 +62,7 @@ namespace Concordia
                 world = WorldId.Hub;
             }
             HubObjectives.Reset();
+            ContentBindCatalog.Preload();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
 

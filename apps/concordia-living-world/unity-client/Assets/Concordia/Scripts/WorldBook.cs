@@ -192,6 +192,23 @@ namespace Concordia
                     }
                 }
             }
+
+            // The authored volume pack is an extension of the existing Canon quest table,
+            // not a parallel QuestLog. Preserve Canon rows first, then add stable volume ids.
+            foreach (var volumeQuest in ContentBindCatalog.Quests(id))
+            {
+                if (volumeQuest == null || string.IsNullOrEmpty(volumeQuest.id)) continue;
+                bool duplicate = false;
+                foreach (var existing in list)
+                {
+                    if (existing != null && string.Equals(existing.id, volumeQuest.id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) list.Add(volumeQuest);
+            }
             return list.ToArray();
         }
 

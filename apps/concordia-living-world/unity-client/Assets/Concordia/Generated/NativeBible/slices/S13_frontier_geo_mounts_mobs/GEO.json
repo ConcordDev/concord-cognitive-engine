@@ -1,0 +1,554 @@
+{
+  "schema": "concordia.slice.geo_mounts_mobs.v1",
+  "slice_id": "S13_frontier_geo_mounts_mobs",
+  "world_id": "Frontier",
+  "canon_world_id": "concord-link-frontier",
+  "display_world": "The Frontier",
+  "facet": "geo_mounts_mobs",
+  "title": "Frontier — geography, mounts, road mobs",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, enc_last_dome, enc_road_followed, Canon lore, countries.json, factions, S01 horse caps, or prior slices S01–S12.",
+  "canon_pins": {
+    "world_id": "Frontier",
+    "canon_world_def_title": "The Frontier",
+    "gate_name": "The Frontier",
+    "gate_short_name": "FRONTIER",
+    "gate_angle_rad": 3.14159265,
+    "gate_color": "#4aa8ff",
+    "hub_ring_gate_xyz": [-34, 0, 0],
+    "hub_ring_radius_m": 34,
+    "megaworld_present_m": [-220, 0, 0],
+    "megaworld_note": "CivilizationRadiusKm 400 times PresentMetersPerKm 0.55 equals 220. Angle π places Frontier Present on negative X. Country capitals are a separate CountryCenter frame.",
+    "refusal_gate": "Refusal of the Dome",
+    "refusal_line": "The road is our door.",
+    "the_no": "No dome means no shelter.",
+    "law_text": "Drop the dome; wind will do the rest.",
+    "density_law": "The road is the door. No dome. Horse is led until a ride clip exists.",
+    "style_id": "road",
+    "style_name": "Open Road",
+    "style_verbs": ["Dust-kick", "Wagon iron", "Leave the dome", "Dust sprint"],
+    "steel_live": true,
+    "fight_style_for_frontier_roles": "MuayThai",
+    "road_bandit_catalog_fight_style": "Sword",
+    "combat": "open range",
+    "weather": "wind",
+    "country_climate_logged": "wind low, temperature 15, humidity 50, on every Frontier country",
+    "traversal": "wagon and wind",
+    "fantasy": "roads between refusals",
+    "humanoid_body": "CX male or CX female. Concordia face. Wardrobe on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_R, CX_Back. People in this slice are npc_role_frontier_guard, npc_role_frontier_bandit, and npc_role_road_bandit skinned frontier.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. The Hub-ring Frontier gate at 34 m lies inside that disk, so steel there is a flower. The country discs are outside that rule.",
+    "hub_law_radius_m": 42,
+    "palette": ["#c8b070", "#efe6d4", "#4a3828", "#8a6a48"],
+    "kit": "arch_kit_frontier_road",
+    "kit_culture_field": "grove",
+    "kit_culture_note": "The frontier kit's culture field says grove. This slice does not relabel the kit. Road culture here is timber, salvage plate, canvas, open sky.",
+    "named_sets_without_canon_point": ["wagon_yard", "wind_camp", "broken_dome_rib"],
+    "districts_named_without_point": ["courier_safehouses", "field_relays", "ambush_corridor_seven", "enclave_old_rivermouth", "routing_meditation_hall", "trade_caravan_route", "frontier_perimeter"],
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "exclusion_radius_m": 12,
+      "inside_couriers_disc": true,
+      "distance_to_couriers_capital_m": 16.64,
+      "inside_pioneer_disc": true,
+      "distance_to_pioneer_capital_m": 20.76,
+      "distance_to_link_post_alpha_m": 6.64,
+      "rule": "Every id in this slice has cap 0 inside 12 m. S01 keeps two hitch horses, the stag, the hare, and the salt wyrm on its own rules."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": [
+      "Quaternius body",
+      "Kenney body",
+      "CX body as a wolf, horse, pronghorn, domebreaker, or dustgriffin",
+      "dust wolf mesh as the Sundering wolf or the reverse",
+      "horse mesh as the pronghorn or the griffin",
+      "ridden griffin",
+      "seated driver",
+      "rifle in ambient hands",
+      "dust courser, rail vulture, or thunder yak as a bible id"
+    ],
+    "canon_fauna_aliases": ["hound", "wolf"],
+    "alias_resolution": "wolf resolves to faun_dust_wolf at the cap in this file. hound has no Frontier animal row and resolves to nothing. It does not resolve to faun_dust_wolf or faun_dock_hound. horse on this facet is the two council drafts and does not spend S01's pair."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/factions-extra.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/creatures.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json faun_dust_wolf, faun_wagon_horse, faun_wind_pronghorn",
+    "monsters": "native-bible/creatures/MONSTERS.json mon_frontier_domebreaker, mon_road_watcher",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_dustgriffin",
+    "roles": ["npc_role_frontier_guard", "npc_role_frontier_bandit", "npc_role_road_bandit"],
+    "taxonomy": "native-bible/01_TAXONOMY.md Frontier row",
+    "kit": "native-bible/architecture/KITS.json arch_kit_frontier_road",
+    "density": "native-bible/volume/DENSITY_TABLES.json Frontier block",
+    "mounts": "native-bible/volume/MOUNT_AND_VEHICLE.json mount_wagon_horse, mount_wind_pronghorn, veh_salt_wagon, veh_frontier_windwagon",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_last_dome, enc_road_followed",
+    "tokens": ["item_rem_dome_rivet", "item_rem_watcher_nail", "item_canteen_salt", "item_horse_tack", "item_wagon_pin", "item_verge_token"],
+    "skills_cited": ["skill_steel_dust_kick", "skill_presence_witness", "skill_craft_tack", "skill_craft_wagon"],
+    "geography": "Country capital x,z and territory_radius 23 from countries.json. District anchors are the authored (+8, -6) step, 10 m, already in that file. Gap centers are rim midpoints. Not WorldGeography.DeterministicOffset. Not a translation onto MegaworldMap.Present."
+  },
+  "existing_quests_not_redone": [
+    "q_frontier_hand_to_mira",
+    "q_frontier_verge_token",
+    "q_frontier_find_kel",
+    "q_frontier_hitch_not_ride",
+    "q_frontier_dust_off_road",
+    "q_frontier_pale_flag",
+    "q_frontier_road_is_door",
+    "q_frontier_rivet_scout",
+    "frontier_mara_02_deliver",
+    "frontier_zara_02_token",
+    "frontier_silas_02_kel"
+  ],
+  "s01_left_in_place": {
+    "slice": "S01_hub_ecology_mobs",
+    "faun_wagon_horse_cap": 2,
+    "floors": "Pinewood Crossing or the gate shoulder past 42 m",
+    "also_untouched": ["faun_saltroad_hare", "faun_pinewood_stag", "hyb_saltwyrm", "q_hub_pinewood_milepost"]
+  },
+  "unique_npcs_do_not_clone": [
+    "kel",
+    "zara",
+    "mira",
+    "postmaster_ria",
+    "courier_dorvik",
+    "walker_emissary_lin",
+    "broker_temir",
+    "field_relay_iso",
+    "field_relay_kerith",
+    "pirate_captain_vexa",
+    "isolationist_elder_brunn",
+    "mesh_prophet_torven",
+    "alliance_elder_marsenn",
+    "captain_zara_morn",
+    "smith_hane_okra",
+    "trader_oren_voss",
+    "healer_jensa_bell",
+    "scout_pell_orange",
+    "child_dust_rose",
+    "councillor_mara_pin",
+    "rider_silas_quinn"
+  ],
+  "politics_left_for_a_later_frontier_slice": [
+    "Handshake Protocol public rule and its hidden seeding",
+    "Compromised relays and the proof Ria has not tabled",
+    "Lost parcel and the resurfaced hash",
+    "Walker Lin's continuity against the Guild constitution",
+    "Mesh Cult sermon and the temple at (-4.68, -65.67)",
+    "Brunn's grandson and the enclave ridge",
+    "Marsenn's postponed merchant-family vote",
+    "Vexa's ransom dispute at pirate_cove_north",
+    "Zara's unplaced perimeter and the third incursion",
+    "Silas Quinn's undeclared western route and the weekly portal",
+    "frontier_militia with no country disc",
+    "Generated factions Accord Heirs and Assembly Witnesses, no discs"
+  ],
+  "floors": [
+    {
+      "id": "floor_salt_lens",
+      "kind": "disc_overlap",
+      "a": { "country_id": "frontier_couriers_guild", "x": 48.86, "z": -17.79, "radius_m": 23 },
+      "b": { "country_id": "frontier_pioneer_alliance", "x": 46.82, "z": -42.16, "radius_m": 23 },
+      "center_distance_m": 24.46,
+      "overlap_depth_m": 21.54,
+      "midpoint": { "x": 47.84, "z": -29.98 },
+      "use": "Salt geography. veh_salt_wagon may cross the lens outside the Pinewood exclusion. No camp, no herd, no wolf pack on the midpoint."
+    },
+    {
+      "id": "floor_pinewood_exclusion",
+      "kind": "exclusion",
+      "x": 62,
+      "z": -28,
+      "radius_m": 12,
+      "contains": ["link_post_alpha (56.86, -23.79) at 6.64 m", "salt-chord midpoint (55.84, -35.98) at 10.08 m"],
+      "outside": ["alliance_council_township (54.82, -48.16) at 21.40 m"],
+      "cap": 0
+    },
+    {
+      "id": "floor_drift_gap",
+      "kind": "rim_gap",
+      "between": ["frontier_freenodes (37.13, 45.85)", "frontier_couriers_guild (48.86, -17.79)"],
+      "center_distance_m": 64.71,
+      "rim_gap_m": 18.71,
+      "center": { "x": 42.99, "z": 14.03 },
+      "shoulders": [
+        { "id": "drift_shoulder_north", "x": 50.86, "z": 15.48, "use": "Sail-quest guard" },
+        { "id": "drift_shoulder_south", "x": 35.13, "z": 12.58, "use": "Ambient guard" }
+      ],
+      "use": "Wind. Three wolves. Canvas dive. Wind wagon crossing."
+    },
+    {
+      "id": "floor_pale_flat",
+      "kind": "rim_gap",
+      "between": ["frontier_mesh_cult (-12.68, -59.67)", "frontier_pioneer_alliance (46.82, -42.16)"],
+      "center_distance_m": 62.02,
+      "rim_gap_m": 16.02,
+      "center": { "x": 17.07, "z": -50.92 },
+      "use": "Day herd. Volume target string pronghorn_flat is not retied to this point."
+    },
+    {
+      "id": "floor_cut",
+      "kind": "rim_gap",
+      "between": ["frontier_signal_pirates (-9.77, 28.37)", "frontier_couriers_guild (48.86, -17.79)"],
+      "center_distance_m": 74.62,
+      "rim_gap_m": 28.62,
+      "center": { "x": 19.55, "z": 5.29 },
+      "courier_rim_guards": [
+        { "x": 31.70, "z": 0.82 },
+        { "x": 26.74, "z": -5.46 }
+      ],
+      "use": "Road camp. Two dome bandits, one road bandit. The 4.05 m Pirate–Freenode throat is inside the Isolationist disc and is not this floor."
+    },
+    {
+      "id": "floor_council_hitch",
+      "kind": "placed_district",
+      "source_anchor": "frontier_pioneer_alliance_district",
+      "name": "alliance_council_township",
+      "x": 54.82,
+      "z": -48.16,
+      "use": "Two led horses, one guard, salt-wagon hitch, vend_frontier_wright stall prop prop_hitching_rail when the vendor is bound here."
+    },
+    {
+      "id": "floor_link_post_alpha",
+      "kind": "placed_district_excluded",
+      "x": 56.86,
+      "z": -23.79,
+      "cap": 0,
+      "why": "6.64 m from Pinewood Crossing. Lore home of the first post and of Postmaster Ria. Story only for this facet."
+    },
+    {
+      "id": "floor_enclave_ridge",
+      "kind": "placed_district",
+      "x": 35.08,
+      "z": 29.94,
+      "cap": 0,
+      "why": "Inside both the Isolationist disc and the Freenodes disc. Isolationists refuse the Link. Bandits do not stage on their floor."
+    }
+  ],
+  "mounts": [
+    {
+      "id": "mount_wagon_horse",
+      "creature_id": "faun_wagon_horse",
+      "verb": "lead",
+      "tack_item_id": "item_horse_tack",
+      "vehicle": "veh_salt_wagon",
+      "cap": 2,
+      "floor_id": "floor_council_hitch",
+      "s01_cap_unchanged": 2,
+      "ride_controller": "absent",
+      "camera": "On foot beside the horse",
+      "anim": "Idle harness and lead-walk. No gallop-with-rider."
+    },
+    {
+      "id": "mount_wind_pronghorn",
+      "creature_id": "faun_wind_pronghorn",
+      "verb": "call_and_follow",
+      "tack_item_id": null,
+      "cap_day": 6,
+      "cap_night": 0,
+      "floor_id": "floor_pale_flat",
+      "pen": "fails the herd",
+      "bridle": "fails the herd",
+      "note": "One pale flag. White rump is a signal. item_lead_rope from the wright does not convert this row into a bridled mount."
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "veh_salt_wagon",
+      "prop_id": "prop_wagon",
+      "hitch_mount_id": "mount_wagon_horse",
+      "part_item_id": "item_wagon_pin",
+      "verb": "hitch_and_walk",
+      "floor_id": "floor_council_hitch",
+      "path": "Toward floor_salt_lens, stop at the Pinewood exclusion rim",
+      "anim_gap": "No driver sit, no reins IK"
+    },
+    {
+      "id": "veh_frontier_windwagon",
+      "prop_id": "prop_wagon",
+      "hitch_mount_id": null,
+      "part_item_id": "item_wagon_pin",
+      "verb": "drift_with_wind",
+      "floor_id": "floor_drift_gap",
+      "sail": "Cloth prop. A sail staked into a roof fails the refusal and calls enc_canvas_dive if that window is up.",
+      "occupancy": "Player on foot, or stand pose in the bed. No sit clip."
+    }
+  ],
+  "archetypes": [
+    {
+      "id": "npc_role_frontier_guard",
+      "display_name": "Road Warden",
+      "body": "CX",
+      "fight_style": "MuayThai",
+      "weapon_id": "wpn_2h_frontier_wagoniron",
+      "weapon_id_on_role_file": "wpn_pole_frontier_wagoniron",
+      "weapon_note": "Bind the 2h row that exists. The pole id is not in WEAPONS.json.",
+      "cap": 5,
+      "placement": [
+        { "floor_id": "floor_council_hitch", "count": 1, "role": "q_s13_salt_chord giver" },
+        { "floor_id": "drift_shoulder_north", "count": 1, "role": "q_s13_sail_not_roof giver" },
+        { "floor_id": "drift_shoulder_south", "count": 1, "role": "ambient" },
+        { "floor_id": "floor_cut", "count": 2, "role": "courier rim, not inside the camp" }
+      ],
+      "hail": true,
+      "health": "No table on the role. None invented."
+    },
+    {
+      "id": "npc_role_frontier_bandit",
+      "display_name": "Dome Bandit",
+      "body": "CX",
+      "fight_style": "MuayThai",
+      "weapon_id": "wpn_1h_frontier_skinner",
+      "wardrobe_note": "Yoke collar worn as a necklace",
+      "cap": 2,
+      "floor_id": "floor_cut",
+      "faction_book": "Role string open_road is not a canon faction id. These two are not frontier_signal_pirates.",
+      "hail": true,
+      "health": "No table on the role. None invented."
+    },
+    {
+      "id": "npc_role_road_bandit",
+      "display_name": "Road Bandit",
+      "body": "CX",
+      "skin": "frontier",
+      "fight_style_catalog": "Sword",
+      "weapon_id": "wpn_1h_frontier_skinner",
+      "cap": 1,
+      "floor_id": "floor_cut",
+      "role_in_slice": "Hail giver for q_s13_two_cuts. Stays on the cut.",
+      "faction_book": "Role string road is not a canon faction id.",
+      "health": "No table on the role. None invented."
+    },
+    {
+      "id": "faun_dust_wolf",
+      "display_name": "Dome Wolf",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "canon_kind_alias": "wolf",
+      "hostile_catalog": true,
+      "health": "table:faun_med_predator",
+      "cap": 3,
+      "floor_id": "floor_drift_gap",
+      "cap_during_enc_canvas_dive": 0,
+      "window": "enc_chevron_morning uses these three",
+      "loot_not_granted_here": ["hide_dust"]
+    },
+    {
+      "id": "faun_wagon_horse",
+      "display_name": "Wagon Horse",
+      "topology": "quadruped",
+      "gait": "quad_gallop",
+      "canon_kind_alias": "horse",
+      "hostile_catalog": false,
+      "health": "table:faun_mount",
+      "cap": 2,
+      "floor_id": "floor_council_hitch",
+      "verbs": ["lead", "verb_fauna_walk", "verb_fauna_trot", "verb_fauna_rear"]
+    },
+    {
+      "id": "faun_wind_pronghorn",
+      "display_name": "Wind Pronghorn",
+      "topology": "quadruped",
+      "gait": "quad_sprint",
+      "hostile_catalog": false,
+      "health": "table:faun_med_prey",
+      "cap_day": 6,
+      "cap_night": 0,
+      "floor_id": "floor_pale_flat",
+      "herd": "One group. Bible range 6-16 is not filled to the top.",
+      "loot_not_granted_here": ["hide_pale"]
+    },
+    {
+      "id": "mon_frontier_domebreaker",
+      "display_name": "Domebreaker",
+      "topology": "quadruped",
+      "gait": "quad_charge",
+      "hostile_catalog": true,
+      "health": "table:mon_brute",
+      "density_weight": 0,
+      "cap_until_anchor_placed": 0,
+      "window": "enc_last_dome",
+      "weak_point": "nail_scar",
+      "not_a_weak_point": "hump"
+    },
+    {
+      "id": "hyb_dustgriffin",
+      "display_name": "Dustgriffin",
+      "topology": "winged_quadruped",
+      "gait": "quad_bound_fly",
+      "hostile_catalog": false,
+      "health": "table:mon_elite",
+      "ambient_cap": 0,
+      "window_cap": 1,
+      "floor_id": "floor_drift_gap",
+      "hook": "dust_curtain_dive",
+      "mesa_sentence": "Bible spawn says Frontier mesas, 1. No mesa is placed. The window uses the drift gap. A binder that requires the word mesa spawns nothing.",
+      "mount": false,
+      "loot_not_granted_here": ["canvas", "pinion"]
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_chevron_morning",
+      "name": "The Morning Chevron",
+      "new_in_this_slice": true,
+      "creature_ids": ["faun_dust_wolf"],
+      "body_count": 3,
+      "adds": 0,
+      "floor_id": "floor_drift_gap",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "when": "day_index % 2 == 0",
+        "day_index": "Volume day counter, the same convention S07 and S09 used. This slice does not define a new clock."
+      },
+      "telegraph": "Pale ears over the dust line. The lead crosses the track a wind wagon would use.",
+      "clear": "skill_steel_dust_kick on the lead, or walk the gap edge until the pack breaks off.",
+      "fail": "A dome, a pen, or a dead pack.",
+      "remembrance_item_id": null,
+      "does_not_replace": "q_frontier_dust_off_road"
+    },
+    {
+      "id": "enc_canvas_dive",
+      "name": "The Canvas Dive",
+      "new_in_this_slice": true,
+      "creature_ids": ["hyb_dustgriffin"],
+      "body_count": 1,
+      "floor_id": "floor_drift_gap",
+      "suppresses": ["faun_dust_wolf on floor_drift_gap"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 16,
+        "close_hour": 19,
+        "when": "day_index % 5 == 4"
+      },
+      "telegraph": "Canvas snap, hawk scream, dust curtain on the gap center.",
+      "clear": "Sail stays cloth. One pass, then the griffin leaves. Stitches may be cut. The curtain fails and the dive remains.",
+      "fail": "Sail staked into a roof.",
+      "kill_required": false,
+      "hostile_flag_in_catalog": false,
+      "remembrance_item_id": null
+    },
+    {
+      "id": "enc_last_dome",
+      "name": "The Last Dome",
+      "new_in_this_slice": false,
+      "creature_ids": ["mon_frontier_domebreaker"],
+      "body_count": 1,
+      "floor_id": null,
+      "spawn_anchor": "Open flat one mile past the frontier gate",
+      "schedule_kept": "Hours 12–15, every third day",
+      "phases_kept": ["Raise", "Rivet", "Open sky"],
+      "remembrance_item_id": "item_rem_dome_rivet",
+      "drop_rule": "After the rib is down and no replacement roof is built. q_frontier_rivet_scout posts the sound and does not drop the rivet.",
+      "until_placed": "Spawn nothing. Do not invent the mile in meters."
+    },
+    {
+      "id": "enc_road_followed",
+      "name": "The Road That Followed",
+      "new_in_this_slice": false,
+      "creature_ids": ["mon_road_watcher"],
+      "skin": "frontier_iron",
+      "body_count": 1,
+      "health": "table:mon_elite_human",
+      "floor_id": null,
+      "spawn_anchor": "Wagon mile between hitching rail and the verge",
+      "schedule_kept": "Hours 8–11, every fourth day",
+      "phases_kept": ["Wrong stake", "Follow"],
+      "remembrance_item_id": "item_rem_watcher_nail",
+      "drop_rule": "After the false stake is read and the offered dome is refused. The horse is led.",
+      "until_placed": "Spawn nothing. The council hitch and the salt rim stay two places."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s13_salt_chord",
+      "title": "Council — Walk the Salt Chord",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_frontier_guard",
+      "giver_floor_id": "floor_council_hitch",
+      "backstory_public": "The Alliance disc and the Couriers disc overlap by 21.54 m, and Pinewood Crossing sits inside both. Caravans out of the council have been treating the Crossing as an Alliance township. A warden at the hitch wants the chord walked as a road that stops at someone else's city.",
+      "withheld": ["Mara Pin's letters", "Marsenn's merchant vote", "S01's salt wyrm ditch"],
+      "objectives": [
+        { "id": "obj_q_s13_salt_chord_1", "verb": "talk", "target": "npc_role_frontier_guard", "count": 1, "text": "Take the walk from the guard at the council hitch." },
+        { "id": "obj_q_s13_salt_chord_2", "verb": "reach", "target": "floor_pinewood_exclusion", "count": 1, "text": "Lead the salt wagon, or walk, from the hitch to the 12 m exclusion rim. Do not enter it." },
+        { "id": "obj_q_s13_salt_chord_3", "verb": "talk", "target": "npc_role_frontier_guard", "count": 1, "text": "Bring the unfilled canteen back. The city keeps its own lettering." }
+      ],
+      "fail": "Entering the 12 m disk, filling item_canteen_salt on the Crossing, or riding the horse.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "frontier_pioneer_alliance", "delta": 1 }],
+      "prerequisites": [],
+      "budget": "The giver is the one guard on floor_council_hitch."
+    },
+    {
+      "id": "q_s13_sail_not_roof",
+      "title": "Drift — Sail, Not a Roof",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_frontier_guard",
+      "giver_floor_id": "drift_shoulder_north",
+      "backstory_public": "Someone tried to roof the open 18.71 m between the Freenodes and the Couriers with wagon canvas. The wind took the sheet. The keeper who tried it is not a named Freenode. The shoulder guard wants the wind wagon across the gap with the sail still cloth.",
+      "withheld": ["Temir's debate", "Iso and Kerith's relays", "the Handshake's hidden seeding"],
+      "objectives": [
+        { "id": "obj_q_s13_sail_not_roof_1", "verb": "talk", "target": "npc_role_frontier_guard", "count": 1, "text": "Accept on the north drift shoulder." },
+        { "id": "obj_q_s13_sail_not_roof_2", "verb": "escort", "target": "veh_frontier_windwagon", "count": 1, "text": "Push the wind wagon across floor_drift_gap. On foot, or standing in the bed. No horse hitched." },
+        { "id": "obj_q_s13_sail_not_roof_3", "verb": "witness", "target": "open_sky", "count": 1, "text": "Stop on the far rim with the sail unstaked. If enc_canvas_dive is up, take the pass and still build no roof." }
+      ],
+      "fail": "Staking the sail, hitching faun_wagon_horse to veh_frontier_windwagon, or playing a sit clip.",
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "frontier_freenodes", "delta": 1 }],
+      "faction_condition": "The +1 lands only if the sail stayed cloth.",
+      "prerequisites": [],
+      "budget": "The giver is the north shoulder guard, one of five."
+    },
+    {
+      "id": "q_s13_two_cuts",
+      "title": "Cut — Two Different Bills",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_road_bandit",
+      "giver_floor_id": "floor_cut",
+      "backstory_public": "The road bandit's cut is a toll on whatever crosses the 28.62 m gap. The dome bandit beside them wants the sky closed and wears a stolen yoke to say so. They share a camp and do not share a motive. Hearing both, and paying neither, is the work.",
+      "withheld": ["Vexa's ransom dispute", "the parcel addressee", "Warden Commander Voss"],
+      "objectives": [
+        { "id": "obj_q_s13_two_cuts_1", "verb": "talk", "target": "npc_role_road_bandit", "count": 1, "text": "Hail the one road bandit. Let them name the cut." },
+        { "id": "obj_q_s13_two_cuts_2", "verb": "talk", "target": "npc_role_frontier_bandit", "count": 1, "text": "Hear the dome bandit. The yoke stays a necklace." },
+        { "id": "obj_q_s13_two_cuts_3", "verb": "witness", "target": "floor_cut", "count": 1, "text": "Leave both alive. Build no roof. Pay no ransom chit. Tell the road bandit the gap stays a road." }
+      ],
+      "fail": "Killing either camp body, raising a canopy, or minting a ransom payment.",
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "frontier_couriers_guild", "delta": 1 }],
+      "faction_note": "open_road and road are role strings. This +1 writes the Couriers' Guild book, once. No third book.",
+      "prerequisites": [],
+      "budget": "The giver is the single npc_role_road_bandit."
+    }
+  ],
+  "unspawned_canon_seeds": [
+    {
+      "id": "dust_courser",
+      "why": "In concord-link-frontier/creatures.json. No native-bible row. Not used as a mount."
+    },
+    {
+      "id": "rail_vulture",
+      "why": "Canon seed. No bible row. No rail gantry point on these floors."
+    },
+    {
+      "id": "thunder_yak",
+      "why": "Canon seed. No bible row. Not a draft substitute for faun_wagon_horse."
+    }
+  ],
+  "hidden_truths_unrendered": [
+    "frontier_lore_handshake_protocol: Vela seeded the Protocol",
+    "frontier_lore_compromised_relays: a Concordian operative under Warden Commander Voss",
+    "frontier_lore_the_parcel_resurfaces: addressee line the couriers will not read aloud",
+    "captain_zara_morn: lattice-Crucible scouts on her perimeter"
+  ]
+}

@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-22T02:00:59.239Z",
-  "head": "d0a1bb341ce5ab22b4a7983c536961cbdeda2959",
+  "generatedAt": "2026-09-25T02:00:32.444Z",
+  "head": "330dfdb1b2b1c8c270369924ee392dfe5755e0e3",
   "mode": "honest",
   "totals": {
-    "stub": 502,
-    "functional": 1540,
-    "utility": 3931,
+    "stub": 508,
+    "functional": 1545,
+    "utility": 3922,
     "production-grade": 3703
   },
-  "total": 9676,
+  "total": 9678,
   "weightedScore": 0.69,
   "tierWeights": {
     "stub": 0,
@@ -396,9 +396,9 @@
       "total": 26
     },
     "cache": {
-      "stub": 3,
+      "stub": 4,
       "functional": 1,
-      "utility": 1,
+      "utility": 0,
       "production-grade": 0,
       "total": 5
     },
@@ -578,9 +578,9 @@
       "total": 2
     },
     "concordia": {
-      "stub": 1,
+      "stub": 2,
       "functional": 1,
-      "utility": 2,
+      "utility": 1,
       "production-grade": 0,
       "total": 4
     },
@@ -606,9 +606,9 @@
       "total": 2
     },
     "construction": {
-      "stub": 0,
-      "functional": 0,
-      "utility": 15,
+      "stub": 1,
+      "functional": 3,
+      "utility": 11,
       "production-grade": 20,
       "total": 35
     },
@@ -802,9 +802,9 @@
       "total": 37
     },
     "db": {
-      "stub": 0,
+      "stub": 1,
       "functional": 1,
-      "utility": 3,
+      "utility": 2,
       "production-grade": 0,
       "total": 4
     },
@@ -1138,11 +1138,11 @@
       "total": 48
     },
     "evo-asset": {
-      "stub": 0,
+      "stub": 2,
       "functional": 0,
       "utility": 0,
       "production-grade": 1,
-      "total": 1
+      "total": 3
     },
     "evolution": {
       "stub": 0,
@@ -1804,8 +1804,8 @@
     },
     "landscaping": {
       "stub": 0,
-      "functional": 14,
-      "utility": 14,
+      "functional": 15,
+      "utility": 13,
       "production-grade": 18,
       "total": 46
     },
@@ -2511,8 +2511,8 @@
     },
     "plumbing": {
       "stub": 0,
-      "functional": 0,
-      "utility": 6,
+      "functional": 1,
+      "utility": 5,
       "production-grade": 32,
       "total": 38
     },
@@ -5944,7 +5944,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -6178,7 +6178,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -6214,7 +6214,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -25373,7 +25373,7 @@
       "domain": "cache",
       "macro": "get",
       "file": "server/server.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 7,
       "combinedLoc": 7,
       "stateTouch": false,
@@ -25384,7 +25384,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -26680,7 +26680,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -26788,7 +26788,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -26842,7 +26842,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -27202,7 +27202,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -34535,7 +34535,7 @@
       "domain": "concordia",
       "macro": "world",
       "file": "server/domains/concordia.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 4,
       "combinedLoc": 13,
       "stateTouch": false,
@@ -34546,7 +34546,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -35039,7 +35039,7 @@
       "domain": "construction",
       "macro": "criticalPath",
       "file": "server/domains/construction.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 24,
       "combinedLoc": 24,
       "stateTouch": false,
@@ -35050,7 +35050,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -35237,7 +35237,7 @@
       "domain": "construction",
       "macro": "progressReport",
       "file": "server/domains/construction.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 14,
       "combinedLoc": 34,
       "stateTouch": false,
@@ -35248,7 +35248,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -35417,7 +35417,7 @@
       "domain": "construction",
       "macro": "safetyCompliance",
       "file": "server/domains/construction.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 12,
       "combinedLoc": 12,
       "stateTouch": false,
@@ -35428,7 +35428,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -35507,7 +35507,7 @@
       "domain": "construction",
       "macro": "takeoffEstimate",
       "file": "server/domains/construction.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 20,
       "combinedLoc": 40,
       "stateTouch": false,
@@ -35518,7 +35518,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -46775,7 +46775,7 @@
       "domain": "db",
       "macro": "query",
       "file": "server/server.js",
-      "tier": "utility",
+      "tier": "stub",
       "handlerLoc": 7,
       "combinedLoc": 7,
       "stateTouch": false,
@@ -46786,7 +46786,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -53392,7 +53392,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -55804,7 +55804,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -55912,7 +55912,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -55930,7 +55930,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -56182,7 +56182,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -56362,7 +56362,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -56380,7 +56380,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -56398,7 +56398,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -60826,6 +60826,42 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "evo-asset",
+      "macro": "generate-organic",
+      "file": "server/domains/evo-asset.js",
+      "tier": "stub",
+      "handlerLoc": 10,
+      "combinedLoc": 10,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": false,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "evo-asset",
+      "macro": "organic-job",
+      "file": "server/domains/evo-asset.js",
+      "tier": "stub",
+      "handlerLoc": 4,
+      "combinedLoc": 8,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": false,
       "frontendUse": false,
       "delegates": false
     },
@@ -79582,7 +79618,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -88024,7 +88060,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -90454,7 +90490,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -90598,7 +90634,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -90616,7 +90652,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -90742,7 +90778,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -98338,7 +98374,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -98518,7 +98554,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -98597,7 +98633,7 @@
       "domain": "landscaping",
       "macro": "permit-reference",
       "file": "server/domains/landscaping.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 20,
       "combinedLoc": 20,
       "stateTouch": false,
@@ -98608,7 +98644,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -98644,7 +98680,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -98680,7 +98716,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -109408,7 +109444,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -109426,7 +109462,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -109444,7 +109480,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -131501,7 +131537,7 @@
       "domain": "plumbing",
       "macro": "codeReference",
       "file": "server/domains/plumbing.js",
-      "tier": "utility",
+      "tier": "functional",
       "handlerLoc": 16,
       "combinedLoc": 16,
       "stateTouch": false,
@@ -131512,7 +131548,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": false,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -131584,7 +131620,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -131602,7 +131638,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -131836,7 +131872,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -132088,7 +132124,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -173074,7 +173110,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -173092,7 +173128,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -173344,7 +173380,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {

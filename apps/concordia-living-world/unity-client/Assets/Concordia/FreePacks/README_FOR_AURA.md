@@ -1,13 +1,6 @@
-# FreePacks — gaps + polish ammo
+# FreePacks (chars / UI)
 
-## Content
-- Quaternius chars/anims + Fauna animals (CC0)
-- Kenney UI / Nature / Particles / Audio (CC0)
-- Game-icons (CC-BY 3.0 — attribute)
-- Poly Haven is sibling folder Assets/Concordia/PolyHaven
-
-## Polish (Aura must do — not in ZIPs)
-SSAO/soft shadows, HDRI per world, terrain sculpt+scatter, Humanoid hero, weapon grips, Court vs Steel HUD themes.
-
-## Not in packs
-2B/voice dialogue, authored quests, kill→cascade gameplay proof.
+Quaternius = hero+NPC+anims (CC0).
+Kenney = HUD/menus (CC0).
+Game-icons = icons (CC-BY 3.0).
+Foozle/TinyRPG/ambientCG = follow-up.

@@ -1,0 +1,1499 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "monsters",
+  "count": 19,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "mon_sunder_basilisk",
+      "display_name": "Fold Basilisk",
+      "lore_blurb": "Canon Sundering basilisk. A serpentine territorial brute. The gaze is a telegraphed hood-flare, not an unavoidable screen debuff.",
+      "taxonomy_tags": [
+        "monster",
+        "territorial",
+        "canon_fauna",
+        "serpentine"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet scales, shed skin at the den mouth, resin and moss. Eye is pale, not a laser.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick coil, hood as a single diamond. No chicken legs. The strike pose is an S, the rest pose is a stone.",
+      "palette": [
+        "#1a3028",
+        "#3a6a48",
+        "#c8c060"
+      ],
+      "scale_vs_player": "1.1\u00d7 player length of striking body; coil mass equals a crouching player",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_sunder_basilisk",
+          "topology": "serpentine",
+          "gaitKind": "serpent_slither",
+          "canon_kind_alias": "basilisk"
+        },
+        "skeleton_family": "serpentine",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_sunder_basilisk.prefab",
+        "animator_stub": "AC_mon_sunder_basilisk",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.brute",
+          "Topology.serpentine"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick serpentine basilisk, diamond hood, moss and resin, Sundering den, pale eye, no chicken legs.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "pierce_poison",
+        "loot": [
+          "scale_basilisk",
+          "fang_fold"
+        ],
+        "spawn": "Fantasy dens, 1",
+        "poise": "high"
+      },
+      "verb_ids": [
+        "verb_mon_hood_flare",
+        "verb_mon_strike",
+        "verb_mon_constrict"
+      ],
+      "role": "brute",
+      "weak_points": [
+        {
+          "id": "hood_root",
+          "hint": "strike the flared hood tendon"
+        }
+      ],
+      "audio_tell": "Dry rasp before the hood opens; a wet click on the strike frame.",
+      "attack_verbs_max": [
+        "verb_mon_hood_flare",
+        "verb_mon_strike",
+        "verb_mon_constrict"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "brute"
+      }
+    },
+    {
+      "id": "mon_sunder_griffin",
+      "display_name": "Ward Griffin",
+      "lore_blurb": "Canon griffin of the Sundering and a cousin in the Ruins. Winged quadruped, territorial, one dive and one beak-rake. Not a horse with pasted wings.",
+      "taxonomy_tags": [
+        "monster",
+        "aerial",
+        "territorial",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scarred beak, dust in the primaries, lion pelt with real dirt. Ruins cousin swaps green for ash via material, same rig.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Eagle head on a lion mass. Wings fold into the shoulder so the grounded read is still a big cat. Dive pose is a cross.",
+      "palette": [
+        "#6a5438",
+        "#efe6d4",
+        "#3a6a48"
+      ],
+      "scale_vs_player": "1.5\u00d7 player height at the shoulder; wingspan 3.2\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_sunder_griffin",
+          "topology": "winged_quadruped",
+          "gaitKind": "quad_bound_fly",
+          "canon_kind_alias": "griffin"
+        },
+        "skeleton_family": "winged_quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_sunder_griffin.prefab",
+        "animator_stub": "AC_mon_sunder_griffin",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.aerial",
+          "Topology.winged_quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lion-bodied griffin, eagle head, wings that fold into the shoulder, scarred beak, Sundering cliff. Grounded read is a big cat.",
+      "stats_hooks": {
+        "health": "table:mon_elite",
+        "damage_profile": "slash",
+        "loot": [
+          "pinion",
+          "beak"
+        ],
+        "spawn": "Fantasy cliffs, Ruins high ash, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_wing_buffet",
+        "verb_mon_dive",
+        "verb_mon_beak_rake"
+      ],
+      "role": "aerial",
+      "weak_points": [
+        {
+          "id": "pinion_joint",
+          "hint": "break one pinion, dive becomes a hop"
+        }
+      ],
+      "audio_tell": "A single hawk scream on dive commit, silence during the fall.",
+      "attack_verbs_max": [
+        "verb_mon_wing_buffet",
+        "verb_mon_dive",
+        "verb_mon_beak_rake"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "aerial"
+      }
+    },
+    {
+      "id": "mon_boss_held_curse",
+      "display_name": "The Held Curse",
+      "lore_blurb": "Sundering delve boss. The wyrm Thorne will not turn outward. Killing it is allowed; becoming it is the loss. It is not a generic dragon and it does not offer a ride.",
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "unique",
+        "serpentine"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Bark and old iron grown into scales, cracks that leak a dull gold and then close. Gold is the curse trying to be used.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One raised hood-crest like a held blade, body a hill. Crest is the only vertical. No spaghetti wings.",
+      "palette": [
+        "#0e1a14",
+        "#c8a060",
+        "#3a6a48"
+      ],
+      "scale_vs_player": "3.2\u00d7 player length of visible body; the rest stays in the fold",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_boss_held_curse",
+          "topology": "serpentine",
+          "gaitKind": "serpent_rear",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "serpentine",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_boss_held_curse.prefab",
+        "animator_stub": "AC_mon_boss_held_curse",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.boss",
+          "Topology.serpentine"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive wyrm rising as a hill, single blade-like crest, bark and old iron in the scales, dull gold that closes. Not a western dragon, no wings.",
+      "stats_hooks": {
+        "health": "table:boss_region",
+        "damage_profile": "curse_inward",
+        "loot": [
+          "crest_shard"
+        ],
+        "spawn": "Fantasy delve, unique",
+        "enrage": "if player uses curse-fold at rank 5 without the refuse tag, breath turns outward and the fight is failed as a story, not a DPS check"
+      },
+      "verb_ids": [
+        "verb_boss_crest_warn",
+        "verb_boss_inward_breath",
+        "verb_boss_tail_sweep",
+        "verb_boss_offer_the_curse"
+      ],
+      "role": "boss",
+      "weak_points": [
+        {
+          "id": "crest_root",
+          "hint": "the offer window, when the crest lowers"
+        },
+        {
+          "id": "bark_plates",
+          "hint": "break plates to stop the sweep"
+        }
+      ],
+      "audio_tell": "A human-like inhale that is not a voice. On the offer, silence.",
+      "attack_verbs_max": [
+        "verb_boss_crest_warn",
+        "verb_boss_inward_breath",
+        "verb_boss_tail_sweep",
+        "verb_boss_offer_the_curse"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "boss"
+      },
+      "boss_rule": "Distinct personality: it wants the player to win with the curse. Refusing the offer (Presence tag or Thorne quest) staggers it. Taking the offer ends the fight as a loss even if HP remains."
+    },
+    {
+      "id": "mon_tunya_harpy",
+      "display_name": "Veil Harpy",
+      "lore_blurb": "Canon Tunya harpy. Winged biped pack skirmisher. They steal fruit and tools, not souls. A reap is what they are punished for in local law.",
+      "taxonomy_tags": [
+        "monster",
+        "aerial",
+        "pack",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Pollen on the chest, torn grove-cloth on one hip, talons chipped. CX face is not used; this is a creature mesh.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Human-scale torso, arms are the wings, legs are bird and thick enough to hit. Face is a person with a short bill, not a sexy costume and not a parrot.",
+      "palette": [
+        "#c8b48a",
+        "#3a4a28",
+        "#e0c060"
+      ],
+      "scale_vs_player": "1.15\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_tunya_harpy",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flap",
+          "canon_kind_alias": "harpy"
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_tunya_harpy.prefab",
+        "animator_stub": "AC_mon_tunya_harpy",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Winged biped harpy, person-like face with a short bill, thick bird legs, pollen-stained grove cloth scrap, Tunya canopy. Not a parrot, not pinup armor.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "slash",
+        "loot": [
+          "pinion_grove",
+          "stolen_fruit"
+        ],
+        "spawn": "Tunya canopy, 3-5"
+      },
+      "verb_ids": [
+        "verb_mon_screech_telegraph",
+        "verb_mon_dive_grab",
+        "verb_mon_wing_buffet"
+      ],
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "hip_cloth",
+          "hint": "a carried tool is a stagger if shot off"
+        },
+        {
+          "id": "wing_wrist",
+          "hint": "break wrist, cannot grab"
+        }
+      ],
+      "audio_tell": "A two-note scream, the second note is the dive commit.",
+      "attack_verbs_max": [
+        "verb_mon_screech_telegraph",
+        "verb_mon_dive_grab",
+        "verb_mon_wing_buffet"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "skirmisher"
+      }
+    },
+    {
+      "id": "mon_tunya_reapjackal",
+      "display_name": "Reap Jackal",
+      "lore_blurb": "Pack hunter that violates the Refusal of Harvest: it kills the tree to eat the root. Verdant Veil treats them as a breach, not as game.",
+      "taxonomy_tags": [
+        "monster",
+        "pack",
+        "predator"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Red dust, sap on the muzzle, no armor.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Narrow jackal wedge, oversized ears as two dishes, tail a straight rod when flanking.",
+      "palette": [
+        "#c8721a",
+        "#3a2a18",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.65\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_tunya_reapjackal",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_tunya_reapjackal.prefab",
+        "animator_stub": "AC_mon_tunya_reapjackal",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Narrow jackal, oversized ears, sap on the muzzle, Tunya roots torn up, stylized realism.",
+      "stats_hooks": {
+        "health": "table:mon_swarm_elite",
+        "damage_profile": "slash",
+        "loot": [
+          "fang",
+          "sap"
+        ],
+        "spawn": "Tunya wounded groves, 4-7"
+      },
+      "verb_ids": [
+        "verb_mon_flank",
+        "verb_mon_nip",
+        "verb_mon_root_tear"
+      ],
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "ear",
+          "hint": "a hit on the ear breaks the flank telegraph for 4s"
+        }
+      ],
+      "audio_tell": "Yip on flank start; the root-tear is a wet crack.",
+      "attack_verbs_max": [
+        "verb_mon_flank",
+        "verb_mon_nip",
+        "verb_mon_root_tear"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "skirmisher"
+      }
+    },
+    {
+      "id": "mon_ruins_wraith",
+      "display_name": "Unfinished Wraith",
+      "lore_blurb": "Canon Ruins wraith. Amorphous but with a readable cowl and two heavy arms. Death here does not finish; the wraith is a person-shaped gap, not a bedsheet.",
+      "taxonomy_tags": [
+        "monster",
+        "amorphous",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash cloth with holes that show nothing, cold iron bangles that are real metal.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cowl is a bell, arms are thick ropes of ash ending in hands. No wispy pixels as the only hit surface. The bell is the mass.",
+      "palette": [
+        "#2a241c",
+        "#b89060",
+        "#5a5044"
+      ],
+      "scale_vs_player": "1.3\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_ruins_wraith",
+          "topology": "amorphous",
+          "gaitKind": "drift_glide",
+          "canon_kind_alias": "wraith"
+        },
+        "skeleton_family": "amorphous",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_ruins_wraith.prefab",
+        "animator_stub": "AC_mon_ruins_wraith",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.amorphous"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-cowl wraith, bell silhouette, thick ash arms, cold iron bangles, Sovereign Ruins. Hit surface is the cowl, not wisps.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "cold_ash",
+        "loot": [
+          "bangle",
+          "ash_cloth"
+        ],
+        "spawn": "Ruins interiors and dusk roads, 1-3"
+      },
+      "verb_ids": [
+        "verb_mon_reach",
+        "verb_mon_wail",
+        "verb_mon_unfinish"
+      ],
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "bangle",
+          "hint": "break both bangles and the reach shortens"
+        }
+      ],
+      "audio_tell": "A breath that starts after the body moves, late, like a delayed death.",
+      "attack_verbs_max": [
+        "verb_mon_reach",
+        "verb_mon_wail",
+        "verb_mon_unfinish"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "skirmisher"
+      }
+    },
+    {
+      "id": "mon_boss_unfinished",
+      "display_name": "The Unfinished",
+      "lore_blurb": "Ruins delve boss. A brute that was catalogued mid-death and kept the page. It wants the catalogue closed. Keepers say do not conquer it; end the page.",
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "brute"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Fossil bone, cold iron staples, ash in the cracks. No skull bikini, no generic lich crown.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A tomb slab with shoulders, one arm longer, head a cracked catalogue mask. Reads as a walking door.",
+      "palette": [
+        "#5a5044",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "scale_vs_player": "2.4\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_boss_unfinished",
+          "topology": "humanoid",
+          "gaitKind": "biped_heavy",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_boss_unfinished.prefab",
+        "animator_stub": "AC_mon_boss_unfinished",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.boss",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Walking tomb-slab brute, one long arm, cracked mask like a catalogue plate, fossil bone and cold iron staples, Sovereign Ruins.",
+      "stats_hooks": {
+        "health": "table:boss_region",
+        "damage_profile": "blunt_ash",
+        "loot": [
+          "catalogue_plate"
+        ],
+        "spawn": "Ruins delve, unique"
+      },
+      "verb_ids": [
+        "verb_boss_page_turn",
+        "verb_boss_long_arm",
+        "verb_boss_slab_slam",
+        "verb_boss_ask_to_be_closed"
+      ],
+      "role": "boss",
+      "weak_points": [
+        {
+          "id": "staples",
+          "hint": "three iron staples; removing them lets the page close"
+        },
+        {
+          "id": "mask",
+          "hint": "mask break starts the ask phase"
+        }
+      ],
+      "audio_tell": "Stone on stone. When it asks, the audio is a page sliding.",
+      "attack_verbs_max": [
+        "verb_boss_page_turn",
+        "verb_boss_long_arm",
+        "verb_boss_slab_slam",
+        "verb_boss_ask_to_be_closed"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "boss"
+      },
+      "boss_rule": "Closing the page (interact during ask, or skill_presence_lament at rank 3+) ends the fight without a gore finisher. Pure DPS leaves it unfinished and it stands back up once."
+    },
+    {
+      "id": "mon_ruins_crawler",
+      "display_name": "Rib Crawler",
+      "lore_blurb": "Armored scavenger of the bone cities. Tank relative to its size. Not a thin-leg scorpion; the legs are pillars.",
+      "taxonomy_tags": [
+        "monster",
+        "tank",
+        "polyped"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Fossil texture, iron nails, ash in the joints.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low oval shell of fused rib, six pillar legs. Shell edge is the silhouette.",
+      "palette": [
+        "#6a5848",
+        "#2a1c14",
+        "#b89060"
+      ],
+      "scale_vs_player": "0.8\u00d7 player height, wide as a door",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_ruins_crawler",
+          "topology": "polyped",
+          "gaitKind": "creep_heavy",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "polyped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_ruins_crawler.prefab",
+        "animator_stub": "AC_mon_ruins_crawler",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.tank",
+          "Topology.polyped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Low rib-shell crawler, six thick pillar legs, fossil and nails, Sovereign Ruins. No thin scorpion legs.",
+      "stats_hooks": {
+        "health": "table:mon_tank_small",
+        "damage_profile": "blunt",
+        "loot": [
+          "rib_plate",
+          "nail"
+        ],
+        "spawn": "Ruins bone yards, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_brace",
+        "verb_mon_ram",
+        "verb_mon_nail_spit"
+      ],
+      "role": "tank",
+      "weak_points": [
+        {
+          "id": "nail_row",
+          "hint": "the spit vent under the front lip"
+        },
+        {
+          "id": "leg_pillar",
+          "hint": "break two legs on one side and the ram arcs wrong"
+        }
+      ],
+      "audio_tell": "A dry knuckle crack before the ram.",
+      "attack_verbs_max": [
+        "verb_mon_brace",
+        "verb_mon_ram",
+        "verb_mon_nail_spit"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "tank"
+      }
+    },
+    {
+      "id": "mon_grid_drone",
+      "display_name": "Census Drone",
+      "lore_blurb": "Canon Grid drone. Swarmer. A counted eye on a thick disc. Damage from it hides until you let the number exist \u2014 presentation only, the hit still resolves in HitResolver.",
+      "taxonomy_tags": [
+        "monster",
+        "swarmer",
+        "mech",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Cyber",
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scratched acrylic, gunmetal, one cyan emissive lens. Crime and Sere skins desaturate the lens to sodium.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick disc, one lens, two short antennae. Swarm forms a triangle. Not a parts-bin UFO with spaghetti struts.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8"
+      ],
+      "scale_vs_player": "0.45\u00d7 player height disc",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_grid_drone",
+          "topology": "humanoid",
+          "gaitKind": "hover",
+          "canon_kind_alias": "drone"
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_grid_drone.prefab",
+        "animator_stub": "AC_mon_grid_drone",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.swarmer",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick census drone disc, one cyan lens, scratched acrylic and gunmetal, Grid night. Swarm triangle. No spaghetti antennae.",
+      "stats_hooks": {
+        "health": "table:mon_swarm",
+        "damage_profile": "pulse",
+        "loot": [
+          "lens_shard",
+          "acrylic"
+        ],
+        "spawn": "Cyber streets, Crime roofs, Sere belts, 4-8"
+      },
+      "verb_ids": [
+        "verb_mon_ping",
+        "verb_mon_ram",
+        "verb_mon_hide_number"
+      ],
+      "role": "swarmer",
+      "weak_points": [
+        {
+          "id": "lens",
+          "hint": "lens break stops the hide-number and the ping"
+        }
+      ],
+      "audio_tell": "A soft counting tick, faster on commit.",
+      "attack_verbs_max": [
+        "verb_mon_ping",
+        "verb_mon_ram",
+        "verb_mon_hide_number"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "swarmer"
+      }
+    },
+    {
+      "id": "mon_grid_sentinel",
+      "display_name": "Count Sentinel",
+      "lore_blurb": "Canon sentinel. Armored tank biped. The visor is a single horizontal bar so officers and machines are not confused at range: machines have no shoulders of cloth.",
+      "taxonomy_tags": [
+        "monster",
+        "tank",
+        "mech",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Cyber",
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Scratched plate, no cape, hydraulic bevels visible. Weak point is the hip coil, painted a chipped white.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Door shoulders, bar visor, short legs. Dawn skin swaps cyan for platinum and gold.",
+      "palette": [
+        "#14101c",
+        "#3dffa0",
+        "#d8d4dc"
+      ],
+      "scale_vs_player": "1.8\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_grid_sentinel",
+          "topology": "humanoid",
+          "gaitKind": "biped_heavy",
+          "canon_kind_alias": "sentinel"
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_grid_sentinel.prefab",
+        "animator_stub": "AC_mon_grid_sentinel",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.tank",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Armored sentinel, door shoulders, single bar visor, chipped white hip coil, Grid or Dawn material swap.",
+      "stats_hooks": {
+        "health": "table:mon_tank",
+        "damage_profile": "blunt_pulse",
+        "loot": [
+          "coil",
+          "plate_sentinel"
+        ],
+        "spawn": "Cyber checkpoints, Dawn roofs, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_shield_up",
+        "verb_mon_slam",
+        "verb_mon_bar_sweep"
+      ],
+      "role": "tank",
+      "weak_points": [
+        {
+          "id": "hip_coil",
+          "hint": "white coil; breaking it ends the shield"
+        },
+        {
+          "id": "visor_bar",
+          "hint": "bar crack shortens sweep"
+        }
+      ],
+      "audio_tell": "Servo whine that drops pitch when the shield commits.",
+      "attack_verbs_max": [
+        "verb_mon_shield_up",
+        "verb_mon_slam",
+        "verb_mon_bar_sweep"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "tank"
+      }
+    },
+    {
+      "id": "mon_grid_construct",
+      "display_name": "Uncounted Construct",
+      "lore_blurb": "Canon construct. A humanoid frame someone tried to leave out of the Census. It still walks. Heavier than a drone, lighter than a sentinel.",
+      "taxonomy_tags": [
+        "monster",
+        "mech",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Cyber",
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Mismatched plate, tape, a serial that has been ground off. Crucible skin grows a quartz patch that never finishes a pattern.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric: one arm a tool, one arm a hand. Head is a hood of sheet metal, not a skull.",
+      "palette": [
+        "#2a2430",
+        "#20ffd0",
+        "#8a8090"
+      ],
+      "scale_vs_player": "1.4\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_grid_construct",
+          "topology": "humanoid",
+          "gaitKind": "biped_medium",
+          "canon_kind_alias": "construct"
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_grid_construct.prefab",
+        "animator_stub": "AC_mon_grid_construct",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric construct, tool arm and hand arm, sheet-metal hood, ground-off serial, Grid alley. Not a skeleton robot.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "blunt",
+        "loot": [
+          "serial_blank",
+          "toolhead"
+        ],
+        "spawn": "Cyber alleys, Crucible edges, 1-3"
+      },
+      "verb_ids": [
+        "verb_mon_tool_swing",
+        "verb_mon_grab",
+        "verb_mon_spark"
+      ],
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "toolhead",
+          "hint": "knock the tool off and the swing becomes a shove"
+        }
+      ],
+      "audio_tell": "A grind, then a spark, on the swing.",
+      "attack_verbs_max": [
+        "verb_mon_tool_swing",
+        "verb_mon_grab",
+        "verb_mon_spark"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "skirmisher"
+      }
+    },
+    {
+      "id": "mon_boss_census",
+      "display_name": "The Census",
+      "lore_blurb": "Grid delve boss. A counting engine that wants the player's name. Refusing to be counted is the law of this world and the mechanic of the fight.",
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "artillery",
+        "mech"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Gunmetal, scratched glass, magenta warning only on the ring that is about to fire.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A hanging abacus of thick rings, one central lens the size of a torso. Rings are fat, readable, not a particle mess.",
+      "palette": [
+        "#0c0814",
+        "#3dffa0",
+        "#ff3d8a"
+      ],
+      "scale_vs_player": "2.8\u00d7 player height of a hanging frame",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_boss_census",
+          "topology": "humanoid",
+          "gaitKind": "hover_heavy",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_boss_census.prefab",
+        "animator_stub": "AC_mon_boss_census",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.boss",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Hanging census engine, fat metal rings, one torso-sized lens, magenta only on the ring about to fire, The Grid.",
+      "stats_hooks": {
+        "health": "table:boss_region",
+        "damage_profile": "pulse",
+        "loot": [
+          "uncounted_plate"
+        ],
+        "spawn": "Cyber delve, unique"
+      },
+      "verb_ids": [
+        "verb_boss_name_ask",
+        "verb_boss_ring_shot",
+        "verb_boss_count_lock",
+        "verb_boss_recount"
+      ],
+      "role": "boss",
+      "weak_points": [
+        {
+          "id": "active_ring",
+          "hint": "only the magenta ring is live"
+        },
+        {
+          "id": "lens",
+          "hint": "lens during the name-ask"
+        }
+      ],
+      "audio_tell": "Spoken numbers with one missing. The missing number is the tell.",
+      "attack_verbs_max": [
+        "verb_boss_name_ask",
+        "verb_boss_ring_shot",
+        "verb_boss_count_lock",
+        "verb_boss_recount"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "boss"
+      },
+      "boss_rule": "skill_presence_refuse_count during the name-ask clears count-lock. Giving a name (interacting without the skill) applies a damage-taken debuff the law calls 'being counted.'"
+    },
+    {
+      "id": "mon_coast_billhound",
+      "display_name": "Bill Hound",
+      "lore_blurb": "Iron Coast monster, not the dock dog. A thick hound-shaped collector grown out of debt ledgers and street dogs. People still call the real dogs hounds; this one gets the bill.",
+      "taxonomy_tags": [
+        "monster",
+        "brute",
+        "urban"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet brick dust, rusted plate screwed into hide, one gold tooth that is a coin.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Too-wide head, ledger plates along the ribs like ill-fitted armor, sodium eye. Not a hellhound with flames.",
+      "palette": [
+        "#2a241c",
+        "#8a6a48",
+        "#e0c040"
+      ],
+      "scale_vs_player": "1.15\u00d7 player height at the shoulder",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_coast_billhound",
+          "topology": "quadruped",
+          "gaitKind": "quad_charge",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_coast_billhound.prefab",
+        "animator_stub": "AC_mon_coast_billhound",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.brute",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Oversized hound brute, ledger iron screwed into the ribs, one coin tooth, rain, Iron Coast. No hellfire.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "pierce",
+        "loot": [
+          "coin_tooth",
+          "ledger_plate"
+        ],
+        "spawn": "Crime alleys at high witness heat, 1"
+      },
+      "verb_ids": [
+        "verb_mon_invoice_bark",
+        "verb_mon_charge",
+        "verb_mon_jaw_clamp"
+      ],
+      "role": "brute",
+      "weak_points": [
+        {
+          "id": "ledger_plate",
+          "hint": "plates are the armor; the bare shoulder is flesh"
+        }
+      ],
+      "audio_tell": "A bark that sounds like paper torn once.",
+      "attack_verbs_max": [
+        "verb_mon_invoice_bark",
+        "verb_mon_charge",
+        "verb_mon_jaw_clamp"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "brute"
+      }
+    },
+    {
+      "id": "mon_frontier_domebreaker",
+      "display_name": "Domebreaker",
+      "lore_blurb": "Frontier brute. A bison-shaped siege animal that learned wagons are domes. It exists to make 'drop the dome' literal.",
+      "taxonomy_tags": [
+        "monster",
+        "brute",
+        "territorial"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cracked hide, wagon-nail scars, rope burned into the neck from a failed yoke.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hump as the highest point, horns a single horizontal bar, dust plume is VFX not mesh.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "1.8\u00d7 player height at the hump",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_frontier_domebreaker",
+          "topology": "quadruped",
+          "gaitKind": "quad_charge",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_frontier_domebreaker.prefab",
+        "animator_stub": "AC_mon_frontier_domebreaker",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.brute",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Bison-like brute, single horizontal horn bar, hump, wagon-nail scars, Frontier dust. Plume is VFX.",
+      "stats_hooks": {
+        "health": "table:mon_brute",
+        "damage_profile": "blunt",
+        "loot": [
+          "horn_chip",
+          "hide_thick"
+        ],
+        "spawn": "Frontier roads near wagons, 1"
+      },
+      "verb_ids": [
+        "verb_mon_paw_telegraph",
+        "verb_mon_charge",
+        "verb_mon_horn_toss"
+      ],
+      "role": "brute",
+      "weak_points": [
+        {
+          "id": "hump",
+          "hint": "not a weak point; shooting it wastes the hit"
+        },
+        {
+          "id": "nail_scar",
+          "hint": "the neck scar staggers the toss"
+        }
+      ],
+      "audio_tell": "A double hoof stamp. Charge has no bark.",
+      "attack_verbs_max": [
+        "verb_mon_paw_telegraph",
+        "verb_mon_charge",
+        "verb_mon_horn_toss"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "brute"
+      }
+    },
+    {
+      "id": "mon_dawn_mercy_sentinel",
+      "display_name": "Mercy Sentinel",
+      "lore_blurb": "Permanent Dawn artillery. A sentinel variant that fires a shock meant to put you down, not out. The law refuses the final win; this machine was built to obey it and sometimes fails.",
+      "taxonomy_tags": [
+        "monster",
+        "artillery",
+        "mech"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. White marble composite chipped to gray, chrome barrel, royal-blue emissive only in the muzzle during windup.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall tripod stance, one barrel arm, halo ring that is a physical brass loop not a god-ray. Distinct from the tank sentinel: no door shields.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "2.0\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_dawn_mercy_sentinel",
+          "topology": "humanoid",
+          "gaitKind": "biped_plant",
+          "canon_kind_alias": "sentinel"
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_dawn_mercy_sentinel.prefab",
+        "animator_stub": "AC_mon_dawn_mercy_sentinel",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.artillery",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tall mercy sentinel, tripod legs, one barrel arm, physical brass halo, chipped white marble, Dawn roof. Muzzle glows blue only while winding up.",
+      "stats_hooks": {
+        "health": "table:mon_artillery",
+        "damage_profile": "shock_nonlethal",
+        "loot": [
+          "halo_shard",
+          "mercy_cell"
+        ],
+        "spawn": "Superhero heights, 1-2"
+      },
+      "verb_ids": [
+        "verb_mon_halo_spin",
+        "verb_mon_mercy_shot",
+        "verb_mon_barrel_club"
+      ],
+      "role": "artillery",
+      "weak_points": [
+        {
+          "id": "muzzle",
+          "hint": "during blue windup"
+        },
+        {
+          "id": "halo_hinge",
+          "hint": "break the hinge and the shot scatters"
+        }
+      ],
+      "audio_tell": "A rising choir tone that is just a capacitor. It cuts on fire.",
+      "attack_verbs_max": [
+        "verb_mon_halo_spin",
+        "verb_mon_mercy_shot",
+        "verb_mon_barrel_club"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "artillery"
+      }
+    },
+    {
+      "id": "mon_crucible_drift",
+      "display_name": "Drift Mass",
+      "lore_blurb": "Canon Crucible drift. Amorphous skirmisher with one readable core and a coat of unfinished polygons that are bevelled plates, not a shader soup.",
+      "taxonomy_tags": [
+        "monster",
+        "amorphous",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Opalescent plates, scratched, one teal seam that does not close.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Teardrop core, three orbiting shards max. More shards become VFX and do not count as body.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ],
+      "scale_vs_player": "1.2\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_crucible_drift",
+          "topology": "amorphous",
+          "gaitKind": "drift_glide",
+          "canon_kind_alias": "drift"
+        },
+        "skeleton_family": "amorphous",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_crucible_drift.prefab",
+        "animator_stub": "AC_mon_crucible_drift",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.skirmisher",
+          "Topology.amorphous"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Teardrop drift mass, three fat orbiting shards, unfinished teal seam, Crucible. No particle-only body.",
+      "stats_hooks": {
+        "health": "table:mon_skirmisher",
+        "damage_profile": "arcane",
+        "loot": [
+          "unclosed_shard"
+        ],
+        "spawn": "Crucible unstable ground, 1-3"
+      },
+      "verb_ids": [
+        "verb_mon_shard_orbit",
+        "verb_mon_lapse",
+        "verb_mon_unend_pulse"
+      ],
+      "role": "skirmisher",
+      "weak_points": [
+        {
+          "id": "seam",
+          "hint": "the open seam is the core hit"
+        }
+      ],
+      "audio_tell": "A tone that almost resolves and drops.",
+      "attack_verbs_max": [
+        "verb_mon_shard_orbit",
+        "verb_mon_lapse",
+        "verb_mon_unend_pulse"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "skirmisher"
+      }
+    },
+    {
+      "id": "mon_boss_unender",
+      "display_name": "The Un-Ender",
+      "lore_blurb": "Crucible delve boss. It deletes its own death. The fight is won by forcing a completion it cannot refuse, or by leaving \u2014 leaving is a legal victory the world respects.",
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "amorphous"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Liquid polymer with a hard skin, chrome flecks, nebula pink only inside the gap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A ring that will not close, standing on three thick legs of polymer. The gap in the ring is the face.",
+      "palette": [
+        "#102828",
+        "#20ffd0",
+        "#c8b4ff"
+      ],
+      "scale_vs_player": "2.6\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_boss_unender",
+          "topology": "amorphous",
+          "gaitKind": "drift_heavy",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "amorphous",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_boss_unender.prefab",
+        "animator_stub": "AC_mon_boss_unender",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.boss",
+          "Topology.amorphous"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Standing open ring on three thick polymer legs, the gap is the face, chrome flecks, pink only inside the gap, Crucible.",
+      "stats_hooks": {
+        "health": "table:boss_region",
+        "damage_profile": "arcane",
+        "loot": [
+          "closed_ring_fragment"
+        ],
+        "spawn": "Crucible delve, unique",
+        "rewind": "below 20% HP it rewinds once unless skill_craft_lattice_unend or skill_presence is ranked to force completion"
+      },
+      "verb_ids": [
+        "verb_boss_rewind_self",
+        "verb_boss_gap_beam",
+        "verb_boss_leg_stamp",
+        "verb_boss_offer_incompletion"
+      ],
+      "role": "boss",
+      "weak_points": [
+        {
+          "id": "gap",
+          "hint": "the face"
+        },
+        {
+          "id": "leg_joint",
+          "hint": "a broken leg prevents the rewind stance"
+        }
+      ],
+      "audio_tell": "Music-box click running backward.",
+      "attack_verbs_max": [
+        "verb_boss_rewind_self",
+        "verb_boss_gap_beam",
+        "verb_boss_leg_stamp",
+        "verb_boss_offer_incompletion"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "boss"
+      },
+      "boss_rule": "Walking out of the arena stamps WorldEventLog 'refused completion' and counts as a win for faction Crucible lattice. It does not drop the fragment."
+    },
+    {
+      "id": "mon_boss_compound_mark",
+      "display_name": "The Compound Mark",
+      "lore_blurb": "Sere delve boss. The only law that compounds. A furnace brute wearing every unpaid brand at once. It does not negotiate; the Tessera do, afterward.",
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "brute"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot brick, oil, cracked tiles. Fire stays in the chimney eye and the mouth of the furnace, not as a full-body aura.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Kiln-shaped torso, brand tiles as a skirt of iron, head a chimney with one eye of fire. The eye is the only emissive.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#8a3030"
+      ],
+      "scale_vs_player": "2.5\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_boss_compound_mark",
+          "topology": "humanoid",
+          "gaitKind": "biped_heavy",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_boss_compound_mark.prefab",
+        "animator_stub": "AC_mon_boss_compound_mark",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.boss",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Kiln-bodied brute, iron brand-tile skirt, chimney head with one fire eye, Sere furnace hall. Fire only in the eye and the furnace mouth.",
+      "stats_hooks": {
+        "health": "table:boss_region",
+        "damage_profile": "fire_blunt",
+        "loot": [
+          "brand_tile",
+          "furnace_tooth"
+        ],
+        "spawn": "Sere furnace delve, unique"
+      },
+      "verb_ids": [
+        "verb_boss_brand_slam",
+        "verb_boss_interest",
+        "verb_boss_vent",
+        "verb_boss_call_the_bill"
+      ],
+      "role": "boss",
+      "weak_points": [
+        {
+          "id": "eye",
+          "hint": "during vent windup"
+        },
+        {
+          "id": "tile_skirt",
+          "hint": "remove tiles to cut the interest aura"
+        }
+      ],
+      "audio_tell": "Bellows. The bill-call is a stamp.",
+      "attack_verbs_max": [
+        "verb_boss_brand_slam",
+        "verb_boss_interest",
+        "verb_boss_vent",
+        "verb_boss_call_the_bill"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "boss"
+      },
+      "boss_rule": "Witness heat on Sere factions rises if you loot the body in front of a Tessera. skill_presence_name_the_holder names a debtor and redirects the next slam."
+    },
+    {
+      "id": "mon_road_watcher",
+      "display_name": "Road Watcher",
+      "lore_blurb": "The per-spoke watcher from RoadWorld. One family, eight culture skins. It stands the gate road and does not chase into the Hub plaza. Humanoid so it can share CX proportions without replacing the CX face: the face is a mask, the body is a kitbash of that world's guard role.",
+      "taxonomy_tags": [
+        "monster",
+        "elite",
+        "humanoid",
+        "cross_world"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. GTA wear on the coat, one saturated accent from the world palette. Mask is beaten metal or carved wood or acrylic depending on skin.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same pose language everywhere: feet planted, weapon low, mask with no mouth. Culture is told by the weapon and the coat, not by a new body.",
+      "palette": [
+        "#6a6860",
+        "#c4b49a",
+        "#2a241c"
+      ],
+      "scale_vs_player": "1.15\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "mon_road_watcher",
+          "topology": "humanoid",
+          "gaitKind": "biped_medium",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "humanoid",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/mon_road_watcher.prefab",
+        "animator_stub": "AC_mon_road_watcher",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.elite",
+          "Topology.humanoid"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Gate watcher, planted feet, mouthless mask, weapon lowered, culture coat of one Concordia world. CX body proportions, mask instead of the hero face. Eight material skins, one mesh.",
+      "stats_hooks": {
+        "health": "table:mon_elite_human",
+        "damage_profile": "by_weapon_skin",
+        "loot": [
+          "watcher_token"
+        ],
+        "spawn": "RoadWorld gate approach, 1 per spoke",
+        "skins": [
+          "sunder_ward",
+          "veil_reed",
+          "ruins_ash",
+          "coast_knife",
+          "grid_pulse",
+          "frontier_iron",
+          "dawn_fist",
+          "crucible_shard",
+          "sere_invoice"
+        ]
+      },
+      "verb_ids": [
+        "verb_mon_warn",
+        "verb_mon_weapon_style",
+        "verb_mon_hold_gate"
+      ],
+      "role": "elite",
+      "weak_points": [
+        {
+          "id": "mask_strap",
+          "hint": "a stagger, not a decapitation"
+        }
+      ],
+      "audio_tell": "One word in the local refusal, then steel.",
+      "attack_verbs_max": [
+        "verb_mon_warn",
+        "verb_mon_weapon_style",
+        "verb_mon_hold_gate"
+      ],
+      "readability": {
+        "silhouette_test": "pure black at fight distance",
+        "windup_distinct": true,
+        "pack_role": "elite"
+      },
+      "mesh_note": "Uses a CX-proportion humanoid body under a full mask. Do not swap in a Quaternius base mesh. Clips from combat sets may retarget."
+    }
+  ]
+}

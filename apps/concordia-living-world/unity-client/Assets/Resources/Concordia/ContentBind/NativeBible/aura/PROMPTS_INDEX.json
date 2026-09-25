@@ -1,0 +1,4455 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "aura_prompts",
+  "count": 215,
+  "style_prefix": "Stylized realism PBR. GTA wear. Palworld silhouette. No cel-shade. No Quaternius body for humans. CX face for humanoids.",
+  "entries": [
+    {
+      "id": "faun_pinewood_stag",
+      "display_name": "Pinewood Stag",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd",
+        "biome_court_ring"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. A salt-dusted stag on a pine road at dusk, antlers like a tuning fork, worn hide, Concordia Pinewood Crossing, no city signage.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long neck, narrow antler crown that reads as a tuning fork, deep chest. Antlers stay inside the body width so the 100m read is a tall wedge, not a scribble.",
+      "palette": [
+        "#6a5340",
+        "#c4b49a",
+        "#2a241c",
+        "#8a9a68"
+      ]
+    },
+    {
+      "id": "faun_saltroad_hare",
+      "display_name": "Salt-Road Hare",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "critter",
+        "biome_court_ring"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small salt-crusted hare, ears as one vertical blade, dusty pine-road verge, stylized realism.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two tall ears as one vertical mark; body is a single pebble. Ears fold flat in the bolt pose.",
+      "palette": [
+        "#c4b49a",
+        "#6a5a40",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "faun_court_pigeon",
+      "display_name": "Court Pigeon",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "ambient",
+        "biome_court"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Sooty court pigeon on warm limestone and brass lantern iron, Unburned Court roofs, restrained teal neck.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Round body, short fan tail, one pale neck ring. Flock reads as a dotted arc, not individual noise.",
+      "palette": [
+        "#8a8680",
+        "#c8b48a",
+        "#3a342c"
+      ]
+    },
+    {
+      "id": "faun_lantern_moth",
+      "display_name": "Lantern Moth",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "ambient",
+        "nocturnal"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Large dusty moth, single warm lantern diamond on each wing, night limestone court, no magic runes.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One warm diamond of wing. At 100m a swarm is a drifting warm haze, each moth still a single diamond up close.",
+      "palette": [
+        "#1a140e",
+        "#ffe6c0",
+        "#c8721a"
+      ]
+    },
+    {
+      "id": "faun_court_cat",
+      "display_name": "Market Mouser",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "ambient",
+        "biome_court"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean court cat, limestone dust, one frayed crimson thread collar, market crates, stylized realism.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low wedge, tail as a question mark that straightens when stalking. Ears are the tell.",
+      "palette": [
+        "#3a342c",
+        "#c4b49a",
+        "#6a2030"
+      ]
+    },
+    {
+      "id": "faun_sunder_wolf",
+      "display_name": "Sundering Wolf",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean pine wolf, scarred ears, mud-resin ruff, dull amber eye, Sundering wildwood, readable pack chevron.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long muzzle, high withers, tail carried low. Pack silhouette is staggered chevrons, never a blob.",
+      "palette": [
+        "#2a3028",
+        "#6a7a62",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "faun_wardwood_boar",
+      "display_name": "Wardwood Boar",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "territorial"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Heavy wild boar, single bristle blade, short hooked tusks, mud plates, Sundering wardwood.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bristle ridge is one dark blade down the spine. Tusks are short hooks, not swords.",
+      "palette": [
+        "#4a3828",
+        "#8a6a48",
+        "#d8d0c4"
+      ]
+    },
+    {
+      "id": "faun_cursefold_owl",
+      "display_name": "Cursefold Owl",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "nocturnal"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Broad-faced forest owl, rectangular glide, barred worn feathers, curse-stone perch, no prophecy glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Broad flat face, short tail, wings make a rectangle in glide. Perched read is a tombstone with eyes.",
+      "palette": [
+        "#1a1814",
+        "#c8b070",
+        "#3a6a48"
+      ]
+    },
+    {
+      "id": "faun_blackroot_elk",
+      "display_name": "Blackroot Elk",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive elk, antlers like a dark thicket not a crown, bark strips, Sundering blackroot road.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Huge shoulder, antlers as a dark thicket contained in a diamond. Calf silhouette drops the thicket.",
+      "palette": [
+        "#3a3028",
+        "#1a1410",
+        "#8a9a68"
+      ]
+    },
+    {
+      "id": "faun_nil_sealie",
+      "display_name": "Nil Sealie",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "amphibious",
+        "canon_fauna",
+        "companion_possible"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Coastal seal-dog, paddle forelimbs, whiskered honest face, wet hide, Tunya Nil shoal. Not a flamingo, not a bird.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Torpedo body, whiskered dog head, rear flippers as one paddle. On land the read is a sliding loaf, not a bird.",
+      "palette": [
+        "#6a7a6a",
+        "#c8b48a",
+        "#4a6870"
+      ]
+    },
+    {
+      "id": "faun_veil_hound",
+      "display_name": "Veil Hound",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "working",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Working grove hound, square head, reed collar, sun-faded coat, Tunya terrace, stylized realism.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Square head, curled working tail, deep chest. Collar is braided reed, not metal.",
+      "palette": [
+        "#c8b070",
+        "#3a4a28",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "faun_terrace_goat",
+      "display_name": "Terrace Goat",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd",
+        "livestock"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Blocky terrace goat, short comma horns, wooden bell, Tunya vineyard wall, sunlit.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blocky body, short horns as two commas, sure-footed stance on a 30\u00b0 terrace.",
+      "palette": [
+        "#efe6d4",
+        "#6a7a3a",
+        "#c8721a"
+      ]
+    },
+    {
+      "id": "faun_pollen_hare",
+      "display_name": "Pollen Hare",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small hare with uneven pollen gold on ear tips only, Tunya grove floor, no glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same pebble body as the salt hare; ears tipped gold so the two species separate at a glance.",
+      "palette": [
+        "#efe6d4",
+        "#e0c060",
+        "#3a4a28"
+      ]
+    },
+    {
+      "id": "faun_ark_heron",
+      "display_name": "Ark Heron",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "wading"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tall gray heron, spear bill, algae-stained legs, Tunya irrigation cut, bright sun.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One vertical line plus a spear bill. Folded neck drops it to a gray stone.",
+      "palette": [
+        "#8aa0b4",
+        "#f0d080",
+        "#2a3030"
+      ]
+    },
+    {
+      "id": "faun_ash_wolf",
+      "display_name": "Catalogue Wolf",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "subspecies"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-crusted wolf, ragged ears, same lean chevron as a pine wolf, Sovereign Ruins, dull light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same chevron as faun_sunder_wolf. Ash crust squares the silhouette slightly; ears are ragged.",
+      "palette": [
+        "#5a5044",
+        "#2a241c",
+        "#b89060"
+      ]
+    },
+    {
+      "id": "faun_catalogue_crow",
+      "display_name": "Catalogue Crow",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "scavenger"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-filmed crow, wedge bill, one pale primary, perched on fossil rib, Sovereign Ruins.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wedge bill, fingered wings. A murder reads as black commas over a rib.",
+      "palette": [
+        "#1a140e",
+        "#b89060",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "faun_rib_lizard",
+      "display_name": "Rib Lizard",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "basking"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small flat lizard on fossil bone, bone-dust scales, Sovereign Ruins, no frill, no magic.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Flat diamond body, tail as long as the body, four honest legs.",
+      "palette": [
+        "#6a5848",
+        "#2a1c14",
+        "#c8a070"
+      ]
+    },
+    {
+      "id": "faun_dock_hound",
+      "display_name": "Wharf Hound",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "working",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Oil-stained dock hound, rope collar, low tail, Iron Coast rain, sodium lamps.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same hound family as the Veil hound; ears cropped by wear not fashion, tail low.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "faun_sodium_rat",
+      "display_name": "Sodium Rat",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "urban"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Grease-stained alley rat, naked tail, torn ear, sodium streetlight, no glowing eyes.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low teardrop, naked tail as a single line. Swarm reads as floor movement.",
+      "palette": [
+        "#4a4038",
+        "#2a241c",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "faun_rain_gull",
+      "display_name": "Rain Gull",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Harbor gull, oil-speckled white chest, hooked bill, rain, Iron Coast cranes.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bent wing, hooked bill, white chest. Flock is a low ragged line over water.",
+      "palette": [
+        "#d8d4cc",
+        "#8a6a48",
+        "#3a342c"
+      ]
+    },
+    {
+      "id": "faun_dust_wolf",
+      "display_name": "Dome Wolf",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "subspecies"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Pale dust wolf, tall ears, lean chevron, Frontier wind, no saddle.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Leaner than the pine wolf, pale, ears taller. Chevron still reads.",
+      "palette": [
+        "#c8b070",
+        "#8a7048",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "faun_wagon_horse",
+      "display_name": "Wagon Horse",
+      "batch": "B2_hub_ring_fauna",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "mount",
+        "livestock"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Working horse, harness gall, dust coat, Frontier wagon, no horn, no fused armor. Tack separate.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Honest horse: deep chest, one-tone mane, no unicorn, no armor fused to skin. Tack is a separate prop.",
+      "palette": [
+        "#6a4a30",
+        "#c8b070",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "faun_wind_pronghorn",
+      "display_name": "Wind Pronghorn",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Pale pronghorn, white rump flash, short horns, Frontier grass, herd turning as one.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. White rump as a flash signal, short prongs, long legs. Herd turns as one pale flag.",
+      "palette": [
+        "#efe6d4",
+        "#c8b070",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "faun_grid_stray",
+      "display_name": "Uncounted Stray",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "urban",
+        "ambient"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Mixed-breed alley dog, one ear, healed cable scar, neon rain, The Grid. No implants, no robot parts.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Mixed-breed mutt, one ear, cable-scar on the shoulder that is healed skin not a port.",
+      "palette": [
+        "#2a241c",
+        "#3dffa0",
+        "#1a1228"
+      ]
+    },
+    {
+      "id": "faun_cable_sparrow",
+      "display_name": "Cable Sparrow",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "critter"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small brown sparrow on a fiber junction box, neon rain, The Grid, feathers not plastic.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Round sparrow, short tail. Nest is fiber scrap, the bird is feather.",
+      "palette": [
+        "#6a5038",
+        "#1a1228",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "faun_aegis_kestrel",
+      "display_name": "Aegis Kestrel",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "predator"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Kestrel hovering over a platinum city, anchor-shaped stoop, sun-bleached chest, Permanent Dawn.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Pointed wings make an anchor shape in the stoop. Hover is a kite.",
+      "palette": [
+        "#c8a070",
+        "#4a5870",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "faun_lattice_moth",
+      "display_name": "Unclosed Moth",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "ambient"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric dusty moth, one unfinished teal vein that stops before the wing edge, Crucible dark, no sacred geometry completion.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric wing pair so the silhouette never becomes a perfect bowtie.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ]
+    },
+    {
+      "id": "faun_mark_hound",
+      "display_name": "Marked Hound",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "working",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Smog-filmed hound with one broken-tile brand scar on the shoulder, Sere street, sodium and soot.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same hound skeleton as dock and veil. Brand is a single broken tile shape.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#1a140e"
+      ]
+    },
+    {
+      "id": "faun_smog_roach",
+      "display_name": "Smog Roach",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "polyped"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small thick-legged roach, grease sheen, Sere furnace soot, not a monster.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Oval body, six short thick legs. Thin legs are forbidden; this is a pebble with feet.",
+      "palette": [
+        "#2a2418",
+        "#6a5840",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "faun_grove_finch",
+      "display_name": "Veil Finch",
+      "batch": "B3_spoke_fauna",
+      "world_ids": [
+        "Tunya",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "critter"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tiny finch with a rust cap, grove or pine edge, stylized realism, no jewel tones beyond the cap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Seed body, one rust cap. Flocks are confetti, individuals are a cap.",
+      "palette": [
+        "#c8721a",
+        "#3a4a28",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "mon_sunder_basilisk",
+      "display_name": "Fold Basilisk",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "territorial",
+        "canon_fauna",
+        "serpentine"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick serpentine basilisk, diamond hood, moss and resin, Sundering den, pale eye, no chicken legs.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick coil, hood as a single diamond. No chicken legs. The strike pose is an S, the rest pose is a stone.",
+      "palette": [
+        "#1a3028",
+        "#3a6a48",
+        "#c8c060"
+      ]
+    },
+    {
+      "id": "mon_sunder_griffin",
+      "display_name": "Ward Griffin",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Fantasy",
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "aerial",
+        "territorial",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lion-bodied griffin, eagle head, wings that fold into the shoulder, scarred beak, Sundering cliff. Grounded read is a big cat.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Eagle head on a lion mass. Wings fold into the shoulder so the grounded read is still a big cat. Dive pose is a cross.",
+      "palette": [
+        "#6a5438",
+        "#efe6d4",
+        "#3a6a48"
+      ]
+    },
+    {
+      "id": "mon_boss_held_curse",
+      "display_name": "The Held Curse",
+      "batch": "B5_bosses",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "unique",
+        "serpentine"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive wyrm rising as a hill, single blade-like crest, bark and old iron in the scales, dull gold that closes. Not a western dragon, no wings.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One raised hood-crest like a held blade, body a hill. Crest is the only vertical. No spaghetti wings.",
+      "palette": [
+        "#0e1a14",
+        "#c8a060",
+        "#3a6a48"
+      ]
+    },
+    {
+      "id": "mon_tunya_harpy",
+      "display_name": "Veil Harpy",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "aerial",
+        "pack",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Winged biped harpy, person-like face with a short bill, thick bird legs, pollen-stained grove cloth scrap, Tunya canopy. Not a parrot, not pinup armor.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Human-scale torso, arms are the wings, legs are bird and thick enough to hit. Face is a person with a short bill, not a sexy costume and not a parrot.",
+      "palette": [
+        "#c8b48a",
+        "#3a4a28",
+        "#e0c060"
+      ]
+    },
+    {
+      "id": "mon_tunya_reapjackal",
+      "display_name": "Reap Jackal",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "pack",
+        "predator"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Narrow jackal, oversized ears, sap on the muzzle, Tunya roots torn up, stylized realism.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Narrow jackal wedge, oversized ears as two dishes, tail a straight rod when flanking.",
+      "palette": [
+        "#c8721a",
+        "#3a2a18",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "mon_ruins_wraith",
+      "display_name": "Unfinished Wraith",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "amorphous",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-cowl wraith, bell silhouette, thick ash arms, cold iron bangles, Sovereign Ruins. Hit surface is the cowl, not wisps.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cowl is a bell, arms are thick ropes of ash ending in hands. No wispy pixels as the only hit surface. The bell is the mass.",
+      "palette": [
+        "#2a241c",
+        "#b89060",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "mon_boss_unfinished",
+      "display_name": "The Unfinished",
+      "batch": "B5_bosses",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "brute"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Walking tomb-slab brute, one long arm, cracked mask like a catalogue plate, fossil bone and cold iron staples, Sovereign Ruins.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A tomb slab with shoulders, one arm longer, head a cracked catalogue mask. Reads as a walking door.",
+      "palette": [
+        "#5a5044",
+        "#2a1c14",
+        "#c8a070"
+      ]
+    },
+    {
+      "id": "mon_ruins_crawler",
+      "display_name": "Rib Crawler",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "tank",
+        "polyped"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Low rib-shell crawler, six thick pillar legs, fossil and nails, Sovereign Ruins. No thin scorpion legs.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low oval shell of fused rib, six pillar legs. Shell edge is the silhouette.",
+      "palette": [
+        "#6a5848",
+        "#2a1c14",
+        "#b89060"
+      ]
+    },
+    {
+      "id": "mon_grid_drone",
+      "display_name": "Census Drone",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Cyber",
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "swarmer",
+        "mech",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick census drone disc, one cyan lens, scratched acrylic and gunmetal, Grid night. Swarm triangle. No spaghetti antennae.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick disc, one lens, two short antennae. Swarm forms a triangle. Not a parts-bin UFO with spaghetti struts.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8"
+      ]
+    },
+    {
+      "id": "mon_grid_sentinel",
+      "display_name": "Count Sentinel",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Cyber",
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "tank",
+        "mech",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Armored sentinel, door shoulders, single bar visor, chipped white hip coil, Grid or Dawn material swap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Door shoulders, bar visor, short legs. Dawn skin swaps cyan for platinum and gold.",
+      "palette": [
+        "#14101c",
+        "#3dffa0",
+        "#d8d4dc"
+      ]
+    },
+    {
+      "id": "mon_grid_construct",
+      "display_name": "Uncounted Construct",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Cyber",
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "mech",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric construct, tool arm and hand arm, sheet-metal hood, ground-off serial, Grid alley. Not a skeleton robot.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric: one arm a tool, one arm a hand. Head is a hood of sheet metal, not a skull.",
+      "palette": [
+        "#2a2430",
+        "#20ffd0",
+        "#8a8090"
+      ]
+    },
+    {
+      "id": "mon_boss_census",
+      "display_name": "The Census",
+      "batch": "B5_bosses",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "artillery",
+        "mech"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Hanging census engine, fat metal rings, one torso-sized lens, magenta only on the ring about to fire, The Grid.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A hanging abacus of thick rings, one central lens the size of a torso. Rings are fat, readable, not a particle mess.",
+      "palette": [
+        "#0c0814",
+        "#3dffa0",
+        "#ff3d8a"
+      ]
+    },
+    {
+      "id": "mon_coast_billhound",
+      "display_name": "Bill Hound",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "brute",
+        "urban"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Oversized hound brute, ledger iron screwed into the ribs, one coin tooth, rain, Iron Coast. No hellfire.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Too-wide head, ledger plates along the ribs like ill-fitted armor, sodium eye. Not a hellhound with flames.",
+      "palette": [
+        "#2a241c",
+        "#8a6a48",
+        "#e0c040"
+      ]
+    },
+    {
+      "id": "mon_frontier_domebreaker",
+      "display_name": "Domebreaker",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "brute",
+        "territorial"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Bison-like brute, single horizontal horn bar, hump, wagon-nail scars, Frontier dust. Plume is VFX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hump as the highest point, horns a single horizontal bar, dust plume is VFX not mesh.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "mon_dawn_mercy_sentinel",
+      "display_name": "Mercy Sentinel",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "artillery",
+        "mech"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tall mercy sentinel, tripod legs, one barrel arm, physical brass halo, chipped white marble, Dawn roof. Muzzle glows blue only while winding up.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall tripod stance, one barrel arm, halo ring that is a physical brass loop not a god-ray. Distinct from the tank sentinel: no door shields.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "mon_crucible_drift",
+      "display_name": "Drift Mass",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "amorphous",
+        "canon_fauna"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Teardrop drift mass, three fat orbiting shards, unfinished teal seam, Crucible. No particle-only body.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Teardrop core, three orbiting shards max. More shards become VFX and do not count as body.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ]
+    },
+    {
+      "id": "mon_boss_unender",
+      "display_name": "The Un-Ender",
+      "batch": "B5_bosses",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "amorphous"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Standing open ring on three thick polymer legs, the gap is the face, chrome flecks, pink only inside the gap, Crucible.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A ring that will not close, standing on three thick legs of polymer. The gap in the ring is the face.",
+      "palette": [
+        "#102828",
+        "#20ffd0",
+        "#c8b4ff"
+      ]
+    },
+    {
+      "id": "mon_boss_compound_mark",
+      "display_name": "The Compound Mark",
+      "batch": "B5_bosses",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "boss",
+        "brute"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Kiln-bodied brute, iron brand-tile skirt, chimney head with one fire eye, Sere furnace hall. Fire only in the eye and the furnace mouth.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Kiln-shaped torso, brand tiles as a skirt of iron, head a chimney with one eye of fire. The eye is the only emissive.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#8a3030"
+      ]
+    },
+    {
+      "id": "mon_road_watcher",
+      "display_name": "Road Watcher",
+      "batch": "B4_monsters",
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "elite",
+        "humanoid",
+        "cross_world"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Gate watcher, planted feet, mouthless mask, weapon lowered, culture coat of one Concordia world. CX body proportions, mask instead of the hero face. Eight material skins, one mesh.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same pose language everywhere: feet planted, weapon low, mask with no mouth. Culture is told by the weapon and the coat, not by a new body.",
+      "palette": [
+        "#6a6860",
+        "#c4b49a",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "hyb_ashfang",
+      "display_name": "Ashfang",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Ruins",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:lunge_ashburst"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Wolf with two cracked bone pauldrons only, ash in the cracks, Ruins road. Lunge pose with shoulders opening.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wolf chevron plus two square shoulders. Plates must not hide the head.",
+      "palette": [
+        "#2a241c",
+        "#b89060",
+        "#c8a070"
+      ]
+    },
+    {
+      "id": "hyb_cursebeak",
+      "display_name": "Cursebeak",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:petrify_peck"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Griffin with a single diamond scale-hood behind the beak, Sundering cliff. Hood flare is the only tell.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Grounded big-cat plus one diamond cowl. If the cowl is down it must still read as a griffin.",
+      "palette": [
+        "#6a5438",
+        "#1a3028",
+        "#c8c060"
+      ]
+    },
+    {
+      "id": "hyb_pollenwyrm",
+      "display_name": "Pollenwyrm",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:sleep_cloud"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick green serpent with a mane of fat pollen bulbs, Tunya grove floor. Cloud is separate VFX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick coil, bulb mane contained in the hood diamond. Cloud is VFX.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "hyb_billdrone",
+      "display_name": "Billdrone",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Crime",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:invoice_beam"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive hound with a single thick rotor disc screwed to the spine, rain, Iron Coast. Beam from the mouth, cyan-sodium.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide hound head, one disc on the spine like a bad saddle. Beam comes from the mouth.",
+      "palette": [
+        "#2a241c",
+        "#e0c040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "hyb_nullhound",
+      "display_name": "Nullhound",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:census_cloak"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean alley hound with two flat gunmetal plates on the ribs, Grid rain. Cloak still shows the silhouette.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Dog chevron with two rectangles. Cloak is a material swap to unlit, not invisibility soup; the silhouette remains.",
+      "palette": [
+        "#1a1228",
+        "#2a241c",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "hyb_dustgriffin",
+      "display_name": "Dustgriffin",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:dust_curtain_dive"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Griffin with patched wagon-canvas over the wings, Frontier sky, dive kicking a dust curtain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same griffin. Canvas reads as rectangles on the wings, not feathers erased.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828"
+      ]
+    },
+    {
+      "id": "hyb_mercywraith",
+      "display_name": "Mercy Wraith",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Superhero",
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:mercy_shock"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-cowl wraith with one chipped brass halo, Dawn marble dust, ring tilting before a blue shock.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bell cowl plus a ring. Ring tilt is the telegraph.",
+      "palette": [
+        "#d8d4dc",
+        "#b89060",
+        "#3a78ff"
+      ]
+    },
+    {
+      "id": "hyb_latticebasilisk",
+      "display_name": "Unclosed Basilisk",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:unend_rewind"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick dark serpent with a broken cage of quartz ribs that do not meet, teal only in the gap, Crucible.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thick snake, ribs as a broken cage. The gap in the cage is the weak point and the silhouette notch.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff"
+      ]
+    },
+    {
+      "id": "hyb_markharpy",
+      "display_name": "Marked Harpy",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:dive_grab_heat"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Harpy with three iron brand tiles bolted to the chest, smog, Sere furnace sky, thick legs.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Harpy silhouette; tiles are a rectangle on the chest so Sere reads at range.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030"
+      ]
+    },
+    {
+      "id": "hyb_ribwolf",
+      "display_name": "Ribwolf",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:bone_rattle_charge"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Wolf wearing an external fossil rib basket, head clear, ash road, Sovereign Ruins.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wolf head clear of the ribs. Basket widens the chest into a barrel.",
+      "palette": [
+        "#5a5044",
+        "#2a241c",
+        "#b89060"
+      ]
+    },
+    {
+      "id": "hyb_saltwyrm",
+      "display_name": "Salt Wyrm",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:salt_spit"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Thick eel with a chunky white salt-crystal collar, Pinewood salt road, spit glob visible. Not inside a flower plaza.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One long muscle, crystal collar as a white ring. Spit is a visible glob.",
+      "palette": [
+        "#c4b49a",
+        "#8aa0b4",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "hyb_censusconstruct",
+      "display_name": "Census Construct",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Cyber",
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:count_beam"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric construct with a single clean sentinel visor bar, Grid alley, cyan beam on windup only.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Construct silhouette plus one horizontal bar of light. Beam is thin VFX from the bar.",
+      "palette": [
+        "#2a2430",
+        "#3dffa0",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "hyb_veilstag",
+      "display_name": "Veil Stag",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Tunya",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:antler_pollen_charge"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Stag with thick talons on the forelegs only, antlers, pollen dust, Tunya terrace. No wings.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Stag wedge. Talons read as hooks, not wings. No wing membranes or the silhouette becomes a griffin.",
+      "palette": [
+        "#6a5340",
+        "#e0c060",
+        "#3a4a28"
+      ]
+    },
+    {
+      "id": "hyb_dawnjackal",
+      "display_name": "Dawn Jackal",
+      "batch": "B6_hybrids",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "hybrid",
+        "primary_body",
+        "hook:mercy_nip"
+      ],
+      "prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Jackal with a single chipped marble brow plate, Dawn street, no cape, no full armor.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Jackal wedge plus a pale brow. No cape.",
+      "palette": [
+        "#efe6d4",
+        "#3a78ff",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "npc_role_court_labor",
+      "display_name": "Court Laborer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "scholars_guild",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, court laborer, cloth cap, dusty tunic, broom, warm limestone, Flower Law plaza, no sword.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Soft shoulders, broom or hod taller than the head so the tool is the silhouette.",
+      "palette": [
+        "#c4b49a",
+        "#6a5a40",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "npc_role_court_merchant",
+      "display_name": "Court Stallkeeper",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "merchant",
+        "merchant_collective",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, market stallkeeper, apron, brass scale pan, flower at the collar, Unburned Court, GTA wear on the cloth.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Apron rectangle over a round belly or a narrow frame; the scale pan is a circle at the hip.",
+      "palette": [
+        "#8a6a48",
+        "#efe6d4",
+        "#c8721a"
+      ]
+    },
+    {
+      "id": "npc_role_iron_warden",
+      "display_name": "Iron Warden",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "iron_wardens",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Iron Warden, open helm, gray plate on a CX body, Concordia face visible, flower-blade at rest, Arena sand or court gate.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open helm, shoulder line wider than the merchant, flower or sword held down.",
+      "palette": [
+        "#6a6860",
+        "#c4b49a",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "npc_role_scholar",
+      "display_name": "Archive Scholar",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "scholars_guild",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, archive scholar, ink-stained cuff, notebook, soft hood down, Concordia face, cool north light of the Archive.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Narrow, a book as a rectangle under the arm, chain glint at the sternum.",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "npc_role_shadow_courier",
+      "display_name": "Shadow Courier",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "shadow_network",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, courier in worn dark clothes, hip satchel, soft shoes, no mask, night court or Grid alley, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low center, satchel as a square on the hip, no mask.",
+      "palette": [
+        "#1a1028",
+        "#2a241c",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "npc_role_sunder_guard",
+      "display_name": "Sundering Ward",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "wildwood_circle",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Sundering guard, knee-length green cloak, leather cap, ward-blade, loose dark braid, pine forest, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Spear or ward-blade vertical, green cloak that stops at the knee so legs read.",
+      "palette": [
+        "#1a3028",
+        "#3a6a48",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "npc_role_sunder_mystic",
+      "display_name": "Curse-Bearer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "wildwood_circle",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, tired traveler, hands wrapped in clean cloth, muddy coat, Sundering, no skull, no glow, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wrapped hands as white blocks, otherwise ordinary travel clothes. No skull staff.",
+      "palette": [
+        "#1a3028",
+        "#efe6d4",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "npc_role_tunya_labor",
+      "display_name": "Terrace Laborer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "verdant_veil",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Tunya terrace worker, wide straw hat, back basket, sun, living wood and solar tile, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sun hat as a wide disc, basket on the back.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "npc_role_tunya_merchant",
+      "display_name": "Grove Factor",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "merchant",
+        "merchant_collective",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, grove merchant, green sash, wooden scale, fruit crates, Tunya sun, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wooden scale, green sash as one diagonal.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "npc_role_ruins_keeper",
+      "display_name": "Catalogue Keeper",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "catalogue_keepers",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Ruins keeper, ash hood, iron stylus, chained book, fossil city, Concordia face half in hood shadow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall hood as a soft bell, stylus as a thin line, book chained.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14"
+      ]
+    },
+    {
+      "id": "npc_role_ruins_elite",
+      "display_name": "Unburial Elite",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "catalogue_keepers",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Ruins elite, cold iron gorget, great weapon on the back, ash cloth, Concordia face bare, no skull mask.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cold iron gorget as a bright ring at the neck, two-hander on the back.",
+      "palette": [
+        "#2a1c14",
+        "#8aa0b4",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "npc_role_coast_labor",
+      "display_name": "Dock Laborer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "delgado_syndicate",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, dock laborer, flat cap, wet shirt, cargo hook, rain, sodium lamp, Iron Coast, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hook at the belt as a comma, shoulders rounded from work, cap.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "npc_role_coast_bandit",
+      "display_name": "Ledger Bandit",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "delgado_syndicate",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, bandit kitbash, dock clothes, one mismatched pauldron, hood, switchknife, rain alley, Concordia face in shadow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hood up, one mismatched plate on a single shoulder, knife low.",
+      "palette": [
+        "#2a241c",
+        "#5c3038",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "npc_role_grid_labor",
+      "display_name": "Uncounted Tech",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "zero_collective",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Grid technician, visor pushed up, cable coil, scratched jacket, neon rain, Concordia face visible.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Visor as a horizontal bar on the brow, coil over one shoulder.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "npc_role_grid_officer",
+      "display_name": "Census Officer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "census_authority",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, human Census officer, black bar visor down, long coat, no giant shoulders, cyan edge light, Concordia jaw visible under the bar.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Visor down as a black bar, long coat, no door-shoulder armor.",
+      "palette": [
+        "#14101c",
+        "#3dffa0",
+        "#d8d4dc"
+      ]
+    },
+    {
+      "id": "npc_role_frontier_guard",
+      "display_name": "Road Warden",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "guard",
+        "open_road",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Frontier road warden, wide hat, dust duster, long wagon-iron spear, no rifle, wind, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide hat, rifle-length iron that is a spear not a gun (firearms coverage is 0%; this kit does not pretend otherwise).",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "npc_role_frontier_bandit",
+      "display_name": "Dome Bandit",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "open_road",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Frontier bandit, battered hat, wooden yoke collar as a necklace, skinner knife, dust.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Yoke collar as a ring at the neck, hat, blade.",
+      "palette": [
+        "#8a7048",
+        "#2a241c",
+        "#c8b070"
+      ]
+    },
+    {
+      "id": "npc_role_dawn_elite",
+      "display_name": "Aegis",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "aegis",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Dawn elite, cracked white armor, one chrome pauldron, thin brass circlet, fist wraps, Concordia face, bright sun.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One pauldron only, bright, fist wraps, halo is a thin brass circlet not a glow.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "npc_role_dawn_mystic",
+      "display_name": "Luminary Adept",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "luminary",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Luminary adept, pale worn coat, bread, bright city, Concordia face, no energy aura.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Pale coat, bread basket or ledger, soft shoes.",
+      "palette": [
+        "#e8e4dc",
+        "#ffd0a0",
+        "#3a78ff"
+      ]
+    },
+    {
+      "id": "npc_role_crucible_mystic",
+      "display_name": "Lattice Walker",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "mystic",
+        "open_lattice",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Crucible walker, coat with one unfinished hem stitch, loose shard, teal practical light, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric hem, shard at the belt that does not match its setting.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ]
+    },
+    {
+      "id": "npc_role_sere_enforcer",
+      "display_name": "Tessera Enforcer",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "elite",
+        "tessera_hold",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, Sere enforcer, soot, one iron brand tile on the coat, invoice knife, furnace light, Concordia face.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tile on the chest as a square, chimney-soot, invoice knife.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030"
+      ]
+    },
+    {
+      "id": "npc_role_road_bandit",
+      "display_name": "Road Bandit",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "bandit",
+        "road",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, road bandit, local labor clothes with one scavenged plate, world weapon, CX face, not a monster.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Civilian silhouette plus one scavenged armor piece and a weapon of that world.",
+      "palette": [
+        "#5c3038",
+        "#2a241c",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "npc_role_plaza_urchin",
+      "display_name": "Plaza Urchin",
+      "batch": "B7_npc_roles",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc_role",
+        "labor",
+        "none",
+        "visual"
+      ],
+      "prompt": "CX humanoid, Concordia face, child-height urchin, oversized dusty shirt, flower scrap, Unburned Court, Concordia face, no weapon.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Smaller scale, bare head, one bright scrap.",
+      "palette": [
+        "#6a5a40",
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_1h_court_flower",
+      "display_name": "Court Flower",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "court",
+        "civic"
+      ],
+      "prompt": "Worn short sword with a petal-stamped round guard, and a second view as a single cut flower on the same grip. Unburned Court.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Short leaf-shaped blade, round guard. Flower form is a single stem with one bloom, same grip.",
+      "palette": [
+        "#6a6860",
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_1h_sunder_wardblade",
+      "display_name": "Ward-Blade",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "grove",
+        "steel"
+      ],
+      "prompt": "Leaf-shaped ward sword, dark wrap, one deep notch, pine resin, Sundering.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Slightly leaf-shaped, dark wrap, one notch a third from the tip.",
+      "palette": [
+        "#c8b48a",
+        "#1a3028",
+        "#6a5438"
+      ]
+    },
+    {
+      "id": "wpn_1h_coast_switchknife",
+      "display_name": "Switch",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "street",
+        "street"
+      ],
+      "prompt": "Fat-handled switchknife, rain, brass pin, Iron Coast. Not a pistol.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Thin but not a needle; handle is a fat rectangle so the silhouette reads in a fist.",
+      "palette": [
+        "#2a241c",
+        "#8a6a48",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "wpn_1h_grid_pulseblade",
+      "display_name": "Pulse Blade",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "grid",
+        "pulse"
+      ],
+      "prompt": "Short cleaver of scratched acrylic and gunmetal, cyan edge only while swung, Grid.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cleaver rectangle with a glowing edge only while active.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ]
+    },
+    {
+      "id": "wpn_1h_frontier_skinner",
+      "display_name": "Skinner",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_1h_slash",
+        "frontier",
+        "iron"
+      ],
+      "prompt": "Broad skinning knife, dust-worn wood handle, Frontier.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Broad belly blade, wood handle worn to the tang.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_2h_warden_estoc",
+      "display_name": "Arena Estoc",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "court",
+        "arena"
+      ],
+      "prompt": "Long estoc, bell guard, arena sand in the metal, gray steel, Unburned Court Arena.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long needle with a visible bell guard so it is not a stick.",
+      "palette": [
+        "#6a6860",
+        "#efe6d4",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_2h_ruins_unburial",
+      "display_name": "Unburial",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "ash",
+        "relic"
+      ],
+      "prompt": "Wide ash-pitted great cleaver, cold iron spine, fossil inlay, Sovereign Ruins.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide rectangle, cold iron glint on the spine only.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4",
+        "#2a1c14"
+      ]
+    },
+    {
+      "id": "wpn_2h_dawn_shockmaul",
+      "display_name": "Mercy Maul",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "dawn",
+        "impact"
+      ],
+      "prompt": "Short-hafted maul, cracked white head, chrome handle, Dawn. Blue flash only on hit.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Big head, short haft so the silhouette is a hammer not a staff.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "wpn_2h_frontier_wagoniron",
+      "display_name": "Wagon Iron",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_2h_heavy",
+        "frontier",
+        "salvage"
+      ],
+      "prompt": "Bent wagon-iron bar, rope wrap, rust, Frontier dust.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Straight bar with one bent end. Reads as a tool.",
+      "palette": [
+        "#4a3828",
+        "#c8b070",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_pole_tunya_reed",
+      "display_name": "Reed",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "grove",
+        "wood"
+      ],
+      "prompt": "Long reed polearm, small iron tongue, living wood, Tunya sun.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Very long vertical, small head. The length is the silhouette.",
+      "palette": [
+        "#6a7a3a",
+        "#c8b48a",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_pole_sunder_glaive",
+      "display_name": "Curse Glaive",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_sweep",
+        "grove",
+        "steel"
+      ],
+      "prompt": "Curved glaive, loose dark braid on the haft, Sundering pine.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Curved head, long haft, tassel that is a loose braid.",
+      "palette": [
+        "#1a3028",
+        "#c8b48a",
+        "#6a5438"
+      ]
+    },
+    {
+      "id": "wpn_pole_grid_countpike",
+      "display_name": "Count Pike",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "grid",
+        "pulse"
+      ],
+      "prompt": "Long pike with a single chipped lens at the head, Grid, cyan only when pinging.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long, one disc at the head, not a spear with a gun taped on.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ]
+    },
+    {
+      "id": "wpn_pole_sere_fork",
+      "display_name": "Clearing Fork",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_polearm_thrust",
+        "street",
+        "iron"
+      ],
+      "prompt": "Soot-black two-tine fork, brand stamp, Sere furnace.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two short tines, blackened shaft.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#1a140e"
+      ]
+    },
+    {
+      "id": "wpn_bow_pinewood",
+      "display_name": "Salt Bow",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "court",
+        "hunt"
+      ],
+      "prompt": "Simple hunting bow, salt on the tips, pine road.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Simple D recurve, pale string.",
+      "palette": [
+        "#6a5340",
+        "#c4b49a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_bow_frontier_wind",
+      "display_name": "Wind Bow",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "frontier",
+        "hunt"
+      ],
+      "prompt": "Short frontier bow, horn tips, dust, sinew.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Short, horn tips.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_bow_veil_pollen",
+      "display_name": "Pollen Bow",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "grove",
+        "hunt"
+      ],
+      "prompt": "Tall grove longbow, one gold wrap, pollen-wad arrows, Tunya.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Tall longbow, slight, one gold wrap.",
+      "palette": [
+        "#3a4a28",
+        "#e0c060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_bow_grid_rail",
+      "display_name": "Rail Bow",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_bow_release",
+        "grid",
+        "pulse"
+      ],
+      "prompt": "Compact rail crossbow, one lens, acrylic stock, cyan slug, not a rifle, Grid.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Horizontal prod, stock against the shoulder, one lens.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#8a8090"
+      ]
+    },
+    {
+      "id": "wpn_throw_court_lantern",
+      "display_name": "Lantern Toss",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "court",
+        "civic"
+      ],
+      "prompt": "Dented brass hand lantern, warm paper panels, Court night.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Box lantern, handle on top.",
+      "palette": [
+        "#c8721a",
+        "#ffe6c0",
+        "#6a5a40"
+      ]
+    },
+    {
+      "id": "wpn_throw_coast_invoice",
+      "display_name": "Invoice Weight",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "street",
+        "street"
+      ],
+      "prompt": "Palm-sized lead invoice stamp, worn numbers, rain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Small heavy rectangle.",
+      "palette": [
+        "#8a6a48",
+        "#e0c040",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_throw_crucible_shard",
+      "display_name": "Unclosed Shard",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "drift",
+        "arcane"
+      ],
+      "prompt": "Thick quartz throwing shard, one unfinished face, teal edge, Crucible.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Jagged but thick enough to read.",
+      "palette": [
+        "#20ffd0",
+        "#204040",
+        "#c8b4ff"
+      ]
+    },
+    {
+      "id": "wpn_throw_sere_marktile",
+      "display_name": "Mark Tile",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_thrown",
+        "street",
+        "debt"
+      ],
+      "prompt": "Iron brand tile, one broken corner, soot, Sere.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Square tile, one broken corner so it spins honestly.",
+      "palette": [
+        "#1a140e",
+        "#c8a060",
+        "#8a3030"
+      ]
+    },
+    {
+      "id": "wpn_focus_lyra_staff",
+      "display_name": "Second-Hour Staff",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "court",
+        "civic"
+      ],
+      "prompt": "Plain wooden staff, one brass ring, Archive light, no magic flame until the cast VFX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Straight staff, one brass ring that is not a halo.",
+      "palette": [
+        "#3a3850",
+        "#c8b48a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_focus_sunder_cursefold",
+      "display_name": "Cursefold",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "grove",
+        "curse"
+      ],
+      "prompt": "Fist wrapped around a dark stone, clean cloth, Sundering, gold leak only during the fold.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A wrapped stone in the fist. Silhouette is the fist.",
+      "palette": [
+        "#1a3028",
+        "#c8a060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_focus_crucible_unend",
+      "display_name": "Un-End Focus",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_loop",
+        "drift",
+        "arcane"
+      ],
+      "prompt": "Open chrome ring focus, visible gap, teal, Crucible, held in one hand.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open ring, gap visible.",
+      "palette": [
+        "#20ffd0",
+        "#102828",
+        "#c8b4ff"
+      ]
+    },
+    {
+      "id": "wpn_focus_dawn_mercy",
+      "display_name": "Mercy Orb",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "dawn",
+        "impact"
+      ],
+      "prompt": "Cracked white marble sphere, palm-sized, Dawn, blue only when cast.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sphere with one crack. Reads as a ball, not a sun god.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "wpn_focus_ruins_stylus",
+      "display_name": "Catalogue Stylus",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_cast_release",
+        "ash",
+        "relic"
+      ],
+      "prompt": "Thick iron stylus, ash-stained, Ruins keeper hand.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long pen, thick enough to see.",
+      "palette": [
+        "#8aa0b4",
+        "#5a5044",
+        "#2a1c14"
+      ]
+    },
+    {
+      "id": "wpn_imp_forge_hammer",
+      "display_name": "Forge Hammer",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "craft",
+        "tool"
+      ],
+      "prompt": "Scarred forge hammer, scale on the face, bench context.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Classic hammer, scarred face.",
+      "palette": [
+        "#4a3828",
+        "#c8a060",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_imp_dock_hook",
+      "display_name": "Dock Hook",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "street",
+        "tool"
+      ],
+      "prompt": "Rusted cargo hook, rope wrap, wet dock.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Comma hook.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "wpn_imp_grove_knife",
+      "display_name": "Graft Knife",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "grove",
+        "tool"
+      ],
+      "prompt": "Small curved graft knife, sap, Tunya.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Small curve.",
+      "palette": [
+        "#c8b48a",
+        "#3a4a28",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "wpn_imp_grid_cable",
+      "display_name": "Cable Whip",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "grid",
+        "salvage"
+      ],
+      "prompt": "Thick cut fiber cable used as a whip, Grid, spark only on impact.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A line, thick cable, not a chain of blades.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "wpn_imp_frontier_spade",
+      "display_name": "Road Spade",
+      "batch": "B8_weapons",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "weapon",
+        "verb_improvised_swing",
+        "frontier",
+        "tool"
+      ],
+      "prompt": "Dirt-caked spade, Frontier, nicked edge.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Spade blade as a rectangle.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#8a8090"
+      ]
+    },
+    {
+      "id": "arch_kit_hub_court",
+      "display_name": "Unburned Court",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "court civic",
+        "reuse:high"
+      ],
+      "prompt": "Unburned Court limestone hall, warm lanterns, cobbles, flower boxes, GTA wear, Palworld sun, no neon.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#6a5a40",
+        "#c8721a"
+      ]
+    },
+    {
+      "id": "arch_kit_fantasy_sunder",
+      "display_name": "Sundering Wild Build",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "mythical",
+        "reuse:high"
+      ],
+      "prompt": "Sundering granite and timber hall, moss, thin worn gold leaf, pine, overcast-bright Palworld light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#6a5438",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "arch_kit_tunya_veil",
+      "display_name": "Tunya Veil",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "solarpunk",
+        "reuse:high"
+      ],
+      "prompt": "Tunya timber terrace hall, solar tiles, vines, bright sun, limestone base.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#8aa0b4"
+      ]
+    },
+    {
+      "id": "arch_kit_ruins_ash",
+      "display_name": "Sovereign Ash",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "abyssal-ash",
+        "reuse:high"
+      ],
+      "prompt": "Ash and fossil-bone hall, cold iron staples, crooked slab door, Sovereign Ruins, dull warm sun.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ]
+    },
+    {
+      "id": "arch_kit_crime_coast",
+      "display_name": "Iron Coast",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "crime",
+        "reuse:high"
+      ],
+      "prompt": "Iron Coast tenement, stained brick, rust corrugate, fire escape, rain, sodium light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#5c3038"
+      ]
+    },
+    {
+      "id": "arch_kit_cyber_grid",
+      "display_name": "The Grid",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "cyber",
+        "reuse:high"
+      ],
+      "prompt": "Grid block, scratched glass, gunmetal, one cyan practical, magenta banner cloth, rain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc"
+      ]
+    },
+    {
+      "id": "arch_kit_frontier_road",
+      "display_name": "Open Road",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "wasteland-frontier",
+        "reuse:medium"
+      ],
+      "prompt": "Frontier timber fort and canvas, dust, armor-plate patch, open sky, no sci-fi dome.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "arch_kit_superhero_dawn",
+      "display_name": "Permanent Dawn",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "superhero",
+        "reuse:medium"
+      ],
+      "prompt": "Dawn tower, cracked white marble, chrome, dirty glass edges, gold daylight, roof pad.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "arch_kit_crucible_lattice",
+      "display_name": "Open Lattice",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "arcane-cosmic",
+        "reuse:medium"
+      ],
+      "prompt": "Crucible basalt hall, quartz ribs that do not close, teal practical, dark oak.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#c8b4ff"
+      ]
+    },
+    {
+      "id": "arch_kit_sere_mark",
+      "display_name": "Sere Mark",
+      "batch": "B9_kits",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "wasteland-wound",
+        "reuse:medium"
+      ],
+      "prompt": "Sere furnace tenement, soot brick, brand-tile course, oil, one furnace eye of light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#1a140e"
+      ]
+    },
+    {
+      "id": "arch_ix_grid_coast",
+      "display_name": "Uncounted Wharf",
+      "batch": "B9b_intersections",
+      "world_ids": [
+        "Cyber",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "blend cyber-crime",
+        "reuse:rare"
+      ],
+      "prompt": "Wharf where neon banners are soot-stained and fiber runs inside a rusted pipe, rain, unified asphalt.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#1a1228",
+        "#c8a060",
+        "#3dffa0",
+        "#3a342c"
+      ]
+    },
+    {
+      "id": "arch_ix_sunder_dawn",
+      "display_name": "Held Crown Stair",
+      "batch": "B9b_intersections",
+      "world_ids": [
+        "Fantasy",
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "blend mythical-superhero",
+        "reuse:rare"
+      ],
+      "prompt": "Stair of weathered granite crowned with cracked white marble and a chrome lip, gold leaf worn through.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#3a6a48",
+        "#d8d4dc",
+        "#c8a060",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "arch_ix_crucible_foundry",
+      "display_name": "Unclosed Foundry",
+      "batch": "B9b_intersections",
+      "world_ids": [
+        "Crucible",
+        "Crime",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "architecture",
+        "blend arcane-industrial",
+        "reuse:rare"
+      ],
+      "prompt": "Foundry where quartz ribs pierce soot brick and a brass clock face is missing its last numeral.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Skyline read at 100m from the tall piece in this kit. Ground floor stays the culture; upper floors may be faction retrofit.",
+      "palette": [
+        "#204040",
+        "#c8a060",
+        "#8a6a48",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "prop_court_lantern_post",
+      "display_name": "Court Lantern Post",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "none"
+      ],
+      "prompt": "Limestone-and-brass lantern post, warm glass, soot, Court street.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. post 2.4m, lantern box at top",
+      "palette": [
+        "#6a5a40",
+        "#ffe6c0",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "prop_flower_law_urn",
+      "display_name": "Flower Urn",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "animate"
+      ],
+      "prompt": "Worn stone urn of cut flowers, Court plaza, no magic circle.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. waist-high urn",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "prop_archive_lectern",
+      "display_name": "Archive Lectern",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "prompt": "Ink-stained wooden lectern, chained book, Archive.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. chest-high lectern",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "prop_arena_rack",
+      "display_name": "Arena Rack",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "prompt": "Sand-scoured weapon rack, Arena, gray.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. rack 1.6m",
+      "palette": [
+        "#6a6860",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "prop_market_crate",
+      "display_name": "Market Crate",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "physics"
+      ],
+      "prompt": "Worn market crate, stenciled fruit or salt, not a logo.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.6m cube",
+      "palette": [
+        "#6a5340",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "prop_scale_pan",
+      "display_name": "Brass Scale",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "none"
+      ],
+      "prompt": "Dented brass scale pan, worn pivot.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pan 0.3m",
+      "palette": [
+        "#c8a060",
+        "#6a5a40"
+      ]
+    },
+    {
+      "id": "prop_scale_wood",
+      "display_name": "Wood Scale",
+      "batch": "B10_props",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "prompt": "Wooden balance scale, pollen dust, Tunya stall.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pan 0.3m",
+      "palette": [
+        "#c8b48a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "prop_notebook",
+      "display_name": "Field Notebook",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "prompt": "Worn notebook, cloth cover, ink, no glowing runes.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand-sized",
+      "palette": [
+        "#efe6d4",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "prop_satchel",
+      "display_name": "Courier Satchel",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "prompt": "Worn leather satchel, one broken buckle.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hip satchel",
+      "palette": [
+        "#2a241c",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "prop_tool_broom",
+      "display_name": "Court Broom",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "animate"
+      ],
+      "prompt": "Worn straw broom, limestone dust.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.5m",
+      "palette": [
+        "#6a5340",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "prop_pine_milepost",
+      "display_name": "Pinewood Milepost",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_pinewood",
+        "none"
+      ],
+      "prompt": "Wooden milepost, carved text Pinewood Crossing, salt crust.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.2m post",
+      "palette": [
+        "#6a5340",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "prop_wagon",
+      "display_name": "Open Wagon",
+      "batch": "B10_props",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "animate"
+      ],
+      "prompt": "Dusty open wagon, iron tires, no dome, Frontier.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 3.2m long",
+      "palette": [
+        "#4a3828",
+        "#c8b070"
+      ]
+    },
+    {
+      "id": "prop_canteen",
+      "display_name": "Road Canteen",
+      "batch": "B10_props",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "loot"
+      ],
+      "prompt": "Dented canteen, leather strap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#8a7048",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "prop_yoke",
+      "display_name": "Broken Yoke",
+      "batch": "B10_props",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "none"
+      ],
+      "prompt": "Broken wooden yoke, rope burn.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m",
+      "palette": [
+        "#6a5340"
+      ]
+    },
+    {
+      "id": "prop_ash_cairn",
+      "display_name": "Catalogue Cairn",
+      "batch": "B10_props",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "animate"
+      ],
+      "prompt": "Ash-stone cairn with one iron staple, Ruins.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m stack",
+      "palette": [
+        "#5a5044",
+        "#b89060"
+      ]
+    },
+    {
+      "id": "prop_stylus",
+      "display_name": "Keeper Stylus",
+      "batch": "B10_props",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "none"
+      ],
+      "prompt": "Iron stylus on an ash desk.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#8aa0b4"
+      ]
+    },
+    {
+      "id": "prop_fossil_rib",
+      "display_name": "Fossil Rib",
+      "batch": "B10_props",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "none"
+      ],
+      "prompt": "Large fossil rib, pitted, used as a street bone.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 2\u20134m",
+      "palette": [
+        "#b89060",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "prop_dock_crate",
+      "display_name": "Contraband Crate",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "loot"
+      ],
+      "prompt": "Wet crate, stenciled tally marks, rain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.7m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "prop_dock_hook",
+      "display_name": "Wall Hook",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "prompt": "Rusted hook on wet brick.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "prop_sodium_lamp",
+      "display_name": "Sodium Lamp",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "prompt": "Caged sodium lamp, grime, brick wall.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. wall bracket",
+      "palette": [
+        "#c8a060",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "prop_rose_pin",
+      "display_name": "Iron Rose Pin",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "prompt": "Small iron rose pin, worn, not jeweled.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. brooch",
+      "palette": [
+        "#5c3038",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "prop_cable_coil",
+      "display_name": "Fiber Coil",
+      "batch": "B10_props",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "loot"
+      ],
+      "prompt": "Coil of cut fiber, scuffed insulation.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m coil",
+      "palette": [
+        "#1a1228",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "prop_junction_box",
+      "display_name": "Junction Box",
+      "batch": "B10_props",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "animate"
+      ],
+      "prompt": "Scratched junction box, one cyan LED, neon rain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.5m box",
+      "palette": [
+        "#2a2430",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "prop_count_slate",
+      "display_name": "Count Slate",
+      "batch": "B10_props",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "loot"
+      ],
+      "prompt": "Metal slate, etched names, one line scratched out.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#14101c",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "prop_solar_tile",
+      "display_name": "Solar Tile",
+      "batch": "B10_props",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "prompt": "Clay-and-glass solar tile, moss at the edge, Tunya.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m tile",
+      "palette": [
+        "#6a7a3a",
+        "#8aa0b4"
+      ]
+    },
+    {
+      "id": "prop_basket",
+      "display_name": "Fruit Basket",
+      "batch": "B10_props",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "loot"
+      ],
+      "prompt": "Woven basket of fruit, Tunya terrace.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "prop_graft_scar",
+      "display_name": "Graft Scar Post",
+      "batch": "B10_props",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "prompt": "Living wood post with a healed graft scar, no blood.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.5m",
+      "palette": [
+        "#3a4a28",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "prop_bread",
+      "display_name": "Court Loaf",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "loot"
+      ],
+      "prompt": "Honest loaf, flour dust, no buff icon baked into the mesh.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#c8a070",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "prop_mercy_circlet",
+      "display_name": "Brass Circlet",
+      "batch": "B10_props",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_dawn",
+        "none"
+      ],
+      "prompt": "Thin battered brass circlet, not a glowing halo.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. head ring",
+      "palette": [
+        "#c8a060",
+        "#d8d4dc"
+      ]
+    },
+    {
+      "id": "prop_launch_chalk",
+      "display_name": "Roof Chalk",
+      "batch": "B10_props",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_dawn",
+        "none"
+      ],
+      "prompt": "Worn chalk arrow on platinum roof, Dawn.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. decal",
+      "palette": [
+        "#ffd0a0",
+        "#4a5870"
+      ]
+    },
+    {
+      "id": "prop_unclosed_shard",
+      "display_name": "Loose Shard",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_drift",
+        "none"
+      ],
+      "prompt": "Quartz shard, unfinished face, teal seam.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#20ffd0",
+        "#204040"
+      ]
+    },
+    {
+      "id": "prop_brand_tile",
+      "display_name": "Loose Brand Tile",
+      "batch": "B10_props",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_sere",
+        "loot"
+      ],
+      "prompt": "Sooty iron tile, raised brand, one chip.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. palm tile",
+      "palette": [
+        "#1a140e",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "prop_furnace_bellows",
+      "display_name": "Bellows",
+      "batch": "B10_props",
+      "world_ids": [
+        "Sere",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_sere",
+        "animate"
+      ],
+      "prompt": "Soot leather bellows, iron nose, furnace.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m",
+      "palette": [
+        "#3a3428",
+        "#8a3030"
+      ]
+    },
+    {
+      "id": "prop_bench_forge",
+      "display_name": "Forge Bench",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "prompt": "Scarred forge bench, tools, no floating UI baked in.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. bench 2m",
+      "palette": [
+        "#2a241c",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "prop_gunsmith_vise",
+      "display_name": "Gunsmith Vise",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "prompt": "Heavy bench vise, oil, parts tray empty or with honest casings, no invented assault rifle.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. bench vise",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "prop_spell_basin",
+      "display_name": "Spell Basin",
+      "batch": "B10_props",
+      "world_ids": [
+        "Fantasy",
+        "Crucible",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "prompt": "Worn stone basin, residue, Archive or Crucible room.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. basin 0.8m",
+      "palette": [
+        "#3a3850",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "prop_hitching_rail",
+      "display_name": "Hitch Rail",
+      "batch": "B10_props",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "animate"
+      ],
+      "prompt": "Worn hitching rail, hair caught in the wood.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. rail 1.2m",
+      "palette": [
+        "#6a5340"
+      ]
+    },
+    {
+      "id": "prop_flower_wreath",
+      "display_name": "Refusal Wreath",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "none"
+      ],
+      "prompt": "Flower wreath, slightly wilted, Court gate.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. wreath 0.6m",
+      "palette": [
+        "#c8721a",
+        "#efe6d4",
+        "#3a6a48"
+      ]
+    },
+    {
+      "id": "prop_scaffold_plank",
+      "display_name": "Scaffold Plank",
+      "batch": "B10_props",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_traversal",
+        "none"
+      ],
+      "prompt": "Worn scaffold plank, rope, visible thickness, climbable.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. plank 2m",
+      "palette": [
+        "#6a5340",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "prop_pipe_run",
+      "display_name": "Pipe Run",
+      "batch": "B10_props",
+      "world_ids": [
+        "Crime",
+        "Cyber",
+        "Sere",
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "kit_traversal",
+        "none"
+      ],
+      "prompt": "Thick exterior pipe run with brackets, climbable, material swaps per world.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pipe 0.3m diameter",
+      "palette": [
+        "#8a6a48",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "skill_steel_palm",
+      "display_name": "Court Palm",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_light"
+      ],
+      "prompt": "Small limestone dust puff on the palm impact, no energy beam.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open palm, elbow in. Reads at a glance as a hand not a fist.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_steel_shoulder",
+      "display_name": "Collective Shoulder",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_heavy"
+      ],
+      "prompt": "Heavy body impact, dust and cloth snap, no aura.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Shoulder leads, head tucked.",
+      "palette": [
+        "#8a6a48",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_steel_chain",
+      "display_name": "Archive Chain",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_light"
+      ],
+      "prompt": "Three tight impact ticks, paper-dry.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Elbows on the centerline, three small motions.",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_steel_flower_step",
+      "display_name": "Flower Step",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Tunya",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_dodge"
+      ],
+      "prompt": "Foot plants, one cut flower appears only inside the Court.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low spin, one hand on the ground.",
+      "palette": [
+        "#c8721a",
+        "#1a1028"
+      ]
+    },
+    {
+      "id": "skill_steel_ward_cut",
+      "display_name": "Ward Cut",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Fantasy",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_slash"
+      ],
+      "prompt": "Short steel trail, resin glint, or petals if Flower Law.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One diagonal, blade or flower stays on the silhouette line.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "skill_steel_curse_fold",
+      "display_name": "Curse Fold",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "prompt": "Dull gold seam on the caster's ribs that shuts as the hit lands.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Weapon raised and folded back toward the chest before it goes out.",
+      "palette": [
+        "#1a3028",
+        "#c8a060"
+      ]
+    },
+    {
+      "id": "skill_steel_reed",
+      "display_name": "Reed Thrust",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_polearm_thrust"
+      ],
+      "prompt": "Pollen puff at the tip on hit, no beam.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Shaft is a line, body stays behind it.",
+      "palette": [
+        "#6a7a3a",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "skill_steel_salt_draw",
+      "display_name": "Salt Draw",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Tunya",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_bow_release"
+      ],
+      "prompt": "Arrow is a mesh. Impact is a thunk and a chip.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Elbow up, bow is a D.",
+      "palette": [
+        "#6a5340",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_steel_lantern",
+      "display_name": "Lantern Toss",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_thrown"
+      ],
+      "prompt": "Lantern arc, glass break, small flame pool.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Underhand box.",
+      "palette": [
+        "#ffe6c0",
+        "#c8721a"
+      ]
+    },
+    {
+      "id": "skill_steel_invoice",
+      "display_name": "Invoice",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_thrust"
+      ],
+      "prompt": "Tight thrust, paper-tear audio, no glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A short line from the hip.",
+      "palette": [
+        "#8a6a48",
+        "#e0c040"
+      ]
+    },
+    {
+      "id": "skill_steel_pulse",
+      "display_name": "Refuse the Number",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_slash"
+      ],
+      "prompt": "Cyan edge flash, impact spark, number glyph that fails to resolve.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cleaver rectangle.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ]
+    },
+    {
+      "id": "skill_steel_dust_kick",
+      "display_name": "Dust Kick",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_heavy"
+      ],
+      "prompt": "Dust sheet at knee height, sun through it.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Knee high, hat stays on.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_steel_mercy",
+      "display_name": "Mercy Shock",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "prompt": "One blue shock ring on the ground, target stays standing or drops, no disintegration.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Maul head or orb held high, then down.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff"
+      ]
+    },
+    {
+      "id": "skill_steel_unburial",
+      "display_name": "Unburial",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "prompt": "Ash burst, cold iron glint, a staple sound.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide rectangle weapon.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4"
+      ]
+    },
+    {
+      "id": "skill_steel_parry",
+      "display_name": "Poise Answer",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Tunya",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_parry"
+      ],
+      "prompt": "One spark, a camera punch already owned by CombatFeel, no shockwave dome.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Weapon or forearm meets the incoming line.",
+      "palette": [
+        "#efe6d4",
+        "#6a6860"
+      ]
+    },
+    {
+      "id": "skill_steel_shard",
+      "display_name": "Shard Cast",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_thrown"
+      ],
+      "prompt": "Shard splits once in the air, two impacts, pattern still incomplete.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hand, gap visible.",
+      "palette": [
+        "#20ffd0",
+        "#204040"
+      ]
+    },
+    {
+      "id": "skill_presence_hail",
+      "display_name": "Hail",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "prompt": "None, or one lantern mote at night in the Court only.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hand, empty.",
+      "palette": [
+        "#efe6d4",
+        "#c4b49a"
+      ]
+    },
+    {
+      "id": "skill_presence_witness",
+      "display_name": "Witness Mark",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crime",
+        "Sere",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_mark"
+      ],
+      "prompt": "A brief chalk tick in the air that fades, Court or rain.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two fingers to the eye, then toward the act.",
+      "palette": [
+        "#8aa0b4",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "skill_presence_gossip",
+      "display_name": "Carry the Rumor",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_gossip"
+      ],
+      "prompt": "No magical whisper ribbon. Optional subtitle from the real log line.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Lean-in, hand beside the mouth.",
+      "palette": [
+        "#c8b48a",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "skill_presence_flower_law",
+      "display_name": "Lay Down Steel",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_interact"
+      ],
+      "prompt": "Steel folds into a cut flower in the hand. Petals, not particles pretending to be a sword.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blade lowered into a bloom.",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_presence_refuse_count",
+      "display_name": "I Will Not Be Counted",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_release"
+      ],
+      "prompt": "Cyan digits crack and fall off the body. No cloak.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Palm over the face, then away.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ]
+    },
+    {
+      "id": "skill_presence_do_not_reap",
+      "display_name": "Do Not Reap",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_loop"
+      ],
+      "prompt": "Low pollen drift while the stance holds. Stops the frame a strike starts.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands open, empty, at the sides.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080"
+      ]
+    },
+    {
+      "id": "skill_presence_name_holder",
+      "display_name": "Name the Holder",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_mark"
+      ],
+      "prompt": "One tile flares and the boss's furnace eye turns toward the named banner.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Point, open mouth, one word.",
+      "palette": [
+        "#c8a060",
+        "#1a140e"
+      ]
+    },
+    {
+      "id": "skill_presence_etiquette",
+      "display_name": "Smile When You Object",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "prompt": "None. The UI line changes. Face plays a short blend.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A small bow, smile is facial blend, not a mask.",
+      "palette": [
+        "#6a2030",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_presence_bond",
+      "display_name": "Keep a Bond",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "prompt": "None.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sit or stand beside, not a hug animation unless the bond is already high.",
+      "palette": [
+        "#c4b49a",
+        "#8aa0b4"
+      ]
+    },
+    {
+      "id": "skill_presence_lament",
+      "display_name": "Close the Page",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_release"
+      ],
+      "prompt": "Ash settles into a written line, then stops moving.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Stylus down, like a period.",
+      "palette": [
+        "#b89060",
+        "#2a1c14"
+      ]
+    },
+    {
+      "id": "skill_presence_lantern_step",
+      "display_name": "Lantern Step",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_interact"
+      ],
+      "prompt": "Lantern flame, warm, small.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Reach up to the bracket.",
+      "palette": [
+        "#ffe6c0",
+        "#6a5a40"
+      ]
+    },
+    {
+      "id": "skill_presence_bargain",
+      "display_name": "The Price",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Tunya",
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "prompt": "None.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Scale lifted, then set down.",
+      "palette": [
+        "#c8a060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_presence_second_hour",
+      "display_name": "Second Hour",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_loop"
+      ],
+      "prompt": "A still column of dust motes, no projectile.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Staff planted, head bowed.",
+      "palette": [
+        "#3a3850",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "skill_presence_unchosen",
+      "display_name": "You Cannot Own the Heart",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "prompt": "None. The bond UI loosens.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hands, step back.",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_craft_forge",
+      "display_name": "Forge Commit",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Forge sparks, no enchantment swirl unless the recipe is a spell.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hammer up, visor of the arm.",
+      "palette": [
+        "#c8a060",
+        "#2a241c"
+      ]
+    },
+    {
+      "id": "skill_craft_kitbash",
+      "display_name": "Kitbash",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crime",
+        "Frontier",
+        "Sere",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "A wrench tick, parts seat.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two parts held up, then one.",
+      "palette": [
+        "#8a6a48",
+        "#c8b070"
+      ]
+    },
+    {
+      "id": "skill_craft_gunsmith",
+      "display_name": "Clear the Vise",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Oil shine, cloth, a pin click. No muzzle flash.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands in the vise, no shouldered gun.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ]
+    },
+    {
+      "id": "skill_craft_wagon",
+      "display_name": "Wagon Lash",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "prompt": "Strap pull, horse shifts weight. Camera stays on foot.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands on a strap.",
+      "palette": [
+        "#c8b070",
+        "#4a3828"
+      ]
+    },
+    {
+      "id": "skill_craft_graft",
+      "display_name": "Graft",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Sap shine, cloth wrap tightens, no nature explosion.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Knife small, both hands on a branch.",
+      "palette": [
+        "#3a4a28",
+        "#c8b48a"
+      ]
+    },
+    {
+      "id": "skill_craft_catalogue",
+      "display_name": "Mend the Record",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Staple seats, ash falls off the joint.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands placing a staple.",
+      "palette": [
+        "#8aa0b4",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "skill_craft_splice",
+      "display_name": "Splice",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Single spark, LED settles to steady cyan.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands in the box.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ]
+    },
+    {
+      "id": "skill_craft_unend",
+      "display_name": "Un-End the Work",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_cast_release"
+      ],
+      "prompt": "Teal seam runs and stops short. The last inch never fills.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open ring held in the gap of the work.",
+      "palette": [
+        "#20ffd0",
+        "#102828"
+      ]
+    },
+    {
+      "id": "skill_craft_quench",
+      "display_name": "Flower Quench",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Quench steam, blade comes up as steel or as a flower, mesh swap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blade into a barrel, lift a flower.",
+      "palette": [
+        "#c8721a",
+        "#6a6860"
+      ]
+    },
+    {
+      "id": "skill_craft_salvage",
+      "display_name": "Take the Plate",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Frontier",
+        "Sere",
+        "Ruins",
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "prompt": "Pry spark, plate in hand.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Kneel, pry.",
+      "palette": [
+        "#8a6a48",
+        "#5a5044"
+      ]
+    },
+    {
+      "id": "skill_craft_pollen",
+      "display_name": "Pollen Ward",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Pollen dust packed into cloth. No jar of green liquid.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands cupping powder.",
+      "palette": [
+        "#e0c060",
+        "#efe6d4"
+      ]
+    },
+    {
+      "id": "skill_craft_dress",
+      "display_name": "Seat the Plate",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Tunya",
+        "Crucible",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Buckles. No loot beam.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Plate lifted onto the chest.",
+      "palette": [
+        "#6a6860",
+        "#d8d4dc"
+      ]
+    },
+    {
+      "id": "skill_craft_tack",
+      "display_name": "Set the Tack",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "prompt": "Harness settles. No mounted camera.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands on the harness, both feet on the ground.",
+      "palette": [
+        "#6a4a30",
+        "#c8b070"
+      ]
+    },
+    {
+      "id": "skill_craft_spellwell",
+      "display_name": "Spellwell",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Fantasy",
+        "Crucible",
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "prompt": "Basin surface moves, a charge seats into a stone or shard. No sky pillar.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands over a basin, not a raised staff nuke.",
+      "palette": [
+        "#3a3850",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "skill_craft_seal",
+      "display_name": "Seal the Container",
+      "batch": "B11_skill_cues",
+      "world_ids": [
+        "Crime",
+        "Hub",
+        "Frontier",
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "prompt": "Lid thumps, stamp clicks.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Lid, cord, stamp.",
+      "palette": [
+        "#6a5340",
+        "#8a6a48"
+      ]
+    }
+  ]
+}

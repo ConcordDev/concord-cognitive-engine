@@ -1,0 +1,1056 @@
+{
+  "batch": "B22_npc_fantasy",
+  "count": 20,
+  "worlds": [
+    "Fantasy",
+    "Tunya"
+  ],
+  "keeps": [
+    "npc_role_sunder_guard",
+    "npc_role_sunder_mystic",
+    "npc_role_tunya_labor",
+    "npc_role_tunya_merchant"
+  ],
+  "entries": [
+    {
+      "id": "npc_grove_outfit_moss_wrap",
+      "display_name": "Moss Hip Wrap",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "grove",
+        "wildwood_circle"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sundering grove wrap of moss-dyed cloth ending at the hip, legs visible, no cloak, no cap, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wrap is a short tube. Green-gold canopy light on worn cloth. One lichen stain on the hem. Hands empty. No braid mass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sundering grove wrap of moss-dyed cloth ending at the hip, legs visible, no cloak, no cap, no blade, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wrap is a short tube. Green-gold canopy light on worn cloth. One lichen stain on the hem. Hands empty. No braid mass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Hip tube, legs clear. Not the knee-length green cloak.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#1a3028",
+        "#88d0a0"
+      ],
+      "lore_blurb": "Grove cloth for the existing Sundering ward and traveler. The ward-blade stays on npc_role_sunder_guard.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grove_outfit_moss_wrap/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Wildwood west of the Sundering center, off the salt track. Grove quiet. Not the shrine first frame and not the titan pillar."
+      }
+    },
+    {
+      "id": "npc_grove_outfit_thorn_harness",
+      "display_name": "Thorn Harness",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "grove",
+        "wildwood_circle"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sundering linen under a leather cross harness with one thorn toggle, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Harness is an X on the chest. Toggle is a small dark knot. Legs read. No cloak and no crest disc. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sundering linen under a leather cross harness with one thorn toggle, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Harness is an X on the chest. Toggle is a small dark knot. Legs read. No cloak and no crest disc. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Leather X and one knot. Not a cloak and not a crest.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#1a3028",
+        "#88d0a0"
+      ],
+      "lore_blurb": "Wildwood harness. Empty hands. Steel stays on the ward role.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grove_outfit_thorn_harness/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Wildwood west of the Sundering center, off the salt track. Grove quiet. Not the shrine first frame and not the titan pillar."
+      }
+    },
+    {
+      "id": "npc_ash_outfit_pale_smock",
+      "display_name": "Pale Ash Smock",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "ash_grove"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, pale ash-dust smock to mid-thigh on the Sundering east march, open neck, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Smock is a pale column. One moss stitch on the hem. Legs read below the cloth. Hands empty. No book and no stylus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, pale ash-dust smock to mid-thigh on the Sundering east march, open neck, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Smock is a pale column. One moss stitch on the hem. Legs read below the cloth. Hands empty. No book and no stylus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Pale mid-thigh column. Not a green cloak and not an ash hood.",
+      "palette": [
+        "#c8b48a",
+        "#8a9a78",
+        "#5a5044",
+        "#3a6a48",
+        "#efe6d4"
+      ],
+      "lore_blurb": "East-march cloth beside the grove ash. Not the Ruins catalogue hood.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ash_outfit_pale_smock/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Sundering east march, beside flora_sunder_grove_ash. Not the Ruins forum and not flora_ruins_ash_cypress.",
+        "parent_flora": "flora_sunder_grove_ash"
+      }
+    },
+    {
+      "id": "npc_ash_outfit_fork_sash",
+      "display_name": "Fork Sash",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "ash_grove"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, plain Sundering travel cloth with one pale diagonal sash, no scale, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sash runs from the left shoulder to the right hip in bark-pale cloth. Torso otherwise plain. No green dye, no fruit, no blade. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, plain Sundering travel cloth with one pale diagonal sash, no scale, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sash runs from the left shoulder to the right hip in bark-pale cloth. Torso otherwise plain. No green dye, no fruit, no blade. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. One pale diagonal. Not the Tunya green merchant sash.",
+      "palette": [
+        "#c8b48a",
+        "#8a9a78",
+        "#5a5044",
+        "#3a6a48",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Ash-march sash. The wooden scale stays on npc_role_tunya_merchant.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ash_outfit_fork_sash/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Sundering east march, beside flora_sunder_grove_ash. Not the Ruins forum and not flora_ruins_ash_cypress."
+      }
+    },
+    {
+      "id": "npc_terrace_outfit_solar_square",
+      "display_name": "Solar Shoulder Square",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "terrace",
+        "verdant_veil"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth with one matte solar-tile square on the left shoulder, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Square is small and dull. Cloth is flora green. No circuit lines, no basket, no sash. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth with one matte solar-tile square on the left shoulder, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Square is small and dull. Cloth is flora green. No circuit lines, no basket, no sash. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Matte square on the shoulder. Not a straw disc and not a back basket.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Terrace eave cloth. The wide hat and back basket stay on npc_role_tunya_labor.",
+      "scale_vs_player": "1.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_terrace_outfit_solar_square/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya terrace lip beside arch_hero_tunya_terrace_hall, off the three-fruit tree. Not Fluxom Gate and not Pinewood Crossing.",
+        "parent_landmark": "arch_hero_tunya_terrace_hall"
+      }
+    },
+    {
+      "id": "npc_terrace_outfit_seed_vest",
+      "display_name": "Seed Vest",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "terrace",
+        "verdant_veil"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, open Tunya seed vest with one small clay jar on a cord, no basket, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Vest is two short panels. Jar is a cylinder at the sternum. Sun on the cloth. No straw disc and no wooden scale. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, open Tunya seed vest with one small clay jar on a cord, no basket, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Vest is two short panels. Jar is a cylinder at the sternum. Sun on the cloth. No straw disc and no wooden scale. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Open vest and a small cylinder. Not a back basket and not a scale.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Seed jar is costume. Fruit stays on the terrace tree.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_terrace_outfit_seed_vest/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya terrace lip beside arch_hero_tunya_terrace_hall, off the three-fruit tree. Not Fluxom Gate and not Pinewood Crossing.",
+        "parent_landmark": "arch_hero_tunya_terrace_hall"
+      }
+    },
+    {
+      "id": "npc_ark_outfit_quilt_patch",
+      "display_name": "Ark Quilt Patch",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "ark"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth with one stitched ark quilt rectangle on the chest, rust thread, no armor, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One patch only. Worn rectangle, hull-rust stitches. The rest of the body is plain grove cloth. No ice crystals. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth with one stitched ark quilt rectangle on the chest, rust thread, no armor, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One patch only. Worn rectangle, hull-rust stitches. The rest of the body is plain grove cloth. No ice crystals. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Small chest rectangle on plain cloth. The crowd block is the faction square.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#8a7a68",
+        "#f0b040",
+        "#c5d4de"
+      ],
+      "lore_blurb": "One real quilt patch, the style-board ark cloth. Not a full quilt suit.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ark_outfit_quilt_patch/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya ark cloth. Design-intent Masond arrival stair or Aekon warm rib. No invented kilometre pin. Not the Sangree stack."
+      }
+    },
+    {
+      "id": "npc_ark_outfit_rib_collar",
+      "display_name": "Ark Rib Collar",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "ark"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, thin curved ark-metal collar over Tunya cloth, warm lamp on the metal, no weapon, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Collar is one shallow curve at the neck. Cloth below stays soft. Warm hold light on the curve. No back weapon and no ice blade. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, thin curved ark-metal collar over Tunya cloth, warm lamp on the metal, no weapon, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Collar is one shallow curve at the neck. Cloth below stays soft. Warm hold light on the curve. No back weapon and no ice blade. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. One neck curve. Not a cold iron gorget and not a great weapon.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#8a7a68",
+        "#f0b040",
+        "#c5d4de"
+      ],
+      "lore_blurb": "Aekon warm-rib collar. No ice spell. The Ruins gorget stays on npc_role_ruins_elite.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ark_outfit_rib_collar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya ark cloth. Design-intent Masond arrival stair or Aekon warm rib. No invented kilometre pin. Not the Sangree stack."
+      }
+    },
+    {
+      "id": "npc_grove_face_cx_canopy",
+      "display_name": "CX Face, Canopy Bounce",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "grove"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sundering adult, green-gold canopy light on the brow, wet hair, no cap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. Light is a soft green bounce, not a rune glow. No braid crown and no second head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sundering adult, green-gold canopy light on the brow, wet hair, no cap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX face. Light is a soft green bounce, not a rune glow. No braid crown and no second head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Canopy bounce on the brow. Same face family.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#1a3028",
+        "#88d0a0"
+      ],
+      "lore_blurb": "Grove face density. Not a new species.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grove_face_cx_canopy/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Wildwood west of the Sundering center, off the salt track. Grove quiet. Not the shrine first frame and not the titan pillar."
+      }
+    },
+    {
+      "id": "npc_grove_face_cx_lichen",
+      "display_name": "CX Face, Lichen Cheek",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "grove"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sundering adult, one pale lichen patch on the left cheek, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Patch is flat and small. Face fully visible. No gold scar and no hood. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sundering adult, one pale lichen patch on the left cheek, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Patch is flat and small. Face fully visible. No gold scar and no hood. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. One flat cheek patch. Not a glowing scar.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#1a3028",
+        "#88d0a0"
+      ],
+      "lore_blurb": "Wildwood skin mark. The gold scar stays on the shrine stone, not the face.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grove_face_cx_lichen/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Wildwood west of the Sundering center, off the salt track. Grove quiet. Not the shrine first frame and not the titan pillar."
+      }
+    },
+    {
+      "id": "npc_ash_face_cx_bark",
+      "display_name": "CX Face, Ash Brow",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "ash_grove"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sundering adult, pale ash dust across the brow, clear eyes, no hood. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust is a light band. Skin still reads. No skull and no stylus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sundering adult, pale ash dust across the brow, clear eyes, no hood. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust is a light band. Skin still reads. No skull and no stylus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Pale brow band. Face bare.",
+      "palette": [
+        "#c8b48a",
+        "#8a9a78",
+        "#5a5044",
+        "#3a6a48",
+        "#efe6d4"
+      ],
+      "lore_blurb": "East-march face. Not the Ruins hood shadow.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ash_face_cx_bark/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Sundering east march, beside flora_sunder_grove_ash. Not the Ruins forum and not flora_ruins_ash_cypress."
+      }
+    },
+    {
+      "id": "npc_ash_face_cx_moss_cheek",
+      "display_name": "CX Face, Moss Cheek",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "ash_grove"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sundering adult, moss-dark on one cheek and pale bark on the other, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Split is skin color only. Both eyes clear. No hood shadow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sundering adult, moss-dark on one cheek and pale bark on the other, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Split is skin color only. Both eyes clear. No hood shadow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. One cheek moss, one cheek pale. Not a mask.",
+      "palette": [
+        "#c8b48a",
+        "#8a9a78",
+        "#5a5044",
+        "#3a6a48",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Ash-meets-moss on skin. Kits stay separate from the Ruins cypress.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ash_face_cx_moss_cheek/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Sundering east march, beside flora_sunder_grove_ash. Not the Ruins forum and not flora_ruins_ash_cypress."
+      }
+    },
+    {
+      "id": "npc_terrace_face_cx_pollen",
+      "display_name": "CX Face, Terrace Pollen",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "terrace"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Tunya adult, a few warm pollen grains on one cheek, sun on the skin, no hat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grains are few, not a cloud. Same CX face. No fruit on the head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Tunya adult, a few warm pollen grains on one cheek, sun on the skin, no hat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grains are few, not a cloud. Same CX face. No fruit on the head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Countable pollen. Not a nova.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Terrace face. Pollen stance stays the existing VFX card.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_terrace_face_cx_pollen/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Tunya terrace lip beside arch_hero_tunya_terrace_hall, off the three-fruit tree. Not Fluxom Gate and not Pinewood Crossing."
+      }
+    },
+    {
+      "id": "npc_terrace_face_cx_dye",
+      "display_name": "CX Face, Dye Jaw",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "terrace"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Tunya adult, one dye stain along the jaw, wet wood light, no visor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stain is a thin warm line. Face bare. No slate and no number. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Tunya adult, one dye stain along the jaw, wet wood light, no visor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stain is a thin warm line. Face bare. No slate and no number. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. One jaw line of dye. Not a visor.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Harbor dye that reached the terrace. Not a Grid face.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_terrace_face_cx_dye/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Tunya terrace lip beside arch_hero_tunya_terrace_hall, off the three-fruit tree. Not Fluxom Gate and not Pinewood Crossing."
+      }
+    },
+    {
+      "id": "npc_ark_face_cx_hold",
+      "display_name": "CX Face, Hold Lamp",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "ark"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Tunya adult, warm hold-lamp on one cheek, cool rim on the other, no ice. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One face. Warm practical and a cool edge. No crystals and no helmet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Tunya adult, warm hold-lamp on one cheek, cool rim on the other, no ice. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One face. Warm practical and a cool edge. No crystals and no helmet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Warm cheek and a cool rim. No ice on the skin.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#8a7a68",
+        "#f0b040",
+        "#c5d4de"
+      ],
+      "lore_blurb": "Aekon hold light. No ice spell is bound.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ark_face_cx_hold/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Tunya ark cloth. Design-intent Masond arrival stair or Aekon warm rib. No invented kilometre pin. Not the Sangree stack."
+      }
+    },
+    {
+      "id": "npc_ark_face_cx_salt",
+      "display_name": "CX Face, Salt Hairline",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "ark"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Tunya adult, fine salt line at the hairline, windburn, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Salt is a thin crust. Cliff wind. Face fully visible. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Tunya adult, fine salt line at the hairline, windburn, no helmet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Salt is a thin crust. Cliff wind. Face fully visible. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bust. Thin salt line. Not a dune burial and not a helmet.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#8a7a68",
+        "#f0b040",
+        "#c5d4de"
+      ],
+      "lore_blurb": "Masond stair wind on a CX face. Design-intent only.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ark_face_cx_salt/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": null,
+        "face_only": true,
+        "place": "Tunya ark cloth. Design-intent Masond arrival stair or Aekon warm rib. No invented kilometre pin. Not the Sangree stack."
+      }
+    },
+    {
+      "id": "npc_grove_fac_closed_crest",
+      "display_name": "Closed Crest",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "grove",
+        "wildwood_circle"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short Sundering ward cloth, closed unlettered crest disc at the sternum, no blade, no cloak, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Disc is a small dull gold circle. Cloth ends at the hip. Legs read. No letters on the crest. No cap. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short Sundering ward cloth, closed unlettered crest disc at the sternum, no blade, no cloak, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Disc is a small dull gold circle. Cloth ends at the hip. Legs read. No letters on the crest. No cap. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. Small dull disc on the chest, hip cloth. Not the knee cloak and not a drawn ward-blade.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#1a3028",
+        "#88d0a0"
+      ],
+      "lore_blurb": "Wildwood circle at 100 m. The armed ward stays npc_role_sunder_guard.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_grove_fac_closed_crest/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Wildwood west of the Sundering center, off the salt track. Grove quiet. Not the shrine first frame and not the titan pillar."
+      }
+    },
+    {
+      "id": "npc_ash_fac_hem_band",
+      "display_name": "Ash Hem Band",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "ash_grove"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, dark travel cloth with one pale ash band at the hem, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Band is a light ring above the ankles. One moss stitch on the band. Torso plain. No book. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, dark travel cloth with one pale ash band at the hem, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Band is a light ring above the ankles. One moss stitch on the band. Torso plain. No book. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. Pale ring at the hem. Not the pale smock column and not an ash hood.",
+      "palette": [
+        "#c8b48a",
+        "#8a9a78",
+        "#5a5044",
+        "#3a6a48",
+        "#efe6d4"
+      ],
+      "lore_blurb": "East-march crowd read. Torso stays dark so the band carries the distance.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ash_fac_hem_band/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "sword_clip": "ward_only",
+        "wardrobe_slot": "CX_Chest",
+        "place": "Sundering east march, beside flora_sunder_grove_ash. Not the Ruins forum and not flora_ruins_ash_cypress."
+      }
+    },
+    {
+      "id": "npc_terrace_fac_solar_tab",
+      "display_name": "Solar Hip Tab",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "terrace",
+        "verdant_veil"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth, one matte solar square hanging at the hip, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tab is a small dull square on a short cord. Shoulder stays plain. No basket and no fruit prop. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya grove cloth, one matte solar square hanging at the hip, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tab is a small dull square on a short cord. Shoulder stays plain. No basket and no fruit prop. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. Dull square at the hip. The shoulder square stays the wardrobe card.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Verdant Veil crowd read on the terrace lip. Hat and basket stay the labor role.",
+      "scale_vs_player": "1.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_terrace_fac_solar_tab/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya terrace lip beside arch_hero_tunya_terrace_hall, off the three-fruit tree. Not Fluxom Gate and not Pinewood Crossing.",
+        "parent_landmark": "arch_hero_tunya_terrace_hall"
+      }
+    },
+    {
+      "id": "npc_ark_fac_quilt_square",
+      "display_name": "Ark Quilt Square",
+      "batch": "B22_npc_fantasy",
+      "world_ids": [
+        "Tunya"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "ark"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya cloth, one worn quilt rectangle on the chest as the only mass, rust thread, no armor, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rectangle is the torso read. One patch. Limbs plain. No disc and no hip square. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Tunya cloth, one worn quilt rectangle on the chest as the only mass, rust thread, no armor, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rectangle is the torso read. One patch. Limbs plain. No disc and no hip square. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. One chest block. Larger than the wardrobe patch. Not a crest disc.",
+      "palette": [
+        "#6a7a3a",
+        "#c8721a",
+        "#8a7a68",
+        "#f0b040",
+        "#c5d4de"
+      ],
+      "lore_blurb": "Ark arrival crowd. One patch. No second country pin.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ark_fac_quilt_square/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_tunya_veil",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Capoeira",
+        "empty_hand_clips": [
+          "Punch_Jab",
+          "Punch_Cross"
+        ],
+        "wardrobe_slot": "CX_Chest",
+        "place": "Tunya ark cloth. Design-intent Masond arrival stair or Aekon warm rib. No invented kilometre pin. Not the Sangree stack."
+      }
+    }
+  ]
+}

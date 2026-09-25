@@ -9,6 +9,9 @@ All packs below are **CC0 / public domain** unless noted. No attribution require
 | Kenney Nature / Fantasy Town / Furniture / Castle / City (commercial, suburban, roads, industrial) / Food / Mini Dungeon / Modular Buildings / Graveyard / Pirate / Platformer / Car / Blaster / Tower Defense / Modular Space / Mini Characters / Blocky Characters / Mini Market | CC0 | https://kenney.nl |
 | KayKit Medieval Hexagon, Adventures, Dungeon Remastered, City Builder Bits | CC0 | https://kaylousberg.com / KayKit-Game-Assets on GitHub |
 | Poly Haven `kloofendal_48d_partly_cloudy_puresky` HDRI | CC0 | https://polyhaven.com |
+| Quaternius Medieval Weapons Pack (24 .obj: swords/axes/daggers/hammers/bows/shields/spear/scythe) — `FreePacks/Weapons/` | CC0 | https://opengameart.org/content/lowpoly-medieval-weapons (mirror of quaternius.com) |
+| Quaternius Fantasy Props MegaKit Standard (94 .fbx: crates/barrels/potions/banners/anvil/cauldron/vases/stalls/weapon racks) — `FreePacks/Props/` | CC0 | https://opengameart.org/content/fantasy-props-megakit |
+| Quaternius Modular Sci-Fi MegaKit Standard (378 .fbx: modular tech panels/coils/greebles for the Grid-world palette) — `FreePacks/Props/` | CC0 | https://opengameart.org/content/modular-sci-fi-megakit |
 
 ## Unity Asset Store (free, needs signed-in Package Manager → My Assets)
 

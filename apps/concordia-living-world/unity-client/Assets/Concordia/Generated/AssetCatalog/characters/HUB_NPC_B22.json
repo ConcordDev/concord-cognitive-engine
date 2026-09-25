@@ -1,0 +1,1599 @@
+{
+  "batch": "B22_npc_hub",
+  "count": 36,
+  "entries": [
+    {
+      "id": "npc_hub_body_porter",
+      "display_name": "Court Porter",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "scholars_guild"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, stocky porter, wooden hod on one shoulder, dusty tunic, no sword. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wide shoulders, short neck, cobble dust on the hem, warm limestone light. Tool is the hod, taller than the head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, stocky porter, wooden hod on one shoulder, dusty tunic, no sword. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wide shoulders, short neck, cobble dust on the hem, warm limestone light. Tool is the hod, taller than the head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Hod is a tall wedge over a square torso. Distinct from the broom laborer at 100 m.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Plaza porter. Body density beyond the broom laborer.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_porter/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_body_brackish",
+      "display_name": "Brackish Adult",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "brackish",
+        "court"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, short adult at one metre forty-two, salt-road cloth, windburned Concordia face, no weapon. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX head-to-body ratio scaled down, layered travel cloth, pine-salt dust, bare of armor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, short adult at one metre forty-two, salt-road cloth, windburned Concordia face, no weapon. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Same CX head-to-body ratio scaled down, layered travel cloth, pine-salt dust, bare of armor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Shorter block, still a full adult silhouette, not a child and not a crouched pose.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Brackish reads smaller and still CX.",
+      "scale_vs_player": "1.42 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_brackish/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "height_m": 1.42,
+        "stride_scale": 0.81
+      }
+    },
+    {
+      "id": "npc_hub_body_elder_vendor",
+      "display_name": "Elder Vendor",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "merchant",
+        "merchant_collective"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, older vendor, wooden cane, empty shallow basket, stoop, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Lined Concordia face, thin wrists, worn apron hem, warm brass pin with no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, older vendor, wooden cane, empty shallow basket, stoop, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Lined Concordia face, thin wrists, worn apron hem, warm brass pin with no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Cane is a thin vertical. Basket is a shallow oval at the hip. Stoop lowers the shoulders, not the scale.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Age read for the market edge.",
+      "scale_vs_player": "1.65 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_elder_vendor/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_body_arena_attendant",
+      "display_name": "Arena Attendant",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "arena",
+        "iron_wardens"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, arena attendant, sand-stained sash, wooden rake, fist wraps, no drawn steel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sand on the cuffs, rake held down, court cloth under the sash. Gate light, not a battlefield. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, arena attendant, sand-stained sash, wooden rake, fist wraps, no drawn steel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sand on the cuffs, rake held down, court cloth under the sash. Gate light, not a battlefield. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Rake is a long thin diagonal, body stays narrow. Distinct from the plated warden.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Sand crew. Steel stays on the warden, not this body.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_arena_attendant/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_body_ring_scribe",
+      "display_name": "Ring Scribe",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "scholar",
+        "scholars_guild"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, narrow ring scribe, wax tablet under one arm, soft shoes, no hood up. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Long torso, tablet as a small rectangle, ink on one cuff, Ring-of-Doors pale stone light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, narrow ring scribe, wax tablet under one arm, soft shoes, no hood up. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Long torso, tablet as a small rectangle, ink on one cuff, Ring-of-Doors pale stone light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Tablet corner breaks the silhouette at the ribs. Narrower than the porter.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Gate scribe. Not the archive scholar's book chain.",
+      "scale_vs_player": "1.80 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_ring_scribe/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_outfit_short_mantle",
+      "display_name": "Short Court Mantle",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "court"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth wearing a short mantle over a plain tunic, brass pin, no sword. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Mantle ends above the knee so the legs read. One real flower sprig at the pin. Worn hem. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth wearing a short mantle over a plain tunic, brass pin, no sword. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Mantle ends above the knee so the legs read. One real flower sprig at the pin. Worn hem. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Cape is a short trapezoid, not a cloak to the ankles.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Garment hero for civic crowd.",
+      "scale_vs_player": "1.75 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_short_mantle/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_outfit_market_apron",
+      "display_name": "Market Apron",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "merchant",
+        "merchant_collective"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth wearing a rectangular market apron, scale pan at the hip, flower at the collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Apron is cloth with gall on the brass pin. One pan, round, not a full scale stand. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth wearing a rectangular market apron, scale pan at the hip, flower at the collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Apron is cloth with gall on the brass pin. One pan, round, not a full scale stand. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Apron is a rectangle. Pan is a circle at the hip.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Outfit density for stall rows. Distinct from the B7 stallkeeper sheet.",
+      "scale_vs_player": "1.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_market_apron/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_outfit_warden_tabard",
+      "display_name": "Warden Tabard",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "guard",
+        "iron_wardens"
+      ],
+      "triangle_budget": 13000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth in a gray cloth tabard over soft kit, open helm, flower-blade point down at rest. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tabard is one rectangle to mid-thigh. Helm does not hide the Concordia face. No rifle, no closed visor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth in a gray cloth tabard over soft kit, open helm, flower-blade point down at rest. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tabard is one rectangle to mid-thigh. Helm does not hide the Concordia face. No rifle, no closed visor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Shoulders wider than the merchant. Blade is a thin line down, not a raised strike.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Heavier civic read. Blade at rest.",
+      "scale_vs_player": "1.82 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_warden_tabard/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 13000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_outfit_archive_hood",
+      "display_name": "Archive Hood Down",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "scholar",
+        "scholars_guild"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth with a soft archive hood down on the shoulders, notebook, ink cuff. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hood is a cloth roll, not a mask. Cool north light. Chain is a thin line at the sternum. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth with a soft archive hood down on the shoulders, notebook, ink cuff. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hood is a cloth roll, not a mask. Cool north light. Chain is a thin line at the sternum. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Hood mass sits on the shoulders so the head stays a CX oval.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Scholar outfit with the face clear.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_archive_hood/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_outfit_arena_wraps",
+      "display_name": "Arena Fist Wraps",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "arena"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth in sand-colored fist wraps and a short sash, karate guard, empty hands, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wraps read as light bands on the forearms. Sand on the knees. Court cloth, not armor plate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth in sand-colored fist wraps and a short sash, karate guard, empty hands, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wraps read as light bands on the forearms. Sand on the knees. Court cloth, not armor plate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Guard pose: two forearms forward. Hands stay empty so it cannot read as a gun.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Karate kit for the sand. No steel.",
+      "scale_vs_player": "1.77 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_arena_wraps/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_labor",
+      "display_name": "CX Face, Labor Brow",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "labor"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, laborer, sun-creased brow, cloth cap pushed back. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, dusty skin, warm court light, no helmet, no second head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, laborer, sun-creased brow, cloth cap pushed back. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, dusty skin, warm court light, no helmet, no second head. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Brow ridge and cap brim are the 100 m marks on an otherwise CX oval.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Face variant for labor density. Same face family.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_labor/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_merchant",
+      "display_name": "CX Face, Merchant Lines",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "merchant"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, market seller, smile lines, brass collar pin. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult, warm skin, apron strap at the neck, no lettering on the pin. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, market seller, smile lines, brass collar pin. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult, warm skin, apron strap at the neck, no lettering on the pin. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Pin is a small bright point at the throat. Jaw stays CX.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Merchant face variant.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_merchant/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_warden",
+      "display_name": "CX Face, Warden Cheek",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "guard",
+        "iron_wardens"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, warden, a single thin cheek scar, open helm off to the side. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scar is one line, not a wound. Gray cloth at the collar. Face fully visible. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, warden, a single thin cheek scar, open helm off to the side. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scar is one line, not a wound. Gray cloth at the collar. Face fully visible. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Helm is a side mass. Scar does not break the oval into a skull.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Warden face. Open helm.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_warden/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_scholar",
+      "display_name": "CX Face, Ink Scholar",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "scholar",
+        "scholars_guild"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, scholar, ink speck on the cheek, hood down. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cool fill, adult, tired eyes, no mask, no glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, scholar, ink speck on the cheek, hood down. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cool fill, adult, tired eyes, no mask, no glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Ink speck is small. Hood roll is the shoulder mass.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Archive face variant.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_scholar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_brackish",
+      "display_name": "CX Face, Brackish Windburn",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "brackish"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, short-adult Brackish, windburn across the cheeks, salt in the hair. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult, not a child, no hood, pine-road dust, warm rim light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, short-adult Brackish, windburn across the cheeks, salt in the hair. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult, not a child, no hood, pine-road dust, warm rim light. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Hair is a compact cap. Windburn does not recolor the whole head.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Brackish face at the shorter adult scale.",
+      "scale_vs_player": "bust 0.48 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_brackish/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true,
+        "height_m": 1.42
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_elder",
+      "display_name": "CX Face, Elder",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "elder"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, elder vendor, deep lines, thin white hair, no beard costume. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult elder, warm key light, cloth collar, cane cropped out. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, elder vendor, deep lines, thin white hair, no beard costume. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult elder, warm key light, cloth collar, cane cropped out. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Hair is a thin light cap. Lines follow the CX structure.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Elder face variant.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_elder/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "face_only": true
+      }
+    },
+    {
+      "id": "npc_hub_fac_flower_civic",
+      "display_name": "Flower Civic",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "court"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, flower-civic, short mantle, one real sprig, empty hands, plaza cobble. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No blade, no banner text, brass pin, warm lantern light. Crowd read for the law disk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, flower-civic, short mantle, one real sprig, empty hands, plaza cobble. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No blade, no banner text, brass pin, warm lantern light. Crowd read for the law disk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Sprig is the only bright accent above the chest. Hands read empty.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Unarmed civic faction silhouette.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_flower_civic/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_fac_merchant_scale",
+      "display_name": "Scale Merchant",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "merchant",
+        "merchant_collective"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, merchant collective, apron, one brass scale pan, flower at the collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pan hangs at the hip. No stall in frame. Worn cloth, GTA grit in the seams. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, merchant collective, apron, one brass scale pan, flower at the collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pan hangs at the hip. No stall in frame. Worn cloth, GTA grit in the seams. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Circle at the hip plus apron rectangle. Separates from labor hod and warden shoulders.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Merchant faction crowd strip.",
+      "scale_vs_player": "1.73 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_merchant_scale/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_fac_scholar_chain",
+      "display_name": "Chained Scholar",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "scholar",
+        "scholars_guild"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, scholars guild, notebook, thin sternum chain, hood down. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chain catches cool light. Book is one rectangle. No staff, no glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, scholars guild, notebook, thin sternum chain, hood down. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chain catches cool light. Book is one rectangle. No staff, no glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Chain is a short bright stroke on the chest. Narrow body.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Scholar faction crowd strip.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_scholar_chain/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_fac_shadow_satchel",
+      "display_name": "Night Satchel",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "labor",
+        "shadow_network"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, shadow courier at night court, hip satchel, soft shoes, face bare, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dark worn cloth, one warm lantern rim, satchel square on the hip. No neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, shadow courier at night court, hip satchel, soft shoes, face bare, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dark worn cloth, one warm lantern rim, satchel square on the hip. No neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Low center, satchel square. Face stays visible.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Shadow faction on Hub night. Cyber alley is a later spoke row.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_shadow_satchel/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1
+      }
+    },
+    {
+      "id": "npc_hub_body_well_hand",
+      "display_name": "Court Well Hand",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "scholars_guild"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, tall well hand, dry rope coil on one shoulder, empty hands, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, tall well hand, dry rope coil on one shoulder, empty hands, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Rope coil is a ring above a narrow tall torso. Distinct from the porter hod wedge and from the hip satchel.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Plaza well hand inside the 42 m disk. Taller than the ring scribe. Off the council door.",
+      "scale_vs_player": "1.92 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_well_hand/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_body_yoke_carrier",
+      "display_name": "Jar Yoke Carrier",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "merchant_collective"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, wide shoulders, wooden yoke, two stoppered clay jars, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, wide shoulders, wooden yoke, two stoppered clay jars, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Yoke bar with two hanging ovals. Distinct from the hod wedge and from the market apron.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Water jars for the plaza. No stall in frame. Inside the 42 m disk.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_yoke_carrier/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Walk_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_body_court_page",
+      "display_name": "Court Page",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "youth",
+        "scholars_guild"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, folded unlettered card on the chest, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, folded unlettered card on the chest, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Shorter than the elder vendor and taller than the Brackish adult. Card is a small pale rectangle. Not the plaza urchin.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Youth page. npc_role_plaza_urchin stays the child. Inside the 42 m disk.",
+      "scale_vs_player": "1.58 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_court_page/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Walk_Formal_Loop",
+        "place": "council cobble, off the door",
+        "height_m": 1.58,
+        "stride_scale": 0.9
+      }
+    },
+    {
+      "id": "npc_hub_body_flour_miller",
+      "display_name": "Flour Miller",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "merchant_collective"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, broad chest, flour on the sleeves, empty sack as a soft lump on one shoulder, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, broad chest, flour on the sleeves, empty sack as a soft lump on one shoulder, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Sack is a soft lump on the shoulder. Not a hod wedge and not a hip square.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Miller on the plaza cobble. No mill building. Inside the 42 m disk.",
+      "scale_vs_player": "1.80 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_body_flour_miller/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_outfit_night_cloak",
+      "display_name": "Night Court Cloak",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "night"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, knee-length night cloak, hood down, face bare, no plate, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, knee-length night cloak, hood down, face bare, no plate, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Cloak stops at the knee so the legs read. Wardrobe card, not a faction strip.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Night cloth. Iron Warden plate stays on the warden.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_night_cloak/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_outfit_yoke_pad",
+      "display_name": "Yoke Shoulder Pads",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "labor"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, two cloth shoulder pads, no yoke bar, no jars, no armor plate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, two cloth shoulder pads, no yoke bar, no jars, no armor plate. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Soft squares on the shoulders. Wardrobe only.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Pads worn under a yoke. The jars are a separate body row.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_yoke_pad/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_outfit_page_sash",
+      "display_name": "Page Diagonal Sash",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "youth",
+        "scholars_guild"
+      ],
+      "triangle_budget": 10000,
+      "aura_prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, one pale diagonal sash, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, one pale diagonal sash, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One diagonal. Wardrobe only. Not the warden tabard and not the civic sprig.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Page sash. The plaza urchin stays the child.",
+      "scale_vs_player": "1.58 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_page_sash/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 10000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "clip": "Walk_Formal_Loop",
+        "place": "council cobble, off the door",
+        "height_m": 1.58,
+        "stride_scale": 0.9
+      }
+    },
+    {
+      "id": "npc_hub_outfit_flour_smock",
+      "display_name": "Flour Smock",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "labor",
+        "merchant_collective"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, pale smock, sleeves rolled, flour dust, no scale pan, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, pale smock, sleeves rolled, flour dust, no scale pan, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Smock is a pale column. Wardrobe only. Not the market apron.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Miller cloth. The brass pan stays the merchant strip.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_outfit_flour_smock/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_night",
+      "display_name": "CX Face, Night Brow",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "night"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, night court, hood down, one soot speck on the brow, no helm, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, night court, hood down, one soot speck on the brow, no helm, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Soot speck is small. Jaw stays the CX oval.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Night face variant. Same face family.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_night/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "face_only": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_flour",
+      "display_name": "CX Face, Flour Cheek",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "labor",
+        "merchant_collective"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, miller, flour on one cheek only, sun, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, miller, flour on one cheek only, sun, no mask. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Flour is one pale patch. Oval stays CX.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Miller face variant. Same face family.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_flour/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "face_only": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_page",
+      "display_name": "CX Face, Page",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "youth",
+        "scholars_guild"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, older youth, smooth jaw, no beard, cloth collar, not a child, not a second species. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, older youth, smooth jaw, no beard, cloth collar, not a child, not a second species. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Shorter neck in the bust. Still the Concordia face. Not the plaza urchin.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Page face. Same CX family.",
+      "scale_vs_player": "bust 0.50 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_page/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "face_only": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_face_cx_broad",
+      "display_name": "CX Face, Broad Jaw",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "labor"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, broad jaw, sun creases, court cloth at the collar, no helm. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, broad jaw, sun creases, court cloth at the collar, no helm. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Jaw is wider and still one CX oval. Not a new species.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Broad-jaw face variant. Same face family.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_face_cx_broad/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": false,
+        "face_only": true,
+        "clip": "Idle_Loop",
+        "place": "council cobble, off the door"
+      }
+    },
+    {
+      "id": "npc_hub_fac_lantern_cage",
+      "display_name": "Dark Lantern Cage",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "night",
+        "iron_wardens"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, iron wardens, unlit iron lantern cage at the hip, no plate, no flame, face bare. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, iron wardens, unlit iron lantern cage at the hip, no plate, no flame, face bare. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open cage at the hip, not a solid satchel square. No flame tongue. Plate stays on the warden.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Night civic strip on the cobble. Idle_Torch_Loop. The cage stays dark.",
+      "scale_vs_player": "1.84 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_lantern_cage/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Idle_Torch_Loop",
+        "place": "council cobble ring, off the door, not arena sand"
+      }
+    },
+    {
+      "id": "npc_hub_fac_bell_cord",
+      "display_name": "Page Bell Cord",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "youth",
+        "scholars_guild"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, scholars guild, small handbell on a cord at the thigh, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, older youth at one metre fifty-eight, CX head-to-body ratio, court cloth, scholars guild, small handbell on a cord at the thigh, empty hands, no blade, not a child. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Bell is a sphere low on the thigh. Chest stays clear of the scholar chain.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Junior scholar strip. The sternum chain stays the archive strip. Not the plaza urchin.",
+      "scale_vs_player": "1.58 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_bell_cord/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Walk_Formal_Loop",
+        "place": "council cobble, off the door",
+        "height_m": 1.58,
+        "stride_scale": 0.9
+      }
+    },
+    {
+      "id": "npc_hub_fac_door_bar",
+      "display_name": "Door Brass Bar",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "civic"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, one vertical brass bar on the chest, long coat, empty hands, no lettering, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, one vertical brass bar on the chest, long coat, empty hands, no lettering, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One vertical bar. Not a sprig, not a scale pan, not a cyan stripe.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Greeter strip beside the council door. The 1.2 by 2.2 m clear stays empty. Inside the 42 m disk.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_door_bar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Walk_Formal_Loop",
+        "place": "beside council door, outside the clear"
+      }
+    },
+    {
+      "id": "npc_hub_fac_sand_band",
+      "display_name": "Sand Forearm Band",
+      "batch": "B22_npc_hub",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "arena",
+        "iron_wardens"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, iron wardens, one wide sand-cloth band on the left forearm only, fist down, no plate, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, court cloth, iron wardens, one wide sand-cloth band on the left forearm only, fist down, no plate, no blade. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One forearm band. Not the two-arm guard of the fist wraps. Not plate.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Arena-edge cloth inside the 42 m disk. Drawn steel stays on the sand, on the warden.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_hub_fac_sand_band/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "flower_law": "inside_42m",
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "snap_grid_m": 1,
+        "crowd_strip": true,
+        "clip": "Idle_Loop",
+        "place": "plaza lip of arena sand, not on the sand",
+        "arena_sand": "edge_only"
+      }
+    }
+  ],
+  "plaza_slice": "A02_npc_hub_density"
+}

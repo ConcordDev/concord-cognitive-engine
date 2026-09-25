@@ -1,0 +1,32 @@
+{
+  "batch": "B30_audio",
+  "slice": "A12_audio_cue_sheets",
+  "cycle": 2,
+  "count": 1,
+  "cue_count": 12,
+  "rule": "One spec row. Do not generate a mesh. The twelve contact cues reuse a B28 card, a pack one-shot, or a shape.",
+  "cue_ids": [
+    "cue_contact_steel",
+    "cue_contact_flower",
+    "cue_contact_invoice",
+    "cue_contact_dust",
+    "cue_contact_ash",
+    "cue_contact_harvest",
+    "cue_contact_mercy",
+    "cue_contact_aerial",
+    "cue_contact_count",
+    "cue_contact_fold",
+    "cue_contact_unclosed",
+    "cue_contact_mark"
+  ],
+  "entries": [
+    {
+      "id": "cue_spec_contact_bind",
+      "display_name": "Contact cue bind",
+      "batch": "B30_audio",
+      "generate": false,
+      "mesh_bound": false,
+      "triangle_budget": 0
+    }
+  ]
+}

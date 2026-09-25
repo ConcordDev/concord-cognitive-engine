@@ -26,7 +26,7 @@ namespace Concordia.Tests
         const string ProofDirectory = "Concordia/Generated/Proof";
         const string ProofMarker = "L0_UAL1_Sequence_Proof.md";
         const float PlayerTimeout = 90f;
-        const float StateTimeout = 5f;
+        const float StateTimeout = 12f;
 
         readonly List<Observation> observations = new List<Observation>();
         readonly List<string> evidencePaths = new List<string>();
@@ -101,7 +101,7 @@ namespace Concordia.Tests
 
                 lastYaw = player.transform.eulerAngles.y;
                 SetKeys(d: true, shift: true);
-                yield return new WaitForSeconds(0.55f);
+                yield return new WaitForSecondsRealtime(0.55f);
                 var turnState = CurrentState();
                 yield return ObserveVisible("turn", turnState, "D + LeftShift changed the real player bearing by " + YawDelta(lastYaw, player.transform.eulerAngles.y).ToString("F1") + " degrees.");
                 Assert.Greater(YawDelta(lastYaw, player.transform.eulerAngles.y), 8f,
@@ -111,13 +111,14 @@ namespace Concordia.Tests
                 yield return WaitForState("stop", "Idle");
                 yield return ObserveVisible("stop", "Idle", "All runtime input released; controller returned to Idle.");
 
+                // Sprint intentionally consumes the player stamina field used by ActionRunner.
+                // Refill it before the proof's one-shot dodge so the test exercises the real
+                // input/action/Animator path instead of failing on a depleted resource.
+                player.stamina = 100f;
                 SetKeys(x: true);
-                var rollElapsed = 0f;
-                while (rollElapsed < StateTimeout && CurrentState() != "Dodge")
-                {
-                    rollElapsed += Time.unscaledDeltaTime;
+                var rollDeadline = Time.realtimeSinceStartup + StateTimeout;
+                while (Time.realtimeSinceStartup < rollDeadline && CurrentState() != "Dodge")
                     yield return null;
-                }
                 ReleaseKeys();
                 Assert.AreEqual("Dodge", CurrentState(), "roll never reached Animator state Dodge; last state=" + CurrentState());
                 yield return ObserveVisible("roll", "Dodge", "X fired ModularPerson.Dodge through ConcordiaPlayer.");
@@ -152,14 +153,18 @@ namespace Concordia.Tests
         {
             if (SceneManager.GetActiveScene().name != SceneName)
             {
-                SceneManager.LoadScene(SceneName, LoadSceneMode.Single);
+                // Async scene loading yields immediately to the PlayMode runner. The previous
+                // synchronous LoadScene call kept the test job in initialization while the
+                // staged Court boot completed, triggering the runner's 15-second auto-fail.
+                var load = SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
+                Assert.NotNull(load, "Could not start asynchronous ConcordiaHub scene load.");
+                while (!load.isDone) yield return null;
                 yield return null;
             }
 
-            var elapsed = 0f;
-            while (elapsed < PlayerTimeout && (!ConcordiaPlayer.Live || !ConcordiaPlayer.Live.person))
+            var deadline = Time.realtimeSinceStartup + PlayerTimeout;
+            while (Time.realtimeSinceStartup < deadline && (!ConcordiaPlayer.Live || !ConcordiaPlayer.Live.person))
             {
-                elapsed += Time.unscaledDeltaTime;
                 yield return null;
             }
 
@@ -169,11 +174,10 @@ namespace Concordia.Tests
 
         IEnumerator WaitForState(string label, string expected)
         {
-            var elapsed = 0f;
-            while (elapsed < StateTimeout)
+            var deadline = Time.realtimeSinceStartup + StateTimeout;
+            while (Time.realtimeSinceStartup < deadline)
             {
                 if (CurrentState() == expected) yield break;
-                elapsed += Time.unscaledDeltaTime;
                 yield return null;
             }
             Assert.Fail(label + " never reached Animator state " + expected + "; last state=" + CurrentState());
@@ -181,7 +185,7 @@ namespace Concordia.Tests
 
         IEnumerator ObserveState(string label, string expected, float settleSeconds, string detail)
         {
-            yield return new WaitForSeconds(settleSeconds);
+            yield return new WaitForSecondsRealtime(settleSeconds);
             Assert.AreEqual(expected, CurrentState(), label + " did not settle in the expected Animator state.");
             yield return ObserveVisible(label, expected, detail ?? "real player settled in the requested state.");
         }

@@ -1,0 +1,108 @@
+{
+  "schema": "concordia.volume.mounts.v1",
+  "authored": "2026-09-22",
+  "honesty": [
+    "CX_Mount_Horse may exist as a mesh reference. A ride controller does not. skill_craft_wagon and skill_craft_tack must not fake a mounted camera.",
+    "No seated driver clip. Lead, hitch, and enter-as-cargo are the honest verbs until an animator binds a sit.",
+    "The Held Curse is not a mount. Griffins are not horses. Sealie is not a bird and not a ride.",
+    "Quaternius is not a mount mesh donor."
+  ],
+  "mounts": [
+    {
+      "id": "mount_wagon_horse",
+      "creature_id": "faun_wagon_horse",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "tack_item_id": "item_horse_tack",
+      "verb": "lead",
+      "anim_gap": "No mounted sit, no gallop-with-rider. Idle harness and lead-walk only.",
+      "call_anchor": "prop_hitching_rail",
+      "notes": "Court visits wear a cloth flower braid, not a spell. Do not ride through the 42m plaza."
+    },
+    {
+      "id": "mount_terrace_goat",
+      "creature_id": "faun_terrace_goat",
+      "world_ids": [
+        "Tunya"
+      ],
+      "tack_item_id": "item_lead_rope",
+      "verb": "lead",
+      "anim_gap": "Pack and lead. No saddle anim. Wood bell is a prop, not a bridle kit.",
+      "call_anchor": "goat terrace upper stall",
+      "notes": "Sure-footed on a terrace. Player walks behind."
+    },
+    {
+      "id": "mount_wind_pronghorn",
+      "creature_id": "faun_wind_pronghorn",
+      "world_ids": [
+        "Frontier"
+      ],
+      "tack_item_id": null,
+      "verb": "call_and_follow",
+      "anim_gap": "No bridle, no rider. Herd follow only. Penning fails q_frontier_pale_flag.",
+      "call_anchor": "pronghorn flat",
+      "notes": "White rump is a signal, not a saddle mark."
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "veh_salt_wagon",
+      "display_name": "Salt-road wagon",
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "prop_id": "prop_wagon",
+      "hitch_mount_id": "mount_wagon_horse",
+      "part_item_id": "item_wagon_pin",
+      "verb": "hitch_and_walk",
+      "anim_gap": "Wagon mesh can be prop_wagon. No driver sit, no reins IK. Camera stays on foot beside the horse.",
+      "gameplay_core": "If Vehicle* in GameplayCore can accept a lead target, bind that. Do not spawn a fake steering wheel anim.",
+      "notes": "Hub hitch is outside the walls, near Pinewood Crossing, not in the Court."
+    },
+    {
+      "id": "veh_frontier_windwagon",
+      "display_name": "Wind wagon",
+      "world_ids": [
+        "Frontier"
+      ],
+      "prop_id": "prop_wagon",
+      "hitch_mount_id": null,
+      "part_item_id": "item_wagon_pin",
+      "verb": "drift_with_wind",
+      "anim_gap": "Sail is a cloth prop. No mast-climb clip. Movement is a pushed prop, player on foot or standing in the bed without a sit clip (stand pose, honest).",
+      "gameplay_core": "Same Vehicle* lead or push. Dome ribs are not parts.",
+      "notes": "The road stays open. A canopy that seals fails the Frontier refusal."
+    },
+    {
+      "id": "veh_grid_rail_dolly",
+      "display_name": "Grid rail dolly",
+      "world_ids": [
+        "Cyber"
+      ],
+      "prop_id": "prop_cable_coil",
+      "hitch_mount_id": null,
+      "part_item_id": "item_cable_coil",
+      "verb": "push",
+      "anim_gap": "No vehicle enter clip. Push with the labor anim if one exists; otherwise player walk beside a sliding prop.",
+      "gameplay_core": "Not a gunship. Not a drone the player pilots. mon_grid_drone stays hostile fauna.",
+      "notes": "Carries coils and slates. Slates on the dolly stay blank of totals."
+    },
+    {
+      "id": "veh_wharf_cart",
+      "display_name": "Wharf cart",
+      "world_ids": [
+        "Crime"
+      ],
+      "prop_id": "prop_dock_crate",
+      "hitch_mount_id": null,
+      "part_item_id": "item_dock_hook",
+      "verb": "push",
+      "anim_gap": "Hand cart. No horse required. No seated clip.",
+      "gameplay_core": "Push prop. Invoices in the cart are still invoices.",
+      "notes": "Rain slick. Gulls may follow. That is fauna, not a navigation aid you must code."
+    }
+  ]
+}

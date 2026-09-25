@@ -1,0 +1,865 @@
+{
+  "batch": "B25_creatures_crucible",
+  "world_ids": [
+    "Crucible"
+  ],
+  "count": 15,
+  "entries": [
+    {
+      "id": "faun_crucible_seam_skink",
+      "display_name": "Seam Skink",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "seam"
+      ],
+      "triangle_budget": 2800,
+      "aura_prompt": "One low basalt skink, body a flat dark bar, four short legs, one teal crack along the spine that stops before the tail, quartz dust on the flanks. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low basalt skink, body a flat dark bar, four short legs, one teal crack along the spine that stops before the tail, quartz dust on the flanks. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Flat bar. The teal crack stops short of the tail. Separate from the Unclosed Moth bowtie, the Ruins rib lizard, and the Dawn olive diamond.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Seam-rock basker. Ambient mesh. The crack is a stopped seam, not a light.",
+      "scale_vs_player": "0.16 m tall, 0.55 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_seam_skink/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 2800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter",
+          "sprawl.hit",
+          "sprawl.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "env_crucible_seam_rock, outside named gaps",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "body_read": "bar, crack stops"
+      }
+    },
+    {
+      "id": "faun_crucible_fault_hare",
+      "display_name": "Fault Hare",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "seam"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One squat basalt hare, body a dusted pebble, two ear bars of unequal length that never meet, dark eye, no bright rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One squat basalt hare, body a dusted pebble, two ear bars of unequal length that never meet, dark eye, no bright rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Pebble body plus two unequal ear bars. Separate from the salt-road hare, the pollen hare, and the skink bar.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Fault-moss prey. Ears stay unequal in idle, crouch, and bolt.",
+      "scale_vs_player": "0.32 m at the shoulder",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_fault_hare/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 4000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_prey",
+        "anim_controller": "creature_prey",
+        "clips": [
+          "prey.idle",
+          "prey.crouch",
+          "prey.bolt",
+          "prey.hit",
+          "prey.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_crucible_fault_moss, dry fault, outside named gaps",
+        "spawner": "ambient fault, weight 0 until a density slice",
+        "ear_bones": "two bars, lengths unequal in every pose"
+      }
+    },
+    {
+      "id": "faun_crucible_quartz_newt",
+      "display_name": "Quartz Newt",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "fault"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One small newt, body a wet dark pebble on dry moss, one pale quartz rib that misses the belly, no water and no stream. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small newt, body a wet dark pebble on dry moss, one pale quartz rib that misses the belly, no water and no stream. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Round pebble plus one rib that does not meet the belly. Separate from the skink bar and from any wading heron.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Fault with moss and no stream. The rib is quartz, not a glow.",
+      "scale_vs_player": "0.10 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_quartz_newt/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_crucible_fault_moss, no hydrology mesh",
+        "spawner": "ambient fault, weight 0 until a density slice",
+        "rib_bone": "one rib, misses the belly"
+      }
+    },
+    {
+      "id": "faun_crucible_comma_mite",
+      "display_name": "Comma Mite",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "seam"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One tiny basalt mite, oval body, one unfinished leg longer than the body, other legs short stubs, teal only as a nick that stops on the long leg. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One tiny basalt mite, oval body, one unfinished leg longer than the body, other legs short stubs, teal only as a nick that stops on the long leg. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Comma. One long leg, stubs for the rest. Separate from the Sere smog roach pebble with six equal legs, and from the moth.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Seam-lichen mite. The long leg is a limb, not a tool.",
+      "scale_vs_player": "0.06 m body",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_comma_mite/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_critter",
+        "anim_controller": "creature_critter",
+        "clips": [
+          "critter.idle",
+          "critter.scuttle"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_crucible_seam_lichen on env_crucible_seam_rock",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "leg_bone": "one long unfinished leg"
+      }
+    },
+    {
+      "id": "mon_crucible_rib_frame",
+      "display_name": "Rib Frame",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "construct",
+        "mech"
+      ],
+      "triangle_budget": 7000,
+      "aura_prompt": "One walking construct of open quartz ribs on two thick basalt legs, torso unfilled so the ribs do not meet, no face, no gun, no count lens. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One walking construct of open quartz ribs on two thick basalt legs, torso unfilled so the ribs do not meet, no face, no gun, no count lens. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open arch on two legs. Separate from the Un-Ender ring on three polymer legs, the Drift Mass teardrop, and the Census Construct.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Construct mesh. Crucible construct cap stays 0. Not a person. Not seated.",
+      "scale_vs_player": "2.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_rib_frame/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 7000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced",
+        "spawner": "cap 0, S11 construct alias stays zero",
+        "strike": "rib edge, empty hands, no beam",
+        "face": "none"
+      }
+    },
+    {
+      "id": "mon_crucible_vent_jack",
+      "display_name": "Vent Jack",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "construct",
+        "mech",
+        "foundry"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One short foundry construct, basalt block torso, soot, one steam pipe on the shoulder that joins nothing, chisel arm down, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short foundry construct, basalt block torso, soot, one steam pipe on the shoulder that joins nothing, chisel arm down, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Short block plus one pipe that meets nothing. Separate from the Rib Frame arch and from the lattice hall. Foundry blend only.",
+      "palette": [
+        "#2a241c",
+        "#6a5840",
+        "#204040",
+        "#20ffd0"
+      ],
+      "lore_blurb": "Unclosed Foundry accent. Mesh only. Do not seat the 7.66 m throat or the 8 m bay.",
+      "scale_vs_player": "1.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_vent_jack/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_ix_crucible_foundry",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "foundry edge, unplaced",
+        "spawner": "cap 0, foundry kit stays unplaced",
+        "strike": "chisel, no rifle",
+        "face": "none"
+      }
+    },
+    {
+      "id": "mon_crucible_gap_bracket",
+      "display_name": "Gap Bracket",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "miniboss",
+        "construct"
+      ],
+      "triangle_budget": 9000,
+      "aura_prompt": "One basalt brute shaped as a standing unclosed bracket, two block feet, chest gap empty, lilac only inside the gap, no teal coat, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt brute shaped as a standing unclosed bracket, two block feet, chest gap empty, lilac only inside the gap, no teal coat, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Standing bracket, open side, two feet. Lilac sits in the gap. Separate from the Un-Ender ring, the Rib Frame arch, and the Gap Lion shoulder ring.",
+      "palette": [
+        "#204040",
+        "#102828",
+        "#c8b4ff"
+      ],
+      "lore_blurb": "Mini-boss mesh. Unplaced. Does not share the Un-Ender night hours. The bracket does not close.",
+      "scale_vs_player": "2.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_gap_bracket/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 9000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "boss.tell",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced",
+        "spawner": "mini-boss mesh, weight 0, not the Un-Ender",
+        "boss_tell": "open arm lifts, gap stays open",
+        "strike": "plate slam",
+        "face": "none"
+      }
+    },
+    {
+      "id": "faun_crucible_fold_pillbug",
+      "display_name": "Fold Pillbug",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "seam"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One basalt pillbug, body a closed oval, one seam notch that does not meet across the shell, short legs tucked, teal only as a nick inside the notch. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt pillbug, body a closed oval, one seam notch that does not meet across the shell, short legs tucked, teal only as a nick inside the notch. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Oval with one open notch. Separate from the comma mite, the ash grub comma, and the quartz newt pebble.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Basalt fold. The notch stays open. Ambient mesh.",
+      "scale_vs_player": "0.08 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_fold_pillbug/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_critter",
+        "anim_controller": "creature_critter",
+        "clips": [
+          "critter.idle",
+          "critter.scuttle"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "env_crucible_basalt_fold, outside named gaps",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "notch": "open, never meets across the shell"
+      }
+    },
+    {
+      "id": "faun_crucible_shard_lark",
+      "display_name": "Shard Lark",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "bird",
+        "seam"
+      ],
+      "triangle_budget": 3200,
+      "aura_prompt": "One small basalt lark perched, body a vertical wedge, tail one flat quartz shard pointing down, wings closed, teal nick that stops on the shard, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small basalt lark perched, body a vertical wedge, tail one flat quartz shard pointing down, wings closed, teal nick that stops on the shard, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Vertical wedge plus a downward shard tail. Separate from the Unclosed Moth unequal wings and the Plane Dove square tail flag.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Perch on the shard anchor. The tail shard is one, and it points down. Wings open only in the air.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_shard_lark/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 3200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bird.idle",
+          "bird.perch",
+          "bird.hop",
+          "bird.flap"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "env_crucible_shard_anchor, perched, not orbiting",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "tail_bone": "one shard, down on the perch",
+        "flap": "air only"
+      }
+    },
+    {
+      "id": "faun_crucible_fault_cricket",
+      "display_name": "Fault Cricket",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "fault"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One quartz-dust cricket, body a thin dark chip, one antenna that stops in the air and does not meet a second, short legs, teal only as a nick that stops on the antenna. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One quartz-dust cricket, body a thin dark chip, one antenna that stops in the air and does not meet a second, short legs, teal only as a nick that stops on the antenna. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Thin chip plus one stopped antenna. Separate from the comma mite long leg and from the Unclosed Moth.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Quartz fault. Dry. The antenna is a limb, not a tool.",
+      "scale_vs_player": "0.07 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_fault_cricket/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_critter",
+        "anim_controller": "creature_critter",
+        "clips": [
+          "critter.idle",
+          "critter.scuttle"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "env_crucible_quartz_fault, dry, no stream",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "antenna_bone": "one, stops short"
+      }
+    },
+    {
+      "id": "faun_crucible_road_toad",
+      "display_name": "Road Toad",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "seam"
+      ],
+      "triangle_budget": 3000,
+      "aura_prompt": "One squat basalt toad, body a wide triangle, mouth a dark line that stops before the corner, four short legs, teal only as a nick on the back that stops. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One squat basalt toad, body a wide triangle, mouth a dark line that stops before the corner, four short legs, teal only as a nick on the back that stops. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wide triangle. The mouth line stops short. Separate from the fault hare pebble and the seam skink bar.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Broken road. The mouth line is a stopped seam.",
+      "scale_vs_player": "0.18 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_road_toad/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 3000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "env_crucible_broken_road, outside named gaps",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "mouth": "line stops before the corner"
+      }
+    },
+    {
+      "id": "faun_crucible_lichen_snail",
+      "display_name": "Lichen Snail",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "seam"
+      ],
+      "triangle_budget": 2400,
+      "aura_prompt": "One small snail, shell an open basalt spiral that does not close, one short horn, lichen dust on the shell, teal only as a nick inside the open spiral. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small snail, shell an open basalt spiral that does not close, one short horn, lichen dust on the shell, teal only as a nick inside the open spiral. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open spiral. Separate from the pillbug oval, the mite comma, and the basilisk rib cage.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Seam lichen. The spiral does not close. Slide has no foot phase.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_crucible_lichen_snail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 2400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "flora_crucible_seam_lichen on env_crucible_seam_rock, off the leaning stair",
+        "spawner": "ambient seam, weight 0 until a density slice",
+        "shell": "spiral does not close",
+        "slide": "sprawl.skitter, no foot phase"
+      }
+    },
+    {
+      "id": "mon_crucible_fold_clamp",
+      "display_name": "Fold Clamp",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "construct",
+        "mech"
+      ],
+      "triangle_budget": 6500,
+      "aura_prompt": "One walking construct of two basalt plates hinged at the top that never meet at the bottom, one foot under each plate, no face, no gun, no crossbar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One walking construct of two basalt plates hinged at the top that never meet at the bottom, one foot under each plate, no face, no gun, no crossbar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open A without a crossbar. Separate from the Gap Bracket, the Rib Frame arch, and the open caliper tool.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Construct mesh. Cap stays 0. The plates do not meet.",
+      "scale_vs_player": "1.8 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_fold_clamp/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 6500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced",
+        "spawner": "cap 0, S11 construct alias stays zero",
+        "strike": "plate edge, empty hands, no beam",
+        "face": "none"
+      }
+    },
+    {
+      "id": "mon_crucible_anchor_shard",
+      "display_name": "Anchor Shard",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "construct"
+      ],
+      "triangle_budget": 5500,
+      "aura_prompt": "One tall quartz shard standing on one thick basalt foot, shard tip unfinished, no second shard, no ring, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One tall quartz shard standing on one thick basalt foot, shard tip unfinished, no second shard, no ring, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One column shard on one foot. Separate from the Drift Mass teardrop and the Un-Ender ring on three legs.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Construct mesh. Cap stays 0. One shard. Unplaced.",
+      "scale_vs_player": "2.0 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_anchor_shard/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 5500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced",
+        "spawner": "cap 0, S11 construct alias stays zero",
+        "strike": "shard tip, no beam",
+        "face": "none",
+        "shard_count": 1
+      }
+    },
+    {
+      "id": "mon_crucible_fault_sled",
+      "display_name": "Fault Sled",
+      "batch": "B25_creatures_crucible",
+      "world_ids": [
+        "Crucible"
+      ],
+      "taxonomy_tags": [
+        "monster",
+        "construct"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One low basalt sled construct, rectangular body, two runners that stop short of the nose, soot only as a stain, no pipe, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low basalt sled construct, rectangular body, two runners that stop short of the nose, soot only as a stain, no pipe, no face, no gun. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Low rectangle. Runners stop short of the nose. Separate from the Vent Jack block and the Rib Frame arch.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028",
+        "#3a5558"
+      ],
+      "lore_blurb": "Construct mesh. Cap stays 0. Runners stop short. Unplaced.",
+      "scale_vs_player": "0.7 m tall, 1.6 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/mon_crucible_fault_sled/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_crucible_lattice",
+        "lod0_tris": 5000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_construct",
+        "anim_controller": "creature_construct",
+        "clips": [
+          "construct.idle",
+          "construct.step",
+          "construct.hit",
+          "construct.death"
+        ],
+        "spawn_weight": 0,
+        "s17_caps": "unchanged",
+        "avoid_gaps": [
+          "gap_wit_procgen",
+          "gap_cult_procgen",
+          "gap_eng_procgen",
+          "gap_proc_meta",
+          "district_anchors",
+          "wilds_90_126"
+        ],
+        "geography_hook": "unplaced",
+        "spawner": "cap 0, S11 construct alias stays zero",
+        "strike": "runner bump, no beam",
+        "face": "none",
+        "runners": "two, stop short of the nose"
+      }
+    }
+  ],
+  "cycle2_count": 8,
+  "mini_boss": "mon_crucible_gap_bracket"
+}

@@ -1,0 +1,1380 @@
+{
+  "schema": "concordia-lookfeel-prompts/1.0",
+  "family": "arch_hero",
+  "batch": "B19_lookfeel_arch",
+  "count": 36,
+  "clip_note": "aura_prompt is a single-subject concept. The constraint is the first sentence. Feed aura_prompt verbatim. Do not prepend a second framing block.",
+  "entries": [
+    {
+      "id": "arch_hero_hub_council_hall",
+      "display_name": "Council Hall Bay",
+      "lore_blurb": "Unburned Court hall. Limestone, timber lintel, one lantern.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_hub_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A rectangular hall bite. Roof is a simple pitch. Quoins read at distance.",
+      "aura_prompt": "One limestone hall bay with a timber lintel and a single lantern. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cobble apron, flower box, warm brass, no neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone hall bay with a timber lintel and a single lantern. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cobble apron, flower box, warm brass, no neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_hub_council_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_hub_court",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m hall module, door 2.2 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "arch_hero_hub_market_facade",
+      "display_name": "Market Facade",
+      "lore_blurb": "Shop bay. Awning is cloth, the rail is a mantle.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_hub_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "One bay, one awning. The awning is the horizontal mass.",
+      "aura_prompt": "One market facade bay with a single cloth awning and a grab rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone, worn timber, crate shadow only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One market facade bay with a single cloth awning and a grab rail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone, worn timber, crate shadow only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_hub_market_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_hub_court",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "4 m bay",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "arch_hero_hub_arena_gate",
+      "display_name": "Arena Gate Leaf",
+      "lore_blurb": "The sand's door. Heavier than a court door. Still limestone and iron.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_hub_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A double door mass, closed. Sand on the threshold.",
+      "aura_prompt": "One heavy arena double door of timber and iron, sand on the threshold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed, no crest costume. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One heavy arena double door of timber and iron, sand on the threshold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed, no crest costume. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_hub_arena_gate/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_hub_court",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "clear 2.2 m, leaf reads thick",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "arch_hero_hub_pinewood_stable",
+      "display_name": "Pinewood Stable Bay",
+      "lore_blurb": "Outside the wall. A stable bite for the wagon horse. No rider.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_hub_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A low bay, one half-door. Pine posts.",
+      "aura_prompt": "One low timber stable bay with a single half-door, pine posts, salt dust. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hay stain, no signage, no rider. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low timber stable bay with a single half-door, pine posts, salt dust. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hay stain, no signage, no rider. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_hub_pinewood_stable/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_hub_court",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 4 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "arch_hero_sunder_shrine_hall",
+      "display_name": "Held Shrine Hall",
+      "lore_blurb": "A shrine that holds a curse closed. Granite, little gold.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_fantasy_sunder"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A short hall, one dark door, pillar mass beside it.",
+      "aura_prompt": "One short granite shrine hall with a single dark timber door and a mossed pillar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gold leaf worn to a vein, no dragon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short granite shrine hall with a single dark timber door and a mossed pillar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gold leaf worn to a vein, no dragon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sunder_shrine_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "arch_hero_sunder_timber_facade",
+      "display_name": "Wildwood Timber Facade",
+      "lore_blurb": "Timber on granite. The foundation is still stone.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_fantasy_sunder"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Stone base, timber upper, one window.",
+      "aura_prompt": "One facade with a granite base and a single timber upper storey. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Moss, a shutter, no castle crenellation. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One facade with a granite base and a single timber upper storey. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Moss, a shutter, no castle crenellation. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sunder_timber_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "4 m bay",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "arch_hero_sunder_pillar_door",
+      "display_name": "Pillar Door",
+      "lore_blurb": "Door in the shadow of a titan pier. The door is human scale.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_fantasy_sunder"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A small door beside a huge pier segment.",
+      "aura_prompt": "One human-scale timber door set beside a huge granite pier segment. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Iron hinge, moss, clear 2.2 m. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One human-scale timber door set beside a huge granite pier segment. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Iron hinge, moss, clear 2.2 m. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sunder_pillar_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_fantasy_sunder",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "door 2.2 m, pier segment 6 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "arch_hero_tunya_terrace_hall",
+      "display_name": "Terrace Hall",
+      "lore_blurb": "CLT and limestone. A hall that steps with the hill.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_tunya_veil"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "One hall, roof follows one terrace.",
+      "aura_prompt": "One timber-and-limestone hall stepped to a single terrace. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Solar tile on the eave only, fruit stain on the sill, the tree is not in the mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber-and-limestone hall stepped to a single terrace. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Solar tile on the eave only, fruit stain on the sill, the tree is not in the mesh. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_tunya_terrace_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_tunya_veil",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "arch_hero_tunya_graft_facade",
+      "display_name": "Graft Facade",
+      "lore_blurb": "A living-wood graft on a stone bay. The graft is thick.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_tunya_veil"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Stone bay, one thick branch used as a lintel.",
+      "aura_prompt": "One limestone bay with a single thick living-wood branch as the lintel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen dust, no thin vines as the only structure. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone bay with a single thick living-wood branch as the lintel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pollen dust, no thin vines as the only structure. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_tunya_graft_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_tunya_veil",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "4 m bay",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "arch_hero_tunya_canopy_stair",
+      "display_name": "Canopy Stair",
+      "lore_blurb": "Stair to a terrace. Open risers, thick treads.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_tunya_veil"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "One flight. The hand is a branch, thick.",
+      "aura_prompt": "One open terrace stair with thick timber treads and a branch handrail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Soil, a water runnel beside it. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open terrace stair with thick timber treads and a branch handrail. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Soil, a water runnel beside it. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_tunya_canopy_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_tunya_veil",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "4 m flight",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "arch_hero_tunya_fluxom_lockhouse",
+      "display_name": "Fluxom Lockhouse",
+      "lore_blurb": "Harbor industry wearing grove timber. One lockhouse.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_tunya_veil"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A small house on a canal edge. Dye stain at the waterline.",
+      "aura_prompt": "One timber lockhouse on a canal edge, dye stain at the waterline. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, a shutter, sanitation pipe in brass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber lockhouse on a canal edge, dye stain at the waterline. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, a shutter, sanitation pipe in brass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_tunya_fluxom_lockhouse/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_tunya_veil",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "house 6 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "arch_hero_ruins_catalogue_hall",
+      "display_name": "Catalogue Hall",
+      "lore_blurb": "A library bay that still stands. Books are a dark mass, not readable type.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_ruins_ash"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A colonnade bite and a dark interior.",
+      "aura_prompt": "One limestone catalogue hall bay, colonnade, dark interior, ash on the step. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cracked street, no skeleton decoration. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone catalogue hall bay, colonnade, dark interior, ash on the step. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cracked street, no skeleton decoration. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ruins_catalogue_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_ruins_ash",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "arch_hero_ruins_rib_facade",
+      "display_name": "Rib Facade",
+      "lore_blurb": "Fossil rib as a structural bay. Cold iron pins.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_ruins_ash"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Rib curve over a stone wall. One window.",
+      "aura_prompt": "One stone facade braced by a single fossil rib and cold iron pins. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Ash, moss, a dark window. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stone facade braced by a single fossil rib and cold iron pins. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Ash, moss, a dark window. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ruins_rib_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_ruins_ash",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 6 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "arch_hero_ruins_ash_door",
+      "display_name": "Ash Door",
+      "lore_blurb": "A door that looks shut and unfinished. The seam does not sit flush.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_ruins_ash"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "One leaf, proud of the frame on one side.",
+      "aura_prompt": "One stone-and-iron door, one edge proud of the frame, ash in the gap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No skull knocker. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stone-and-iron door, one edge proud of the frame, ash in the gap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. No skull knocker. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ruins_ash_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_ruins_ash",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "door 2.2 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "arch_hero_crime_tenement_bay",
+      "display_name": "Tenement Bay",
+      "lore_blurb": "Stained brick, one fire escape hint, one window.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crime_coast"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Vertical brick rectangle. Fire escape is a zigzag at the side.",
+      "aura_prompt": "One stained-brick tenement bay with a single window and a side fire escape. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Peel, rust, sodium stain, no neon tube. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stained-brick tenement bay with a single window and a side fire escape. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Peel, rust, sodium stain, no neon tube. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crime_tenement_bay/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crime_coast",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 8 m tall",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "arch_hero_crime_warehouse_door",
+      "display_name": "Warehouse Door Assembly",
+      "lore_blurb": "The rolling door in its frame. Corrugate and brick.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crime_coast"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Wide bay. Door is the metal mass.",
+      "aura_prompt": "One brick warehouse door assembly with a rusted corrugate roll door. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rebar, asphalt, a bollard shadow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One brick warehouse door assembly with a rusted corrugate roll door. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rebar, asphalt, a bollard shadow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crime_warehouse_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crime_coast",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 5 m wide",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "arch_hero_crime_escape_stair",
+      "display_name": "Escape Stair",
+      "lore_blurb": "The climb. One switch of stair.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crime_coast"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Iron Z. Thick bars.",
+      "aura_prompt": "One iron fire-escape switchback, thick bars, brick clips. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust, a loose bolt, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron fire-escape switchback, thick bars, brick clips. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust, a loose bolt, no people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crime_escape_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crime_coast",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "stair 6 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "arch_hero_cyber_bridge_hall",
+      "display_name": "Sky-Bridge Hall",
+      "lore_blurb": "Interior of a bridge. Carbon, scratched glass, one seat-free corridor.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_cyber_grid"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A tube of a room. Floor is plate.",
+      "aura_prompt": "One sky-bridge interior hall, carbon frame, scratched glass, plate floor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. A single cyan practical, soot at the gasket. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One sky-bridge interior hall, carbon frame, scratched glass, plate floor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. A single cyan practical, soot at the gasket. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_cyber_bridge_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_cyber_grid",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "corridor 2.4 m by 8 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "arch_hero_cyber_acrylic_facade",
+      "display_name": "Acrylic Facade",
+      "lore_blurb": "Street face. Gunmetal and one acrylic sheet.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_cyber_grid"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A flat bay. The sheet is the light mass.",
+      "aura_prompt": "One gunmetal facade bay with a single scratched acrylic sheet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cable drip, magenta only in the reflection. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One gunmetal facade bay with a single scratched acrylic sheet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cable drip, magenta only in the reflection. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_cyber_acrylic_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_cyber_grid",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 4 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "arch_hero_cyber_hatch_door",
+      "display_name": "Hatch Door",
+      "lore_blurb": "Service door. Heavy, short, a wheel handle.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_cyber_grid"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A small steel door. The wheel is the silhouette bump.",
+      "aura_prompt": "One short steel service door with a single wheel handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Primer, a cyan slit, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short steel service door with a single wheel handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Primer, a cyan slit, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_cyber_hatch_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_cyber_grid",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "door 2.0 m clear",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "arch_hero_frontier_cabin_hall",
+      "display_name": "Road Cabin",
+      "lore_blurb": "A cabin that could be packed onto a wagon in pieces. One room bite.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_frontier_road"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Low rectangle, porch post, canvas patch.",
+      "aura_prompt": "One timber cabin bay with a porch post and a canvas patch on the roof. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust, nail, no dome, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber cabin bay with a porch post and a canvas patch on the roof. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust, nail, no dome, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_frontier_cabin_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_frontier_road",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "6 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "arch_hero_frontier_canvas_facade",
+      "display_name": "Canvas Facade",
+      "lore_blurb": "Cloth as a wall that still has a timber frame.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_frontier_road"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Frame rectangle, one canvas panel laced on.",
+      "aura_prompt": "One timber frame facade with a single laced canvas panel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust stain, a patch, open sky implied. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber frame facade with a single laced canvas panel. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust stain, a patch, open sky implied. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_frontier_canvas_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_frontier_road",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "4 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "arch_hero_frontier_wagon_stair",
+      "display_name": "Wagon Step",
+      "lore_blurb": "The step up to a wagon bed. Not a vehicle hero.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_frontier_road"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Three treads and a iron handle.",
+      "aura_prompt": "One three-tread wagon step with a single iron handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust, wood wear, no wheel, no horse. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One three-tread wagon step with a single iron handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dust, wood wear, no wheel, no horse. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_frontier_wagon_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_frontier_road",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "step 1.2 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "arch_hero_dawn_spire_hall",
+      "display_name": "Spire Hall",
+      "lore_blurb": "A hall of pale composite and glass. Civic, not a temple costume.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_superhero_dawn"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Tall bay, one glass slot, chrome edge.",
+      "aura_prompt": "One pale composite hall bay with a single glass slot and a chrome edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chip, warm interior, no cape statue. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pale composite hall bay with a single glass slot and a chrome edge. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Chip, warm interior, no cape statue. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_dawn_spire_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_superhero_dawn",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 10 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "arch_hero_dawn_pad_facade",
+      "display_name": "Pad Facade",
+      "lore_blurb": "The wall under a roof pad. A lip you can grab.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_superhero_dawn"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Wall and a thick lip. Glass below.",
+      "aura_prompt": "One roof-pad facade with a thick grab lip and glass below. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Marble composite, a scuff from a landing. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One roof-pad facade with a thick grab lip and glass below. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Marble composite, a scuff from a landing. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_dawn_pad_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_superhero_dawn",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "wall 6 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "arch_hero_dawn_launch_lip",
+      "display_name": "Launch Lip",
+      "lore_blurb": "The edge. One lip, chamfered, chrome chipped to composite.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_superhero_dawn"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A long chamfer. Reads as an edge, not a vehicle.",
+      "aura_prompt": "One chamfered launch lip, chrome chipped back to pale composite. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bolt line, dawn wear. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One chamfered launch lip, chrome chipped back to pale composite. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bolt line, dawn wear. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_dawn_launch_lip/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_superhero_dawn",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "lip 8 m long",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "arch_hero_crucible_lattice_hall",
+      "display_name": "Lattice Hall",
+      "lore_blurb": "A hall whose arch does not close. Dark oak and basalt.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crucible_lattice"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Two walls and a gap where the vault would meet.",
+      "aura_prompt": "One basalt and dark-oak hall bay whose vault stops short of closing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. A teal seam in the gap, bevelled stone. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One basalt and dark-oak hall bay whose vault stops short of closing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. A teal seam in the gap, bevelled stone. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crucible_lattice_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crucible_lattice",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "arch_hero_crucible_quartz_facade",
+      "display_name": "Quartz Facade",
+      "lore_blurb": "Obsidian glass and one quartz rib.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crucible_lattice"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Dark bay, one pale rib, not a crystal castle.",
+      "aura_prompt": "One obsidian-glass facade with a single thick quartz rib. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tool marks, no sparkle field. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One obsidian-glass facade with a single thick quartz rib. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tool marks, no sparkle field. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crucible_quartz_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crucible_lattice",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 4 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "arch_hero_crucible_lean_stair",
+      "display_name": "Snap Lean Stair",
+      "lore_blurb": "Leaning flight that still hits the 4 m module.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_crucible_lattice"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "The whole flight is one silhouette, tilted.",
+      "aura_prompt": "One leaning stair flight of basalt, treads level, landing on a 4 metre module. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Quartz nosing, dark oak rail mass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One leaning stair flight of basalt, treads level, landing on a 4 metre module. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Quartz nosing, dark oak rail mass. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_crucible_lean_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_crucible_lattice",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "flight 4 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "arch_hero_sere_tally_hall",
+      "display_name": "Tally Hall Bay",
+      "lore_blurb": "A counting room that survived extraction. Soot brick, one window.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_sere_mark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Low hall, brand tile at the threshold.",
+      "aura_prompt": "One soot-brick tally hall bay with a single window and a brand tile at the threshold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oil concrete, iron lintel, no Flower Law urn. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One soot-brick tally hall bay with a single window and a brand tile at the threshold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oil concrete, iron lintel, no Flower Law urn. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sere_tally_hall/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": true,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_sere_mark",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "8 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "arch_hero_sere_furnace_facade",
+      "display_name": "Furnace Facade",
+      "lore_blurb": "The belt's face. Brick, an iron mouth, one eye.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_sere_mark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A wall with a small bright mouth. The mouth is small.",
+      "aura_prompt": "One furnace facade of soot brick with a single small iron fire mouth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bands, ash, no lava fall. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One furnace facade of soot brick with a single small iron fire mouth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bands, ash, no lava fall. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sere_furnace_facade/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_sere_mark",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 8 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "arch_hero_sere_mark_door",
+      "display_name": "Marked Door",
+      "lore_blurb": "A door with one brand tile. The law that compounds, as hardware.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_sere_mark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Industrial door, tile at eye height.",
+      "aura_prompt": "One industrial door with a single brand tile at eye height. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oil, dent, no portal glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One industrial door with a single brand tile at eye height. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Oil, dent, no portal glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sere_mark_door/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_sere_mark",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "door 2.2 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "arch_hero_sere_spire_footing",
+      "display_name": "Spire Footing",
+      "lore_blurb": "The base of Spire City. A footing you can walk around.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_kit_sere_mark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A battered plinth, rebar, one door.",
+      "aura_prompt": "One battered concrete spire footing with a single iron door and exposed rebar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tide stain, brand tile, no antenna. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One battered concrete spire footing with a single iron door and exposed rebar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tide stain, brand tile, no antenna. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_sere_spire_footing/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_kit_sere_mark",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "footing 10 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "arch_hero_ix_wharf",
+      "display_name": "Wharf Glue Bay",
+      "lore_blurb": "Uncounted Wharf. Wet asphalt floor continuous. One bay.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_ix_grid_coast"
+      ],
+      "world_ids": [
+        "Crime",
+        "Cyber"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "Brick pier, acrylic sheet, one pipe.",
+      "aura_prompt": "One wharf bay, stained brick and a scratched acrylic sheet, one pipe changing from rust to cyan. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet asphalt ground, soot banner hem, sodium lamp small. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wharf bay, stained brick and a scratched acrylic sheet, one pipe changing from rust to cyan. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet asphalt ground, soot banner hem, sodium lamp small. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ix_wharf/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_grid_coast",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 8 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "arch_hero_ix_crown_stair",
+      "display_name": "Held Crown Flight",
+      "lore_blurb": "Four modules of granite under a marble crown. Foundation reads as granite.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_ix_sunder_dawn"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Superhero"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "A flight. Pale stone only at the top nosing.",
+      "aura_prompt": "One granite stair flight of four modules with a chipped marble and chrome crown at the top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gold worn off, a chain rail beside a slim Dawn rail. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One granite stair flight of four modules with a chipped marble and chrome crown at the top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gold worn off, a chain rail beside a slim Dawn rail. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ix_crown_stair/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_sunder_dawn",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "flight 16 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "arch_hero_ix_foundry",
+      "display_name": "Unclosed Foundry Bay",
+      "lore_blurb": "Soot brick, brass, a quartz rib that stops. Clock without a last numeral.",
+      "taxonomy_tags": [
+        "architecture",
+        "hero_kit_piece",
+        "arch_ix_crucible_foundry"
+      ],
+      "world_ids": [
+        "Crucible",
+        "Crime"
+      ],
+      "batch": "B19_lookfeel_arch",
+      "silhouette_notes": "One bay. The rib is the tall mass and it does not meet.",
+      "aura_prompt": "One foundry bay of soot brick and brass with a quartz rib that stops short and a clock missing its last numeral. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Copper pipe, salvage plate, catwalk grab. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One foundry bay of soot brick and brass with a quartz rib that stops short and a clock missing its last numeral. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Copper pipe, salvage plate, catwalk grab. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/arch_hero_ix_foundry/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "kit_id": "arch_ix_crucible_foundry",
+        "snap_grid_m": 4,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ]
+      },
+      "scale_vs_player": "bay 10 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    }
+  ]
+}

@@ -16,8 +16,7 @@ namespace Concordia.Tests
         public IEnumerator ReleaseDuringFullBuild_DoesNotCommitStaleChunk()
         {
             LogAssert.ignoreFailingMessages = true;
-            SceneManager.LoadScene("ConcordiaHub", LoadSceneMode.Single);
-            yield return null;
+            yield return LoadHubSceneAsync();
 
             ContinentStream stream = null;
             for (int i = 0; i < HubTimeoutFrames; i++)
@@ -51,8 +50,7 @@ namespace Concordia.Tests
         public IEnumerator ConcordiaHubBoot_StagesContinent_AndPublishesReadyChunks()
         {
             LogAssert.ignoreFailingMessages = true;
-            SceneManager.LoadScene("ConcordiaHub", LoadSceneMode.Single);
-            yield return null;
+            yield return LoadHubSceneAsync();
 
             ContinentStream stream = null;
             for (int i = 0; i < HubTimeoutFrames; i++)
@@ -85,6 +83,15 @@ namespace Concordia.Tests
             Assert.IsTrue(stream.TryGetReadiness(WorldId.Cyber, out var cyberReadiness));
             Assert.AreEqual(ContinentStream.ChunkReadiness.Impostor, cyberReadiness);
             Assert.IsNotNull(stream.ChunkOf(WorldId.Cyber));
+        }
+
+        IEnumerator LoadHubSceneAsync()
+        {
+            var load = SceneManager.LoadSceneAsync("ConcordiaHub", LoadSceneMode.Single);
+            Assert.IsNotNull(load, "Could not start asynchronous ConcordiaHub scene load.");
+            while (!load.isDone)
+                yield return null;
+            yield return null;
         }
     }
 }

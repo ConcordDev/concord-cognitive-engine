@@ -1,0 +1,69 @@
+Concordia megaworld — one plane
+Hub at origin. +x east (Grid). +z north (Sundering).
+Ring radius 400 km (authored). Spoke discs 110 km and Sere disc 80 km are design-intent.
+Present scale 0.55 m/km puts the ring at 220 m in play.
+
+                         FANTASY  The Sundering
+                         (0, +400)   gate π/2
+                              |
+                   RUINS      |      TUNYA
+                (+283,+283)   |   (-283,+283)
+                     \        |        /
+                      \   CANON RING  /
+                       \    400 km   /
+    CYBER (+400, 0) ---- HUB (0,0) ---- FRONTIER (-400, 0)
+    gate 0               Flower Law       gate π
+                      \               /
+                       \  INNER VEIL /
+                        \   marches /
+                    CRUCIBLE       CRIME  Iron Coast
+                 (+283,-283)    (-283,-283)
+                        \         /
+                         \       /
+                     DAWN (0, -400)  Permanent Dawn
+                         gate 3π/2
+                              |
+                        EXODUS OCEAN
+                         short strait ~24 km from Crime
+                         long water toward Frontier
+                              |
+                           SERE
+                    (-228, -490)  r = 540 km
+                    waystone, no Link gate
+
+Hub local metres (not km):
+  court 16 · doors 34 · Flower Law 42 · wall 56
+  Arena (0, 18) steel r 8
+  Pinewood Crossing (62, -28)
+  Three Refusals Tavern (-48, -58)
+
+Mermaid (bearings, not to scale):
+
+```mermaid
+flowchart TB
+  subgraph ring [Canon Ring 400 km]
+    Cyber[Cyber The Grid]
+    Ruins[Ruins]
+    Fantasy[Fantasy The Sundering]
+    Tunya[Tunya]
+    Frontier[Frontier]
+    Crime[Crime Iron Coast]
+    Dawn[Superhero Permanent Dawn]
+    Crucible[Crucible]
+  end
+  Hub[Hub Unburned Court]
+  Sere[Sere waystone]
+  Hub -->|Link and Crown Road| Cyber
+  Hub -->|Link and Crown Road| Ruins
+  Hub -->|Link and Crown Road| Fantasy
+  Hub -->|Link and Crown Road| Tunya
+  Hub -->|Link and Crown Road| Frontier
+  Hub -->|Link and Crown Road| Crime
+  Hub -->|Link and Crown Road| Dawn
+  Hub -->|Link and Crown Road| Crucible
+  Tunya -->|Walker Path| Frontier
+  Frontier -->|Walker Path| Crime
+  Crime -->|Exodus strait and waystone| Sere
+  Dawn -->|Exodus coast| Sere
+  Frontier -->|long Exodus| Sere
+```

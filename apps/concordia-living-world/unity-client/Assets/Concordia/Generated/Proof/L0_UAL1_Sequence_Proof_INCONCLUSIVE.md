@@ -1,18 +1,14 @@
-# L0 UAL1 Visible Sequence Proof
+# L0 UAL1 Visible Sequence Proof — Superseded
 
-Status: INCONCLUSIVE
+Status: SUPERSEDED BY PASS
 
-Observed: idle capture only; the requested sequence `idle -> walk -> sprint -> turn -> stop -> roll -> sword -> hit` was not fully verified.
+The earlier inconclusive result was caused by two issues that are now fixed:
 
-Compile: L0 proof-path errors are fixed: the PlayMode assembly now resolves `Unity.InputSystem`, and the two Input System null checks compile. Full project compile is BLOCKED by unrelated pre-existing merge-conflict text in `Assets/Concordia/Scripts/GameplayCore/Persistence/ConcordiaPersistenceService.cs` and `Assets/Concordia/Scripts/WorldBook.cs`; those files were not modified.
+1. The proof camera/body sequence reached sprint with depleted `ConcordiaPlayer.stamina`, so the real `DodgeAction` rejected the queued X input.
+2. The HubKit EditMode source-template issue caused order-dependent zero renderer bounds; this was fixed in `HubKit.cs` by keeping imported source hierarchies active and disabling source renderers instead.
 
-PlayMode execution: The relevant PlayMode attempt entered the proof path and produced the idle evidence image below, but no complete test result was returned through the available test-runner bridge and no later beat evidence or PASS marker was produced. Static controller inspection is not treated as proof.
-
-Evidence:
-- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_20260922_031125915_0_idle.png`
-
-Changed proof-path assets:
-- `Assets/Concordia/Tests/PlayMode/Concordia.Tests.PlayMode.asmdef`
-- `Assets/Concordia/Tests/PlayMode/L0Ual1SequenceProofTest.cs`
-
-No CX/Rocketbox mesh, UAL1 animation asset, persistence, HubKit, or benchmark asset was modified.
+Fresh PASS evidence:
+- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof.md`
+- Eight rendered beats: idle, walk, sprint, turn, stop, roll, sword, hit.
+- Authored CX/Rocketbox body preserved.
+- `Assets/Concordia/Anim/ConcordiaLocomotion.controller` observed in PlayMode.

@@ -1,0 +1,155 @@
+{
+  "schema": "concordia-lookfeel-style-index/1.0",
+  "worlds": [
+    {
+      "world_id": "Hub",
+      "display_name": "The Unburned Court",
+      "file": "STYLE_Hub.md",
+      "palette": {
+        "primary": "#c4b49a",
+        "secondary": "#ffe6c0",
+        "accent": "#c8721a",
+        "fog": "#d9cbb8",
+        "emissive": "#e0a04a",
+        "ground": "#c4b49a",
+        "sun": "#ffe6c0"
+      },
+      "kit_id": "arch_kit_hub_court"
+    },
+    {
+      "world_id": "Cyber",
+      "display_name": "The Grid",
+      "file": "STYLE_Cyber.md",
+      "palette": {
+        "primary": "#1a1228",
+        "secondary": "#3dffa0",
+        "accent": "#c45aa8",
+        "fog": "#2a2040",
+        "emissive": "#3dffa0",
+        "ground": "#1a1228",
+        "sun": "#c45aa8"
+      },
+      "kit_id": "arch_kit_cyber_grid"
+    },
+    {
+      "world_id": "Ruins",
+      "display_name": "Sovereign Ruins",
+      "file": "STYLE_Ruins.md",
+      "palette": {
+        "primary": "#5a5044",
+        "secondary": "#b89060",
+        "accent": "#2a1c14",
+        "fog": "#8a8178",
+        "emissive": "#c4a070",
+        "ground": "#5a5044",
+        "sun": "#c8a070"
+      },
+      "kit_id": "arch_kit_ruins_ash"
+    },
+    {
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "file": "STYLE_Fantasy.md",
+      "palette": {
+        "primary": "#3a6a48",
+        "secondary": "#c8b48a",
+        "accent": "#c8a060",
+        "fog": "#b7c4b0",
+        "emissive": "#d4b56a",
+        "ground": "#3a6a48",
+        "sun": "#88d0a0"
+      },
+      "kit_id": "arch_kit_fantasy_sunder"
+    },
+    {
+      "world_id": "Tunya",
+      "display_name": "Tunya",
+      "file": "STYLE_Tunya.md",
+      "palette": {
+        "primary": "#6a7a3a",
+        "secondary": "#f0d080",
+        "accent": "#c8721a",
+        "fog": "#e4d7b0",
+        "emissive": "#f0b040",
+        "ground": "#6a7a3a",
+        "sun": "#f0d080"
+      },
+      "kit_id": "arch_kit_tunya_veil"
+    },
+    {
+      "world_id": "Frontier",
+      "display_name": "The Frontier",
+      "file": "STYLE_Frontier.md",
+      "palette": {
+        "primary": "#c8b070",
+        "secondary": "#efe6d4",
+        "accent": "#4a3828",
+        "fog": "#e6d8b8",
+        "emissive": "#f0d090",
+        "ground": "#c8b070",
+        "sun": "#ffe8b0"
+      },
+      "kit_id": "arch_kit_frontier_road"
+    },
+    {
+      "world_id": "Crime",
+      "display_name": "Iron Coast",
+      "file": "STYLE_Crime.md",
+      "palette": {
+        "primary": "#3a342c",
+        "secondary": "#8a6a48",
+        "accent": "#c8a060",
+        "fog": "#6a6258",
+        "emissive": "#e0b050",
+        "ground": "#3a342c",
+        "sun": "#887060"
+      },
+      "kit_id": "arch_kit_crime_coast"
+    },
+    {
+      "world_id": "Superhero",
+      "display_name": "Permanent Dawn",
+      "file": "STYLE_Superhero.md",
+      "palette": {
+        "primary": "#d8d4dc",
+        "secondary": "#ffd0a0",
+        "accent": "#3a78ff",
+        "fog": "#e7e4ea",
+        "emissive": "#ffd0a0",
+        "ground": "#4a5870",
+        "sun": "#ffd0a0"
+      },
+      "kit_id": "arch_kit_superhero_dawn"
+    },
+    {
+      "world_id": "Crucible",
+      "display_name": "The Crucible",
+      "file": "STYLE_Crucible.md",
+      "palette": {
+        "primary": "#204040",
+        "secondary": "#20ffd0",
+        "accent": "#c8b4ff",
+        "fog": "#3a5558",
+        "emissive": "#20ffd0",
+        "ground": "#204040",
+        "sun": "#20ffd0"
+      },
+      "kit_id": "arch_kit_crucible_lattice"
+    },
+    {
+      "world_id": "Sere",
+      "display_name": "Sere",
+      "file": "STYLE_Sere.md",
+      "palette": {
+        "primary": "#3a3428",
+        "secondary": "#c8a060",
+        "accent": "#8a3030",
+        "fog": "#6a5848",
+        "emissive": "#e07030",
+        "ground": "#3a3428",
+        "sun": "#c8a060"
+      },
+      "kit_id": "arch_kit_sere_mark"
+    }
+  ]
+}

@@ -1,0 +1,884 @@
+{
+  "schema": "concordia.slice.bosses.v1",
+  "slice_id": "S15_superhero_bosses_miniboosses",
+  "world_id": "Superhero",
+  "canon_world_id": "superhero",
+  "display_world": "The Permanent Dawn",
+  "facet": "bosses",
+  "title": "Permanent Dawn — bosses, mini-bosses, powered foes",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, the volume sunrise clock, Canon lore, countries.json, or prior slices S01–S14.",
+  "canon_pins": {
+    "world_id": "Superhero",
+    "canon_folder": "superhero",
+    "canon_world_def_title": "The Permanent Dawn",
+    "refusal": "Refusal of the Win",
+    "the_no": "I will not take the final victory.",
+    "the_no_second_line": "If I win this sunrise I become the Luminary.",
+    "law_text": "Mercy. They stand. The dawn does not end.",
+    "style_id": "dawn",
+    "style_name": "Permanent Dawn",
+    "style_verbs": ["Fist", "Shockwave", "Refuse the win", "Mercy shock"],
+    "steel_live": true,
+    "fight_style_for_people": "Karate",
+    "humanoid_body": "CX only for people. npc_role_dawn_elite and npc_role_dawn_mystic are CX. mon_dawn_mercy_sentinel is topology humanoid in the monster row and is a tripod artillery mesh, not a CX Aegis. The kestrel and the dawn jackal are not people.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern the Dawn. Steel dragged inside that disk and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 4.712389,
+    "gate_short_name": "DAWN",
+    "gate_neighbors_on_ring": ["Crime", "Crucible"],
+    "palette": ["#d8d4dc", "#ffd0a0", "#3a78ff", "#c8a060"],
+    "ground": "#4a5870",
+    "sun": "#ffd0a0",
+    "kit": "arch_kit_superhero_dawn",
+    "weather": "dawn",
+    "traversal": "vertical city",
+    "combat": "impact",
+    "fantasy": "height as verb",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "The post stays Hub. No kestrel, jackal, elite, adept, or mercy sentinel stands on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": [
+      "kestrel as a drone",
+      "kestrel as a sparrow",
+      "dawn jackal as a Tunya reap jackal",
+      "CX body as the mercy sentinel",
+      "CX body as a jackal",
+      "Grid sentinel on a Dawn roof",
+      "census drone disc on a Dawn roof",
+      "Quaternius",
+      "Kenney",
+      "cape that hides the arms",
+      "full-body glow",
+      "laser eyes on an adept"
+    ],
+    "canon_fauna_aliases": ["drone", "sentinel"],
+    "drone_rule": "WorldDef lists drone. mon_grid_drone world_ids are Cyber, Crime, and Sere. S11 caps that disc on the Grid deck and sets every other use, including a Superhero roof, to 0. This slice does not resolve the alias.",
+    "sentinel_rule": "WorldDef lists sentinel. mon_grid_sentinel is the Grid door and S11 sets its Superhero cap to 0. mon_dawn_mercy_sentinel carries the same canon_kind_alias and is the only sentinel this facet fields, inside enc_unfinished_sunrise, count 1."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/superhero/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/superhero/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/superhero/factions.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/superhero/creatures.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/superhero/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json faun_aegis_kestrel",
+    "monsters": "native-bible/creatures/MONSTERS.json mon_dawn_mercy_sentinel, mon_grid_sentinel, mon_grid_drone",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_dawnjackal, hyb_mercywraith",
+    "roles": "native-bible/npcs/ROLES.json npc_role_dawn_elite, npc_role_dawn_mystic",
+    "taxonomy": "native-bible/01_TAXONOMY.md Superhero row: kestrel, mercy sentinel, arch_kit_superhero_dawn",
+    "kit": "native-bible/architecture/KITS.json arch_kit_superhero_dawn named_sets aegis_spire, roof_pad, street_kitchen",
+    "density": "native-bible/volume/DENSITY_TABLES.json Superhero block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_unfinished_sunrise",
+    "tokens": ["item_rem_mercy_band"],
+    "skills": ["skill_steel_mercy"],
+    "geography": "WorldGeography.CountryCenter reads capital x,z when abs(x) or abs(z) exceeds 2. Non-Hub worlds with countries get a wilds ring from 90 m to 126 m."
+  },
+  "existing_quests_not_redone": [
+    "q_superhero_leave_standing",
+    "q_superhero_trade_intel",
+    "q_superhero_champion_terms",
+    "q_superhero_sifu_road",
+    "q_superhero_kestrel",
+    "q_superhero_erase_win",
+    "q_superhero_no_final",
+    "q_superhero_sentinel_scout",
+    "superhero_mira_01_warn",
+    "superhero_mira_02_intel",
+    "superhero_mira_03_published",
+    "superhero_hex_01_silas",
+    "superhero_hex_02_kor",
+    "superhero_hex_03_meeting",
+    "superhero_sifu_01_tell",
+    "superhero_sifu_02_carry",
+    "superhero_sifu_03_gift"
+  ],
+  "prior_slices_left_closed": {
+    "S01_pinewood": "Pinewood Crossing stays (62, -28). No Dawn body on that verge.",
+    "S05_dawnjackal": "hyb_dawnjackal does not spawn on Tunya. This slice is its Superhero street, and it does not edit the Tunya cap.",
+    "S07_mercywraith": "hyb_mercywraith cap 0 on Superhero and on Ruins until a cross slice. Not reopened.",
+    "S11_sentinel_and_drone": "mon_grid_sentinel Superhero cap 0. mon_grid_drone is not fielded here. Weights in the Cyber block stay S11's.",
+    "S09_S10_crime": "Crime drone alias stays the billdrone inside S09's rotor window. This gate-neighbor is not a raid import.",
+    "S13_S14_frontier": "No Frontier floor, mount, or story is retuned.",
+    "volume_sunrise": "enc_unfinished_sunrise hours 5–7, every second day, are cited and not edited.",
+    "density_weights": "faun_aegis_kestrel weight 2 and mon_dawn_mercy_sentinel weight 0 stay the table. Elite budget 4 and mystic budget 2 stay the table. prop_mercy_circlet stays 0."
+  },
+  "faction_id_note": "Volume quests delta a faction_id permanent_dawn. The elite role stamps aegis. The adept role stamps luminary. factions.json has neither of those three strings. It has luminary_empire, enforcers_movement, and the five superhero_* ids. This slice's deltas use those canon ids. The volume file and the role file were not corrected.",
+  "geography": {
+    "method": "Floors are either a placed kit set or a gap derived from CountryCenter circles. A faction capital is a rim, not a paddock. District anchors in countries.json are the capital plus (8, -6), which is 10 m, and they sit inside the parent radius. They are not wilds and they are not hash places.",
+    "wilds_ring_m": [90, 126],
+    "farthest_capital_rim_m": 81.5,
+    "note": "College capital (51.16, 22.78) radius 25.5 is the far rim, about 81.5 m from the Dawn origin. The wilds ring starts at 90 m. It receives cap 0 from this facet.",
+    "district_step": {
+      "offset": [8, -6],
+      "length_m": 10,
+      "rule": "All seven trade_zone anchors use this step. Bronx arterials, the upper Manhattan grid, the Task Force HQ, the Spire lounge, the rights storefront, the resistance headquarters, and the college campus are inside their parent circles. None of them is a beast floor."
+    },
+    "floors": [
+      {
+        "id": "gap_baseline_spire",
+        "kind": "derived_gap",
+        "what": "The open between the Baseline Resistance circle and the Crimson Spire circle. Neither territory_radius covers it. This is the only derived floor that holds a body.",
+        "inputs": {
+          "baseline_capital": { "x": -34.07, "z": -40.6, "radius": 23.0, "country_id": "superhero_normie_resistance" },
+          "spire_capital": { "x": 25.27, "z": -34.79, "radius": 23.0, "country_id": "superhero_criminal_supers" }
+        },
+        "derived": {
+          "center_distance_m": 59.62,
+          "gap_along_centers_m": 13.62,
+          "baseline_edge_toward_spire": { "x": -11.18, "z": -38.36 },
+          "spire_edge_toward_baseline": { "x": 2.38, "z": -37.03 },
+          "floor_midpoint": { "x": -4.4, "z": -37.7 },
+          "midpoint_distance_from_dawn_origin_m": 38.0
+        },
+        "holds": ["hyb_dawnjackal"],
+        "empty_of": ["faun_aegis_kestrel", "mon_dawn_mercy_sentinel", "npc_role_dawn_elite", "npc_role_dawn_mystic", "mon_grid_sentinel", "mon_grid_drone", "hyb_mercywraith"]
+      },
+      {
+        "id": "nest_north",
+        "kind": "overlapped_capitals",
+        "what": "Enforcers sit inside the Luminary circle, and the Civic Task Force overlaps both. One political nest. The drone-swarm neighborhood memory is here. It is not a hunt floor.",
+        "inputs": [
+          { "country_id": "enforcers_movement", "x": -37.16, "z": 17.33, "radius": 25.5, "district_anchor": "bronx_arterials", "district": { "x": -29.16, "z": 11.33 } },
+          { "country_id": "luminary_empire", "x": -44.76, "z": 19.93, "radius": 28.0, "district_anchor": "upper_manhattan_grid", "district": { "x": -36.76, "z": 13.93 } },
+          { "country_id": "superhero_civic_super_taskforce", "x": -22.87, "z": 35.22, "radius": 23.0, "district_anchor": "task_force_HQ_municipal", "district": { "x": -14.87, "z": 29.22 } }
+        ],
+        "derived": {
+          "enforcers_to_luminary_m": 8.03,
+          "overlap_along_those_centers_m": 45.47,
+          "enforcers_to_task_force_m": 22.90,
+          "task_force_overlap_with_enforcers_m": 25.60,
+          "luminary_to_task_force_m": 26.70,
+          "task_force_overlap_with_luminary_m": 24.30
+        },
+        "fauna_cap": 0,
+        "holds": [],
+        "use": "q_s15_eleven_stand stands on bronx_arterials and spawns nothing."
+      },
+      {
+        "id": "overlap_rights_baseline",
+        "kind": "disputed_overlap",
+        "what": "Emerged civil rights and the Baseline Resistance. The country file already marks that border disputed. Circles overlap. This is the Registration Act argument, not a paddock.",
+        "inputs": {
+          "rights_capital": { "x": -55.95, "z": -10.88, "radius": 23.0, "country_id": "superhero_civil_rights_emerged" },
+          "baseline_capital": { "x": -34.07, "z": -40.6, "radius": 23.0, "country_id": "superhero_normie_resistance" }
+        },
+        "derived": {
+          "center_distance_m": 36.91,
+          "overlap_along_centers_m": 9.09,
+          "rights_edge_toward_baseline": { "x": -42.31, "z": -29.4 },
+          "baseline_edge_toward_rights": { "x": -47.71, "z": -22.08 },
+          "overlap_midpoint": { "x": -45.01, "z": -25.74 }
+        },
+        "fauna_cap": 0,
+        "holds": [],
+        "use": "q_s15_act_unpassed walks the overlap and does not spawn a pack."
+      },
+      {
+        "id": "gap_campus_air",
+        "kind": "derived_gap_empty",
+        "what": "Open air between the Task Force circle and the College circle. Real, and deliberately empty. A second beast floor would turn every gap into a paddock.",
+        "inputs": {
+          "task_force_capital": { "x": -22.87, "z": 35.22, "radius": 23.0 },
+          "college_capital": { "x": 51.16, "z": 22.78, "radius": 25.5, "country_id": "superhero_biokinetics_college" }
+        },
+        "derived": {
+          "center_distance_m": 75.07,
+          "gap_along_centers_m": 26.57,
+          "task_force_edge_toward_college": { "x": -0.19, "z": 31.41 },
+          "college_edge_toward_task_force": { "x": 26.01, "z": 27.01 },
+          "midpoint": { "x": 12.91, "z": 29.21 }
+        },
+        "fauna_cap": 0,
+        "holds": []
+      },
+      {
+        "id": "gap_spire_college",
+        "kind": "derived_gap_empty",
+        "what": "Open between the Spire and the College. Also empty.",
+        "derived": {
+          "center_distance_m": 63.12,
+          "gap_along_centers_m": 14.62
+        },
+        "fauna_cap": 0,
+        "holds": []
+      },
+      {
+        "id": "roof_pad",
+        "kind": "named_set",
+        "kit": "arch_kit_superhero_dawn",
+        "set": "roof_pad",
+        "what": "Launch pad. A 2 by 2 module with a chalk edge, on the 4 m snap. Kestrels and the four Aegis stand here once the set has a transform. Not a capital roof.",
+        "holds": ["faun_aegis_kestrel", "npc_role_dawn_elite"],
+        "empty_of": ["mon_dawn_mercy_sentinel", "hyb_dawnjackal", "npc_role_dawn_mystic"],
+        "until_placed": "Spawn nothing. Do not drop the pad on a capital, on gap_baseline_spire, or on the wilds ring."
+      },
+      {
+        "id": "aegis_spire",
+        "kind": "named_set",
+        "kit": "arch_kit_superhero_dawn",
+        "set": "aegis_spire",
+        "volume_anchor_sentence": "Spar roof perch, scout from the thermal ledge",
+        "what": "The boss floor. Crystalline spire, roof pad lip, chrome rail. Not Kane Tower, not the unfinished skyscraper of the First Battle, and not roof_pad.",
+        "holds": ["mon_dawn_mercy_sentinel"],
+        "empty_of": ["faun_aegis_kestrel", "hyb_dawnjackal", "npc_role_dawn_elite", "npc_role_dawn_mystic"],
+        "until_placed": "enc_unfinished_sunrise spawns nothing. q_superhero_sentinel_scout remains the distance witness and is not replaced."
+      },
+      {
+        "id": "street_kitchen",
+        "kind": "named_set",
+        "kit": "arch_kit_superhero_dawn",
+        "set": "street_kitchen",
+        "what": "Chalk lane and bread. The two adepts. The shelf for an unclaimed mercy band. Not a Luminary credit desk.",
+        "holds": ["npc_role_dawn_mystic"],
+        "fauna_cap": 0,
+        "until_placed": "The podium window spawns nothing. One mystic may still stand at the Baseline gate for the four errands. That body is inside the budget of 2, not an extra."
+      },
+      {
+        "id": "held_crown_stair",
+        "kind": "intersection_not_this_facet",
+        "kit": "arch_ix_sunder_dawn",
+        "what": "Sundering granite under Dawn marble. Owned by the intersection note. This facet does not stage a ward, a curse-fold, or a boss on that landing.",
+        "fauna_cap": 0,
+        "holds": []
+      }
+    ]
+  },
+  "ecology": [
+    {
+      "id": "faun_aegis_kestrel",
+      "display_name": "Aegis Kestrel",
+      "role": "predator",
+      "temperament": "stoop",
+      "player_aggro": "Catalog hostile is true. Ambient birds on the pad do not open on a person who has not struck a yielded body. enc_yielded_stoop is the fight, and killing either bird fails it.",
+      "topology": "winged_biped",
+      "gait": "flyer_stoop",
+      "scale": "0.34× player height",
+      "material": "Sun-bleached chest, soot on the primaries. Anchor-shaped stoop. Hover reads as a kite at 100 m. Not a disc and not a sparrow.",
+      "verbs": ["verb_fauna_hover", "verb_fauna_stoop"],
+      "stats_hooks": { "health": "table:faun_small", "loot": ["feather_sun"] },
+      "bible_herd": "1-2",
+      "bible_hostile": true,
+      "density_weight_unchanged": 2,
+      "density": {
+        "alive_cap": 2,
+        "where": "roof_pad only, day. Night cap 0. During enc_yielded_stoop the ambient cap is 0 and the event is the pair.",
+        "not": "Not on aegis_spire, not in the gap, not on a capital, not a stand-in for the drone alias."
+      },
+      "law": "The bird refuses the last strike on anything that has already yielded. A stoop that closes on a yielded body is the villainy. Feather from that kill does not drop.",
+      "missing_mesh": "Spawn nothing. Do not seat a drone disc, a cable sparrow, or a CX flyer."
+    },
+    {
+      "id": "hyb_dawnjackal",
+      "display_name": "Dawn Jackal",
+      "role": "skirmisher",
+      "temperament": "flank",
+      "player_aggro": "Catalog hostile is false. The open-brow window sets aggro inside the gap after telegraph, without editing the hybrid file.",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "scale": "0.7× player height",
+      "material": "Jackal wedge, one chipped marble brow plate, no cape. City soot. Gold only as a thin inlay if the plate still holds. These two plates do not hold.",
+      "verbs": ["verb_mon_flank", "verb_hyb_mercy_nip"],
+      "combat_hook": "mercy_nip",
+      "execute_forbid_below_hp_fraction_while_plate_holds": 0.15,
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "shock_nonlethal", "loot": ["marble_chip"] },
+      "bible_spawn_line": "Dawn streets, 3-5",
+      "bible_hostile": false,
+      "density_weight": "Not in the Superhero density fauna list. This slice does not add a weight. Instance cap is the window only.",
+      "density": {
+        "alive_cap_ambient": 0,
+        "event_count": 2,
+        "where": "gap_baseline_spire only, and only during enc_open_brow."
+      },
+      "law": "While the brow plate holds, the nip cannot execute below 15 percent. The bible says a broken plate removes that rule and the faction hostiles a player who finishes kills. The window begins with both plates already broken, so the pair will finish what yields. Stopping them without finishing them is the Dawn law. Chips stay on the street.",
+      "missing_mesh": "Spawn nothing. Do not reuse the Tunya reap jackal mesh. S05 already keeps this id off Tunya.",
+      "weak_point": "brow"
+    },
+    {
+      "id": "npc_role_dawn_elite",
+      "display_name": "Aegis",
+      "role": "elite",
+      "body": "CX male or CX female, Concordia face, default height 1.78 m",
+      "wardrobe": "Cracked white composite on the chest, one chrome pauldron, thin brass circlet, fist wraps, no cape.",
+      "weapon_id": "wpn_2h_dawn_shockmaul",
+      "fight_style": "Karate",
+      "faction_stamp_on_role": "aegis",
+      "faction_stamp_note": "Not a factions.json id. Deltas in this slice use canon ids.",
+      "density_budget": 4,
+      "density_where": "roofs",
+      "slice_where": "roof_pad once placed. Cap 0 until then. Not on aegis_spire.",
+      "unique_npcs_do_not_clone": ["mira", "champion", "kor"],
+      "also_never_cloned": ["enforcer_elias", "luminary_vesper", "vesper", "elias", "marcus_vantree", "cartel_lead_marcus_vantree", "mentor_old_silas", "champion_kor_blackstar", "reporter_mira_vance", "task_force_commander_sasha_vale", "civil_rights_lead_juno_park", "baseline_lead_devon_cross", "college_dean_dr_wren_aldis", "fresh_emergence_kira_lin"],
+      "law": "They do not take the final win. One of the four already did. That one is enc_pauldron_medal. The other three witness and do not become a wave.",
+      "missing_mesh": "People wait for CX. Do not dress a Quaternius body. Do not dress the sentinel as an Aegis."
+    },
+    {
+      "id": "npc_role_dawn_mystic",
+      "display_name": "Luminary Adept",
+      "role": "mystic",
+      "body": "CX male or CX female, Concordia face, default height 1.78 m",
+      "wardrobe": "Pale coat, soft shoes, bread basket or a paper ledger, never both as a pile. No halo. No eye glow.",
+      "weapon_id": null,
+      "fight_style": "Karate",
+      "faction_stamp_on_role": "luminary",
+      "faction_stamp_note": "The canon id is luminary_empire. This slice does not retitle the role.",
+      "density_budget": 2,
+      "density_where": "chalk lanes",
+      "slice_where": "street_kitchen once placed. Until then, one body at superhero_normie_resistance_gate for the four errands, and the second body does not spawn.",
+      "law": "Feeds people and keeps them honest. enc_podium_chalk is the one who writes a winner. Striking that coat fails the window. The feeder does not join.",
+      "missing_mesh": "CX only. No energy aura."
+    },
+    {
+      "id": "mon_dawn_mercy_sentinel",
+      "display_name": "Mercy Sentinel",
+      "role": "artillery",
+      "temperament": "encounter_only",
+      "player_aggro": "Catalog hostile is true. Ambient cap is 0. Aggro exists only inside enc_unfinished_sunrise after the volume telegraph.",
+      "topology": "humanoid",
+      "gait": "biped_plant",
+      "scale": "2.0× player height",
+      "mesh": "Tall tripod, one barrel arm, physical brass halo. White marble composite chipped to gray. Royal blue only in the muzzle during windup. No door shields. Not CX.",
+      "verbs": ["verb_mon_halo_spin", "verb_mon_mercy_shot", "verb_mon_barrel_club"],
+      "weak_points": ["muzzle", "halo_hinge"],
+      "stats_hooks": { "health": "table:mon_artillery", "damage_profile": "shock_nonlethal", "loot": ["halo_shard", "mercy_cell"] },
+      "bible_hostile": true,
+      "density_weight_unchanged": 0,
+      "density": {
+        "alive_cap_ambient": 0,
+        "event_count": 1,
+        "where": "aegis_spire, volume hours only, after the set is placed."
+      },
+      "law": "Built to put a body down and not out. It fails by offering the finishing blow as help. Taking that help ends the dawn.",
+      "audio_tell": "A rising choir tone that is a capacitor. It cuts on fire.",
+      "missing_mesh": "Spawn nothing. Do not satisfy the id with mon_grid_sentinel, a CX elite, or a Quaternius robot."
+    }
+  ],
+  "zero_caps": [
+    {
+      "id": "mon_grid_sentinel",
+      "why": "S11 Superhero cap 0. Door shoulders and a bar visor belong on the Grid junction. A platinum-and-gold material note is not a spawn."
+    },
+    {
+      "id": "mon_grid_drone",
+      "why": "Not a Superhero world id. S11 owns the disc. The Dawn drone alias stays unresolved."
+    },
+    {
+      "id": "hyb_mercywraith",
+      "why": "S07 cap 0 on both listed worlds. Ring neighbors of Dawn are Crime and Crucible, not Ruins."
+    },
+    {
+      "id": "mon_grid_construct",
+      "why": "Cyber and Crucible only."
+    },
+    {
+      "id": "street_mutant",
+      "why": "Canon seed. No bible id. Not aliased."
+    },
+    {
+      "id": "energy_wraith",
+      "why": "Canon seed. No bible id. Not aliased onto the mercy wraith or the sentinel."
+    },
+    {
+      "id": "mech_hound",
+      "why": "Canon seed. No bible id. Not aliased onto the dawn jackal."
+    },
+    {
+      "id": "shadow_stalker",
+      "why": "Canon seed. No bible id. Not a CX costume."
+    },
+    {
+      "id": "riot_elemental",
+      "why": "Canon seed. No bible id. The eleven and the flinch are not summoned crowds."
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_yielded_stoop",
+      "name": "The Yielded Stoop",
+      "rank": "mini_boss",
+      "new_species": false,
+      "villainy": "An Aegis hunter that takes the last strike on a body that has already yielded.",
+      "creature_ids": ["faun_aegis_kestrel"],
+      "count": 2,
+      "where": "roof_pad, once placed. This is the whole kestrel cap. Ambient cap is 0 while the window is up.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 9,
+        "close_hour": 11,
+        "every_nth_day": 3,
+        "modulo_gate": "day_index % 3 == 0",
+        "label": "Dawn morning, every third day, after the sunrise boss hour has closed"
+      },
+      "player_aggro": "The pair commits the stoop after board, scout, and sound. Standing over the yielded body holds both birds in the hover. Striking either bird, or striking the yielded body, fails the window.",
+      "telegraph": {
+        "board": "Dawn board draws an anchor and a body already on the pad. The stoop is marked late.",
+        "scout": "From the pad lip the pair reads kestrel. Pointed wings. Not a disc.",
+        "sound": "One chalk-dry wingbeat, then the stoop starts and does not finish while you stand there."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Hover",
+          "tell": "Both birds kite. The yielded body is already down.",
+          "player_response": "Do not loose anything. q_superhero_kestrel still owns the unclaimed witness. This window is the pair that breaks it."
+        },
+        {
+          "index": 2,
+          "name": "Stoop",
+          "tell": "The anchor shape commits.",
+          "player_response": "Step onto the yielded body. The hover returns. Killing a bird fails and drops no feather_sun."
+        }
+      ],
+      "stats_hooks": { "health": "table:faun_small", "loot_if_law_kept": [] },
+      "loot_forbidden": ["feather_sun"],
+      "remembrance_item_id": null,
+      "law_tie": "Mercy is a refusal of the last hit, learned by the bird or by the people who feed it. This pair forgot. The player is not awarded the sky.",
+      "does_not_replace": ["q_superhero_kestrel"],
+      "missing_mesh": "Spawn nothing until roof_pad is placed and the kestrel mesh exists."
+    },
+    {
+      "id": "enc_open_brow",
+      "name": "The Open Brow",
+      "rank": "mini_boss",
+      "new_species": false,
+      "villainy": "Street power with the mercy plate already gone. The nip will finish.",
+      "creature_ids": ["hyb_dawnjackal"],
+      "count": 2,
+      "where": "gap_baseline_spire, floor midpoint (-4.4, -37.7). Not inside either capital.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 20,
+        "every_nth_day": 3,
+        "modulo_gate": "day_index % 3 == 1",
+        "label": "Street dusk on the off-count, so it does not share a day with the yielded stoop"
+      },
+      "bible_hostile": false,
+      "player_aggro": "True only after telegraph, inside the gap, and only for the two cracked plates. A yielded target in that gap is what they nip. The player finishing that target fails.",
+      "telegraph": {
+        "board": "Baseline board draws two wedges and two broken brows. No cape.",
+        "scout": "From the baseline edge (-11.18, -38.36) the pale brow is the read. The plate is a chip, not a helm.",
+        "sound": "A yip, then a short capacitor that does not cut itself off."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Flank",
+          "tell": "Two jackals split around something that is already down.",
+          "player_response": "Stay between them and the body. skill_steel_mercy on a jackal knocks it down and must not kill it."
+        },
+        {
+          "index": 2,
+          "name": "Nip",
+          "tell": "The cracked plate means the 15 percent floor is gone.",
+          "player_response": "Stop the nip. Leave both jackals standing. Leave marble_chip on the street. Pocketing a chip from a finished body fails."
+        }
+      ],
+      "weak_point": "brow",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "shock_nonlethal", "loot_if_law_kept": [] },
+      "loot_forbidden": ["marble_chip"],
+      "remembrance_item_id": null,
+      "law_tie": "The hybrid row already bakes the Refusal into the nip and already warns that a broken plate hostiles finishers. This window is that warning, on the only open street between the people who fear collateral and the cartel whose motto is that power answers to power.",
+      "missing_mesh": "Spawn nothing. External brow plate, not a new gait, not the Tunya jackal."
+    },
+    {
+      "id": "enc_pauldron_medal",
+      "name": "The Pauldron Medal",
+      "rank": "mini_boss",
+      "new_species": false,
+      "villainy": "An Aegis who ended a fight and wore the chrome pauldron as the prize.",
+      "role_ids": ["npc_role_dawn_elite"],
+      "creature_ids": [],
+      "count": 1,
+      "witnesses": 3,
+      "budget_note": "4 is the whole elite budget. The foe is one. The three witnesses are the rest. No fifth body.",
+      "where": "roof_pad, once placed. Not on aegis_spire. Hours do not overlap enc_yielded_stoop.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 12,
+        "close_hour": 14,
+        "every_nth_day": 4,
+        "modulo_gate": "day_index % 4 == 1",
+        "label": "Roof noon, every fourth day, on a count the stoop does not use"
+      },
+      "player_aggro": "The medal elite offers a last hit and will take one if you trade blows to the end. The three witnesses do not draw. If you kill the medal, they mark the loss and leave. They do not aggro.",
+      "telegraph": {
+        "board": "Dawn board draws one pauldron brighter than the other three circlets.",
+        "scout": "From the chalk edge the silhouette is CX, one shoulder only, fist wraps. Not the tripod.",
+        "sound": "A shockmaul set down on marble, once, like a gavel."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Offer",
+          "tell": "The medal elite names the last blow as the point of the roof.",
+          "player_response": "Refuse the trade. skill_steel_mercy is the hit that leaves them standing. A killing blow fails the Refusal of the Win."
+        },
+        {
+          "index": 2,
+          "name": "Witnesses",
+          "tell": "Three Aegis keep their wraps down.",
+          "player_response": "Do not recruit them. Do not fight them. If the medal falls and stands, the window clears. If the medal dies, there is no drop and the three walk off."
+        }
+      ],
+      "weapon_id": "wpn_2h_dawn_shockmaul",
+      "fight_style": "Karate",
+      "stats_hooks": { "health": "no_table_on_the_role", "clear": "skill_steel_mercy knockdown, nonlethal below 15 percent" },
+      "health_table_honesty": "ROLES.json does not publish a health table for this role. Do not invent a hit-point value or a table name. The clear is the mercy knockdown the skill already defines.",
+      "loot_forbidden": ["pauldron", "circlet"],
+      "remembrance_item_id": null,
+      "law_tie": "theNo: if you win this sunrise you become the Luminary. The pauldron is the win made wearable. q_superhero_leave_standing and q_superhero_no_final already teach the mercy hit. This window is the Aegis who failed the lesson, and it does not grant the skill again.",
+      "faction_on_kill": [
+        { "faction_id": "enforcers_movement", "delta": -2 },
+        { "faction_id": "luminary_empire", "delta": 1 }
+      ],
+      "faction_on_clear": [
+        { "faction_id": "enforcers_movement", "delta": 1 }
+      ],
+      "does_not_replace": ["q_superhero_leave_standing", "q_superhero_no_final"],
+      "missing_mesh": "Spawn nothing until roof_pad is placed. CX body only. Not a boss mesh."
+    },
+    {
+      "id": "enc_podium_chalk",
+      "name": "The Podium Chalk",
+      "rank": "mini_boss",
+      "new_species": false,
+      "villainy": "A Luminary hand who writes a name at the end of a lane and calls that name the end of the dawn.",
+      "role_ids": ["npc_role_dawn_mystic"],
+      "creature_ids": [],
+      "count": 1,
+      "feeder": 1,
+      "budget_note": "2 is the whole mystic budget. The writer is one. The feeder is the other. The feeder keeps bread and does not fight.",
+      "where": "street_kitchen, once placed. If the set is unplaced the window spawns nothing. The errand mystic at the Baseline gate is not this writer.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 15,
+        "close_hour": 17,
+        "every_nth_day": 2,
+        "modulo_gate": "day_index % 2 == 1",
+        "label": "Chalk afternoon, every second day, hours clear of the sunrise boss"
+      },
+      "player_aggro": "There is no legal fight. Striking the writer or the feeder fails the window and clears no line.",
+      "telegraph": {
+        "board": "Kitchen board shows a lane with a name at the end. The name is not yours to keep.",
+        "scout": "Pale coat, chalk on the fingers, ledger closed. The other coat is at the bread.",
+        "sound": "Chalk on stone, one long stroke, the sound of a finish line."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Name",
+          "tell": "A name is written. It is not read aloud by the slice, so a hidden truth cannot leak through a label.",
+          "player_response": "Read that a winner was claimed. Do not copy the name into a note you will carry."
+        },
+        {
+          "index": 2,
+          "name": "Erase",
+          "tell": "The writer waits to see if you will publish it.",
+          "player_response": "Erase the mark. Leave the lane. q_superhero_erase_win is the player's own mark. This window is someone else's victory claim."
+        }
+      ],
+      "remembrance_item_id": null,
+      "loot_forbidden": ["item_dawn_chalk"],
+      "law_tie": "Order, progress, and light become a villainy when the light is a podium. The adept role still feeds people. One of them forgot that a finished morning is the Luminary's win.",
+      "does_not_replace": ["q_superhero_erase_win", "q_superhero_trade_intel", "superhero_mira_01_warn", "superhero_mira_02_intel", "superhero_mira_03_published"],
+      "missing_mesh": "Spawn nothing until street_kitchen is placed. CX only. No laser eyes."
+    }
+  ],
+  "boss": {
+    "id": "enc_unfinished_sunrise",
+    "name": "The Unfinished Sunrise",
+    "rank": "boss",
+    "creature_ids": ["mon_dawn_mercy_sentinel"],
+    "count": 1,
+    "new_species": false,
+    "schedule_owner": "volume",
+    "where": "aegis_spire, once placed. Volume sentence: spar roof perch, scout from the thermal ledge. Kane Tower, the First Battle's unfinished skyscraper, roof_pad, and the street kitchen are not this floor.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 5,
+      "close_hour": 7,
+      "every_nth_day": 2,
+      "cron": "0 5 */2 * *",
+      "label": "Permanent dawn hour, every second day"
+    },
+    "scale": "2.0× player height",
+    "topology_in_bible": "humanoid",
+    "mesh": "Tripod stance, one barrel arm, physical brass halo, chipped white marble, chrome barrel. Blue muzzle only during windup. Dedicated mesh. Not CX. Not the Grid door sentinel.",
+    "verbs": ["verb_mon_halo_spin", "verb_mon_mercy_shot", "verb_mon_barrel_club"],
+    "weak_points": ["muzzle", "halo_hinge"],
+    "stats_hooks": { "health": "table:mon_artillery", "damage_profile": "shock_nonlethal", "loot_table_names": ["halo_shard", "mercy_cell"] },
+    "bible_hostile": true,
+    "boss_rule": "The volume phases are the law. Refuse the offered finishing blow with skill_steel_mercy. Leave the band. Walk off the roof. The sky does not change color. Taking the win ends the dawn. There is no second phase where damage becomes a victory.",
+    "telegraph_cite": {
+      "board": "Dawn board: perch and hour. Band still on the sentinel.",
+      "scout": "Kite-hover silhouette at 100 m, distinct from the aegis kestrel.",
+      "sound": "One chalk-dry wingbeat over the roof."
+    },
+    "phases_cite": [
+      "Perch. It offers a finishing blow as help. Refuse the help. skill_steel_mercy.",
+      "Band. The mercy band brightens like a medal. Leave the band. Taking the win ends the dawn.",
+      "Same morning. The sky does not change color to celebrate. Walk off the roof. No podium."
+    ],
+    "remembrance_item_id": "item_rem_mercy_band",
+    "remembrance_rule": "Vendor note stands. The band drops only if it was left on the sentinel's terms and the player walked off. A band taken as a medal does not exist as the item. halo_shard and mercy_cell may still be table loot from a hinge or a muzzle. They are not the token.",
+    "adds": "No kestrel, jackal, elite, or adept enters this circle. A body kited here despawns at the launch lip.",
+    "story_id": "arc_unfinished_sunrise",
+    "not_these_people": ["enforcer_elias", "luminary_vesper", "champion_kor_blackstar", "mentor_old_silas"],
+    "missing_mesh": "Spawn nothing. Do not dress a CX Aegis in a halo and call it the boss."
+  },
+  "remembrance": {
+    "rule": "Superhero has one token in VENDORS_AND_ITEMS.json. This slice binds its drop condition and its shelf. It does not add item ids.",
+    "tokens": [
+      {
+        "id": "item_rem_mercy_band",
+        "display_name": "Unclaimed mercy band",
+        "from": "enc_unfinished_sunrise",
+        "when": "Help refused, band left, player walked off the spire.",
+        "not_when": "Help accepted, band taken as a medal, player stayed for a podium, or aegis_spire is unplaced.",
+        "shelf": "street_kitchen if placed. Until then the band stays on the player and is not turned in at a Luminary gate for a credit.",
+        "not_a_weapon": true,
+        "stack": 1
+      }
+    ],
+    "explicitly_not_minted": [
+      "sun feather token",
+      "marble chip token",
+      "halo shard token",
+      "pauldron medal",
+      "podium chalk",
+      "a second mercy band"
+    ],
+    "vendor_cite": "item_dawn_chalk remains a vendor row on vend_dawn_chalk. This slice does not add a stall and does not pay the band out as luminary_credits, respect_marks, civic_writ, or spire_chit."
+  },
+  "side_quests": [
+    {
+      "id": "q_s15_spire_gap",
+      "title": "Open Street — Name the Gap",
+      "world_id": "Superhero",
+      "giver_role_id": "npc_role_dawn_mystic",
+      "giver_npc_id": null,
+      "budget_note": "Same mystic role, density budget 2. No new coat.",
+      "offer_at": "superhero_normie_resistance_gate",
+      "objectives": [
+        {
+          "id": "obj_q_s15_spire_gap_1",
+          "verb": "reach",
+          "target": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Stand at the Baseline capital. Do not take a baseline chit for the walk."
+        },
+        {
+          "id": "obj_q_s15_spire_gap_2",
+          "verb": "reach",
+          "target": "gap_baseline_spire",
+          "count": 1,
+          "text": "Cross the open between the circles. The floor midpoint is the check. If the jackals are up, stop the nip and do not finish what yielded."
+        },
+        {
+          "id": "obj_q_s15_spire_gap_3",
+          "verb": "reach",
+          "target": "superhero_criminal_supers_gate",
+          "count": 1,
+          "text": "Reach the Spire gate and leave. Do not take a spire chit. Do not sit for Marcus."
+        },
+        {
+          "id": "obj_q_s15_spire_gap_4",
+          "verb": "talk",
+          "target": "npc_role_dawn_mystic",
+          "at": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Tell the adept the gap is unclaimed street, not a district you won."
+        }
+      ],
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "superhero_normie_resistance", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_finishes_a_yielded_body",
+        "player_pockets_marble_chip_from_a_finish",
+        "player_takes_spire_chit",
+        "player_takes_baseline_chit"
+      ],
+      "does_not_replace": ["q_superhero_no_final", "q_superhero_erase_win"],
+      "turn_in": { "role_id": "npc_role_dawn_mystic", "at": "superhero_normie_resistance_gate", "requires_all_objectives": true },
+      "loop": "Offered at the Baseline gate. Board line fires after turn-in.",
+      "world_hooks": {
+        "board_line": "The open between Baseline and the Spire is written as street, not as property.",
+        "gossip_on_complete": "An adept accepted a gap and did not name a winner."
+      }
+    },
+    {
+      "id": "q_s15_eleven_stand",
+      "title": "Arterial — Restitution Is Not a Win",
+      "world_id": "Superhero",
+      "giver_role_id": "npc_role_dawn_mystic",
+      "giver_npc_id": null,
+      "offer_at": "superhero_normie_resistance_gate",
+      "objectives": [
+        {
+          "id": "obj_q_s15_eleven_stand_1",
+          "verb": "reach",
+          "target": "enforcers_movement_district",
+          "at": { "x": -29.16, "z": 11.33 },
+          "count": 1,
+          "text": "Stand on the Bronx arterial anchor. It is inside the Enforcers' circle. Spawn nothing."
+        },
+        {
+          "id": "obj_q_s15_eleven_stand_2",
+          "verb": "witness",
+          "target": "lore_drone_swarm_incident",
+          "count": 1,
+          "text": "Hear the public count: eleven dead, three of them children, a pledge of restitution, a neighborhood that did not accept the statement."
+        },
+        {
+          "id": "obj_q_s15_eleven_stand_3",
+          "verb": "talk",
+          "target": "npc_role_dawn_mystic",
+          "at": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Say that a payment is not a victory. Do not name an author for the swarm."
+        }
+      ],
+      "rewards": { "xp": 60, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "enforcers_movement", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_collects_respect_marks_for_the_dead",
+        "player_states_the_hidden_authorization_as_a_solved_fact",
+        "player_spawns_a_drone_or_a_riot"
+      ],
+      "withheld": "lore_drone_swarm_incident.hidden_truth",
+      "does_not_replace": ["q_superhero_trade_intel", "superhero_mira_02_intel"],
+      "turn_in": { "role_id": "npc_role_dawn_mystic", "at": "superhero_normie_resistance_gate", "requires_all_objectives": true },
+      "loop": "Offered at the Baseline gate. The arterial is a visit, not a camp.",
+      "world_hooks": {
+        "board_line": "Bronx arterial: the eleven were counted. Nobody won them.",
+        "gossip_on_complete": "Restitution was not entered as a victory."
+      }
+    },
+    {
+      "id": "q_s15_no_flinch",
+      "title": "Lounge — Leave Before the Flinch",
+      "world_id": "Superhero",
+      "giver_role_id": "npc_role_dawn_mystic",
+      "giver_npc_id": null,
+      "offer_at": "superhero_normie_resistance_gate",
+      "objectives": [
+        {
+          "id": "obj_q_s15_no_flinch_1",
+          "verb": "reach",
+          "target": "superhero_criminal_supers_district",
+          "at": { "x": 33.27, "z": -40.79 },
+          "count": 1,
+          "text": "Reach the lounge anchor inside the Spire circle. Do not sit down as a member."
+        },
+        {
+          "id": "obj_q_s15_no_flinch_2",
+          "verb": "witness",
+          "target": "cartel_sit_down",
+          "count": 1,
+          "text": "The public tension is two members disputing a district, and a sit-down waiting on a flinch. Do not name them. The file does not."
+        },
+        {
+          "id": "obj_q_s15_no_flinch_3",
+          "verb": "leave",
+          "target": "gap_baseline_spire",
+          "count": 1,
+          "text": "Leave through the open street before anyone finishes anyone. Iron Hex is a story you may have heard. Iron Hex is not in the room."
+        },
+        {
+          "id": "obj_q_s15_no_flinch_4",
+          "verb": "talk",
+          "target": "npc_role_dawn_mystic",
+          "at": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Report that the sit-down is still unfinished. Unfinished is the clear."
+        }
+      ],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "superhero_normie_resistance", "delta": 1 },
+        { "faction_id": "enforcers_movement", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_picks_a_side_that_ends_in_a_body",
+        "player_clones_marcus_vantree",
+        "player_opens_the_iron_hex_chain_from_this_errand"
+      ],
+      "does_not_replace": ["superhero_hex_01_silas", "superhero_hex_02_kor", "superhero_hex_03_meeting", "q_superhero_champion_terms"],
+      "turn_in": { "role_id": "npc_role_dawn_mystic", "at": "superhero_normie_resistance_gate", "requires_all_objectives": true },
+      "loop": "Offered at the Baseline gate. The lounge is a visit.",
+      "world_hooks": {
+        "board_line": "Spire lounge: the sit-down did not finish.",
+        "gossip_on_complete": "Someone left before the flinch. The dawn kept going."
+      }
+    },
+    {
+      "id": "q_s15_act_unpassed",
+      "title": "Overlap — The Act Stays Unpassed",
+      "world_id": "Superhero",
+      "giver_role_id": "npc_role_dawn_mystic",
+      "giver_npc_id": null,
+      "offer_at": "superhero_normie_resistance_gate",
+      "objectives": [
+        {
+          "id": "obj_q_s15_act_unpassed_1",
+          "verb": "reach",
+          "target": "superhero_civil_rights_emerged_gate",
+          "count": 1,
+          "text": "Stand at the rights capital. Do not speak for Juno."
+        },
+        {
+          "id": "obj_q_s15_act_unpassed_2",
+          "verb": "reach",
+          "target": "overlap_rights_baseline",
+          "count": 1,
+          "text": "Walk the overlap. The midpoint is the check. Spawn nothing. The Act is the argument under your feet."
+        },
+        {
+          "id": "obj_q_s15_act_unpassed_3",
+          "verb": "reach",
+          "target": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Stand at the Baseline capital. Do not speak for Devon. Do not vote the Act through or strike it down."
+        },
+        {
+          "id": "obj_q_s15_act_unpassed_4",
+          "verb": "talk",
+          "target": "npc_role_dawn_mystic",
+          "at": "superhero_normie_resistance_gate",
+          "count": 1,
+          "text": "Say the Registration Act is still unfinished. Finishing it for either side fails the errand."
+        }
+      ],
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "superhero_civil_rights_emerged", "delta": 1 },
+        { "faction_id": "superhero_normie_resistance", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_passes_the_registration_act",
+        "player_defeats_the_registration_act",
+        "player_states_devons_house_or_junos_negotiation"
+      ],
+      "withheld": ["baseline_lead_devon_cross son", "civil_rights_lead_juno_park negotiation with Vale"],
+      "does_not_replace": ["q_superhero_leave_standing"],
+      "turn_in": { "role_id": "npc_role_dawn_mystic", "at": "superhero_normie_resistance_gate", "requires_all_objectives": true },
+      "loop": "Offered at the Baseline gate. Both capitals are visits. The overlap is the work.",
+      "world_hooks": {
+        "board_line": "Rights and Baseline still share 9 m. The Act is not filed.",
+        "gossip_on_complete": "Someone walked the argument and did not win it."
+      }
+    }
+  ]
+}

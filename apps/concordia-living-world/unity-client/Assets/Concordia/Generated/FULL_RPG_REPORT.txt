@@ -1,10 +1,10 @@
 CONCORDIA FULL-SCALE RPG REPORT
-Date: 2026-09-22
+Date: 2026-09-23
 Project: unity-client / ConcordiaHub
 
 STATUS: BLOCKED
 
-The report is intentionally honest. The required Unity PlayMode gates could not be completed because the Unity TCP bridge/editor endpoint on port 49382 was unavailable and timed out during refresh, compile checks, asset queries, and editor-state queries. No runtime PASS is claimed without Play evidence.
+The report is intentionally honest. The Unity project is compile-clean. Fresh PlayMode evidence now covers Hub streaming readiness, stale-build rejection, and settlement geometry publication; the broader RPG runtime gates remain incomplete, so no overall RPG PASS is claimed.
 
 ## Startup compile unstick
 
@@ -17,7 +17,9 @@ The report is intentionally honest. The required Unity PlayMode gates could not 
 - L0 PlayMode assembly: `Assets/Concordia/Tests/PlayMode/Concordia.Tests.PlayMode.asmdef` already has a direct `Unity.InputSystem` reference. `L0Ual1SequenceProofTest.cs` keeps the guarded Input System path. The previous proof asset records that the Input System path errors had been fixed.
 - `refresh_unity` was requested and Unity subsequently reported no compilation errors.
 - `check_compile_errors`: PASS — `No compile errors` after the L0 input harness and camera cleanup edits.
-- Unity test infrastructure remains unstable: repeated MCP port churn caused later PlayMode/EditMode initialization failures.
+- Unity test infrastructure remains intermittently unstable: MCP port churn caused one PlayMode initialization failure, but a clean retry completed the L0 proof successfully.
+- Verification continuation on September 23, 2026: the focused direct runtime probes re-passed Hub streaming (`hub_ready=True continent_ready=True cyber_impostor=True`), stale-build rejection (`released Cyber did not commit stale Ready state`), and settlement publication (`chunks=1 settlements=1 buildings=1 roofs=1 places=1`). The combined PlayMode runner still stalls or aborts when editor focus is lost, so these direct probes remain the reliable runtime evidence path.
+- EditMode persistence continuation on September 23, 2026: three targeted tests passed — unified simulation round trip, faction standing/witness heat round trip, and unified world capture preserving memory/event/faction state.
 
 ## R0–R12 status
 
@@ -25,11 +27,10 @@ The report is intentionally honest. The required Unity PlayMode gates could not 
 Evidence:
 - `Assets/Concordia/Generated/Proof/FullRpg/R0_ANIMATION.md`
 - `Assets/Concordia/Generated/UAL1_CLIP_INDEX.txt`
-- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_20260922_031125915_0_idle.png`
-- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof_INCONCLUSIVE.md`
+- `Assets/Concordia/Generated/Proof/L0_UAL1_Sequence_Proof.md`
 - `Assets/Concordia/Generated/AURA_LIFE_PROOF.txt`
 
-Prior static/focused evidence is strong: UAL1 bindings exist, and the focused EditMode animation suite was rerun successfully at 8/8. Coverage previously reported 442 verbs with 0 honesty failures. The visible PlayMode sequence was retried after replacing bitfield delta events with KeyboardState events and making the capture camera follow the moving body. One retry reached the real sequence but failed at the roll beat; later retries were blocked by test-runner initialization and MCP port churn. Fresh LIFE_PROOF smoke and the 30-second glide benchmark remain unverified.
+Fresh L0 PlayMode proof now passes the rendered sequence `idle -> walk -> sprint -> turn -> stop -> roll -> sword -> hit` using the authored CX/Rocketbox body and `ConcordiaLocomotion`. The harness was corrected to refill `ConcordiaPlayer.stamina` before DodgeAction after sprint. Focused EditMode animation coverage remains 8/8. Fresh LIFE_PROOF A–F smoke and the 30-second glide benchmark remain unverified, so R0 is not promoted beyond PARTIAL.
 
 ### R1 — persistence truth: PARTIAL
 Evidence:
@@ -85,7 +86,7 @@ HubLook, HUD, authored CX/Rocketbox presentation, footsteps, local dialogue, and
 
 Status: NOT PROVEN.
 
-The required continuous session — Hub arrival, branch, quest, Fantasy travel, gather/craft, archetype fight, named/boss consequence, companion assist, faction shift, remembered events, travel, return, save/reload — remains unproven. Unity is reachable for compilation and some EditMode tests, but PlayMode initialization is currently unstable.
+The required continuous session — Hub arrival, branch, quest, Fantasy travel, gather/craft, archetype fight, named/boss consequence, companion assist, faction shift, remembered events, travel, return, save/reload — remains unproven. Focused PlayMode probes now pass for Hub streaming, stale-build rejection, and settlement geometry, but those probes do not cover the continuous RPG session or the remaining R0–R12 runtime gates.
 
 ## LIFE_PROOF
 
@@ -93,7 +94,7 @@ Latest recorded evidence remains:
 - `Assets/Concordia/Generated/AURA_LIFE_PROOF.txt`
 - Result: PASS for the prior A–F direct PlayMode probes.
 
-A fresh post-edit re-smoke was not possible. The prior PASS was not overwritten or falsely upgraded.
+The prior A–F PASS remains preserved. The fresh L0 sequence also passes; a fresh direct A–F re-smoke and the 30-second glide benchmark are still pending.
 
 ## Runtime / project inventory
 
@@ -106,15 +107,17 @@ A fresh post-edit re-smoke was not possible. The prior PASS was not overwritten 
 
 ## NEED_DUTCH leftovers
 
-1. Restore a responsive Unity editor/TCP bridge on port 49382 without deleting Library or killing Concord/Claude RC.
-2. Run `refresh_unity` and `check_compile_errors`; resolve any remaining compiler output.
-3. Run the L0 PlayMode sequence and write the PASS marker plus eight rendered images.
-4. Run the 30-second visual benchmark and write measured p95/p99/GPU evidence.
-5. Run R1/R2 persistence and multi-event PlayMode proofs.
-6. Run the remaining R3–R12 runtime gates and update this report from PARTIAL only when proof files exist.
+1. Audit/cancel any stale PlayMode Test Runner job that remains registered after the editor stops; direct focused probes are now archived separately.
+2. Preserve the completed focused runtime evidence:
+   - `Assets/Concordia/Generated/Proof/FocusedPlayMode_HubStreaming.txt`
+   - `Assets/Concordia/Generated/Proof/FocusedPlayMode_StaleBuild.txt`
+   - `Assets/Concordia/Generated/Proof/FocusedPlayMode.txt` (settlement)
+3. Run the 30-second visual benchmark and write measured p95/p99/GPU evidence.
+4. Run R1/R2 persistence and multi-event PlayMode proofs.
+5. Run the remaining R3–R12 runtime gates and update this report from PARTIAL only when proof files exist.
 
 ## Honest content-volume remainder
 
 The systems are not content-complete at AAA volume. Remaining content-volume work includes broader authored settlements, NPC populations, quests, creatures, faction rosters, interiors, businesses, roads, dungeons, vehicles, mounts, and authored animation coverage. Those content gaps are distinct from the current verification block.
 
-Generated by the full-scale resume pass on 2026-09-22.
+Updated by the focused runtime verification continuation on 2026-09-23.

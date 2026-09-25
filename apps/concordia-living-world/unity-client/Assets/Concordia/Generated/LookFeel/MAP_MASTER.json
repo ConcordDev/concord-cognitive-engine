@@ -1,0 +1,1171 @@
+{
+  "schema": "concordia-lookfeel-map/1.0",
+  "authority": {
+    "plane": "One megaworld. Hub at origin. +x east toward Cyber (gate angle 0). +z north toward the Sundering (gate angle \u03c0/2). Angles copied from Canon.Gates.",
+    "ring_km": 400.0,
+    "present_metres_per_km": 0.55,
+    "present_ring_m": 220.0,
+    "sere_radius_factor": 1.35,
+    "sere_center_km": {
+      "x_km": -227.76,
+      "z_km": -489.62
+    },
+    "spoke_disc_radius_km": 110.0,
+    "sere_disc_radius_km": 80.0,
+    "neighbor_chord_km": 306.15,
+    "march_between_disc_edges_km": 86.1,
+    "hub_local_metres": {
+      "court": 16,
+      "ring_of_doors": 34,
+      "flower_law": 42,
+      "wall": 56,
+      "arena": {
+        "x": 0,
+        "z": 18,
+        "steel_radius": 8
+      },
+      "pinewood_crossing": {
+        "x": 62,
+        "z": -28
+      }
+    },
+    "walk_model": "travel_minutes_walk_est is atlas time: 5 km/h road, 3.5 km/h walker, 15 km/h coastal sea, 20 km/h river barge, 12 km/h open Exodus, 3 km/h waystone scramble. It is not the Present-metre jog. A Link gate is 2 minutes of plaque, not 400 km.",
+    "honesty": "countries.json claim radii of about 18\u201328 local metres overlap and are claims, not these discs. Unplaced encounter anchors stay null. Design-intent offsets are labeled."
+  },
+  "seas": {
+    "inner_veil": "Water and shoal in the ring marches where a coast exists, especially Tunya\u2013Sundering and the Iron Coast river lane. The Crown Roads are the dry spokes through the same annulus.",
+    "exodus_ocean": "Basin outside the Canon Ring on the southwest-to-south arc. Sere sits in it. The Crime\u2013Sere line is the short strait. The Frontier\u2013Sere line is the long ocean. Ark Exodus is the historical bridge in the lore, not a ninth spoke."
+  },
+  "worlds": [
+    {
+      "world_id": "Hub",
+      "display_name": "The Unburned Court",
+      "ring_index": null,
+      "cartesian_km": {
+        "x_km": 0.0,
+        "z_km": 0.0
+      },
+      "radius_km": 40.0,
+      "radius_authority": "authored_megaworld",
+      "biome_bands": [
+        "court_0_12km",
+        "metro_12_40km",
+        "approaches_design_40_80km"
+      ],
+      "gate_hub_spoke": null,
+      "softenter_landmarks": [
+        "env_hub_flower_law_urn",
+        "env_hub_ring_door",
+        "env_hub_pinewood_milepost",
+        "arch_hero_hub_arena_gate"
+      ],
+      "major_settlements": [
+        "Unburned Court",
+        "Pinewood Crossing",
+        "Three Refusals Tavern"
+      ],
+      "palette_ref": "styles/STYLE_Hub.md",
+      "court_km": 12,
+      "metro_km": 40,
+      "notes": "HubMetroKm 40 and HubCourtKm 12 are MegaworldMap constants. Approaches to about 80 km are design-intent before Crown Roads enter the open ring. Flower Law is 42 local metres, not 42 km."
+    },
+    {
+      "world_id": "Cyber",
+      "display_name": "The Grid",
+      "ring_index": 0,
+      "cartesian_km": {
+        "x_km": 400.0,
+        "z_km": 0.0
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "stack_core",
+        "service_mid",
+        "haze_rim"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 0.0,
+        "bearing_deg": 0.0,
+        "hub_plaque_m": {
+          "x_m": 34.0,
+          "z_m": 0.0
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_cyber_skybridge_segment",
+        "env_cyber_census_plinth",
+        "arch_hero_cyber_bridge_hall"
+      ],
+      "major_settlements": [
+        "The Stacks",
+        "Under-District",
+        "Glitch Chapel"
+      ],
+      "palette_ref": "styles/STYLE_Cyber.md"
+    },
+    {
+      "world_id": "Ruins",
+      "display_name": "Sovereign Ruins",
+      "ring_index": 1,
+      "cartesian_km": {
+        "x_km": 282.84,
+        "z_km": 282.84
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "forum_heart",
+        "ash_march",
+        "rib_wilds"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 0.785398,
+        "bearing_deg": 45.0,
+        "hub_plaque_m": {
+          "x_m": 24.04,
+          "z_m": 24.04
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_ruins_catalogue_stele",
+        "env_ruins_rib_bridge",
+        "arch_hero_ruins_catalogue_hall"
+      ],
+      "major_settlements": [
+        "Catalogue Forum",
+        "Unfinished approach"
+      ],
+      "palette_ref": "styles/STYLE_Ruins.md"
+    },
+    {
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "ring_index": 2,
+      "cartesian_km": {
+        "x_km": 0.0,
+        "z_km": 400.0
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "wildwood",
+        "ravine_fold",
+        "alpine_rim"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 1.570796,
+        "bearing_deg": 90.0,
+        "hub_plaque_m": {
+          "x_m": 0.0,
+          "z_m": 34.0
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_sunder_titan_pillar",
+        "env_sunder_wildwood_root_arch",
+        "arch_hero_sunder_shrine_hall"
+      ],
+      "major_settlements": [
+        "Wildwood",
+        "House Voss",
+        "Held Shrine"
+      ],
+      "palette_ref": "styles/STYLE_Fantasy.md"
+    },
+    {
+      "world_id": "Tunya",
+      "display_name": "Tunya",
+      "ring_index": 3,
+      "cartesian_km": {
+        "x_km": -282.84,
+        "z_km": 282.84
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "masond_cliff",
+        "asbir_dune",
+        "sangree_forge",
+        "aekon_glacier",
+        "fluxom_harbor",
+        "nil_grove",
+        "tunya_fallback"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 2.356194,
+        "bearing_deg": 135.0,
+        "hub_plaque_m": {
+          "x_m": -24.04,
+          "z_m": 24.04
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_tunya_masond_cliff_stair",
+        "env_tunya_nil_listening_root",
+        "arch_hero_tunya_terrace_hall"
+      ],
+      "major_settlements": [
+        "Masond terraces",
+        "Asbir vault",
+        "Sangree works",
+        "Aekon hold",
+        "Fluxom harbor",
+        "Nil grove"
+      ],
+      "palette_ref": "styles/STYLE_Tunya.md"
+    },
+    {
+      "world_id": "Frontier",
+      "display_name": "The Frontier",
+      "ring_index": 4,
+      "cartesian_km": {
+        "x_km": -400.0,
+        "z_km": 0.0
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "road_heart",
+        "drift_gap",
+        "open_flat"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 3.141593,
+        "bearing_deg": 180.0,
+        "hub_plaque_m": {
+          "x_m": -34.0,
+          "z_m": 0.0
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_frontier_walker_cairn",
+        "env_frontier_relay_gate_post",
+        "arch_hero_frontier_cabin_hall"
+      ],
+      "major_settlements": [
+        "Council hitch",
+        "drift gap"
+      ],
+      "palette_ref": "styles/STYLE_Frontier.md"
+    },
+    {
+      "world_id": "Crime",
+      "display_name": "Iron Coast",
+      "ring_index": 5,
+      "cartesian_km": {
+        "x_km": -282.84,
+        "z_km": -282.84
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "tenement",
+        "wharf",
+        "yard"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 3.926991,
+        "bearing_deg": 225.0,
+        "hub_plaque_m": {
+          "x_m": -24.04,
+          "z_m": -24.04
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_crime_sodium_lamp",
+        "env_crime_wharf_bollard",
+        "arch_hero_crime_tenement_bay"
+      ],
+      "major_settlements": [
+        "Sodium streets",
+        "The Wharf"
+      ],
+      "palette_ref": "styles/STYLE_Crime.md"
+    },
+    {
+      "world_id": "Superhero",
+      "display_name": "Permanent Dawn",
+      "ring_index": 6,
+      "cartesian_km": {
+        "x_km": -0.0,
+        "z_km": -400.0
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "spire_core",
+        "arterial",
+        "roof_park"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 4.712389,
+        "bearing_deg": 270.0,
+        "hub_plaque_m": {
+          "x_m": -0.0,
+          "z_m": -34.0
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_dawn_roof_pad",
+        "env_dawn_mercy_plaza_ring",
+        "arch_hero_dawn_spire_hall"
+      ],
+      "major_settlements": [
+        "Kane crown",
+        "Bronx Arterials"
+      ],
+      "palette_ref": "styles/STYLE_Superhero.md"
+    },
+    {
+      "world_id": "Crucible",
+      "display_name": "The Crucible",
+      "ring_index": 7,
+      "cartesian_km": {
+        "x_km": 282.84,
+        "z_km": -282.84
+      },
+      "radius_km": 110.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "lattice_heart",
+        "seam_wilds",
+        "foundry_edge"
+      ],
+      "gate_hub_spoke": {
+        "angle_rad": 5.497787,
+        "bearing_deg": 315.0,
+        "hub_plaque_m": {
+          "x_m": 24.04,
+          "z_m": -24.04
+        },
+        "link": true
+      },
+      "softenter_landmarks": [
+        "env_crucible_leaning_stair",
+        "env_crucible_unclosed_seam_rock",
+        "arch_hero_crucible_lattice_hall"
+      ],
+      "major_settlements": [
+        "Open Lattice",
+        "Foundry edge"
+      ],
+      "palette_ref": "styles/STYLE_Crucible.md"
+    },
+    {
+      "world_id": "Sere",
+      "display_name": "Sere",
+      "ring_index": null,
+      "cartesian_km": {
+        "x_km": -227.76,
+        "z_km": -489.62
+      },
+      "radius_km": 80.0,
+      "radius_authority": "design_intent_disc",
+      "biome_bands": [
+        "old_capital",
+        "spire_city",
+        "furnace_belt",
+        "breadlands",
+        "flooded_lowland",
+        "drowned_provinces",
+        "contested_passes",
+        "offshore_haven",
+        "river_delta",
+        "highland"
+      ],
+      "gate_hub_spoke": null,
+      "softenter_landmarks": [
+        "env_sere_waystone",
+        "env_sere_furnace_stack",
+        "arch_hero_sere_tally_hall"
+      ],
+      "major_settlements": [
+        "Old Capital",
+        "Spire City",
+        "Furnace Belt",
+        "Tally House (political, local claim plane)"
+      ],
+      "palette_ref": "styles/STYLE_Sere.md",
+      "sere_angle_rad": 4.276991,
+      "sere_bearing_deg": 245.05,
+      "radius_factor_vs_ring": 1.35,
+      "notes": "Off-ring. MegaworldMap places Sere at 1.35 \u00d7 ring radius on Crime's angle plus 0.35 rad. No Link gate. Waystone is not a ninth door."
+    }
+  ],
+  "links": [
+    {
+      "from": "Hub",
+      "to": "Cyber",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. The Grid. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Cyber",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Ruins",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. Sovereign Ruins. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Ruins",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Fantasy",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. The Sundering. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Fantasy",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Tunya",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. Tunya. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Tunya",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Frontier",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. The Frontier. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Frontier",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Crime",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. Iron Coast. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Crime",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Superhero",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. Permanent Dawn. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Superhero",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Hub",
+      "to": "Crucible",
+      "kind": "gate",
+      "travel_minutes_walk_est": 2,
+      "notes": "Link plaque step. The Crucible. Hub stone is inside Flower Law, so steel there is a flower. The country on the far side keeps its own steel law. Present compression puts the civilization at 220 m; this minute count is the atlas step, not that jog."
+    },
+    {
+      "from": "Hub",
+      "to": "Crucible",
+      "kind": "road",
+      "travel_minutes_walk_est": 4800,
+      "notes": "Crown Road, design-intent center to center 400 km at 5 km/h. Metro occupies the first 40 km. The road is the walk under the Link, not a second world."
+    },
+    {
+      "from": "Cyber",
+      "to": "Ruins",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Ruins",
+      "to": "Fantasy",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Fantasy",
+      "to": "Tunya",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Tunya",
+      "to": "Frontier",
+      "kind": "walker",
+      "travel_minutes_walk_est": 1476,
+      "notes": "Walker Path across the 86.1 km march between 110 km discs. 3.5 km/h. Cairns, not a dome. Chord of centers is 306.1 km."
+    },
+    {
+      "from": "Frontier",
+      "to": "Crime",
+      "kind": "walker",
+      "travel_minutes_walk_est": 1476,
+      "notes": "Walker Path across the 86.1 km march between 110 km discs. 3.5 km/h. Cairns, not a dome. Chord of centers is 306.1 km."
+    },
+    {
+      "from": "Crime",
+      "to": "Superhero",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Superhero",
+      "to": "Crucible",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Crucible",
+      "to": "Cyber",
+      "kind": "road",
+      "travel_minutes_walk_est": 1033,
+      "notes": "Canon Ring march, 86.1 km of open ground between disc edges. Full 45\u00b0 arc along the 400 km ring is 314.2 km and is the long way around the hearts."
+    },
+    {
+      "from": "Tunya",
+      "to": "Fantasy",
+      "kind": "sea",
+      "travel_minutes_walk_est": 344,
+      "notes": "Inner Veil shoal between Fluxom's side of Tunya and the Sundering salt coast. Design-intent 86.1 km at 15 km/h. Not a Link."
+    },
+    {
+      "from": "Crime",
+      "to": "Superhero",
+      "kind": "sea",
+      "travel_minutes_walk_est": 258,
+      "notes": "Iron river and harbor lane along the southwest-to-south march. 86.1 km at 20 km/h barge. Rain, not neon."
+    },
+    {
+      "from": "Crime",
+      "to": "Sere",
+      "kind": "sea",
+      "travel_minutes_walk_est": 96,
+      "notes": "Short Exodus strait. Center distance 214.0 km. Design-intent water gap 24.0 km after the 110 km and 80 km discs. Nearest honest crossing. Still not a gate."
+    },
+    {
+      "from": "Superhero",
+      "to": "Sere",
+      "kind": "sea",
+      "travel_minutes_walk_est": 219,
+      "notes": "Exodus coastal leg. Water gap about 54.8 km. Dawn does not govern Sere."
+    },
+    {
+      "from": "Frontier",
+      "to": "Sere",
+      "kind": "sea",
+      "travel_minutes_walk_est": 1645,
+      "notes": "Long Exodus. Water gap about 329.0 km at 12 km/h. The ocean is this basin, not the short Crime strait alone."
+    },
+    {
+      "from": "Crime",
+      "to": "Sere",
+      "kind": "weak",
+      "travel_minutes_walk_est": 480,
+      "notes": "Waystone crossing. The stone is a mark on the near coast. It does not open a door, does not add a ninth Refusal, and does not flower a blade. 3 km/h scramble."
+    },
+    {
+      "from": "Crucible",
+      "to": "Cyber",
+      "kind": "weak",
+      "travel_minutes_walk_est": 1476,
+      "notes": "Unclosed seam. The march is walkable and the pattern does not finish. Weak because a closed road would violate the Eighth Refusal's presentation. People still walk it."
+    }
+  ],
+  "hub_districts": [
+    {
+      "name": "Inner Court",
+      "ring": "plaza",
+      "flower_law": true
+    },
+    {
+      "name": "Assembly and Archive",
+      "ring": "plaza",
+      "flower_law": true
+    },
+    {
+      "name": "Market awnings",
+      "ring": "plaza",
+      "flower_law": true
+    },
+    {
+      "name": "Ring of Doors",
+      "ring": "mid",
+      "flower_law": true
+    },
+    {
+      "name": "Arena sand",
+      "ring": "plaza",
+      "flower_law": true
+    },
+    {
+      "name": "Warden wall",
+      "ring": "outer",
+      "flower_law": false
+    },
+    {
+      "name": "Pinewood salt road",
+      "ring": "outer",
+      "flower_law": false
+    },
+    {
+      "name": "Three Refusals approach",
+      "ring": "outer",
+      "flower_law": false
+    }
+  ],
+  "named_sites": [
+    {
+      "id": "map_hub_heart",
+      "world_id": "Hub",
+      "role": "civic_heart",
+      "coords_relative": {
+        "x_m": 0,
+        "z_m": 0
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Unburned Court origin. Concordia stands at (0, -6.4). Concord at (0, 6.2). Sovereign at (8.6, 0.3)."
+    },
+    {
+      "id": "map_hub_arena",
+      "world_id": "Hub",
+      "role": "arena",
+      "coords_relative": {
+        "x_m": 0,
+        "z_m": 18
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Arena center. Steel live inside 8 m. Flower Law still covers the disk; the sand is the exception."
+    },
+    {
+      "id": "map_hub_pinewood",
+      "world_id": "Hub",
+      "role": "crossing",
+      "coords_relative": {
+        "x_m": 62,
+        "z_m": -28
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Pinewood Crossing. About 68 m from origin, outside the 56 m wall and outside Flower Law. Letter only this name."
+    },
+    {
+      "id": "map_hub_three_refusals",
+      "world_id": "Hub",
+      "role": "tavern",
+      "coords_relative": {
+        "x_m": -48,
+        "z_m": -58
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Three Refusals Tavern on the Crown Road approach. Outside Flower Law. Rumor mill, not a ninth gate."
+    },
+    {
+      "id": "map_hub_spawn",
+      "world_id": "Hub",
+      "role": "spawn",
+      "coords_relative": {
+        "x_m": 11.2,
+        "z_m": -12
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Canon.Spawn. Sundering lane is the clear stride at x=11.2, half-width 2.6 m, out to z=240 in the streamed present, not a kilometre."
+    },
+    {
+      "id": "map_gate_cyber",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": 34.0,
+        "z_m": 0.0
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Cyber plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_ruins",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": 24.04,
+        "z_m": 24.04
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Ruins plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_fantasy",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": 0.0,
+        "z_m": 34.0
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Fantasy plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_tunya",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": -24.04,
+        "z_m": 24.04
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Tunya plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_frontier",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": -34.0,
+        "z_m": 0.0
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Frontier plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_crime",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": -24.04,
+        "z_m": -24.04
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Crime plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_superhero",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": -0.0,
+        "z_m": -34.0
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Superhero plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_gate_crucible",
+      "world_id": "Hub",
+      "role": "link_gate",
+      "coords_relative": {
+        "x_m": 24.04,
+        "z_m": -24.04
+      },
+      "frame": "hub_canon_metres",
+      "notes": "Crucible plaque on the Ring of Doors. Inside Flower Law (42 m). Steel on this stone is a flower. Arena is the steel exception, not this stone."
+    },
+    {
+      "id": "map_sunder_wildwood",
+      "world_id": "Fantasy",
+      "role": "forest_heart",
+      "coords_relative": {
+        "dx_km": -20,
+        "dz_km": 30
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Wildwood root architecture. Design-intent sector inside the 110 km disc."
+    },
+    {
+      "id": "map_sunder_house_voss",
+      "world_id": "Fantasy",
+      "role": "seat",
+      "coords_relative": {
+        "dx_km": 25,
+        "dz_km": -15
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "House Voss seat. Design-intent. Salt toll and fold temple stay S04 anchors and are not given new kilometres here."
+    },
+    {
+      "id": "map_sunder_held_shrine",
+      "world_id": "Fantasy",
+      "role": "boss_approach",
+      "coords_relative": {
+        "dx_km": 0,
+        "dz_km": 55
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Held Curse shrine approach. The boss is not a dragon mount."
+    },
+    {
+      "id": "map_tunya_masond",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": -40,
+        "dz_km": 50
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Masond cliff-arrival. No country_id in the sheets. Design-intent sector only."
+    },
+    {
+      "id": "map_tunya_asbir",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": 10,
+        "dz_km": -60
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Asbir buried archive and southern dunes. Local claim discs overlap other Tunya claims; this sector is not that disc."
+    },
+    {
+      "id": "map_tunya_sangree",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": 55,
+        "dz_km": 10
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Sangree fire-forge country. GoldenSlice forge remains the sole forge authority."
+    },
+    {
+      "id": "map_tunya_aekon",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": -10,
+        "dz_km": 70
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Aekon glacial ark. Ice Oath atmosphere. No ice spell is bound."
+    },
+    {
+      "id": "map_tunya_fluxom",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": -60,
+        "dz_km": -20
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Fluxom wet harbor. Tunya-local Fluxom Gate (62, 18) m is a different frame from this kilometre sector and from Pinewood (62, -28) on the Hub."
+    },
+    {
+      "id": "map_tunya_nil",
+      "world_id": "Tunya",
+      "role": "country_sector",
+      "coords_relative": {
+        "dx_km": 35,
+        "dz_km": -45
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Nil listening grove, toward the Crown Road. Silence and sparse bioluminescence."
+    },
+    {
+      "id": "map_ruins_forum",
+      "world_id": "Ruins",
+      "role": "archive_heart",
+      "coords_relative": {
+        "dx_km": 0,
+        "dz_km": 10
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Catalogue forum. Design-intent. Envoy compound local pin (63.86, -9.91) is a Ruins-local metre pin, not this sector and not Pinewood."
+    },
+    {
+      "id": "map_ruins_unfinished_tomb",
+      "world_id": "Ruins",
+      "role": "boss_approach",
+      "coords_relative": {
+        "dx_km": 20,
+        "dz_km": 40
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "The Unfinished. Catalogue, do not conquer."
+    },
+    {
+      "id": "map_crime_wharf",
+      "world_id": "Crime",
+      "role": "harbor",
+      "coords_relative": {
+        "dx_km": -30,
+        "dz_km": -40
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Iron Coast wharf, toward the Exodus side of the disc."
+    },
+    {
+      "id": "map_crime_tenement",
+      "world_id": "Crime",
+      "role": "district",
+      "coords_relative": {
+        "dx_km": 15,
+        "dz_km": 20
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Tenement and sodium streets. Display name Iron Coast. Gate bearing 5\u03c0/4."
+    },
+    {
+      "id": "map_cyber_stacks",
+      "world_id": "Cyber",
+      "role": "skyline",
+      "coords_relative": {
+        "dx_km": 10,
+        "dz_km": 15
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Grid stacks and sky-bridges. Census counts. One number stays missing on the plinth."
+    },
+    {
+      "id": "map_cyber_underdistrict",
+      "world_id": "Cyber",
+      "role": "service",
+      "coords_relative": {
+        "dx_km": 0,
+        "dz_km": -25
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Under-District maintenance. Glitch Chapel is a physical broken layer, not a hologram costume."
+    },
+    {
+      "id": "map_frontier_hitch",
+      "world_id": "Frontier",
+      "role": "road_heart",
+      "coords_relative": {
+        "dx_km": 20,
+        "dz_km": 5
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Council hitch and open road. The Last Dome spawn stays the unplaced sentence 'one mile past the frontier gate' and is not given metres here."
+    },
+    {
+      "id": "map_frontier_drift_gap",
+      "world_id": "Frontier",
+      "role": "wilds",
+      "coords_relative": {
+        "dx_km": -30,
+        "dz_km": 25
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Drift gap. Morning Chevron and Canvas Dive use floor_drift_gap. No mesa is placed."
+    },
+    {
+      "id": "map_dawn_kane",
+      "world_id": "Superhero",
+      "role": "skyline",
+      "coords_relative": {
+        "dx_km": 0,
+        "dz_km": -20
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Kane Tower crown and roof pads. Aegis skyline. Mercy is the law."
+    },
+    {
+      "id": "map_dawn_arterial",
+      "world_id": "Superhero",
+      "role": "district",
+      "coords_relative": {
+        "dx_km": 30,
+        "dz_km": 10
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Bronx Arterials and low-rent glass. Neural clinics are civic infrastructure."
+    },
+    {
+      "id": "map_crucible_lattice",
+      "world_id": "Crucible",
+      "role": "heart",
+      "coords_relative": {
+        "dx_km": 0,
+        "dz_km": 0
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Unclosed lattice. Stairs lean and still snap to 4 m."
+    },
+    {
+      "id": "map_crucible_foundry_edge",
+      "world_id": "Crucible",
+      "role": "blend_edge",
+      "coords_relative": {
+        "dx_km": 40,
+        "dz_km": -30
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Disc edge toward the Unclosed Foundry blend. The blend is not a new world."
+    },
+    {
+      "id": "map_sere_furnace",
+      "world_id": "Sere",
+      "role": "industrial_belt",
+      "coords_relative": {
+        "dx_km": 10,
+        "dz_km": 15
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Furnace Belt. One furnace eye is the emissive. Design-intent inside the 80 km disc."
+    },
+    {
+      "id": "map_sere_old_capital",
+      "world_id": "Sere",
+      "role": "exhausted_capital",
+      "coords_relative": {
+        "dx_km": -15,
+        "dz_km": 20
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Old Capital. Exhausted real infrastructure."
+    },
+    {
+      "id": "map_sere_spire",
+      "world_id": "Sere",
+      "role": "vertical",
+      "coords_relative": {
+        "dx_km": 5,
+        "dz_km": -10
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Spire City footing."
+    },
+    {
+      "id": "map_sere_breadlands",
+      "world_id": "Sere",
+      "role": "exhausted_farm",
+      "coords_relative": {
+        "dx_km": -25,
+        "dz_km": -5
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Breadlands. Stubble and repair, not a clean pastoral."
+    },
+    {
+      "id": "map_sere_flood",
+      "world_id": "Sere",
+      "role": "drowned",
+      "coords_relative": {
+        "dx_km": 20,
+        "dz_km": -35
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Flooded Lowland and the river delta side."
+    },
+    {
+      "id": "map_sere_passes",
+      "world_id": "Sere",
+      "role": "crossing",
+      "coords_relative": {
+        "dx_km": 30,
+        "dz_km": 25
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Contested Passes, toward the short Exodus strait and the Crime disc."
+    },
+    {
+      "id": "map_sere_haven",
+      "world_id": "Sere",
+      "role": "offshore",
+      "coords_relative": {
+        "dx_km": -10,
+        "dz_km": -40
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Offshore Haven. Water is polluted infrastructure, not a resort coast."
+    },
+    {
+      "id": "map_sere_highland",
+      "world_id": "Sere",
+      "role": "highland",
+      "coords_relative": {
+        "dx_km": -35,
+        "dz_km": 20
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Highland. Wind and extraction heads."
+    },
+    {
+      "id": "map_sere_waystone",
+      "world_id": "Sere",
+      "role": "waystone",
+      "coords_relative": {
+        "dx_km": 40,
+        "dz_km": 30
+      },
+      "frame": "design_intent_offset_from_world_center_km",
+      "notes": "Waystone on the Crime-facing coast. Not a Link gate. Not a ninth Refusal door."
+    },
+    {
+      "id": "map_frontier_last_dome",
+      "world_id": "Frontier",
+      "role": "encounter_anchor",
+      "coords_relative": null,
+      "frame": "unplaced",
+      "notes": "The Last Dome. Spawn anchor in S13: open flat one mile past the frontier gate. Until placed, spawn nothing. This atlas does not invent that mile."
+    },
+    {
+      "id": "map_ix_uncounted_wharf",
+      "world_id": "Crime",
+      "role": "blend",
+      "coords_relative": null,
+      "frame": "blend_unsurveyed",
+      "notes": "Uncounted Wharf, arch_ix_grid_coast. Sits on the Crime\u2013Cyber march. Wet asphalt floor. No separate world id."
+    },
+    {
+      "id": "map_ix_held_crown",
+      "world_id": "Fantasy",
+      "role": "blend",
+      "coords_relative": null,
+      "frame": "blend_unsurveyed",
+      "notes": "Held Crown Stair, arch_ix_sunder_dawn. On the Sundering\u2013Dawn relationship as a stair, not a new continent. Granite flight reads at 100 m."
+    },
+    {
+      "id": "map_ix_unclosed_foundry",
+      "world_id": "Crucible",
+      "role": "blend",
+      "coords_relative": null,
+      "frame": "blend_unsurveyed",
+      "notes": "Unclosed Foundry, arch_ix_crucible_foundry. Crucible, Iron Coast brass, Frontier scrap. Clock missing its last numeral."
+    }
+  ]
+}

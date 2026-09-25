@@ -1,0 +1,938 @@
+{
+  "batch": "B22_npc_edge",
+  "count": 18,
+  "worlds": [
+    "Ruins",
+    "Frontier",
+    "Sere"
+  ],
+  "keeps": [
+    "npc_role_ruins_keeper",
+    "npc_role_ruins_elite",
+    "npc_role_frontier_guard",
+    "npc_role_frontier_bandit",
+    "npc_role_sere_enforcer"
+  ],
+  "entries": [
+    {
+      "id": "npc_ruins_body_forum_walker",
+      "display_name": "Forum Walker",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sovereign Ruins ash cloth to the knee, bare head, one blank slate tucked under the arm, empty hands, no hood, no gorget, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Slate is a flat blank rectangle. Cloth ends at the knee. Legs read. No chain on the slate.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sovereign Ruins ash cloth to the knee, bare head, one blank slate tucked under the arm, empty hands, no hood, no gorget, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Slate is a flat blank rectangle. Cloth ends at the knee. Legs read. No chain on the slate.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Flat blank slate under the arm, bare head, knee cloth. The keeper's hood and the elite's neck ring stay on the B7 roles.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Quiet forum density. Catalogue, do not conquer. The chained book stays on npc_role_ruins_keeper.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_body_forum_walker/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Catalogue Forum colonnade, outside the first frame of arch_hero_ruins_catalogue_hall. Door clear 1.2 x 2.2 m stays empty. Quiet figures. No victory plaza. The envoy pin stays a local metre, not a Hub coordinate.",
+        "sword_clip": "blade_down",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_ruins_catalogue_hall"
+      }
+    },
+    {
+      "id": "npc_ruins_body_rib_pin",
+      "display_name": "Rib Pin",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short ash cloth, one thick cold-iron pin vertical at the hip, mineral stain on one shin, bare face, empty hands, no gorget, no back weapon, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pin is one thick nail, vertical, at the hip. Neck is bare. Legs read. No hook curve.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short ash cloth, one thick cold-iron pin vertical at the hip, mineral stain on one shin, bare face, empty hands, no gorget, no back weapon, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pin is one thick nail, vertical, at the hip. Neck is bare. Legs read. No hook curve.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One vertical nail at the hip. Shorter than the rib hook and thicker than the stylus. Bare neck.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Rib-wilds labor. The great weapon stays on npc_role_ruins_elite. The pin is costume, not wpn_pole_ruins_ribhook.",
+      "scale_vs_player": "1.80 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_body_rib_pin/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Rib wilds beside env_ruins_rib_bridge, off the span. Outside the rib-facade first frame. Ash and cold iron. No lava.",
+        "sword_clip": "blade_down",
+        "parent_landmark": "env_ruins_rib_bridge"
+      }
+    },
+    {
+      "id": "npc_ruins_outfit_ash_sash",
+      "display_name": "Ash Sash",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sovereign Ruins ash cloth with one pale diagonal sash from shoulder to opposite hip, bare head, legs visible, empty hands, no hood, no book, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sash is one pale diagonal. Legs read below the cloth. No bell hood.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sovereign Ruins ash cloth with one pale diagonal sash from shoulder to opposite hip, bare head, legs visible, empty hands, no hood, no book, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Sash is one pale diagonal. Legs read below the cloth. No bell hood.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. One pale diagonal. The keeper's bell hood stays a separate role.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Forum cloth. Sword stays down. npc_role_ruins_keeper keeps the hood and the chained book.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_outfit_ash_sash/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Catalogue Forum colonnade, outside the first frame of arch_hero_ruins_catalogue_hall. Door clear 1.2 x 2.2 m stays empty. Quiet figures. No victory plaza. The envoy pin stays a local metre, not a Hub coordinate.",
+        "sword_clip": "blade_down",
+        "wardrobe_slot": "CX_Chest",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_ruins_catalogue_hall"
+      }
+    },
+    {
+      "id": "npc_ruins_outfit_iron_cuff",
+      "display_name": "Cold Iron Cuff",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, ash sleeve with one wide cold-iron cuff on the left wrist only, bare neck, empty hands, no gorget, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cuff is one bright band on the left wrist. Neck is bare. No ring at the throat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, ash sleeve with one wide cold-iron cuff on the left wrist only, bare neck, empty hands, no gorget, no sword, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cuff is one bright band on the left wrist. Neck is bare. No ring at the throat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Bright band at one wrist. The elite's neck ring stays on npc_role_ruins_elite.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Cold iron at the wrist. The gorget and the back weapon stay the elite role.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_outfit_iron_cuff/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Rib wilds beside env_ruins_rib_bridge, off the span. Outside the rib-facade first frame. Ash and cold iron. No lava.",
+        "sword_clip": "blade_down",
+        "wardrobe_slot": "CX_Arm",
+        "parent_landmark": "env_ruins_rib_bridge"
+      }
+    },
+    {
+      "id": "npc_ruins_face_cx_page",
+      "display_name": "CX Face, Page Dust",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sovereign Ruins adult, ash dust on one brow, dull page-amber rim, bare head, no hood, no skull, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, ash on one brow only, dull amber rim, no second head, no hood.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sovereign Ruins adult, ash dust on one brow, dull page-amber rim, bare head, no hood, no skull, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, ash on one brow only, dull amber rim, no second head, no hood.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Ash on one brow. Jaw stays CX. Page-amber is a rim, not a flame.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Same CX face. The keeper's hood shadow stays on npc_role_ruins_keeper.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_face_cx_page/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Catalogue Forum colonnade, outside the first frame of arch_hero_ruins_catalogue_hall. Door clear 1.2 x 2.2 m stays empty. Quiet figures. No victory plaza. The envoy pin stays a local metre, not a Hub coordinate.",
+        "face_only": true,
+        "sword_clip": "blade_down",
+        "parent_landmark": "arch_hero_ruins_catalogue_hall"
+      }
+    },
+    {
+      "id": "npc_ruins_fac_stop_line",
+      "display_name": "Stop Line",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "catalogue_keepers"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short ash hip cloth, one short cold-iron bar at the hem that ends before the side seam, bare head, empty hands, no banner, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bar is a short bright stub at the hem and it stops. Cloth ends at the hip. Legs read. No letters. No banner.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short ash hip cloth, one short cold-iron bar at the hem that ends before the side seam, bare head, empty hands, no banner, no hood, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bar is a short bright stub at the hem and it stops. Cloth ends at the hip. Legs read. No letters. No banner.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. A bright stub at the hem that stops. No banner. No neck ring.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8aa0b4",
+        "#c4a070"
+      ],
+      "lore_blurb": "Catalogue keepers at 100 m. Endings do not finish. The armed elite stays npc_role_ruins_elite.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_ruins_fac_stop_line/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "Sword",
+        "place": "Catalogue Forum colonnade, outside the first frame of arch_hero_ruins_catalogue_hall. Door clear 1.2 x 2.2 m stays empty. Quiet figures. No victory plaza. The envoy pin stays a local metre, not a Hub coordinate.",
+        "sword_clip": "blade_down",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_ruins_catalogue_hall"
+      }
+    },
+    {
+      "id": "npc_frontier_body_rope_lead",
+      "display_name": "Rope Lead",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "open_road"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas vest, bare head, a coiled lead rope at one hip, empty hands, no hat, no spear, no saddle, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rope is one coil at the hip. Vest is short. Legs read. No horse in frame. No hat brim.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas vest, bare head, a coiled lead rope at one hip, empty hands, no hat, no spear, no saddle, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rope is one coil at the hip. Vest is short. Legs read. No horse in frame. No hat brim.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Rope coil at the hip, bare head. The wide hat and the wagon-iron spear stay on the road warden.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Horses are led. The rope is costume on this body alone. faun_wagon_horse stays a separate mesh. No rider.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_body_rope_lead/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_walker_cairn, outside the cabin-hall first frame. Long empty road, then one figure. The Last Dome stays unplaced. No rider.",
+        "parent_landmark": "env_frontier_walker_cairn",
+        "mount": "led_only"
+      }
+    },
+    {
+      "id": "npc_frontier_body_relay_box",
+      "display_name": "Relay Box",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "open_road"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas, bare head, one closed wooden box on a chest strap, empty hands, no hat, no mast, no dome, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Box is a closed cube on the strap. No mast. No glowing dome. Legs read.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas, bare head, one closed wooden box on a chest strap, empty hands, no hat, no mast, no dome, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Box is a closed cube on the strap. No mast. No glowing dome. Legs read.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cube on the chest strap. Bare head. The relay mast stays env_frontier_relay_post.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Road labor at a relay. The box is closed and unlettered. The Last Dome stays unplaced.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_body_relay_box/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_relay_post, off the mast. The post stays the landmark. No dome roof. The Last Dome stays unplaced.",
+        "parent_landmark": "env_frontier_relay_post"
+      }
+    },
+    {
+      "id": "npc_frontier_outfit_laced_canvas",
+      "display_name": "Laced Canvas",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "open_road"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, one laced canvas panel on the chest, short Frontier cloth, legs visible, bare head, empty hands, no duster, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Panel is one laced rectangle on the chest. Legs read. No long coat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, one laced canvas panel on the chest, short Frontier cloth, legs visible, bare head, empty hands, no duster, no hat, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Panel is one laced rectangle on the chest. Legs read. No long coat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Laced rectangle on the chest. The dust duster stays on npc_role_frontier_guard.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Cabin and road cloth. Muay Thai hands stay empty. The spear stays the warden role.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_outfit_laced_canvas/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_walker_cairn, outside the cabin-hall first frame. Long empty road, then one figure. The Last Dome stays unplaced. No rider.",
+        "wardrobe_slot": "CX_Chest",
+        "parent_landmark": "env_frontier_walker_cairn"
+      }
+    },
+    {
+      "id": "npc_frontier_outfit_shin_bands",
+      "display_name": "Dust Shin Bands",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "open_road"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas shorts, two pale dust bands on the shins, bare head, empty hands, no hat, no forearm wraps, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two pale bands on the shins only. Hands empty and low. No hat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Frontier canvas shorts, two pale dust bands on the shins, bare head, empty hands, no hat, no forearm wraps, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two pale bands on the shins only. Hands empty and low. No hat.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Two bright bars on the lower legs. Muay Thai read. Bare head.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Stance cloth. Punch_Jab and Punch_Cross. The shin bands have no new clip.",
+      "scale_vs_player": "1.80 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_outfit_shin_bands/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_walker_cairn, outside the cabin-hall first frame. Long empty road, then one figure. The Last Dome stays unplaced. No rider.",
+        "wardrobe_slot": "CX_Legs",
+        "parent_landmark": "env_frontier_walker_cairn"
+      }
+    },
+    {
+      "id": "npc_frontier_face_cx_grit",
+      "display_name": "CX Face, Road Grit",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "open_road"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Frontier adult, sun-bleached skin, road grit on one cheek, bare head, no hat brim, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, grit on one cheek, sun-bleached skin, no hat, no second head.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Frontier adult, sun-bleached skin, road grit on one cheek, bare head, no hat brim, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, grit on one cheek, sun-bleached skin, no hat, no second head.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Grit on one cheek. No hat shadow. Jaw stays CX.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Same CX face. Hats stay on the warden and the dome bandit.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_face_cx_grit/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_walker_cairn, outside the cabin-hall first frame. Long empty road, then one figure. The Last Dome stays unplaced. No rider.",
+        "face_only": true,
+        "parent_landmark": "env_frontier_walker_cairn"
+      }
+    },
+    {
+      "id": "npc_frontier_fac_cairn_stick",
+      "display_name": "Cairn Stick",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Frontier"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "open_road"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short Frontier canvas, one forearm-length wooden stick across the upper back, bare head, empty hands, no hat, no spear, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stick is shorter than the forearm and lies across the upper back. Bare head. Legs read. No barrel. No stock.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short Frontier canvas, one forearm-length wooden stick across the upper back, bare head, empty hands, no hat, no spear, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stick is shorter than the forearm and lies across the upper back. Bare head. Legs read. No barrel. No stock.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. A short stick across the back. Shorter than a forearm. Bare head.",
+      "palette": [
+        "#c8b070",
+        "#4a3828",
+        "#efe6d4",
+        "#e6d8b8"
+      ],
+      "lore_blurb": "Open road at 100 m. Cairns point with a stick. The wagon-iron spear stays on npc_role_frontier_guard.",
+      "scale_vs_player": "1.78 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_frontier_fac_cairn_stick/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_frontier_road",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "MuayThai",
+        "place": "Beside env_frontier_relay_post, off the mast. The post stays the landmark. No dome roof. The Last Dome stays unplaced.",
+        "parent_landmark": "env_frontier_relay_post"
+      }
+    },
+    {
+      "id": "npc_sere_body_tally_clerk",
+      "display_name": "Tally Clerk",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "tessera_hold"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked short coat, bare head, one stiff blank board under the arm, empty hands, no chest tile, no knife, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Board is stiff and blank. Coat is short. No square on the chest. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked short coat, bare head, one stiff blank board under the arm, empty hands, no chest tile, no knife, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Board is stiff and blank. Coat is short. No square on the chest. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Stiff blank board under the arm. No chest square. The enforcer's brand tile stays on the coat of npc_role_sere_enforcer.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848"
+      ],
+      "lore_blurb": "Tally door density. The board has no lettering. The invoice knife stays the enforcer role.",
+      "scale_vs_player": "1.72 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_body_tally_clerk/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Outside arch_hero_sere_tally_hall. Door clear 1.2 x 2.2 m stays empty. Tally House is a political name, not a kilometre pin. Outside the first frame.",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_sere_tally_hall",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "npc_sere_body_tide_hand",
+      "display_name": "Tide Hand",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "body",
+        "labor",
+        "tessera_hold"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked cloth, one sharp horizontal tide stain across the mid-thigh, sleeves rolled, empty hands stacked on the centerline, bare head, no brand tile, no knife, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stain is one horizontal line at the thigh. Fists sit on the centerline. No chest square. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked cloth, one sharp horizontal tide stain across the mid-thigh, sleeves rolled, empty hands stacked on the centerline, bare head, no brand tile, no knife, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stain is one horizontal line at the thigh. Fists sit on the centerline. No chest square. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One horizontal stain across the thigh. Centerline hands. No chest square.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848"
+      ],
+      "lore_blurb": "Flood labor. Wing Chun with empty hands. The furnace eye stays in the stack, not on this cloth.",
+      "scale_vs_player": "1.68 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_body_tide_hand/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Flooded lowland, design-intent, no new kilometre pin. Tide stain on cloth. Off the furnace belt. The waystone stays arcless.",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "npc_sere_outfit_soot_wrap",
+      "display_name": "Soot Hip Wrap",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "tessera_hold"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked cloth tube ending at the hip, legs visible below, bare head, empty hands, no long coat, no chest tile, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wrap is a short smoked tube. Legs read below it. No long coat. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked cloth tube ending at the hip, legs visible below, bare head, empty hands, no long coat, no chest tile, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wrap is a short smoked tube. Legs read below it. No long coat. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Hip tube of smoked cloth. Legs clear. No chest square.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848"
+      ],
+      "lore_blurb": "Smoked street cloth. The enforcer coat and the brand tile stay npc_role_sere_enforcer.",
+      "scale_vs_player": "1.74 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_outfit_soot_wrap/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Outside arch_hero_sere_tally_hall. Door clear 1.2 x 2.2 m stays empty. Tally House is a political name, not a kilometre pin. Outside the first frame.",
+        "wardrobe_slot": "CX_Chest",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_sere_tally_hall",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "npc_sere_outfit_collar_pin",
+      "display_name": "Collar Brand Pin",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "outfit",
+        "tessera_hold"
+      ],
+      "triangle_budget": 11000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked shirt, one small square brand pin at the collar only, bare head, empty hands, no chest plate, no glow, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pin is a small dull square at the collar. Chest is clear. No glow. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, Sere smoked shirt, one small square brand pin at the collar only, bare head, empty hands, no chest plate, no glow, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Pin is a small dull square at the collar. Chest is clear. No glow. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Wardrobe card. Tiny square at the throat. The enforcer's larger chest square stays a separate role.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848"
+      ],
+      "lore_blurb": "The Mark is a pin. It is not a glowing tattoo. No flame mesh.",
+      "scale_vs_player": "1.76 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_outfit_collar_pin/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 11000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Outside arch_hero_sere_tally_hall. Door clear 1.2 x 2.2 m stays empty. Tally House is a political name, not a kilometre pin. Outside the first frame.",
+        "wardrobe_slot": "CX_Neck",
+        "door_clear_m": "1.2 x 2.2",
+        "parent_landmark": "arch_hero_sere_tally_hall",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "npc_sere_face_cx_smog",
+      "display_name": "CX Face, Smog Film",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "face",
+        "tessera_hold"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One Concordia CX face, head and shoulders, Sere adult, thin smog film on the brow, small amber rim light, bare head, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, thin smog on the brow, small amber rim, Concordia jaw clear, no mask, no flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One Concordia CX face, head and shoulders, Sere adult, thin smog film on the brow, small amber rim light, bare head, no mask, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Adult face, thin smog on the brow, small amber rim, Concordia jaw clear, no mask, no flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Smog on the brow. Concordia jaw clear. Amber is a rim, not a flame tongue.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#e07030"
+      ],
+      "lore_blurb": "Same CX face. The invoice watcher mask is not this bust.",
+      "scale_vs_player": "bust 0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_face_cx_smog/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 6000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Outside arch_hero_sere_tally_hall. Door clear 1.2 x 2.2 m stays empty. Tally House is a political name, not a kilometre pin. Outside the first frame.",
+        "face_only": true,
+        "parent_landmark": "arch_hero_sere_tally_hall",
+        "no_flame": true
+      }
+    },
+    {
+      "id": "npc_sere_fac_tide_band",
+      "display_name": "Tide Hem Band",
+      "batch": "B22_npc_edge",
+      "world_ids": [
+        "Sere"
+      ],
+      "taxonomy_tags": [
+        "npc",
+        "faction",
+        "tessera_hold"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One CX humanoid with the Concordia face, adult proportions, short Sere smoked hip cloth, one pale horizontal flood band at the hem, bare head, empty hands, no chest tile, no knife, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Band is one pale horizontal line at the hem. Cloth ends at the hip. Legs read. No chest square. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One CX humanoid with the Concordia face, adult proportions, short Sere smoked hip cloth, one pale horizontal flood band at the hem, bare head, empty hands, no chest tile, no knife, no flame, no rifle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Band is one pale horizontal line at the hem. Cloth ends at the hip. Legs read. No chest square. No flame.  Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Crowd strip. One pale line at the hem. No chest square. No banner.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848"
+      ],
+      "lore_blurb": "Tessera hold at 100 m on flood cloth. The brand-tile coat stays npc_role_sere_enforcer.",
+      "scale_vs_player": "1.70 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/npc_sere_fac_tide_band/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_sere_mark",
+        "lod0_tris": 12000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "rig": "CX_Humanoid",
+        "anim_controller": "ConcordiaLocomotion",
+        "crowd_strip": true,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rifle": "forbidden",
+        "weapon_id": null,
+        "no_lettering": true,
+        "no_vinewood": true,
+        "flower_law": "n/a",
+        "cx_body": true,
+        "fight_style": "WingChun",
+        "place": "Flooded lowland, design-intent, no new kilometre pin. Tide stain on cloth. Off the furnace belt. The waystone stays arcless.",
+        "no_flame": true
+      }
+    }
+  ]
+}

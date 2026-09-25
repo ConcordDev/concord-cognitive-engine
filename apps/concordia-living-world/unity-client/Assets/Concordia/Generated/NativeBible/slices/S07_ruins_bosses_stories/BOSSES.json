@@ -1,0 +1,795 @@
+{
+  "schema": "concordia.slice.bosses.v1",
+  "slice_id": "S07_ruins_bosses_stories",
+  "world_id": "Ruins",
+  "canon_world_id": "sovereign-ruins",
+  "display_world": "Sovereign Ruins",
+  "facet": "bosses_stories",
+  "title": "Sovereign Ruins — abyssal bosses, mini-bosses, stories",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, volume encounter clocks, Canon lore, countries.json, or prior slices S01–S06.",
+  "canon_pins": {
+    "world_id": "Ruins",
+    "canon_world_def_title": "Sovereign Ruins",
+    "refusal": "Refusal of Death",
+    "the_no": "We will not allow our ending to be final.",
+    "law_text": "Death is unstable. Catalogue, do not conquer. Nothing here has finished.",
+    "style_id": "keepers",
+    "style_name": "Glyph Keepers",
+    "steel_live": true,
+    "fight_style_for_people": "Sword",
+    "humanoid_body": "CX only for people. This slice spawns no humanoid mob. mon_boss_unfinished is topology humanoid in the monster row and is still a dedicated tomb-slab mesh, not a CX keeper.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern the Ruins. Steel dragged inside that disk and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 0.785398,
+    "gate_short_name": "RUINS",
+    "gate_neighbors_on_ring": ["Cyber", "Fantasy"],
+    "palette": ["#5a5044", "#b89060", "#2a1c14", "#c8a070"],
+    "kit": "arch_kit_ruins_ash",
+    "weather": "ash",
+    "traversal": "ruins climb, ash roads",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "The post stays Hub. No ash wolf, crow, lizard, wraith, crawler, ribwolf, or Unfinished stands on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": ["fox for wolf", "bedsheet wraith", "thin-leg scorpion crawler", "CX body as the Unfinished", "CX body as a wraith", "Quaternius", "Kenney"],
+    "canon_fauna_aliases": ["wraith", "wolf", "griffin"],
+    "griffin_rule": "WorldDef lists griffin. mon_sunder_griffin stays the milepost encounter owned by volume and cited by S03. Ruins alive cap added by this slice is 0."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/factions.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/creatures.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json",
+    "monsters": "native-bible/creatures/MONSTERS.json",
+    "hybrids": "native-bible/creatures/HYBRIDS.json",
+    "taxonomy": "native-bible/01_TAXONOMY.md Ruins row",
+    "kit": "native-bible/architecture/KITS.json arch_kit_ruins_ash",
+    "density": "native-bible/volume/DENSITY_TABLES.json Ruins block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_unfinished, enc_catalogue_walks",
+    "tokens": ["item_rem_unfinished_mask", "item_rem_catalogue_tooth"],
+    "skills": ["skill_steel_unburial", "skill_presence_lament", "skill_craft_catalogue"],
+    "geography": "WorldGeography.CountryCenter reads capital x,z when abs(x) or abs(z) exceeds 2"
+  },
+  "existing_quests_not_redone": [
+    "q_ruins_crow_catalogue",
+    "q_ruins_wraith_unfinished",
+    "q_ruins_fourth_plan",
+    "q_ruins_half_layer",
+    "q_ruins_undoing",
+    "q_ruins_lizard_rib",
+    "q_ruins_unstack",
+    "q_ruins_mask_scout",
+    "ruins_calla_01_camp",
+    "ruins_calla_02_plan",
+    "ruins_thanis_01_audience",
+    "ruins_thanis_02_layer",
+    "ruins_silv_01_circle",
+    "ruins_silv_02_teach"
+  ],
+  "prior_slices_left_closed": {
+    "S03_ashfang": "enc_ashfang_seam owns hyb_ashfang on the Fantasy ash shoulder, east margin past 56 m, hours 7–10 every second day, count 2. Ruins alive cap for hyb_ashfang in this slice is 0.",
+    "S03_ash_wolf_shoulder": "faun_ash_wolf alive_cap_fantasy_side 4 stays S03. This slice does not add a fifth wolf on that shoulder and does not edit ruins_weights.",
+    "S01_pinewood": "Stag cap and the Crossing lettering stay S01."
+  },
+  "geography": {
+    "method": "Ash basins are the lows where weather-ash collects because the city stopped sweeping. Floors are either a placed kit set or a gap derived from CountryCenter circles. A faction capital is a rim, not a paddock.",
+    "wilds_ring_m": [90, 126],
+    "note": "All six Ruins capitals sit inside radius 90 of the Ruins origin. The wilds ring is not an ash basin and receives cap 0 from this facet.",
+    "basins": [
+      {
+        "id": "basin_open_carry",
+        "kind": "derived_gap",
+        "what": "The open between the Scavenger Crews circle and the Three Archivists circle. Neither faction's territory_radius covers it. Ash roads in the bible sense live here once the gap is accepted as a floor. It is not the_unmapped_quarter, which is a scavenger district name with no coordinate.",
+        "inputs": {
+          "scavenger_capital": { "x": -31.7, "z": -27.55, "radius": 25.5, "country_id": "ruins_scavenger_crews" },
+          "archivist_capital": { "x": 39.83, "z": -33.42, "radius": 25.5, "country_id": "ruins_archivists" }
+        },
+        "derived": {
+          "center_distance_m": 71.8,
+          "gap_along_centers_m": 20.8,
+          "scavenger_edge_toward_archivists": { "x": -6.3, "z": -29.6 },
+          "archivist_edge_toward_scavengers": { "x": 14.4, "z": -31.3 },
+          "floor_midpoint": { "x": 4.1, "z": -30.5 },
+          "midpoint_distance_from_ruins_origin_m": 30.8
+        },
+        "holds": ["faun_ash_wolf"],
+        "empty_of": ["faun_catalogue_crow", "faun_rib_lizard", "mon_ruins_crawler", "hyb_ribwolf", "mon_boss_unfinished", "hyb_ashfang", "hyb_mercywraith", "mon_sunder_griffin"],
+        "wraith_rule": "mon_ruins_wraith may bell on the archivist edge of this gap only during enc_late_breath. Ambient wraith cap on the gap is 0."
+      },
+      {
+        "id": "basin_archive_overlap",
+        "kind": "disputed_overlap",
+        "what": "Archivists and Cascade Deniers. Circles overlap. The country file already marks the border disputed. This is an argument, not a hunt floor.",
+        "inputs": {
+          "archivist_capital": { "x": 39.83, "z": -33.42, "radius": 25.5 },
+          "denier_capital": { "x": 11.25, "z": -48.72, "radius": 23.0, "country_id": "ruins_cascade_deniers" }
+        },
+        "derived": {
+          "center_distance_m": 32.4,
+          "overlap_along_centers_m": 16.1
+        },
+        "fauna_cap": 0,
+        "holds": [],
+        "use": "q_s07_open_carry walks the two capitals and does not spawn a pack on either."
+      },
+      {
+        "id": "basin_north_shelf",
+        "kind": "overlapped_capitals",
+        "what": "Spell spirits, pilgrims, and the Concordia envoy sit inside one another's 25.5 m circles. One shelf. Spirits fear interruption. Pilgrims are a walk. The envoy studies the Cascade. None of the three is a beast floor.",
+        "inputs": [
+          { "country_id": "ruins_spell_spirits", "x": 46.99, "z": -0.82, "radius": 25.5, "district_anchor": "the_still_casting_quarter" },
+          { "country_id": "ruins_pilgrims", "x": 44.94, "z": -2.36, "radius": 25.5, "district_anchor": "pilgrim_lodge_at_the_gate" },
+          { "country_id": "ruins_concordia_envoy", "x": 55.86, "z": -3.91, "radius": 25.5, "district_anchor": "envoy_compound" }
+        ],
+        "fauna_cap": 0,
+        "holds": [],
+        "mercy_import": "hyb_mercywraith lists Superhero and Ruins. The gate ring does not place those worlds adjacent. Spawn stays 0 on both until a later cross slice places an import floor. This slice does not build that floor on the envoy capital."
+      },
+      {
+        "id": "bone_yard",
+        "kind": "named_set",
+        "kit": "arch_kit_ruins_ash",
+        "set": "bone_yard",
+        "volume_anchor_sentence": "Fossil rib yard",
+        "what": "Fossil ribs, iron nails, ash in the joints. 4 m modules. Slab doors may sit 0.2 m off the grid and still clear 1.2 by 2.2 m. No Canon.cs transform and no country capital.",
+        "holds": ["faun_catalogue_crow", "faun_rib_lizard", "mon_ruins_crawler", "hyb_ribwolf"],
+        "empty_of": ["faun_ash_wolf", "mon_boss_unfinished", "hyb_ashfang"],
+        "until_placed": "Spawn nothing. Do not drop the yard on a capital, on basin_open_carry, or on the wilds roadside ruin at local (14, 104)."
+      },
+      {
+        "id": "unburial_court",
+        "kind": "named_set",
+        "kit": "arch_kit_ruins_ash",
+        "set": "unburial_court",
+        "volume_anchor_sentence": "Unfinished floor under the keeper overlook",
+        "what": "The boss floor. Not the political Ruined Court where Thanis holds audience, and not Calla's tent.",
+        "holds": ["mon_boss_unfinished"],
+        "empty_of": ["faun_ash_wolf", "faun_catalogue_crow", "faun_rib_lizard", "mon_ruins_crawler", "hyb_ribwolf", "mon_ruins_wraith"],
+        "until_placed": "enc_unfinished spawns nothing. q_ruins_mask_scout remains the overlook witness and is not replaced."
+      },
+      {
+        "id": "catalogue_hall",
+        "kind": "named_set",
+        "kit": "arch_kit_ruins_ash",
+        "set": "catalogue_hall",
+        "what": "Keeper hall. Cold iron staples, ash plaster, prop_stylus. No beast cap. The shelf for an unworn mask and a catalogue tooth.",
+        "holds": [],
+        "fauna_cap": 0,
+        "until_placed": "Quest turn-in for tokens falls back to the archivist capital anchor ruins_archivists_gate at (39.83, -33.42), which CountryCenter already reads. Do not spawn the boss there."
+      }
+    ]
+  },
+  "ecology": [
+    {
+      "id": "faun_ash_wolf",
+      "display_name": "Catalogue Wolf",
+      "role": "predator",
+      "temperament": "pack_hunter",
+      "player_aggro": "only if a returned kill is disturbed, or inside enc_returned_kill after the telegraph",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "faun_sunder_wolf",
+      "material": "Ash coat on the pine-wolf rig. Ragged ears. Same chevron. Not a new topology and not hyb_ashfang.",
+      "verbs": ["verb_fauna_lope", "verb_fauna_nip", "verb_fauna_howl"],
+      "stats_hooks": { "health": "table:faun_med_predator", "loot": ["hide_ash", "fang"] },
+      "bible_herd": "2-5",
+      "bible_hostile": true,
+      "density": {
+        "alive_cap": 4,
+        "packs": 1,
+        "where": "basin_open_carry only. Day: denned, visible cap 0. Dusk to night: the pack, unless enc_returned_kill is up, in which case the pack is the event and the ambient cap is 0.",
+        "fantasy_shoulder": "S03 cap 4, unchanged. Wolves do not exist in both budgets at once. A wolf past the Fantasy ash margin is S03. A wolf in the open between the two Ruins capitals is this slice."
+      },
+      "law": "They return to a kill and leave it. That return is the catalogue. Finishing the corpse is conquest. Hide and fang from a finished corpse do not drop.",
+      "missing_mesh": "Spawn nothing. Do not seat a fox, a dust wolf, a gloom stalker, or an ashfang."
+    },
+    {
+      "id": "faun_catalogue_crow",
+      "display_name": "Catalogue Crow",
+      "role": "ambient_aerial",
+      "temperament": "perch",
+      "player_aggro": false,
+      "topology": "winged_biped",
+      "gait": "flyer_flap",
+      "verbs": ["verb_fauna_perch", "verb_fauna_mob"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": ["feather_ash"] },
+      "bible_herd": "4-15",
+      "density": {
+        "alive_cap": 8,
+        "where": "bone_yard, day, perched on prop_fossil_rib. Night cap 0. During enc_rib_basket or enc_catalogue_walks the cap inside the circle is 0 so the fight silhouette stays the rib shell or the basket.",
+        "feather": "feather_ash is table loot, not a quest reward. q_ruins_crow_catalogue already counts them and is not repeated."
+      },
+      "law": "Commas over a rib. A murder is not a conquest and not a wraith.",
+      "missing_mesh": "Spawn nothing. Do not use a finch."
+    },
+    {
+      "id": "faun_rib_lizard",
+      "display_name": "Rib Lizard",
+      "role": "ambient_critter",
+      "temperament": "basking",
+      "player_aggro": false,
+      "topology": "quadruped",
+      "gait": "quad_scuttle",
+      "scale": "0.18× player length",
+      "verbs": ["verb_fauna_bask", "verb_fauna_scuttle"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [] },
+      "density": {
+        "alive_cap": 3,
+        "where": "bone_yard, day, on sunned fossil. Night cap 0. Not a combat hitbox. Inside an active yard circle, cap 0.",
+        "quest": "q_ruins_lizard_rib already forbids pocketing that bone. This slice does not add a second lizard errand."
+      },
+      "law": "The bone it lies on is furniture. The ribwolf's external basket is a different object.",
+      "missing_mesh": "Spawn nothing. Not a basilisk."
+    },
+    {
+      "id": "mon_ruins_wraith",
+      "display_name": "Unfinished Wraith",
+      "role": "skirmisher",
+      "temperament": "margin",
+      "player_aggro": "false until a window's telegraph completes",
+      "topology": "amorphous",
+      "gait": "drift_glide",
+      "canon_kind_alias": "wraith",
+      "verbs": ["verb_mon_reach", "verb_mon_wail", "verb_mon_unfinish"],
+      "weak_point": "bangle",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "cold_ash", "loot": ["bangle", "ash_cloth"] },
+      "bible_hostile": false,
+      "density": {
+        "alive_cap_ambient": 2,
+        "where": "Dusk roads along the archivist edge of basin_open_carry, and Ruins interiors once catalogue_hall or a hall sub-kit is placed. Cap 0 inside bone_yard, cap 0 on the north shelf, cap 0 on the unfinished floor, cap 0 while enc_late_breath or enc_catalogue_walks is up.",
+        "bible_spawn": "1-3. This slice takes 2 so a third bell is not stacked on the event."
+      },
+      "law": "A person-shaped gap. Catalogue it. A finishing blow fails the Refusal of Death even when the health table would allow the hit. Break both bangles and the reach shortens. That is the fight. Deleting the wraith is not.",
+      "missing_mesh": "Spawn nothing. Ash cloth with holes is the mass of the bell. Wisps are not the hit surface. Not ash_revenant."
+    },
+    {
+      "id": "mon_ruins_crawler",
+      "display_name": "Rib Crawler",
+      "role": "tank",
+      "temperament": "walker",
+      "player_aggro": "false until enc_catalogue_walks completes its telegraph",
+      "topology": "polyped",
+      "gait": "creep_heavy",
+      "scale": "0.8× player height, wide as a door",
+      "verbs": ["verb_mon_brace", "verb_mon_ram", "verb_mon_nail_spit"],
+      "weak_point": "nail_row",
+      "stats_hooks": { "health": "table:mon_tank_small", "damage_profile": "blunt", "loot": ["rib_plate", "nail"] },
+      "bible_hostile": false,
+      "density": {
+        "alive_cap_ambient": 1,
+        "where": "bone_yard, outside the catalogue window. During enc_catalogue_walks ambient cap is 0 and the event's one crawler is the body.",
+        "bible_spawn": "1-2. One walker. A second crawler is a conquered road."
+      },
+      "law": "It advances a line nobody in the Archive authored. Break the line by naming what you see. skill_craft_catalogue. Do not finish the margins.",
+      "missing_mesh": "Spawn nothing. Six pillar legs. Not a thin scorpion."
+    },
+    {
+      "id": "hyb_ribwolf",
+      "display_name": "Ribwolf",
+      "role": "skirmisher",
+      "temperament": "charged",
+      "player_aggro": "false until enc_rib_basket completes its telegraph",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "wolf rig, head clear of the ribs",
+      "donor": "external fossil rib basket",
+      "hook": "bone_rattle_charge",
+      "verbs": ["verb_mon_charge", "verb_hyb_rattle"],
+      "weak_point": "basket_lash",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "blunt", "loot": ["rib", "fang"] },
+      "bible_hostile": false,
+      "bible_spawn": "2-3",
+      "density": {
+        "alive_cap_ambient": 2,
+        "where": "bone_yard, outside the basket window. During enc_rib_basket ambient cap is 0 and the event count is 2.",
+        "not_the_lizard": "The basket is worn outside the torso. It is not the sunned rib in q_ruins_lizard_rib."
+      },
+      "law": "Cut the lash on the rattle and the basket falls. The charge remains. Taking the fallen rib fails the encounter with both wolves still up. No remembrance item exists for this hook. Do not mint one.",
+      "missing_mesh": "Spawn nothing. Not an ashfang. Pauldrons are the other hybrid."
+    },
+    {
+      "id": "hyb_ashfang",
+      "display_name": "Ashfang",
+      "density": { "alive_cap_ruins": 0, "owner": "S03 enc_ashfang_seam" },
+      "law": "Cited. Plates stay on the Fantasy shoulder. This slice does not open a second seam on the Ruins side of the gate."
+    },
+    {
+      "id": "hyb_mercywraith",
+      "display_name": "Mercy Wraith",
+      "density": { "alive_cap_ruins": 0, "alive_cap_superhero_added": 0 },
+      "law": "Cross-listed, not adjacent on the gate ring. Import story is recorded under basin_north_shelf. No body this slice."
+    },
+    {
+      "id": "mon_sunder_griffin",
+      "display_name": "Ward Griffin",
+      "density": { "alive_cap_ruins": 0 },
+      "law": "Canon alias exists. The body stays the milepost encounter. Not an ash-basin mob."
+    },
+    {
+      "id": "mon_boss_unfinished",
+      "display_name": "The Unfinished",
+      "role": "boss",
+      "see": "boss"
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_catalogue_walks",
+      "name": "The Catalogue That Walks",
+      "rank": "mini_boss",
+      "new_species": false,
+      "schedule_owner": "volume",
+      "creature_ids": ["mon_ruins_crawler", "mon_ruins_wraith"],
+      "count": { "mon_ruins_crawler": 1, "mon_ruins_wraith": 2 },
+      "where": "bone_yard, once placed. Volume sentence: Fossil rib yard. Overlook is not this floor.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 15,
+        "close_hour": 17,
+        "every_nth_day": 2,
+        "label": "Ash afternoon, every second day",
+        "slice_rule": "If enc_rib_basket is still inside its circle at hour 15, this encounter does not arm that day. It does not stack onto the basket."
+      },
+      "telegraph_owner": "volume",
+      "telegraph_cite": {
+        "board": "A catalogue line appears with no author.",
+        "scout": "Crawler between ribs. Wraith bells at the edge.",
+        "sound": "Page-turn that is actually plates."
+      },
+      "phases_cite": [
+        "Margin bells. Catalogue the wraiths. Do not finish them.",
+        "Walker. Break the line it is writing. skill_craft_catalogue names what you actually see."
+      ],
+      "player_aggro": "true only after board, scout, and sound, and only inside the yard circle",
+      "stats_hooks": {
+        "crawler": { "health": "table:mon_tank_small", "damage_profile": "blunt", "loot_if_law_kept": ["nail"] },
+        "wraith": { "health": "table:mon_skirmisher", "damage_profile": "cold_ash" }
+      },
+      "remembrance_item_id": "item_rem_catalogue_tooth",
+      "remembrance_rule": "Drops only when the line is broken and no wraith took a finishing blow. A killed crawler drops nail and rib_plate from the table and does not drop the tooth. The tooth is a line-break, not a conquered road.",
+      "law_tie": "Volume phases stand. This slice adds the yard placement, the no-stack rule against the basket, and the drop condition already implied by the vendor note.",
+      "missing_mesh": "Spawn nothing. Crawler is the body. Wraiths are the margins."
+    },
+    {
+      "id": "enc_rib_basket",
+      "name": "The External Basket",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["hyb_ribwolf"],
+      "count": 2,
+      "where": "bone_yard, once placed. Not the sunned rib the lizard uses, even on the same set. The circle is the pair. Lizards and crows outside the circle may keep their day caps.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 11,
+        "close_hour": 13,
+        "every_nth_day": 2,
+        "label": "Ash late morning, every second day"
+      },
+      "bible_hostile": false,
+      "player_aggro": "true only after board, scout, and sound, and only inside the circle",
+      "telegraph": {
+        "board": "Keeper board draws a wolf chest widened into a barrel. The head is clear of the ribs.",
+        "scout": "From the yard lip the chevron reads wolf. The basket is the only extra mass.",
+        "sound": "Bone rattle, then the charge. The rattle is the windup."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Rattle",
+          "tell": "The basket lashes tick before either wolf moves.",
+          "player_response": "Cut basket_lash on the tick. The basket falls. The charge still comes."
+        },
+        {
+          "index": 2,
+          "name": "Bare charge",
+          "tell": "Chest returns to wolf width. The charge verb remains.",
+          "player_response": "Meet the charge as a wolf. Do not pick up the rib."
+        }
+      ],
+      "weak_point": "basket_lash",
+      "hook": "bone_rattle_charge",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "blunt" },
+      "loot_if_rib_left": ["fang"],
+      "loot_forbidden": ["rib"],
+      "remembrance_item_id": null,
+      "law_tie": "Leaving the basket is the catalogue of a donor trait. Pocketing it conquers a bone the yard was still using. No third Ruins remembrance is minted to mark the choice.",
+      "audio_tell": "Bone on bone, short, then hooves.",
+      "missing_mesh": "Spawn nothing. External basket, not pauldrons, not a new gait."
+    },
+    {
+      "id": "enc_returned_kill",
+      "name": "The Returned Kill",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["faun_ash_wolf"],
+      "count": 4,
+      "where": "basin_open_carry, floor midpoint (4.1, -30.5), one pack. This is the whole Ruins cap. Ambient cap is 0 while the window is up.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 20,
+        "every_nth_day": 3,
+        "modulo_gate": "day_index % 3 == 0",
+        "label": "Ash dusk, every third day, counter aligned with the volume day index"
+      },
+      "player_aggro": "The pack nips only if the player steps into the kill they have returned to, after board, scout, and sound. Standing outside the kill circle and writing the count is the clear.",
+      "telegraph": {
+        "board": "Keeper board draws four chevrons around a body that is still there.",
+        "scout": "From the scavenger edge (-6.3, -29.6) the pack reads wolf. No square shoulders.",
+        "sound": "A howl that stops when the pack arrives. They do not feed."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Return",
+          "tell": "Four wolves circle a kill and leave it whole.",
+          "player_response": "Count them. skill_craft_catalogue may record the number you actually see."
+        },
+        {
+          "index": 2,
+          "name": "Disturbance",
+          "tell": "A step into the kill starts the nip.",
+          "player_response": "Step back out. Finishing the corpse fails the encounter and drops no hide."
+        }
+      ],
+      "stats_hooks": { "health": "table:faun_med_predator", "loot_if_law_kept": [] },
+      "remembrance_item_id": null,
+      "law_tie": "Same law S03 wrote for the shoulder pack, applied to the Ruins open. Plates are not offered. Ashfang does not join.",
+      "missing_mesh": "Spawn nothing. Ash is a material on faun_sunder_wolf."
+    },
+    {
+      "id": "enc_late_breath",
+      "name": "The Late Breath",
+      "rank": "mini_boss",
+      "new_species": false,
+      "creature_ids": ["mon_ruins_wraith"],
+      "count": 1,
+      "where": "Archivist edge of basin_open_carry, (14.4, -31.3). One bell, both bangles intact. Not a margin of enc_catalogue_walks and not inside the unfinished circle.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 20,
+        "every_nth_day": 3,
+        "modulo_gate": "day_index % 3 == 1",
+        "label": "Ash dusk on the off-count, so it does not share an evening with the returned kill"
+      },
+      "bible_hostile": false,
+      "player_aggro": "true only after telegraph, inside a 12 m circle on that edge. Reach shortens when both bangles break. A finishing blow fails.",
+      "telegraph": {
+        "board": "Keeper board draws one bell and two iron rings. The breath is marked late.",
+        "scout": "From the archivist rim the cowl is the mass. Arms are thick. Holes in the cloth show nothing behind them.",
+        "sound": "The body moves, and the breath arrives after."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Late breath",
+          "tell": "Audio lags the glide.",
+          "player_response": "Treat the breath as the windup, not the strike frame. skill_presence_lament holds the hands if they want a finisher."
+        },
+        {
+          "index": 2,
+          "name": "Both rings",
+          "tell": "Reach is long while either bangle holds.",
+          "player_response": "Break both bangles. Leave the cloth. The wraith remains unfinished, which is the clear."
+        }
+      ],
+      "weak_point": "bangle",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "cold_ash", "loot_if_law_kept": ["bangle"] },
+      "loot_forbidden": ["ash_cloth"],
+      "remembrance_item_id": null,
+      "law_tie": "q_ruins_wraith_unfinished already asks a witness on a rib walk. This window is the fight version of that sentence, on a placed edge, and it does not replace the quest. Cloth is the body. Taking it finishes a person-shaped gap.",
+      "audio_tell": "A breath that starts after the body moves.",
+      "missing_mesh": "Spawn nothing. Not a courtier mesh and not a CX body."
+    }
+  ],
+  "boss": {
+    "id": "enc_unfinished",
+    "name": "The Unfinished",
+    "rank": "boss",
+    "creature_ids": ["mon_boss_unfinished"],
+    "count": 1,
+    "new_species": false,
+    "schedule_owner": "volume",
+    "where": "unburial_court, once placed. Volume sentence: Unfinished floor under the keeper overlook. The political court, the war tent, and catalogue_hall are not this floor.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 21,
+      "close_hour": 23,
+      "every_nth_day": 3,
+      "label": "Ash night, every third day"
+    },
+    "scale": "2.4× player height",
+    "topology_in_bible": "humanoid",
+    "mesh": "Walking tomb slab, one arm longer, head a cracked catalogue mask, fossil bone, cold iron staples. Dedicated mesh. Not CX.",
+    "verbs": ["verb_boss_page_turn", "verb_boss_long_arm", "verb_boss_slab_slam", "verb_boss_ask_to_be_closed"],
+    "weak_points": ["staples", "mask"],
+    "stats_hooks": { "health": "table:boss_region", "damage_profile": "blunt_ash", "loot_table_name": "catalogue_plate" },
+    "bible_hostile": true,
+    "boss_rule": "Closing the page during the ask, by interact or by skill_presence_lament at rank 3 or higher, ends the fight without a gore finisher. Pure DPS leaves it unfinished and it stands back up once.",
+    "telegraph_cite": {
+      "board": "Keeper board draws the ask pose and the mask.",
+      "scout": "Overlook. Staples catch ash light.",
+      "sound": "A question with no last consonant."
+    },
+    "phases_cite": [
+      "Ask. Mask turns. It wants an ending. Do not answer with a killing blow yet.",
+      "Staples. Plates try to close the page. Open staples with skill_steel_unburial.",
+      "Refuse the last line. It offers the mask. Leave the mask. Wearing it completes the page and fails the Refusal of Death."
+    ],
+    "remembrance_item_id": "item_rem_unfinished_mask",
+    "remembrance_rule": "Vendor note stands. The mask item drops only if it was not worn. A worn mask completes an ending and the item does not exist. catalogue_plate may still be the table loot from opening staples. The plate is not the token.",
+    "adds": "No wraith, crawler, wolf, or ribwolf enters this circle. A body kited here despawns at the overlook lip.",
+    "story_id": "arc_unfinished_page",
+    "missing_mesh": "Spawn nothing. Do not dress a CX keeper in a mask and call it the boss."
+  },
+  "remembrance": {
+    "rule": "Ruins has two tokens in VENDORS_AND_ITEMS.json. This slice binds their drop conditions and their shelf. It does not add item ids.",
+    "tokens": [
+      {
+        "id": "item_rem_unfinished_mask",
+        "display_name": "Unworn mask",
+        "from": "enc_unfinished",
+        "when": "Page closed, mask refused.",
+        "not_when": "Mask worn, or the slab stood back up and the player left, or the set is unplaced.",
+        "shelf": "catalogue_hall if placed, else archivist capital. q_s07_mask_to_shelf.",
+        "not_a_weapon": true,
+        "stack": 1
+      },
+      {
+        "id": "item_rem_catalogue_tooth",
+        "display_name": "Catalogue tooth",
+        "from": "enc_catalogue_walks",
+        "when": "Line broken, margins unfinished.",
+        "not_when": "Crawler killed as a road clear, or any margin took a finisher.",
+        "shelf": "Same shelf. q_s07_tooth_not_chit refuses scavenger_chits for it.",
+        "not_a_weapon": true,
+        "stack": 1
+      }
+    ],
+    "explicitly_not_minted": [
+      "rib basket",
+      "returned kill",
+      "late breath bangles",
+      "halo_shard",
+      "ashfang plate"
+    ],
+    "vendor_cite": "A stall may buy a token only to catalogue it, not to arm a conquest. That sentence is already on the volume vendor block. This slice does not add a stall."
+  },
+  "side_quests": [
+    {
+      "id": "q_s07_open_carry",
+      "title": "Open Carry — Name the Gap",
+      "world_id": "Ruins",
+      "giver_role_id": "npc_role_ruins_keeper",
+      "giver_npc_id": null,
+      "budget_note": "Same keeper role, density budget 4. No new keeper body.",
+      "objectives": [
+        {
+          "id": "obj_q_s07_open_carry_1",
+          "verb": "reach",
+          "target": "ruins_scavenger_crews_gate",
+          "count": 1,
+          "text": "Stand at the Scavenger Crews capital. Do not take a chit."
+        },
+        {
+          "id": "obj_q_s07_open_carry_2",
+          "verb": "reach",
+          "target": "basin_open_carry",
+          "count": 1,
+          "text": "Cross the open between the circles. The floor midpoint is the check. If wolves are present, count them and do not finish a kill."
+        },
+        {
+          "id": "obj_q_s07_open_carry_3",
+          "verb": "craft",
+          "target": "skill_craft_catalogue",
+          "count": 1,
+          "text": "Write one line: the gap is unclaimed ash, not a district you own."
+        },
+        {
+          "id": "obj_q_s07_open_carry_4",
+          "verb": "deliver",
+          "target": "npc_role_ruins_keeper",
+          "at": "ruins_archivists_gate",
+          "count": 1,
+          "text": "Hand the line to the keeper at the archivist capital. Do not file it as a conquest."
+        }
+      ],
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "ruins_archivists", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_loots_hide_ash",
+        "player_finishes_a_returned_kill",
+        "player_stacks_a_cairn_to_three_and_leaves_it",
+        "player_claims_the_unmapped_quarter"
+      ],
+      "does_not_replace": ["q_ruins_crow_catalogue", "q_ruins_unstack"],
+      "turn_in": { "role_id": "npc_role_ruins_keeper", "requires_all_objectives": true },
+      "loop": "Offered at the archivist capital. Board line fires after turn-in.",
+      "world_hooks": {
+        "board_line": "The open between camps is written as ash, not as property.",
+        "gossip_on_complete": "A keeper accepted a gap and did not name a new district."
+      }
+    },
+    {
+      "id": "q_s07_basket_left",
+      "title": "Bone Yard — Leave the Basket",
+      "world_id": "Ruins",
+      "giver_role_id": "npc_role_ruins_keeper",
+      "giver_npc_id": null,
+      "offer_when": "bone_yard has a transform. Until then the board says the yard is unplaced and the quest does not start.",
+      "objectives": [
+        {
+          "id": "obj_q_s07_basket_left_1",
+          "verb": "reach",
+          "target": "bone_yard",
+          "count": 1,
+          "text": "Enter the yard in the late-morning window, or wait for it. Do not pull a ribwolf to a capital."
+        },
+        {
+          "id": "obj_q_s07_basket_left_2",
+          "verb": "witness",
+          "target": "hyb_ribwolf",
+          "count": 1,
+          "text": "See the external basket and the clear head. Cut the lash if the rattle starts. Do not pocket the rib."
+        },
+        {
+          "id": "obj_q_s07_basket_left_3",
+          "verb": "talk",
+          "target": "npc_role_ruins_keeper",
+          "count": 1,
+          "text": "Say the lizard's bone is still furniture and this basket was a donor. They are not the same rib."
+        }
+      ],
+      "rewards": { "xp": 60, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "ruins_archivists", "delta": 1 }
+      ],
+      "fail_if": [
+        "player_loots_rib",
+        "player_kills_faun_rib_lizard",
+        "player_wears_basket",
+        "bone_yard_unplaced_and_a_capital_was_used_as_substitute"
+      ],
+      "does_not_replace": ["q_ruins_lizard_rib"],
+      "turn_in": { "role_id": "npc_role_ruins_keeper", "requires_all_objectives": true },
+      "world_hooks": {
+        "board_line": "A basket was cut loose and left in the yard.",
+        "gossip_on_complete": "The keeper was told two ribs are not one trophy."
+      }
+    },
+    {
+      "id": "q_s07_mask_to_shelf",
+      "title": "Shelf — The Mask Stays Unworn",
+      "world_id": "Ruins",
+      "giver_role_id": "npc_role_ruins_keeper",
+      "giver_npc_id": null,
+      "offer_when": "Inventory already holds item_rem_unfinished_mask. The quest does not spawn enc_unfinished and does not create the item.",
+      "objectives": [
+        {
+          "id": "obj_q_s07_mask_to_shelf_1",
+          "verb": "reach",
+          "target": "catalogue_hall_or_archivists_gate",
+          "count": 1,
+          "text": "Carry the unworn mask to the hall, or to the archivist capital if the hall has no transform."
+        },
+        {
+          "id": "obj_q_s07_mask_to_shelf_2",
+          "verb": "deliver",
+          "target": "item_rem_unfinished_mask",
+          "count": 1,
+          "text": "Shelve it. The item leaves the pack. It is not equipped and not sold."
+        },
+        {
+          "id": "obj_q_s07_mask_to_shelf_3",
+          "verb": "talk",
+          "target": "npc_role_ruins_keeper",
+          "count": 1,
+          "text": "Say the page was closed and the ending was refused."
+        }
+      ],
+      "rewards": { "xp": 70, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "ruins_archivists", "delta": 2 }
+      ],
+      "fail_if": [
+        "mask_equipped",
+        "mask_sold",
+        "mask_spawned_to_satisfy_the_quest",
+        "player_enters_calla_tent_to_turn_this_in"
+      ],
+      "does_not_replace": ["q_ruins_mask_scout", "enc_unfinished"],
+      "turn_in": { "role_id": "npc_role_ruins_keeper", "requires_all_objectives": true },
+      "world_hooks": {
+        "board_line": "An unworn mask is on the shelf.",
+        "gossip_on_complete": "The keepers have the mask and the player does not."
+      }
+    },
+    {
+      "id": "q_s07_tooth_not_chit",
+      "title": "Tooth — Not a Chit",
+      "world_id": "Ruins",
+      "giver_role_id": "npc_role_ruins_keeper",
+      "giver_npc_id": null,
+      "canon_npc_present": "scavenger_boss_thren",
+      "clone_rule": "Thren appears once, as the price. He is not copied. calla is not in this quest. Elite budget stays on the tent.",
+      "offer_when": "Inventory already holds item_rem_catalogue_tooth.",
+      "objectives": [
+        {
+          "id": "obj_q_s07_tooth_not_chit_1",
+          "verb": "talk",
+          "target": "scavenger_boss_thren",
+          "count": 1,
+          "text": "Hear the price in scavenger_chits. Decline it."
+        },
+        {
+          "id": "obj_q_s07_tooth_not_chit_2",
+          "verb": "deliver",
+          "target": "item_rem_catalogue_tooth",
+          "count": 1,
+          "text": "Give the tooth to the keeper to catalogue. It leaves the pack."
+        },
+        {
+          "id": "obj_q_s07_tooth_not_chit_3",
+          "verb": "talk",
+          "target": "npc_role_ruins_keeper",
+          "count": 1,
+          "text": "The line you name is the line you broke, not a road you own."
+        }
+      ],
+      "rewards": { "xp": 65, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [
+        { "faction_id": "ruins_archivists", "delta": 1 },
+        { "faction_id": "ruins_scavenger_crews", "delta": -1 }
+      ],
+      "fail_if": [
+        "tooth_traded_for_scavenger_chits",
+        "tooth_spawned_to_satisfy_the_quest",
+        "player_starts_ruins_calla_02_plan_from_this_turn_in"
+      ],
+      "does_not_replace": ["q_ruins_fourth_plan", "enc_catalogue_walks"],
+      "turn_in": { "role_id": "npc_role_ruins_keeper", "requires_all_objectives": true },
+      "world_hooks": {
+        "board_line": "A catalogue tooth was shelved, not paid out.",
+        "gossip_on_complete": "Thren named a price and did not receive the tooth."
+      }
+    }
+  ],
+  "politics_used": {
+    "ruins_archivists": "Catalogue every refusal. Memory shards. They argue whether continuing honors the dead. This slice shelves tokens with them and does not settle that argument.",
+    "ruins_scavenger_crews": "Carry it past the locked spells. Chits. Thren prices the tooth. The open between their circle and the archive is not given to them.",
+    "ruins_cascade_deniers": "They call the Cascade a Concordia fiction. Their circle overlaps the archive. The overlap stays a dispute. The boss standing back up after pure DPS is visible to them and is not narrated here as a proof either way.",
+    "ruins_spell_spirits": "Casts still completing. North shelf cap 0 so a fight does not interrupt them.",
+    "ruins_pilgrims": "Walk and witness. No new pilgrimage route is paved.",
+    "ruins_concordia_envoy": "Watch the sister city. No imported spell is staged.",
+    "ruin_rebellion": "Calla's fourth plan stays q_ruins_fourth_plan. Heard, not started. Seventy-three buried is lore, not a spawn count.",
+    "ruined_court": "Thanis counts the burned court and the rebuilt court in the present tense. That court is not unburial_court.",
+    "faction_id_note": "Volume Ruins quests delta glyph_keepers, which is the style name, not a faction id in factions.json. New deltas in this slice use ruins_archivists and ruins_scavenger_crews. The volume rows are not edited."
+  },
+  "withheld_from_player_text": [
+    "ruins_lore_the_cascade.hidden_truth — Vela formalized the algebra knowing the Council would refuse to bound it.",
+    "ruins_zaen_secret — Zaen Drift has met Calla in disguise twice and has not killed her.",
+    "ruins_hen_archive — Hen Orven's private copy of the Refusal Field engraving."
+  ],
+  "unspawned": [
+    { "id": "ruin_rat_king", "why": "Canon creatures.json seed. No bible species id. Not promoted to a mini-boss." },
+    { "id": "ash_revenant", "why": "Canon seed, topology hint humanoid. The bible wraith is the bell. A courtier mesh would be a second death and a CX risk. Unspawned." },
+    { "id": "gloom_stalker", "why": "Canon seed, feral guard-hounds. Not faun_ash_wolf. No bible id. Unspawned." },
+    { "id": "hyb_mercywraith", "why": "Cross-listed with Superhero. Ring neighbors of Ruins are Cyber and Fantasy. Cap 0." },
+    { "id": "hyb_ashfang", "why": "S03 seam. Ruins cap 0." },
+    { "id": "mon_sunder_griffin", "why": "Milepost encounter. Ruins cap 0." },
+    { "id": "the_unmapped_quarter", "why": "District name on the scavenger faction. No coordinate. Not assigned the derived gap." },
+    { "id": "wilds_roadside_ruin", "why": "WorldGeography places a generic roadside ruin at local (14, 104) for every non-Hub world. It is not bone_yard and not the Unfinished floor." }
+  ]
+}

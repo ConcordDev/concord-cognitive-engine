@@ -1,0 +1,401 @@
+{
+  "schema": "concordia-world-forge-sangree-pilot/1.0",
+  "slice_id": "W10_tunya_sangree_pilot",
+  "phase": "pilot",
+  "batch": "WF_pilot_sangree",
+  "title": "Sangree (Tunya) end-to-end pilot: canon graph through physicalization bill of materials.",
+  "consumes": [
+    { "schema": "concordia-world-forge-canon-graph/1.0", "slice_id": "W00_world_forge_canon_graph" },
+    { "schema": "concordia-world-forge-field/1.0", "slice_id": "W01_world_field_schema" },
+    { "schema": "concordia-world-forge-continental/1.0", "slice_id": "W02_continental_spec" },
+    { "schema": "concordia-world-forge-hydrology/1.0", "slice_id": "W03_hydrology_spec" },
+    { "schema": "concordia-world-forge-biome-resource/1.0", "slice_id": "W04_biome_resource_spec" },
+    { "schema": "concordia-world-forge-transport/1.0", "slice_id": "W05_transport_graph_spec" },
+    { "schema": "concordia-world-forge-suitability/1.0", "slice_id": "W06_settlement_suitability" },
+    { "schema": "concordia-world-forge-territory/1.0", "slice_id": "W07_civ_territory_physical" },
+    { "schema": "concordia-world-forge-settlement-layout/1.0", "slice_id": "W08_settlement_layout" },
+    { "schema": "concordia-world-forge-pipeline/1.0", "slice_id": "W09_world_forge_pipeline" }
+  ],
+  "writes": "sangree_pilot_trace",
+  "writes_channels": [],
+  "grid_materialized": false,
+  "kingdoms_minted": 0,
+  "continent_physicalize": false,
+  "physicalize_scope": "layout_tunya_sangree",
+  "prompts_index_rows_added": 0,
+  "meshes": false,
+  "quantity_assayed": null,
+  "price_cc": null,
+  "pins": {
+    "flower_law_horizontal_m": 42,
+    "fantasy_world_id": "Fantasy",
+    "fantasy_display": "Sundering",
+    "steel_on_tunya": "live",
+    "forge_authority": "GoldenSlice",
+    "hub_pinewood_m": { "x": 62, "z": -28, "lettering": "Pinewood Crossing" },
+    "claim_plane_pin": {
+      "name": "Sangree Fire Forge",
+      "x_m": -4.43,
+      "z_m": -65.85,
+      "radius_m": 28,
+      "frame": "tunya_local_metres",
+      "source": "countries claim circle cited by the Tunya culture slice",
+      "lifted_into_kilometres": false
+    }
+  },
+  "place": {
+    "layout_id": "layout_tunya_sangree",
+    "region_id": "tunya_sangree",
+    "world_id": "Tunya",
+    "faction_id": "sandrun_sanguire",
+    "suitability_holder": "verdant_veil",
+    "country_id": "sangree",
+    "country_plane": "local_claim_metres",
+    "center_km": { "x_km": -282.84, "z_km": 282.84 },
+    "offset_km_from_center": { "x_km": 55, "z_km": 10, "authority": "design_intent" },
+    "absolute_km": {
+      "x_km": -227.84,
+      "z_km": 292.84,
+      "authority": "derived_from_design_intent",
+      "disc_radius_km": 110,
+      "offset_distance_km": 55.9
+    },
+    "unity_district_id": "sandrun_forge_quarter",
+    "not_layout_aliases": ["sandrun_arid_capital", "sandrun_volcanic_coast"],
+    "forbidden_uses": ["agricultural", "water"]
+  },
+  "trace": [
+    {
+      "order": 0,
+      "stage": "Canon",
+      "slice_id": "W00_world_forge_canon_graph",
+      "region_id": "tunya_sangree",
+      "terrain_affinity": ["stack_yard", "blackened_stone"],
+      "water_dependency": { "mode": "terrace_runnel", "forbidden": ["forge_as_second_ocean"] },
+      "resource_id": "sangree_ore",
+      "quantity": null,
+      "population_bias": { "ordinal": "works", "relative": 0.65, "authority": "design_intent" },
+      "trade_nodes": ["node_sangree"],
+      "pilot_write": null
+    },
+    {
+      "order": "0b",
+      "stage": "Field",
+      "slice_id": "W01_world_field_schema",
+      "exemplar_id": "Tunya:tunya_sangree",
+      "datum": "continental_veil_datum",
+      "slope": { "class": "moderate", "rise_over_run_max": 0.18 },
+      "geology": { "class": "blackened_stone", "rock": "ore_bearing" },
+      "pilot_write": null
+    },
+    {
+      "order": 1,
+      "stage": "Elevation",
+      "slice_id": "W02_continental_spec",
+      "class": "stack_yard",
+      "m": { "min": 200, "max": 450 },
+      "sampled_renderedElevationAt": false,
+      "pilot_write": null
+    },
+    {
+      "order": 2,
+      "stage": "Hydrology",
+      "slice_id": "W03_hydrology_spec",
+      "body_id": "tunya_sangree_runnel",
+      "kind": "runnel",
+      "lake": false,
+      "accumulation": "local_only",
+      "outlet": "dry_end",
+      "depth_m": { "min": 0.05, "max": 0.3 },
+      "seed_depth_m": 0.05,
+      "max_trace_cells": 3,
+      "pilot_write": null
+    },
+    {
+      "order": 3,
+      "stage": "Climate",
+      "slice_id": "W04_biome_resource_spec",
+      "temperature_c": [16, 24],
+      "local_anomaly_c": 8,
+      "anomaly_extent": "one face of the stack only",
+      "rainfall_mm": [500, 800],
+      "humidity": [0.35, 0.55],
+      "pilot_write": null
+    },
+    {
+      "order": 4,
+      "stage": "Biome",
+      "slice_id": "W04_biome_resource_spec",
+      "biome_class": "forge_scrub",
+      "soil_class": "ash_and_scree",
+      "flora_budget": "scrub burned on one face",
+      "density_0_1": [0.1, 0.22],
+      "spawn": "suppress",
+      "pilot_write": null
+    },
+    {
+      "order": 5,
+      "stage": "Resources",
+      "slice_id": "W04_biome_resource_spec",
+      "resources": ["sangree_ore"],
+      "fertility_0_1": 0.2,
+      "fertility_class": "scrub",
+      "quantity": null,
+      "pilot_write": null
+    },
+    {
+      "order": 6,
+      "stage": "Mobility",
+      "slice_id": "W05_transport_graph_spec",
+      "sector_terminal_edges": [],
+      "tunya_disc_edges_inherited": [
+        "gate_hub_tunya",
+        "road_hub_tunya",
+        "march_fantasy_tunya",
+        "walk_tunya_frontier",
+        "sea_tunya_fantasy"
+      ],
+      "layout_road_id": "road_sangree_yard",
+      "road_class": "lane",
+      "cites_edge": null,
+      "length_km": null,
+      "minutes_published": 0,
+      "pilot_write": null
+    },
+    {
+      "order": 7,
+      "stage": "Suitability",
+      "slice_id": "W06_settlement_suitability",
+      "ordinal": "works",
+      "axes": {
+        "water": 0.3,
+        "food": 0.2,
+        "food_effective": 0.2,
+        "trade": 0.55,
+        "resources": 0.8,
+        "terrain": 0.55,
+        "defense": 0.45,
+        "transport": 0.5,
+        "faction": 0.7
+      },
+      "import_substitution": false,
+      "raw_check": 0.484,
+      "raw_inherited": 0.484,
+      "rescored": false,
+      "tier": "town",
+      "type_hint": "forge",
+      "cannot_found": false,
+      "faction_holder": "verdant_veil",
+      "forge_authority": "GoldenSlice"
+    },
+    {
+      "order": 8,
+      "stage": "Civ",
+      "slice_id": "W07_civ_territory_physical",
+      "capital_id": "cap_tunya_sangree",
+      "kingdom": false,
+      "mine_id": "mine_sangree_ore",
+      "mine_quantity": null,
+      "border_id": "border_tunya_terrace",
+      "border_coordinates": null,
+      "farms_on_region": [],
+      "continent_farm_cited": "farm_masond_landings",
+      "pilot_write": null
+    },
+    {
+      "order": "8b",
+      "stage": "Layout",
+      "slice_id": "W08_settlement_layout",
+      "district_cap": 4,
+      "district_ids": ["dist_sangree_forge", "dist_sangree_ore", "dist_sangree_yard_trade"],
+      "uses": ["government", "industrial", "commercial"],
+      "pilot_write": null
+    }
+  ],
+  "pop": {
+    "order": 9,
+    "authority": "design_intent_pilot",
+    "rule": "round(400 * population_bias.relative) split by weights 0.40 / 0.35 / 0.25 on the three existing districts",
+    "reference_town": 400,
+    "bias_relative": 0.65,
+    "not_population_for": true,
+    "not_claim_radius": true,
+    "not_spawn_count": true,
+    "spawn_cap_unchanged": 5,
+    "layout_headcount": 260,
+    "districts": [
+      { "district_id": "dist_sangree_forge", "people": 104 },
+      { "district_id": "dist_sangree_ore", "people": 91 },
+      { "district_id": "dist_sangree_yard_trade", "people": 65 }
+    ]
+  },
+  "farms": {
+    "order_note": "Farm emission sits with Civ and is confirmed empty before Growth.",
+    "region_id": "tunya_sangree",
+    "sites": [],
+    "count": 0,
+    "reason": "agricultural is a forbidden use; fertility 0.20 is scrub; W07 already holds the single farm on Masond",
+    "food_dependency": {
+      "site_id": "farm_masond_landings",
+      "region_id": "tunya_masond",
+      "across": "border_tunya_terrace",
+      "new_edge": false
+    },
+    "left_on_terrace": ["flora_tunya_terrace_tree", "npc_role_tunya_labor"]
+  },
+  "economy": {
+    "order": 10,
+    "price_cc": null,
+    "reason_cc_null": "no ledger row and no assayed quantity",
+    "rows": [
+      {
+        "site_id": "mine_sangree_ore",
+        "district_id": "dist_sangree_ore",
+        "commodity": "ore",
+        "quantity": null,
+        "price_cc": null,
+        "design_intent_rank": 1
+      },
+      {
+        "site_id": "cap_tunya_sangree",
+        "district_id": "dist_sangree_forge",
+        "bind": "role_forge_hold",
+        "craft_output_priced": false,
+        "forge_authority": "GoldenSlice",
+        "price_cc": null,
+        "design_intent_rank": 2
+      },
+      {
+        "site_id": null,
+        "district_id": "dist_sangree_yard_trade",
+        "price_cc": null,
+        "reason": "cites no W07 site_id"
+      }
+    ]
+  },
+  "growth": {
+    "order": 11,
+    "authority": "design_intent_pilot",
+    "rule": "floor(people / 20), minimum 1, existing districts only",
+    "layout_parcel_count": 12,
+    "districts": [
+      { "district_id": "dist_sangree_forge", "parcel_count": 5 },
+      { "district_id": "dist_sangree_ore", "parcel_count": 4 },
+      { "district_id": "dist_sangree_yard_trade", "parcel_count": 3 }
+    ]
+  },
+  "infra": {
+    "order": 12,
+    "roads": [
+      {
+        "road_id": "road_sangree_yard",
+        "class": "lane",
+        "paved": true,
+        "length_km": null,
+        "cites_edge": null,
+        "rule": "W09 allows pavement on class lane"
+      }
+    ],
+    "edges_added": 0
+  },
+  "physicalization": {
+    "order": 13,
+    "rule": "physicalize true only where headcount and parcel_count both exist",
+    "layout_id": "layout_tunya_sangree",
+    "physicalize": true,
+    "continent_physicalize": false,
+    "other_layouts_physicalize": false,
+    "districts": [
+      { "district_id": "dist_sangree_forge", "physicalize": true, "people": 104, "parcel_count": 5 },
+      { "district_id": "dist_sangree_ore", "physicalize": true, "people": 91, "parcel_count": 4, "quantity": null },
+      { "district_id": "dist_sangree_yard_trade", "physicalize": true, "people": 65, "parcel_count": 3 }
+    ],
+    "sites": [
+      { "site_id": "cap_tunya_sangree", "physicalize": true, "kingdom": false },
+      { "site_id": "mine_sangree_ore", "physicalize": true, "quantity": null }
+    ],
+    "compilers_invoked": [],
+    "channels_rewritten": []
+  },
+  "streaming": {
+    "order": 14,
+    "scheduler": "WorldStreamManager",
+    "enqueued_by_this_slice": false,
+    "cell_meters": 64,
+    "budget_ms": 3.5,
+    "prefetch_ahead_m": 120,
+    "jobs_when_player_inside_window": [
+      { "cell": "Settlement", "band": "Full", "district_ids": ["dist_sangree_forge", "dist_sangree_ore", "dist_sangree_yard_trade"] },
+      { "cell": "Road", "band": "Full", "road_id": "road_sangree_yard" }
+    ]
+  },
+  "bom": {
+    "authority": "existing_catalog_ids",
+    "new_prompt_rows": 0,
+    "items": [
+      { "district_id": "dist_sangree_forge", "id": "env_tunya_sangree_stack", "count": 1, "role": "the one stack, 9 m, ore trough" },
+      { "district_id": "dist_sangree_ore", "id": "env_tunya_sangree_stack", "count": 0, "role": "trough is the mine mouth; no second stack" },
+      { "district_id": "dist_sangree_forge", "id": "arch_hero_tunya_terrace_hall", "count": 1, "role": "government room beside the stack", "kit_id": "arch_kit_tunya_veil" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_terrace_floor", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_wood_ceiling", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_shutter_leaf", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_terrace_stair", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_hold_sconce", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_door_leaf", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_solar_tile", "count": 1, "batch": "B24_arch_tunya" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_seed_table", "count": 0, "role": "kit module, terrace seed work, unused on this seat" },
+      { "district_id": "dist_sangree_forge", "id": "arch_int_tunya_dye_shelf", "count": 0, "role": "kit module, harbor dye, unused on this seat" },
+      { "district_id": "dist_sangree_yard_trade", "id": "env_tunya_terrace_lip", "count": 1, "role": "runnel module for tunya_sangree_runnel" },
+      { "district_id": "dist_sangree_ore", "id": "flora_tunya_ash_scrub", "count": null, "density_0_1": [0.1, 0.22], "burned_face_count": 0 },
+      { "district_id": "dist_sangree_yard_trade", "id": "npc_terrace_outfit_solar_square", "count": "sprinkle_3_to_5", "body": "CX" },
+      { "district_id": "dist_sangree_yard_trade", "id": "npc_terrace_face_cx_pollen", "count": "sprinkle_3_to_5", "body": "CX" },
+      { "district_id": "dist_sangree_yard_trade", "id": "npc_terrace_fac_solar_tab", "count": "sprinkle_3_to_5", "body": "CX" }
+    ]
+  },
+  "integration": [
+    {
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["renderedElevationAt", "generatePoughkeepsieHeightmap"],
+      "pilot_names": "veil-datum class band stack_yard 200-450 m",
+      "edited": false
+    },
+    {
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["setWater", "solveFlowStep", "tickWaterFlow"],
+      "pilot_names": "body tunya_sangree_runnel",
+      "edited": false
+    },
+    {
+      "path": "server/lib/procgen-settlements.js",
+      "symbols": ["spawnSettlementForRegion"],
+      "pilot_names": "optional later filter layout_tunya_sangree",
+      "cap": 5,
+      "edited": false
+    },
+    {
+      "path": "server/lib/embodied/faction-strategy.js",
+      "symbols": ["pickMove", "applyMove"],
+      "pilot_names": "optional later target layout_tunya_sangree",
+      "edited": false
+    },
+    {
+      "path": "server/lib/npc-economy.js",
+      "symbols": ["dispatchEconomicAction"],
+      "pilot_names": "optional later keys mine_sangree_ore and cap_tunya_sangree",
+      "edited": false
+    },
+    {
+      "path": "Assets/Concordia/Scripts/WorldStreamManager.cs",
+      "symbols": ["WorldStreamManager"],
+      "pilot_names": "Settlement and Road jobs described, not enqueued",
+      "edited": false
+    }
+  ],
+  "heartbeat_frequencies_unchanged": {
+    "npc-economy-cycle": 8,
+    "procgen-settlement-cycle": 240,
+    "faction-strategy-cycle": 200,
+    "economy-anomaly-cycle": 240
+  },
+  "next": ["W11_hub_court_pilot"]
+}
