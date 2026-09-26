@@ -96,6 +96,7 @@
     "http-signature": "^1.4.0",
     "jsmidgen": "^0.1.8",
     "jsonwebtoken": "^9.0.2",
+    "meshoptimizer": "^1.1.1",
     "nodemailer": "^9.0.4",
     "pdfkit": "^0.19.1",
     "playwright": "^1.62.0",

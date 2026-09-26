@@ -12,6 +12,10 @@ server/.env.local
 concord-frontend/.env
 concord-frontend/.env.local
 
+# Python build artifacts
+__pycache__/
+*.pyc
+
 # Dependencies
 node_modules/
 
