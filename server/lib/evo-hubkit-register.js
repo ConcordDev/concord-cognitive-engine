@@ -30,10 +30,13 @@ export function registerHubKitEvo(db) {
   const files = Array.isArray(manifest?.files) ? manifest.files : [];
   let inserted = 0;
   let known = 0;
-  let existsGet;
+  let existing;
   let insertRun;
   try {
-    existsGet = db.prepare(`SELECT id FROM evo_assets WHERE id = ?`);
+    // One read of every registered HubKit id instead of a lookup per manifest file.
+    existing = new Set(
+      db.prepare(`SELECT id FROM evo_assets WHERE substr(id, 1, 11) = 'evo_hubkit_'`).all().map((r) => r.id),
+    );
     insertRun = db.prepare(`
       INSERT INTO evo_assets (id, kind, source, source_id, local_path, category)
       VALUES (?, 'mesh', 'hubkit', ?, ?, 'hub')
@@ -45,9 +48,9 @@ export function registerHubKitEvo(db) {
     if (!entry?.stem || !entry?.file) continue;
     const id = `evo_hubkit_${String(entry.stem).replace(/[^a-zA-Z0-9_-]/g, "_")}`;
     try {
-      const exists = existsGet.get(id);
-      if (exists) { known++; continue; }
+      if (existing.has(id)) { known++; continue; }
       insertRun.run(id, String(entry.stem), `StreamingAssets/HubKit/${entry.file}`);
+      existing.add(id);
       inserted++;
     } catch {
       /* row optional / unique */

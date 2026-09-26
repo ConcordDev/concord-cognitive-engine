@@ -40,19 +40,27 @@ const RAW_ROOT = path.join(process.env.DATA_DIR || path.join(SERVER, "data"), "e
 export const MANIFEST = path.join(UNITY_GENERATED, "ORGANIC_MANIFEST.json");
 const NO_AUTO_REFINE_QUALITY = 5;
 
-function readManifest() {
-  try { return JSON.parse(fs.readFileSync(MANIFEST, "utf8")); }
+// All file I/O here is async: generation runs in-process (evo-asset macros /
+// jobs.js), and multi-MB GLB/PNG reads and copies must not block the event loop.
+const fsp = fs.promises;
+
+async function exists(p) {
+  try { await fsp.access(p); return true; } catch { return false; }
+}
+
+async function readManifest() {
+  try { return JSON.parse(await fsp.readFile(MANIFEST, "utf8")); }
   catch { return { schema: "concordia-organic-manifest/1", pipeline: "FLUX.1-schnell → TRELLIS.2/TRELLIS → Concord normalize + game-lod", assets: {} }; }
 }
 
-function writeManifest(m) {
-  fs.mkdirSync(path.dirname(MANIFEST), { recursive: true });
-  fs.writeFileSync(MANIFEST, JSON.stringify(m, null, 2) + "\n");
+async function writeManifest(m) {
+  await fsp.mkdir(path.dirname(MANIFEST), { recursive: true });
+  await fsp.writeFile(MANIFEST, JSON.stringify(m, null, 2) + "\n");
 }
 
-export function alreadyGenerated(id) {
-  const entry = readManifest().assets[id];
-  return !!(entry?.lodsFile && fs.existsSync(path.join(UNITY_GENERATED, "..", "..", "..", "..", entry.lodsFile)));
+export async function alreadyGenerated(id) {
+  const entry = (await readManifest()).assets[id];
+  return !!(entry?.lodsFile && await exists(path.join(UNITY_GENERATED, "..", "..", "..", "..", entry.lodsFile)));
 }
 
 /**
@@ -79,12 +87,12 @@ export async function generateOrganicAsset({
   const plan = suppliedPlan ?? planFor(id);
   if (!plan.ok) return plan;
   const rawDir = path.join(RAW_ROOT, id);
-  fs.mkdirSync(rawDir, { recursive: true });
+  await fsp.mkdir(rawDir, { recursive: true });
   const stages = {};
   const conceptPng = path.join(rawDir, `concept_${seed}.png`);
 
   if (conceptImage) {
-    if (!fs.existsSync(conceptImage)) return { ok: false, id, stage: "concept", reason: "concept_image_missing" };
+    if (!await exists(conceptImage)) return { ok: false, id, stage: "concept", reason: "concept_image_missing" };
     // A reviewed concept from an earlier --concept-only run already IS concept_<seed>.png.
     if (path.resolve(conceptImage) !== path.resolve(conceptPng)) await sharp(conceptImage).png().toFile(conceptPng);
     stages.concept = { ok: true, provider: "supplied", source: path.basename(conceptImage) };
@@ -100,8 +108,8 @@ export async function generateOrganicAsset({
 
   const rawGlb = path.join(rawDir, `raw_${seed}.glb`);
   if (suppliedGlb) {
-    if (!fs.existsSync(suppliedGlb)) return { ok: false, id, stage: "mesh", reason: "raw_glb_missing" };
-    fs.copyFileSync(suppliedGlb, rawGlb);
+    if (!await exists(suppliedGlb)) return { ok: false, id, stage: "mesh", reason: "raw_glb_missing" };
+    await fsp.copyFile(suppliedGlb, rawGlb);
     stages.mesh = { ok: true, provider: meshProvider || "supplied", source: path.basename(suppliedGlb) };
   } else {
     onStage("mesh");
@@ -118,9 +126,9 @@ export async function generateOrganicAsset({
 
   onStage("lods");
   const outDir = path.join(UNITY_GENERATED, plan.category);
-  fs.mkdirSync(outDir, { recursive: true });
+  await fsp.mkdir(outDir, { recursive: true });
   const staged = path.join(rawDir, `${id}.glb`);
-  fs.copyFileSync(normalized, staged);
+  await fsp.copyFile(normalized, staged);
   const lods = await buildGameLods(staged, { lod0MaxTris: plan.lod0MaxTris, nodeName: id, outDir: rawDir });
   if (!lods.ok) return { ok: false, id, stage: "lods", reason: lods.reason, stages };
   stages.lods = {
@@ -131,8 +139,8 @@ export async function generateOrganicAsset({
   // Only now touch the Unity project: final LOD file + concept reference.
   const lodsDest = path.join(outDir, `${id}_lods.glb`);
   const conceptDest = path.join(outDir, `${id}_concept.png`);
-  fs.copyFileSync(lods.path, lodsDest);
-  fs.copyFileSync(conceptPng, conceptDest);
+  await fsp.copyFile(lods.path, lodsDest);
+  await fsp.copyFile(conceptPng, conceptDest);
   const rel = (p) => "Assets/" + path.relative(path.resolve(UNITY_GENERATED, "../../.."), p);
 
   let evoAssetId = null;
@@ -154,7 +162,7 @@ export async function generateOrganicAsset({
     evoAssetId = reg.id;
   }
 
-  const manifest = readManifest();
+  const manifest = await readManifest();
   manifest.assets[id] = {
     id, displayName: plan.displayName, batch: plan.batch, category: plan.category, worldIds: plan.worldIds,
     seed, prompt: plan.prompt, lod0MaxTris: plan.lod0MaxTris,
@@ -163,7 +171,7 @@ export async function generateOrganicAsset({
     stages, fidelity: "unchecked", generatedAt: new Date().toISOString(),
     license: "FLUX.1-schnell (Apache-2.0) concept; TRELLIS/TRELLIS.2 (MIT) mesh",
   };
-  writeManifest(manifest);
+  await writeManifest(manifest);
 
   return { ok: true, id, evoAssetId, lodsFile: lodsDest, conceptFile: conceptDest, stages, seconds: Math.round((Date.now() - t0) / 1000) };
 }

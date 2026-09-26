@@ -1,3 +1,4 @@
+// @sync-fs-ok: loadBible reads the native-bible JSON once per path and caches it; planFor/planForPrompt stay synchronous
 // server/lib/asset-gen/organic/prompts.js
 //
 // Native-bible entry → concept-image prompt + triangle budget.

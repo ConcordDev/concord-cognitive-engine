@@ -83,7 +83,7 @@ export function alphaVisible(tex) {
  * extensions left that core can't read. Returns what changed.
  */
 export async function normalizeGlb(srcPath, destPath) {
-  const { json, rest } = readGlb(fs.readFileSync(srcPath));
+  const { json, rest } = readGlb(await fs.promises.readFile(srcPath));
   const movedWebp = stripWebpExtension(json);
   const required = json.extensionsRequired || [];
   if (required.length) return { ok: false, reason: "unsupported_required_extension", extensions: required };
@@ -107,5 +107,5 @@ export async function normalizeGlb(srcPath, destPath) {
     converted.push(mime);
   }
   await io.write(destPath, doc);
-  return { ok: true, path: destPath, movedWebp, converted, bytes: fs.statSync(destPath).size };
+  return { ok: true, path: destPath, movedWebp, converted, bytes: (await fs.promises.stat(destPath)).size };
 }

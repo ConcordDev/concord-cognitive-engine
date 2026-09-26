@@ -126,17 +126,21 @@ export function snapshotCreatures(db, worldId) {
         AND (archetype LIKE 'creature:%' OR species_id IS NOT NULL)
       LIMIT ?
     `).all(worldId, LIVE_CAP);
-    let lineageGet = null;
-    try {
-      lineageGet = db.prepare(`SELECT * FROM creature_lineage WHERE child_id = ?`);
-    } catch { /* lineage optional */ }
+    // One batched lineage lookup (child_id is the PK) instead of a query per row.
+    const lineageById = new Map();
+    if (live.length > 0) {
+      try {
+        const ids = live.map((r) => r.id);
+        const rows = db.prepare(
+          `SELECT * FROM creature_lineage WHERE child_id IN (${ids.map(() => "?").join(",")})`,
+        ).all(...ids);
+        for (const lin of rows) lineageById.set(lin.child_id, lin);
+      } catch { /* lineage optional */ }
+    }
     for (const row of live) {
       const arch = String(row.archetype || "");
       if (!arch.startsWith("creature:") && !row.species_id) continue;
-      let lineage = null;
-      try {
-        lineage = lineageGet ? lineageGet.get(row.id) : null;
-      } catch { /* lineage optional */ }
+      const lineage = lineageById.get(row.id) ?? null;
       const card = compactFromRow(row, lineage);
       if (!card.id) continue;
       seen.add(card.id);

@@ -166,7 +166,7 @@ export async function buildGameLods(srcPath, opts = {}) {
   const ratios = Array.isArray(opts.ratios) && opts.ratios.length ? opts.ratios : DEFAULT_LOD_RATIOS;
   const targetError = Number.isFinite(opts.targetError) ? opts.targetError : DEFAULT_TARGET_ERROR;
   if (!/\.glb$/i.test(String(srcPath))) return { ok: false, reason: "not_glb" };
-  if (!fs.existsSync(srcPath)) return { ok: false, reason: "source_missing" };
+  try { await fs.promises.access(srcPath); } catch { return { ok: false, reason: "source_missing" }; }
   for (const r of ratios) {
     if (!(r > 0 && r < 1)) return { ok: false, reason: "ratio_out_of_range", ratio: r };
   }
@@ -245,5 +245,5 @@ export async function buildGameLods(srcPath, opts = {}) {
   const dest = path.join(outDir, `${base}_lods.glb`);
   await io.write(dest, doc);
   for (const b of bands) b.achievedRatio = b.tris / lod0.tris;
-  return { ok: true, path: dest, bytes: fs.statSync(dest).size, source, lod0, bands };
+  return { ok: true, path: dest, bytes: (await fs.promises.stat(dest)).size, source, lod0, bands };
 }

@@ -112,16 +112,22 @@ function seedRoutines(db, worldId, npcs) {
     return { routines: 0, schedules: 0, reason: "no_routine_tables" };
   }
 
-  let npcExists;
+  // One batched existence check (json_each: no bound-parameter limit) instead
+  // of a lookup per authored NPC.
+  let liveIds;
   try {
-    npcExists = db.prepare(`SELECT id FROM world_npcs WHERE id = ?`);
+    const wanted = npcs.filter((n) => n?.id).map((n) => n.id);
+    liveIds = new Set(
+      db.prepare(`SELECT id FROM world_npcs WHERE id IN (SELECT value FROM json_each(?))`)
+        .all(JSON.stringify(wanted))
+        .map((r) => r.id),
+    );
   } catch {
     return { routines: 0, schedules: 0, reason: "no_world_npcs" };
   }
   for (const npc of npcs) {
     if (!npc?.id || !Array.isArray(npc.daily_schedule) || npc.daily_schedule.length === 0) continue;
-    const exists = npcExists.get(npc.id);
-    if (!exists) continue;
+    if (!liveIds.has(npc.id)) continue;
     const pos = (npc.spawn_location && typeof npc.spawn_location === "object")
       ? { x: Number(npc.spawn_location.x) || 0, z: Number(npc.spawn_location.z) || 0 }
       : { x: 0, z: 0 };

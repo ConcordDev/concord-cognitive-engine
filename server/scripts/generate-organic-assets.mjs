@@ -43,7 +43,8 @@ if (ids.length === 0) {
   process.exit(2);
 }
 
-const todo = ids.filter((id) => force || conceptOnly || !alreadyGenerated(id));
+const generated = await Promise.all(ids.map((id) => (force || conceptOnly ? false : alreadyGenerated(id))));
+const todo = ids.filter((_, i) => !generated[i]);
 console.log(`${ids.length} ids, ${ids.length - todo.length} already generated, running up to ${Math.min(limit, todo.length)}`);
 
 const db = new Database(DB_PATH);

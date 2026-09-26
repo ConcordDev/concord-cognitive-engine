@@ -22,10 +22,12 @@ export function resolvePython() {
   return process.env.CONCORD_GEN_PYTHON || DEFAULT_PYTHON;
 }
 
-export function readHfToken() {
+const fsp = fs.promises;
+
+export async function readHfToken() {
   if (process.env.HF_TOKEN) return process.env.HF_TOKEN;
   try {
-    const line = fs.readFileSync(SECRETS_FILE, "utf8").split("\n").find((l) => l.startsWith("HF_TOKEN="));
+    const line = (await fsp.readFile(SECRETS_FILE, "utf8")).split("\n").find((l) => l.startsWith("HF_TOKEN="));
     return line ? line.slice("HF_TOKEN=".length).trim() : null;
   } catch {
     return null;
@@ -33,10 +35,10 @@ export function readHfToken() {
 }
 
 /** Run one CLI command; always resolves to a result object, never throws. */
-export function runGenCli(command, payload, { timeoutMs = TIMEOUT_MS } = {}) {
+export async function runGenCli(command, payload, { timeoutMs = TIMEOUT_MS } = {}) {
   const python = resolvePython();
-  if (!fs.existsSync(python)) return Promise.resolve({ ok: false, reason: "no_python_env", python });
-  const token = readHfToken();
+  try { await fsp.access(python); } catch { return { ok: false, reason: "no_python_env", python }; }
+  const token = await readHfToken();
   const env = { ...process.env, PYTHONUNBUFFERED: "1" };
   if (token) env.HF_TOKEN = token;
   return new Promise((resolve) => {
@@ -110,7 +112,7 @@ export async function generateConcept(payload) {
     // anything.
     const r = await localPost("/concept", { prompt: payload.prompt, seed: payload.seed ?? 0, width: payload.width, height: payload.height }, 25 * 60 * 1000);
     if (r.ok) {
-      fs.writeFileSync(payload.out, Buffer.from(r.png_b64, "base64"));
+      await fsp.writeFile(payload.out, Buffer.from(r.png_b64, "base64"));
       return { ok: true, provider: r.provider, path: payload.out, format: "png", seconds: r.seconds };
     }
     if (!FALLBACK_REASONS.has(r.reason)) return r;
@@ -120,10 +122,10 @@ export async function generateConcept(payload) {
 
 export async function generateMesh(payload) {
   if (await localHealth()) {
-    const image_b64 = fs.readFileSync(payload.image).toString("base64");
+    const image_b64 = (await fsp.readFile(payload.image)).toString("base64");
     const r = await localPost("/mesh", { image_b64, seed: payload.seed ?? 0 }, 20 * 60 * 1000);
     if (r.ok) {
-      fs.writeFileSync(payload.out, Buffer.from(r.glb_b64, "base64"));
+      await fsp.writeFile(payload.out, Buffer.from(r.glb_b64, "base64"));
       return { ok: true, provider: r.provider, path: payload.out, faces: r.faces, seconds: r.seconds };
     }
     if (!FALLBACK_REASONS.has(r.reason)) return r;
