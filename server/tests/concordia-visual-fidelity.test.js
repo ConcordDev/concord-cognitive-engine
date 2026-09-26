@@ -87,7 +87,12 @@ describe("Concordia cinematic visual-fidelity contract", () => {
     assert.match(look, /WetStone\(/);
     assert.match(look, /CX_Tile_CourtCobble/);
     assert.doesNotMatch(look, /Models\/polyhaven\/" \+ file/);
-    assert.match(src("HubPlaza.cs"), /GateMouth/);
+    // 2026-09-22: a missing Court arch kit no longer gets primitive stand-in
+    // cubes (the old GateMouth/pillars/lintel fallback) — it logs honestly and
+    // leaves an ArchVisualMissing marker. No fake geometry.
+    assert.match(src("HubPlaza.cs"), /no primitive visual fallback was created/);
+    assert.match(src("HubPlaza.cs"), /"ArchVisualMissing"/);
+    assert.doesNotMatch(src("HubPlaza.cs"), /GateMouth/);
     assert.doesNotMatch(src("HubPlaza.cs"), /PortalVeil/);
     assert.match(src("WorldBuilder.cs"), /WetStone\(/);
     assert.match(src("ContinentStream.cs"), /CourtGround/);

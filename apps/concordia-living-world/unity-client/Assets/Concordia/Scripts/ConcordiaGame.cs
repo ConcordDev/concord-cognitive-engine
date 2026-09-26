@@ -286,13 +286,19 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             if (!_player) _player = ConcordiaPlayer.Live;
             if (ContinentStream.Live == null && _world)
                 ContinentStream.Bind(_world);
+            // Stream before the Boot/creator gates so chunks load while the
+            // character creator is open and the traveler is received before the
+            // chunk hitch. Throttled LeanPlay ticks inside its own branch below.
+            bool leanThrottled = ConcordiaHost.LeanPlay && _leanDressDone;
+            if (_player && !leanThrottled)
+                ContinentStream.Live?.Tick(_player.transform.position);
             WorldClock.Tick(Time.deltaTime);
             // Frame 1 is Boot. Probe FindObjects across chunks here used to
             // keep Time.time at 0 so WalkBearing never took a step.
             if (Time.frameCount < 2) return;
             if (!_player || CharacterCreator.IsOpen) return;
             // LeanPlay after Dress: stream/proximity live but throttled; RefreshProbe rare.
-            if (ConcordiaHost.LeanPlay && _leanDressDone)
+            if (leanThrottled)
             {
                 if (Time.unscaledTime - _leanStreamAt > 2f)
                 {
@@ -304,8 +310,6 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
                 if (_gates == null || Time.unscaledTime - _probeAt > 60f) RefreshProbe();
                 return;
             }
-            if (_player)
-                ContinentStream.Live?.Tick(_player.transform.position);
             // LeanPlay: keep prompts, but RefreshProbe rare (FindObjects storm starved Play).
             ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
             float probeEvery = ConcordiaHost.LeanPlay ? 60f : 0.25f;

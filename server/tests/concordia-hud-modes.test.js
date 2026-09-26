@@ -70,7 +70,7 @@ describe("Concordia HUD modes — AAA density", () => {
     assert.match(gate, /ConcordiaHUD\.Bearing == this/);
     assert.match(gate, /"GateWind"/);
     assert.doesNotMatch(plaza, /label\.text = gate\.shortName/);
-    assert.match(hud, /hold C  look/);
+    assert.match(hud, /hold C {2}look/);
   });
 
   it("skill lattice HUD copy never leaks the channel id", () => {

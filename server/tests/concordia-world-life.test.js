@@ -62,7 +62,9 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(fill, /Room\(hold,.*vault/);
     assert.match(fill, /AmbientWalkers/);
     assert.match(fill, /Not an authored citizen/);
-    assert.match(fill, /StampSash/);
+    // Sash stamping moved into LoreNpcBinder (2026-09-22), which RealmFill invokes.
+    assert.match(fill, /LoreNpcBinder\./);
+    assert.match(src("LoreNpcBinder.cs"), /ModularPerson\.StampSash\(/);
     assert.match(fill, /No authored dungeon name|not an authored dungeon name/);
     assert.doesNotMatch(fill, /Concord admits he loves her/);
   });
@@ -205,7 +207,9 @@ describe("Concordia world-life — source contracts", () => {
     assert.match(packs, /WantsFakeWindows/);
     assert.match(packs, /HasStoreStem/);
     assert.match(packs, /87811/);
-    assert.match(packs, /house\.002/);
+    // 2026-09-17: houses resolve to the real Concordia building assets, not the
+    // generic house.002 pack stems (and no primitive stand-in fallback).
+    assert.match(packs, /"Concordia_Real_Forge", "Concordia_Real_Industrial_Hangar"/);
     assert.match(packs, /Room_Big_Part_01/);
     assert.match(packs, /WORLD NEED vs HAVE/);
     assert.match(packs, /public static string Weapon/);
@@ -213,15 +217,23 @@ describe("Concordia world-life — source contracts", () => {
     assert.doesNotMatch(packs, /slavic/i);
     assert.doesNotMatch(packs, /Aurelia/);
     assert.doesNotMatch(packs, /Concord admits he loves her/);
-    assert.match(fill, /DressVocab\.Kit\(/);
-    assert.match(fill, /BuildingInterior\.FakeWindows/);
+    // City slot kits went away with the settlement compiler (2026-09-22);
+    // RealmFill still dresses every city per its own world's vocabulary.
+    assert.match(fill, /DressVocab\.Prop\(w\.id\)/);
+    // Cities are now built by the settlement compiler (2026-09-22). Carving
+    // playable interiors / fake-window glow into its procedural facades is an
+    // explicitly documented follow-up, NOT faked on the old slot buildings.
+    // Pin the honest gap note so it can't silently disappear.
+    assert.doesNotMatch(fill, /BuildingInterior\.FakeWindows\(/);
+    assert.match(fill, /real room-carving\s*\/\/?\s*inside a procedural shell is a follow-up, not something to fake here/);
     assert.match(fill, /FortRim/);
     assert.match(fill, /concordia-visual\.txt/);
     assert.match(fill, /DressVocab\.Cart\(/);
     assert.match(src("WorldKit.cs"), /DressVocab\.Kit\(/);
     assert.match(src("WorldBuilder.cs"), /DressVocab\.House\(/);
     assert.match(src("WorldBuilder.cs"), /The frontier keeps no seat/);
-    assert.match(src("WorldBuilder.cs"), /DressVocab\.Dummy\(/);
+    // DressVocab.Dummy retired 2026-09-17 ("Put a person at Present arrival,
+    // not Arena kit") — arrival now receives a person, not a dressed dummy.
     assert.match(src("CharacterGear.cs"), /DressVocab\.Weapon/);
     assert.match(interior, /public static void FakeWindows/);
     assert.match(interior, /FakeWindow/);

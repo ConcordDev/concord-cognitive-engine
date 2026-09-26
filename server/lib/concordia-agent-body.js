@@ -125,8 +125,9 @@ export function handleCharacterUnbind(db, userId, data = {}) {
   const z = Number.isFinite(data.z) ? data.z : row.z;
   const yaw = Number.isFinite(data.yaw) ? data.yaw : row.yaw;
   let appearanceJson = row.appearance_json;
-  if (data.appearance && typeof data.appearance === "object")
+  if (data.appearance && typeof data.appearance === "object") {
     appearanceJson = JSON.stringify(data.appearance);
+  }
   try {
     db.prepare(
       `UPDATE concordia_agent_characters

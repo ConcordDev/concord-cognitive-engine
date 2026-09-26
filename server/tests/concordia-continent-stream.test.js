@@ -34,7 +34,10 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /static int LodOf\(/);
     assert.match(stream, /EnsureImpostor\(/);
     assert.match(builder, /BuildImpostor\(/);
-    assert.match(builder, /Impostor_/);
+    // Far-LOD holders are named FarGeography_<world> and stamped with the
+    // world's visual profile since 2026-09-22 (was Impostor_<world>).
+    assert.match(builder, /new GameObject\("FarGeography_" \+ world\)/);
+    assert.match(builder, /WorldVisualProfileCatalog\.Stamp\(holder, world\)/);
     assert.match(stream, /link_gate/);
     assert.match(stream, /void Tick\(/);
     assert.match(builder, /BuildChunk\(/);
@@ -117,7 +120,10 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(stream, /public void ReceiveHere\(/);
     assert.match(stream, /Canon\.InHubCourt/);
     assert.match(stream, /MakeWilderness\(/);
-    assert.match(src("WorldBuilder.cs"), /ContinentStream\.Live \? 0\.0026f : 0\.0045f/);
+    // Fog is per-world since 2026-09-17 (Poly Haven look); the Hub's density
+    // still thins while the continent stream is live, and feeds HubLook.LiveFog.
+    assert.match(src("WorldBuilder.cs"), /WorldId\.Hub => ContinentStream\.Live \? [0-9.]+f : [0-9.]+f/);
+    assert.match(src("WorldBuilder.cs"), /HubLook\.LiveFog\(RenderSettings\.fogDensity\)/);
     assert.match(stream, /ContinentWilderness/);
     assert.match(map, /static WorldId Toward\(/);
     assert.match(canon, /HubLawRadius = 42f/);
@@ -127,7 +133,9 @@ describe("Concordia continent streaming + creature compiler", () => {
     assert.match(gate, /game\.Travel\(def\.world\)/);
     assert.match(plaza, /FallbackArch\(/);
     assert.match(plaza, /ThinArch\(/);
-    assert.match(plaza, /Missing_/);
+    // Placeholder arches are still rejected: gate spawns are required:false
+    // (null on miss), and any renderer-less Missing_ marker fails ThinArch.
+    assert.match(plaza, /var r = go\.GetComponentInChildren<Renderer>\(\);\s*if \(!r\) return true;/);
     assert.match(plaza, /AddComponent<WorldGate>\(\)\.def = gate/);
     const builder = src("WorldBuilder.cs");
     assert.match(builder, /outDir \* 16f/);

@@ -39,7 +39,10 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(upd, /ContinentStream\.Live\?\.Tick/);
     assert.match(upd, /WorldClock\.Tick/);
     assert.match(upd, /Time\.frameCount < 2/);
-    assert.match(game, /if \(!ConcordiaHost\.LeanPlay\)/);
+    // LeanPlay no longer gates content (2026-09-22): staging + RuntimeBudget
+    // carry frame-1 load instead, so the old `if (!ConcordiaHost.LeanPlay)`
+    // guard around the shot grab is gone by design. Pin the policy itself.
+    assert.match(src("ConcordiaHost.cs"), /Staging \+ RuntimeBudget carry the load; do not re-gate content behind LeanPlay/);
     assert.match(game, /ConcordiaShot\.Grab/);
     assert.match(game, /runInBackground/);
     const creatorGate = upd.indexOf("CharacterCreator.IsOpen");
@@ -64,7 +67,7 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(player, /AddComponent<LivingBody>/);
     assert.match(player, /LivingBody\.Hero\.Tick/);
     assert.match(player, /CollisionFlags\.Sides/);
-    assert.match(player, /LivingBody\.Hero\.Climb/);
+    assert.match(player, /LivingBody\.Hero\?\.Climb/);
     assert.match(player, /ReceiveHere\(transform\.position\)|ReceiveLand\(\)/);
     assert.match(player, /public void Stand\(/);
     assert.match(player, /public string LandLine/);
@@ -109,7 +112,8 @@ describe("Concordia player life — a body, a day, other minds", () => {
     assert.match(game, /Bonds\.TalkBump/);
     assert.match(game, /if \(!_player\) _player = ConcordiaPlayer.Live/);
     assert.match(host, /RoadWalkers/);
-    assert.match(stream, /RoadWorld\.Seed\(/);
+    // Road seeding is staged (async) since 2026-09-22; sync Seed is banned.
+    assert.match(stream, /RoadWorld\.SeedStaged\(/);
     assert.match(stream, /RoadWorld\.PlaceSign\(/);
     const road = src("RoadWorld.cs");
     assert.match(road, /RoleFor\(/);

@@ -17,7 +17,8 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     const road = src("RoadWorld.cs");
     const stream = src("ContinentStream.cs");
     const host = src("ConcordiaHost.cs");
-    assert.match(stream, /RoadWorld\.Seed\(/);
+    // Road seeding is staged (async) since 2026-09-22; sync Seed is banned.
+    assert.match(stream, /RoadWorld\.SeedStaged\(/);
     assert.match(stream, /RoadWorld\.PlaceSign\(/);
     assert.match(road, /this way /);
     assert.match(road, /steel ahead/);
@@ -35,8 +36,10 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(road, /road spoils/);
     assert.match(host, /RoadThreats/);
     assert.match(host, /RoadDelves/);
-    assert.match(host, /LeanPlay \? 4 : 8/);
-    assert.match(host, /LeanPlay \? 2 : 8/);
+    // The contract is "threats and delves exist in BOTH LeanPlay and full play",
+    // not a frozen tuning number (retuned 2026-09-22).
+    assert.match(host, /RoadThreats => LeanPlay \? [1-9]\d* : [1-9]\d*/);
+    assert.match(host, /RoadDelves => LeanPlay \? [1-9]\d* : [1-9]\d*/);
   });
 
   it("Sundering is seeded first; travelers have jobs, not a generic Traveler", () => {
@@ -76,7 +79,10 @@ describe("Concordia road wilderness — threat, discovery, whole Ring", () => {
     assert.match(hostile, /_person\?\.SetGait\(speed/);
     assert.match(hostile, /_person\?\.SetGait\(0f/);
     assert.match(clock, /JourneyLine\(LastEvent\)/);
-    assert.match(clock, /a pack thinned/);
+    // Kill line names who fell and always wins over journey stamps (2026-09-22:
+    // SoftEnter used to clobber it with "You came home from …").
+    assert.match(clock, /Kill always wins over journey stamps/);
+    assert.match(clock, /Canon\.Get\(World\)\.title \+ ": " \+ who \+ " fell\."/);
     const road = src("RoadWorld.cs");
     assert.match(road, /NoticeKill\(/);
     assert.match(road, /PushFeed\("road"/);
