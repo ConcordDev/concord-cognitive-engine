@@ -24,6 +24,7 @@ namespace Concordia
 
         class Proxy
         {
+            public ManifestEntity entity; // body is built at the first real position (see Materialize)
             public GameObject go;
             public ModularPerson person;
             public Vector3 target;
@@ -125,8 +126,7 @@ namespace Concordia
                 if (e == null || string.IsNullOrEmpty(e.id)) continue;
                 seen.Add(e.id);
                 if (_proxies.ContainsKey(e.id)) continue;
-                var p = Spawn(e);
-                if (p != null) _proxies[e.id] = p;
+                _proxies[e.id] = new Proxy { entity = e };
             }
             // A full (non-append) manifest is the whole population: drop anyone gone.
             if (!m.append)
@@ -145,34 +145,41 @@ namespace Concordia
             _lastHostFrame = Time.realtimeSinceStartup;
             foreach (var e in s.entities)
             {
-                if (e == null || !_proxies.TryGetValue(e.id, out var p) || !p.go) continue;
+                if (e == null || !_proxies.TryGetValue(e.id, out var p)) continue;
                 p.target = new Vector3(e.x, e.y, e.z);
                 p.yaw = e.yaw;
                 p.speed = e.speed;
-                if (!p.placed) { p.go.transform.position = p.target; p.placed = true; p.go.SetActive(true); }
+                if (!p.placed) { Materialize(p); p.placed = p.go != null; }
             }
         }
 
-        Proxy Spawn(ManifestEntity e)
+        // Build the body ACTIVE, AT its real position — the way local NPCs are
+        // built. ModularPerson sizes and grounds an imported body from renderer
+        // bounds at build time; building it inactive at the origin (the first
+        // version) left host NPCs oversized, floating and in a bind pose in the
+        // browser (seen 2026-09-27), while the player's own body looked right.
+        void Materialize(Proxy p)
         {
+            var e = p.entity;
+            if (e == null) return;
             try
             {
                 var look = !string.IsNullOrEmpty(e.look) ? JsonUtility.FromJson<Appearance>(e.look) : Appearance.Random(e.id.GetHashCode());
                 var go = new GameObject("HostNpc_" + (string.IsNullOrEmpty(e.name) ? e.id : e.name));
                 go.transform.SetParent(transform, false);
+                go.transform.SetPositionAndRotation(p.target, Quaternion.Euler(0f, p.yaw, 0f));
                 var person = go.AddComponent<ModularPerson>();
                 person.Build(false, CxDress.NamedPrefabPath(look?.displayName));
                 person.Apply(look);
                 CxDress.EnsureGripSockets(person);
-                CxDress.Person(person, look, Canon.SteelLive(ModularPerson.CastingWorld, Vector3.zero));
+                CxDress.Person(person, look, Canon.SteelLive(ModularPerson.CastingWorld, p.target));
                 if (!string.IsNullOrEmpty(e.name)) PersonLabel.Attach(go.transform, e.name, null);
-                go.SetActive(false); // appears at its first real position
-                return new Proxy { go = go, person = person };
+                p.go = go;
+                p.person = person;
             }
             catch (Exception ex)
             {
                 Debug.LogWarning("[WorldHostClient] spawn failed: " + ex.Message);
-                return null;
             }
         }
 

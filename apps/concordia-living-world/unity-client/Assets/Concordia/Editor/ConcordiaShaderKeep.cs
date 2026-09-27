@@ -50,6 +50,14 @@ namespace Concordia.Editor
             new Keep("skybox_cubemap", "Skybox/Cubemap"),
             new Keep("concordia_volumefog", "Hidden/Concordia/VolumeFog"),
             new Keep("concordia_armrepack", "Hidden/Concordia/ArmRepack"),
+            // HubKit imports every kit model (creatures, props, people) with glTFast,
+            // which assigns its own Shader Graph materials — missing from builds, so
+            // creatures rendered magenta in WebGL (2026-09-27).
+            new Keep("gltf_pbr", "Shader Graphs/glTF-pbrMetallicRoughness"),
+            new Keep("gltf_pbr_alphatest", "Shader Graphs/glTF-pbrMetallicRoughness", false, "_ALPHATEST_ON"),
+            new Keep("gltf_pbr_transparent", "Shader Graphs/glTF-pbrMetallicRoughness", true),
+            new Keep("gltf_unlit", "Shader Graphs/glTF-unlit"),
+            new Keep("gltf_unlit_transparent", "Shader Graphs/glTF-unlit", true),
         };
 
         [MenuItem("Concordia/Ensure Shader Keepers")]

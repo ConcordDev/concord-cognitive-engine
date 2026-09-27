@@ -325,11 +325,20 @@ namespace Concordia // FORCE_REFRESH_0024
             // it on this Animator. Prefer that; only hand-roll one (TryBipedAvatar) for
             // a body whose import never produced a valid Humanoid avatar.
             var av = _anim.avatar;
+#if UNITY_EDITOR
             if (!av || !av.isHuman || !av.isValid)
             {
                 var built = TryBipedAvatar(body);
                 if (built) { _anim.avatar = built; av = built; }
             }
+#else
+            // Player builds get bodies only from HubKit's runtime glTF import, which
+            // has no import-baked avatar. A hand-built one guessed from those bones
+            // retargeted the humanoid clips badly — people floated above their
+            // shadows with splayed arms in the WebGL build (2026-09-27). Without a
+            // trustworthy avatar, fall through to the procedural bone gait below
+            // (Quaternius bone names are mapped for it).
+#endif
             var ctrl = LoadLocomotion();
             // Verified 2026-09-20 (edit-mode AnimationMode sample of HumanoidWalk onto
             // the import-baked Rocketbox avatar): hips bob a clean ~0.86-0.92m, feet
