@@ -603,6 +603,22 @@ export const MACRO_INPUT_HINTS = {
       "optional": true
     }
   ],
+  "evo-asset.generate-organic": [
+    {
+      "name": "id",
+      "optional": false
+    },
+    {
+      "name": "seed",
+      "optional": true
+    }
+  ],
+  "evo-asset.organic-job": [
+    {
+      "name": "jobId",
+      "optional": true
+    }
+  ],
   "factions.visual": [
     {
       "name": "factionId",
@@ -1324,6 +1340,20 @@ export const MACRO_INPUT_HINTS = {
     },
     {
       "name": "skillLevel",
+      "optional": true
+    },
+    {
+      "name": "worldId",
+      "optional": true
+    }
+  ],
+  "quests.accept": [
+    {
+      "name": "questId",
+      "optional": false
+    },
+    {
+      "name": "userId",
       "optional": true
     },
     {
