@@ -8,6 +8,7 @@ import { registerCapability } from "../lib/runtime/capability-registry.js";
 import { collectConstellationHealth, runConstellationObserveCycle } from "../lib/runtime/constellation.js";
 import { resolveSisterHomes } from "../lib/runtime/sister-homes.js";
 import { recentEvents } from "../lib/runtime/event-bus.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 
 const CAPABILITY_DESCRIPTORS = [
   { capability: "constellation.status", owner: "constellation", risk: "read", description: "Aggregate sister-domain health on the Runtime bus.", dependencies: [] },
@@ -26,7 +27,9 @@ function homesFrom(p) {
   return resolveSisterHomes();
 }
 
-export default function registerConstellation(registerLensAction) {
+export default function registerConstellation(rawRegistrar) {
+  // Operator-only: private sister-system state (lib/runtime/operator-gate.js).
+  const registerLensAction = operatorOnlyRegistrar(rawRegistrar);
   registerLensAction("constellation", "status", async (ctx, artifact, params) => {
     const p = payloadOf(artifact, params);
     const health = await collectConstellationHealth({

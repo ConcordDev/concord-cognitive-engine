@@ -276,6 +276,7 @@ import registerCompanionActions from './companion.js';
 import hub from './hub.js';
 // `dila` already imported above (line ~218 — HEAD's block). Merge dedup.
 import zuko from './zuko.js';
+import polymarket from './polymarket.js';
 import trading from './trading.js';
 import pentester from './pentester.js';
 import concordia from './concordia.js';
@@ -590,6 +591,7 @@ export default [
   researchFrontier,
   opportunityEngine,
   zuko,
+  polymarket,
   trading,
   pentester,
   concordia,

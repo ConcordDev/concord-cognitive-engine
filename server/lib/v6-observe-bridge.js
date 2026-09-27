@@ -17,6 +17,7 @@ const DENY_TOOLS = new Set([
 ]);
 
 // Observe-tier organs the 2B is allowed to actually run.
+import { isOperator } from "./runtime/operator-gate.js";
 const OBSERVE_TOOLS = new Set([
   "dtu_search", "dtu_get", "dtu_list", "dila_status", "dila_workers",
   "dhtp_detect", "dhtp_stats", "brain_status", "brain_route",
@@ -26,6 +27,12 @@ const OBSERVE_TOOLS = new Set([
   "concord.verify", "concord.math", "concord.expert_mode.answer",
   "math.symbolicCompute", "expert_mode", "expert_mode.answer",
   "codebase.inspect", "run_compute", "run_lens_action",
+]);
+
+export const OPERATOR_ONLY_OBSERVE = new Set([
+  "dila_status", "dila_workers", "dhtp_detect", "dhtp_stats", "brain_status",
+  "brain_route", "sentinel_health_snapshot", "incident_active", "vault_stats",
+  "vault_read", "schema_status", "pod_status",
 ]);
 
 const MACRO_ALIASES = {
@@ -200,6 +207,12 @@ export async function executeObserveOrgan(call, deps = {}) {
   const tool = String(call.tool || "");
   if (!isObserveTool(tool)) {
     return { tool, ok: false, error: "not_observe_organ", f0: call.f0 || "n/a" };
+  }
+  // Private observe organs (agent vault/notebook, Dila workers, incidents,
+  // pod/brain/sentinel health) read the operator's own systems — chat for any
+  // other signed-in user must not reach them (lib/runtime/operator-gate.js).
+  if (OPERATOR_ONLY_OBSERVE.has(tool) && !isOperator(ctx)) {
+    return { tool, ok: false, error: "operator_only", f0: "DENY" };
   }
 
   const params = call.params || {};

@@ -285,6 +285,10 @@ export async function fetchWithPinnedIp(check, init = {}) {
         lookup: (_hostname, _opts, cb) => cb(null, [{ address: resolvedIp, family }]),
       },
     });
+    // Record the pinned IP on the dispatcher (non-enumerable) so the test
+    // no-egress preload can tell a pinned-to-loopback test server apart from a
+    // real external call — it used to trust every dispatcher blindly.
+    Object.defineProperty(dispatcher, "__concordPinnedIp", { value: resolvedIp });
 
     // Route through globalThis.fetch (Node's built-in fetch — the same
     // undici implementation, exposed globally) rather than a separately

@@ -27691,6 +27691,8 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
+- list_capabilities: List Concord Runtime capabilities (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional"}
+- invoke_capability: Run one Runtime capability through the governed envelope. Params: {"capability": "zuko.status", "input": {}}. Most are the operator's private systems and return operator_only for anyone else — say so plainly; never invent their data.
 
 Rules for tool use:
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
@@ -27852,6 +27854,13 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
           }
           const lensResult = await handler(ctx, null, call.params.params || {});
           return { tool: call.tool, ok: true, result: lensResult };
+        }
+        case "list_capabilities":
+        case "invoke_capability": {
+          // Concord Runtime — one implementation, shared with the agent loop
+          // (lib/chat-agent.js executeToolCall): registry + envelope + gate.
+          const { executeToolCall: _runtimeTool } = await import("./lib/chat-agent.js");
+          return _runtimeTool(ctx, runMacro, LENS_ACTIONS, call);
         }
         default: {
           if (typeof _executeObserveOrgan === "function") {
@@ -47015,11 +47024,20 @@ try {
   mountMcpServer({
     app,
     runMacro: runMcpTool,
-    ctxFor: (extra) => ({
-      db: STATE?.db || globalThis._concordDB,
-      actor: extra?.authInfo?.actor || null,
-      state: STATE,
-    }),
+    ctxFor: (extra) => {
+      const _mcpDb = STATE?.db || globalThis._concordDB;
+      // The OAuth token carries only the user id; resolve the real role from
+      // users so role-gated handlers (lib/runtime/operator-gate.js) see the
+      // operator as the operator and everyone else as who they are.
+      let actor = extra?.authInfo?.actor || null;
+      if (actor?.userId && !actor.role && _mcpDb) {
+        try {
+          const row = _mcpDb.prepare("SELECT role FROM users WHERE id = ?").get(actor.userId);
+          if (row?.role) actor = { ...actor, role: String(row.role) };
+        } catch { /* role stays unset → treated as non-operator */ }
+      }
+      return { db: _mcpDb, actor, state: STATE };
+    },
   });
   structuredLog("info", "mcp_server_mounted", { endpoint: "/mcp", message: "Concord exposed as MCP server. Connect via any MCP client (Claude Desktop, Cursor, etc.)." });
   // NOTE: the reachability self-check below fires AFTER `domainModules.forEach`

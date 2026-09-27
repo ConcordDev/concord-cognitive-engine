@@ -22,6 +22,9 @@ import { collectConstellationHealth } from "../../lib/runtime/constellation.js";
 import { subscribe, recentEvents, _reset as resetBus } from "../../lib/runtime/event-bus.js";
 import { getCapabilityDescriptor, checkCapabilityHealth, _resetRegistry } from "../../lib/runtime/capability-registry.js";
 
+// Private sister-system handlers are operator-only (lib/runtime/operator-gate.js).
+const OPERATOR = { actor: { userId: "test-operator", role: "owner" } };
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 function writeJson(file, value) {
@@ -279,10 +282,14 @@ describe("domain capability registration + handlers", () => {
 
   it("trading.execute and pentester.execute handlers return locked", async () => {
     const lens = globalThis.__concordLensActions;
-    const trade = await lens.get("trading.execute")({}, { data: {} }, { product: "BTC-USD" });
+    // No actor at all: refused before anything runs (operator-gate).
+    const anon = await lens.get("trading.execute")({}, { data: {} }, { product: "BTC-USD" });
+    assert.equal(anon.reason, "operator_only");
+    // Even the operator gets "locked" — the gate never unlocks execute.
+    const trade = await lens.get("trading.execute")(OPERATOR, { data: {} }, { product: "BTC-USD" });
     assert.equal(trade.ok, false);
     assert.equal(trade.reason, "locked");
-    const pent = await lens.get("pentester.execute")({}, { data: {} }, { host: "127.0.0.1" });
+    const pent = await lens.get("pentester.execute")(OPERATOR, { data: {} }, { host: "127.0.0.1" });
     assert.equal(pent.ok, false);
     assert.equal(pent.reason, "locked");
   });
@@ -290,7 +297,7 @@ describe("domain capability registration + handlers", () => {
   it("constellation.status sees injected homes without probing the lab", async () => {
     const lens = globalThis.__concordLensActions;
     const homes = makeHomes();
-    const r = await lens.get("constellation.status")({}, { data: { homes, probeLab: false } }, { homes, probeLab: false });
+    const r = await lens.get("constellation.status")(OPERATOR, { data: { homes, probeLab: false } }, { homes, probeLab: false });
     assert.equal(r.ok, true);
     assert.equal(r.domains.trading.present, true);
     assert.equal(r.domains.zuko.present, true);

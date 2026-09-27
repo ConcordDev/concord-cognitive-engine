@@ -10,6 +10,7 @@ import { publish as publishRuntimeEvent } from "../lib/runtime/event-bus.js";
 import { computeDilaCapabilityIndex } from "../lib/runtime/dila-capability-index.js";
 import { gatherObservationSnapshot } from "../lib/runtime/continuous-observation.js";
 import { DILA_AGENT_ID } from "../lib/runtime/constants.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 import {
   runConcordBench,
   runPceImprovementCycle,
@@ -52,7 +53,9 @@ function dilaStatus(ctx) {
   return body;
 }
 
-export default function registerDila(registerLensAction) {
+export default function registerDila(rawRegistrar) {
+  // Operator-only: private sister-system state (lib/runtime/operator-gate.js).
+  const registerLensAction = operatorOnlyRegistrar(rawRegistrar);
   registerLensAction("dila", "status", (ctx) => dilaStatus(ctx));
   registerLensAction("dila", "observation", (ctx) => gatherObservationSnapshot(ctx?.db));
   registerLensAction("dila", "capabilities", (ctx) => computeDilaCapabilityIndex(ctx?.db));

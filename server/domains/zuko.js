@@ -7,6 +7,7 @@
 import { registerCapability } from "../lib/runtime/capability-registry.js";
 import { observeZuko, zukoExecuteLocked } from "../lib/runtime/zuko-observe.js";
 import { resolveSisterHomes } from "../lib/runtime/sister-homes.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 
 const CAPABILITY_DESCRIPTORS = [
   { capability: "zuko.status", owner: "zuko", risk: "read", description: "Zuko home presence + risk/halt snapshot.", dependencies: [] },
@@ -48,7 +49,9 @@ function statusOf(homes) {
   };
 }
 
-export default function registerZuko(registerLensAction) {
+export default function registerZuko(rawRegistrar) {
+  // Operator-only: private sister-system state (lib/runtime/operator-gate.js).
+  const registerLensAction = operatorOnlyRegistrar(rawRegistrar);
   registerLensAction("zuko", "status", (ctx, artifact, params) => statusOf(homesFrom(payloadOf(artifact, params))));
   registerLensAction("zuko", "observe", (ctx, artifact, params) => {
     const p = payloadOf(artifact, params);

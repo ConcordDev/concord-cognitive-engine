@@ -30,6 +30,7 @@ import { makeRng, gaussian } from "./sim.js";
 import { runConvergentMonteCarlo, DEFAULT_SAMPLE_SCHEDULE } from "../lib/probability/monte-carlo-convergence.js";
 import { registerCapability } from "../lib/runtime/capability-registry.js";
 import { publish as publishRuntimeEvent } from "../lib/runtime/event-bus.js";
+import { operatorOnlyRegistrar } from "../lib/runtime/operator-gate.js";
 
 const r = (v) => (Number.isFinite(v) ? Math.round(v * 10000) / 10000 : v);
 
@@ -187,7 +188,10 @@ const CAPABILITY_DESCRIPTORS = [
 ];
 for (const descriptor of CAPABILITY_DESCRIPTORS) registerCapability(descriptor);
 
-export default function registerPredictActions(registerLensAction) {
+export default function registerPredictActions(rawRegistrar) {
+  // Operator-only: tickets have no owner column (one global pool that holds
+  // Dila's live-trade tickets) — members could list or RESOLVE them.
+  const registerLensAction = operatorOnlyRegistrar(rawRegistrar);
   /**
    * predict.create — mint an immutable PredictionTicket. Everything that
    * describes "what was known/believed at prediction time" is frozen here;

@@ -68,6 +68,7 @@ const TOOL_REQUIRED_PARAMS = {
   generate_image:    ["prompt"],
   mcp_connect:       ["serverId", "url"],
   mcp_call:          ["serverId", "toolName"],
+  invoke_capability: ["capability"],
   // mcp_list and browser_act and run_authored_tool accept empty input.
 };
 
@@ -202,6 +203,10 @@ Available tools (with one working example each):
 - mcp_list: List all tools available across connected external MCP servers. Params: {}
 - browser_act: Take actions on a web page — click, fill forms, select dropdowns, screenshot. Use when read-only browse_url isn't enough (need to log in, submit forms, navigate UI). Params: {"url": "https://...", "actions": [{"kind": "fill", "selector": "input[name='q']", "value": "..."}, {"kind": "click", "selector": "button[type='submit']"}, {"kind": "screenshot"}]}
 - run_authored_tool: Invoke one of YOUR OWN previously human-approved authored tools (a saved, named DSL program or sandboxed code a human proposed and approved for autonomous use). Params: {"toolId": "...", "input": {...}}
+- list_capabilities: List Concord Runtime capabilities — the connected systems (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional, e.g. zuko"}
+  Example: [TOOL_CALL: {"tool": "list_capabilities", "params": {}}]
+- invoke_capability: Run one Runtime capability by name through the governed envelope. Most are the operator's private systems and return operator_only for anyone else — say so plainly, never invent their data. Params: {"capability": "zuko.status", "input": {...}}
+  Example: [TOOL_CALL: {"tool": "invoke_capability", "params": {"capability": "mission.supervisor", "input": {}}}]
 
 Rules:
 - Use a tool when the task genuinely requires it. Don't fabricate results.
@@ -724,6 +729,48 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
           return { tool: call.tool, ok: false, error: `run_authored_tool error: ${err?.message || err}` };
         }
       }
+      case "list_capabilities": {
+        // Concord Runtime discovery: the registry of sister systems (Dila,
+        // Zuko, Predict, trading, pentester lab, missions, incident /
+        // opportunity / research / trace organs, Concordia). Non-operators
+        // only see the public ones — the rest are operator_only anyway.
+        try {
+          const { listCapabilities, checkCapabilityHealth } = await import("./runtime/capability-registry.js");
+          const { isOperator, PRIVATE_CAPABILITY_OWNERS } = await import("./runtime/operator-gate.js");
+          const operator = isOperator(ctx);
+          const owner = call.params?.owner ? String(call.params.owner) : null;
+          const capabilities = listCapabilities(owner ? { owner } : {})
+            .filter((c) => operator || !PRIVATE_CAPABILITY_OWNERS.includes(c.owner))
+            .map((c) => ({
+              capability: c.capability, owner: c.owner, risk: c.risk,
+              description: c.description, reachable: checkCapabilityHealth(c.capability).reachable,
+            }));
+          return { tool: call.tool, ok: true, operator, total: capabilities.length, capabilities };
+        } catch (err) {
+          return { tool: call.tool, ok: false, error: `list_capabilities error: ${err?.message || err}` };
+        }
+      }
+      case "invoke_capability": {
+        // Runs through the Runtime's universal envelope: registry lookup +
+        // reachability + event-bus audit, and for organ capabilities the
+        // AuthGate dispatch. Authority lives in the handlers/envelope, not
+        // here — execute-tier capabilities stay locked however they're asked.
+        const capability = String(call.params?.capability || "");
+        try {
+          const { runCapability } = await import("./runtime/execution-envelope.js");
+          const r = await runCapability({
+            capability, ctx, input: call.params?.input || {},
+            actor: ctx.actor?.userId, intent: "chat",
+            provenance: { source: "chat-agent" },
+          });
+          if (r.status !== "ok") {
+            return { tool: call.tool, ok: false, capability, error: r.reason || "capability_failed", detail: r.detail || r.result || null };
+          }
+          return { tool: call.tool, ok: true, capability, requestId: r.requestId, result: r.result };
+        } catch (err) {
+          return { tool: call.tool, ok: false, capability, error: `invoke_capability error: ${err?.message || err}` };
+        }
+      }
       default:
         return { tool: call.tool, ok: false, error: `unknown tool: ${call.tool}` };
     }
@@ -790,6 +837,8 @@ export function formatToolResults(results) {
     if (r.tool === "mcp_list")     return `[TOOL_RESULT: mcp_list] ${JSON.stringify((r.tools || []).slice(0, 50)).slice(0, 4000)}`;
     if (r.tool === "mcp_call")     return _screenUntrusted(`mcp_call ${r.serverId}/${r.toolName}`, "mcp_external", (typeof r.result === "string" ? r.result : JSON.stringify(r.result)), (t) => `[TOOL_RESULT: mcp_call ${r.serverId}/${r.toolName}] ${t.slice(0, 4000)}`);
     if (r.tool === "browser_act")  return _screenUntrusted(`browser_act ${r.url}`, "web_fetch", r.text, (t) => `[TOOL_RESULT: browser_act ${r.url}] ${r.actionsExecuted} actions executed. finalUrl=${r.finalUrl || r.url}\n${t.slice(0, 4000)}`);
+    if (r.tool === "list_capabilities") return `[TOOL_RESULT: list_capabilities] ${r.total} capabilities${r.operator ? "" : " (public only — the rest are operator-only)"}: ${(r.capabilities || []).map(c => `${c.capability}${c.reachable ? "" : " (unreachable)"}`).join(", ")}`;
+    if (r.tool === "invoke_capability") return `[TOOL_RESULT: invoke_capability ${r.capability}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     if (r.tool === "run_authored_tool") return `[TOOL_RESULT: run_authored_tool ${r.toolId}] ${JSON.stringify(r.result).slice(0, 4000)}`;
     return `[TOOL_RESULT: ${r.tool}] ${JSON.stringify(r).slice(0, 2000)}`;
   }).join("\n\n");
