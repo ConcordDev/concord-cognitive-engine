@@ -18,6 +18,7 @@ namespace Concordia.Editor
         public static void BuildLinuxServer()
         {
             ConcordiaUrpEnsure.Ensure();
+            ConcordiaShaderKeep.Ensure(); // runtime-built materials need their shaders shipped
             ConcordiaMenu.BuildHubSceneSilent();
 
             var outDir = System.Environment.GetEnvironmentVariable("CONCORD_SERVER_BUILD");

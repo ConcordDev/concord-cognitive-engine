@@ -17,6 +17,7 @@ namespace Concordia.Editor
         public static void Export()
         {
             ConcordiaUrpEnsure.Ensure();
+            ConcordiaShaderKeep.Ensure(); // runtime-built materials need their shaders shipped
             ConcordiaMenu.BuildHubSceneSilent();
 
             var repoRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", ".."));

@@ -134,6 +134,9 @@ export async function runZ3(smtlib, opts = {}) {
       resolve({ available: false, result: null, raw: String(e?.message || e) });
       return;
     }
+    // z3 missing or exiting early turns the write into an async EPIPE 'error'
+    // event, which try/catch can't catch and which would crash the process.
+    try { child.stdin?.on("error", () => { /* reported by the execFile callback */ }); } catch { /* no stdin */ }
     try { child.stdin.write(String(smtlib || "")); child.stdin.end(); } catch { /* execFile error already handled */ }
   });
 }
