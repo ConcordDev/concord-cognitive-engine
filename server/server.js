@@ -1893,6 +1893,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 // (aggregateInferenceCosts) reflects real usage instead of sitting empty.
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
+import { v6ContractOnly as _v6ContractOnly } from "./lib/chat-v6-contract.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -28325,6 +28326,49 @@ V6 JSON contract (also accepted): emit one JSON object with keys intent, confide
     }
   }
   // ===== END TOOL CALL EXECUTION LOOP =====
+
+  // V6 JSON-contract leak guard (2026-09-27, found by a new-user chat QA run):
+  // the system prompt lets the brain answer in the V6 JSON contract. When it
+  // emits that object with NO tool (action:"none"), nothing runs and the raw
+  // `{"intent":…,"confidence":…}` used to be shown to the user as the answer.
+  // Never render the contract: use a prose field if it carries one, else ask
+  // once for a plain answer, else say honestly that no answer was produced.
+  if (llmUsed && finalReply) {
+    const _v6Only = _v6ContractOnly(finalReply);
+    if (_v6Only) {
+      const _prose = ["answer", "response", "reply", "text", "message", "content"]
+        .map((k) => _v6Only[k]).find((v) => typeof v === "string" && v.trim());
+      if (_prose) {
+        finalReply = _prose.trim();
+      } else {
+        let _plain = null;
+        try {
+          const _pAc = new AbortController();
+          const _pTimeout = setTimeout(() => _pAc.abort(), 60000);
+          const _pRes = await fetch(`${brainUrl}/api/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: brainModel,
+              messages: [
+                { role: "system", content: composeSystemPrompt("conscious", { mode, currentLens, worldId: input?.worldId || null, extra: "Answer the user directly in plain conversational language. Do NOT output JSON or tool markers." }).system },
+                { role: "user", content: String(prompt || "") },
+              ],
+              stream: false,
+              think: false,
+              options: { temperature: 0.4, num_predict: 600 },
+            }),
+            signal: _pAc.signal,
+          }).finally(() => clearTimeout(_pTimeout));
+          const _pJson = await _pRes.json().catch(() => ({}));
+          const _txt = String(_pJson?.message?.content || "").trim();
+          if (_pRes.ok && _txt && !_v6ContractOnly(_txt)) _plain = _stripToolCalls(_txt);
+        } catch { /* fall through to the honest line */ }
+        finalReply = _plain || "I couldn't put together an answer for that one — could you rephrase or ask again?";
+        ctx.log("chat_tools", "V6 contract reply replaced", { recovered: !!_plain, intent: String(_v6Only.intent || "").slice(0, 40) });
+      }
+    }
+  }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
   if (!llmUsed && localReply && finalReply === localReply) {
