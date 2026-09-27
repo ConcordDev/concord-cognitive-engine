@@ -71,7 +71,7 @@ each gate for that audience is green.
 | Private systems locked to the operator | all | 🟢 Fixed | Members get `operator_only`; verified live |
 | Production brains (A40) online | all | 🔴 **Down** | Mac serves a small test model only. Chat quality for new users depends on this |
 | "Verify" means what the pitch says | 1 | 🟡 Partial | `reason.verify` checks that a claim's *citations resolve*; it doesn't fact-check uncited text. Pitch it precisely, or build claim-level grounding |
-| Engineering wedge usable from chat, end to end | 1 | 🟡 Untested | CAS + FEA work as macros; a chat-driven beam check hasn't been run as a new user yet |
+| Engineering wedge usable end to end | 1 | 🟢 Verified (beam problems) | New-user QA 2026-09-27: parts/load cases/FEA/7 calculators correct against hand calcs; a structural-solver bug (columns solved wrong) found and fixed; chat answers written beam problems from the engine (0.04966 in, textbook). Other problem types still rely on the model calling tools |
 | Fresh Concordia WebGL build | 3 | 🔴 Stale | Shipped player exported Sep 13; later gameplay fixes not in it. Re-export + browser play-test |
 | Onboarding doesn't force Concordia on signup | all | 🔴 Open | Owner-noted: defer character creation to first World-lens open |
 | Lens wiring | all | 🟡 Regressed | Verifier: 254 wired / 12 no-backend-call (docs said 262/4) — audit after the Sep 10 de-stack |
