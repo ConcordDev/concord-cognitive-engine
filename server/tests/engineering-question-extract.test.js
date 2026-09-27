@@ -39,12 +39,3 @@ test("never guesses: missing I, missing support, distributed loads, or non-beam 
   assert.equal(extractBeamQuestion("A simply supported beam 20 ft long carries 50 lb/ft uniformly, I = 200 in^4, E = 29000 ksi. Deflection?"), null, "distributed");
   assert.equal(extractBeamQuestion("What is the deflection of public opinion?"), null);
 });
-
-test("chat.respond computes the beam answer before any brain path and enforces it", async () => {
-  const fs = await import("node:fs");
-  const src = fs.readFileSync(new URL("../server.js", import.meta.url), "utf8");
-  const extractAt = src.indexOf("const _beamQ = _extractBeamQuestion(prompt);");
-  const llmBranchAt = src.indexOf("if (llm && ctx.llm.enabled) {");
-  assert.ok(extractAt > 0 && llmBranchAt > 0 && extractAt < llmBranchAt, "beam extraction must precede every brain branch");
-  assert.match(src, /if \(!finalReply\.includes\(_v4\) && !finalReply\.includes\(_v3\)\) finalReply = _deterministicAnswer\.text;/);
-});

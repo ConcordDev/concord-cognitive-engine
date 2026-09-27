@@ -40,6 +40,7 @@ import { scanForInjection } from "./provenance-guard.js";
 import { resolveDualRegistry } from "./dual-registry-resolve.js";
 import { createInitiativeEngine } from "./initiative-engine.js";
 import { MACRO_INPUT_HINTS } from "./macro-input-hints.js";
+import { routeComputeQuestion, composeRoutedReply } from "./chat/compute-router.js";
 
 const AGENT_MAX_TURNS = 5;
 const MAX_TOOL_RESULT_LEN = 12_000;
@@ -871,6 +872,28 @@ export async function runAgentLoop({ db, userId, message, runMacro, lensActions,
   };
   if (!message) return { ok: false, error: "missing_message" };
   const maxTurns = opts.maxTurns || AGENT_MAX_TURNS;
+
+  // Compute-don't-guess on any model: a fully specified computational question
+  // is answered by Concord's engines directly (lib/chat/compute-router.js) —
+  // same router as chat.respond, so ConKay and Chat agree and no model size is
+  // required to get it right.
+  try {
+    const routed = routeComputeQuestion(message);
+    if (routed) {
+      const text = composeRoutedReply(routed);
+      emit("tool_call", { tool: "compute_router", ok: true, route: routed.route, engine: routed.engine, result: routed.value });
+      return {
+        ok: true,
+        answer: text,
+        toolCalls: [{ tool: "compute_router", ok: true, route: routed.route, engine: routed.engine, result: routed.value }],
+        artifacts: [],
+        turns: 0,
+        provider: "concord-engine",
+        model: routed.engine,
+        ...provenanceFrom({ provider: "concord-engine", model: routed.engine }),
+      };
+    }
+  } catch { /* fall through to the brain */ }
 
   // Shadow context prefetch — pull the user's active substrate (shadow
   // DTUs from chat.harvest) and inject as a system-context block before

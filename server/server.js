@@ -1894,8 +1894,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
-import { extractBeamQuestion as _extractBeamQuestion, formatDeflection as _formatDeflection } from "./lib/engineering-question-extract.js";
-import { beamDeflection as _beamDeflection } from "./lib/compute/physics-compute.js";
+import { routeComputeQuestion as _routeComputeQuestion, composeRoutedReply as _composeRoutedReply } from "./lib/chat/compute-router.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
@@ -26774,7 +26773,9 @@ ISO: ${t.nowISO}`;
   return { ok:true, reply, sessionId, mode, llmUsed:false, meta:{ panel:"chat", sessionId, mode, llmUsed:false, source:"time" } };
 }
 
-if (_isWeatherQuery(prompt)) {
+// A fully specified computation (e.g. "heat loss … 30 F temperature difference")
+// is never a weather question — let the compute router take it.
+if (_isWeatherQuery(prompt) && !_routeComputeQuestion(prompt)) {
   const tz = String(localSettings?.timezone || "America/New_York");
   const loc = _extractLocation(prompt) || String(localSettings?.defaultLocation || "Poughkeepsie, NY");
   try {
@@ -27754,21 +27755,14 @@ ${_operatorV6Block}` : "";
   // Set when a deterministic engine answered the question outright (e.g. a
   // written beam-deflection problem); enforced after the brain replies.
   let _deterministicAnswer = null;
-  // Engineering wedge: a fully-specified written beam question goes to the
-  // deterministic engine (lib/engineering-question-extract.js) up front, so
-  // every brain path — preflight, direct fallback, offline — is covered.
+  // Compute-don't-guess on ANY model (lib/chat/compute-router.js): a fully
+  // specified computational question (arithmetic, calculus, units, beam /
+  // column / electrical / hydraulic / HVAC, stats, chemistry, finance…) is
+  // answered by Concord's engines up front. The brain is then skipped entirely
+  // — a self-hosted small model is never asked to re-derive (and garble) it.
   try {
-    const _beamQ = _extractBeamQuestion(prompt);
-    if (_beamQ) {
-      const _beamR = _beamDeflection(_beamQ);
-      if (_beamR && _beamR.ok !== false && Number.isFinite(_beamR.value)) {
-        const _assumed = _beamQ.assumed.length ? ` Assumed: ${_beamQ.assumed.join("; ")}.` : "";
-        _deterministicAnswer = {
-          value: _beamR.value,
-          text: `${_formatDeflection(_beamR.value, _beamR.formula)}${_assumed} (Computed by Concord's beam engine: ${_beamQ.supportType} support, P = ${Number(_beamQ.loadLbs.toPrecision(6))} lb, L = ${Number(_beamQ.lengthFt.toPrecision(6))} ft, E = ${Math.round(_beamQ.modulusE).toLocaleString("en-US")} psi, I = ${Number(_beamQ.momentI.toPrecision(6))} in⁴.)`,
-        };
-      }
-    }
+    const _routed = _routeComputeQuestion(prompt);
+    if (_routed) _deterministicAnswer = { value: _routed.value, text: _composeRoutedReply(_routed), route: _routed.route };
   } catch { /* never block chat on a compute failure */ }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
@@ -28029,7 +28023,9 @@ ${_operatorV6Block}` : "";
   // ===== END TOOL CALLING INFRASTRUCTURE =====
 
   let messages = null;
-  if (llm && ctx.llm.enabled) {
+  if (_deterministicAnswer) {
+    finalReply = _deterministicAnswer.text;
+  } else if (llm && ctx.llm.enabled) {
     // Affect-modulated LLM parameters
     const _llmTemp = clamp(
       0.35 + (_affStyle.creativity ? (_affStyle.creativity - 0.5) * 0.3 : 0),
@@ -28447,9 +28443,11 @@ ${_operatorV6Block}` : "";
   // engine's answer is the reply — a model's re-derivation is never trusted
   // over the engine for a fully-specified problem.
   if (_deterministicAnswer && typeof finalReply === "string") {
-    const _v4 = String(Number(_deterministicAnswer.value.toPrecision(4)));
-    const _v3 = String(Number(_deterministicAnswer.value.toPrecision(3)));
-    if (!finalReply.includes(_v4) && !finalReply.includes(_v3)) finalReply = _deterministicAnswer.text;
+    const _dv = _deterministicAnswer.value;
+    const _carries = typeof _dv === "number"
+      ? [String(Number(_dv.toPrecision(4))), String(Number(_dv.toPrecision(3)))].some((v) => finalReply.replace(/,(?=\d{3})/g, "").includes(v))
+      : finalReply.includes(String(_dv));
+    if (!_carries) finalReply = _deterministicAnswer.text;
   }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
