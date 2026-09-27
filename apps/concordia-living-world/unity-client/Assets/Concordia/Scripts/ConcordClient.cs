@@ -56,6 +56,8 @@ namespace Concordia
             new System.Collections.Concurrent.ConcurrentQueue<System.Action>();
 
         public string WorldId => worldId;
+        /// <summary>The authenticated account id ("" until the gateway says hello).</summary>
+        public string UserId => _userId;
 
         void Awake()
         {

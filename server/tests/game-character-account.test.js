@@ -45,6 +45,9 @@ describe("Concordia character on the account", () => {
     assert.equal(r.characters[idA].character.displayName, "Ashwyn");
     assert.equal(r.characters[idA].character.savedAt, undefined);
     assert.equal(r.characters[idB].character, null);
+    const rowA = r.list.find((x) => x.userId === idA);
+    assert.equal(rowA.hasCharacter, true);
+    assert.equal(r.list.find((x) => x.userId === idB).hasCharacter, false);
   });
 
   test("rejects junk and oversized payloads", async () => {

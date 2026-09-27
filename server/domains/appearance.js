@@ -286,7 +286,11 @@ export default function registerAppearanceMacros(register) {
         const c = parsed?.gameCharacter;
         out[r.id] = { username: r.username, character: c ? { ...c, savedAt: undefined } : null };
       }
-      return { ok: true, characters: out };
+      // `list` mirrors `characters` as an array for clients whose JSON parser
+      // can't read keyed objects (Unity JsonUtility); hasCharacter because a
+      // null nested object deserializes there as a default-valued instance.
+      const list = Object.entries(out).map(([userId, v]) => ({ userId, username: v.username, hasCharacter: !!v.character, character: v.character }));
+      return { ok: true, characters: out, list };
     } catch {
       return { ok: false, reason: "load_failed" };
     }

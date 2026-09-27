@@ -73761,6 +73761,11 @@ const _godotMoveRateGate = makeGodotMoveRateGate();
 
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
+  // A player in the World lens talks almost only over this socket. Count
+  // authenticated gameplay traffic as real activity — otherwise the idle gate
+  // (lib/presence-idle.js, fed by HTTP middleware) decides nobody is online and
+  // pauses the city:positions broadcast, so players stop seeing each other.
+  if (userId) { try { _markActivity({ authed: true }); } catch { /* best-effort */ } }
   // Unity /unity-ws uses the same gateway; envelopes are unity:<godot-evt>.
   if (typeof evt === "string" && evt.startsWith("unity:")) evt = evt.slice(6);
   switch (evt) {

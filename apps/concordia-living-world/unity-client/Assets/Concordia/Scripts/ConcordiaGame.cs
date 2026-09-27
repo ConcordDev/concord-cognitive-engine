@@ -108,6 +108,7 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
+            RemotePlayers.Install(kernel); // other players in the shared world
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
