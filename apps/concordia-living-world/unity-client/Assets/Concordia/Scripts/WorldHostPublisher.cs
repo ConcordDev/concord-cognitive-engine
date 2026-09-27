@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using Unity.Jobs.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace Concordia
@@ -29,9 +30,34 @@ namespace Concordia
         readonly StringBuilder _sb = new StringBuilder(16 * 1024);
         static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+        // A headless host has no display to pace it: batchmode runs the frame
+        // loop flat out and the job system sizes itself to the HOST's cores.
+        // On a 6.8-CPU pod slice of a 128-thread machine that was 600% CPU and
+        // 269 threads (measured 2026-09-27) — the whole box, starving the
+        // backend it talks to. NPC life needs a steady ~30 Hz, not more.
+        //   CONCORD_HOST_FPS (default 30), CONCORD_HOST_JOB_WORKERS (default 2)
+        static int HostFps => EnvInt("CONCORD_HOST_FPS", 30, 5, 120);
+
+        static int EnvInt(string key, int fallback, int min, int max)
+        {
+            var v = System.Environment.GetEnvironmentVariable(key);
+            return int.TryParse(v, out var n) && n >= min && n <= max ? n : fallback;
+        }
+
+        static void PaceHeadless()
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = HostFps;
+            var workers = EnvInt("CONCORD_HOST_JOB_WORKERS", 2, 1, 64);
+            if (workers < JobsUtility.JobWorkerMaximumCount && JobsUtility.JobWorkerCount != workers)
+                JobsUtility.JobWorkerCount = workers;
+            Debug.Log($"[WorldHost] paced: {Application.targetFrameRate} fps, {JobsUtility.JobWorkerCount} job workers");
+        }
+
         public static void Install(ConcordClient client)
         {
             if (client == null || FindAnyObjectByType<WorldHostPublisher>()) return;
+            PaceHeadless();
             var go = new GameObject("WorldHostPublisher");
             go.AddComponent<WorldHostPublisher>()._client = client;
             client.OnEvent += (evt, text) =>
@@ -55,9 +81,18 @@ namespace Concordia
             return id;
         }
 
+        float _nextPaceCheck;
+
         void Update()
         {
-            if (_client == null || !_client.Connected) { Registered = false; return; }
+            // Other systems (the performance profile) set targetFrameRate for
+            // players; the host keeps its own pace.
+            if (Time.realtimeSinceStartup >= _nextPaceCheck)
+            {
+                _nextPaceCheck = Time.realtimeSinceStartup + 5f;
+                if (Application.targetFrameRate != HostFps) Application.targetFrameRate = HostFps;
+            }
+            if (_client == null || !_client.Ready) { Registered = false; return; }
             if (!Registered)
             {
                 if (Time.realtimeSinceStartup < _nextRegister) return;

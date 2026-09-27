@@ -3271,6 +3271,10 @@ export default function WorldOsSurface() {
 
     // Request saved state on first connect
     worldSocket.emit('player:load');
+    // Join this world's room: city:positions, combat:hit and the other
+    // world-scoped events are sent to `world:<id>`, not to every socket.
+    const worldRoom = `world:${currentWorldId}`;
+    worldSocket.emit('room:join', { room: worldRoom });
 
     // Seed starter world event if district has none (fire-and-forget)
     fetch(`/api/worlds/${currentWorldId}/events?status=active&limit=1`)
@@ -4072,6 +4076,7 @@ export default function WorldOsSurface() {
     });
 
     return () => {
+      worldSocket.emit('room:leave', { room: worldRoom });
       worldSocket.off('player:load:ack', handleLoadAck);
       worldSocket.off('city:positions', handleCityPositions);
       worldSocket.off('player:move:ack', handleMoveAck);

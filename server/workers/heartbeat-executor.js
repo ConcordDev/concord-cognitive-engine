@@ -32,6 +32,7 @@
  * ./heartbeat-write-queue.js so it can be unit-tested directly.
  */
 
+import "../lib/ollama-request-guard-install.js"; // brain requests: pinned num_ctx + thread cap (worker has its own fetch)
 import { parentPort, workerData } from "node:worker_threads";
 import { makeQueueingDb } from "./heartbeat-write-queue.js";
 

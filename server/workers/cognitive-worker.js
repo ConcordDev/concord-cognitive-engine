@@ -25,6 +25,7 @@
  *   - Qualia hooks
  */
 
+import "../lib/ollama-request-guard-install.js"; // brain requests: pinned num_ctx + thread cap (worker has its own fetch)
 import { parentPort } from "node:worker_threads";
 import { execFileSync } from "node:child_process";
 import { runPipeline, ensurePipelineState } from "../emergent/autogen-pipeline.js";

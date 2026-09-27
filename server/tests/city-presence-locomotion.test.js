@@ -224,3 +224,33 @@ describe("broadcastPositions / getNearbyUsers — additive `locomotion` field", 
     assert.equal(other.locomotion, "run");
   });
 });
+
+// 2026-09-27: a server hitch processes a player's queued moves microseconds
+// apart. Server-receive dt made honest walking read as a speed hack and a
+// 1.1 s stall disconnected 11 of 16 players. The movement budget absorbs a
+// backlog of what was genuinely walked, and still rejects real over-speed.
+import { spendMoveBudget } from "../lib/city-presence.js";
+describe("movement budget (backlog after a server stall)", () => {
+  it("a stall backlog of honest walking is accepted", () => {
+    // 1.1 s of walking at 3.5 m/s, delivered as 11 packets ~0 ms apart after the stall
+    let b = spendMoveBudget(undefined, 16, 1100, 0.35);
+    assert.equal(b.ok, true);
+    for (let i = 0; i < 10; i++) { b = spendMoveBudget(b.budget, 16, 0.1, 0.35); assert.equal(b.ok, true); }
+  });
+  it("sustained over-speed drains the bank and is rejected", () => {
+    let b = { budget: undefined, ok: true };
+    let rejected = false;
+    for (let i = 0; i < 30 && !rejected; i++) { b = spendMoveBudget(b.budget, 16, 100, 3.2); rejected = !b.ok; } // 32 m/s
+    assert.equal(rejected, true);
+  });
+  it("banked slack never exceeds one burst window", () => {
+    const rested = spendMoveBudget(undefined, 16, 60_000, 0, 1); // idle a minute
+    assert.equal(rested.budget, 16);
+    assert.equal(spendMoveBudget(rested.budget, 16, 0, 17, 1).ok, false);
+    assert.equal(spendMoveBudget(rested.budget, 16, 0, 16, 1).ok, true);
+  });
+  it("a single sparse packet is judged exactly as before (max speed over its own dt)", () => {
+    assert.equal(spendMoveBudget(undefined, 22, 2000, 38).ok, true);  // 19 m/s on a 22 m/s mount
+    assert.equal(spendMoveBudget(undefined, 16, 2000, 38).ok, false); // 19 m/s on foot
+  });
+});

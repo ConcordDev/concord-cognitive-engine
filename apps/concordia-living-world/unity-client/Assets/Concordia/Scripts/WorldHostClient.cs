@@ -95,7 +95,7 @@ namespace Concordia
             while (_inbox.TryDequeue(out var a)) { try { a(); } catch (Exception e) { Debug.LogWarning("[WorldHostClient] " + e.Message); } }
 
             // Ask for the current population on join (and again if a host appears).
-            if (!_hostLive && _client != null && _client.Connected && Time.realtimeSinceStartup >= _nextRequest)
+            if (!_hostLive && _client != null && _client.Ready && Time.realtimeSinceStartup >= _nextRequest)
             {
                 _nextRequest = Time.realtimeSinceStartup + 15f;
                 _ = _client.SendRaw("world:manifest:request", "{\"worldId\":\"" + _client.WorldId + "\"}");

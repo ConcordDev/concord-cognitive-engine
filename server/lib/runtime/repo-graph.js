@@ -4,7 +4,7 @@
 // without full AST. Indexes server/ + concord-frontend/ on demand.
 
 import { readdir, readFile, stat } from "node:fs/promises";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join, relative, extname } from "node:path";
 
 const DEFAULT_ROOTS = ["server", "concord-frontend"];
@@ -23,13 +23,32 @@ function edgesTableReady(db) {
   }
 }
 
+// One prepared INSERT per db, not a sqlite_master lookup + prepare per edge.
+// (Profiled 2026-09-27: per-edge table checks and prepares made a full index
+// hold the event loop ~1 s inside one transaction.) indexRepo clears the cache
+// at the start of each run so a table created by a later migration is found.
+const _edgeStmts = new WeakMap();
+function edgeStmt(db) {
+  if (!db) return null;
+  if (_edgeStmts.has(db)) return _edgeStmts.get(db);
+  let st = null;
+  if (edgesTableReady(db)) {
+    try {
+      st = db.prepare(`
+        INSERT OR IGNORE INTO runtime_repo_edges (repo_root, from_ref, to_ref, edge_kind, meta_json, indexed_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+    } catch { st = null; }
+  }
+  _edgeStmts.set(db, st);
+  return st;
+}
+
 function insertEdge(db, repoRoot, fromRef, toRef, edgeKind, meta = null) {
-  if (!edgesTableReady(db)) return;
+  const st = edgeStmt(db);
+  if (!st) return;
   try {
-    db.prepare(`
-      INSERT OR IGNORE INTO runtime_repo_edges (repo_root, from_ref, to_ref, edge_kind, meta_json, indexed_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(repoRoot, fromRef, toRef, edgeKind, meta ? JSON.stringify(meta) : null, nowSec());
+    st.run(repoRoot, fromRef, toRef, edgeKind, meta ? JSON.stringify(meta) : null, nowSec());
   } catch { /* best effort */ }
 }
 
@@ -52,13 +71,13 @@ function indexMigrationGraph(db, repoRoot) {
   return { count: files.length };
 }
 
-function indexApiRouteGraph(db, repoRoot) {
+async function indexApiRouteGraph(db, repoRoot) {
   const paths = ["server/server.js"];
   let count = 0;
   for (const rel of paths) {
     let content;
     try {
-      content = readFileSync(join(repoRoot, rel), "utf8");
+      content = await readFile(join(repoRoot, rel), "utf8");
     } catch {
       continue;
     }
@@ -67,28 +86,6 @@ function indexApiRouteGraph(db, repoRoot) {
     while ((m = ROUTE_RE.exec(content)) !== null) {
       insertEdge(db, repoRoot, rel, `route:${m[2]}`, "route", { method: m[1] });
       count++;
-    }
-  }
-  return { count };
-}
-
-function indexTestGraph(db, repoRoot, sourceFiles) {
-  let count = 0;
-  for (const filePath of sourceFiles) {
-    if (!/\.test\.(js|ts)$/.test(filePath)) continue;
-    let content;
-    try {
-      content = readFileSync(filePath, "utf8");
-    } catch {
-      continue;
-    }
-    const rel = relative(repoRoot, filePath);
-    const imports = parseImports(content);
-    for (const imp of imports) {
-      if (imp.startsWith(".") || imp.includes("/")) {
-        insertEdge(db, repoRoot, rel, imp, "test", { kind: "covers" });
-        count++;
-      }
     }
   }
   return { count };
@@ -148,19 +145,31 @@ function parseExports(content) {
   return exports;
 }
 
+const INDEX_BATCH_FILES = 100;
+const TEST_FILE_RE = /\.test\.(js|ts)$/;
+
 /**
+ * Index imports/exports (+ test-coverage, migration and route edges).
+ * Files are read asynchronously and committed in batches of
+ * INDEX_BATCH_FILES, yielding to the event loop between batches, so a full
+ * index never stalls live traffic. Readers can briefly see a partial index
+ * while it runs; it is a cache, not a record.
  * @param {object} db
  * @param {string} [repoRoot] workspace root
+ * @param {{maxFiles?: number}} [opts]
  */
-export async function indexRepo(db, repoRoot) {
+export async function indexRepo(db, repoRoot, opts = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const root = repoRoot || process.cwd().replace(/\/server$/, "") || process.cwd();
-  const files = [];
+  let files = [];
   for (const sub of DEFAULT_ROOTS) {
     await walkDir(join(root, sub), files);
   }
+  const maxFiles = Number(opts?.maxFiles);
+  if (Number.isInteger(maxFiles) && maxFiles > 0) files = files.slice(0, maxFiles);
 
-  if (edgesTableReady(db)) {
+  _edgeStmts.delete(db);
+  if (edgeStmt(db)) {
     try {
       db.prepare(`DELETE FROM runtime_repo_edges WHERE repo_root = ?`).run(root);
     } catch { /* optional */ }
@@ -174,39 +183,48 @@ export async function indexRepo(db, repoRoot) {
 
   let symbolCount = 0;
   let edgeCount = 0;
+  let testEdges = 0;
   const ts = nowSec();
-  const tx = db.transaction(() => {
-    db.prepare(`DELETE FROM runtime_repo_symbols WHERE repo_root = ?`).run(root);
-    for (const filePath of files) {
-      let content;
-      try {
-        content = readFileSync(filePath, "utf8");
-      } catch {
-        continue;
-      }
-      const rel = relative(root, filePath);
-      const imports = parseImports(content);
-      insert.run(root, rel, "file", rel, 0, JSON.stringify(imports), ts);
-      symbolCount++;
-      for (const imp of imports) {
-        insertEdge(db, root, rel, imp, "import");
-        edgeCount++;
-      }
-      const exports = parseExports(content);
-      for (const sym of exports) {
-        insert.run(root, rel, "export", sym, 0, null, ts);
+  db.prepare(`DELETE FROM runtime_repo_symbols WHERE repo_root = ?`).run(root);
+  for (let start = 0; start < files.length; start += INDEX_BATCH_FILES) {
+    const batch = await Promise.all(files.slice(start, start + INDEX_BATCH_FILES).map(async (filePath) => {
+      try { return [filePath, await readFile(filePath, "utf8")]; } catch { return null; }
+    }));
+    db.transaction(() => {
+      for (const entry of batch) {
+        if (!entry) continue;
+        const [filePath, content] = entry;
+        const rel = relative(root, filePath);
+        const imports = parseImports(content);
+        insert.run(root, rel, "file", rel, 0, JSON.stringify(imports), ts);
         symbolCount++;
+        for (const imp of imports) {
+          insertEdge(db, root, rel, imp, "import");
+          edgeCount++;
+        }
+        for (const sym of parseExports(content)) {
+          insert.run(root, rel, "export", sym, 0, null, ts);
+          symbolCount++;
+        }
+        if (TEST_FILE_RE.test(filePath)) {
+          for (const imp of imports) {
+            if (imp.startsWith(".") || imp.includes("/")) {
+              insertEdge(db, root, rel, imp, "test", { kind: "covers" });
+              testEdges++;
+            }
+          }
+        }
       }
-    }
-  });
-  tx();
+    })();
+    await new Promise((r) => { setImmediate(r); });
+  }
 
   const mig = indexMigrationGraph(db, root);
-  const routes = indexApiRouteGraph(db, root);
-  const tests = indexTestGraph(db, root, files);
+  const routes = await indexApiRouteGraph(db, root);
+  const tests = { count: testEdges };
   edgeCount += mig.count + routes.count + tests.count;
 
-  if (edgesTableReady(db)) {
+  if (edgeStmt(db)) {
     try {
       const row = db.prepare(`SELECT COUNT(*) AS c FROM runtime_repo_edges WHERE repo_root = ?`).get(root);
       edgeCount = row?.c || edgeCount;

@@ -7,7 +7,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
-import { getRealCpuCount, _resetCpuCountCacheForTest } from "../lib/cgroup-cpu.js";
+import { getRealCpuCount, computeCpuCount, _resetCpuCountCacheForTest } from "../lib/cgroup-cpu.js";
 
 describe("getRealCpuCount", () => {
   it("returns a positive integer", () => {
@@ -43,12 +43,22 @@ describe("getRealCpuCount", () => {
       }
     } catch { /* not Linux — skip this assertion, next test covers the fallback */ }
     if (expected != null) {
-      assert.equal(getRealCpuCount(), expected);
+      // Never more than the cpuset; a CFS quota can make it smaller still.
+      assert.ok(getRealCpuCount() <= expected);
     }
   });
 
   it("never exceeds os.cpus().length (a cgroup slice is always a subset of the host)", () => {
     _resetCpuCountCacheForTest();
     assert.ok(getRealCpuCount() <= os.cpus().length);
+  });
+
+  it("honors a CFS quota (cgroup v2 cpu.max) under a full-host cpuset — the RunPod shape", () => {
+    assert.equal(computeCpuCount({ cpusetSpec: "0-127", cpuMax: "680000 100000", hostCpus: 128 }), 7);
+    assert.equal(computeCpuCount({ cpusetSpec: "0-127", cpuMax: "max 100000", hostCpus: 128 }), 128);
+    assert.equal(computeCpuCount({ cpusetSpec: "0-3", cpuMax: "800000 100000", hostCpus: 128 }), 4);
+    assert.equal(computeCpuCount({ cpusetSpec: "0-127", availableParallelism: 6, hostCpus: 128 }), 6);
+    assert.equal(computeCpuCount({ hostCpus: 12 }), 12);
+    assert.equal(computeCpuCount({ cpuMax: "5000 100000", hostCpus: 8 }), 1);
   });
 });

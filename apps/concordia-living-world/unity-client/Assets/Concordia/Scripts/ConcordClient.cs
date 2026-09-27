@@ -36,6 +36,16 @@ namespace Concordia
 #else
             _ws != null && _ws.State == WebSocketState.Open;
 #endif
+        /// <summary>Socket open AND the server has accepted our auth (sent `hello`).</summary>
+        public bool Ready => Connected && _authed;
+        // The gateway requires `auth` to be the first frame; anything sent
+        // between socket-open and `hello` (a voice join, a host register, the
+        // lean-play scene requests) got the socket closed with 4401
+        // auth_required — found by proxying the headless host 2026-09-27,
+        // where it reconnected every 8 s forever. Sends wait here until hello.
+        volatile bool _authed;
+        readonly List<string> _preAuth = new List<string>();
+        const int MaxPreAuth = 128;
         public static string StatusJson { get; private set; } = "{\"ok\":false,\"reason\":\"no_gateway\"}";
         public static string LastReason { get; private set; } = "no_gateway";
         public static string HudLine { get; private set; } = "";
@@ -193,6 +203,8 @@ namespace Concordia
                 try
                 {
                     _ws?.Dispose();
+                    _authed = false;
+                    lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
                     last = null;
@@ -237,6 +249,8 @@ namespace Concordia
                 try
                 {
                     _ws?.Dispose();
+                    _authed = false;
+                    lock (_preAuth) _preAuth.Clear();
                     _ws = new ClientWebSocket();
                     await _ws.ConnectAsync(new Uri(url), _cts.Token);
                     await AfterOpen();
@@ -254,6 +268,8 @@ namespace Concordia
 
         public void OnWsOpen(string unused)
         {
+            _authed = false;
+            lock (_preAuth) _preAuth.Clear();
             _jsOpen = true;
             _ = AfterOpen();
         }
@@ -325,6 +341,8 @@ namespace Concordia
 
         void MarkDisconnected()
         {
+            _authed = false;
+            lock (_preAuth) _preAuth.Clear();
             LastReason = "no_gateway";
             StatusJson = "{\"ok\":false,\"reason\":\"no_gateway\"}";
             HudLine = "";
@@ -347,6 +365,12 @@ namespace Concordia
             {
                 var uid = JsonString(text, "userId");
                 if (!string.IsNullOrEmpty(uid)) _userId = uid;
+                if (!_authed) { _authed = true; _ = FlushPreAuth(); }
+                return;
+            }
+            if (evt == "auth:error")
+            {
+                Debug.LogWarning("[ConcordClient] auth refused: " + text);
                 return;
             }
             if (evt == "kingdom:data")
@@ -1944,6 +1968,27 @@ if (JsonFlagFalse(json, "ok"))
         {
             if (!Connected) return;
             var json = "{\"evt\":\"" + evt + "\",\"data\":" + dataJson + "}";
+            if (evt != "auth" && !_authed)
+            {
+                lock (_preAuth) { if (_preAuth.Count < MaxPreAuth) _preAuth.Add(json); }
+                return;
+            }
+            await SendRawJson(json);
+        }
+
+        async Task FlushPreAuth()
+        {
+            string[] queued;
+            lock (_preAuth) { queued = _preAuth.ToArray(); _preAuth.Clear(); }
+            foreach (var json in queued)
+            {
+                if (!Connected) return;
+                await SendRawJson(json);
+            }
+        }
+
+        async Task SendRawJson(string json)
+        {
 #if UNITY_WEBGL && !UNITY_EDITOR
             ConcordWsSend(json);
             await Task.CompletedTask;
@@ -1957,16 +2002,32 @@ if (JsonFlagFalse(json, "ok"))
         async Task ReceiveLoop()
         {
             var buf = new byte[1 << 16];
-            while (_ws != null && _ws.State == WebSocketState.Open)
+            var msg = new System.IO.MemoryStream();
+            var ws = _ws;
+            try
             {
-                var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
-                if (result.MessageType == WebSocketMessageType.Close) break;
-                var text = Encoding.UTF8.GetString(buf, 0, result.Count);
-                TryParseEvt(text, out var evt);
-                HandleFrame(evt, text);
-                OnEvent?.Invoke(evt, text);
+                while (ws != null && ws.State == WebSocketState.Open)
+                {
+                    var result = await ws.ReceiveAsync(new ArraySegment<byte>(buf), _cts.Token);
+                    if (result.MessageType == WebSocketMessageType.Close) break;
+                    // A message larger than the buffer arrives in pieces; parse
+                    // only the whole thing (a full world:manifest can exceed 64 KB).
+                    msg.Write(buf, 0, result.Count);
+                    if (!result.EndOfMessage) continue;
+                    var text = Encoding.UTF8.GetString(msg.GetBuffer(), 0, (int)msg.Length);
+                    msg.SetLength(0);
+                    TryParseEvt(text, out var evt);
+                    try
+                    {
+                        HandleFrame(evt, text);
+                        OnEvent?.Invoke(evt, text);
+                    }
+                    catch (Exception e) { Debug.LogWarning("[ConcordClient] handler for " + evt + ": " + e.Message); }
+                }
             }
-            MarkDisconnected();
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogWarning("[ConcordClient] receive: " + e.Message); }
+            if (ws == _ws) MarkDisconnected();
         }
 #endif
 

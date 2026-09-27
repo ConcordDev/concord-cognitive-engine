@@ -1880,6 +1880,15 @@ function _dtuSidecarLagBypass() {
   try { return getEventLoopLagMs() > _DTU_SIDECAR_LAG_BYPASS_MS; } catch { return false; }
 }
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem, getActiveBrainConfig, getSystemStatus, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish, resolveBrainModel } from "./lib/brain-config.js";
+import { installOllamaRequestGuard } from "./lib/ollama-request-guard.js";
+// Every brain request: num_ctx pinned per model (so ollama loads each model
+// once instead of reloading on every caller's different window) and, opt-in,
+// OLLAMA_NUM_THREAD / BRAIN_<NAME>_NUM_THREAD capping llama.cpp's threads to
+// the container's CPU quota. See lib/ollama-request-guard.js.
+try {
+  const _org = installOllamaRequestGuard(BRAIN_CONFIG);
+  console.log(`[ollama-request-guard] num_ctx ${[..._org.ctx].map(([m, n]) => `${m}=${n}`).join(" ") || "off"}; threads ${[..._org.threads].map(([o, n]) => `${o}=${n}`).join(" ") || "uncapped"}`);
+} catch (_e) { console.warn("[ollama-request-guard] not installed:", _e?.message); }
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
 // BYO key router — when a user has plugged their own provider key into a
 // brain slot, ctx.llm.chat() routes through this instead of the default.
@@ -6955,13 +6964,26 @@ function createRefreshToken(userId) {
   return jwt.sign({ userId, jti, family, type: "refresh", iat: Math.floor(Date.now() / 1000) }, EFFECTIVE_JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES });
 }
 
+// jsonwebtoken 9 turns a string secret into a key on EVERY verify, trying
+// crypto.createPublicKey() first (which throws for an HMAC secret) — profiled
+// 2026-09-27 at ~190 ms per busy second, since both the rate-limit key and
+// auth verify each request. Build the HMAC key once.
+let _jwtVerifyKey = null;
+function _jwtKey() {
+  if (_jwtVerifyKey === null) {
+    try { _jwtVerifyKey = crypto.createSecretKey(Buffer.from(String(EFFECTIVE_JWT_SECRET))); }
+    catch { _jwtVerifyKey = EFFECTIVE_JWT_SECRET; }
+  }
+  return _jwtVerifyKey;
+}
+
 function verifyToken(token) {
   if (!jwt) return null;
   try {
     // Pin algorithms — without this, jsonwebtoken would accept any
     // algorithm listed in the token header, including `none`. Our
     // tokens are signed with HS256.
-    const decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET, {
+    const decoded = jwt.verify(token, _jwtKey(), {
       algorithms: ["HS256"],
     });
     // ---- Token Revocation Check (Tier 1: Auth Hardening) ----
@@ -10096,6 +10118,11 @@ function emitToWorld(worldId, event, payload) {
 // client — see docs/GODOT_PROTOCOL.md §4 "play_effect").
 globalThis._concordEmitToWorld = emitToWorld;
 
+// Tick-rate telemetry is not history: a synchronous event_timeline_log INSERT
+// per city:positions chunk (10 Hz × chunks) was a DB write per message on the
+// event loop. These still broadcast; they just aren't persisted to the timeline.
+const _TIMELINE_SKIP_EVENTS = new Set(["ping", "pong", "city:positions", "world:clock", "world:entities", "npc:positions"]);
+
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "", worldId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
   const enrichedPayload = {
@@ -10122,7 +10149,7 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
   // history. Best-effort; failures silently swallow so emit path stays
   // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
   try {
-    if (_timelineRecordFn && !event.startsWith("_") && event !== "ping" && event !== "pong") {
+    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event)) {
       const tdb = STATE?.db || globalThis._concordDB;
       if (tdb) {
         _timelineRecordFn(tdb, event, payload || {}, {
@@ -18791,7 +18818,18 @@ async function initLocalEmbeddings() {
       structuredLog("warn", "embeddings_unavailable", { reason: "transformers not installed" });
       return { ok: false, reason: "package_not_installed" };
     }
-    EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    // ONNX sizes its intra-op pool from the HOST's physical cores; inside a
+    // CPU-quota container (RunPod: 6.8 CPUs on a 128-thread host) that was
+    // 64 spinning threads starving the event loop. Cap it to this process's
+    // real allowance, and leave room for the main thread.
+    let _onnxThreads = 2;
+    try {
+      const { getRealCpuCount } = await import("./lib/cgroup-cpu.js");
+      _onnxThreads = Math.max(1, Math.min(Number(process.env.CONCORD_EMBED_THREADS) || 4, getRealCpuCount() - 1));
+    } catch { /* keep 2 */ }
+    EMBEDDINGS.model = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+      session_options: { intraOpNumThreads: _onnxThreads, interOpNumThreads: 1 },
+    });
     EMBEDDINGS.backend = "xenova";
     EMBEDDINGS.enabled = true;
     EMBEDDINGS.dim = 384;
@@ -26154,7 +26192,7 @@ function _dtuScopeKey(d) {
   return `${scope}|${world}`;
 }
 
-register("dtu", "cluster", (ctx, input) => {
+register("dtu", "cluster", async (ctx, input) => {
   try {
   // group DTUs by similarity (simple jaccard on title+tags) — BUT only ever WITHIN a
   // scope+world+visibility partition, never across. This is the hard boundary that stops
@@ -26177,23 +26215,37 @@ register("dtu", "cluster", (ctx, input) => {
     partitions.get(key).push(d);
   }
 
+  // Profiled 2026-09-27 (pod, ~2.2K DTUs): this pass held the event loop for
+  // 0.8-0.97 s per run — the stalls the lag detector blamed on presence —
+  // because it re-tokenized `b` inside the inner loop (n²/2 simpleTokens
+  // calls) and jaccard() built two fresh Sets per pair. Tokenize each DTU
+  // once, compare the cached Sets, and yield to the event loop between rows
+  // so players' moves and requests are served while it runs. Same clusters.
+  let _sinceYield = 0;
   for (const [, partItems] of partitions) {
+    const toks = partItems.map((d) => new Set(simpleTokens(d.title + " " + (d.tags||[]).join(" "))));
     for (let i=0;i<partItems.length;i++){
       const a = partItems[i];
       if (used.has(a.id)) continue;
-      const aTok = simpleTokens(a.title + " " + (a.tags||[]).join(" "));
+      const A = toks[i];
       const cluster = [a];
       used.add(a.id);
       for (let j=i+1;j<partItems.length;j++){
         const b = partItems[j];
         if (used.has(b.id)) continue;
-        const bTok = simpleTokens(b.title + " " + (b.tags||[]).join(" "));
-        if (jaccard(aTok, bTok) >= threshold) {
+        const B = toks[j];
+        let inter = 0;
+        for (const t of A) if (B.has(t)) inter++;
+        const union = A.size + B.size - inter;
+        const sim = (A.size === 0 && B.size === 0) ? 1 : (union ? inter / union : 0);
+        if (sim >= threshold) {
           cluster.push(b);
           used.add(b.id);
         }
       }
       clusters.push(cluster);
+      _sinceYield += partItems.length - i;
+      if (_sinceYield > 20000) { _sinceYield = 0; await new Promise((r) => { setImmediate(r); }); }
     }
   }
 

@@ -68,6 +68,33 @@ const VEHICLE_MAX_SPEED_MPS = Object.freeze({
 const FRAME_DISTANCE_RATIO = 16;            // single-frame ceiling = max_speed * ratio
 const MIN_UPDATE_INTERVAL_MS = 20;          // no faster than 50Hz from any one user
 const GRACE_PERIOD_MS = 500;                // first few updates after login skip speed check
+// Movement budget for the speed check. `dt` is SERVER receive time, so after
+// any server hitch a player's queued moves are processed microseconds apart
+// and honest walking reads as hundreds of m/s. Measured 2026-09-27: one
+// 1.1 s event-loop stall turned 16 walking players' backlogs into 213
+// speed_hack_detected nacks and disconnected 11 of them. A player instead
+// may spend allowance banked from earlier packets (earned at the mode's max
+// speed, capped at MOVE_BURST_S seconds of travel — default 1 s, i.e. 16 m on
+// foot against the ~4 m walked during a 1.1 s hitch), so a backlog spends
+// what was really earned. Over-speed can never exceed one burst window of
+// slack. The per-packet teleport ceiling below is unchanged.
+const MOVE_BURST_S = (() => {
+  const n = Number(process.env.CONCORD_MOVE_BURST_S);
+  return Number.isFinite(n) && n > 0 && n <= 10 ? n : 1;
+})();
+
+/**
+ * Pure. A packet may cover what it earned over its own dt at `maxSpeed` (the
+ * original rule, so sparse updates are judged exactly as before) PLUS any
+ * unspent allowance banked from earlier packets, capped at `burstS` seconds of
+ * travel. Returns the leftover to bank when the move fits.
+ */
+export function spendMoveBudget(prevLeftover, maxSpeed, dtMs, distance, burstS = MOVE_BURST_S) {
+  const cap = maxSpeed * burstS;
+  const banked = Number.isFinite(prevLeftover) ? Math.min(cap, Math.max(0, prevLeftover)) : 0;
+  const allowance = maxSpeed * Math.max(0, dtMs) / 1000 + banked;
+  return distance <= allowance ? { ok: true, budget: Math.min(cap, allowance - distance) } : { ok: false, budget: banked };
+}
 
 // ── Locomotion classification (R5 continuation — real walk/run state) ──────
 // The anti-cheat speed check just above already computes a real,
@@ -700,6 +727,7 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
   // speed math entirely) — the entry build further down carries the
   // previous value forward in that case, same convention as `action`.
   let computedLocomotion = null;
+  let computedMoveBudget = null; // null = speed check skipped this packet (bank refills to full)
 
   // ── Position safety (adversarial-hardening) ──────────────────────────
   // Coerce NaN/Infinity/non-finite coords to a finite fallback, then clamp
@@ -768,9 +796,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           chunkCrossed: false,
         };
       }
-      // Speed check: distance / dt must be under the mode's max
+      // Speed check: distance must fit the movement budget earned at the
+      // mode's max speed (see MOVE_BURST_S). speedMps stays the instantaneous
+      // figure for locomotion/XP.
       const speedMps = distance / (dt / 1000);
-      if (speedMps > maxSpeed) {
+      const _spend = spendMoveBudget(prev.moveBudget, maxSpeed, dt, distance);
+      if (!_spend.ok) {
         logger.debug?.("city-presence", `rejected speed hack by ${userId}: ${speedMps.toFixed(1)}m/s (${mode} max ${maxSpeed})`);
         return {
           ok: false,
@@ -784,6 +815,7 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           chunkCrossed: false,
         };
       }
+      computedMoveBudget = _spend.budget;
       // Speedster S1 — earn movement.sprint XP for distance actually run on foot.
       // Gated to genuine sprinting speed (≥3 m/s) so idle/jitter can't farm it;
       // off (CONCORD_EARNED_SPEED unset) → no XP, byte-identical.
@@ -869,6 +901,7 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
     presenceStatus: prev?.presenceStatus ?? PRESENCE_STATUS.AVAILABLE,
     lastUpdate: now,
     createdAt: prev?.createdAt ?? now,
+    moveBudget: computedMoveBudget ?? undefined,
     dirty: true, // mark for next flush
     avatar: prev?.avatar ?? null,
   };
@@ -1321,12 +1354,17 @@ export function broadcastPositions(cityId, realtimeEmit) {
 
     if (users.length === 0) continue;
 
+    // Scoped to the world's room (clients move with cityId = their world
+    // id and join `world:<id>`). Unscoped, every chunk at 10 Hz went to
+    // EVERY connected socket on the site — 20 players spread over ~16
+    // chunks meant ~83-130 messages/s to each socket, including people in
+    // other lenses, and 1 s event-loop stalls (measured 2026-09-27).
     realtimeEmit("city:positions", {
       cityId,
       chunk: { x: chunkX, z: chunkZ },
       users,
       timestamp: new Date().toISOString(),
-    });
+    }, { worldId: cityId });
   }
 }
 
