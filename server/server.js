@@ -1893,7 +1893,8 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 // (aggregateInferenceCosts) reflects real usage instead of sitting empty.
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
-import { v6ContractOnly as _v6ContractOnly } from "./lib/chat-v6-contract.js";
+import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
@@ -27818,7 +27819,18 @@ ${_operatorV6Block}` : "";
           return { tool: call.tool, ok: true, dtuId: dtuResult.id || dtuResult.dtu?.id, title: call.params.title };
         }
         case "run_compute": {
-          const { key: computeKey = "", input: computeInput = {} } = call.params;
+          // Normalize model-invented shapes ("multiply", {expression}) onto the
+          // deterministic evaluator — lib/chat-compute-normalize.js.
+          const _norm = _normalizeComputeCall(call.params.key, call.params.input);
+          if (_norm.expression) {
+            try {
+              const { evaluate: _symEval } = await import("./lib/compute/symbolic-math.js");
+              return { tool: call.tool, ok: true, key: "symbolic.evaluate", expression: _norm.expression, result: _symEval(_norm.expression) };
+            } catch (_ee) {
+              return { tool: call.tool, ok: false, error: `Compute error: ${_ee?.message}` };
+            }
+          }
+          const { key: computeKey = "", input: computeInput = {} } = _norm;
           if (!computeKey || !computeKey.includes(".")) {
             return { tool: call.tool, ok: false, error: `run_compute requires key like "chemistry.molecularAnalysis". Got: ${computeKey}` };
           }
@@ -28258,6 +28270,12 @@ ${_operatorV6Block}` : "";
         const _fb = { tool: "web_search", params: { query: String(prompt || "").slice(0, 400) }, f0: "ALLOW", raw: "challenge-fallback" };
         _toolCalls.push(_fb);
       }
+      // Compute-don't-guess: a plain arithmetic question the model answered
+      // WITHOUT a tool gets computed here, and the answer is grounded on it.
+      if (_toolCalls.length === 0) {
+        const _arith = _arithmeticQuestion(prompt);
+        if (_arith) _toolCalls.push({ tool: "run_compute", params: { key: "symbolic.evaluate", input: { expression: _arith } }, f0: "ALLOW", raw: "arithmetic-fallback" });
+      }
       if (_toolCalls.length > 0) {
         ctx.log("chat_tools", "Tool calls detected in brain response", { count: _toolCalls.length, tools: _toolCalls.map(c => c.tool) });
 
@@ -28265,9 +28283,28 @@ ${_operatorV6Block}` : "";
         const _toolResults = await _executeToolCalls(_toolCalls);
         _toolCallsExecuted = _toolResults;
 
-        // Strip tool call markers from the initial response
-        const _cleanedInitialReply = _stripToolCalls(finalReply);
+        // Pure arithmetic: every call was a successful deterministic evaluate —
+        // answer with the engine's number directly instead of asking the model
+        // to restate it (a small model garbles or re-guesses it).
+        // Every tool failed on a question that is plainly arithmetic (e.g. the
+        // model sent run_compute with no key): compute it deterministically.
+        if (!_toolResults.some((r) => r.ok)) {
+          const _rescue = _arithmeticQuestion(prompt);
+          if (_rescue) {
+            const _res = await _executeToolCall({ tool: "run_compute", params: { key: "symbolic.evaluate", input: { expression: _rescue } } });
+            if (_res?.ok) { _toolResults.length = 0; _toolResults.push(_res); }
+          }
+        }
+        const _arithOnly = _toolResults.length > 0 && _toolResults.every((r) => r.ok && r.key === "symbolic.evaluate" && r.expression);
 
+        // Strip tool call markers from the initial response
+        // A JSON-only first reply (bare tool object, often with a GUESSED
+        // "answer" beside it) must not be fed back — it anchors the follow-up.
+        const _cleanedInitialReply = /^\s*\{[\s\S]*\}\s*$/.test(_stripToolCalls(finalReply)) ? "" : _stripToolCalls(finalReply);
+
+        if (_arithOnly) {
+          finalReply = _toolResults.map((r) => _formatArithmeticAnswer(r.expression, r.result)).join("\n");
+        } else {
         // Build follow-up messages with tool results
         const _toolResultsText = _formatToolResults(_toolResults);
         const _followUpMessages = [
@@ -28329,6 +28366,7 @@ ${_operatorV6Block}` : "";
             .join("\n\n");
           ctx.log("chat_tools", "Follow-up brain call threw, using inline results", { error: String(_fuErr?.message || _fuErr) });
         }
+        } // end non-arithmetic follow-up
       }
     } catch (_toolErr) {
       // Tool execution is supplementary — never block the chat path
@@ -28344,7 +28382,7 @@ ${_operatorV6Block}` : "";
   // Never render the contract: use a prose field if it carries one, else ask
   // once for a plain answer, else say honestly that no answer was produced.
   if (llmUsed && finalReply) {
-    const _v6Only = _v6ContractOnly(finalReply);
+    const _v6Only = _v6ContractOnly(finalReply) || _jsonOnlyReply(finalReply);
     if (_v6Only) {
       const _prose = ["answer", "response", "reply", "text", "message", "content"]
         .map((k) => _v6Only[k]).find((v) => typeof v === "string" && v.trim());

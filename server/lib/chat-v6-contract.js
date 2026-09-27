@@ -20,3 +20,19 @@ export function v6ContractOnly(text) {
   if (tool && tool !== "none") return null;
   return obj;
 }
+
+/**
+ * Broader guard: the reply is ONLY a JSON object (any shape, e.g. a bare
+ * {"query":…,"answer":94444} guess). Never render that as prose. Returns the
+ * parsed object or null.
+ */
+export function jsonOnlyReply(text) {
+  let t = String(text || "").trim();
+  const fence = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  if (fence) t = fence[1].trim();
+  if (!t.startsWith("{") || !t.endsWith("}")) return null;
+  try {
+    const obj = JSON.parse(t);
+    return obj && typeof obj === "object" && !Array.isArray(obj) ? obj : null;
+  } catch { return null; }
+}

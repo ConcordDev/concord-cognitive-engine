@@ -130,6 +130,13 @@ export function parseObserveCalls(text, ollamaMessage) {
   for (const obj of extractJsonObjects(s)) {
     if (obj.tool || obj.organ) {
       push(obj.tool || obj.organ, obj.args || obj.params || obj.input || {}, obj.f0, "v6-json");
+    } else if (typeof obj.key === "string" && obj.input && typeof obj.input === "object") {
+      // Bare compute call with no wrapper ({"key":"multiply","input":{…}}) —
+      // a small model's usual shape. Run it for real rather than showing the
+      // JSON (and any "answer" it guessed alongside). See chat-compute-normalize.js.
+      push("run_compute", { key: obj.key, input: obj.input }, obj.f0, "bare-compute-json");
+    } else if (typeof obj.domain === "string" && typeof obj.action === "string") {
+      push("run_lens_action", { domain: obj.domain, action: obj.action, params: obj.params || obj.input || {} }, obj.f0, "bare-lens-json");
     }
   }
 
