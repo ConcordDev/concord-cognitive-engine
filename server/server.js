@@ -1894,6 +1894,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly } from "./lib/chat-v6-contract.js";
+import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -27680,6 +27681,17 @@ let localReply = formatCrispResponse({
     clientIntentHint: typeof input?.intentType === "string" ? input.intentType : undefined,
   });
 
+  // Operator-only prompt segments (lib/runtime/operator-gate.js): the V6 observe
+  // contract names private organs and trading/secret denials, and the Runtime
+  // tools describe the operator's own systems. Injected for every user, a small
+  // model recited them to a public member verbatim (2026-09-27 chat QA run) and
+  // the extra contract format made it answer in raw JSON instead of calling
+  // run_compute. Members get only the tools they can actually use.
+  const _chatIsOperator = _isOperatorActor(ctx);
+  const _operatorToolLines = _chatIsOperator ? `- list_capabilities: List Concord Runtime capabilities (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional"}
+- invoke_capability: Run one Runtime capability through the governed envelope. Params: {"capability": "zuko.status", "input": {}}. Say plainly when a result is operator_only; never invent data.
+` : "";
+  const _operatorV6Block = _chatIsOperator ? `V6 JSON contract (also accepted): emit one JSON object with keys intent, confidence, evidence, action, status, f0, tool, args. Observe tools: web_search, concord.verify, concord.math, brain_status, dila_status, lens_list, expert_mode.answer, dtu_search. f0=DENY for Coinbase/place_order/secrets/launchctl/second trader — the executor refuses those. If the user challenges a claim ("I don't buy that", "check it"), you MUST call an observe organ.` : "";
   // Tool descriptions injected into the system prompt when tools are enabled
   const _toolSystemPrompt = _toolsAvailable ? `
 
@@ -27697,9 +27709,7 @@ Available tools:
   Use when the user pastes a URL or asks about a specific web page.
 - create_dtu: Create a new DTU (Decision/Thought Unit) from the conversation. Params: {"title": "DTU title", "summary": "brief summary", "tags": ["tag1", "tag2"]}
 - run_lens_action: Invoke any Concord lens domain action. Params: {"domain": "domain_name", "action": "action_name", "params": {}}
-- list_capabilities: List Concord Runtime capabilities (Dila, Zuko, Predict, trading, missions, incidents, opportunities, research, traces, pentester lab, Concordia). Params: {"owner": "optional"}
-- invoke_capability: Run one Runtime capability through the governed envelope. Params: {"capability": "zuko.status", "input": {}}. Most are the operator's private systems and return operator_only for anyone else — say so plainly; never invent their data.
-
+${_operatorToolLines}
 Rules for tool use:
 - Use run_compute for ANY math, physics, chemistry, quantum, or engineering question — never guess at calculations.
 - Use web_search for current events, facts you don't know, or when the user asks to search.
@@ -27708,7 +27718,7 @@ Rules for tool use:
 - After the tool call marker, continue your response naturally. You will receive the tool results and can then give a final answer.
 - Do NOT fabricate tool results or calculations.
 
-V6 JSON contract (also accepted): emit one JSON object with keys intent, confidence, evidence, action, status, f0, tool, args. Observe tools: web_search, concord.verify, concord.math, brain_status, dila_status, lens_list, expert_mode.answer, dtu_search. f0=DENY for Coinbase/place_order/secrets/launchctl/second trader — the executor refuses those. If the user challenges a claim ("I don't buy that", "check it"), you MUST call an observe organ.` : "";
+${_operatorV6Block}` : "";
 
   // Context-sensitive lens action hints (appended to tool prompt at system prompt build sites)
   const _DOMAIN_KW = {
