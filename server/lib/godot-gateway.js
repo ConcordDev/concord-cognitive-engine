@@ -691,11 +691,21 @@ function isBinaryMovePayload(p) {
         const input = data.input && typeof data.input === "object" && !Array.isArray(data.input)
           ? data.input
           : {};
+        // Resolve the account's real role (like /api/lens/run and MCP do) so
+        // role-gated handlers see the operator as the operator in-game too;
+        // anything unresolvable stays a plain "user".
+        let role = "user";
+        try {
+          const row = db?.prepare?.("SELECT role FROM users WHERE id = ?").get(client.userId);
+          if (row?.role) role = String(row.role);
+        } catch { /* keep "user" */ }
+        // Echoed so a client can await one specific reply (Unity LensRunAwait).
+        const requestId = typeof data.requestId === "string" ? data.requestId.slice(0, 64) : undefined;
         const ctx = {
           actor: {
             userId: client.userId,
             id: client.userId,
-            role: "user",
+            role,
             kind: "user",
             scopes: ["read", "write"],
           },
@@ -712,6 +722,7 @@ function isBinaryMovePayload(p) {
             ...payload,
             lensDomain: domain,
             lensName: name,
+            ...(requestId ? { requestId } : {}),
           });
         } catch (e) {
           const msg = String(e?.message || e);
@@ -719,6 +730,7 @@ function isBinaryMovePayload(p) {
             ok: false,
             reason: msg.startsWith("forbidden") ? "forbidden" : "lens_run_failed",
             error: msg,
+            ...(requestId ? { requestId } : {}),
           });
         }
         return;

@@ -174,7 +174,10 @@ namespace Concordia
         void Confirm()
         {
             if (string.IsNullOrWhiteSpace(_look.displayName)) _look.displayName = "Walker";
-            AppearanceStore.Save(_look);
+            AppearanceStore.Save(_look); // local cache (offline / fast boot)
+            // Your character lives on your Concord account — any device, and
+            // it's what other players see in the shared world.
+            _ = ConcordClient.Live?.SaveAccountCharacter(_look);
             _person.Apply(_look);
             IsOpen = false;
             if (_player)

@@ -28,6 +28,8 @@ namespace Concordia
         bool _jsOpen;
         readonly Dictionary<string, TaskCompletionSource<string>> _dialogueWait =
             new Dictionary<string, TaskCompletionSource<string>>();
+        readonly Dictionary<string, TaskCompletionSource<string>> _lensWait =
+            new Dictionary<string, TaskCompletionSource<string>>();
         public bool Connected =>
 #if UNITY_WEBGL && !UNITY_EDITOR
             _jsOpen;
@@ -479,6 +481,13 @@ namespace Concordia
             }
             if (evt == "lens:result")
             {
+                // A LensRunAwait caller gets its own reply by requestId.
+                var lensReq = JsonString(text, "requestId");
+                if (!string.IsNullOrEmpty(lensReq) && _lensWait.TryGetValue(lensReq, out var lensTcs))
+                {
+                    lensTcs.TrySetResult(text);
+                    return;
+                }
                 RunMain(() => ApplyLensResult(text));
                 return;
             }
@@ -942,6 +951,57 @@ namespace Concordia
         /// Optional gateway dialogue line for the talk panel. Empty string is honest failure
         /// (no_gateway, timeout, or ok:false) — never a fabricated voice.
         /// </summary>
+        /// <summary>
+        /// Run a lens macro and await ITS reply (matched by requestId, which the
+        /// gateway echoes). Returns the raw result JSON, or "" on timeout /
+        /// disconnect — callers treat "" as "unknown", never as a success.
+        /// </summary>
+        public async Task<string> LensRunAwait(string domain, string name, string inputJson = "{}", int timeoutMs = 8000)
+        {
+            if (!Connected) return "";
+            var id = Guid.NewGuid().ToString("N");
+            var wait = new TaskCompletionSource<string>();
+            _lensWait[id] = wait;
+            try
+            {
+                var body = "{\"domain\":\"" + Escape(domain)
+                    + "\",\"name\":\"" + Escape(name)
+                    + "\",\"requestId\":\"" + Escape(id)
+                    + "\",\"input\":" + (string.IsNullOrEmpty(inputJson) ? "{}" : inputJson) + "}";
+                await SendEvt("lens:run", body);
+                var done = await Task.WhenAny(wait.Task, Task.Delay(timeoutMs, _cts.Token));
+                return done == wait.Task ? wait.Task.Result : "";
+            }
+            catch
+            {
+                return "";
+            }
+            finally
+            {
+                _lensWait.Remove(id);
+            }
+        }
+
+        /// <summary>The account's saved Concordia character, or null if none / unreachable.</summary>
+        public async Task<Appearance> LoadAccountCharacter(int timeoutMs = 5000)
+        {
+            var json = await LensRunAwait("appearance", "load_game_character", "{}", timeoutMs);
+            if (string.IsNullOrEmpty(json) || JsonFlagFalse(json, "ok")) return null;
+            // JsonObject would scan past a null value into a LATER object — check first.
+            if (System.Text.RegularExpressions.Regex.IsMatch(json, "\"character\"\\s*:\\s*null")) return null;
+            var obj = JsonObject(json, "character");
+            if (string.IsNullOrEmpty(obj) || obj == "null") return null;
+            try { return JsonUtility.FromJson<Appearance>(obj); }
+            catch { return null; }
+        }
+
+        /// <summary>Save the character to the account (fire-and-forget; the local cache is separate).</summary>
+        public Task SaveAccountCharacter(Appearance look)
+        {
+            if (look == null) return Task.CompletedTask;
+            return LensRun("appearance", "save_game_character", "{\"character\":" + JsonUtility.ToJson(look) + "}");
+        }
+
         public async Task<string> AskTwoB(string npcId, string npcName, string line, string text)
         {
             if (!Connected) return "";
