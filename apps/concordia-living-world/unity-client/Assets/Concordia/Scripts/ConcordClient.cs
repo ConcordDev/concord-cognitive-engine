@@ -415,6 +415,8 @@ namespace Concordia
                 {
                     WorldClock.NoteAct(string.IsNullOrEmpty(who) ? "a death" : who + " fell");
                     ConcordiaHUD.Announce("Fell", string.IsNullOrEmpty(who) ? "someone died" : who);
+                    var at = ConcordiaPlayer.Live ? ConcordiaPlayer.Live.transform.position : Vector3.zero;
+                    NpcLife.NoteKernelDeath(who, at);
                 });
                 return;
             }
@@ -1294,6 +1296,7 @@ namespace Concordia
                 feel?.Strike(impact, true, kick, skillKey);
                 if (impact && feel && kb > 0f) feel.ApplyAck(true, kb, false, false);
             }
+            NpcLife.NoteKernelThreat(player ? player.transform.position : Vector3.zero);
             if (!string.IsNullOrEmpty(skillKey))
                 WorldClock.NoteAct(skillKey + (impact ? " · impact" : " · steel"));
             else if (impact)
@@ -1601,6 +1604,32 @@ if (JsonFlagFalse(json, "ok"))
                 + "\",\"name\":\"" + Escape(name)
                 + "\",\"input\":" + (string.IsNullOrEmpty(inputJson) ? "{}" : inputJson) + "}";
             return SendEvt("lens:run", body);
+        }
+
+        public Task AcceptQuest(string worldId, string questId)
+        {
+            if (string.IsNullOrEmpty(questId)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            return LensRun("quests", "accept",
+                "{\"questId\":\"" + Escape(questId) + "\",\"worldId\":\"" + Escape(world) + "\"}");
+        }
+
+        public Task RecordQuestProgress(string worldId, string questId, string type, string target)
+        {
+            if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(target)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            var q = string.IsNullOrEmpty(questId) ? "" : "\"questId\":\"" + Escape(questId) + "\",";
+            return LensRun("quests", "recordProgress",
+                "{" + q + "\"type\":\"" + Escape(type) + "\",\"target\":\"" + Escape(target)
+                + "\",\"worldId\":\"" + Escape(world) + "\"}");
+        }
+
+        public Task CheckQuestCompletion(string worldId, string questId)
+        {
+            if (string.IsNullOrEmpty(questId)) return Task.CompletedTask;
+            var world = string.IsNullOrEmpty(worldId) ? this.worldId : worldId;
+            return LensRun("quests", "checkCompletion",
+                "{\"questId\":\"" + Escape(questId) + "\",\"worldId\":\"" + Escape(world) + "\"}");
         }
 
         public Task VoiceJoin(string visitId) =>

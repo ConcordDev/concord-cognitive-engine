@@ -130,10 +130,9 @@ export function snapshotCreatures(db, worldId) {
     const lineageById = new Map();
     if (live.length > 0) {
       try {
-        const ids = live.map((r) => r.id);
         const rows = db.prepare(
-          `SELECT * FROM creature_lineage WHERE child_id IN (${ids.map(() => "?").join(",")})`,
-        ).all(...ids);
+          `SELECT * FROM creature_lineage WHERE child_id IN (SELECT value FROM json_each(?))`,
+        ).all(JSON.stringify(live.map((r) => r.id)));
         for (const lin of rows) lineageById.set(lin.child_id, lin);
       } catch { /* lineage optional */ }
     }

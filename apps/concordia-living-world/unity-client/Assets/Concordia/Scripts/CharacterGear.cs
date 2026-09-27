@@ -65,9 +65,10 @@ namespace Concordia
         /// <summary>
         /// Playable Alive Slice grip contract: a socket parented to the character
         /// root is not a bone — no root-parented weapons. ModularPerson signals "no
-        /// real hand" by setting leftHand/rightHand to body.transform (Kenney/bad-bind
-        /// bodies with no matched skeleton); Bone() falls back to its root argument on
-        /// a miss for the same reason. Both must be rejected here, not accepted.
+        /// real hand" by leaving leftHand/rightHand null (Kenney/bad-bind bodies with
+        /// no matched skeleton — it used to alias body.transform, a child that slipped
+        /// past the root check below). Bone() falls back to its root argument on a
+        /// miss; that is rejected here too.
         /// </summary>
         public static Transform Socket(GameObject body, ModularPerson person, Slot slot)
         {

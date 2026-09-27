@@ -58,6 +58,7 @@ namespace Concordia
         {
             public string id, title, description, giver_npc_id, difficulty;
             public string[] prerequisites;
+            public string[] follow_up_quest_ids;
             public Objective[] objectives;
         }
         [Serializable] public class Objective

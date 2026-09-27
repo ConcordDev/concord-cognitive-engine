@@ -75,8 +75,7 @@ namespace Concordia // FORCE_REFRESH_0024
             CxDress.EnsureSockets(p);
             CxDress.Person(p, look, Canon.SteelLive(CastingWorld, root.transform.position));
             p.sword = MakeSword();
-            var grip = p.rightHand && p.rightHand.Find("CX_Grip_R") ? p.rightHand.Find("CX_Grip_R") : (p.rightHand ? p.rightHand : p.transform);
-            CharacterGear.Grip(p.sword, grip, 1.05f, true, false);
+            p.GripSwordOrEmptyHands();
             CharacterVisualProfile.Apply(root, CastingWorld, look);
             if (hero) CxDress.HeroKit(p);
             _castBodyWorld = CastingWorld;
@@ -255,7 +254,9 @@ namespace Concordia // FORCE_REFRESH_0024
                 float h = _modelRenderer ? RendererBoundsForValidation(_modelRenderer).size.y : RendererHeight(body);
                 if (h > 0.15f) body.transform.localScale *= Mathf.Clamp(1.72f / h, 0.05f, 10f);
                 _authored = true;
-                leftHand = rightHand = body.transform;
+                // No hand bones on a painted mesh: empty hands. Aliasing the body
+                // here made every grip glue its prop to the mesh root.
+                leftHand = rightHand = null;
                 return true;
             }
 
@@ -491,9 +492,27 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
             CxDress.EnsureSockets(this);
             CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
             sword = MakeSword();
-            var grip = rightHand && rightHand.Find("CX_Grip_R") ? rightHand.Find("CX_Grip_R") : (rightHand ? rightHand : transform);
-            CharacterGear.Grip(sword, grip, 1.05f, true, false);
+            GripSwordOrEmptyHands();
             if (GetComponentInParent<ConcordiaPlayer>()) CxDress.HeroKit(this);
+        }
+
+        /// <summary>
+        /// Blade goes in a real right-hand bone (or its CX_Grip_R socket). No hand bone
+        /// means empty hands — never glue the sword to the body root, where it floats.
+        /// Same rule as CharacterGear.Socket and MixamoAvatar.
+        /// </summary>
+        void GripSwordOrEmptyHands()
+        {
+            if (!sword) return;
+            if (rightHand && rightHand != transform)
+            {
+                var socket = rightHand.Find("CX_Grip_R");
+                CharacterGear.Grip(sword, socket ? socket : rightHand, 1.05f, true, false);
+                return;
+            }
+            if (Application.isPlaying) Destroy(sword);
+            else DestroyImmediate(sword);
+            sword = null;
         }
 
         static void DressFromPrefabFolder(GameObject body)
@@ -856,6 +875,7 @@ static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
                 Tint(_hair, a.HairColor());
                 Tint(_eyes, a.EyeColor() * 1.4f, true);
             }
+            FreePacks.PaintMagentaIfFallback(gameObject, a.ShirtColor());
 
             bool coat = a.HasCoat;
             if (_coat) _coat.gameObject.SetActive(coat);

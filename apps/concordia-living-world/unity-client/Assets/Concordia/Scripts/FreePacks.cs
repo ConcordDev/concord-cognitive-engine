@@ -631,6 +631,39 @@ namespace Concordia
             return new Color(0.62f, 0.58f, 0.52f);
         }
 
+        public static bool IsMissingMagenta(Color c) =>
+            c.r > 0.7f && c.b > 0.7f && c.g < 0.35f && c.a > 0.05f;
+
+        /// <summary>
+        /// Kenney / missing-albedo magenta is a fallback mesh, not a shirt.
+        /// Repaint only that texel — leave already-painted HubKit/Rocketbox.
+        /// </summary>
+        public static void PaintMagentaIfFallback(GameObject go, Color cloth)
+        {
+            if (!go) return;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                var slots = r.sharedMaterials;
+                if (slots == null || slots.Length == 0) continue;
+                Material[] next = null;
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    var src = slots[i];
+                    if (!src) continue;
+                    var col = HubLook.FirstColor(src, src.color);
+                    if (!IsMissingMagenta(col)) continue;
+                    if (next == null)
+                    {
+                        next = new Material[slots.Length];
+                        for (int k = 0; k < slots.Length; k++) next[k] = slots[k];
+                    }
+                    next[i] = HubLook.Lit(cloth, 0.06f, 0.55f);
+                }
+                if (next != null) r.sharedMaterials = next;
+            }
+        }
+
         public static bool IsClothName(string s)
         {
             if (string.IsNullOrEmpty(s)) return false;

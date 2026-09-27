@@ -171,6 +171,17 @@ namespace Concordia
             catch { }
         }
 
+        void OfferFoundingDay()
+        {
+            TryOfferHubQuest("founding_day_01_gather");
+        }
+
+        static void TryOfferHubQuest(string id)
+        {
+            var q = WorldBook.QuestById(WorldId.Hub, id);
+            if (q != null) QuestLog.Offer(q, WorldId.Hub);
+        }
+
 System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera chase, ConcordClient kernel)
         {
             var stagePath = System.IO.Path.Combine(Application.dataPath, "Concordia/Generated/runtime-stage.txt");
@@ -256,6 +267,10 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             // Skip persistence Restore/ReceiveHere during Full Play stabilize — was part of post-Expand melt.
             if (_loadedPersistence != null)
                 Debug.Log("[Concordia] LeanPlay: skip persistence Restore/ReceiveHere (post-Expand stability)");
+
+            // After any persistence restore (it replaces QuestLog wholesale). Offer is
+            // idempotent: already-active or done quests are left alone.
+            OfferFoundingDay();
 
             if (kernel != null)
             {

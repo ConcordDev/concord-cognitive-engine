@@ -104,6 +104,7 @@ public static string Offer(WorldBook.Quest q, WorldId world)
             var a = new ActiveQuest { quest = q, world = world };
             a.SyncFromWorld();
             Active.Add(a);
+            ConcordClient.Live?.AcceptQuest(WorldBook.Folder(world), q.id);
             if (a.AllDoableDone() && a.NoBlocked())
             {
                 Complete(a);
@@ -177,8 +178,17 @@ public static string Offer(WorldBook.Quest q, WorldId world)
         static void Complete(ActiveQuest a)
         {
             if (a?.quest == null) return;
+            var world = a.world;
+            var follows = a.quest.follow_up_quest_ids;
+            ConcordClient.Live?.CheckQuestCompletion(WorldBook.Folder(world), a.quest.id);
             Done.Add(a.quest.id);
             Active.Remove(a);
+            if (follows == null) return;
+            foreach (var id in follows)
+            {
+                var next = WorldBook.QuestById(world, id);
+                if (next != null) Offer(next, world);
+            }
         }
 
         static void Refresh()
@@ -186,7 +196,21 @@ public static string Offer(WorldBook.Quest q, WorldId world)
             for (int i = Active.Count - 1; i >= 0; i--)
             {
                 var a = Active[i];
+                // Snapshot: SyncFromWorld mutates `done` in place, so an alias would
+                // always equal the new state and no progress would ever be sent.
+                var before = a.done == null ? null : (bool[])a.done.Clone();
                 a.SyncFromWorld();
+                var objs = a.quest?.objectives;
+                if (objs != null && a.done != null)
+                {
+                    for (int o = 0; o < objs.Length; o++)
+                    {
+                        if (!a.done[o]) continue;
+                        if (before != null && o < before.Length && before[o]) continue;
+                        ConcordClient.Live?.RecordQuestProgress(
+                            WorldBook.Folder(a.world), a.quest.id, objs[o]?.type, objs[o]?.target);
+                    }
+                }
                 if (a.AllDoableDone() && a.NoBlocked())
                     Complete(a);
             }
@@ -238,6 +262,7 @@ public static string Offer(WorldBook.Quest q, WorldId world)
                 case "talk_to":
                 case "interact":
                 case "reach_location":
+                case "observe":
                 case "defeat":
                 case "gather":
                 case "deliver":
@@ -279,8 +304,10 @@ public static string Offer(WorldBook.Quest q, WorldId world)
                 switch (t)
                 {
                     case "talk_to":
-                    case "interact":
                         return Hit(Talked, target);
+                    case "interact":
+                    case "observe":
+                        return Hit(Talked, target) || Hit(Places, target);
                     case "reach_location":
                         return Hit(Places, target);
                     case "defeat":
