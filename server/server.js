@@ -1892,6 +1892,7 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 // this after every real completion attempt so the ops-telemetry dashboard
 // (aggregateInferenceCosts) reflects real usage instead of sitting empty.
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
+import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
 import { createBreakerRegistry } from "./lib/circuit-breaker.js";
 import { traceMiddleware, startSpan, storeTrace, getRecentTraces, getTraceMetrics } from "./lib/request-trace.js";
@@ -7369,14 +7370,18 @@ _unrefInTest(setInterval(() => {
 // the process) has to wait behind another's entire hash before the loop can
 // serve anything else. Same pattern already used correctly elsewhere in this
 // codebase -- see forge-template-generator.js's `await auth.hashPassword`.
+// 2026-09-27: the same bcryptjs now runs on a worker thread
+// (lib/password-hash-pool.js) — the ≤100ms slices above still cost ~300ms of
+// main-thread CPU per login, which a signup burst turns into an overloaded
+// request loop. Identical hashes; in-thread fallback if a worker is unavailable.
 async function hashPassword(password) {
   if (!bcrypt) return null;
-  return bcrypt.hash(password, BCRYPT_ROUNDS);
+  return hashPasswordOffThread(password, BCRYPT_ROUNDS);
 }
 
 async function verifyPassword(password, hash) {
   if (!bcrypt) return false;
-  return bcrypt.compare(password, hash);
+  return verifyPasswordOffThread(password, hash);
 }
 
 function generateApiKey() {
@@ -88224,6 +88229,7 @@ export async function __terminateAllWorkersForTest() {
     terminateMacroPoolForTest(),
     terminateHeartbeatPoolForTest(),
     terminateCognitiveWorkerForTest(),
+    terminatePasswordWorkers(),
   ]);
 }
 
