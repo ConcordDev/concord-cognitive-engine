@@ -99,9 +99,11 @@
     "meshoptimizer": "^1.1.1",
     "nodemailer": "^9.0.4",
     "pdfkit": "^0.19.1",
+    "pg": "8.23.0",
     "playwright": "^1.62.0",
     "prom-client": "^15.1.0",
     "pyodide": "^314.0.3",
+    "redis": "^4.7.1",
     "socket.io": "^4.7.4",
     "sqlite-vec": "^0.1.9",
     "stripe": "^22.4.0",
@@ -124,9 +126,7 @@
   },
   "optionalDependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "meilisearch": "^0.60.0",
-    "pg": "^8.16.3",
-    "redis": "^4.7.1"
+    "meilisearch": "^0.60.0"
   },
   "overrides": {
     "protobufjs": "^7.5.5",
