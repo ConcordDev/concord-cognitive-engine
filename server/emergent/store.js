@@ -60,16 +60,39 @@ export function createEmergentState() {
 /**
  * Get or create the emergent state on the global STATE object.
  */
+// Incremental re-hydration cadence for getEmergentState (see comment inside).
+const HYDRATE_INTERVAL_MS = 5000;
+// Per-STATE hydration bookkeeping. Kept OFF the STATE object: STATE is
+// persisted to disk, and this holds a live db handle.
+const _hydration = new WeakMap();
+
 export function getEmergentState(STATE) {
   if (!STATE.__emergent) {
     STATE.__emergent = createEmergentState();
   }
-  // 2026-08-31: always hydrate from DB (idempotent — only adds missing)
-  // This ensures post-restart persistence works even when in-memory state was populated elsewhere
+  // 2026-08-31: hydrate from DB (idempotent — only adds missing) so
+  // post-restart persistence works even when in-memory state was populated
+  // elsewhere, and rows registered by the sibling backend still appear.
+  //
+  // 2026-09-27: this used to re-read the WHOLE table on EVERY call. With ~950
+  // emergents and recordTick calling this twice per emergent per heartbeat
+  // tick, that was ~1,900 full-table reads per tick — a measured 1.2-2.8s
+  // event-loop freeze every 15s on the heartbeat backend, which made the
+  // overload gate 503 real user requests. Now: one full read, then an
+  // incremental `updated_at > last` read at most every HYDRATE_INTERVAL_MS.
   try {
     const db = STATE?.db || globalThis?._concordDB;
-    if (db) {
-      const rows = db.prepare("SELECT * FROM emergent_registry WHERE active = 1").all();
+    const now = Date.now();
+    let h = _hydration.get(STATE);
+    if (!h) { h = { db: null, at: 0, since: -1 }; _hydration.set(STATE, h); }
+    if (db && (h.db !== db || now - h.at >= HYDRATE_INTERVAL_MS)) {
+      const first = h.db !== db;
+      const rows = first
+        ? db.prepare("SELECT * FROM emergent_registry WHERE active = 1").all()
+        : db.prepare("SELECT * FROM emergent_registry WHERE active = 1 AND updated_at > ?").all(h.since);
+      h.db = db;
+      h.at = now;
+      for (const r of rows) if (Number(r.updated_at) > h.since) h.since = Number(r.updated_at);
       for (const r of rows) {
         if (!STATE.__emergent.emergents.has(r.emergent_id)) {
           STATE.__emergent.emergents.set(r.emergent_id, {
