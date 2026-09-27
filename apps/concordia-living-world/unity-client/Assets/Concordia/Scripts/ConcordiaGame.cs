@@ -108,7 +108,10 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
-            RemotePlayers.Install(kernel); // other players in the shared world
+            // Other players' avatars — players only. The headless host renders
+            // nothing; at 100 players it was spending ~100% CPU building bodies
+            // no one could see (measured on the pod 2026-09-27).
+            if (!ConcordiaHost.WorldHostMode) RemotePlayers.Install(kernel);
             if (ConcordiaHost.WorldHostMode) WorldHostPublisher.Install(kernel); // this process runs the world for everyone
             else WorldHostClient.Install(kernel); // render the host's world when one is live
 

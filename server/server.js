@@ -73827,6 +73827,18 @@ function _onGodotClientClose(client) {
     structuredLog("info", "world_host_released", { worldId });
     _worldHostEmit(worldId, "world:host-offline", { worldId });
   }
+  // Same teardown the socket.io path does (_sweepSocketState). Without it a
+  // Unity/Godot player's presence outlived their connection by up to the
+  // 10-min stale sweep — others saw a frozen ghost — and on return their first
+  // move was judged against where they LEFT: spawning elsewhere read as a
+  // teleport, every move was rejected, and the anti-cheat (whose violation
+  // count also survived) dropped them in ~1 s (reproduced on the pod
+  // 2026-09-27). Removing the entry makes their next move a fresh baseline.
+  const uid = client?.userId;
+  if (uid) {
+    try { cityPresence.removeUser(uid); } catch { /* survive */ }
+    try { _clearAntiCheatUser(uid); } catch { /* survive */ }
+  }
 }
 
 function _onGodotClientMessage(client, evt, data) {

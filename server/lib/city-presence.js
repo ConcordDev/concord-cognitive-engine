@@ -1286,6 +1286,13 @@ export function getChunkUsers(cityId, chunkX, chunkZ) {
  */
 export function broadcastPositions(cityId, realtimeEmit) {
   const visited = new Set();
+  // One message per world per tick, not one per occupied chunk: at 100
+  // players over ~16 chunks each player received ~157 position messages/s
+  // (measured on the pod 2026-09-27). Every client already merges `users`
+  // by userId and none reads `chunk`, so the payload is the same data in
+  // far fewer frames. The per-chunk MAX_VISIBLE_AVATARS cap still applies.
+  const allUsers = [];
+  let chunkCount = 0;
 
   for (const [key, userSet] of _cityChunks) {
     if (visited.has(key)) continue;
@@ -1353,19 +1360,22 @@ export function broadcastPositions(cityId, realtimeEmit) {
     }
 
     if (users.length === 0) continue;
-
-    // Scoped to the world's room (clients move with cityId = their world
-    // id and join `world:<id>`). Unscoped, every chunk at 10 Hz went to
-    // EVERY connected socket on the site — 20 players spread over ~16
-    // chunks meant ~83-130 messages/s to each socket, including people in
-    // other lenses, and 1 s event-loop stalls (measured 2026-09-27).
-    realtimeEmit("city:positions", {
-      cityId,
-      chunk: { x: chunkX, z: chunkZ },
-      users,
-      timestamp: new Date().toISOString(),
-    }, { worldId: cityId });
+    chunkCount++;
+    for (const u of users) allUsers.push(u);
   }
+
+  if (allUsers.length === 0) return;
+  // Scoped to the world's room (clients move with cityId = their world id
+  // and join `world:<id>`). Unscoped, positions went to EVERY connected
+  // socket on the site — including people in other lenses — and caused
+  // 1 s event-loop stalls (measured 2026-09-27).
+  realtimeEmit("city:positions", {
+    cityId,
+    chunk: null,
+    chunks: chunkCount,
+    users: allUsers,
+    timestamp: new Date().toISOString(),
+  }, { worldId: cityId });
 }
 
 /**
