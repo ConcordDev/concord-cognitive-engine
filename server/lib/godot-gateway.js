@@ -77,6 +77,7 @@ const nextClientId = () => `godot_${Date.now().toString(36)}_${(++_clientCounter
  * @param {any} [deps.db]  passed verbatim to exportScene / exportKingdom.
  * @param {string} [deps.path="/godot-ws"]  upgrade path this gateway claims.
  * @param {(client:object, evt:string, data:object)=>void} [deps.onClientMessage]  fallback for unknown post-auth events.
+ * @param {(client:object)=>void} [deps.onClientClose]  called when a socket closes (before it leaves its rooms).
  * @param {(verifyApiKeyPair:Function)} [deps.verifyApiKeyPair]  optional apiKey auth (see api-key note).
  * @param {number} [deps.authTimeoutMs=10000]
  * @param {number} [deps.heartbeatMs=25000]
@@ -97,6 +98,7 @@ export function mountGodotGateway(httpServer, deps = {}) {
     db = null,
     path = "/godot-ws",
     onClientMessage = null,
+    onClientClose = null,
     verifyApiKeyPair = null,
     authTimeoutMs = 10_000,
     heartbeatMs = Number(process.env.CONCORD_GODOT_HEARTBEAT_MS) || 25_000,
@@ -872,6 +874,11 @@ function isBinaryMovePayload(p) {
 
     ws.on("close", () => {
       if (client._authTimer) { clearTimeout(client._authTimer); client._authTimer = null; }
+      // Let the server release per-socket state (e.g. a world host registration)
+      // BEFORE the client leaves its rooms, so it can still notify them.
+      if (typeof onClientClose === "function") {
+        try { onClientClose(client); } catch { /* must never take down the gateway */ }
+      }
       leaveAllRooms(client);
       leaveAllVoice(client);
       clients.delete(client);

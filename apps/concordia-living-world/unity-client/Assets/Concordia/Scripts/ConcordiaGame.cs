@@ -109,6 +109,8 @@ namespace Concordia
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
             RemotePlayers.Install(kernel); // other players in the shared world
+            if (ConcordiaHost.WorldHostMode) WorldHostPublisher.Install(kernel); // this process runs the world for everyone
+            else WorldHostClient.Install(kernel); // render the host's world when one is live
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -287,7 +289,7 @@ System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera ch
             for (int i = 0; i < 12; i++) yield return null;
 
             // First visit on this account: make your own character before you play.
-            if (_needsCharacterCreator && _player && _player.person != null && !CharacterCreator.IsOpen)
+            if (_needsCharacterCreator && !ConcordiaHost.WorldHostMode && _player && _player.person != null && !CharacterCreator.IsOpen)
             {
                 Debug.Log("[Concordia] no character on this account yet — opening the character creator");
                 CharacterCreator.Open(_player.person, _player, chase, () =>

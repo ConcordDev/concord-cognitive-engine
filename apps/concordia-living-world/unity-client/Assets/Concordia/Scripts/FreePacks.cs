@@ -84,7 +84,11 @@ namespace Concordia
                 }
             }
             catch { }
+#if UNITY_EDITOR
+            // AssetDatabase is editor-only; an unguarded call here broke every
+            // player build (WebGL + Linux server) from Sep 17.
             list.RemoveAll(path => !AssetDatabase.IsValidFolder(path));
+#endif
             return list.ToArray();
         }
 

@@ -136,6 +136,26 @@ namespace Concordia
                 if (key == "CONCORD_AUTH_TOKEN" && !string.IsNullOrEmpty(val)) bearerToken = val;
             }
             kitchenUrl = "";
+#else
+            // Standalone (e.g. the headless world host on a server): take the
+            // gateway, token and world from the environment or command line, the
+            // same way the browser build takes them from its page.
+            string Arg(string name)
+            {
+                try
+                {
+                    foreach (var a in System.Environment.GetCommandLineArgs())
+                        if (a.StartsWith("-" + name + "=")) return a.Substring(name.Length + 2);
+                }
+                catch { }
+                return null;
+            }
+            var envGw = Arg("concordGateway") ?? System.Environment.GetEnvironmentVariable("CONCORD_GATEWAY_URL");
+            var envTok = Arg("concordToken") ?? System.Environment.GetEnvironmentVariable("CONCORD_AUTH_TOKEN");
+            var envWorld = Arg("concordWorld") ?? System.Environment.GetEnvironmentVariable("CONCORD_WORLD_ID");
+            if (!string.IsNullOrEmpty(envGw)) { gatewayUrl = envGw; kitchenUrl = ""; }
+            if (!string.IsNullOrEmpty(envTok)) bearerToken = envTok;
+            if (!string.IsNullOrEmpty(envWorld)) worldId = envWorld;
 #endif
         }
 
@@ -1916,6 +1936,9 @@ if (JsonFlagFalse(json, "ok"))
             return SendEvt("run:start",
                 "{\"kind\":\"" + Escape(kind) + "\",\"worldId\":\"" + Escape(worldId) + "\"}");
         }
+
+        /// <summary>Send a gateway event with a prebuilt JSON payload (world host protocol).</summary>
+        public Task SendRaw(string evt, string dataJson) => Connected ? SendEvt(evt, dataJson) : Task.CompletedTask;
 
         async Task SendEvt(string evt, string dataJson)
         {

@@ -43,6 +43,31 @@ namespace Concordia
         /// </summary>
         public static bool RuntimeBudget => true;
 
+        /// <summary>
+        /// Headless shared-world host (World lens step 3): this process runs the
+        /// world's NPCs for everyone and publishes them through Concord
+        /// (WorldHostPublisher). Set by the `-concordWorldHost` command-line flag
+        /// or CONCORD_WORLD_HOST=1. Never true in a player's browser build.
+        /// </summary>
+        public static bool WorldHostMode
+        {
+            get
+            {
+                if (_hostMode.HasValue) return _hostMode.Value;
+                bool on = false;
+                try
+                {
+                    foreach (var a in System.Environment.GetCommandLineArgs())
+                        if (a == "-concordWorldHost") on = true;
+                    if (System.Environment.GetEnvironmentVariable("CONCORD_WORLD_HOST") == "1") on = true;
+                }
+                catch { on = false; }
+                _hostMode = on;
+                return on;
+            }
+        }
+        static bool? _hostMode;
+
         // Full Court densities (Lean emergency uses the thin side).
         public static int CrowdWalkers => LeanPlay ? 12 : 16;
         public static int CrowdStalls => LeanPlay ? 6 : 8;

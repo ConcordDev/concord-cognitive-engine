@@ -80,6 +80,7 @@ import * as presenceIdle from "./lib/presence-idle.js";
 import { createSessionActivityBridge, createMacroRateBridge, createApiRateBridge, createChatSessionBridge, createStyleVectorBridge, createSocketRoomBridge, installMapWriteThrough } from "./lib/concurrency/shared-state.js";
 import { touchStickySession } from "./lib/concurrency/sticky-session.js";
 import { markActivity as _markActivity } from "./lib/presence-idle.js";
+import * as _worldHost from "./lib/world-host.js";
 import * as _macroTelemetry from "./lib/detectors/macro-telemetry.js";
 // Wave-4 gap-closure (privacy row) — shared recorder also used by the
 // `privacy.recordAccess` macro (server/domains/privacy.js); see the call
@@ -73759,6 +73760,23 @@ async function _dispatchGodotCombatDodge(userId, data) {
 // lib/godot-move-rate.js so the contract is unit-testable without a live WS.
 const _godotMoveRateGate = makeGodotMoveRateGate();
 
+// Fan a shared-world host event out to everyone in that world's room, on both
+// gateways (Unity + Godot share the room grammar).
+function _worldHostEmit(worldId, evt, payload) {
+  const room = _worldHost.worldRoom(worldId);
+  try { _unityGatewayEmitter?.emitToRoom(room, evt, payload); } catch { /* survive */ }
+  try { _godotGatewayEmitter?.emitToRoom(room, evt, payload); } catch { /* survive */ }
+}
+
+// A host socket closed: release its worlds and tell players to fall back to
+// their local simulation instead of freezing on the last snapshot.
+function _onGodotClientClose(client) {
+  for (const worldId of _worldHost.releaseClient(client)) {
+    structuredLog("info", "world_host_released", { worldId });
+    _worldHostEmit(worldId, "world:host-offline", { worldId });
+  }
+}
+
 function _onGodotClientMessage(client, evt, data) {
   const userId = client?.userId || null;
   // A player in the World lens talks almost only over this socket. Count
@@ -73769,6 +73787,39 @@ function _onGodotClientMessage(client, evt, data) {
   // Unity /unity-ws uses the same gateway; envelopes are unity:<godot-evt>.
   if (typeof evt === "string" && evt.startsWith("unity:")) evt = evt.slice(6);
   switch (evt) {
+    // ── Shared-world host (lib/world-host.js) ──────────────────────────────
+    case "host:register": {
+      const worldId = String(data?.worldId || "");
+      let role = "user";
+      try { role = String(STATE?.db?.prepare("SELECT role FROM users WHERE id = ?").get(userId)?.role || "user"); } catch { /* user */ }
+      const r = _worldHost.registerHost(client, { userId, role }, worldId);
+      _godotGatewaySend(client, "host:register:ack", { ...r, worldId });
+      if (r.ok) {
+        structuredLog("info", "world_host_registered", { worldId, userId, replaced: r.replaced });
+        _worldHostEmit(worldId, "world:host-online", { worldId });
+      }
+      return;
+    }
+    case "host:manifest": {
+      const worldId = String(data?.worldId || "");
+      const r = _worldHost.acceptManifest(client, worldId, data?.entities, { append: data?.append === true });
+      if (!r.ok) { _godotGatewaySend(client, "host:error", { reason: r.reason, evt }); return; }
+      _worldHostEmit(worldId, "world:manifest", { worldId, append: data?.append === true, entities: r.chunk });
+      return;
+    }
+    case "host:snapshot": {
+      const worldId = String(data?.worldId || "");
+      const r = _worldHost.acceptSnapshot(client, worldId, data?.entities);
+      if (!r.ok) { if (r.reason !== "throttled") _godotGatewaySend(client, "host:error", { reason: r.reason, evt }); return; }
+      _worldHostEmit(worldId, "world:entities", r.snapshot);
+      return;
+    }
+    case "world:manifest:request": {
+      const worldId = String(data?.worldId || "");
+      const m = _worldHost.manifestFor(worldId);
+      _godotGatewaySend(client, "world:manifest", m ? { worldId, append: false, entities: m.entities, hostLive: true } : { worldId, append: false, entities: [], hostLive: false });
+      return;
+    }
     case "player:move": {
       // ~30Hz cap — byte-identical intent to socket.io's `_moveRateState`.
       // Must run BEFORE applyPlayerMove so a flood never touches presence.
@@ -73968,6 +74019,7 @@ if (server) {
       runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
+      onClientClose: _onGodotClientClose,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
     _godotGatewayEmitter = createGatewayEmitter(godotGatewayHandle);
@@ -73994,6 +74046,7 @@ if (server) {
       runMacro: _runMacroFromGateway,
       db: STATE?.db || db,
       onClientMessage: _onGodotClientMessage,
+      onClientClose: _onGodotClientClose,
       verifyApiKeyPair: _godotVerifyApiKeyPair,
     });
     // Realtime fan-out for Unity, mirroring the Godot mount above. Without
