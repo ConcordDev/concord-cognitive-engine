@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { v6ContractOnly as detect } from "../lib/chat-v6-contract.js";
+import { v6ContractOnly as detect, jsonOnlyReply } from "../lib/chat-v6-contract.js";
 
 const src = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "server.js"), "utf8");
 
@@ -29,4 +29,12 @@ test("leaves real tool calls, prose, and unrelated JSON alone", () => {
 test("chat.respond routes contract-only replies through the guard", () => {
   assert.match(src, /const _v6Only = _v6ContractOnly\(finalReply\)/);
   assert.match(src, /I couldn't put together an answer for that one/);
+});
+
+test("any JSON-shaped reply is caught — including malformed model output", () => {
+  assert.ok(jsonOnlyReply('{"query":"98765-4321","key":"result","answer":94444}'));
+  const broken = '{"toneLock":"deterministic","anchor":{"dtus":["beam-deflection"],"answer":1.58}\n"nextLoop":"deterministic"}';
+  assert.deepEqual(jsonOnlyReply(broken), {});
+  assert.equal(jsonOnlyReply("The deflection is {about} 0.05 in."), null);
+  assert.equal(jsonOnlyReply("Sure — here you go."), null);
 });

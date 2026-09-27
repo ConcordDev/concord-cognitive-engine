@@ -34,5 +34,9 @@ export function jsonOnlyReply(text) {
   try {
     const obj = JSON.parse(t);
     return obj && typeof obj === "object" && !Array.isArray(obj) ? obj : null;
-  } catch { return null; }
+  } catch {
+    // Malformed but unmistakably JSON-shaped (a model emitted a broken object,
+    // e.g. {"toneLock":…,"anchor":{…}}\n"nextLoop":…}) — still never prose.
+    return /"[A-Za-z_][\w-]*"\s*:/.test(t) ? {} : null;
+  }
 }

@@ -1894,6 +1894,8 @@ import { logBrainInteraction, resolveBrainInteraction } from "./lib/brain-traini
 import { meterInferenceWithBilling } from "./lib/runtime/inference-billing-bridge.js";
 import { hashPasswordOffThread, verifyPasswordOffThread, terminatePasswordWorkers } from "./lib/password-hash-pool.js";
 import { v6ContractOnly as _v6ContractOnly, jsonOnlyReply as _jsonOnlyReply } from "./lib/chat-v6-contract.js";
+import { extractBeamQuestion as _extractBeamQuestion, formatDeflection as _formatDeflection } from "./lib/engineering-question-extract.js";
+import { beamDeflection as _beamDeflection } from "./lib/compute/physics-compute.js";
 import { normalizeComputeCall as _normalizeComputeCall, formatArithmeticAnswer as _formatArithmeticAnswer, arithmeticQuestion as _arithmeticQuestion } from "./lib/chat-compute-normalize.js";
 import { isOperator as _isOperatorActor } from "./lib/runtime/operator-gate.js";
 import { getActiveBrainModel } from "./lib/brain-training/runner.js";
@@ -27749,6 +27751,25 @@ ${_operatorV6Block}` : "";
   let _isChallengePrompt = null;
   let _challengeFallbackCall = null;
   let _lastBrainMessage = null;
+  // Set when a deterministic engine answered the question outright (e.g. a
+  // written beam-deflection problem); enforced after the brain replies.
+  let _deterministicAnswer = null;
+  // Engineering wedge: a fully-specified written beam question goes to the
+  // deterministic engine (lib/engineering-question-extract.js) up front, so
+  // every brain path — preflight, direct fallback, offline — is covered.
+  try {
+    const _beamQ = _extractBeamQuestion(prompt);
+    if (_beamQ) {
+      const _beamR = _beamDeflection(_beamQ);
+      if (_beamR && _beamR.ok !== false && Number.isFinite(_beamR.value)) {
+        const _assumed = _beamQ.assumed.length ? ` Assumed: ${_beamQ.assumed.join("; ")}.` : "";
+        _deterministicAnswer = {
+          value: _beamR.value,
+          text: `${_formatDeflection(_beamR.value, _beamR.formula)}${_assumed} (Computed by Concord's beam engine: ${_beamQ.supportType} support, P = ${Number(_beamQ.loadLbs.toPrecision(6))} lb, L = ${Number(_beamQ.lengthFt.toPrecision(6))} ft, E = ${Math.round(_beamQ.modulusE).toLocaleString("en-US")} psi, I = ${Number(_beamQ.momentI.toPrecision(6))} in⁴.)`,
+        };
+      }
+    }
+  } catch { /* never block chat on a compute failure */ }
   try {
     const _v6 = await import("./lib/v6-observe-bridge.js");
     _parseObserveCalls = _v6.parseObserveCalls;
@@ -28060,7 +28081,10 @@ ${_operatorV6Block}` : "";
     // capability actually keyword-matches; pure-chat queries pass through
     // untouched. See server/lib/chat-compute-preflight.js for the policy.
     let _computeGroundTruth = null;
-    try {
+    if (_deterministicAnswer) {
+      _computeGroundTruth = { groundTruthBlock: `[GROUND TRUTH from real compute engines — these values are authoritative, never contradict them]\n- physics.beamDeflection: ${_deterministicAnswer.text}`, capabilities: [{ key: "physics.beamDeflection" }], results: [] };
+    }
+    if (!_computeGroundTruth) try {
       _computeGroundTruth = await runChatComputePreflight(prompt, {
         domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
         ctx,
@@ -28416,6 +28440,16 @@ ${_operatorV6Block}` : "";
         ctx.log("chat_tools", "V6 contract reply replaced", { recovered: !!_plain, intent: String(_v6Only.intent || "").slice(0, 40) });
       }
     }
+  }
+
+  // Deterministic answer enforcement: if an engine answered outright and the
+  // brain's reply doesn't carry that number (4 significant figures), the
+  // engine's answer is the reply — a model's re-derivation is never trusted
+  // over the engine for a fully-specified problem.
+  if (_deterministicAnswer && typeof finalReply === "string") {
+    const _v4 = String(Number(_deterministicAnswer.value.toPrecision(4)));
+    const _v3 = String(Number(_deterministicAnswer.value.toPrecision(3)));
+    if (!finalReply.includes(_v4) && !finalReply.includes(_v3)) finalReply = _deterministicAnswer.text;
   }
 
   // If LLM failed, make the fallback response conversational instead of a DTU dump
