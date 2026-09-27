@@ -83,21 +83,14 @@
 // fixed-end-moment term this codebase's `computeMemberForces` does not
 // carry. See MIN_WALL_ELEMENTS below.
 //
-// ── Silent-zero-stiffness hazard (why the orientation guard exists) ────
-// fea-solver.js's `solveSystem` does `if (Math.abs(pivot) < 1e-12) continue`
-// and back-substitution writes `u[row] = 0` for an unconstrained/singular
-// DOF. Its bending-stiffness assembly assumes a member lying in a plane
-// with |lz|<0.001 bends about global Y (using the uy/rz DOFs) REGARDLESS
-// of whether the member's own axis is X or Y — so a wall member whose
-// axis is actually along global Y gets its axial stiffness and its
-// (mis-assumed) bending stiffness both routed onto the SAME uy DOF,
-// leaving the true transverse DOF (ux) with no bending stiffness
-// contribution at all. That can pivot to (near) zero and silently
-// resolve to a **fabricated zero deflection** — read by this module's
-// coupling loop as "the wall is infinitely rigid" and reported as
-// converged in one iteration. `assertFsiModelSupported` is therefore a
-// HARD precondition, checked before any `runFEA` call, refusing any
-// member whose direction is not (to tolerance) aligned with global X.
+// ── Why the wall must lie along global X ────
+// The fluid model applies the pressure-gradient load in +y and reads each
+// node's channel gap from its y-deflection, with member lengths taken as Δx.
+// Those are geometric assumptions of THIS model, so `assertFsiModelSupported`
+// stays a hard precondition. (It originally also guarded a fea-solver.js bug
+// that returned zero deflection for Y-axis members; that bug was fixed on
+// 2026-09-27 — tests/fea-frame-element.test.js — so the reason here is now
+// purely the model geometry.)
 //
 // This file does NOT modify fea-solver.js, aero-gate.js, or
 // thermal-gate.js.
@@ -127,7 +120,7 @@ export const DEFAULT_GAP_TOLERANCE = 1e-4;
 // point.
 export const MIN_WALL_ELEMENTS = 16;
 // Members must lie along global X to this tolerance (unit direction
-// cosines ly, lz) — see the header's silent-zero-stiffness hazard note.
+// cosines ly, lz) — see the header's note on why the wall lies along X.
 export const ORIENTATION_TOLERANCE = 1e-6;
 
 // ── Configuration limitation (added during conductor verification) ──────
@@ -187,8 +180,8 @@ function memberDirection(nodes, member) {
 
 /**
  * Hard precondition: every member must lie along global X (within
- * ORIENTATION_TOLERANCE), or fea-solver.js's bending-stiffness assembly
- * silently fabricates a zero deflection for it (see this file's header).
+ * ORIENTATION_TOLERANCE): the fluid model loads in +y and reads the gap
+ * from y-deflection over Δx member lengths (see this file's header).
  * Checked BEFORE any runFEA call — never a warning.
  * @returns {{ok:boolean, reason?:string, memberIds?:string[]}}
  */

@@ -60,46 +60,41 @@ function xAxisCantilever({ mechanicalLoads = [{ nodeId: 'B', Fy: TIP_LOAD_N }] }
   };
 }
 
-describe('assertSupportedOrientation — guards fea-solver.js\'s verified silent zero-stiffness bug', () => {
+describe('assertSupportedOrientation — member-geometry precondition (orientation no longer restricted)', () => {
   it('passes a plain X-axis cantilever (the shape every other gate test in this repo uses)', () => {
     const model = xAxisCantilever();
     const result = assertSupportedOrientation(model.nodes, model.members);
     assert.deepEqual(result, { ok: true });
   });
 
-  it('flags a member oriented (near-)purely along global Y', () => {
+  it('accepts a vertical (global-Y) column now that the solver handles it', () => {
     const nodes = [
       { id: 'A', x: 0, y: 0, z: 0 },
       { id: 'B', x: 0, y: L, z: 0 }, // vertical column
     ];
     const members = [{ id: 'col1', nodeI: 'A', nodeJ: 'B', area, momentI: I, elasticModulus: E_Pa, allowableStress: allowable_Pa }];
-    const result = assertSupportedOrientation(nodes, members);
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, 'unsupported_member_orientation');
-    assert.deepEqual(result.memberIds, ['col1']);
+    assert.deepEqual(assertSupportedOrientation(nodes, members), { ok: true });
   });
 
-  it('proves the flagged case is a REAL solver defect, not a false positive: the same vertical member silently reads a transverse load as zero displacement', () => {
+  it('still refuses a member with a dangling node reference', () => {
+    const nodes = [{ id: 'A', x: 0, y: 0, z: 0 }];
+    const members = [{ id: 'bad', nodeI: 'A', nodeJ: 'nope', area, momentI: I, elasticModulus: E_Pa }];
+    const result = assertSupportedOrientation(nodes, members);
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, 'invalid_member_geometry');
+    assert.deepEqual(result.memberIds, ['bad']);
+  });
+
+  it('the solver now gives the textbook PL³/3EI for a transversely loaded vertical column (was silently 0)', () => {
     const nodes = [
       { id: 'A', x: 0, y: 0, z: 0 },
       { id: 'B', x: 0, y: L, z: 0 },
     ];
     const members = [{ id: 'col1', nodeI: 'A', nodeJ: 'B', area, momentI: I, elasticModulus: E_Pa, allowableStress: allowable_Pa }];
-    const res = runFEA({
-      nodes, members,
-      supports: [{ nodeId: 'A', type: 'fixed' }],
-      loads: [{ nodeId: 'B', Fx: TIP_LOAD_N }], // transverse to the member's own (Y) axis
-    });
-    assert.equal(res.ok, true, 'the solver itself never signals an error here');
-    const tip = res.displacements.find((d) => d.nodeId === 'B');
-    assert.equal(tip.dx, 0, 'silently reads as infinitely rigid — the exact defect this guard exists to catch');
-
-    // The identical geometry along X (the axis every other gate test in
-    // this repo already uses) gives the real textbook answer instead.
-    const xModel = xAxisCantilever({ mechanicalLoads: [{ nodeId: 'B', Fy: TIP_LOAD_N }] });
-    const xRes = runFEA(xModel);
+    const res = runFEA({ nodes, members, supports: [{ nodeId: 'A', type: 'fixed' }], loads: [{ nodeId: 'B', Fx: TIP_LOAD_N }] });
     const expected = (TIP_LOAD_N * L ** 3) / (3 * E_Pa * I);
-    assert.ok(Math.abs(xRes.displacements[1].dy - expected) / expected < 1e-9);
+    const tip = res.displacements.find((d) => d.nodeId === 'B');
+    assert.ok(Math.abs(tip.dx - expected) / expected < 1e-9, `dx ${tip.dx} vs ${expected}`);
   });
 });
 
@@ -196,17 +191,20 @@ describe('checkDurabilityGate — honest refusals (never fabricates a pass)', ()
     assert.ok(Number.isFinite(check.failureYear));
   });
 
-  it('refuses an unsupported (Y-axis) member orientation BEFORE attempting any solve', () => {
+  it('runs the durability check on a vertical column instead of refusing its orientation', () => {
     const nodes = [
       { id: 'A', x: 0, y: 0, z: 0 },
       { id: 'B', x: 0, y: L, z: 0 },
     ];
-    const members = [{ id: 'col1', nodeI: 'A', nodeJ: 'B', area, momentI: I, elasticModulus: E_Pa, allowableStress: allowable_Pa }];
+    const members = [{ id: 'col1', nodeI: 'A', nodeJ: 'B', area, momentI: I, elasticModulus: E_Pa, allowableStress: allowable_Pa, depthIn: height }];
     const model = { nodes, members, supports: [{ nodeId: 'A', type: 'fixed' }], loads: [{ nodeId: 'B', Fx: TIP_LOAD_N }] };
     const check = checkDurabilityGate(model, { materialKey: 'steel-a36', mechanisms: ['fatigue'], fatigue: { deltaSigma: 50, Y: 1, thickness: height, a0: 0.0001 } });
-    assert.equal(check.ok, false);
-    assert.equal(check.reason, 'unsupported_member_orientation');
-    assert.deepEqual(check.memberIds, ['col1']);
+    assert.equal(check.ok, true, JSON.stringify(check).slice(0, 200));
+    // Orientation-invariant: the same member laid along X, loaded the same way
+    // relative to its own axis, gives the same durability timeline.
+    const xModel = xAxisCantilever({ mechanicalLoads: [{ nodeId: 'B', Fy: TIP_LOAD_N }] });
+    const xCheck = checkDurabilityGate(xModel, { materialKey: 'steel-a36', mechanisms: ['fatigue'], fatigue: { deltaSigma: 50, Y: 1, thickness: height, a0: 0.0001 } });
+    assert.ok(Math.abs(check.samples[1].utilization - xCheck.samples[1].utilization) < 1e-9);
   });
 
   it('refuses bad model input honestly (no nodes/members)', () => {
