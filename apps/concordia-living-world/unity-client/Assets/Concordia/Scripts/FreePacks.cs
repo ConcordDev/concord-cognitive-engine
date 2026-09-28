@@ -764,6 +764,17 @@ namespace Concordia
                             continue;
                         }
                     }
+#else
+                    if (src != null && HubLook.IsBlankAlbedo(HubLook.FirstAlbedo(src)))
+                    {
+                        var skinned = HubLook.Lit(HubLook.FirstColor(src, Color.white), 0.02f, 0.30f);
+                        if (BindNamedSkinFromRegistry(skinned, src))
+                        {
+                            next[s] = skinned;
+                            any = true;
+                            continue;
+                        }
+                    }
 #endif
 
                     // A genuinely NULL material slot renders magenta — the blankest case there is,
@@ -852,27 +863,55 @@ namespace Concordia
                     {
                         var t = AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/Textures/" + wanted + exts[e])
                              ?? AssetDatabase.LoadAssetAtPath<Texture2D>(dir + "/" + wanted + exts[e]);
-                        if (t) return t;
+                        if (t) return RecordSkin(wanted, t);
                     }
 
-                foreach (var guid in AssetDatabase.FindAssets(wanted + " t:Texture2D"))
-                {
-                    var p = AssetDatabase.GUIDToAssetPath(guid);
-                    if (Path.GetFileNameWithoutExtension(p) != wanted) continue;   // exact name only
-                    var t = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
-                    if (t) return t;
-                }
-                return null;
+                var found = FindSkinPath(wanted);
+                return found != null ? RecordSkin(wanted, AssetDatabase.LoadAssetAtPath<Texture2D>(found)) : null;
             }
 
-            var color = Find("_color");
+            return ApplySkin(dst, Find("_color"), Find("_normal"));
+        }
+
+        /// Global exact-name texture search the editor uses for Rocketbox skins
+        /// (shared with ConcordiaBuildAssetRegistry so builds ship the same maps).
+        public static string FindSkinPath(string wanted)
+        {
+            foreach (var guid in AssetDatabase.FindAssets(wanted + " t:Texture2D"))
+            {
+                var p = AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(p) == wanted) return p;   // exact name only
+            }
+            return null;
+        }
+
+        static Texture2D RecordSkin(string wanted, Texture2D t)
+        {
+            if (t) BuildAssets.RecordKey("skin:" + wanted, AssetDatabase.GetAssetPath(t));
+            return t;
+        }
+#endif
+
+        /// Builds: the same named-skin binding, resolved through the BuildAssets
+        /// registry (the editor recorded or pre-collected each name → texture).
+        static bool BindNamedSkinFromRegistry(Material dst, Material src)
+        {
+            if (dst == null || src == null) return false;
+            var matName = (src.name ?? "").Replace(" (Instance)", "").Trim();
+            if (matName.Length == 0) return false;
+            return ApplySkin(dst,
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_color"),
+                BuildAssets.LoadByKey<Texture2D>("skin:" + matName + "_normal"));
+        }
+
+        static bool ApplySkin(Material dst, Texture2D color, Texture2D nrm)
+        {
             if (!color) return false;
 
             if (dst.HasProperty("_BaseColor")) dst.SetColor("_BaseColor", Color.white);
             if (dst.HasProperty("_BaseMap")) dst.SetTexture("_BaseMap", color);
             if (dst.HasProperty("_MainTex")) dst.SetTexture("_MainTex", color);
 
-            var nrm = Find("_normal");
             if (nrm && dst.HasProperty("_BumpMap"))
             {
                 dst.SetTexture("_BumpMap", nrm);
@@ -881,6 +920,7 @@ namespace Concordia
             return true;
         }
 
+#if UNITY_EDITOR
         static Texture2D ColormapNear(string path, string stem)
         {
             if (string.IsNullOrEmpty(path)) return null;

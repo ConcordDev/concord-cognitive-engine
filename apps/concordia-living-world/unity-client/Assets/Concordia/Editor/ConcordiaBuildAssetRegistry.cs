@@ -46,6 +46,28 @@ namespace Concordia.Editor
                         paths.Add(AssetDatabase.GUIDToAssetPath(guid));
 
             var keys = new SortedDictionary<string, string>();
+
+            // Rocketbox skins are bound at runtime by material name (FreePacks
+            // BindNamedSkin: "<material>_color" / "_normal", searched project-wide).
+            // Run that same search for every core body so its maps ship even if no
+            // one has played in the editor since the last export.
+            foreach (var p in paths.ToList())
+            {
+                if (!(AssetDatabase.LoadMainAssetAtPath(p) is GameObject go)) continue;
+                foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                    foreach (var m in r.sharedMaterials)
+                    {
+                        if (!m) continue;
+                        var name = m.name.Replace(" (Instance)", "").Trim();
+                        foreach (var suffix in new[] { "_color", "_normal" })
+                        {
+                            var tex = FreePacks.FindSkinPath(name + suffix);
+                            if (tex == null) continue;
+                            keys["skin:" + name + suffix] = tex;
+                            paths.Add(tex);
+                        }
+                    }
+            }
             if (File.Exists(BuildAssets.UsedPathsFile))
             {
                 foreach (var line in File.ReadAllLines(BuildAssets.UsedPathsFile))
