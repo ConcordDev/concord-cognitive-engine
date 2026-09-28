@@ -63,9 +63,7 @@ namespace Concordia
             if (_title != null) return;
             _white = Texture2D.whiteTexture;
             _ring = Disc(64);
-#if UNITY_EDITOR
-            _font = AssetDatabase.LoadAssetAtPath<Font>("Assets/SourceFiles/Fonts/Inter-Variable.ttf");
-#endif
+            _font = BuildAssets.Load<Font>("Assets/SourceFiles/Fonts/Inter-Variable.ttf");
             if (!_font) _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _hudSkin = CxDress.Hud(player && Canon.SteelLive(player.world, player.transform.position), "health");
 

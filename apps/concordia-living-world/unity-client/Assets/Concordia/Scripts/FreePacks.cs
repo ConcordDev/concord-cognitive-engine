@@ -97,13 +97,19 @@ namespace Concordia
             if (string.IsNullOrEmpty(stem)) return null;
             var key = HubKit.Alias(stem);
             Index();
+            // Editor resolves stems through the folder index and records each hit;
+            // builds (no AssetDatabase) replay those records from the BuildAssets
+            // registry, so both use the same model. See BuildAssets.
 #if UNITY_EDITOR
-            if (TryLoadIndexed(key, storeOnly: true, out var store)) return store;
+            if (TryLoadIndexed(key, storeOnly: true, out var store)) return Recorded(key, store);
+#else
+            var recorded = BuildAssets.LoadByKey<GameObject>("freepacks:" + key);
+            if (recorded) return recorded;
 #endif
             if (HubKit.TryGet(key, out var kit) && kit) return kit;
 #if UNITY_EDITOR
-            if (TryLoadIndexed(key, storeOnly: false, out var indexed)) return indexed;
-            if (TryLoadIndexed(stem.ToLowerInvariant(), storeOnly: false, out var raw)) return raw;
+            if (TryLoadIndexed(key, storeOnly: false, out var indexed)) return Recorded(key, indexed);
+            if (TryLoadIndexed(stem.ToLowerInvariant(), storeOnly: false, out var raw)) return Recorded(key, raw);
 #endif
             return null;
         }
@@ -275,6 +281,12 @@ namespace Concordia
         }
 
 #if UNITY_EDITOR
+        static GameObject Recorded(string key, GameObject go)
+        {
+            if (go) BuildAssets.RecordKey("freepacks:" + key, AssetDatabase.GetAssetPath(go));
+            return go;
+        }
+
         static bool TryLoadIndexed(string key, bool storeOnly, out GameObject go)
         {
             go = null;
@@ -331,14 +343,7 @@ namespace Concordia
             return null;
         }
 
-        public static T Load<T>(string path) where T : Object
-        {
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<T>(path);
-#else
-            return null;
-#endif
-        }
+        public static T Load<T>(string path) where T : Object => BuildAssets.Load<T>(path);
 
         public static GameObject Spawn(string stem, Transform parent, Vector3 pos, float yawDeg = 0, float maxDim = 0, bool required = false, bool byHeight = true)
         {

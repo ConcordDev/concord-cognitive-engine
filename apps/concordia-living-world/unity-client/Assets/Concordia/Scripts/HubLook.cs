@@ -823,11 +823,7 @@ namespace Concordia
         {
             var res = Resources.Load<Texture2D>("Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble");
             if (res) return res;
-#if UNITY_EDITOR
-            return AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg");
-#else
-            return null;
-#endif
+            return BuildAssets.Load<Texture>("Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg");
         }
 
         /// True when the Poly Haven set actually resolves — lets callers fall back to flat colour
@@ -886,24 +882,20 @@ namespace Concordia
         // Addressables; AssetDatabase does not exist at runtime.
         static Texture LoadPbrTex(string stem, string suffix)
         {
-#if UNITY_EDITOR
             const string root = "Assets/Concordia/PolyHaven/Textures/";
             string[] exts = { ".jpg", ".png" };
             for (int i = 0; i < exts.Length; i++)
             {
-                var t = AssetDatabase.LoadAssetAtPath<Texture>(root + stem + "/" + stem + suffix + exts[i]);
+                var t = BuildAssets.Load<Texture>(root + stem + "/" + stem + suffix + exts[i]);
                 if (t) return t;
             }
             // Legacy flat layout kept for older non-Poly-Haven packs.
             for (int i = 0; i < exts.Length; i++)
             {
-                var t = AssetDatabase.LoadAssetAtPath<Texture>("Assets/Concordia/Models/polyhaven/" + stem + suffix + exts[i]);
+                var t = BuildAssets.Load<Texture>("Assets/Concordia/Models/polyhaven/" + stem + suffix + exts[i]);
                 if (t) return t;
             }
             return null;
-#else
-            return null;
-#endif
         }
 
 
@@ -1911,14 +1903,12 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
         static void EnsurePipeline()
         {
             if (GraphicsSettings.currentRenderPipeline != null) return;
-#if UNITY_EDITOR
-            var urp = UnityEditor.AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>("Assets/Settings/URP-Pipeline.asset");
+            var urp = BuildAssets.Load<UniversalRenderPipelineAsset>("Assets/Settings/URP-Pipeline.asset");
             if (urp)
             {
                 GraphicsSettings.defaultRenderPipeline = urp;
                 QualitySettings.renderPipeline = urp;
             }
-#endif
         }
 
         static void EnsureShaders()
@@ -1958,7 +1948,7 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
             {
                 var p = AssetDatabase.GUIDToAssetPath(guid);
                 if (string.IsNullOrEmpty(p) || p.Contains("/Editor/")) continue;
-                var m = AssetDatabase.LoadAssetAtPath<Material>(p);
+                var m = BuildAssets.Load<Material>(p);
                 if (!m || !m.shader) continue;
                 var n = m.shader.name ?? "";
                 if (n.StartsWith("Universal Render Pipeline/Lit") && !IsErrorShader(m.shader))
@@ -2011,7 +2001,6 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
 
         static bool TryHdrSky(WorldId world)
         {
-#if UNITY_EDITOR
             var file = HdrFile(world);
             if (_boundHdr == file && RenderSettings.skybox && RenderSettings.skybox.name.StartsWith("PH_HDR_"))
             {
@@ -2030,7 +2019,7 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
             // HDRs in this project are imported as Cubemap (textureShape 2).
             // Skybox/Panoramic on a Cubemap is a white void. Use Cubemap shader
             // for cubes; Panoramic only when the asset is actually 2D lat-long.
-            var cubemap = AssetDatabase.LoadAssetAtPath<Cubemap>(path);
+            var cubemap = BuildAssets.Load<Cubemap>(path);
             var cubeSh = Shader.Find("Skybox/Cubemap");
             if (cubemap && cubeSh && !IsErrorShader(cubeSh))
             {
@@ -2046,7 +2035,7 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
                 if (world == WorldId.Hub) CourtWalkableHorizon.SoftenSkyband();
                 return true;
             }
-            var tex2d = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            var tex2d = BuildAssets.Load<Texture2D>(path);
             var pano = Shader.Find("Skybox/Panoramic");
             if (tex2d && tex2d.dimension == TextureDimension.Tex2D && pano && !IsErrorShader(pano))
             {
@@ -2062,7 +2051,6 @@ static void ConfigureCourtTreeMaterials(GameObject tree)
                 if (world == WorldId.Hub) CourtWalkableHorizon.SoftenSkyband();
                 return true;
             }
-#endif
             return false;
         }
 

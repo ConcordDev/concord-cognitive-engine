@@ -19,6 +19,7 @@ namespace Concordia.Editor
             ConcordiaUrpEnsure.Ensure();
             ConcordiaShaderKeep.Ensure(); // runtime-built materials need their shaders shipped
             ConcordiaMenu.BuildHubSceneSilent();
+            ConcordiaBuildAssetRegistry.Generate(); // ship the assets the editor uses (see BuildAssets)
 
             var repoRoot = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", ".."));
             var staging = System.Environment.GetEnvironmentVariable("CONCORD_UNITY_STAGING");

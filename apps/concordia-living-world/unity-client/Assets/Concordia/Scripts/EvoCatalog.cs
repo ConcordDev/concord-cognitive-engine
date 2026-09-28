@@ -69,10 +69,8 @@ namespace Concordia
             var stem = System.IO.Path.GetFileNameWithoutExtension(path);
             var kit = FreePacks.Mesh(stem);
             if (kit) return kit;
-#if UNITY_EDITOR
-            var go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var go = BuildAssets.Load<GameObject>(path);
             if (go) return go;
-#endif
             return Resources.Load<GameObject>("Concordia/" + stem);
         }
     }

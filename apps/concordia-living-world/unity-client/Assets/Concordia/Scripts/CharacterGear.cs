@@ -37,11 +37,9 @@ namespace Concordia
         {
             if (!body || string.IsNullOrEmpty(stem)) return null;
             GameObject mesh = null;
-#if UNITY_EDITOR
             var generatedPath = CxDress.GeneratedGearPrefabPath(stem);
             if (!string.IsNullOrEmpty(generatedPath))
-                mesh = AssetDatabase.LoadAssetAtPath<GameObject>(generatedPath);
-#endif
+                mesh = BuildAssets.Load<GameObject>(generatedPath);
             if (!mesh) mesh = FreePacks.Mesh(stem);
             if (!mesh && (slot == Slot.HandR || slot == Slot.HandL || slot == Slot.Back || slot == Slot.Hip))
                 mesh = FreePacks.Mesh(DressVocab.Weapon(stem));

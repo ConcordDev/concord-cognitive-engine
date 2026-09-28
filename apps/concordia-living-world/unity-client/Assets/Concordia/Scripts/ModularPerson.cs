@@ -211,7 +211,7 @@ namespace Concordia // FORCE_REFRESH_0024
 
         bool TryBindAuthored(bool hero, string preferredPrefabPath)
         {
-            var prefab = LoadPersonPrefab(hero, preferredPrefabPath, _bodyPick);
+            var prefab = LoadPersonPrefab(hero, preferredPrefabPath);
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
@@ -325,20 +325,11 @@ namespace Concordia // FORCE_REFRESH_0024
             // it on this Animator. Prefer that; only hand-roll one (TryBipedAvatar) for
             // a body whose import never produced a valid Humanoid avatar.
             var av = _anim.avatar;
-#if UNITY_EDITOR
             if (!av || !av.isHuman || !av.isValid)
             {
                 var built = TryBipedAvatar(body);
                 if (built) { _anim.avatar = built; av = built; }
             }
-#else
-            // Player builds get bodies only from HubKit's runtime glTF import, which
-            // has no import-baked avatar. A hand-built one guessed from those bones
-            // retargeted the humanoid clips badly — people floated above their
-            // shadows with splayed arms in the WebGL build (2026-09-27). Without a
-            // trustworthy avatar, fall through to the procedural bone gait below
-            // (Quaternius bone names are mapped for it).
-#endif
             var ctrl = LoadLocomotion();
             // Verified 2026-09-20 (edit-mode AnimationMode sample of HumanoidWalk onto
             // the import-baked Rocketbox avatar): hips bob a clean ~0.86-0.92m, feet
@@ -400,20 +391,12 @@ namespace Concordia // FORCE_REFRESH_0024
             body.position += Vector3.up * dy;
         }
 
-static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male" };
-        static readonly string[] TownStems =
-        {
-            "casual_male", "casual_female", "casual2_male", "casual2_female", "casual3_male", "casual3_female",
-            "worker_male", "worker_female", "suit_male", "suit_female", "oldclassy_male", "oldclassy_female",
-        };
-
-        static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath, int pick = -1)
+static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         {
             GameObject go = null;
-#if UNITY_EDITOR
             if (!string.IsNullOrEmpty(preferredPrefabPath))
             {
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(preferredPrefabPath);
+                go = BuildAssets.Load<GameObject>(preferredPrefabPath);
                 if (go)
                 {
                     _lastPrefabPath = preferredPrefabPath;
@@ -438,7 +421,7 @@ static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male
                     });
             foreach (var path in cxPaths)
             {
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                go = BuildAssets.Load<GameObject>(path);
                 if (!go) continue;
                 _lastPrefabPath = path;
                 return go;
@@ -456,22 +439,13 @@ static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male
             for (int i = 0; i < adult.Length; i++)
             {
                 var p = adult[(start + i) % adult.Length];
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(p);
+                go = BuildAssets.Load<GameObject>(p);
                 if (!go) continue;
                 _lastPrefabPath = p;
                 return go;
             }
-#endif
-            // Player builds: the editor paths above don't exist, and the Rocketbox
-            // stems are not in the HubKit catalog that ships with the build — so every
-            // person came up bodiless in WebGL (found 2026-09-27). The catalog does ship
-            // Quaternius townsfolk (their rig is supported below); prefer those.
-            var town = hero ? HeroStems : TownStems;
-            var n = town.Length;
-            var first = hero ? 0 : (pick >= 0 ? pick : Mathf.Abs(_bodySeq++)) % n;
-            var stems = new string[n + 4];
-            for (int i = 0; i < n; i++) stems[i] = town[(first + i) % n];
-            stems[n] = "Male_Adult_01"; stems[n + 1] = "Male_Adult_05"; stems[n + 2] = "Female_Adult_01"; stems[n + 3] = "Female_Adult_04";
+            // Last resort: a FreePacks stem (editor index, or a key recorded for builds).
+            var stems = new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Female_Adult_04" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -572,7 +546,7 @@ static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male
             {
                 var p = AssetDatabase.GUIDToAssetPath(guid);
                 var fn = System.IO.Path.GetFileName(p).ToLowerInvariant();
-                var t = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+                var t = BuildAssets.Load<Texture2D>(p);
                 if (!t) continue;
                 if (fn.Contains("opacity")) opac = t;
                 else if (fn.Contains("head") && fn.Contains("normal") && !fn.Contains("wrinkle")) headN = t;
@@ -657,29 +631,25 @@ static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male
             // real Idle/Walk/Run/Sprint/JumpStart clips on a Humanoid avatar. SoldierLocomotion
             // and the rest are pre-slice leftovers kept only as a last-resort fallback.
             var c = Resources.Load<RuntimeAnimatorController>("Concordia/ConcordiaLocomotion");
-#if UNITY_EDITOR
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Anim/ConcordiaLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Resources/Concordia/ConcordiaLocomotion.controller");
-#endif
             if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
-#if UNITY_EDITOR
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Anim/SoldierLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/SourceFiles/StarterAssets/ThirdPersonController/Character/Animations/StarterAssetsThirdPerson.controller");
             if (!c)
-                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                c = BuildAssets.Load<RuntimeAnimatorController>(
                     "Assets/Kevin Iglesias/Human Animations/Unity Demo Scenes/Human Basic Motions/AnimatorControllers/HumanBasicMotionsScene.controller");
-#endif
             if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/KenneyLocomotion");
             return c;
         }
@@ -958,10 +928,8 @@ static readonly string[] HeroStems = { "casual_male", "casual2_male", "suit_male
         {
             var t = Resources.Load<Texture2D>("Concordia/Person/" + stem);
             if (t) return t;
-#if UNITY_EDITOR
-            t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Resources/Concordia/Person/" + stem + ".png");
-            if (!t) t = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Concordia/Models/living/kenney-person/" + stem + ".png");
-#endif
+            t = BuildAssets.Load<Texture2D>("Assets/Concordia/Resources/Concordia/Person/" + stem + ".png");
+            if (!t) t = BuildAssets.Load<Texture2D>("Assets/Concordia/Models/living/kenney-person/" + stem + ".png");
             return t;
         }
 
@@ -1658,8 +1626,7 @@ void StripGiantAndFallback(bool allowFallback = true)
 
 static GameObject MakeSword()
         {
-#if UNITY_EDITOR
-            var baked = AssetDatabase.LoadAssetAtPath<GameObject>(
+            var baked = BuildAssets.Load<GameObject>(
                 "Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab");
             if (baked)
             {
@@ -1668,7 +1635,6 @@ static GameObject MakeSword()
                 foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
                 return held;
             }
-#endif
             var fromCx = CxDress.HeldWeapon("longsword");
             if (fromCx) return fromCx;
             var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
