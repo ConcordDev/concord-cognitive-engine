@@ -30,12 +30,13 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /TryBipedAvatar/);
     assert.match(person, /AvatarBuilder\.BuildHumanAvatar/);
     assert.match(person, /BipedHinge\(/);
-    assert.match(person, /_clipsFit && !_biped && _authored && _anim/);
-    assert.match(person, /_clipsFit = !_biped && ctrl && av && av\.isHuman && av\.isValid/);
+    // No !_biped exclusion: measured 2026-09-20 on the import-baked Rocketbox avatar.
+    assert.match(person, /_clipsFit && _authored && _anim/);
+    assert.match(person, /_clipsFit = ctrl && av && av\.isHuman && av\.isValid/);
     assert.match(person, /_hip\.localPosition = _hipPos0/);
     assert.match(person, /StripPrefabWeapons/);
     assert.match(person, /_footL\.position\.y/);
-    assert.match(person, /float contra = -s \* armAmp/);
+    assert.match(person, /float contra = -a \* armAmp/);
     assert.match(person, /_shown < 0\.35f && _grounded\) PlantFeet/);
     assert.doesNotMatch(person, /LoadAssetAtPath.*Soldier\.glb/);
     assert.match(game, /ModularPerson\.AttachHero\(/);
@@ -88,20 +89,24 @@ describe("SR2 street floor — source contracts", () => {
     const look = src("HubLook.cs");
     const book = src("WorldBook.cs");
     const builder = src("WorldBuilder.cs");
-    assert.match(look, /exposure = 0\.12f/);
-    assert.match(look, /sat = 10f/);
-    assert.match(look, /ambientIntensity = 1f/);
-    assert.match(look, /reflectionIntensity = world == WorldId\.Hub \? 1\.05f/);
+    // Sep-22 Aura relight: Hub grade is a Sun01 ramp, peaking at +10 saturation by day.
+    assert.match(look, /postExposure\.Override\(Mathf\.Lerp\(nightExp, dayExp, sun01\)\)/);
+    assert.match(look, /saturation\.Override\(Mathf\.Lerp\(4f, 10f, sun01\)\)/);
+    // Sep-22 relight: low Hub ambient (key + fog + lamps carry), strong reflections.
+    assert.match(look, /ambientIntensity = world == WorldId\.Hub \? 0\.22f/);
+    assert.match(look, /reflectionIntensity = world == WorldId\.Hub \? 1\.15f/);
+    assert.match(look, /ambientIntensity = 0\.12f \+ 0\.18f \* sun01/);
     assert.match(look, /metallic = 0\.06f, float smooth = 0\.26f/);
     assert.match(look, /SetFloat\("_Smoothness", 0\.22f\)/);
     assert.match(book, /UnityEngine\.Rendering\.AmbientMode\.Trilight/);
     assert.match(book, /World == WorldId\.Hub/);
     assert.match(book, /l\.name == "Sun"/);
     assert.match(book, /HubLook\.ApplyHour\(World, Hour\)/);
-    assert.match(book, /sun\.intensity = \(0\.06f \+ 1\.12f \* sun01\)/);
+    assert.match(book, /sun\.intensity = \(0\.06f \+ 1\.12f \* sun01\) \* wx/);
     assert.match(look, /Sun01\(/);
     assert.match(builder, /1\.18f/);
-    assert.match(builder, /0\.0045f/);
+    // Hub fog is per-world and thinner while the continent streams.
+    assert.match(builder, /WorldId\.Hub => ContinentStream\.Live \? [0-9.]+f : [0-9.]+f/);
     assert.doesNotMatch(look, /exposure = -0\.72f/);
   });
 
@@ -118,7 +123,7 @@ describe("SR2 street floor — source contracts", () => {
     assert.match(person, /Talking\(\)/);
     assert.match(person, /PlanarSpeed/);
     assert.match(person, /talkLift/);
-    assert.match(person, /FORCE_REFRESH_0023/);
+    assert.match(person, /FORCE_REFRESH_\d+/);
     assert.match(person, /18f \+ arc/);
     assert.match(builder, /for \(int i = 0; i < 16; i\+\+\)/);
   });
@@ -138,13 +143,16 @@ describe("SR2 street floor — source contracts", () => {
     assert.doesNotMatch(plaza, /Rib/);
     assert.doesNotMatch(plaza, /GodRays/);
     assert.doesNotMatch(plaza, /RingBoxes/);
-    assert.match(plaza, /DressVocab\.Tree\(/);
+    // Court trees: one north composition tree (hero-tree cloth owned by HubLook sockets).
+    assert.match(plaza, /one north composition tree/);
     assert.match(plaza, /DressVocab\.Grass\(/);
     assert.match(plaza, /DressVocab\.Table\(/);
     assert.match(src("CharacterGear.cs"), /FromToRotation\(from, boneLocal\)/);
     assert.match(src("CharacterGear.cs"), /boneLocal \* 0\.08f/);
     assert.match(src("CharacterGear.cs"), /hand\.position - hand\.parent\.position/);
-    assert.match(src("HubLook.cs"), /stem \+ "_rough_2k/);
+    // Poly Haven PBR: diffuse + GL normal + packed ARM (roughness lives in ARM).
+    assert.match(src("HubLook.cs"), /LoadPbrTex\(stem, "_nor_gl_2k"\)/);
+    assert.match(src("HubLook.cs"), /LoadPbrTex\(stem, "_arm_2k"\)/);
     assert.match(src("NpcLife.cs"), /Grounding\.Snap\(_cc\)/);
   });
 

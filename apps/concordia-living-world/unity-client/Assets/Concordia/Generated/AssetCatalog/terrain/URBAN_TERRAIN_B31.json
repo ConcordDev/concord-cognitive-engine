@@ -1,0 +1,787 @@
+{
+  "batch": "B31_terrain_urban",
+  "slice": "A20_terrain_crime_cyber_dawn",
+  "count": 15,
+  "rule": "Modules, not maps. Three urban kits. B18 parents stay. No lettering. No neon on the Coast. No digit on the Grid. Dawn pads do not replace env_dawn_roof_pad. No heightmap. No rifle.",
+  "kits": [
+    {
+      "id": "terr_kit_coast_street",
+      "world_ids": [
+        "Crime"
+      ],
+      "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+      "parent_kit": "arch_kit_crime_coast",
+      "keeps": [
+        "env_crime_sodium_lamp",
+        "env_crime_fire_escape",
+        "env_crime_gutter_mouth",
+        "env_crime_bill_board",
+        "env_crime_overpass_pier",
+        "env_crime_wharf_bollard",
+        "env_crime_warehouse_door",
+        "flora_crime_plane",
+        "flora_crime_gutter_fern",
+        "flora_crime_dock_reed"
+      ],
+      "modules": [
+        "terr_crime_curb_run",
+        "terr_crime_stoop",
+        "terr_crime_alley_throat",
+        "terr_crime_roof_tar",
+        "terr_crime_splash_block"
+      ]
+    },
+    {
+      "id": "terr_kit_grid_alley",
+      "world_ids": [
+        "Cyber"
+      ],
+      "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+      "parent_kit": "arch_kit_cyber_grid",
+      "keeps": [
+        "env_cyber_alley_drain",
+        "env_cyber_under_hatch",
+        "env_cyber_neon_banner",
+        "env_cyber_census_plinth",
+        "env_cyber_skybridge_segment",
+        "env_cyber_service_corridor",
+        "env_cyber_glitch_frame",
+        "flora_cyber_well_weed",
+        "flora_cyber_roof_moss"
+      ],
+      "modules": [
+        "terr_cyber_alley_paver",
+        "terr_cyber_conduit_lip",
+        "terr_cyber_alley_step",
+        "terr_cyber_soot_wedge",
+        "terr_cyber_door_sill"
+      ]
+    },
+    {
+      "id": "terr_kit_dawn_roof",
+      "world_ids": [
+        "Superhero"
+      ],
+      "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+      "parent_kit": "arch_kit_superhero_dawn",
+      "keeps": [
+        "env_dawn_roof_pad",
+        "env_dawn_mercy_ring",
+        "env_dawn_arterial_pier",
+        "env_dawn_kane_fin",
+        "env_dawn_clinic_canopy",
+        "env_dawn_spandrel",
+        "arch_hero_dawn_launch_lip",
+        "arch_hero_dawn_pad_facade",
+        "flora_dawn_park_plane",
+        "flora_dawn_roof_olive"
+      ],
+      "modules": [
+        "terr_dawn_pad_gravel",
+        "terr_dawn_parapet_cap",
+        "terr_dawn_scuff_plate",
+        "terr_dawn_roof_cowl",
+        "terr_dawn_lowrent_pad"
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "terr_crime_curb_run",
+      "display_name": "Coast Curb Run",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "street",
+        "dressing",
+        "ground",
+        "iron_coast"
+      ],
+      "triangle_budget": 4500,
+      "aura_prompt": "One wet granite curb and asphalt crown, a single four-metre run. Single subject, three-quarter view, centered, entire subject in frame, night rain street, soft even light, no text, no watermark, 3D game asset concept render. No gutter mouth, no lamp pole, no lettering, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low curb and a wet crown. No oval mouth.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Street scatter beside the sodium blocks. The gutter mouth stays its own mesh.",
+      "scale_vs_player": "4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 4,
+        "lod0_tris": 4500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_crime_curb_run/",
+        "kit_id": "terr_kit_coast_street",
+        "parent_kit": "arch_kit_crime_coast",
+        "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_crime_sodium_lamp, env_crime_fire_escape, env_crime_gutter_mouth, env_crime_bill_board, env_crime_overpass_pier, env_crime_wharf_bollard, env_crime_warehouse_door, flora_crime_plane, flora_crime_gutter_fern, flora_crime_dock_reed"
+      },
+      "prompt": "One wet granite curb and asphalt crown, a single four-metre run. Single subject, three-quarter view, centered, entire subject in frame, night rain street, soft even light, no text, no watermark, 3D game asset concept render. No gutter mouth, no lamp pole, no lettering, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_crime_stoop",
+      "display_name": "Tenement Stoop",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "street",
+        "dressing",
+        "iron_coast"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One worn stone stoop of two steps against stained brick. Single subject, three-quarter view, centered, entire subject in frame, stained brick wall, soft even light, no text, no watermark, 3D game asset concept render. No fire escape, no interior newel, no door leaf, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two steps. Reads as a low wedge on a wall.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Outside the tenement bay. The bay and the escape stair stay.",
+      "scale_vs_player": "1.4 m wide",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 5000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_crime_stoop/",
+        "kit_id": "terr_kit_coast_street",
+        "parent_kit": "arch_kit_crime_coast",
+        "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_crime_sodium_lamp, env_crime_fire_escape, env_crime_gutter_mouth, env_crime_bill_board, env_crime_overpass_pier, env_crime_wharf_bollard, env_crime_warehouse_door, flora_crime_plane, flora_crime_gutter_fern, flora_crime_dock_reed"
+      },
+      "prompt": "One worn stone stoop of two steps against stained brick. Single subject, three-quarter view, centered, entire subject in frame, stained brick wall, soft even light, no text, no watermark, 3D game asset concept render. No fire escape, no interior newel, no door leaf, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_crime_alley_throat",
+      "display_name": "Alley Throat",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "ground",
+        "iron_coast"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One narrow wet-brick alley floor, a single throat wedge. Single subject, three-quarter view, centered, entire subject in frame, wet brick alley, soft even light, no text, no watermark, 3D game asset concept render. No neon tube, no fern, no drain grate, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A dark brick wedge. No grate.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Between tenements. The gutter fern and the Coast lamp stay.",
+      "scale_vs_player": "2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_crime_alley_throat/",
+        "kit_id": "terr_kit_coast_street",
+        "parent_kit": "arch_kit_crime_coast",
+        "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_crime_sodium_lamp, env_crime_fire_escape, env_crime_gutter_mouth, env_crime_bill_board, env_crime_overpass_pier, env_crime_wharf_bollard, env_crime_warehouse_door, flora_crime_plane, flora_crime_gutter_fern, flora_crime_dock_reed"
+      },
+      "prompt": "One narrow wet-brick alley floor, a single throat wedge. Single subject, three-quarter view, centered, entire subject in frame, wet brick alley, soft even light, no text, no watermark, 3D game asset concept render. No neon tube, no fern, no drain grate, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_crime_roof_tar",
+      "display_name": "Tar Roof Pad",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "iron_coast"
+      ],
+      "triangle_budget": 5500,
+      "aura_prompt": "One flat tar roof pad with a gravel skim, a single square. Single subject, three-quarter view, centered, entire subject in frame, tar roof dusk, soft even light, no text, no watermark, 3D game asset concept render. No marble circle, no fire-escape landing, no cloth sail, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A black square with a gravel skim. No rail.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Coast roof reached by the existing escape. Not a Dawn pad.",
+      "scale_vs_player": "4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 4,
+        "lod0_tris": 5500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_crime_roof_tar/",
+        "kit_id": "terr_kit_coast_street",
+        "parent_kit": "arch_kit_crime_coast",
+        "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_crime_sodium_lamp, env_crime_fire_escape, env_crime_gutter_mouth, env_crime_bill_board, env_crime_overpass_pier, env_crime_wharf_bollard, env_crime_warehouse_door, flora_crime_plane, flora_crime_gutter_fern, flora_crime_dock_reed"
+      },
+      "prompt": "One flat tar roof pad with a gravel skim, a single square. Single subject, three-quarter view, centered, entire subject in frame, tar roof dusk, soft even light, no text, no watermark, 3D game asset concept render. No marble circle, no fire-escape landing, no cloth sail, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_crime_splash_block",
+      "display_name": "Downspout Splash",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "street",
+        "dressing",
+        "ground",
+        "iron_coast"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One concrete splash block under a downspout, a single mass. Single subject, three-quarter view, centered, entire subject in frame, wet wall base, soft even light, no text, no watermark, 3D game asset concept render. No cast-iron mouth, no floor drain, no steam, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small block and a short pipe stub. One mass.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "At the wall. The curb mouth and the warehouse drain stay.",
+      "scale_vs_player": "0.6 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_crime_splash_block/",
+        "kit_id": "terr_kit_coast_street",
+        "parent_kit": "arch_kit_crime_coast",
+        "place": "Iron Coast sodium streets on the tenement rise. Beside the blocks. Not inside arch_hero_crime_tenement_bay. Not on the warehouse apron. Not on the wharf. SoftEnter first frame stays env_crime_sodium_lamp, wet brick, and the posted bill. Flower Law does not apply. Steel is live.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_crime_sodium_lamp, env_crime_fire_escape, env_crime_gutter_mouth, env_crime_bill_board, env_crime_overpass_pier, env_crime_wharf_bollard, env_crime_warehouse_door, flora_crime_plane, flora_crime_gutter_fern, flora_crime_dock_reed"
+      },
+      "prompt": "One concrete splash block under a downspout, a single mass. Single subject, three-quarter view, centered, entire subject in frame, wet wall base, soft even light, no text, no watermark, 3D game asset concept render. No cast-iron mouth, no floor drain, no steam, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_cyber_alley_paver",
+      "display_name": "Alley Paver",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "ground",
+        "grid"
+      ],
+      "triangle_budget": 3000,
+      "aura_prompt": "One wet dark alley paver with an oil sheen, a single square. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. No bent grate, no hatch, no hologram, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A dark square. Oil, not a trench.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#6a6258"
+      ],
+      "lore_blurb": "Alley floor. The drain trench stays env_cyber_alley_drain.",
+      "scale_vs_player": "2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 3000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_cyber_alley_paver/",
+        "kit_id": "terr_kit_grid_alley",
+        "parent_kit": "arch_kit_cyber_grid",
+        "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_cyber_alley_drain, env_cyber_under_hatch, env_cyber_neon_banner, env_cyber_census_plinth, env_cyber_skybridge_segment, env_cyber_service_corridor, env_cyber_glitch_frame, flora_cyber_well_weed, flora_cyber_roof_moss"
+      },
+      "prompt": "One wet dark alley paver with an oil sheen, a single square. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. No bent grate, no hatch, no hologram, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_cyber_conduit_lip",
+      "display_name": "Conduit Lip",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "grid"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One low wall conduit with a single cyan cable tie. Single subject, three-quarter view, centered, entire subject in frame, alley wall, soft even light, no text, no watermark, 3D game asset concept render. No cloth banner, no digit, no missing numeral, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low bar on a wall. One cyan tie.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#6a6258"
+      ],
+      "lore_blurb": "Physical cable. Neon stays the cloth banner. The census ring stays.",
+      "scale_vs_player": "2.4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_cyber_conduit_lip/",
+        "kit_id": "terr_kit_grid_alley",
+        "parent_kit": "arch_kit_cyber_grid",
+        "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_cyber_alley_drain, env_cyber_under_hatch, env_cyber_neon_banner, env_cyber_census_plinth, env_cyber_skybridge_segment, env_cyber_service_corridor, env_cyber_glitch_frame, flora_cyber_well_weed, flora_cyber_roof_moss"
+      },
+      "prompt": "One low wall conduit with a single cyan cable tie. Single subject, three-quarter view, centered, entire subject in frame, alley wall, soft even light, no text, no watermark, 3D game asset concept render. No cloth banner, no digit, no missing numeral, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_cyber_alley_step",
+      "display_name": "Alley Step",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "grid"
+      ],
+      "triangle_budget": 2800,
+      "aura_prompt": "One concrete alley step, a single riser. Single subject, three-quarter view, centered, entire subject in frame, wet alley, soft even light, no text, no watermark, 3D game asset concept render. No raised hatch, no corridor pipe, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One riser. Not a square hatch.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#6a6258"
+      ],
+      "lore_blurb": "Up to an alley door. The under-hatch stays in the pavement.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2800,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_cyber_alley_step/",
+        "kit_id": "terr_kit_grid_alley",
+        "parent_kit": "arch_kit_cyber_grid",
+        "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_cyber_alley_drain, env_cyber_under_hatch, env_cyber_neon_banner, env_cyber_census_plinth, env_cyber_skybridge_segment, env_cyber_service_corridor, env_cyber_glitch_frame, flora_cyber_well_weed, flora_cyber_roof_moss"
+      },
+      "prompt": "One concrete alley step, a single riser. Single subject, three-quarter view, centered, entire subject in frame, wet alley, soft even light, no text, no watermark, 3D game asset concept render. No raised hatch, no corridor pipe, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_cyber_soot_wedge",
+      "display_name": "Soot Corner",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "ground",
+        "grid"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One soot-stained alley corner wedge with a single acrylic shard. Single subject, three-quarter view, centered, entire subject in frame, soot alley corner, soft even light, no text, no watermark, 3D game asset concept render. No door frame, no bolted chapel sheet, no hologram, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A corner wedge and one shard.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#6a6258"
+      ],
+      "lore_blurb": "Wear in the alley. The glitch frame stays a door.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_cyber_soot_wedge/",
+        "kit_id": "terr_kit_grid_alley",
+        "parent_kit": "arch_kit_cyber_grid",
+        "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_cyber_alley_drain, env_cyber_under_hatch, env_cyber_neon_banner, env_cyber_census_plinth, env_cyber_skybridge_segment, env_cyber_service_corridor, env_cyber_glitch_frame, flora_cyber_well_weed, flora_cyber_roof_moss"
+      },
+      "prompt": "One soot-stained alley corner wedge with a single acrylic shard. Single subject, three-quarter view, centered, entire subject in frame, soot alley corner, soft even light, no text, no watermark, 3D game asset concept render. No door frame, no bolted chapel sheet, no hologram, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_cyber_door_sill",
+      "display_name": "Alley Door Sill",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "alley",
+        "dressing",
+        "grid"
+      ],
+      "triangle_budget": 3000,
+      "aura_prompt": "One wet steel alley door sill with a single cyan edge. Single subject, three-quarter view, centered, entire subject in frame, alley door, soft even light, no text, no watermark, 3D game asset concept render. No census plinth, no logo, no sodium teardrop, no digit, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin sill. One cyan edge, not a lamp.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#6a6258"
+      ],
+      "lore_blurb": "The alley still drains. The lamp is not a Coast sodium head.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 3000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_cyber_door_sill/",
+        "kit_id": "terr_kit_grid_alley",
+        "parent_kit": "arch_kit_cyber_grid",
+        "place": "Grid mid-rise alleys. Not the sky floor from (-25.77, -58.0) to (-19.37, -62.8). Not the census plaza. Not the service corridor. Not the Uncounted Wharf. Named set sky_bridge stays unplaced. No digit. No hologram.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_cyber_alley_drain, env_cyber_under_hatch, env_cyber_neon_banner, env_cyber_census_plinth, env_cyber_skybridge_segment, env_cyber_service_corridor, env_cyber_glitch_frame, flora_cyber_well_weed, flora_cyber_roof_moss"
+      },
+      "prompt": "One wet steel alley door sill with a single cyan edge. Single subject, three-quarter view, centered, entire subject in frame, alley door, soft even light, no text, no watermark, 3D game asset concept render. No census plinth, no logo, no sodium teardrop, no digit, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_dawn_pad_gravel",
+      "display_name": "Pad Gravel Arc",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "ground",
+        "permanent_dawn"
+      ],
+      "triangle_budget": 3500,
+      "aura_prompt": "One gravel ring segment beside a roof pad, a single arc. Single subject, three-quarter view, centered, entire subject in frame, rooftop dawn, soft even light, no text, no watermark, 3D game asset concept render. No circular launch pad, no raised lip, no warning stripe, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short gravel arc. Not a full circle.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#8a847c"
+      ],
+      "lore_blurb": "Scatter beside the 8 m pad. The pad and its lip stay.",
+      "scale_vs_player": "2 m arc",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 2,
+        "lod0_tris": 3500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_dawn_pad_gravel/",
+        "kit_id": "terr_kit_dawn_roof",
+        "parent_kit": "arch_kit_superhero_dawn",
+        "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_dawn_roof_pad, env_dawn_mercy_ring, env_dawn_arterial_pier, env_dawn_kane_fin, env_dawn_clinic_canopy, env_dawn_spandrel, arch_hero_dawn_launch_lip, arch_hero_dawn_pad_facade, flora_dawn_park_plane, flora_dawn_roof_olive"
+      },
+      "prompt": "One gravel ring segment beside a roof pad, a single arc. Single subject, three-quarter view, centered, entire subject in frame, rooftop dawn, soft even light, no text, no watermark, 3D game asset concept render. No circular launch pad, no raised lip, no warning stripe, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_dawn_parapet_cap",
+      "display_name": "Parapet Cap",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "permanent_dawn"
+      ],
+      "triangle_budget": 4500,
+      "aura_prompt": "One pale parapet cap with a chrome chip, a single run. Single subject, three-quarter view, centered, entire subject in frame, parapet sky, soft even light, no text, no watermark, 3D game asset concept render. No lettering, no victory statue, no tower fin, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low cap. One chrome chip.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#8a847c"
+      ],
+      "lore_blurb": "Roof edge. Kane's fin stays the tall read. No monument.",
+      "scale_vs_player": "2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 2,
+        "lod0_tris": 4500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_dawn_parapet_cap/",
+        "kit_id": "terr_kit_dawn_roof",
+        "parent_kit": "arch_kit_superhero_dawn",
+        "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_dawn_roof_pad, env_dawn_mercy_ring, env_dawn_arterial_pier, env_dawn_kane_fin, env_dawn_clinic_canopy, env_dawn_spandrel, arch_hero_dawn_launch_lip, arch_hero_dawn_pad_facade, flora_dawn_park_plane, flora_dawn_roof_olive"
+      },
+      "prompt": "One pale parapet cap with a chrome chip, a single run. Single subject, three-quarter view, centered, entire subject in frame, parapet sky, soft even light, no text, no watermark, 3D game asset concept render. No lettering, no victory statue, no tower fin, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_dawn_scuff_plate",
+      "display_name": "Pad Scuff Plate",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "ground",
+        "permanent_dawn"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One worn composite scuff plate, a single square. Single subject, three-quarter view, centered, entire subject in frame, roof pad surface, soft even light, no text, no watermark, 3D game asset concept render. No launch lip, no glass spandrel, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat scuffed square. No raised lip.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#8a847c"
+      ],
+      "lore_blurb": "Wear on the pad deck. The launch lip stays architecture.",
+      "scale_vs_player": "1 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_dawn_scuff_plate/",
+        "kit_id": "terr_kit_dawn_roof",
+        "parent_kit": "arch_kit_superhero_dawn",
+        "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_dawn_roof_pad, env_dawn_mercy_ring, env_dawn_arterial_pier, env_dawn_kane_fin, env_dawn_clinic_canopy, env_dawn_spandrel, arch_hero_dawn_launch_lip, arch_hero_dawn_pad_facade, flora_dawn_park_plane, flora_dawn_roof_olive"
+      },
+      "prompt": "One worn composite scuff plate, a single square. Single subject, three-quarter view, centered, entire subject in frame, roof pad surface, soft even light, no text, no watermark, 3D game asset concept render. No launch lip, no glass spandrel, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_dawn_roof_cowl",
+      "display_name": "Roof Vent Cowl",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "permanent_dawn"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One low roof vent cowl, a single hood. Single subject, three-quarter view, centered, entire subject in frame, roof sky, soft even light, no text, no watermark, 3D game asset concept render. No flame, no furnace stack, no tower, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low hood. No tongue of fire.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#8a847c"
+      ],
+      "lore_blurb": "Ordinary roof hardware. Not the Kane fin and not a Sere stack.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 5000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_dawn_roof_cowl/",
+        "kit_id": "terr_kit_dawn_roof",
+        "parent_kit": "arch_kit_superhero_dawn",
+        "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_dawn_roof_pad, env_dawn_mercy_ring, env_dawn_arterial_pier, env_dawn_kane_fin, env_dawn_clinic_canopy, env_dawn_spandrel, arch_hero_dawn_launch_lip, arch_hero_dawn_pad_facade, flora_dawn_park_plane, flora_dawn_roof_olive"
+      },
+      "prompt": "One low roof vent cowl, a single hood. Single subject, three-quarter view, centered, entire subject in frame, roof sky, soft even light, no text, no watermark, 3D game asset concept render. No flame, no furnace stack, no tower, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_dawn_lowrent_pad",
+      "display_name": "Low-Rent Roof Pad",
+      "batch": "B31_terrain_urban",
+      "world_ids": [
+        "Superhero"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "roof",
+        "dressing",
+        "permanent_dawn"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One dirty concrete roof pad, a single square. Single subject, three-quarter view, centered, entire subject in frame, low-rent roof dawn, soft even light, no text, no watermark, 3D game asset concept render. No marble circle, no mercy ring, no monument, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A stained square. Dirtier than the marble pad.",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#8a847c"
+      ],
+      "lore_blurb": "Low-rent roofs. The mercy plaza ring stays on the ground.",
+      "scale_vs_player": "4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 4,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_dawn_lowrent_pad/",
+        "kit_id": "terr_kit_dawn_roof",
+        "parent_kit": "arch_kit_superhero_dawn",
+        "place": "Permanent Dawn roofs around env_dawn_roof_pad. Not a second circular pad. Not the mercy plaza. Not the Bronx Arterial pier. Not Kane's fin. The dirty square is low-rent roofs only. Hub plaque (0, -34) is not this city. Flower Law stays the 42 m Hub disk.",
+        "flower_law": "not_hub_disk",
+        "keeps": "env_dawn_roof_pad, env_dawn_mercy_ring, env_dawn_arterial_pier, env_dawn_kane_fin, env_dawn_clinic_canopy, env_dawn_spandrel, arch_hero_dawn_launch_lip, arch_hero_dawn_pad_facade, flora_dawn_park_plane, flora_dawn_roof_olive"
+      },
+      "prompt": "One dirty concrete roof pad, a single square. Single subject, three-quarter view, centered, entire subject in frame, low-rent roof dawn, soft even light, no text, no watermark, 3D game asset concept render. No marble circle, no mercy ring, no monument, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    }
+  ]
+}

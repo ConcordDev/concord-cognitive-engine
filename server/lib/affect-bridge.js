@@ -185,8 +185,22 @@ export function affectTickAll(db) {
 }
 
 /**
- * Get an entity's current state, ticked-up-to-now.
+ * Ensure an affect_state row exists for a Concord soul. loadOrCreate is
+ * in-memory when missing — AgentBody must persist before claiming a body.
  */
+export function bindAffect(db, entityId, worldId = DEFAULT_WORLD) {
+  if (!db || !entityId) return null;
+  try {
+    const { E, M } = loadOrCreate(db, entityId, worldId);
+    _persist(db, entityId, worldId, E, M);
+    return {
+      v: E.v, a: E.a, s: E.s, c: E.c, g: E.g, t: E.t, f: E.f,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function getAffectStateFor(db, entityId, worldId = DEFAULT_WORLD) {
   if (!db || !entityId) return null;
   try {

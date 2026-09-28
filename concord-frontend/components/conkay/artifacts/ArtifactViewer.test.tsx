@@ -8,7 +8,7 @@
 //   (b) a registered kind dispatches to its real adapter;
 //   (c) source scan: no setInterval/setTimeout (no fake animation driver).
 //
-// The five real adapters each pull in Three.js / iframe (which jsdom's absent
+// The real adapters each pull in Three.js / iframe (which jsdom's absent
 // WebGL would fight), so they're mocked to markers — this unit owns the
 // kind→adapter dispatch + the STOP-POINT, not the adapters' own 3D rendering
 // (each wrapped component has its own coverage). Same mocking discipline as
@@ -29,6 +29,7 @@ vi.mock('./FoundryAdapter', () => ({ FoundryAdapter: () => <div data-testid="moc
 vi.mock('./ForgeAdapter', () => ({ ForgeAdapter: () => <div data-testid="mock-forge" /> }));
 vi.mock('./RoboticsArmAdapter', () => ({ RoboticsArmAdapter: () => <div data-testid="mock-robotics" /> }));
 vi.mock('./CreatureAdapter', () => ({ CreatureAdapter: () => <div data-testid="mock-creature" /> }));
+vi.mock('./OrganicMeshAdapter', () => ({ OrganicMeshAdapter: () => <div data-testid="mock-organic-mesh" /> }));
 
 const base = { components: [], sourceDomain: 'd', sourceMacro: 'm' };
 
@@ -49,6 +50,7 @@ describe('ArtifactViewer', () => {
     expect(screen.queryByTestId('mock-forge')).toBeNull();
     expect(screen.queryByTestId('mock-robotics')).toBeNull();
     expect(screen.queryByTestId('mock-creature')).toBeNull();
+    expect(screen.queryByTestId('mock-organic-mesh')).toBeNull();
   });
 
   it('(b) dispatches each registered kind to its real adapter', () => {
@@ -60,6 +62,7 @@ describe('ArtifactViewer', () => {
       ['forge-app', 'mock-forge'],
       ['robotics-arm', 'mock-robotics'],
       ['creature', 'mock-creature'],
+      ['organic-mesh', 'mock-organic-mesh'],
     ];
     for (const [kind, testid] of cases) {
       const { unmount } = render(

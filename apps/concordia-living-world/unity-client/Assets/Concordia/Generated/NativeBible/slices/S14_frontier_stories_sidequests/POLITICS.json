@@ -1,0 +1,587 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S14_frontier_stories_sidequests",
+  "world_id": "Frontier",
+  "lore_world_id": "concord-link-frontier",
+  "display_world": "The Frontier",
+  "facet": "stories_quests",
+  "title": "Frontier — perimeter politics, culture, side quests, one Link telegraph",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Frontier lore, factions, countries, npc sheets, volume quests, density weights, S13 caps, or the enc_last_dome, enc_road_followed, enc_chevron_morning, and enc_canvas_dive clocks.",
+  "canon_pins": {
+    "world_id": "Frontier",
+    "canon_world_def_title": "The Frontier",
+    "display_name": "The Frontier",
+    "refusal": "Refusal of the Dome",
+    "the_no": "No dome means no shelter.",
+    "refusal_line": "The road is our door.",
+    "law_text": "Drop the dome; wind will do the rest.",
+    "style_id": "road",
+    "style_name": "Open Road",
+    "style_verbs": ["Dust-kick", "Wagon iron", "Leave the dome", "Dust sprint"],
+    "steel_live": true,
+    "fight_style_people": "Muay Thai. CX body. Empty hands on the uniques in this slice. A drawn wagon iron, a skinner, a ritual staff, a repeating rifle, a crossbow, and a concealed dagger stay on the sheets that already name them. This facet binds none of those meshes.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. The Hub-ring Frontier gate at (−34, 0) is 34 m from the Court origin and sits inside that disk, so steel on the gate stone is a flower. Country discs are outside that rule. This slice spawns nobody on the gate stone.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 3.14159265,
+    "gate_short_name": "FRONTIER",
+    "gate_name_in_canon": "The Frontier",
+    "hub_ring_gate_xyz": [-34, 0, 0],
+    "hub_ring_radius_m": 34,
+    "megaworld_present_m": [-220, 0, 0],
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "rule": "Hub salt road. S01 owns the hitch inside 12 m. Every fauna id in S13 has cap 0 inside that disk. The council hash in this slice is 13.14 m from the Crossing, outside the disk. No unique here is lettered with that name."
+    },
+    "humanoid_body": "CX male or CX female. Concordia face. Plates and cloth on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_L, CX_Grip_R, CX_Back. A Quaternius body is not. A child is not stood in for an adult. Lin is_conscious false and wears a walker chassis. Lin is not given a walking CX.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#c8b070", "#efe6d4", "#4a3828"],
+    "canon_ground": "#c8b070",
+    "canon_sun": "#ffe8b0",
+    "gate_color": "#4aa8ff",
+    "materials": ["timber", "salvage plate", "canvas"],
+    "kit": "arch_kit_frontier_road",
+    "style_sector": "wasteland-frontier",
+    "dress_vocab": "frontier",
+    "firearms": "Pioneer preference and Zara Morn's repeating rifle are sheet text. Firearm verb coverage is zero. This slice spawns no firearm mesh. Zara has no country coordinate and is not stood."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/factions-extra.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/quests/",
+    "canon_cs": "Canon.cs WorldId.Frontier, gate angle π, RingRadius 34, HubLawRadius 42, steel live, Muay Thai, fauna aliases hound and wolf, law Drop the dome",
+    "geography_fn": "WorldGeography.BuildPlaces DeterministicOffset(settlement/concord-link-frontier/{faction_id}:{district}, radius 8+2i). StableHash is the unchecked 32-bit loop in that file. WorldBook.Folder(Frontier) is concord-link-frontier.",
+    "kit": "native-bible/architecture/KITS.json arch_kit_frontier_road",
+    "taxonomy": "native-bible/01_TAXONOMY.md Frontier row: dust wolf, horse, pronghorn, domebreaker",
+    "roles": ["npc_role_frontier_guard", "npc_role_frontier_bandit", "npc_role_road_bandit"],
+    "density": "native-bible/volume/DENSITY_TABLES.json Frontier block, cited via S13",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Frontier eight",
+    "volume_encounters": "native-bible/volume/BOSSES_AND_RAIDS.json enc_last_dome, enc_road_followed",
+    "prior_slice": "S13_frontier_geo_mounts_mobs"
+  },
+  "left_in_place": [
+    "q_frontier_hand_to_mira",
+    "q_frontier_verge_token",
+    "q_frontier_find_kel",
+    "q_frontier_hitch_not_ride",
+    "q_frontier_dust_off_road",
+    "q_frontier_pale_flag",
+    "q_frontier_road_is_door",
+    "q_frontier_rivet_scout",
+    "q_s13_salt_chord",
+    "q_s13_sail_not_roof",
+    "q_s13_two_cuts",
+    "frontier_mara_02_deliver",
+    "frontier_zara_02_token",
+    "frontier_silas_02_kel",
+    "enc_chevron_morning",
+    "enc_canvas_dive",
+    "enc_last_dome",
+    "enc_road_followed"
+  ],
+  "unresolved_on_purpose": [
+    "The Handshake was seeded by Vela, who walked the parcel to Temir. That stays frontier_lore_handshake_protocol.hidden_truth. Senior couriers treat her appearance as a folk-tale. This slice does not stand her and does not teach the algebra.",
+    "The third relay was attacked by a Concordian operative under Warden Commander Voss. Ria has the proof. Temir suspects and cannot prove it. That stays frontier_lore_compromised_relays.hidden_truth. The public lines are three sabotaged relays, two silent, one partial log destroyed by its keeper, and a Guild that has not commented.",
+    "The parcel echo, the second request of the same hash from an off-schedule portal, the addressee written only as V., and Dorvik's question about who else can open a Handshake door stay frontier_lore_the_parcel_resurfaces. known_by is frontier_militia. Those sentences are not dialogue on the post hash.",
+    "Temir cultivating Ria as a defector stays his secret. The afternoon block that names ria_cultivation is unstaged. The field visits have location varies.",
+    "Vexa was Ria's apprentice. Twelve years of silence stay her secret. The public backstory is a Guild apprentice who walked away, a crew of walkaways, and the largest band.",
+    "Brunn has known for fifteen months, the deliveries have run two annums, and he is waiting for the boy to tell him. Those stay his secret. The public tension is that the grandson has begun delivering to the nearest Guild post, that Brunn knows, and that Brunn has not spoken of it.",
+    "The test sermon was prepared after a colleague said the Web is just code, three weeks ago, and has not been given. The week-count and the colleague stay his secret. The public tension is that senior Freenodes told him the Web is just code and that he is preparing a sermon in which that news is the test.",
+    "Zara has noticed lattice-Crucible scouts on her perimeter. That stays her secret. The public history is the Third Incursion, Year -3, broken on her perimeter, and eight hours of sleep she has not had since.",
+    "Hane Okra's master, Oren Voss's trade, Jensa Bell's infirmary, and Pell Orange's western watch have schedule rooms with no country coordinate. None of them are stood. No rifle is repaired on a pin.",
+    "Dust Rose is a child who arrived at ten during the incursion and refused to say from where. A child is not a presence. frontier_camp_edges has no coordinate.",
+    "Mara Pin's council room has no coordinate. q_frontier_hand_to_mira already carries her sealed letter. This slice does not open it and does not stand her.",
+    "Silas Quinn's western route is passable and undeclared. frontier_western_road has no coordinate. The route is not drawn. He is not stood. q_frontier_find_kel keeps the portal's sound.",
+    "Walker Lin greets by the first observed name and repeats a receipt code. guild_assigned_routes is not a district. is_conscious is false. The chassis is not a CX. The constitution has no line for continuity of an autonomous walker, and Ria refuses to discuss whether Lin remembers.",
+    "Dorvik's interactable hours sit on anchor_safehouse_intermediate, which is not a district id. courier_safehouses at night is interactable false. He is not stood. His twenty years, two ambushes, one lost leg, and the sentence that he had never lost a parcel stay his sheet. The lost-parcel lore is the public crack in that sentence, read from Ria's ledger, with Dorvik absent.",
+    "Kestra is a name in the lost-parcel sentence and has no npc sheet in this Canon folder. She is not invented as a CX.",
+    "Iso Vant and Kerith of the Long Watch use field_relays_iso_post, field_relays_kerith_remote, and remote_perimeter. Those strings are not the district field_relays. The field_relays hash stays empty. The seven relays of Year 88 stay a count in the lore, not seven towers.",
+    "Accord Heirs and Assembly Witnesses are generated rows with empty district lists. They are not a seventh and eighth polity. Torven is stood once, as the Mesh prophet. Iso is not stood for the Witnesses.",
+    "frontier_militia has no country disc. frontier_perimeter, frontier_smithy, frontier_caravan_camp, frontier_infirmary, frontier_western_perimeter, and frontier_council_room spawn nobody.",
+    "The Mesh Gate's geographic center is lore. The six-capital average (22.91, −1.58) is arithmetic. Walker Lin's visitor count is not a coordinate. The plaque is not placed.",
+    "Named sets wagon_yard, wind_camp, and broken_dome_rib stay unplaced, as in S13. Districts courier_safehouses, field_relays, ambush_corridor_seven, enclave_old_rivermouth, routing_meditation_hall, and trade_caravan_route have hash pins and no unique.",
+    "Reputation numbers on the faction sheets stay 70, 55, 28, 42, 38, and 62. These errands write no faction delta. trust_marks, ransom_chit, enclave_token, routing_token, and township_chit are not paid out.",
+    "Country climate logs wind as low. WorldDef weather is wind. S13 lets the drift gap read as weather. This slice does not edit the climate rows and does not move the drift."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_chevron_morning, enc_canvas_dive, enc_last_dome, and enc_road_followed stay S13. They are the Frontier's combat. A postmaster, a broker, a captain, an elder, a prophet, and a chair have no health table. Killing any of them fails the quest they give and drops no rivet, no nail, no seal, and no trust-mark.",
+  "standing_ecology": {
+    "owner": "S13_frontier_geo_mounts_mobs",
+    "retune": false,
+    "political_reading": [
+      {"id": "npc_role_frontier_guard", "reading": "Five, on the council hitch, the two drift shoulders, and the two cut-rim posts. They are not Ria, not Marsenn, and not a militia captain. The north shoulder still gives q_s13_sail_not_roof."},
+      {"id": "npc_role_frontier_bandit", "reading": "Two on the cut. The cove hash is 45.31 m from that floor. Vexa does not path onto the cut, and these two do not become her crew."},
+      {"id": "npc_role_road_bandit", "reading": "One on the cut. q_s13_two_cuts stays that giver. The diplomat's seal in this slice is a different sentence and stays at the cove."},
+      {"id": "faun_dust_wolf", "reading": "Three on the drift gap, and the same three during enc_chevron_morning. Politics adds no fourth."},
+      {"id": "faun_wagon_horse", "reading": "Two led at the council hitch, plus S01's pair at the Crossing. Marsenn's hash is 9.93 m from the hitch. She does not lead them."},
+      {"id": "faun_wind_pronghorn", "reading": "Six by day on the pale flat, zero at night. The temple hash is 37.15 m from that floor. The herd stays unpenned."},
+      {"id": "mon_frontier_domebreaker", "reading": "Cap 0 until the volume mile is placed. enc_last_dome keeps hours 12–15 every third day. The weekly Link notice is not a substitute body."},
+      {"id": "mon_road_watcher", "reading": "Cap 0 until the wagon-mile is placed. enc_road_followed keeps hours 8–11 every fourth day."},
+      {"id": "hyb_dustgriffin", "reading": "One during enc_canvas_dive on the drift, hours 16–19 when day_index % 5 == 4. Catalog hostile stays false. No mesa is placed."},
+      {"id": "mount_wagon_horse", "reading": "Lead only. S13."},
+      {"id": "mount_wind_pronghorn", "reading": "Follow, no bridle. S13."},
+      {"id": "veh_salt_wagon", "reading": "Hitches the council pair and stops at the 12 m exclusion. This facet adds no second wagon."},
+      {"id": "veh_frontier_windwagon", "reading": "The sail quest's prop on the drift. A sail is not a dome and not a raid banner."}
+    ]
+  },
+  "geography": {
+    "method": "Country centers and radii are countries.json. Every radius is 23 m. District pins are DeterministicOffset from settlement/concord-link-frontier/{faction_id}:{district}, radius 8 m plus 2 m times the district index in controlled_districts. S13's floors use the countries.json trade-zone anchors, the (+8, −6) step of 10 m, plus the gap centers S13 derived. Those floors are cited and not moved. A hash pin and a trade-zone anchor that share a district name are two points. Published coordinates are the hash rounded to two decimals.",
+    "s13_floors_not_moved": {
+      "salt_lens": {"x": 47.84, "z": -29.98, "note": "Couriers and Pioneer overlap 21.54 m. Pinewood sits inside both discs."},
+      "pinewood_exclusion": {"x": 62, "z": -28, "radius_m": 12},
+      "drift_gap": {"x": 42.99, "z": 14.03, "gap_m": 18.71},
+      "pale_flat": {"x": 17.07, "z": -50.92, "gap_m": 16.02},
+      "cut": {"x": 19.55, "z": 5.29, "gap_m": 28.62},
+      "council_hitch": {"x": 54.82, "z": -48.16, "note": "Placed alliance_council_township. Two led horses. One guard."},
+      "link_post_alpha_placed": {"x": 56.86, "z": -23.79, "note": "6.64 m from Pinewood. S13 cap 0."},
+      "enclave_ridge_placed": {"x": 35.08, "z": 29.94, "note": "Placed enclave_north_ridge. S13 cap 0."},
+      "brokers_camp_placed": {"x": 45.13, "z": 39.85},
+      "pirate_cove_placed": {"x": -1.77, "z": 22.37},
+      "mesh_temple_placed": {"x": -4.68, "z": -65.67}
+    },
+    "claims": [
+      {"country_id": "frontier_couriers_guild", "x": 48.86, "z": -17.79, "radius_m": 23, "reputation_on_sheet": 70, "currency": "trust_marks", "motto": "We carry what cannot be sent."},
+      {"country_id": "frontier_freenodes", "x": 37.13, "z": 45.85, "radius_m": 23, "reputation_on_sheet": 55, "currency": "trust_marks", "motto": "Every peer is a sovereign."},
+      {"country_id": "frontier_signal_pirates", "x": -9.77, "z": 28.37, "radius_m": 23, "reputation_on_sheet": 28, "currency": "ransom_chit", "motto": "If it crosses our ground, it crosses our cut."},
+      {"country_id": "frontier_isolationists", "x": 27.08, "z": 35.94, "radius_m": 23, "reputation_on_sheet": 42, "currency": "enclave_token", "motto": "We were here before the Web. We remain."},
+      {"country_id": "frontier_mesh_cult", "x": -12.68, "z": -59.67, "radius_m": 23, "reputation_on_sheet": 38, "currency": "routing_token", "motto": "The Web has chosen us. Listen to the routing."},
+      {"country_id": "frontier_pioneer_alliance", "x": 46.82, "z": -42.16, "radius_m": 23, "reputation_on_sheet": 62, "currency": "township_chit", "motto": "We built this with our own hands and the Web in our pockets."}
+    ],
+    "claim_relations_m": {
+      "couriers_freenodes_gap": 18.71,
+      "couriers_pirates_gap": 28.62,
+      "couriers_isolation_gap": 11.98,
+      "couriers_mesh_gap": 28.44,
+      "couriers_pioneer_overlap": 21.54,
+      "freenodes_pirates_gap": 4.05,
+      "freenodes_isolation_overlap": 31.89,
+      "freenodes_mesh_gap": 70.69,
+      "freenodes_pioneer_gap": 42.54,
+      "pirates_isolation_overlap": 8.38,
+      "pirates_mesh_gap": 42.09,
+      "pirates_pioneer_gap": 44.43,
+      "isolation_mesh_gap": 57.55,
+      "isolation_pioneer_gap": 34.56,
+      "mesh_pioneer_gap": 16.02
+    },
+    "hash_pins": [
+      {"district": "link_post_alpha", "faction_id": "frontier_couriers_guild", "index": 0, "radius_m": 8, "x": 48.72, "z": -9.79, "inside": ["frontier_couriers_guild"], "pinewood_m": 22.54, "staff": "presence_ria_post. 16.19 m from the placed post, which stays cap 0."},
+      {"district": "courier_safehouses", "faction_id": "frontier_couriers_guild", "index": 1, "radius_m": 10, "x": 45.94, "z": -8.23, "inside": ["frontier_couriers_guild"], "pinewood_m": 25.47, "staff": "empty. 3.19 m from Ria's hash. Dorvik's night rest is interactable false."},
+      {"district": "brokers_camp", "faction_id": "frontier_freenodes", "index": 0, "radius_m": 8, "x": 44.74, "z": 48.32, "inside": ["frontier_freenodes", "frontier_isolationists"], "pinewood_m": 78.25, "staff": "presence_temir_camp. 8.48 m from the placed camp, which stays empty. The pin sits inside the enclave disc."},
+      {"district": "field_relays", "faction_id": "frontier_freenodes", "index": 1, "radius_m": 10, "x": 47.09, "z": 44.98, "inside": ["frontier_freenodes", "frontier_isolationists"], "pinewood_m": 74.49, "staff": "empty. 4.08 m from Temir. Iso and Kerith are not paired to this name."},
+      {"district": "pirate_cove_north", "faction_id": "frontier_signal_pirates", "index": 0, "radius_m": 8, "x": -16.16, "z": 33.18, "inside": ["frontier_signal_pirates"], "pinewood_m": 99.26, "staff": "presence_vexa_cove. 18.00 m from the placed cove. 45.31 m from the cut."},
+      {"district": "ambush_corridor_seven", "faction_id": "frontier_signal_pirates", "index": 1, "radius_m": 10, "x": -13.03, "z": 18.91, "inside": ["frontier_signal_pirates"], "pinewood_m": 88.49, "staff": "empty. Vexa's midday scout is interactable false. 14.61 m from her cove hash."},
+      {"district": "enclave_north_ridge", "faction_id": "frontier_isolationists", "index": 0, "radius_m": 8, "x": 20.78, "z": 40.87, "inside": ["frontier_freenodes", "frontier_isolationists"], "pinewood_m": 80.26, "staff": "presence_brunn_ridge. 18.00 m from the placed ridge, which stays cap 0. 25.09 m from Temir."},
+      {"district": "enclave_old_rivermouth", "faction_id": "frontier_isolationists", "index": 1, "radius_m": 10, "x": 19.20, "z": 42.10, "inside": ["frontier_freenodes", "frontier_isolationists"], "pinewood_m": 82.13, "staff": "empty. 2.00 m from Brunn's hash. A second elder is not stood."},
+      {"district": "mesh_temple_central", "faction_id": "frontier_mesh_cult", "index": 0, "radius_m": 8, "x": -19.74, "z": -55.91, "inside": ["frontier_mesh_cult"], "pinewood_m": 86.37, "staff": "presence_torven_temple. 17.95 m from the placed temple. 37.15 m from the pale flat."},
+      {"district": "routing_meditation_hall", "faction_id": "frontier_mesh_cult", "index": 1, "radius_m": 10, "x": -15.77, "z": -50.16, "inside": ["frontier_mesh_cult"], "pinewood_m": 80.87, "staff": "empty. Torven's early meditation is interactable false. 6.99 m from the temple hash."},
+      {"district": "alliance_council_township", "faction_id": "frontier_pioneer_alliance", "index": 0, "radius_m": 8, "x": 53.82, "z": -38.28, "inside": ["frontier_couriers_guild", "frontier_pioneer_alliance"], "pinewood_m": 13.14, "staff": "presence_marsenn_council. Inside the salt overlap. 9.93 m from the hitch. 10.23 m from the salt midpoint. Outside the 12 m exclusion."},
+      {"district": "trade_caravan_route", "faction_id": "frontier_pioneer_alliance", "index": 1, "radius_m": 10, "x": 41.52, "z": -50.64, "inside": ["frontier_pioneer_alliance"], "pinewood_m": 30.53, "staff": "empty. Marsenn's afternoon check is not staged. 17.44 m from her council hash. 24.45 m from the pale flat."}
+    ],
+    "placed_anchors_not_used_as_unique_floors": [
+      {"id": "link_post_alpha_trade_zone", "x": 56.86, "z": -23.79, "note": "16.19 m from Ria's hash. Inside the Pinewood exclusion. S13 cap 0. One Ria, on the hash, or none."},
+      {"id": "enclave_north_ridge_trade_zone", "x": 35.08, "z": 29.94, "note": "18.00 m from Brunn's hash. S13 cap 0. One Brunn, on the hash, or none."},
+      {"id": "brokers_camp_trade_zone", "x": 45.13, "z": 39.85, "note": "8.48 m from Temir's hash. Empty of a second broker."},
+      {"id": "pirate_cove_north_trade_zone", "x": -1.77, "z": 22.37, "note": "18.00 m from Vexa's hash. Empty of a second captain."},
+      {"id": "mesh_temple_central_trade_zone", "x": -4.68, "z": -65.67, "note": "17.95 m from Torven's hash. Empty of a second prophet."},
+      {"id": "alliance_council_township_trade_zone", "x": 54.82, "z": -48.16, "note": "9.93 m from Marsenn's hash. S13's two horses and one guard stay. She is not the guard."}
+    ],
+    "mesh_gate_arithmetic_not_a_pin": {"x": 22.91, "z": -1.58, "note": "Mean of the six capitals. Not the plaque. Not a spawn."}
+  },
+  "cultures": [
+    {
+      "id": "culture_post",
+      "name": "The post",
+      "where": "link_post_alpha hash, courier_safehouses hash empty beside it",
+      "public_fact": "The Couriers carry what cannot be sent. Their goal is that no peer stays unreachable more than seven days, and that the chain of physical custody still settles what the cities count. Ria has run Link Post Alpha for thirty-two years. She names couriers and reserves the word walker for the autonomous kind. Year 8 is Helva's walk, eleven days, a sealed Refusal Compact, a camp where an ankle broke, and the first post. Year 100 made this ground the venue for inter-city Refusal disputes. The Guild and the Freenodes are rivals. The Guild and the Pioneers are allies. Reputation on the sheet is 70.",
+      "identity": "A post identity is a name on a route and a hand that can be asked. The hash at (48.72, −9.79) is inside the Couriers disc only, 22.54 m from Pinewood. The placed post 16.19 m south-west is the S13 floor with cap 0. The safehouse hash 3.19 m away stays empty.",
+      "stops_before": "Voss, the proof, Vela, the parcel echo, and any line added to the Guild constitution."
+    },
+    {
+      "id": "culture_peers",
+      "name": "The peers",
+      "where": "brokers_camp hash, inside two discs",
+      "public_fact": "Year 88, after eighty years of Guild monopoly, a predecessor of Temir's raised one solar relay that could handshake with no courier in the room. Seven more appeared inside a year. The Guild voted to shun them. The Freenodes voted to refuse the shunning. Both votes are in the Sovereign Archive. Year 91, Temir's Handshake: a parcel's record is valid only when both signatures are on it. The protocol has a public claim that no parcel was lost after it, and a later public sentence that the claim broke. Temir has brokered five cities and dissolved three. They refuse a conversation that picks a side before mid-month. The motto is that every peer is a sovereign. Reputation on the sheet is 55.",
+      "identity": "A peer identity is a relay that can answer without a walker, and a signature that is useless alone. Temir's hash at (44.74, 48.32) is 8 m from the Freenodes capital and 21.57 m from the Isolationist capital, so it sits in both circles. The enclave's own hash is 25.09 m south-west, also in both circles. The 31.89 m overlap of those two capitals is the geography of a refusal to connect living inside the network that wants connection.",
+      "stops_before": "A defection, a proof of who struck the third relay, and a side chosen before mid-month."
+    },
+    {
+      "id": "culture_cove",
+      "name": "The cut, told from the cove",
+      "where": "pirate_cove_north hash; the cut stays S13",
+      "public_fact": "If it crosses their ground, it crosses their cut. The Pirates ransom messages and sell some of what they hear to cities that are hostile. They fear a week in which Couriers and Freenodes cooperate, and they fear their own captains turning each other in. Two captains are disputing one sealed message from a Concordia diplomat that the Guild was carrying. The dispute may collapse the cove. Vexa walked away from a Guild apprenticeship, built the largest band from walkaways, and meets her crew at the cove in the morning. Reputation on the sheet is 28. The currency is a ransom chit, and this slice pays none.",
+      "identity": "A cove identity is a seal that still holds and a crew that has not yet split. The hash at (−16.16, 33.18) is inside the pirate disc only. The cut at (19.55, 5.29), 45.31 m away, already has two dome bandits and one road bandit. q_s13_two_cuts already ends on leaving both cuts unpaid. This culture does not send Vexa down there to collect.",
+      "stops_before": "The second captain's name, the diplomat's name, the opened seal, and the twelve-year silence with Ria."
+    },
+    {
+      "id": "culture_perimeter",
+      "name": "The perimeter with no disc",
+      "where": "Unplaced militia rooms; the salt overlap; the ridge hash; the temple hash",
+      "public_fact": "The Third Incursion, Year -3, broke on Zara Morn's perimeter. She has not slept eight hours since. A portal on the western perimeter opened off-schedule once, then again six months later, and now opens weekly. The militia is the faction on those sentences, and the militia has no country row, so the perimeter has a history and no capital. Dust Rose arrived at ten during the incursion and stayed, and is not stood. Mara Pin was elected to write letters and to refuse the militia's worse ideas, and her room is the volume letter quest. Silas found a western route in Year -8 and has not put it on a map. The Pioneer chair, Marsenn, has held the kitchen-born alliance for nine of its thirty years and is keeping a vote from becoming an office. The vote, on admitting an unnamed merchant family from a hostile city, has been postponed three times. The Mesh hears routing as address. Torven left a relay after a storm he calls the Routing Vision, three annums ago, and is preparing the sermon the faction tension already states.",
+      "identity": "A perimeter identity is a door the post did not schedule, held by people whose rooms were never given x and z. The weekly notice in this slice is a board on Ria's hash at night. The western door itself is not a coordinate. The salt overlap is where Marsenn's hash sits, 13.14 m outside Pinewood and 9.93 m off the hitch, still inside both the Couriers disc and the Pioneer disc.",
+      "stops_before": "A map of Silas's road, a body for Zara, a child on the camp edge, a sermon text, a called vote, and a theory of the portal."
+    }
+  ],
+  "presences": [
+    {
+      "id": "presence_ria_post",
+      "npc_id": "postmaster_ria",
+      "count": 1,
+      "window": "clock hours 5–19",
+      "anchor": "link_post_alpha",
+      "point": {"x": 48.72, "z": -9.79},
+      "body": "CX",
+      "wardrobe": "Oilcloth cloak and guild collar as cloth on CX_Chest and CX_Back, tunic, the thirty-two-year pin as a small metal mark on the chest cloth, weathered hat on CX_Head, road boots. Empty hands. The concealed dagger stays in the gear list and is not a mesh. Concordia face. She.",
+      "gives": ["q_s14_seven_unstated", "q_s14_two_log_lines", "q_s14_constitution_quiet"],
+      "yields_to": [],
+      "note": "The sheet's dispatch day is morning 5–11, midday ledger 11–15, afternoon check-in 15–19, all at link_post_alpha, all interactable. A second phase family on the same sheet also names that district. One body covers 5–19. Quarters after 19 are postmaster_quarters, which has no pin, so she is absent. The placed trade-zone post is not this point. The night board of raid_link_offschedule uses the hash while she is absent. She does not stand a night watch to explain it."
+    },
+    {
+      "id": "presence_temir_camp",
+      "npc_id": "broker_temir",
+      "count": 1,
+      "window": "clock hours 6–15",
+      "anchor": "brokers_camp",
+      "point": {"x": 44.74, "z": 48.32},
+      "body": "CX",
+      "wardrobe": "Diplomatic traveler coat and wool cloak as cloth on CX_Chest and CX_Back, freenode pin as a small mark, leather belt, road boots. Empty hands. Concordia face. They.",
+      "gives": ["q_s14_both_signatures"],
+      "yields_to": ["q_s14_seven_unstated visits this pin and leaves Temir in place"],
+      "note": "Morning brief 6–11 and midday mediation 11–15 are both brokers_camp and interactable. The 15–19 block is location varies and names the secret need. It is unstaged. Broker quarters have no pin. The placed camp 8.48 m away stays empty. field_relays, 4.08 m away, stays empty."
+    },
+    {
+      "id": "presence_vexa_cove",
+      "npc_id": "pirate_captain_vexa",
+      "count": 1,
+      "window": "clock hours 7–11 and 19–23",
+      "anchor": "pirate_cove_north",
+      "point": {"x": -16.16, "z": 33.18},
+      "body": "CX",
+      "wardrobe": "Dark oilcloth coat and canvas on CX_Chest and CX_Hip, scarf as cloth that can sit at the collar, wide belt as a belt. The strapped blades named in the apparel string are not bound as a weapon mesh. Empty hands. Concordia face. She.",
+      "gives": ["q_s14_seal_at_the_cove"],
+      "yields_to": [],
+      "note": "Morning crew meeting 7–11 and evening payout 19–23 are the same district and interactable. One body, absent from the hash between 11 and 19. Midday is ambush_corridor_seven and interactable false, so that hash stays empty. Afternoon is varies. Captain's quarters have no pin. She is not on the cut."
+    },
+    {
+      "id": "presence_brunn_ridge",
+      "npc_id": "isolationist_elder_brunn",
+      "count": 1,
+      "window": "clock hours 8–12 and 15–19",
+      "anchor": "enclave_north_ridge",
+      "point": {"x": 20.78, "z": 40.87},
+      "body": "CX",
+      "wardrobe": "Heavy wool tunic and canvas on CX_Chest and CX_Hip, wool cloak with a fur collar as cloth on CX_Back, worn boots. Empty hands. No bow is drawn. Concordia face. He. He refuses Web jargon and, when he must name the network, calls it the message-line-thing.",
+      "gives": ["q_s14_ridge_unspoken"],
+      "yields_to": [],
+      "note": "Morning teaching 8–12 and afternoon maintenance 15–19 are the ridge and interactable. The lodge hours 12–15 and 19–22 are enclave_council_lodge, which has no pin, so he is absent from the hash then. Early rounds 5–8 are the ridge and interactable false, so this facet starts him at 8. The placed ridge stays cap 0. The rivermouth hash 2.00 m away stays empty. The grandson has no npc id and is not stood."
+    },
+    {
+      "id": "presence_torven_temple",
+      "npc_id": "mesh_prophet_torven",
+      "count": 1,
+      "window": "clock hours 7–19",
+      "anchor": "mesh_temple_central",
+      "point": {"x": -19.74, "z": -55.91},
+      "body": "CX",
+      "wardrobe": "Mesh robe as cloth on CX_Chest, routing glyphs as weave in the normal map rather than a floating alphabet, thin belt, sandals, circlet as a narrow cloth-and-wire band on CX_Head. Empty hands. The ritual staff stays on the gear list and is not a mesh. One dull emissive in the glyph thread, not a full-body glow. Concordia face. He. Public speech is liturgical. This facet does not stage the private engineer's voice as a second mode with new facts.",
+      "gives": ["q_s14_page_stays"],
+      "yields_to": [],
+      "note": "Receiving congregants 7–11, writing 11–15, and the study group 15–19 are all mesh_temple_central and interactable. Early meditation is routing_meditation_hall and interactable false. That hash, 6.99 m away, stays empty. Prophet's quarters have no pin. The placed temple stays empty."
+    },
+    {
+      "id": "presence_marsenn_council",
+      "npc_id": "alliance_elder_marsenn",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "alliance_council_township",
+      "point": {"x": 53.82, "z": -38.28},
+      "body": "CX",
+      "wardrobe": "Canvas long coat with the council insignia as cloth on CX_Chest, wool undertunic, wide-brim hat on CX_Head, worn boots. Empty hands. No rifle. Concordia face. She. Council-speak only while minutes are the activity. This window is the morning session, so the speech is the minutes.",
+      "gives": ["q_s14_postponed_third"],
+      "yields_to": [],
+      "note": "The morning council block is 8–12 and interactable. A Stratus block also marks 5–8 interactable on the same district while the early-morning block marks 5–8 not interactable. This facet uses 8–12 and leaves 5–8 unstaged. The inn and her house have no pins. The afternoon route hash stays empty. The hitch 9.93 m away keeps S13's horses and the one guard who gives q_s13_salt_chord. She is 13.14 m from Pinewood, outside the exclusion, and inside both the Couriers disc and the Pioneer disc."
+    }
+  ],
+  "raid_telegraph": {
+    "id": "raid_link_offschedule",
+    "name": "The Door Off the Post's Leave",
+    "world_id": "Frontier",
+    "kind": "telegraph_only",
+    "on": "the Concord Link, as a notice at the Couriers' post hash",
+    "roster": [],
+    "spawn_count": 0,
+    "health": null,
+    "remembrance_item_id": null,
+    "extends_lore_id": "frontier_first_portal_anomaly",
+    "public_fact": "A portal at the western perimeter opened off-schedule, then a second time six months later, and now opens weekly. The faction on that sentence is frontier_militia. The militia has no country disc. frontier_western_perimeter has no x,z.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 21,
+      "close_hour": 24,
+      "every_nth_day": 7,
+      "day_index_rule": "day_index % 7 == 0",
+      "label": "One night in seven, while the postmaster is in quarters"
+    },
+    "anchor": {
+      "board_point": {"x": 48.72, "z": -9.79, "district": "link_post_alpha"},
+      "fight_point": null,
+      "why_no_fight_point": "The western perimeter, Silas's undeclared road, and Frontier Present at (−220, 0) are not floors of this facet. The Hub-ring gate at (−34, 0) is inside Flower Law. A roster stood on any of those would invent a mile or break the gate's flowers."
+    },
+    "telegraph": {
+      "board": "Link board at (48.72, −9.79): this week the western door is off the post's leave.",
+      "scout": "No scout is paired. frontier_western_perimeter and frontier_western_road have no transform. A binder that needs a body for the scout spawns nothing.",
+      "sound": "q_frontier_find_kel already asks the player to describe the portal's sound and to give Kel that description rather than a theory. This telegraph authors no clip and no second description."
+    },
+    "phases": [
+      {
+        "index": 1,
+        "name": "Notice",
+        "tell": "The board is up. Ria is absent. No rib rises. No watcher takes a post's shape.",
+        "player_response": "Read the board. Leave the western road undeclared. Build no dome over the hash. Follow no door that has no coordinate."
+      }
+    ],
+    "collision": {
+      "hours_21_to_24": "Outside enc_chevron_morning (5–7), enc_road_followed (8–11), enc_last_dome (12–15), and enc_canvas_dive (16–19).",
+      "suppresses": [],
+      "suppressed_by": [],
+      "retunes_s13": false
+    }
+  },
+  "encounters_politics": [
+    {
+      "id": "enc_s14_post_day",
+      "where": "link_post_alpha hash",
+      "bodies": ["postmaster_ria"],
+      "hours": "5–19",
+      "health": null,
+      "what": "One postmaster. Seven days, two log lines, a constitution with no sentence for Lin. The safehouse hash 3.19 m away stays empty."
+    },
+    {
+      "id": "enc_s14_peer_day",
+      "where": "brokers_camp hash",
+      "bodies": ["broker_temir"],
+      "hours": "6–15",
+      "health": null,
+      "what": "One broker inside the Freenodes disc and the Isolationist disc. Both signatures, and no side before mid-month. field_relays stays empty."
+    },
+    {
+      "id": "enc_s14_cove_split",
+      "where": "pirate_cove_north hash",
+      "bodies": ["pirate_captain_vexa"],
+      "hours": "7–11 and 19–23",
+      "health": null,
+      "what": "One captain. A seal, two captains in the sentence, one of them unnamed, a diplomat unnamed. The cut is 45.31 m away and keeps its three S13 bodies."
+    },
+    {
+      "id": "enc_s14_ridge_hours",
+      "where": "enclave_north_ridge hash",
+      "bodies": ["isolationist_elder_brunn"],
+      "hours": "8–12 and 15–19",
+      "health": null,
+      "what": "One elder inside the Isolationist disc and the Freenodes disc. The sentence about the grandson is already public. He does not speak it here. The placed ridge stays cap 0. The rivermouth hash stays empty."
+    },
+    {
+      "id": "enc_s14_temple_page",
+      "where": "mesh_temple_central hash",
+      "bodies": ["mesh_prophet_torven"],
+      "hours": "7–19",
+      "health": null,
+      "what": "One prophet. He writes during 11–15. The test page is not handed over. The meditation hall 6.99 m away stays empty. The pale flat is 37.15 m away and keeps its herd."
+    },
+    {
+      "id": "enc_s14_minutes",
+      "where": "alliance_council_township hash",
+      "bodies": ["alliance_elder_marsenn"],
+      "hours": "8–12",
+      "health": null,
+      "what": "One chair inside the salt overlap, 13.14 m from Pinewood and 9.93 m from the hitch. The postponement is the third. The vote is not called. The hitch keeps its horses and its guard."
+    },
+    {
+      "id": "enc_s14_link_notice",
+      "where": "link_post_alpha hash",
+      "bodies": [],
+      "hours": "21–24 when day_index % 7 == 0",
+      "health": null,
+      "what": "The board of raid_link_offschedule. Ria is in quarters. Spawn count 0. No domebreaker, no watcher, no wolf, no bandit is added for the night."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s14_seven_unstated",
+      "title": "Post Hash — Seven Days, Unstated",
+      "world_id": "Frontier",
+      "giver_npc_id": "postmaster_ria",
+      "giver_spawn": "presence_ria_post. Clock 5–19. Temir must still be in their 6–15 window when the camp is reached.",
+      "backstory_id": "story_q_seven",
+      "extends_lore_id": "frontier_lore_compromised_relays",
+      "does_not_replace": ["q_s13_two_cuts", "q_frontier_road_is_door"],
+      "objectives": [
+        {"id": "obj_q_s14_seven_1", "verb": "talk", "target": "postmaster_ria", "count": 1, "text": "At (48.72, −9.79), ask how long a peer may stay unreachable. She will say seven days, and that the Guild has not commented on the three relays sabotaged in the last lunar quarter. She will not say who struck the third."},
+        {"id": "obj_q_s14_seven_2", "verb": "reach", "target": "brokers_camp", "count": 1, "text": "Walk the 58.25 m to Temir at (44.74, 48.32). Hear the public tension: three relays compromised, the Guild's response was to do nothing, and Temir is debating whether to expose that silence. They do not hand over a proof."},
+        {"id": "obj_q_s14_seven_3", "verb": "witness", "target": "guild_silence", "count": 1, "text": "Write seven days, three relays, Guild silent. Leave the attacker unnamed."},
+        {"id": "obj_q_s14_seven_4", "verb": "deliver", "target": "postmaster_ria", "count": 1, "text": "Bring those three facts back. She still does not comment. The errand ends on that silence."}
+      ],
+      "fail": ["Name Voss or the Iron Wardens as the attacker", "Open a relay log", "Have Ria issue the comment the lore says she has not made", "Stage Temir's afternoon cultivation", "Add a wolf or a bandit to the walk", "Mint a trust_mark"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Seven days. Three relays. The Guild has not commented.", "gossip_on_complete": "Ria heard the silence repeated and still did not fill it.", "prop_or_door": "Post hash. No relay tower is built on field_relays."},
+      "turn_in": {"npc_id": "postmaster_ria", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_both_signatures",
+      "title": "Camp Hash — Both Signatures",
+      "world_id": "Frontier",
+      "giver_npc_id": "broker_temir",
+      "giver_spawn": "presence_temir_camp. Clock 6–15.",
+      "backstory_id": "story_q_signatures",
+      "extends_lore_id": "frontier_lore_handshake_protocol",
+      "does_not_replace": ["q_s14_seven_unstated", "q_s14_two_log_lines"],
+      "objectives": [
+        {"id": "obj_q_s14_sig_1", "verb": "talk", "target": "broker_temir", "count": 1, "text": "Ask what makes a parcel's record valid. They will say both signatures, Courier and Freenode, and that the protocol ended a stretch of lost parcels until the public record says it failed once. They will not choose a side. Their sheet refuses that choice before mid-month."},
+        {"id": "obj_q_s14_sig_2", "verb": "witness", "target": "two_names", "count": 1, "text": "Write the rule: one signature is not a record. Add no third name."},
+        {"id": "obj_q_s14_sig_3", "verb": "reach", "target": "field_relays", "count": 1, "text": "Walk the 4.08 m to the field_relays hash at (47.09, 44.98). It is empty. Iso and Kerith are not there. Leave it empty."},
+        {"id": "obj_q_s14_sig_4", "verb": "deliver", "target": "broker_temir", "count": 1, "text": "Return with the rule and with the empty relay pin. They do not defect, and they do not send you to Ria to recruit her."}
+      ],
+      "fail": ["Name Vela", "Teach glyph algebra", "Force a side", "Stand Iso or Kerith", "Spawn a solar tower", "Decide the lost parcel"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Both signatures, or it is not a record.", "gossip_on_complete": "Temir kept the rule and kept from choosing.", "prop_or_door": "Camp hash. The relay hash stays empty."},
+      "turn_in": {"npc_id": "broker_temir", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_two_log_lines",
+      "title": "Post Hash — Two Log Lines",
+      "world_id": "Frontier",
+      "giver_npc_id": "postmaster_ria",
+      "giver_spawn": "presence_ria_post. Midday ledger sits inside 11–15.",
+      "backstory_id": "story_q_two_lines",
+      "extends_lore_id": "frontier_lore_the_lost_parcel",
+      "does_not_replace": ["q_s14_seven_unstated", "frontier_lore_the_parcel_resurfaces"],
+      "objectives": [
+        {"id": "obj_q_s14_log_1", "verb": "talk", "target": "postmaster_ria", "count": 1, "text": "Ask about the parcel from two months ago. She will say the receipt was logged at Link Post Alpha, the delivery was never logged at Sovereign, Dorvik insists he delivered it, and Kestra insists nothing arrived. She will say the Handshake failed that once, and that both factions are quietly investigating."},
+        {"id": "obj_q_s14_log_2", "verb": "witness", "target": "two_lines", "count": 1, "text": "Write those two lines. Kestra has no sheet in this folder. Dorvik is not on a pin. Leave both of them unstood."},
+        {"id": "obj_q_s14_log_3", "verb": "reach", "target": "courier_safehouses", "count": 1, "text": "Walk the 3.19 m to the safehouse hash at (45.94, −8.23). It is empty. His night rest is not an encounter. Leave it empty."},
+        {"id": "obj_q_s14_log_4", "verb": "deliver", "target": "postmaster_ria", "count": 1, "text": "Bring the two lines back. Add no third line. Do not read a manifest addressee."}
+      ],
+      "fail": ["Read the echo", "Speak the initial V as an addressee", "Stand Dorvik or invent Kestra", "Close the investigation", "Move the placed post out of the Pinewood exclusion"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Receipt logged. Delivery not logged.", "gossip_on_complete": "The ledger still has two lines.", "prop_or_door": "Post hash. Safehouse hash empty."},
+      "turn_in": {"npc_id": "postmaster_ria", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_constitution_quiet",
+      "title": "Post Hash — No Line for Lin",
+      "world_id": "Frontier",
+      "giver_npc_id": "postmaster_ria",
+      "giver_spawn": "presence_ria_post. Clock 5–19.",
+      "backstory_id": "story_q_lin",
+      "extends_lore_id": "frontier_lore_walker_lin_question",
+      "does_not_replace": ["q_frontier_find_kel", "q_s14_two_log_lines"],
+      "objectives": [
+        {"id": "obj_q_s14_lin_1", "verb": "talk", "target": "postmaster_ria", "count": 1, "text": "Ask whether Walker Lin remembers. She refuses to discuss it. She will say the Guild constitution has no provision for an autonomous walker having continuity of identity, so the question has not been formally raised."},
+        {"id": "obj_q_s14_lin_2", "verb": "witness", "target": "refusal", "count": 1, "text": "Write the refusal and the missing provision. Draft no amendment."},
+        {"id": "obj_q_s14_lin_3", "verb": "deliver", "target": "postmaster_ria", "count": 1, "text": "Turn the refusal back to her as the whole errand. Lin is not summoned. The chassis is not a person you can hail on this pin."}
+      ],
+      "fail": ["Stand Lin as a CX", "Answer whether Lin remembers", "Amend the constitution", "Give Lin a route coordinate", "Use this errand to explain the portal"],
+      "rewards": {"xp": 35, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "The constitution has no line for Lin. Ria will not add one.", "gossip_on_complete": "The question stayed unraised.", "prop_or_door": "Post hash. No walker chassis."},
+      "turn_in": {"npc_id": "postmaster_ria", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_seal_at_the_cove",
+      "title": "Cove Hash — The Seal Stays",
+      "world_id": "Frontier",
+      "giver_npc_id": "pirate_captain_vexa",
+      "giver_spawn": "presence_vexa_cove. Clock 7–11. The evening 19–23 can hear the turn-in if the morning was missed, same pin, same facts.",
+      "backstory_id": "story_q_seal",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s13_two_cuts", "q_frontier_hitch_not_ride"],
+      "objectives": [
+        {"id": "obj_q_s14_seal_1", "verb": "talk", "target": "pirate_captain_vexa", "count": 1, "text": "At (−16.16, 33.18), ask what is splitting the cove. She will say two captains, a sealed message from a Concordia diplomat the Guild was carrying, and that the dispute may collapse the cove. She will not name the other captain or the diplomat."},
+        {"id": "obj_q_s14_seal_2", "verb": "witness", "target": "unopened_seal", "count": 1, "text": "Write two captains, one seal, diplomat unnamed. Leave the seal shut."},
+        {"id": "obj_q_s14_seal_3", "verb": "reach", "target": "ambush_corridor_seven", "count": 1, "text": "Walk the 14.61 m to the ambush hash at (−13.03, 18.91). It is empty. Her midday scout is not an encounter. Leave it empty. Do not continue to the cut."},
+        {"id": "obj_q_s14_seal_4", "verb": "deliver", "target": "pirate_captain_vexa", "count": 1, "text": "Bring the shut seal back as a fact. Pick no captain. Pay no ransom chit. Collect nothing from the road bandit on the cut."}
+      ],
+      "fail": ["Open the seal", "Name the diplomat", "Name the second captain", "Retune the cut's three bodies", "Pay or mint a ransom_chit", "Tell Vexa she was Ria's apprentice"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Two captains. One seal. The cove has not collapsed.", "gossip_on_complete": "Vexa kept the seal and kept the other name.", "prop_or_door": "Cove hash. Ambush hash empty."},
+      "turn_in": {"npc_id": "pirate_captain_vexa", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_ridge_unspoken",
+      "title": "Ridge Hash — Unspoken",
+      "world_id": "Frontier",
+      "giver_npc_id": "isolationist_elder_brunn",
+      "giver_spawn": "presence_brunn_ridge. Clock 8–12 or 15–19.",
+      "backstory_id": "story_q_unspoken",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s14_seven_unstated", "q_frontier_hand_to_mira"],
+      "objectives": [
+        {"id": "obj_q_s14_ridge_1", "verb": "talk", "target": "isolationist_elder_brunn", "count": 1, "text": "At (20.78, 40.87), ask what the enclave allows across its doors. He will say no walker stops, no signal handshakes, no federation tax. He will not raise the grandson. You already have the public tension from the faction sheet: the grandson has begun delivering to the nearest Guild post, Brunn knows, and Brunn has not spoken of it. Do not ask him to speak it."},
+        {"id": "obj_q_s14_ridge_2", "verb": "witness", "target": "unasked", "count": 1, "text": "Write the three prohibitions, and write that the grandson sentence was not asked in the room. Leave the durations off the page."},
+        {"id": "obj_q_s14_ridge_3", "verb": "reach", "target": "enclave_old_rivermouth", "count": 1, "text": "Walk the 2.00 m to the rivermouth hash at (19.20, 42.10). It is empty. Do not stand a second elder or a boy."},
+        {"id": "obj_q_s14_ridge_4", "verb": "deliver", "target": "isolationist_elder_brunn", "count": 1, "text": "Return with empty hands. He still has not spoken of it. The placed ridge at (35.08, 29.94) stays cap 0 and is not a second Brunn."}
+      ],
+      "fail": ["Ask him to confess", "Stand the grandson", "Use two annums or fifteen months", "Connect the enclave to the Link", "Staff the placed ridge", "Mint an enclave_token"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "No stop. No handshake. No tax. The other sentence stayed unspoken.", "gossip_on_complete": "Brunn was not asked, and he did not speak it.", "prop_or_door": "Ridge hash. Rivermouth hash empty. Placed ridge cap 0."},
+      "turn_in": {"npc_id": "isolationist_elder_brunn", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_page_stays",
+      "title": "Temple Hash — The Page Stays",
+      "world_id": "Frontier",
+      "giver_npc_id": "mesh_prophet_torven",
+      "giver_spawn": "presence_torven_temple. The writing block is 11–15, inside the 7–19 presence.",
+      "backstory_id": "story_q_page",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s14_both_signatures", "q_frontier_pale_flag"],
+      "objectives": [
+        {"id": "obj_q_s14_page_1", "verb": "talk", "target": "mesh_prophet_torven", "count": 1, "text": "At (−19.74, −55.91), during the hours he writes, ask what he is preparing. The public tension is the answer he may give: senior Freenodes told him the Web is just code, and he is preparing a sermon in which that is the test the Web would set. He does not hand you the page."},
+        {"id": "obj_q_s14_page_2", "verb": "witness", "target": "unpreached", "count": 1, "text": "Write that a sermon is being prepared. Do not copy a text. The sheet does not contain the sermon's sentences."},
+        {"id": "obj_q_s14_page_3", "verb": "reach", "target": "routing_meditation_hall", "count": 1, "text": "Walk the 6.99 m to the meditation hash at (−15.77, −50.16). It is empty. His early hour there is not interactable. Leave it empty."},
+        {"id": "obj_q_s14_page_4", "verb": "deliver", "target": "mesh_prophet_torven", "count": 1, "text": "Return without the page. Do not walk the 37.15 m to the pale flat to pen the herd, and do not call the pronghorn a sign."}
+      ],
+      "fail": ["Author sermon sentences", "Preach it", "Use the three-week count", "Name the colleague", "Move the herd", "Mint a routing_token", "Prove the Web is or is not divine"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "A sermon is being prepared. The page stayed on the desk.", "gossip_on_complete": "Torven kept the page.", "prop_or_door": "Temple hash. Meditation hash empty."},
+      "turn_in": {"npc_id": "mesh_prophet_torven", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s14_postponed_third",
+      "title": "Council Hash — The Third Postponement",
+      "world_id": "Frontier",
+      "giver_npc_id": "alliance_elder_marsenn",
+      "giver_spawn": "presence_marsenn_council. Clock 8–12.",
+      "backstory_id": "story_q_postponed",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s13_salt_chord", "q_frontier_hand_to_mira", "q_frontier_hitch_not_ride"],
+      "objectives": [
+        {"id": "obj_q_s14_vote_1", "verb": "talk", "target": "alliance_elder_marsenn", "count": 1, "text": "At (53.82, −38.28), ask the morning minutes what is waiting. She will say two townships are voting on whether to admit a merchant family from a hostile city, and that the vote has been postponed three times. She will not name the family or the city."},
+        {"id": "obj_q_s14_vote_2", "verb": "witness", "target": "third_postponement", "count": 1, "text": "Write postponed three times, family unnamed, city unnamed. Call no vote."},
+        {"id": "obj_q_s14_vote_3", "verb": "reach", "target": "council_hitch", "count": 1, "text": "Walk the 9.93 m to the hitch at (54.82, −48.16). Two led horses and one guard are already there. Leave them. Do not become the giver of q_s13_salt_chord. Do not mount."},
+        {"id": "obj_q_s14_vote_4", "verb": "deliver", "target": "alliance_elder_marsenn", "count": 1, "text": "Bring the postponement back. The alliance does not gain an office from this errand. The trade-caravan hash at (41.52, −50.64), 17.44 m away, stays empty."}
+      ],
+      "fail": ["Name the family", "Name the city", "Call the vote", "Found a bureau", "Move the horses", "Retie q_s13_salt_chord", "Mint a township_chit", "Stand her inside the 12 m Pinewood disk"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Postponed a third time. The family is still unnamed.", "gossip_on_complete": "Marsenn kept the minutes and kept the vote uncalled.", "prop_or_door": "Council hash. Hitch unchanged."},
+      "turn_in": {"npc_id": "alliance_elder_marsenn", "requires_all_objectives": true}
+    }
+  ]
+}

@@ -223,6 +223,9 @@ const REVIEWED = {
   "lib/quest-archetype-bias.js": 1,
   "lib/realm-access.js": 1,
   "lib/robotics-persistence.js": 1,
+  // run-coop: `runTable` is gated by the RUN_TABLES allowlist
+  // (extraction_runs / horde_runs); every value is bound with `?`.
+  "lib/run-coop.js": 3,
   // lib/runtime/adaptive-field-compression.js (1) — `SELECT COUNT(*) FROM
   // ${table}` where `table` is a string literal ("dhtp_field_outcomes" /
   // "dhtp_learned_policies") passed to a local count() helper. No input.

@@ -30,6 +30,7 @@ import {
   type ConkayBuildingArtifact,
   type ConkayRoboticsArtifact,
   type ConkayCreatureArtifact,
+  type ConkayOrganicMeshArtifact,
 } from '@/lib/conkay/artifact-kinds';
 import { feaResultFromRun } from '@/components/conkay/conkayHudStore';
 
@@ -126,6 +127,26 @@ const CREATURE_RESULT = {
   massKg: 68,
   heightM: 1.1,
   coatColor: '#5b4636',
+};
+
+// evo-asset.organic-job (polled after evo-asset.generate-organic queued it) →
+// { ok, jobId, id, status, stage, result:{ ok, evoAssetId, stages }, plan }
+const ORGANIC_JOB_DONE = {
+  ok: true,
+  jobId: 'job_1',
+  id: 'adhoc_9f3c2a10',
+  status: 'done',
+  stage: 'lods',
+  plan: { category: 'environment', lod0MaxTris: 8000 },
+  result: {
+    ok: true,
+    id: 'adhoc_9f3c2a10',
+    evoAssetId: 'evo_abc123',
+    stages: {
+      mesh: { ok: true, provider: 'local-gpu:TRELLIS-image-large', seconds: 91 },
+      lods: { ok: true, sourceTris: 106599, lod0Tris: 3944 },
+    },
+  },
 };
 
 describe('normalizeAr (ar.render → ar-render)', () => {
@@ -311,6 +332,42 @@ describe('normalizeCreature (creatures.creature-publish → creature)', () => {
   });
 });
 
+describe('normalizeOrganicMesh (evo-asset.organic-job → organic-mesh)', () => {
+  it('produces an organic-mesh artifact from a genuinely finished job, with a real evo-asset file URL', () => {
+    const a = detectArtifact('evo-asset', 'organic-job', {}, ORGANIC_JOB_DONE) as ConkayOrganicMeshArtifact;
+    expect(a).not.toBeNull();
+    expect(a.kind).toBe('organic-mesh');
+    expect(a.evoAssetId).toBe('evo_abc123');
+    expect(a.glbUrl).toBe('/api/evo-asset/file/evo_abc123');
+    expect(a.displayName).toBe('adhoc_9f3c2a10');
+    expect(a.category).toBe('environment');
+    expect(a.lod0Tris).toBe(3944);
+    expect(a.provider).toBe('local-gpu:TRELLIS-image-large');
+    expect(a.components).toEqual([{ id: 'evo_abc123', label: 'adhoc_9f3c2a10', kind: 'mesh' }]);
+    expect(a.sourceDomain).toBe('evo-asset');
+    expect(a.sourceMacro).toBe('organic-job');
+  });
+
+  it('returns null (STOP-POINT) for every non-finished or non-real state — never a placeholder while generating', () => {
+    // Still queued/running.
+    expect(detectArtifact('evo-asset', 'organic-job', {}, { ok: true, status: 'queued' })).toBeNull();
+    expect(detectArtifact('evo-asset', 'organic-job', {}, { ok: true, status: 'running', stage: 'mesh' })).toBeNull();
+    // Honest failure (e.g. quota_exhausted) — status done, but the job failed.
+    expect(detectArtifact('evo-asset', 'organic-job', {}, {
+      ok: true, status: 'done', result: { ok: false, reason: 'quota_exhausted' },
+    })).toBeNull();
+    // Done + ok, but no db at generation time ⟹ nothing was registered to load.
+    expect(detectArtifact('evo-asset', 'organic-job', {}, {
+      ok: true, status: 'done', result: { ok: true, evoAssetId: null },
+    })).toBeNull();
+    // Unknown job id.
+    expect(detectArtifact('evo-asset', 'organic-job', {}, { ok: false, reason: 'unknown_job' })).toBeNull();
+    // Wrong macro/domain.
+    expect(detectArtifact('evo-asset', 'generate-organic', {}, ORGANIC_JOB_DONE)).toBeNull();
+    expect(detectArtifact('evo-asset', 'list', {}, ORGANIC_JOB_DONE)).toBeNull();
+  });
+});
+
 describe('detectArtifact registry + STOP-POINT feeder', () => {
   it('returns null for a result that matches no kind (never fabricates one)', () => {
     expect(detectArtifact('music', 'nowPlaying', {}, { track: 'x', ms: 3 })).toBeNull();
@@ -318,9 +375,9 @@ describe('detectArtifact registry + STOP-POINT feeder', () => {
     expect(detectArtifact('x', 'y', {}, null)).toBeNull();
   });
 
-  it('exposes exactly the 7 registered kinds, each with a normalizer + label', () => {
+  it('exposes exactly the 8 registered kinds, each with a normalizer + label', () => {
     expect(ARTIFACT_KINDS.map((e) => e.kind).sort()).toEqual(
-      ['ar-render', 'building', 'creature', 'fea-frame', 'forge-app', 'foundry-worldspec', 'robotics-arm'],
+      ['ar-render', 'building', 'creature', 'fea-frame', 'forge-app', 'foundry-worldspec', 'organic-mesh', 'robotics-arm'],
     );
     for (const e of ARTIFACT_KINDS) {
       expect(typeof e.normalize).toBe('function');

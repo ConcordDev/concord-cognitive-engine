@@ -1,0 +1,115 @@
+UNITY-CLIENT CHAT ONLY. Project-root already set (unity-client / ConcordiaHub).
+START NOW — do not idle, no Asset Store, no tutorial folder.
+
+## North star (READ FIRST)
+Atlas PDF: ~/.zuko/Concordant_Megaworld_Atlas.pdf
+Also: Assets/Concordia/Generated/CX_MANIFEST.md + CONCORDIA_ASSET_BIBLE.md + CONCORDIA_TEN_CONTINENT_VISUAL_BIBLE.md
+Canon: MegaworldMap + Canon.Gates + WorldFieldAuthority — ONE plane, Hub origin, ring civilizations, SoftEnter/link_gate walks (NOT teleports). Sere has no Link gate.
+
+WorldId lockstep (atlas name → code):
+- Hub / Unburned Court → Hub
+- Sundering → Fantasy
+- Frontier → Frontier
+- Tunya → Tunya
+- Crucible → Crucible
+- Grid → Cyber
+- Iron Coast → Crime
+- Aegis / Permanent Dawn → Superhero
+- Sovereign Ruins → Ruins
+- Sere → Sere
+
+## Already done — DO NOT redo
+- 147/147 CX plates → Materials under Assets/Concordia/Generated/Materials/P0–P4
+- Base prefabs: CX_Humanoid_Male/Female, CX_Weapon_Longsword/Hatchet, CX_Mount_Horse
+- Cascade code on disk (NoteKill “fell”, SoftEnter won’t clobber kill, spoils off corpse, GossipEar)
+- Poly Haven HDRIs + FreePacks present
+
+## Mission
+Make the megaworld ALIVE in Play: Prefabs from those materials → bind into spawn/dress/gates → prove the atlas loop with memory.
+
+Ship bar = one cold stranger can:
+1) Wake in Hub Court (sky + wet ground + CX hero)
+2) Meet a named HubGuest who looks like their CX plate
+3) Walk a Crown Road / Link gate into The Sundering (Fantasy) — SoftEnter, physics/look change
+4) Kill a named Sundering bandit → spoils stay, LastEvent has “fell”, gossip possible, corpse dead, player valid
+5) Return to Hub → someone notices (gossip / LastEvent / chronicle) — world remembered, not reset
+
+That is “bring this to life.” Not more JPGs.
+
+---
+
+## WAVE L0 — Prefab factory (finish materials → playable objects)
+For EVERY material under Generated/Materials/P0–P4 (skip _verify), ensure a prefab at:
+  Assets/Concordia/Generated/Prefabs/<wave>/<Category>/CX_<Name>.prefab
+using the matching .mat.
+
+Rules by class (same honesty as before):
+- humanoid (Hero, Bandits, P0/P2 NPCs, P3 Guests, Tessera): clone CX_Humanoid_Male or Female; apply mat as albedo/outfit; keep CX_Grip_R/L; Brackish height ~1.42
+- weapon (Bow, PulseBaton, Switchblade): CxBake-style grip; no float
+- creature (P1): FreePacks/PolyHaven fauna mesh + mat; else TEMP billboard collider labeled TEMP_
+- prop / civic / spoils / signs (P2 + P4 + pouch): PolyHaven/FreePacks stem + mat; metres + collider
+- tile: materials already enough — wire WorldKit.Ground / HubLook (CourtCobble done; finish AshCinder, MossFloor, PackedEarth, SandGravel)
+- HUD: sprites from P0/HUD mats → live Court+Steel panels
+- VFX: particle/decal from P2/VFX mats → hit/parry/flower/curse
+
+After L0: AssetDatabase.SaveAssets; csErrors=0; report prefab counts per wave.
+
+## WAVE L1 — Bind so systems USE them (this is the life switch)
+Wire, do not orphan:
+- ModularPerson / CxDress → CX hero + Court/Steel mats from P0/Hero
+- RoadWorld / TrainingDummy Sundering spawns → P0 Bandit prefabs (captain/dusk/hitch/marrow/nettle)
+- GuestNpc / RealmFill Hub people → P3 Guest prefabs (all 15 HubGuests from Canon)
+- DropSpoils → CX_Prop_Spoils_pouch prefab (parent off corpse — already coded)
+- Pillars ×3 → Hub plaza
+- P2 props → HubPlaza / RoadWorld / WorldKit scatter (crate, lantern, well, shrine, stall, forge, dummy…)
+- P4 civic per WorldId → WorldKit.Landmark / DressVocab / CxDress waypost faces (paths already listed in CxDress)
+- P1 wolf (+ one watcher) → Fantasy road fauna table
+- Appearance gear slots → P2/Gear mats/prefabs
+
+Prove LoadAsset on a sample from each wave. Magenta=0.
+
+## WAVE L2 — Atlas Hub slice (Unburned Court = heart)
+Read atlas §Hub. In ConcordiaHub Play present:
+- Concentric read: plaza / market hint / wall ring (FreePacks+Kenney stems OK; CX mats own look)
+- Named Link gate-houses toward Canon.Gates (WildernessGate path already exists — dress them, make interactable SoftEnter / link_gate)
+- At least 3 HubGuests on their feet, talkable, plate-recognizable
+- Court HUD themed; HDRI sky; wet Court cobble (no PlazaPad tile hell)
+- Landmarks as readable stems if not full heroes yet: Market Well hint, Archive quarter massing, Warden wall — mark TEMP if stem-only
+
+Screenshot: Court eye-level with guest + gate visible.
+
+## WAVE L3 — Living loop proof (PASS/FAIL sheet — mandatory)
+Enter Play. Execute and log:
+
+| Step | Action | PASS if |
+|---|---|---|
+| A | Spawn Hub, walk 10s | CX hero visible; FPS usable; sky not magenta |
+| B | Talk / approach HubGuest | Name from Canon; CX plate dress |
+| C | Take gate / SoftEnter to Fantasy (Sundering) | WorldId changes; look/physics shift; civic P4 Sundering stem or wardpost visible |
+| D | Kill named Sundering bandit | Corpse inactive; spoils >0 in world; LastEvent contains "fell"; player still valid |
+| E | Gossip / feed | Witness or feed mentions kill OR LastEvent still kill (not journey home stamp) |
+| F | SoftEnter back to Hub | Guest or Court feed still knows prior kill (memory) |
+
+Write results to ~/.zuko/AURA_LIFE_PROOF.txt and Assets/Concordia/Generated/AURA_LIFE_PROOF.txt
+Screenshot each step.
+
+## WAVE L4 — Only if A–F all PASS (expand spokes)
+Dress next spoke lightly (one gate + one civic kit + one road NPC) in this order:
+Fantasy (done in L3) → Tunya → Cyber(Grid) → Crime(Iron Coast) → Frontier → Superhero(Aegis) → Ruins → Crucible → Sere (umbilical/visual only; no Link gate).
+Do NOT start L4 until L3 sheet is written.
+
+## Constraints
+- Stay unity-client / ConcordiaHub. Never /Users/dutch/Concordia tutorial.
+- Free packs + Poly Haven = MESH; CX materials = LOOK. No paid Asset Store.
+- Poly Haven maps are _2k.jpg.
+- Do not kill Concord backends. Do not wipe Library.
+- Gates are walks (SoftEnter / link_gate), never fake load-screen teleports.
+- Abandon ≠ delete; kill must leave chronicle/LastEvent/spoils.
+- Prefer bind existing systems (ContinentStream, RealmFill, RoadWorld, GuestNpc, WorldKit, CxDress, MegaworldMap) over new frameworks.
+- When blocked, fix blocker and continue same wave.
+
+## Done when
+1) Prefabs exist for all non-verify CX plates (or honest TEMP_ billboards listed)
+2) L3 proof sheet A–F filled with PASS/FAIL + screenshots
+3) Hub shows named guests + dressed gates; Sundering kill leaves memory on return
+4) Brief chat report: prefab counts, TEMP list, A–F results, csErrors=0

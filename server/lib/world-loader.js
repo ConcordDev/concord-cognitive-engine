@@ -46,6 +46,30 @@ export function getActiveWorldForPlayer(db, userId) {
 }
 
 /**
+ * Stamp where a presenter (Unity / Godot) currently is. SoftEnter and
+ * Travel call scene:request; this is the kernel half of player.world.
+ * Does not open world_visits or bump population — that is travelToWorld.
+ */
+export function notePlayerWorld(db, userId, worldId) {
+  if (!db || !userId || !worldId) return { ok: false, reason: "missing" };
+  const uid = String(userId).trim();
+  const id = String(worldId).trim();
+  if (!uid || !id) return { ok: false, reason: "missing" };
+  try {
+    db.prepare(`
+      INSERT INTO player_world_state (user_id, world_id, city_id)
+      VALUES (?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET
+        world_id = excluded.world_id,
+        city_id = excluded.city_id
+    `).run(uid, id, id);
+    return { ok: true, worldId: id };
+  } catch {
+    return { ok: false, reason: "unavailable" };
+  }
+}
+
+/**
  * Merge physics override keys onto the base world object.
  * @param {object} world
  * @param {object} modulators

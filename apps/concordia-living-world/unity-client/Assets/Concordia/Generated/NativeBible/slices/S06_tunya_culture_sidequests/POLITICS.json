@@ -1,0 +1,787 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S06_tunya_culture_sidequests",
+  "world_id": "Tunya",
+  "lore_world_id": "tunya",
+  "display_world": "Tunya",
+  "facet": "culture_quests",
+  "title": "Tunya — culture, politics, geography, side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Tunya lore, factions, countries, npcs, volume quests, density weights, S05 caps, or Hub seats.",
+  "canon_pins": {
+    "world_id": "Tunya",
+    "canon_world_def_title": "Tunya",
+    "refusal": "Refusal of Harvest",
+    "the_no": "We will not be reaped.",
+    "law_text": "Take fruit, not the tree. Grove restores poise if you are not striking.",
+    "steel_live": true,
+    "fight_style_people": "Capoeira on the terrace laborer. CX body. No beast performs it.",
+    "flower_law": "Hub only. Radius 42 m. A Tunya-local anchor is not inside that disk. Dragging a body onto the Hub plaza and outside the Arena turns steel into a flower.",
+    "hub_gate": {
+      "angle": "3π/4",
+      "short_name": "TUNYA",
+      "owner": "S02 owns Hub plaque courtesy. This slice does not stage a quest on the ring."
+    },
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "prop": "Do not plant a milepost on Tunya because Fluxom Gate shares the number 62."
+    },
+    "coordinate_space": "Country x,z values are local to WorldId.Tunya through WorldGeography.CountryCenter. They are not Hub seats. Fluxom Gate (62, 18) is 46 m of Tunya-local z from a number pair that, on the Hub, is Pinewood. The two points are not the same ground.",
+    "electricity": "A completed circuit refuses. Solar on a panel is stored photonic state and is the wake the arks already use. This slice does not complete a circuit and does not mint a DTU.",
+    "humanoid_body": "CX only. Concordia face. Plates and cloth on CX bones. A registrar, a smith, a wright, a dock-master, a captain, a provost, and a ruin scholar are CX if a native plate is bound. A Quaternius body is not.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#6a7a3a", "#f0d080", "#c8721a", "#8aa0b4"],
+    "materials": ["CLT timber", "solar tile", "limestone", "living trellis", "clay"],
+    "kit": "arch_kit_tunya_veil",
+    "style_sector": "solarpunk",
+    "playable_scale_note": "Twelve country claims use territory_radius 18–28 m. Measured overlaps include Dinye–Nil 26.9 m against a 46 m sum, Aekon–Sahm 23.5 m against 46, Asbir–Ruins 31.9 m against 46, Sahm–Bahiij 32.8 m against 44, Fluxom–Cactem 37.9 m against 44. The circles are claims. They are not navmesh borders and this slice does not grow them."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/tunya/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/tunya/factions.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/tunya/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/tunya/npcs.json",
+    "quests": "Canon/tunya/quests/{arks-of-memory,bloc-secret,nil-protection,vessine-origin}.json",
+    "canon_cs": "Canon.cs WorldId.Tunya, gate angle 3π/4, steel live, Capoeira, fauna aliases sealie, hound, harpy",
+    "kit": "native-bible/architecture/KITS.json arch_kit_tunya_veil",
+    "art": "ART_STYLE_GTA_PALWORLD_TEN_WORLD.md solarpunk row; native-bible/00_ART_DIRECTION.md Tunya row",
+    "taxonomy": "native-bible/01_TAXONOMY.md Tunya line",
+    "density": "native-bible/volume/DENSITY_TABLES.json Tunya block",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Tunya eight",
+    "prior_slices": ["S05_tunya_ecology_miniboosses"]
+  },
+  "left_in_place": [
+    "tunya_arks_of_memory_1_first_pilgrimage",
+    "tunya_arks_of_memory_2_curated_vault",
+    "tunya_bloc_secret_1_twelfth_district",
+    "tunya_bloc_secret_2_breach_or_protect",
+    "tunya_nil_protection_1_silent_walk",
+    "tunya_nil_protection_2_inner_grove",
+    "tunya_vessine_origin_1_resonance_choir",
+    "tunya_vessine_origin_2_chart_match",
+    "q_tunya_fruit_not_tree",
+    "q_tunya_sealie_not_bird",
+    "q_tunya_pollen_ward",
+    "q_tunya_reap_fine",
+    "q_tunya_terrace_bell",
+    "q_tunya_heron_hold",
+    "q_tunya_choir_one_chart",
+    "q_tunya_twelfth_edge",
+    "q_s05_weed_between_tiles",
+    "q_s05_not_an_orca",
+    "q_s05_hound_off_the_root",
+    "q_s05_photonic_second"
+  ],
+  "unresolved_on_purpose": [
+    "The twelfth district's living descendants stay on lore_south_arrival_stranded. No quest enters the district. Aekon Glacier Gate is not that lip.",
+    "The deletion index, the scrubbed star-charts, and what Corre's elders walked off knowing stay on lore_curated_archive and lore_north_arrival_walk_off. No quest reads them.",
+    "Why the Bloc holds stays Dinye's unsaid listening and Aekon's unsaid cost. The Ice Oath year 200, the gate treaty year 380, the 409 demand, and Chair Oren's uncontested year-411 succession are the public record this slice uses.",
+    "The refugee dump, the orca-scale horn, and whether sealies intend anything stay on lore_fluxom_founding and on S05's bible body. No ship is boarded.",
+    "Yenna's one sentence, the refusal-field's electromagnetic cause, and the Listening Oak resonance stay on the Nil chain. Nil Threshold is not crossed.",
+    "The Vessine home coordinates, the Choir's unmatched charts, and the hybrid child stay on the origin chain and the species correction. No new chart is matched.",
+    "Lady Oriane's bloodline, the tailor's seeing, Kez's unsent federation charter, Kira's hidden grandmother, Aldra's translated glyph, Corin's unmatched pulse, Oren's back-channel, and Iyatte's son stay off every objective.",
+    "The young Dinye walker who draws city plans has a faction npc id and no sheet in npcs.json. He is not given a body.",
+    "Rema's eight elephant mounts and Bahiij's elephant kinship have no creature id. The corral stays empty.",
+    "extends_world labels (Asbir and the ruins toward lattice-crucible, Fluxom and the strip toward crime, Nil toward sovereign-ruins, Sangree and Sahm toward fantasy, Vessine toward superhero, Akeia and Bahiij toward concord-link-frontier) stay labels. No quest walks them.",
+    "verdant_veil is the labor role's faction string. It is not a fifteenth row in factions.json. This slice does not add the row and does not write a standing delta to it."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "Tunya still has no mon_boss_ row. enc_twelfth_reap, enc_pollen_sleep, and enc_graft_charge stay S05. This facet adds no health table, no adds, and no scaled animal. enc_registrar_line is two existing people and an empty queue. It has no hit points.",
+  "cultures": [
+    {
+      "id": "culture_ark_memory",
+      "name": "Arks of memory",
+      "who": "Every arrival that still has a hull, plus the stone the Ancient Tunyans left, plus the walls Torrek can read and will not translate in this slice.",
+      "public_law": "Panels wake under sun. A completed wire does not. Pilgrims carry fruit and clay, not lumber and not a minted DTU, unless they are on tunya_arks_of_memory_1_first_pilgrimage, which this slice does not rerun.",
+      "ground": "Asbir Ark (−90, −58), Asbir Threshold (−72, −28), Ancient Tunyan Ruins entrance (−55, −55), sealed chamber (−77.5, −70) seen from outside. Masond's Hold of First Arrival stays the volume heron quest's target and has no CountryCenter.",
+      "palette_note": "Limestone and solar tile. One emissive is the tile's sun-catch, not a circuit glow. Clay rubbings stay matte.",
+      "does_not": ["Complete a circuit", "Open the anomaly chamber", "Enter the third chamber", "Translate Aldra's glyph", "Mint a DTU", "Follow Corin's hook to Sere"]
+    },
+    {
+      "id": "culture_bloc",
+      "name": "The Bloc",
+      "who": "Dinye, Aekon, Asbir. Allied on the faction sheets. Closed to non-Bloc citizens by the Dinye Gate Treaty, year 380.",
+      "public_law": "The land is answered before a city is drawn. Aekon holds twelve districts in ceremony and rations the forge after three annums of cold (year 412). Asbir keeps the curated tradition and the ark. The twelfth is a boundary the volume quest already walks and does not breach.",
+      "ground": "Dinye Gate (0, 12), Dinye Council (9, 18), Aekon Glacier Gate (−15, 68), Aekon Ice-Forge (−10.5, 60.5), Asbir points above. Ancestor caves, the sky temple, and the twelfth lip have no coordinates.",
+      "palette_note": "Low ochre shelter at Dinye, terraced stone and quilted cloth at Aekon, pale stone and brass-colored tile at Asbir. Foundation stays the veil kit. Upper retrofit may show a faction awning and must leave the terrace silhouette.",
+      "does_not": ["Found a city inside Dinye", "Enter the twelfth", "Cast ice as a spell", "Arm Asbir with the musket-staff archetype", "Say why the Bloc holds"]
+    },
+    {
+      "id": "culture_radiance_tide",
+      "name": "Radiance and the tide writ",
+      "who": "Bahiij's performed public joy, Sahm's self-determining academy, Akeia's matrilineal rite. Allied pairs already on the sheets: Sahm with Bahiij, Akeia with Bahiij and Dormas. Dormas itself has no country point.",
+      "public_law": "The year-200 Sahm–Bahiij caravan is a contract. The elephant corral is a trade anchor with no creature row. Akeia's tide rite is how a non-Akeia gains provisional access to inland councils. The writ in this slice stays unsigned. Curiosity toward Akeia stays the world's posture. The bedchamber is not a quest room.",
+      "ground": "Bahiij claim center (−48, 28) and the other point also named Bahiij Crossing (−34, 36), 16.1 m apart. Corral (−40.5, 35.5). Sahm Academy (−20, 45). Sahm Emporium (−5, 54), 17.5 m from the academy. Akeia Harbor (32.5, 23). Akeia claim center (25, 35). A second point named Akeia Capital (39, 43), 16.1 m from the claim center.",
+      "palette_note": "Festival petal and embroidered cloth are faction accent on the same timber and limestone. No gold wound. No Vinewood lettering.",
+      "does_not": ["Spawn an elephant", "Ride", "Publish the quiet quarter", "Seat a consort", "Open Kez's charter", "Place Dormas"]
+    },
+    {
+      "id": "culture_harbor_dye",
+      "name": "Harbor and the dye strip",
+      "who": "Fluxom's two families, public ration and collapsed sea trade, and the cactem strip Bahiij's sheet also claims. Captain Mara's faction field is the strip. Her faction_id is bahiij.",
+      "public_law": "The Dye War ran four annums and the last successful raid ended at a stone in year 411. The 412 surge is a tax doubling that sent people across a border. Both public condemnations — Fluxom of the kingdoms, the kingdoms of Fluxom — stand. Fruit-not-tree still applies to a cactem plant: it is not lumber and not a bug.",
+      "ground": "Fluxom Gate (62, 18), Cactem Dye-Strip (74, 33), claim center named Cactem Breeder Camp (70, 55), the other point with that name (80, 43), Last Raid Marker (61, 59.5). fluxom_harbor_old is a district string with no anchor. The gate is the placed door.",
+      "palette_note": "Oilcloth, stilt, tide marks, stagnant heat in the country climate. Solar tile still the foundation. One brass accent, worn.",
+      "does_not": ["Spawn a dye-bug", "Spawn a sealie at the gate", "Board a refugee ship", "Reopen the war", "Speak the dump"]
+    }
+  ],
+  "regions": [
+    {
+      "id": "region_dinye_gate",
+      "name": "Dinye Gate and Council",
+      "culture": "culture_bloc",
+      "faction_id": "dinye",
+      "anchors": [
+        {"id": "dinye_gate", "name": "Dinye Gate", "x": 0.0, "z": 12.0, "kind": "capital claim center", "radius_m": 24},
+        {"id": "dinye_court", "name": "Dinye Council", "x": 9.0, "z": 18.0, "kind": "neutral_zone", "distance_to_gate_m": 10.8}
+      ],
+      "law": "steel_live. Gate treaty year 380 closes the Bloc to non-Bloc citizens. This slice does not rewrite the treaty.",
+      "what_stands_here": "Low shelter, ochre, oral council. Chair Oren at the council anchor in Stratus. Registrar Kira in the anteroom the same hours, stood on the same anchor because the anteroom has no second point. The 409 demand asked for more registrars. The queue this slice draws is empty past those two.",
+      "extends_world": "tunya",
+      "does_not": ["Build the young walker's city plan", "Open ancestor caves", "Place a registrar crowd of 409"]
+    },
+    {
+      "id": "region_aekon_glacier",
+      "name": "Aekon glacier and forge",
+      "culture": "culture_bloc",
+      "faction_id": "aekon",
+      "anchors": [
+        {"id": "aekon_gate", "name": "Aekon Glacier Gate", "x": -15.0, "z": 68.0, "kind": "capital claim center", "radius_m": 24},
+        {"id": "aekon_forge", "name": "Aekon Ice-Forge", "x": -10.5, "z": 60.5, "kind": "trade_zone", "distance_to_gate_m": 8.7}
+      ],
+      "law": "steel_live. Long Winter, year 412: three annums, forge fuel rationed. Ice Oath year 200 is the Bloc's founding compact and is not re-sworn here.",
+      "what_stands_here": "Terraced-stone claim on a cold climate row (temperature 5, high wind). Ice-Smith Jera at the forge anchor in Stratus and Quartus. The forge name and her sheet's ice-bloodline blades stay words. No ice spell is bound. Glacier Gate is not the twelfth lip.",
+      "extends_world": "tunya",
+      "claim_overlap": "Sahm Academy sits 23.5 m from this gate. The 24 m and 22 m radii overlap. The overlap is a claim, not a shared street.",
+      "does_not": ["Enter a twelfth district", "Use the gate as a fauna floor", "Follow Xochi's resonance to sovereign-ruins"]
+    },
+    {
+      "id": "region_asbir_ark",
+      "name": "Asbir threshold and ark",
+      "culture": "culture_ark_memory",
+      "faction_id": "asbir",
+      "anchors": [
+        {"id": "asbir_gate", "name": "Asbir Threshold", "x": -72.0, "z": -28.0, "kind": "capital claim center", "radius_m": 24},
+        {"id": "asbir_ark", "name": "The Asbir Ark", "x": -90.0, "z": -58.0, "kind": "lore_anchor", "distance_to_threshold_m": 35.0}
+      ],
+      "law": "steel_live. Solar wake only. Anomaly chamber, year 220, solar threshold never reached. Corin charges the panels her Stratus window already names. The anomaly door stays dark.",
+      "what_stands_here": "Southern dunes on the country climate (temperature 14, stormy). Wright Corin Vasse (id the_ark_wright) at the ark anchor in Stratus, hours 5–9, location string asbir_ark_terminal. Threshold is the walk, not a second terminal.",
+      "extends_world": "lattice-crucible",
+      "extends_world_rule": "Label only. Fauna were not moved along it in S05. This quest does not enter the Crucible.",
+      "claim_overlap": "Ruins entrance is 31.9 m from the threshold. Radii overlap. The ark and the ruins stay two sites.",
+      "does_not": ["Show Corin the deletion log", "Open the third chamber", "Arm a musket-staff", "Rename the site Pinewood because z is −28"]
+    },
+    {
+      "id": "region_sahm_bahiij",
+      "name": "Sahm academy and Bahiij crossing",
+      "culture": "culture_radiance_tide",
+      "faction_ids": ["sahm", "bahiij"],
+      "anchors": [
+        {"id": "sahm_academy", "name": "Sahm Academy", "x": -20.0, "z": 45.0, "kind": "capital claim center", "radius_m": 22},
+        {"id": "sahm_emporium", "name": "Sahm Emporium", "x": -5.0, "z": 54.0, "kind": "trade_zone", "distance_to_academy_m": 17.5},
+        {"id": "bahiij_claim", "name": "Bahiij Crossing claim center", "x": -48.0, "z": 28.0, "kind": "capital field", "radius_m": 22},
+        {"id": "bahiij_capital", "name": "Bahiij Crossing", "x": -34.0, "z": 36.0, "kind": "neutral_zone", "distance_to_claim_center_m": 16.1},
+        {"id": "bahiij_elephant_corral", "name": "Bahiij Elephant Corral", "x": -40.5, "z": 35.5, "kind": "trade_zone"}
+      ],
+      "law": "steel_live. Alliance is already on the sheets. The caravan year is 200. Rema's marketplace string has no point, so she is not stood on the corral to fill it.",
+      "what_stands_here": "Provost Kez at the academy anchor in Stratus and Freeus, paired from sahm_chancellery because that room has no coordinate. The emporium is a stop on the walk. The corral is empty of a mount. Two points share the name Bahiij Crossing. The quest uses the anchor id, not a merged pin.",
+      "extends_world": "sahm and bahiij both carry a non-tunya extends_world label. The walk stays on Tunya.",
+      "does_not": ["Spawn elephants", "Place the quiet quarter", "Change how arrival is taught", "File Kez's charter"]
+    },
+    {
+      "id": "region_akeia_harbor",
+      "name": "Akeia harbor and claim",
+      "culture": "culture_radiance_tide",
+      "faction_id": "akeia_of_kahlay",
+      "anchors": [
+        {"id": "akeia_claim", "name": "Akeia Capital claim center", "x": 25.0, "z": 35.0, "kind": "capital field CountryCenter uses", "radius_m": 22},
+        {"id": "akeia_capital", "name": "Akeia Capital", "x": 39.0, "z": 43.0, "kind": "lore_anchor", "distance_to_claim_center_m": 16.1},
+        {"id": "akeia_harbor", "name": "Akeia Harbor", "x": 32.5, "z": 23.0, "kind": "trade_zone", "distance_to_claim_center_m": 14.2}
+      ],
+      "law": "steel_live. Tide-Honoring rite is the public door for a non-Akeia. The daughter's refused succession stays a faction tension with no objective.",
+      "what_stands_here": "Dock-Master Jano at the harbor anchor in Stratus and Freeus. His sheet says he runs Akeia Harbor, and those windows already put him on akeia_main_pier. The pier has no coordinate, so the harbor anchor is the berth. Office, tavern, tide temple, and consort houses stay unspawned.",
+      "extends_world": "concord-link-frontier",
+      "extends_world_rule": "Label only. No frontier walk.",
+      "does_not": ["Enter a treaty chamber or a bedchamber", "Sign the writ", "Read the Voss correspondence"]
+    },
+    {
+      "id": "region_fluxom_cactem",
+      "name": "Fluxom gate and the cactem strip",
+      "culture": "culture_harbor_dye",
+      "faction_ids": ["fluxom", "bahiij"],
+      "anchors": [
+        {"id": "fluxom_gate", "name": "Fluxom Gate", "x": 62.0, "z": 18.0, "kind": "capital claim center", "radius_m": 22},
+        {"id": "fluxom_dye_strip", "name": "Cactem Dye-Strip", "x": 74.0, "z": 33.0, "kind": "trade_zone", "distance_to_gate_m": 19.2},
+        {"id": "cactem_claim", "name": "Cactem Breeder Camp claim center", "x": 70.0, "z": 55.0, "kind": "capital field", "radius_m": 22},
+        {"id": "cactem_breeder", "name": "Cactem Breeder Camp", "x": 80.0, "z": 43.0, "kind": "anchor with the capital's name and a different point"},
+        {"id": "strip_last_raid", "name": "Last Raid Marker", "x": 61.0, "z": 59.5, "kind": "lore_anchor", "distance_to_claim_center_m": 10.1, "distance_to_dye_strip_m": 29.5}
+      ],
+      "law": "steel_live. Combat lethality on the Fluxom row is 1.3 and is not a license to add a boss. The war is over. The marker is the end of it.",
+      "what_stands_here": "Captain Mara at the Last Raid Marker in Stratus and Freeus. Her avenue string has no point. The marker is the placed memorial 10.1 m from the strip's claim center, and this slice says so rather than inventing a street. She is not cloned to Fluxom Gate. The gate itself gets no new crowd.",
+      "extends_world": "both rows say crime. The player stays on Tunya.",
+      "does_not": ["Treat Fluxom Gate as Pinewood Crossing", "Spawn sealies, bugs, or elephants", "Open fluxom_harbor_old as if it had a pin"]
+    },
+    {
+      "id": "region_ruins_marks",
+      "name": "Ancient Tunyan ruins",
+      "culture": "culture_ark_memory",
+      "faction_note": "Country faction is not a new id. Scholar Aldra's sheet stores faction_id nil and faction ancient_tunyan_ruins. She is not moved to Nil Threshold.",
+      "anchors": [
+        {"id": "ruins_entrance", "name": "Ruins Entrance", "x": -55.0, "z": -55.0, "kind": "capital claim center", "radius_m": 22},
+        {"id": "ruins_sealed", "name": "Sealed Archive Chamber", "x": -77.5, "z": -70.0, "kind": "lore_anchor", "distance_to_entrance_m": 27.0}
+      ],
+      "law": "steel_live. First discovery year 380, during a drought. The public line is that the original civilization is unknown.",
+      "what_stands_here": "Aldra at the entrance in Stratus. Her excavation string has no second coordinate, so the entrance is the dig. The sealed chamber is walked to and left shut.",
+      "extends_world": "lattice-crucible",
+      "extends_world_rule": "Label only.",
+      "does_not": ["Enter the chamber", "Translate the marks", "Cross into Nil", "Send her assistants back into a Wound-month"]
+    },
+    {
+      "id": "region_nil_threshold",
+      "name": "Nil Threshold",
+      "culture": "cited from S05 and the Nil chain. This slice adds no grove story.",
+      "faction_id": "nil",
+      "anchors": [
+        {"id": "nil_threshold", "name": "Nil Threshold", "x": 18.0, "z": -8.0, "kind": "capital claim center", "radius_m": 22}
+      ],
+      "law": "Covenant year 1. No outsider has crossed and returned. Countries row: refusal_field, quest density 0.3. Compound refusal at strength 6 or above is the canon country's own description. This slice does not test it.",
+      "what_stands_here": "The threshold stone. Inner grove, outer islands, and root caves have no CountryCenter of their own. S05 fauna cap on the inner grove stays 0.",
+      "extends_world": "sovereign-ruins",
+      "claim_overlap": "Dinye Gate is 26.9 m away. The circles overlap on paper. The covenant is not a shared district with Dinye.",
+      "does_not": ["Stage a new silent walk", "Spawn Yenna here", "Move sealies onto the threshold"]
+    },
+    {
+      "id": "region_vessine_crash",
+      "name": "Vessine crash site",
+      "culture": "cited. Choir quest already exists.",
+      "faction_id": "vessine",
+      "anchors": [
+        {"id": "vessine_crash", "name": "The Crash Site", "x": 48.0, "z": -42.0, "kind": "capital claim center", "radius_m": 18},
+        {"id": "vessine_stillrooms", "name": "Vessine Stillrooms", "x": 58.0, "z": -54.0, "kind": "trade_zone"}
+      ],
+      "law": "Healing is the power lore.json and the species correction give them. The faction sheet still says ice as memory, and the Aekon country row still says ice-bloodline. This slice does not cast ice for either people and does not delete the phrases.",
+      "what_stands_here": "A crashed hull the pre-industrial kingdoms cannot repair. Stillrooms. The resonance choir and the Vrellan ward are schedule strings without these coordinates. q_tunya_choir_one_chart already matches one chart.",
+      "extends_world": "superhero",
+      "does_not": ["Add a Vessine quest", "Repair the ship with Aekon engineering", "Place Vrellan"]
+    },
+    {
+      "id": "region_sangree_forge",
+      "name": "Sangree fire forge",
+      "culture": "cited. Sanguire fire is lore. Sandrun's districts are not this pin.",
+      "faction_id": "sandrun_sanguire",
+      "anchors": [
+        {"id": "sangree_forge", "name": "Sangree Fire Forge", "x": -4.43, "z": -65.85, "kind": "capital claim center", "radius_m": 28}
+      ],
+      "law": "steel_live. Fire by bloodline is the Sanguire public power. The forge is the placed homeland pin. Sandrun arid capital, forge quarter, and volcanic coast have no country points.",
+      "what_stands_here": "One forge anchor. Chief Thal's tents are unplaced. No quest is filed here, so the hidden son is not adjacent to an objective.",
+      "extends_world": "fantasy",
+      "extends_world_rule": "Label only. The mirror to House Voss stays the lore hook and is not walked.",
+      "does_not": ["Spawn Iyatte", "Start a smith contest with Sahm", "Treat radius 28 as a country you can patrol"]
+    },
+    {
+      "id": "region_unplaced",
+      "name": "Named and unplaced",
+      "culture": "all four, as absences",
+      "what_stands_here": "Masond, Corre, Dormas, Vrellan, Sandrun, the Hold of First Arrival, the twelfth lip, the sky temple, the quiet quarter, the tide temple, fluxom_harbor_old, ancestor caves, and every schedule room not paired below. They keep their lore names. They do not receive pins in this slice.",
+      "does_not": ["Invent a coordinate to finish a quest", "Spend terrace labor to impersonate them"]
+    }
+  ],
+  "factions_existing": [
+    {"id": "sandrun_sanguire", "public_use": "Fire bloodline. Placed only as the Sangree forge pin. Rival Vessine and Fluxom. Ally Vrellan and Corre. No new quest."},
+    {"id": "vrellan_nationalists", "public_use": "The state that scatters its peoples. No country_id. Capital string unplaced. Ally Sanguire. Rival Nil and Fluxom. No new quest."},
+    {"id": "vessine", "public_use": "Healers, Mercury, crash isle placed. Choir already quested. Ice phrase left untouched and uncast."},
+    {"id": "corre", "public_use": "Walked off the North American ark. Oral memory. No country point. Rival Asbir. No new quest, so the deleted archive is not asked for."},
+    {"id": "aekon", "public_use": "Bloc. Twelve districts as ceremony. Glacier and forge placed. Twelfth stays shut."},
+    {"id": "asbir", "public_use": "Bloc. Curated tradition. Ark placed. Anomaly threshold stays unmet."},
+    {"id": "sahm", "public_use": "Self-determining river people, academy placed. Allied to Bahiij. The caravan errand uses the provost and does not rewrite the arrival."},
+    {"id": "dinye", "public_use": "Bloc. Land before city. Gate and council placed. Ochre plan returned unbuilt."},
+    {"id": "bahiij", "public_use": "Radiance by agreement. Crossing and empty corral placed. Festival master's quiet quarter unplaced."},
+    {"id": "masond", "public_use": "Rooted kingdom, brick, half a memory. No country point. Torrek is not summoned. Ruin marks stay untranslated."},
+    {"id": "dormas", "public_use": "Imported service, no country point. The Sahm scholar who refused a chair stays a faction tension. No memoir is written."},
+    {"id": "fluxom", "public_use": "Two-family harbor, gate and dye strip placed. Sea trade stays closed. No third family is raised."},
+    {"id": "nil", "public_use": "Covenant. Threshold placed and not crossed. Aldra's faction_id tag is not an entrance."},
+    {"id": "akeia_of_kahlay", "public_use": "Matriline, tide rite, harbor placed. Writ unsigned. Succession tension untouched."}
+  ],
+  "presences": [
+    {
+      "id": "presence_oren_council",
+      "npc_id": "dinye_chair_oren",
+      "count": 1,
+      "where": "dinye_court (9, 18), Stratus hours 5–8, when the sheet already marks him interactable in dinye_council_hall.",
+      "body": "CX, single. Low-shelter cloth, ochre thread, Dinye palette on the veil kit. No clone. Missing mesh: absent.",
+      "gives": ["q_s06_ochre_not_a_city"]
+    },
+    {
+      "id": "presence_kira_anteroom",
+      "npc_id": "dinye_registrar_kira",
+      "count": 1,
+      "where": "Same anchor, same Stratus window. Sheet location dinye_council_hall_anteroom has no coordinate. She stands beside the chair as scribe, not as a second council.",
+      "body": "CX, single. Ink, a ledger, no weapon. Missing mesh: the queue is empty and Oren's errand still runs.",
+      "gives": []
+    },
+    {
+      "id": "presence_jera_forge",
+      "npc_id": "aekon_smith_jera",
+      "count": 1,
+      "where": "aekon_forge (−10.5, 60.5), Stratus and Quartus, sheet location aekon_ice_forge. Shopfront hours spawn nothing.",
+      "body": "CX, single. Quilted cloth, forge soot, no ice-glass blade mesh. Missing mesh: absent.",
+      "gives": ["q_s06_forge_ration"]
+    },
+    {
+      "id": "presence_corin_terminal",
+      "npc_id": "the_ark_wright",
+      "count": 1,
+      "where": "asbir_ark (−90, −58), Stratus hours 5–9, sheet location asbir_ark_terminal. Dominus in the third chamber stays non-interactable and unentered.",
+      "body": "CX, single. Sun-weathered, ink, cracked lenses as a prop if one exists, otherwise no glasses mesh and the face stays Concordia. Missing mesh: absent.",
+      "gives": ["q_s06_threshold_unmet"]
+    },
+    {
+      "id": "presence_kez_academy",
+      "npc_id": "sahm_provost_kez",
+      "count": 1,
+      "where": "Sahm Academy (−20, 45), Stratus and Freeus. Sheet location sahm_chancellery has no coordinate. The academy capital is the civic point.",
+      "body": "CX, single. Long coat, river-iron token as a prop id only if it already exists; otherwise empty hands. Missing mesh: absent.",
+      "gives": ["q_s06_contract_without_a_beast"]
+    },
+    {
+      "id": "presence_jano_harbor",
+      "npc_id": "akeia_dock_jano",
+      "count": 1,
+      "where": "akeia_harbor (32.5, 23), Stratus and Freeus. Sheet locations akeia_main_pier. Office and tavern unspawned.",
+      "body": "CX, single. Harbor cloth, fair-weather wear, no consort silk. Missing mesh: absent.",
+      "gives": ["q_s06_tide_writ_unsigned"]
+    },
+    {
+      "id": "presence_mara_marker",
+      "npc_id": "strip_captain_mara",
+      "count": 1,
+      "where": "strip_last_raid (61, 59.5), Stratus and Freeus. Avenue unbuilt. This stand is declared: the memorial is the patrol stone.",
+      "body": "CX, single. Bahiij accent on veil foundation. Discipline, not a raid kit. No dye-bug. Missing mesh: absent.",
+      "gives": ["q_s06_marker_not_a_war"]
+    },
+    {
+      "id": "presence_aldra_entrance",
+      "npc_id": "ruins_scholar_aldra",
+      "count": 1,
+      "where": "ruins entrance (−55, −55), Stratus. Excavation string unpaired, so the entrance is the dig.",
+      "body": "CX, single. Clay, charcoal, limestone dust. Missing mesh: absent.",
+      "gives": ["q_s06_marks_untranslated"]
+    },
+    {
+      "id": "presence_labor_merchant_untouched",
+      "rule": "npc_role_tunya_labor budget 6 and npc_role_tunya_merchant budget 3 stay the density table and the S05 givers. This slice adds no eighth laborer and no fourth factor. No unique wears a straw hat to save a mesh."
+    }
+  ],
+  "encounters": [
+    {
+      "id": "enc_registrar_line",
+      "name": "The Unfilled Demand",
+      "kind": "political_presence",
+      "where": {"id": "dinye_court", "x": 9.0, "z": 18.0, "note": "Stratus only. 10.8 m from Dinye Gate."},
+      "bodies": ["dinye_chair_oren", "dinye_registrar_kira"],
+      "queue": "Empty. The 409-page demand asked for more registrars. Spawning a crowd would invent the posts the council did not create.",
+      "health": "none authored. Do not invent a table. They are not a mini-boss and not creatures.",
+      "aggro": "Steel is live if the player attacks. Killing either fails q_s06_ochre_not_a_city. There is no bounty and no fine paid in blood. Fruit-not-tree is the world's law and is not a substitute punishment authored here.",
+      "story_id": "story_registrar_line",
+      "owned_by_quest": "q_s06_ochre_not_a_city",
+      "does_not_replace": ["enc_twelfth_reap", "enc_pollen_sleep", "enc_graft_charge"]
+    }
+  ],
+  "cited_combat_ceiling": [
+    {"id": "enc_twelfth_reap", "political_reading": "The twelfth alpha is a harvest crime at a lip S05 already placed in words and left uncoordinated. Bloc politics do not restage it and do not move it to Glacier Gate."},
+    {"id": "enc_pollen_sleep", "political_reading": "A reap of attention on the terrace. Not a kingdom levy."},
+    {"id": "enc_graft_charge", "political_reading": "A stag defending a graft. Not a Bloc cavalry and not a Bahiij mount."},
+    {"id": "faun_nil_sealie", "political_reading": "Bible body on the shoal. Fluxom's harbor story is not a spawn order."},
+    {"id": "mon_tunya_harpy", "political_reading": "Theft of a tool is a fruit-fine. Not a faction army."},
+    {"id": "mon_tunya_reapjackal", "political_reading": "Root-tear on a wounded terrace. Not a Sandrun hunt."}
+  ],
+  "quests": [
+    {
+      "id": "q_s06_ochre_not_a_city",
+      "title": "Dinye — The Plan That Is Not a City",
+      "world_id": "Tunya",
+      "giver_npc_id": "dinye_chair_oren",
+      "giver_spawn": "presence_oren_council. Stratus only. If his mesh is missing he is absent and a laborer does not take the line.",
+      "backstory_id": "story_q_ochre",
+      "does_not_replace": ["tunya_bloc_secret_1_twelfth_district", "tunya_bloc_secret_2_breach_or_protect", "q_tunya_twelfth_edge"],
+      "spawns_encounter": "enc_registrar_line",
+      "objectives": [
+        {
+          "id": "obj_q_s06_ochre_1",
+          "verb": "talk",
+          "target": "dinye_chair_oren",
+          "count": 1,
+          "text": "At Dinye Council in the Stratus window, take the ochre sheet. It is a street grid drawn over seven villages. The chair wants it unread as a charter."
+        },
+        {
+          "id": "obj_q_s06_ochre_2",
+          "verb": "reach",
+          "target": "dinye_gate",
+          "count": 1,
+          "text": "Walk to Dinye Gate, 10.8 m from the council. The gate is the treaty door. Do not found a ward on either side of it."
+        },
+        {
+          "id": "obj_q_s06_ochre_3",
+          "verb": "witness",
+          "target": "enc_registrar_line",
+          "count": 1,
+          "text": "See the line: one chair, one registrar, no further posts. The 409 demand remains paper. Do not hire a crowd."
+        },
+        {
+          "id": "obj_q_s06_ochre_4",
+          "verb": "deliver",
+          "target": "dinye_chair_oren",
+          "count": 1,
+          "text": "Return the sheet to Oren. The villages stay villages. You do not ask why the Bloc holds."
+        }
+      ],
+      "fail": [
+        "Kill Oren or Kira",
+        "Build a street, a stake, or a city marker",
+        "Enter the ancestor caves",
+        "Speak the twelfth, the dump, or Kira's lineage",
+        "Substitute a terrace laborer"
+      ],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Dinye kept seven villages. The ochre sheet was returned.",
+        "gossip_on_complete": "Someone walked the gate with a city plan and did not plant it.",
+        "prop_or_door": "boundary_stone already in the density clutter. No new city prop."
+      },
+      "turn_in": {"npc_id": "dinye_chair_oren", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_forge_ration",
+      "title": "Aekon — The Ration Walks to the Gate",
+      "world_id": "Tunya",
+      "giver_npc_id": "aekon_smith_jera",
+      "giver_spawn": "presence_jera_forge. Stratus or Quartus. Shopfront hours do not count.",
+      "backstory_id": "story_q_ration",
+      "does_not_replace": ["q_tunya_twelfth_edge", "tunya_bloc_secret_1_twelfth_district", "tunya_bloc_secret_2_breach_or_protect"],
+      "objectives": [
+        {
+          "id": "obj_q_s06_ration_1",
+          "verb": "talk",
+          "target": "aekon_smith_jera",
+          "count": 1,
+          "text": "At the Ice-Forge, take the fuel tally. It counts what the Long Winter still allows the forge to burn. It is not a blade order."
+        },
+        {
+          "id": "obj_q_s06_ration_2",
+          "verb": "reach",
+          "target": "aekon_gate",
+          "count": 1,
+          "text": "Carry the tally to Aekon Glacier Gate, 8.7 m from the forge. Read the gate as a Bloc door. Do not look for a twelfth entrance on it."
+        },
+        {
+          "id": "obj_q_s06_ration_3",
+          "verb": "witness",
+          "target": "forge_fuel_unspent",
+          "count": 1,
+          "text": "Witness that the tally returns with the same count. No bar is spent, no ice blade is drawn, no circuit is closed to warm the shop."
+        },
+        {
+          "id": "obj_q_s06_ration_4",
+          "verb": "deliver",
+          "target": "aekon_smith_jera",
+          "count": 1,
+          "text": "Bring the tally back to Jera. Xochi is not hailed. The district stays shut."
+        }
+      ],
+      "fail": [
+        "Enter any twelfth interior",
+        "Forge or equip an ice blade",
+        "Complete an electrical circuit",
+        "Ask Jera what the twelfth is for",
+        "Move the errand onto the Hub ring"
+      ],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The forge ration was walked to the glacier gate and brought back unspent.",
+        "gossip_on_complete": "A smith counted fuel and did not make a weapon of the winter.",
+        "prop_or_door": "No new forge prop. Solar tile on the kit stays a roof, not a generator."
+      },
+      "turn_in": {"npc_id": "aekon_smith_jera", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_threshold_unmet",
+      "title": "Asbir — The Door That Does Not Wake",
+      "world_id": "Tunya",
+      "giver_npc_id": "the_ark_wright",
+      "giver_spawn": "presence_corin_terminal. Stratus hours 5–9. She may charge the panels her schedule already charges. The player does not add a circuit.",
+      "backstory_id": "story_q_threshold",
+      "does_not_replace": ["tunya_arks_of_memory_1_first_pilgrimage", "tunya_arks_of_memory_2_curated_vault", "q_tunya_heron_hold", "q_s05_photonic_second"],
+      "objectives": [
+        {
+          "id": "obj_q_s06_threshold_1",
+          "verb": "talk",
+          "target": "the_ark_wright",
+          "count": 1,
+          "text": "At the Asbir Ark, ask Corin which door has never taken a charge. She will name the anomaly. She will not name a deletion."
+        },
+        {
+          "id": "obj_q_s06_threshold_2",
+          "verb": "reach",
+          "target": "asbir_gate",
+          "count": 1,
+          "text": "Walk out to Asbir Threshold, 35 m from the ark, and back. The threshold is the Bloc's dune door, not the terminal."
+        },
+        {
+          "id": "obj_q_s06_threshold_3",
+          "verb": "witness",
+          "target": "anomaly_door_dark",
+          "count": 1,
+          "text": "On the ark exterior, witness the anomaly door still dark. Leave it dark. Do not enter the third chamber."
+        },
+        {
+          "id": "obj_q_s06_threshold_4",
+          "verb": "deliver",
+          "target": "the_ark_wright",
+          "count": 1,
+          "text": "Tell Corin the threshold is still unmet. Do not hand her an index, a log, or a DTU."
+        }
+      ],
+      "fail": [
+        "Open the anomaly chamber or the third chamber",
+        "Complete a circuit",
+        "Mint a DTU",
+        "Read or copy a deletion index",
+        "Stop Corin's own scheduled panel charge",
+        "Follow the resonance to Sere"
+      ],
+      "rewards": {"xp": 55, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The anomaly door took no sun today.",
+        "gossip_on_complete": "The wright was asked about a dark door and the door stayed dark.",
+        "prop_or_door": "prop_solar_tile on the panels she already tends. No new ark mesh."
+      },
+      "turn_in": {"npc_id": "the_ark_wright", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_contract_without_a_beast",
+      "title": "Bahiij — The Contract Without a Beast",
+      "world_id": "Tunya",
+      "giver_npc_id": "sahm_provost_kez",
+      "giver_spawn": "presence_kez_academy. Stratus or Freeus. Rema stays unspawned. Her marketplace has no point.",
+      "backstory_id": "story_q_contract",
+      "does_not_replace": ["q_tunya_terrace_bell"],
+      "objectives": [
+        {
+          "id": "obj_q_s06_contract_1",
+          "verb": "talk",
+          "target": "sahm_provost_kez",
+          "count": 1,
+          "text": "At Sahm Academy, take the year-200 caravan wording from Kez. It is a copy of a public contract. It is not a charter of federation."
+        },
+        {
+          "id": "obj_q_s06_contract_2",
+          "verb": "witness",
+          "target": "bahiij_elephant_corral",
+          "count": 1,
+          "text": "At the corral (−40.5, 35.5), witness the empty ground. Eight mounts on a character sheet are not a creature id. Do not lead a goat here to fill the stall."
+        },
+        {
+          "id": "obj_q_s06_contract_3",
+          "verb": "reach",
+          "target": "sahm_emporium",
+          "count": 1,
+          "text": "Walk the contract to Sahm Emporium (−5, 54), 17.5 m from the academy. Use the anchor. Do not merge it with the academy pin."
+        },
+        {
+          "id": "obj_q_s06_contract_4",
+          "verb": "deliver",
+          "target": "sahm_provost_kez",
+          "count": 1,
+          "text": "Return to Kez. The route is paper between placed points. No beast was bought, ridden, or invented."
+        }
+      ],
+      "fail": [
+        "Spawn or ride an elephant, a goat, or a stag",
+        "Place Rema on the corral",
+        "Enter the quiet quarter",
+        "File a new federation",
+        "Treat the two Bahiij Crossing points as one pin"
+      ],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The year-200 contract was walked. The corral is still empty.",
+        "gossip_on_complete": "A provost sent paper to a stall that has no animal and got the paper back.",
+        "prop_or_door": "No mount. No new hitching rail on the corral."
+      },
+      "turn_in": {"npc_id": "sahm_provost_kez", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_tide_writ_unsigned",
+      "title": "Akeia — The Writ Left Unsigned",
+      "world_id": "Tunya",
+      "giver_npc_id": "akeia_dock_jano",
+      "giver_spawn": "presence_jano_harbor. Stratus or Freeus. The tide temple is unplaced, so Vesh is not moved to the pier to sing.",
+      "backstory_id": "story_q_tide",
+      "does_not_replace": [],
+      "objectives": [
+        {
+          "id": "obj_q_s06_tide_1",
+          "verb": "talk",
+          "target": "akeia_dock_jano",
+          "count": 1,
+          "text": "At Akeia Harbor, take the blank tide writ. Jano runs the harbor. He does not run the succession."
+        },
+        {
+          "id": "obj_q_s06_tide_2",
+          "verb": "reach",
+          "target": "akeia_claim",
+          "count": 1,
+          "text": "Walk to the claim center (25, 35), 14.2 m from the harbor. Stop outside. The inland council is the rite's door and you do not go in."
+        },
+        {
+          "id": "obj_q_s06_tide_3",
+          "verb": "witness",
+          "target": "akeia_capital",
+          "count": 1,
+          "text": "Witness the other point named Akeia Capital at (39, 43), 16.1 m from the claim center. It is a second pin, not a bedchamber and not a merged capital."
+        },
+        {
+          "id": "obj_q_s06_tide_4",
+          "verb": "deliver",
+          "target": "akeia_dock_jano",
+          "count": 1,
+          "text": "Bring the writ back to Jano unsigned. Provisional access was not taken."
+        }
+      ],
+      "fail": [
+        "Sign the writ",
+        "Enter consort houses, treaty chambers, or a private quarter",
+        "Make the daughter a speaker",
+        "Move Tidesinger Vesh onto the pier",
+        "Walk the extends_world label into the Frontier"
+      ],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The tide writ came back to the harbor unsigned.",
+        "gossip_on_complete": "A dock-master offered the rite's paper and the visitor left it blank.",
+        "prop_or_door": "No temple mesh. No new harbor hull."
+      },
+      "turn_in": {"npc_id": "akeia_dock_jano", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_marker_not_a_war",
+      "title": "Cactem — The Marker Is the End",
+      "world_id": "Tunya",
+      "giver_npc_id": "strip_captain_mara",
+      "giver_spawn": "presence_mara_marker. Stratus or Freeus. Avenue unbuilt.",
+      "backstory_id": "story_q_marker",
+      "does_not_replace": ["q_tunya_reap_fine", "q_s05_not_an_orca"],
+      "objectives": [
+        {
+          "id": "obj_q_s06_marker_1",
+          "verb": "talk",
+          "target": "strip_captain_mara",
+          "count": 1,
+          "text": "At the Last Raid Marker, take the count-sheet. The war ended here in year 411. The sheet is for living plants, not for a fifth annum."
+        },
+        {
+          "id": "obj_q_s06_marker_2",
+          "verb": "reach",
+          "target": "fluxom_dye_strip",
+          "count": 1,
+          "text": "Walk to the Cactem Dye-Strip (74, 33), 29.5 m from the marker. Stay on the plants. Do not continue to a harbor that has no pin."
+        },
+        {
+          "id": "obj_q_s06_marker_3",
+          "verb": "witness",
+          "target": "cactem_plants",
+          "count": 1,
+          "text": "Count strips that are still plants. A dye-bug has no creature id. A sealie is not in this water. Leave both unspawned."
+        },
+        {
+          "id": "obj_q_s06_marker_4",
+          "verb": "deliver",
+          "target": "strip_captain_mara",
+          "count": 1,
+          "text": "Return the count to Mara at the marker. Do not offer her a raid, a ship, or a brother's name as a target."
+        }
+      ],
+      "fail": [
+        "Start a fight at the strip or the gate",
+        "Cut the plants as lumber",
+        "Spawn a bug, a sealie, or a bandit",
+        "Board a ship",
+        "Speak the dump",
+        "Set the quest on Fluxom Gate because its x matches Pinewood"
+      ],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The last raid is still a stone. The strips were counted as plants.",
+        "gossip_on_complete": "A captain walked the dye strip and came back without a war.",
+        "prop_or_door": "The marker stone. No new bug mesh. No refugee hull."
+      },
+      "turn_in": {"npc_id": "strip_captain_mara", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s06_marks_untranslated",
+      "title": "Ruins — Three Marks, Unread",
+      "world_id": "Tunya",
+      "giver_npc_id": "ruins_scholar_aldra",
+      "giver_spawn": "presence_aldra_entrance. Stratus only. She is not relocated to Nil.",
+      "backstory_id": "story_q_marks",
+      "does_not_replace": ["tunya_nil_protection_1_silent_walk", "tunya_nil_protection_2_inner_grove", "q_tunya_heron_hold"],
+      "objectives": [
+        {
+          "id": "obj_q_s06_marks_1",
+          "verb": "talk",
+          "target": "ruins_scholar_aldra",
+          "count": 1,
+          "text": "At the ruins entrance, take clay and charcoal. Aldra wants three marks copied. She does not want a reading."
+        },
+        {
+          "id": "obj_q_s06_marks_2",
+          "verb": "reach",
+          "target": "ruins_sealed",
+          "count": 1,
+          "text": "Walk to the sealed chamber, 27 m from the entrance. Stay outside. The year-380 discovery said the original people are unknown. Leave that sentence true."
+        },
+        {
+          "id": "obj_q_s06_marks_3",
+          "verb": "witness",
+          "target": "three_untranslated_marks",
+          "count": 3,
+          "text": "Copy three marks onto clay. Do not translate them. Do not ask Aldra for the glyph she has not offered."
+        },
+        {
+          "id": "obj_q_s06_marks_4",
+          "verb": "deliver",
+          "target": "ruins_scholar_aldra",
+          "count": 1,
+          "text": "Bring the clay back to the entrance. The chamber stays sealed. Nil stays unentered."
+        }
+      ],
+      "fail": [
+        "Enter the sealed chamber",
+        "Translate a mark or receive Aldra's secret reading",
+        "Cross Nil Threshold",
+        "Mint the rubbing as a DTU",
+        "Walk the extends_world label into the Crucible"
+      ],
+      "rewards": {"xp": 55, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Three ruin marks were copied and none were read.",
+        "gossip_on_complete": "A scholar sent someone to the sealed door and the door stayed shut.",
+        "prop_or_door": "Clay in the hand. No new ruin kit. The veil kit's limestone is the ground, not a translated stele."
+      },
+      "turn_in": {"npc_id": "ruins_scholar_aldra", "requires_all_objectives": true}
+    }
+  ]
+}

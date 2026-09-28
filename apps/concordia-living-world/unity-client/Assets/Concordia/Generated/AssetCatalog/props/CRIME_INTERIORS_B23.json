@@ -1,0 +1,761 @@
+{
+  "batch": "B23_props_crime",
+  "world_ids": [
+    "Crime"
+  ],
+  "kit_id": "arch_kit_crime_coast",
+  "count": 15,
+  "kits": [
+    {
+      "id": "prop_kit_crime_tenement",
+      "parent_hall": "arch_hero_crime_tenement_bay",
+      "softenter_adjacent": true,
+      "snap_grid_m": 1,
+      "ids": [
+        "prop_crime_se_radiator",
+        "prop_crime_se_mattress_roll",
+        "prop_crime_se_loose_sash",
+        "prop_crime_se_pipe_elbow",
+        "prop_crime_se_cage_bulb",
+        "prop_crime_se_tin_cup",
+        "prop_crime_se_plaster_curl",
+        "prop_crime_se_newel"
+      ]
+    },
+    {
+      "id": "prop_kit_crime_warehouse",
+      "parent_hall": "arch_hero_crime_warehouse_door",
+      "softenter_adjacent": false,
+      "near_landmark": "arch_hero_crime_tenement_bay",
+      "snap_grid_m": 1,
+      "ids": [
+        "prop_crime_wh_pallet",
+        "prop_crime_wh_drum",
+        "prop_crime_wh_chain_coil",
+        "prop_crime_wh_tarp_fold",
+        "prop_crime_wh_rebar_stub",
+        "prop_crime_wh_drain",
+        "prop_crime_wh_scrap_stool"
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "prop_crime_se_radiator",
+      "display_name": "Tenement Radiator",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "interior"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One cold cast-iron column radiator, four ribs, rust at the feet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Plaster contact, wet stain, no steam, no valve wheel as a second subject. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cold cast-iron column radiator, four ribs, rust at the feet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Plaster contact, wet stain, no steam, no valve wheel as a second subject. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A vertical rib block, wider than it is deep.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Ground-floor heat that is off. No steam mesh. Not the street lamp.",
+      "scale_vs_player": "0.9 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_radiator/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "no_steam_mesh": true
+      }
+    },
+    {
+      "id": "prop_crime_se_mattress_roll",
+      "display_name": "Rolled Mattress",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "interior"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One stained mattress rolled and tied with a single rope, standing on end. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cloth stain, rope band, brick contact. No sleeper, no second roll, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stained mattress rolled and tied with a single rope, standing on end. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cloth stain, rope band, brick contact. No sleeper, no second roll, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thick vertical cylinder with one rope band.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Someone left. The roll is empty.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_mattress_roll/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_se_loose_sash",
+      "display_name": "Loose Window Sash",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "interior"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One wooden window sash leaning on the floor, one pane missing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Peeling paint, empty light, no glass shard field, no installed bay window. Not the tenement hero. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wooden window sash leaning on the floor, one pane missing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Peeling paint, empty light, no glass shard field, no installed bay window. Not the tenement hero. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A rectangle frame with one dark hole.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "The bay window stays on arch_hero_crime_tenement_bay. This sash is loose.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_loose_sash/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_se_pipe_elbow",
+      "display_name": "Wet Pipe Elbow",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "interior"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One wet iron pipe elbow with a single drip bead, sitting on the floor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust joint, one bead, no run of pipe, no fire escape, no gun barrel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wet iron pipe elbow with a single drip bead, sitting on the floor. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust joint, one bead, no run of pipe, no fire escape, no gun barrel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "An L of pipe.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Interior drip. Not arch_hero_crime_escape_stair and not env_crime_fire_escape.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_pipe_elbow/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_se_cage_bulb",
+      "display_name": "Cage Sodium Bulb",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "practical"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One short wall bracket holding a wire cage around a single sodium bulb. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grime on the cage, bulb is a small teardrop, no street pole, no neon tube. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short wall bracket holding a wire cage around a single sodium bulb. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grime on the cage, bulb is a small teardrop, no street pole, no neon tube. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small cage ball on a short arm.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Interior practical. Not env_crime_sodium_lamp and not prop_sodium_lamp. Emissive is sodium only.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_cage_bulb/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "emissive_hex": "#e0b050",
+        "not_street_lamp": true
+      }
+    },
+    {
+      "id": "prop_crime_se_tin_cup",
+      "display_name": "Dented Tin Cup",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One dented tin cup, empty, with a sodium stain inside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One handle tab, rim bent, no saucer, no clay. Not the Hub cup. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One dented tin cup, empty, with a sodium stain inside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One handle tab, rim bent, no saucer, no clay. Not the Hub cup. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short cylinder with one handle tab.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Table clutter. Not prop_hub_se_clay_cup.",
+      "scale_vs_player": "0.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_tin_cup/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_se_plaster_curl",
+      "display_name": "Plaster Curl",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One curled plaster flake with stained brick showing on the back. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Thin curl, grit, one piece on the floor. No pile, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One curled plaster flake with stained brick showing on the back. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Thin curl, grit, one piece on the floor. No pile, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin curl, readable as debris.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Wall failure as one flake. Brick stays the foundation.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_plaster_curl/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_se_newel",
+      "display_name": "Interior Newel",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement",
+        "interior"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One interior iron newel post, square shaft, paint peel, ball cap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Floor plate, no stair flight, no zigzag escape, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One interior iron newel post, square shaft, paint peel, ball cap. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Floor plate, no stair flight, no zigzag escape, no person. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A square post with a ball cap.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Inside the bay. Not the exterior escape stair.",
+      "scale_vs_player": "1.0 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_newel/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_pallet",
+      "display_name": "Empty Warehouse Pallet",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One empty timber pallet, one board splintered, nothing stacked on it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, nail heads, asphalt contact. No crate, no stencil, no tally marks. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty timber pallet, one board splintered, nothing stacked on it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet wood, nail heads, asphalt contact. No crate, no stencil, no tally marks. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat grid rectangle.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Apron clutter. Not prop_dock_crate.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_pallet/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_drum",
+      "display_name": "Closed Oil Drum",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One closed steel drum, lid on, one rust band, no mark. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dented shoulder, wet highlight, no logo, no lettering, no second drum. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One closed steel drum, lid on, one rust band, no mark. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dented shoulder, wet highlight, no logo, no lettering, no second drum. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cylinder with a lid lip.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Sits beside the roll-door clear, not in it. Unlettered.",
+      "scale_vs_player": "0.9 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_drum/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "keep_door_clear": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_chain_coil",
+      "display_name": "Cargo Chain Coil",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One coil of cargo chain on the floor, both ends tucked into the coil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Salt rust, flat spiral, no hook weapon, no person, no hoist. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One coil of cargo chain on the floor, both ends tucked into the coil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Salt rust, flat spiral, no hook weapon, no person, no hoist. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat spiral, low.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Cargo. Not wpn_imp_dock_hook and not prop_dock_hook.",
+      "scale_vs_player": "0.7 m wide",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_chain_coil/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_tarp_fold",
+      "display_name": "Folded Wet Tarp",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 1000,
+      "aura_prompt": "One folded wet tarp, a dark cloth brick with a rope around the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Water bead, hem fray, no awning frame, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One folded wet tarp, a dark cloth brick with a rope around the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Water bead, hem fray, no awning frame, no lettering. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low brick of cloth.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Warehouse fold. Not prop_hub_se_awning_bundle.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_tarp_fold/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 1000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_rebar_stub",
+      "display_name": "Set Rebar Stub",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One bent rebar stub set in a small concrete chip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One kink, rust, chip is the base. Not a held pike, not a rifle, not a loose rod. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One bent rebar stub set in a small concrete chip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One kink, rust, chip is the base. Not a held pike, not a rifle, not a loose rod. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short kinked rod in a lump.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Cast into the apron. Not a B27 pole.",
+      "scale_vs_player": "0.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_rebar_stub/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_drain",
+      "display_name": "Warehouse Floor Drain",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One square iron floor drain set in a single concrete tile, wet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grate slots, one tile, no curb, no steam wisp, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square iron floor drain set in a single concrete tile, wet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Grate slots, one tile, no curb, no steam wisp, no logo. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A square with a dark grate.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Interior apron. Not env_crime_gutter_mouth.",
+      "scale_vs_player": "0.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_drain/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true
+      }
+    },
+    {
+      "id": "prop_crime_wh_scrap_stool",
+      "display_name": "Scrap Timber Stool",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "warehouse_density",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse",
+        "sittable"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One scrap-timber stool, three uneven legs, empty seat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Nail heads, wet seat, no cushion, no lettering. Not the Hub stool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One scrap-timber stool, three uneven legs, empty seat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Nail heads, wet seat, no cushion, no lettering. Not the Hub stool. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low triangle of legs under a small seat.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Sit target for Sitting clips. Not prop_hub_se_stool.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_scrap_stool/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "sittable": true
+      }
+    }
+  ]
+}

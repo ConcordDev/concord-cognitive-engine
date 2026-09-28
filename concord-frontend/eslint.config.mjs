@@ -9,6 +9,7 @@ const __dirname = dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const lensManifestPlugin = require('./eslint-rules/lens-manifest.js');
+const reactHooks = require('eslint-plugin-react-hooks');
 
 // eslint-config-next@16 ships native ESLint 9 flat-config arrays (each entry
 // already has real `plugins: {react: <object>}` mappings, not legacy string
@@ -25,6 +26,7 @@ const eslintConfig = [
   ...nextCoreWebVitals,
   ...nextTypescript,
   {
+    plugins: { 'react-hooks': reactHooks },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',

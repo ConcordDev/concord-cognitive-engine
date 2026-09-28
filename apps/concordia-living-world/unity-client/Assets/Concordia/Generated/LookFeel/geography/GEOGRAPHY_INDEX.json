@@ -1,0 +1,230 @@
+{
+  "schema": "concordia-lookfeel-geography/1.0",
+  "units_note": "World centers are megaworld kilometres from MegaworldMap. Disc radii except Hub are design-intent. Hub metro 40 km and court 12 km are authored. Tunya and Sere political claims stay on their local metre plane.",
+  "worlds": [
+    {
+      "world_id": "Hub",
+      "file": "GEO_Hub.md",
+      "climate": "temperate civic, clear",
+      "center_km": {
+        "x_km": 0.0,
+        "z_km": 0.0
+      },
+      "radius_km": 40,
+      "elevation": [
+        "flat court",
+        "low wall"
+      ],
+      "hydrology": [
+        "civic drain"
+      ],
+      "density": "plaza high, approaches sparse"
+    },
+    {
+      "world_id": "Fantasy",
+      "file": "GEO_Fantasy.md",
+      "climate": "forest to alpine, clear",
+      "center_km": {
+        "x_km": 0.0,
+        "z_km": 400.0
+      },
+      "radius_km": 110,
+      "elevation": [
+        "wildwood",
+        "fold",
+        "alpine rim"
+      ],
+      "hydrology": [
+        "waterfall shelf",
+        "inner veil shoal"
+      ],
+      "density": "tracks and shrines"
+    },
+    {
+      "world_id": "Tunya",
+      "file": "GEO_Tunya.md",
+      "climate": "multi-biome, grove default",
+      "center_km": {
+        "x_km": -282.84,
+        "z_km": 282.84
+      },
+      "radius_km": 110,
+      "countries": [
+        {
+          "id": "masond",
+          "placement": "design_intent_sector",
+          "country_id_on_sheet": null,
+          "grammar": "cliff arrival"
+        },
+        {
+          "id": "asbir",
+          "placement": "design_intent_sector",
+          "country_id_on_sheet": "present_claims_overlap",
+          "grammar": "buried archive dune"
+        },
+        {
+          "id": "sangree",
+          "placement": "design_intent_sector",
+          "grammar": "fire forge",
+          "forge_authority": "GoldenSlice"
+        },
+        {
+          "id": "aekon",
+          "placement": "design_intent_sector",
+          "grammar": "glacial ark",
+          "ice_spell": false
+        },
+        {
+          "id": "fluxom",
+          "placement": "design_intent_sector",
+          "grammar": "dye harbor",
+          "local_pin_m": {
+            "name": "Fluxom Gate",
+            "x": 62,
+            "z": 18,
+            "frame": "tunya_local_metres"
+          }
+        },
+        {
+          "id": "nil",
+          "placement": "design_intent_sector",
+          "grammar": "listening grove"
+        },
+        {
+          "id": "fallback",
+          "names": [
+            "Dinye",
+            "Sahm",
+            "Bahiij",
+            "Akeia",
+            "Vessine",
+            "Corre",
+            "Dormas",
+            "Vrellan",
+            "Sandrun"
+          ],
+          "placement": "inherit terrace grammar; do not invent kilometres",
+          "unplaced_names": [
+            "Hold of First Arrival",
+            "twelfth lip",
+            "sky temple",
+            "quiet quarter",
+            "tide temple",
+            "old Fluxom harbor",
+            "ancestor caves"
+          ]
+        }
+      ]
+    },
+    {
+      "world_id": "Ruins",
+      "file": "GEO_Ruins.md",
+      "climate": "ash",
+      "center_km": {
+        "x_km": 282.84,
+        "z_km": 282.84
+      },
+      "radius_km": 110,
+      "elevation": [
+        "forum flat",
+        "rib wilds"
+      ],
+      "hydrology": [
+        "one spout"
+      ]
+    },
+    {
+      "world_id": "Crime",
+      "file": "GEO_Crime.md",
+      "climate": "rain coast",
+      "center_km": {
+        "x_km": -282.84,
+        "z_km": -282.84
+      },
+      "radius_km": 110,
+      "hydrology": [
+        "river harbor",
+        "exodus strait ~24 km to Sere"
+      ]
+    },
+    {
+      "world_id": "Cyber",
+      "file": "GEO_Cyber.md",
+      "climate": "haze neon",
+      "center_km": {
+        "x_km": 400.0,
+        "z_km": 0.0
+      },
+      "radius_km": 110,
+      "elevation": [
+        "stacks",
+        "under-district"
+      ]
+    },
+    {
+      "world_id": "Frontier",
+      "file": "GEO_Frontier.md",
+      "climate": "wind",
+      "center_km": {
+        "x_km": -400.0,
+        "z_km": 0.0
+      },
+      "radius_km": 110,
+      "unplaced": [
+        "The Last Dome: one mile past the frontier gate"
+      ]
+    },
+    {
+      "world_id": "Superhero",
+      "file": "GEO_Superhero.md",
+      "climate": "permanent dawn",
+      "center_km": {
+        "x_km": -0.0,
+        "z_km": -400.0
+      },
+      "radius_km": 110,
+      "elevation": [
+        "skyline",
+        "roofs",
+        "arterials"
+      ]
+    },
+    {
+      "world_id": "Crucible",
+      "file": "GEO_Crucible.md",
+      "climate": "drift",
+      "center_km": {
+        "x_km": 282.84,
+        "z_km": -282.84
+      },
+      "radius_km": 110,
+      "elevation": [
+        "folded basalt",
+        "interrupted road"
+      ]
+    },
+    {
+      "world_id": "Sere",
+      "file": "GEO_Sere.md",
+      "climate": "smog extraction",
+      "center_km": {
+        "x_km": -227.76,
+        "z_km": -489.62
+      },
+      "radius_km": 80,
+      "gate": null,
+      "regions": [
+        "old_capital",
+        "spire_city",
+        "furnace_belt",
+        "breadlands",
+        "flooded_lowland",
+        "drowned_provinces",
+        "contested_passes",
+        "offshore_haven",
+        "river_delta",
+        "highland"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "task_id": "ec707909-0ad7-4650-86ce-ed18953e8606",
+  "original_generation_task_id": "3384e26f-3901-4d56-9589-168c796306ef",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/3384e26f-3901-4d56-9589-168c796306ef/tripo_model_3384e26f-3901-4d56-9589-168c796306ef.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvMzM4NGUyNmYtMzkwMS00ZDU2LTk1ODktMTY4Yzc5NjMwNmVmL3RyaXBvX21vZGVsXzMzODRlMjZmLTM5MDEtNGQ1Ni05NTg5LTE2OGM3OTYzMDZlZi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzcwMjN9fX1dfQ__&Signature=v3fYEMmZY-BOuLX5zlcQJsp0QSRNmP6cjre6rYuXn0onBtN-mU9f7dboWC8k1RLeVSL-~Mk9w2bqEmfMh1x70PhHWa82B0mH9zpoTuSuqhwCXfwN7zXCQAoJpHiFo6eO892WfB5AVtJQl-WmH4OfeK32Dx-CPTEgXc3L5OtDPz1queacH9wwJOX7Zy~mrfv9rGnJCIw5V2qbEK-UTrivBCvqZggc5QNy7EZTe-dYgqNe5yoifWPwjCywpzhTje7-joi9CuUv7CZzS641~Y9x7OZfZzcKf2pKkibHKF6ANqoTvbzxHht-EU9E7NPPnFTWoTfvi7mm-gPz-ek1syFE7Q__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:50:30.014457",
+  "description": "Provisional, non-canon generation brief: build a vertical-city landmark composition around the unfinished Luminary-built skyscraper rooftop where lore_first_battle_at_dawn occurred, with the public/emergent conflict established by lore_first_sighting and lore_drone_swarm_incident. Keep Enforcers' Movement neighborhood mutual-aid infrastructure opposed to Luminary Industries' polished centralized massing. Reserve binding at Chunk_Superhero/VisualFidelity/PermanentDawnHero.",
+  "negative_prompt": "No final victory monument, generic comic logo, invented superpower anatomy, invented casualties beyond authored lore, fantasy castle, cyber mainframe tower, or resolved Enforcer/Luminary conflict.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/PermanentDawnHero/PermanentDawnHero_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/PermanentDawnHero/PermanentDawnHero.fbx"
+}

@@ -1,0 +1,297 @@
+{
+  "batch": "B23_props_global",
+  "count": 60,
+  "file": "props/GLOBAL_CLUTTER_B23.json",
+  "kits": [
+    {
+      "id": "prop_kit_hub_market_six",
+      "world_ids": [
+        "Hub"
+      ],
+      "parent_hall": "arch_hero_hub_market_facade",
+      "arch_kit": "arch_kit_hub_court",
+      "softenter_adjacent": false,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_hub_cl_brass_saucer",
+        "prop_hub_cl_lath_lean",
+        "prop_hub_cl_wood_shave",
+        "prop_hub_cl_twine_hank",
+        "prop_hub_cl_iron_nail",
+        "prop_hub_cl_crate_lid"
+      ],
+      "note": "Market edge, outside the 42 m disk. Council hall kit stays."
+    },
+    {
+      "id": "prop_kit_sunder_shrine_six",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "parent_hall": "arch_hero_sunder_shrine_hall",
+      "arch_kit": "arch_kit_fantasy_sunder",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_sunder_cl_horn_cup",
+        "prop_sunder_cl_stake_lean",
+        "prop_sunder_cl_granite_chip",
+        "prop_sunder_cl_reed_tie",
+        "prop_sunder_cl_harness_ring",
+        "prop_sunder_cl_root_seat"
+      ],
+      "note": "Shrine apron. The hall stays the SoftEnter hero."
+    },
+    {
+      "id": "prop_kit_tunya_terrace_six",
+      "world_ids": [
+        "Tunya"
+      ],
+      "parent_hall": "arch_hero_tunya_terrace_hall",
+      "arch_kit": "arch_kit_tunya_veil",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_tunya_cl_dye_bowl",
+        "prop_tunya_cl_cane_lean",
+        "prop_tunya_cl_lime_chip",
+        "prop_tunya_cl_fiber_hank",
+        "prop_tunya_cl_graft_peg",
+        "prop_tunya_cl_palm_rest"
+      ],
+      "note": "Terrace apron. Fruit stays on the terrace tree."
+    },
+    {
+      "id": "prop_kit_ruins_catalogue_six",
+      "world_ids": [
+        "Ruins"
+      ],
+      "parent_hall": "arch_hero_ruins_catalogue_hall",
+      "arch_kit": "arch_kit_ruins_ash",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_ruins_cl_ash_bowl",
+        "prop_ruins_cl_plaster_stick",
+        "prop_ruins_cl_cinder",
+        "prop_ruins_cl_shroud_fold",
+        "prop_ruins_cl_iron_staple",
+        "prop_ruins_cl_slab_seat"
+      ],
+      "note": "Catalogue apron. No lettering. Underworld fauna stay separate."
+    },
+    {
+      "id": "prop_kit_crime_alley_six",
+      "world_ids": [
+        "Crime"
+      ],
+      "parent_hall": "arch_hero_crime_tenement_bay",
+      "arch_kit": "arch_kit_crime_coast",
+      "softenter_adjacent": false,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_crime_cl_neck_bottle",
+        "prop_crime_cl_board_lean",
+        "prop_crime_cl_brick_chip",
+        "prop_crime_cl_rag_wad",
+        "prop_crime_cl_big_washer",
+        "prop_crime_cl_crate_end"
+      ],
+      "note": "Alley, out of the SoftEnter first frame. Tenement and warehouse kits stay."
+    },
+    {
+      "id": "prop_kit_grid_bridge_six",
+      "world_ids": [
+        "Cyber"
+      ],
+      "parent_hall": "arch_hero_cyber_bridge_hall",
+      "arch_kit": "arch_kit_cyber_grid",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_grid_cl_resin_cup",
+        "prop_grid_cl_offcut_lean",
+        "prop_grid_cl_acrylic_chip",
+        "prop_grid_cl_fiber_hank",
+        "prop_grid_cl_blank_clip",
+        "prop_grid_cl_low_crate"
+      ],
+      "note": "Bridge-hall apron. No digit. Not the sky floor."
+    },
+    {
+      "id": "prop_kit_frontier_cabin_six",
+      "world_ids": [
+        "Frontier"
+      ],
+      "parent_hall": "arch_hero_frontier_cabin_hall",
+      "arch_kit": "arch_kit_frontier_road",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_front_cl_tin_bowl",
+        "prop_front_cl_tent_stake",
+        "prop_front_cl_salt_chip",
+        "prop_front_cl_canvas_roll",
+        "prop_front_cl_buckle",
+        "prop_front_cl_box_end"
+      ],
+      "note": "Cabin apron. Not the plaque. Not the wind sail."
+    },
+    {
+      "id": "prop_kit_dawn_spire_six",
+      "world_ids": [
+        "Superhero"
+      ],
+      "parent_hall": "arch_hero_dawn_spire_hall",
+      "arch_kit": "arch_kit_superhero_dawn",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_dawn_cl_glass_tumbler",
+        "prop_dawn_cl_strut_lean",
+        "prop_dawn_cl_paint_chip",
+        "prop_dawn_cl_tape_roll",
+        "prop_dawn_cl_blank_disc",
+        "prop_dawn_cl_pad_stool"
+      ],
+      "note": "Spire apron. Not the roof pad. Not a victory plinth."
+    },
+    {
+      "id": "prop_kit_crucible_lattice_six",
+      "world_ids": [
+        "Crucible"
+      ],
+      "parent_hall": "arch_hero_crucible_lattice_hall",
+      "arch_kit": "arch_kit_crucible_lattice",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_cruc_cl_slag_cup",
+        "prop_cruc_cl_quench_rod",
+        "prop_cruc_cl_quartz_chip",
+        "prop_cruc_cl_wire_hank",
+        "prop_cruc_cl_open_pin",
+        "prop_cruc_cl_ingot_seat"
+      ],
+      "note": "Lattice apron. Cold. The seam stays open. Construct cap stays 0."
+    },
+    {
+      "id": "prop_kit_sere_tally_six",
+      "world_ids": [
+        "Sere"
+      ],
+      "parent_hall": "arch_hero_sere_tally_hall",
+      "arch_kit": "arch_kit_sere_mark",
+      "softenter_adjacent": true,
+      "softenter_landmark": false,
+      "snap_grid_m": 1,
+      "sheet_slots": 6,
+      "sheet_roles": [
+        "vessel",
+        "lean",
+        "chip",
+        "bundle",
+        "fitting",
+        "rest"
+      ],
+      "ids": [
+        "prop_sere_cl_soot_bowl",
+        "prop_sere_cl_mark_stake",
+        "prop_sere_cl_tar_chip",
+        "prop_sere_cl_rag_knot",
+        "prop_sere_cl_cold_hook",
+        "prop_sere_cl_firebrick"
+      ],
+      "note": "Tally apron. Cold. No flame tongue. Not the furnace belt."
+    }
+  ]
+}

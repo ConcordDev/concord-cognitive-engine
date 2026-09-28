@@ -1,0 +1,568 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S10_crime_politics_sidequests",
+  "world_id": "Crime",
+  "lore_world_id": "crime",
+  "display_world": "Iron Coast",
+  "facet": "politics_quests",
+  "title": "Iron Coast — politics, culture, side quests, vendors",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Crime lore, factions, countries, npc sheets, volume quests, density weights, S09 caps, or the enc_outstanding clock.",
+  "canon_pins": {
+    "world_id": "Crime",
+    "canon_world_def_title": "Crime World",
+    "display_name": "Iron Coast",
+    "refusal": "Refusal of Consequence",
+    "the_no": "Delay is not cancellation.",
+    "refusal_line": "What we do will not catch up to us.",
+    "law_text": "The bill always arrives. Witnesses remember.",
+    "style_id": "ghost",
+    "style_name": "Ghost Contracts",
+    "style_verbs": ["Switch", "Iron", "Delay the bill", "Invoice"],
+    "steel_live": true,
+    "fight_style_people": "WingChun. CX body. Empty hands on the uniques in this slice. S09 keeps the hook and the folded switchknife on its own roles. This facet arms neither as a quest reward.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. A Crime-local anchor is not inside that disk. Steel carried onto the Hub plaza and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle": "5π/4",
+    "gate_short_name": "CRIME",
+    "gate_name_in_canon": "Crime World",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "rule": "Hub salt road. Every id in this slice has cap 0 there. Do not letter a coast office with that name."
+    },
+    "humanoid_body": "CX male or CX female. Concordia face. Plates and cloth on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_L, CX_Grip_R, CX_Back. A Quaternius body is not. A child is not stood in for an adult.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#3a342c", "#8a6a48", "#c8a060", "#5c3038"],
+    "materials": ["stained brick", "rust corrugate", "asphalt", "rebar", "wet timber", "brass only on an unplaced foundry"],
+    "kit": "arch_kit_crime_coast",
+    "style_sector": "crime",
+    "dress_vocab": "street",
+    "firearms": "Faction sheets name pistols, a baton, and Mama's shotgun The Rose. Firearm verb coverage is zero. This slice spawns no firearm mesh. The coat and the gold knuckle stay. The gun stays on the sheet."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/crime/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/crime/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/crime/factions-extra.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/crime/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/crime/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/crime/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/crime/quests/",
+    "canon_cs": "Canon.cs WorldId.Crime, gate 5π/4, HubLawRadius 42, steel live, WingChun, fauna aliases hound and drone",
+    "geography_fn": "WorldGeography.BuildPlaces DeterministicOffset(settlement/crime/{faction_id}:{district}, radius 8+2i). StableHash is the unchecked 32-bit loop in that file.",
+    "kit": "native-bible/architecture/KITS.json arch_kit_crime_coast",
+    "taxonomy": "native-bible/01_TAXONOMY.md Crime row",
+    "roles": ["npc_role_coast_labor", "npc_role_coast_bandit"],
+    "vendors": "native-bible/volume/VENDORS_AND_ITEMS.json vend_crime_bell",
+    "density": "native-bible/volume/DENSITY_TABLES.json Crime block",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Crime eight",
+    "prior_slice": "S09_crime_mobs_raids"
+  },
+  "left_in_place": [
+    "q_crime_bell_tip",
+    "q_crime_maddox_mark",
+    "q_crime_invoice_lands",
+    "q_crime_gull_drop",
+    "q_crime_folded_knife",
+    "q_crime_dahlia_cup",
+    "q_crime_morgue_cross",
+    "q_crime_rose_errand",
+    "q_crime_collar_stays",
+    "q_crime_hood_reading",
+    "q_crime_paper_stays_dry",
+    "crime_thorpe_01_bell",
+    "crime_thorpe_02_maddox",
+    "crime_thorpe_03_haldane",
+    "crime_dahlia_01_meet",
+    "crime_dahlia_02_steal",
+    "crime_dahlia_03_destination",
+    "crime_ada_01_morgue",
+    "crime_ada_02_cross",
+    "crime_ada_03_return",
+    "enc_outstanding",
+    "enc_stair_switch",
+    "enc_hook_shift",
+    "enc_rotor_saddle",
+    "raid_unpaid_shift",
+    "vend_crime_bell"
+  ],
+  "unresolved_on_purpose": [
+    "Vesper Kane sold the unit. That stays lore_unit_betrayal.hidden_truth. Mama has not told Jax. No quest says the name.",
+    "The drone corridor was Mama's logistics, and Vesper used it without tariff. That stays lore_drone_swarm_aftermath.hidden_truth. The eleven dead are not a gunfight.",
+    "The Voss letters are a cross-world contingency. They stay lore_voss_envoy.hidden_truth. No cousin is stood on the estate.",
+    "Jax's survivor list, the Luminary operative inside it, and Cipher's search for that operative stay their secrets. Neither man has a pin in this slice.",
+    "Cipher learned ASL before the injury. Unrendered.",
+    "Tomás has been talking to a federal agent for six weeks, and he does not know he is the second-choice heir. He is not stood beside Mama. The role line that names the second choice is not dialogue.",
+    "Renny walked one letter toward Fantasy off the books. That is a cross-world secret. He is not stood on the dock, and this slice does not open the Link.",
+    "The lieutenant on the federal conversation is Marquez's godson. The public tension says lieutenant. The quest says lieutenant. The kinship stays the secret.",
+    "Iris is the anonymous source, and Navarro has already identified her and is letting the case build. Both facts are secrets. The public tensions still say the source is unknown and that some other accountant keeps a private ledger. The two quests do not collapse those sentences into each other.",
+    "Halloran's partner was killed on an Iron Rose hit. The fifteen-year file stays his secret. The daughter, the man she is seeing, and that man's father stay the faction tension and a fail condition, not a speech he gives.",
+    "The nephew's name is Marco, and Dom is reaching toward Halloran for a surveillance contract. The public tension says nephew and does not name him. The quest does not name him and does not send Dom to the walkup.",
+    "Bell saw a Thorpe shipment cross-loaded with Hub Bazaar goods. q_crime_bell_tip already owns one purchased tip. This slice does not buy it and does not ask about the Hub.",
+    "Maddox owes Iniko three favours. The wharf has no placed set. He is not given a stall.",
+    "Dahlia holds Silas's ledger for emergencies. crime_dahlia_02_steal already owns that door. The cup quest stays the volume row.",
+    "Ada's second log and the cross-world predation read stay crime_ada_anomaly_log and her secret. q_crime_morgue_cross stays the volume extension.",
+    "Pia's indictment file stays her secret. crime_thorpe_03_haldane stays the canon delivery. The courthouse has no district id, so she is not stood.",
+    "Old Lou's back room is neutral ground for the Thorpes and the precinct. S09 already left that secret unrendered. The Sunken Anchor has no coordinate. q_crime_collar_stays remains his only errand.",
+    "Pidgeon saw a shimmer at the wharf. A child is not placed on a floor, and the wharf set is still unplaced.",
+    "Mama's shotgun, The Rose, is on her appearance sheet. It is not spawned. No quest hands it over.",
+    "The generated row Iron Racket reuses cipher_marks and carries a generated motto. It is not an eighth polity. The generated coast names spawn nothing.",
+    "thorpe_family, crime_watch, city_judiciary, and wharf_workers have faction ids on people and no country row, so they have no CountryCenter and no hash pin.",
+    "Role faction string delgado_syndicate and volume strings ghost_contracts are not the canon ids. This slice writes no faction delta, so it does not open a third book."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_outstanding, enc_stair_switch, enc_hook_shift, enc_rotor_saddle, and raid_unpaid_shift stay S09. They are the coast's combat. A captain, a matriarch, an accountant, an agent, a detective, a block lead, and a corner sitter have no health table. Killing any of them fails the quest they give and does not drop a stamp, a slip, or a pin.",
+  "standing_ecology": {
+    "owner": "S09_crime_mobs_raids",
+    "retune": false,
+    "political_reading": [
+      {
+        "id": "npc_role_coast_labor",
+        "reading": "Budget 6 stays S09's, spent on the warehouse anchor first. The role tag says delgado_syndicate. The country file puts that anchor inside both circles. They are dock muscle. They are not Mama's three unnamed skimmers and not Dom's block."
+      },
+      {
+        "id": "npc_role_coast_bandit",
+        "reading": "Budget 3 stays on the unclaimed street. Hoods are not the North Market Gang, not the 14th, and not a Hexshore clerk."
+      },
+      {
+        "id": "faun_dock_hound",
+        "reading": "Three solos on the warehouse, zero while the unpaid shift fields its own two. A collar is a working mark. Politics does not add a fourth dog at an office."
+      },
+      {
+        "id": "faun_sodium_rat",
+        "reading": "Night floor of the gap. Not a Hexshore ledger and not Ada's unexplained cause."
+      },
+      {
+        "id": "faun_rain_gull",
+        "reading": "Cap stays zero until the wharf set is placed. q_crime_gull_drop is not rewritten. A gull is not moved inland to mark an office."
+      },
+      {
+        "id": "mon_coast_billhound",
+        "reading": "The bill, on the volume clock, on pilings that still have no coordinate. Precincts and syndicates do not get a second collector."
+      },
+      {
+        "id": "hyb_billdrone",
+        "reading": "One rotor at dawn on the gap, inside enc_rotor_saddle only. It is not the Luminary strike and not a federal eye."
+      }
+    ]
+  },
+  "geography": {
+    "method": "Country centers and radii are countries.json. District pins are DeterministicOffset from the settlement id settlement/crime/{faction_id} plus the district name, radius 8 m plus 2 m times the district index. S09's mob floors used a fixed (+8, −6) step of 10 m. Those floors are cited and not moved. They are not the hash places, and this facet does not stand a unique on a fixed-step label.",
+    "s09_floors_not_moved": {
+      "floor_dockside_warehouses": {"x": 10.72, "z": 32.9, "note": "Placed anchor S09 already uses for labor, hounds, the hook window, and the unpaid shift. 10.0 m from the Ghost capital along the fixed step."},
+      "floor_unclaimed_street": {"x": 8.09, "z": -2.55, "gap_m": 37.58, "note": "Derived gap between the Ghost circle and the North Market circle. Bandits, rats, the stair window, and the rotor window stay S09's."},
+      "fixed_step_labels_left_empty": [
+        {"id": "s09_uptown_label", "x": 1.59, "z": 34.5},
+        {"id": "s09_federal_label", "x": 46.81, "z": 37.1},
+        {"id": "s09_north_market_label", "x": 21.45, "z": -49.99}
+      ]
+    },
+    "claims": [
+      {"country_id": "ghost_network", "x": 2.72, "z": 38.9, "radius_m": 23.0},
+      {"country_id": "iron_rose_syndicate", "x": -6.41, "z": 40.5, "radius_m": 28.0},
+      {"country_id": "crime_corrupt_precinct", "x": 23.05, "z": -54.31, "radius_m": 23.0},
+      {"country_id": "crime_white_collar_ring", "x": -49.17, "z": -16.93, "radius_m": 25.5},
+      {"country_id": "crime_federal_task_force", "x": 38.81, "z": 43.1, "radius_m": 23.0},
+      {"country_id": "crime_pi_agency", "x": 24.0, "z": -53.9, "radius_m": 23.0},
+      {"country_id": "crime_north_market_gang", "x": 13.45, "z": -43.99, "radius_m": 23.0}
+    ],
+    "claim_relations_m": {
+      "ghost_rose_center": 9.27,
+      "ghost_rose_overlap": 41.73,
+      "ghost_federal_center": 36.33,
+      "ghost_federal_overlap": 9.67,
+      "ghost_north_market_center": 83.58,
+      "ghost_north_market_gap": 37.58,
+      "precinct_halloran_center": 1.03,
+      "precinct_halloran_overlap": 44.97,
+      "precinct_north_market_overlap": 31.91,
+      "halloran_north_market_overlap": 31.53,
+      "hexshore_north_market_gap": 19.72
+    },
+    "hash_pins": [
+      {"district": "dockside_warehouses", "faction_id": "ghost_network", "index": 0, "x": 2.3, "z": 46.89, "use": "Not the S09 warehouse. 16.33 m from that anchor. No unique. Labor is not moved here."},
+      {"district": "abandoned_subway_lines", "faction_id": "ghost_network", "index": 1, "x": 12.71, "z": 39.25, "use": "6.65 m from the S09 warehouse. Still not that floor. Cap 0. Jax is not stood in a tunnel."},
+      {"district": "uptown_blocks", "faction_id": "iron_rose_syndicate", "index": 0, "x": -14.14, "z": 42.57, "use": "Not S09's fixed-step label (1.59, 34.5). Empty."},
+      {"district": "river_market", "faction_id": "iron_rose_syndicate", "index": 1, "x": -9.83, "z": 31.1, "use": "Empty. No stall is invented."},
+      {"district": "iron_rose_estate", "faction_id": "iron_rose_syndicate", "index": 2, "x": -7.66, "z": 28.57, "use": "Mama, 8–12. 12 m from the Rose capital, 14.64 m from the Ghost capital, 18.88 m from the S09 warehouse. Inside the Ghost disk. The estate is not inland of the docks."},
+      {"district": "luminary_industries_back_channels", "faction_id": "iron_rose_syndicate", "index": 3, "x": -20.4, "z": 40.99, "use": "Named like another world's firm. Cap 0. No cross walk."},
+      {"district": "14th_precinct_house", "faction_id": "crime_corrupt_precinct", "index": 0, "x": 15.44, "z": -56.78, "use": "Marquez, 8–12. 8.00 m from the precinct capital."},
+      {"district": "14th_precinct_evidence_locker", "faction_id": "crime_corrupt_precinct", "index": 1, "x": 27.74, "z": -45.48, "use": "16.70 m from the house. Seen, not opened. Nobody staffs it."},
+      {"district": "hexshore_holdings_office", "faction_id": "crime_white_collar_ring", "index": 0, "x": -45.29, "z": -9.93, "use": "Iris, 7–12. 70.51 m from the S09 warehouse. Outside every other circle. This is the separated inland desk."},
+      {"district": "shell_company_warren_one", "faction_id": "crime_white_collar_ring", "index": 1, "x": -48.47, "z": -26.91, "use": "Shut. Empty."},
+      {"district": "shell_company_warren_two", "faction_id": "crime_white_collar_ring", "index": 2, "x": -38.99, "z": -23.29, "use": "Shut. Empty."},
+      {"district": "federal_field_office_secure_floor", "faction_id": "crime_federal_task_force", "index": 0, "x": 36.07, "z": 35.58, "use": "Navarro, 7–12. 33.51 m from the Ghost capital, outside that disk, even though the circles overlap by 9.67 m. 25.49 m from the S09 warehouse. Not S09's fixed-step label (46.81, 37.1)."},
+      {"district": "task_force_safe_house", "faction_id": "crime_federal_task_force", "index": 1, "x": 33.51, "z": 34.62, "use": "2.73 m from the secure floor. Not the source of the tips. Empty."},
+      {"district": "halloran_greer_office", "faction_id": "crime_pi_agency", "index": 0, "x": 23.44, "z": -61.88, "use": "Halloran, 8–12. 9.49 m from the precinct house. The capitals are 1.03 m apart; the doors are not."},
+      {"district": "halloran_residence_secure", "faction_id": "crime_pi_agency", "index": 1, "x": 14.01, "z": -54.25, "use": "12.13 m from the office. Seen, not entered. The daughter is not here."},
+      {"district": "north_market_main_block", "faction_id": "crime_north_market_gang", "index": 0, "x": 21.39, "z": -44.96, "use": "Dom, 9–13. 78.59 m from the S09 warehouse. Inside the North Market circle and inside both the precinct circle and the Halloran circle. Not S09's fixed-step label (21.45, −49.99)."},
+      {"district": "north_market_alley_network", "faction_id": "crime_north_market_gang", "index": 1, "x": 17.52, "z": -34.85, "use": "The corner Dom watches. Unstaffed by this facet. Not a recruiting post."}
+    ],
+    "docks_versus_inland": "The Rose estate sits 18.88 m from the warehouse anchor and inside the Ghost disk. Calling that inland would invent a city the coordinates do not have. The separated desks are Hexshore at 70.51 m, the federal floor outside the Ghost disk, and the south overlap where Dom, the precinct house, and the walkup sit within 17.04 m of one another, 78.59 m south of the warehouse. The 37.58 m gap is the street between those two lives. Bell sits on the gap. He does not sit on the hash dock.",
+    "empty_of_this_facet": [
+      "S09 warehouse mobs and their caps",
+      "wharf named set, tenement named set, armored_warehouse named set, foundry_steam named set",
+      "crime_pier_office, crime_wharf, crime_morgue, crime_courthouse, crime_lawyer_office, crime_sunken_anchor, crime_alley_corner as its own coordinate",
+      "Pinewood Crossing",
+      "the Crime–Sere route",
+      "wilds roadside ruin at local (14, 104)"
+    ]
+  },
+  "cultures": [
+    {
+      "id": "culture_dock_overlap",
+      "who": "Ghost Network and Iron Rose, on the same wet ground",
+      "law": "The truce is seven minutes in a dockside back room with no witnesses, Year -1. Both walked out alive. The cease-fire dates from that night. What was said is not in the public sentence.",
+      "motto_pair": ["Seen once is once too many.", "Eat first. Then we'll talk."],
+      "ground": "iron_rose_estate hash pin and the S09 warehouse, 18.88 m apart, both inside the Ghost disk"
+    },
+    {
+      "id": "culture_south_overlap",
+      "who": "14th Precinct, Halloran & Greer, North Market Gang",
+      "law": "The precinct takes Iron Rose protection money quietly and covers the Ghost Network when it suits. The block takes no kids under 16, no work for the cops, and no work for Iron Rose. The walkup works for the client. Three claims cover Dom's morning pin.",
+      "ground": "house, office, and block, 9.49 m, 13.23 m, and 17.04 m"
+    },
+    {
+      "id": "culture_separated_desks",
+      "who": "Hexshore Holdings and the Federal Organized-Crime Task Force",
+      "law": "RICO, as the federal goal writes it, runs across the 14th, the Iron Rose, and the Hexshore ring. It does not add the Ghost Network. The public tip is anonymous. The public ledger is someone else's. The desks are 93.22 m apart.",
+      "ground": "hexshore_holdings_office and federal_field_office_secure_floor"
+    },
+    {
+      "id": "culture_corner",
+      "who": "Bell, and the one stall the volume already stocked",
+      "law": "A tip is not free and, on his sheet, not wrong. The volume stall sells one tip per slate. Stock is four existing ids. He sits the gap because crime_alley_corner has no coordinate.",
+      "ground": "floor_unclaimed_street midpoint (8.09, −2.55), even day_index only, hours 10–16"
+    }
+  ],
+  "vendors": [
+    {
+      "id": "vend_crime_bell",
+      "npc_id": "informant_silas_bell",
+      "volume_alias": "bell",
+      "already_in_volume": true,
+      "stall_prop": "prop_dock_crate",
+      "stock_cited_not_edited": ["item_invoice_slip", "item_wpn_switchknife", "item_dock_hook", "item_rose_pin"],
+      "law_cited": "Tips are quests, not stackable items. One purchase of a tip per slate.",
+      "backstory_public": "Hooded, same corner, has informed for three precincts and two families, never a free tip and never a wrong one on the sheet. This facet does not name the precincts or the families.",
+      "where": "floor_unclaimed_street",
+      "spawn": "presence_bell_gap",
+      "not_a_clone_of": ["npc_role_coast_labor", "npc_role_coast_bandit"]
+    },
+    {
+      "id": "vendor_reading_maddox",
+      "npc_id": "fence_maddox_kray",
+      "volume_row": null,
+      "why_no_stall": "He is a fence on crime_wharf. The wharf named set has no coordinate. q_crime_maddox_mark and q_crime_folded_knife already use him. A second stall would invent stock.",
+      "backstory_public": "On the wharf since he was fifteen. Friendly to cash. Knows what the dock is fencing. The three favours stay unrendered.",
+      "spawn": "nothing"
+    },
+    {
+      "id": "vendor_reading_lou",
+      "npc_id": "barkeep_old_lou",
+      "volume_row": null,
+      "why_no_stall": "The Sunken Anchor has no coordinate and no drink item in the vendor file. Inventing a glass would be a new id. q_crime_collar_stays is his errand. The memorial of eleven sailors and three pulled from the water is lore, and it belongs on the pier, which is the unplaced wharf, not on the warehouse anchor.",
+      "backstory_public": "Owns the bar. Pretends to be deaf. Pulled three of the eleven out of the water when a docking line failed. The Watch has thrown a memorial every year since.",
+      "spawn": "nothing"
+    }
+  ],
+  "presences": [
+    {
+      "id": "presence_mama_estate",
+      "npc_id": "mama_delgado",
+      "volume_alias": "mama",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "iron_rose_estate",
+      "point": {"x": -7.66, "z": 28.57},
+      "body": "CX",
+      "wardrobe": "Long coat, hidden plates on CX_Chest, silver hair on CX_Head, gold knuckle as the one emissive. No shotgun mesh.",
+      "gives": ["q_s10_seven_minutes", "q_s10_three_unnamed"],
+      "note": "Sheet also marks the estate across Stratus, Freeus, Quartus, and Penanus. One Mama. Dining at 12–15 is a different room with no separate pin, so she is absent after 12. Tomás is not beside her. q_crime_rose_errand still exists and is not this window's pin delivery."
+    },
+    {
+      "id": "presence_marquez_house",
+      "npc_id": "captain_marquez_14th",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "14th_precinct_house",
+      "point": {"x": 15.44, "z": -56.78},
+      "body": "CX",
+      "wardrobe": "Uniform cloth with a vest plate. No pistol, no shotgun, no baton mesh. One badge glint.",
+      "gives": ["q_s10_other_call"],
+      "note": "Afternoon office and the lunch diner are not staged. The diner has no pin."
+    },
+    {
+      "id": "presence_halloran_office",
+      "npc_id": "pi_lead_halloran",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "halloran_greer_office",
+      "point": {"x": 23.44, "z": -61.88},
+      "body": "CX",
+      "wardrobe": "Trench cloth on CX_Back and CX_Chest. Empty hands. Wing Chun if struck, not a firearm.",
+      "gives": ["q_s10_walkup_door"],
+      "note": "He does not path the 9.49 m to the precinct house. The residence is a fail if entered."
+    },
+    {
+      "id": "presence_iris_office",
+      "npc_id": "accountant_iris_hexshore",
+      "count": 1,
+      "window": "clock hours 7–12",
+      "anchor": "hexshore_holdings_office",
+      "point": {"x": -45.29, "z": -9.93},
+      "body": "CX",
+      "wardrobe": "Tailored coat, one pen-clip glint. No concealed pistol.",
+      "gives": ["q_s10_ledger_undecided"],
+      "note": "Her afternoon on the sheet is not staged. That block is where the secret mechanism would surface."
+    },
+    {
+      "id": "presence_navarro_floor",
+      "npc_id": "agent_navarro_federal",
+      "count": 1,
+      "window": "clock hours 7–12",
+      "anchor": "federal_field_office_secure_floor",
+      "point": {"x": 36.07, "z": 35.58},
+      "body": "CX",
+      "wardrobe": "Field jacket. Empty hands. No subpoena prop as an item.",
+      "gives": ["q_s10_source_unknown"],
+      "note": "Afternoon varies is unplaced. She does not walk to Hexshore."
+    },
+    {
+      "id": "presence_dom_block",
+      "npc_id": "gang_lead_dom_north_market",
+      "count": 1,
+      "window": "clock hours 9–13",
+      "anchor": "north_market_main_block",
+      "point": {"x": 21.39, "z": -44.96},
+      "body": "CX",
+      "wardrobe": "Street jacket, one shoulder seam worn pale. No bat, no pistol.",
+      "gives": ["q_s10_pitch_refused"],
+      "note": "Not Tomás. The shared surname is not a kinship this slice declares. The youth he checks on are not spawned."
+    },
+    {
+      "id": "presence_bell_gap",
+      "npc_id": "informant_silas_bell",
+      "volume_alias": "bell",
+      "count": 1,
+      "window": "clock hours 10–16 when day_index % 2 == 0",
+      "anchor": "floor_unclaimed_street",
+      "point": {"x": 8.09, "z": -2.55},
+      "body": "CX",
+      "wardrobe": "Hood up, no pauldron, no knife in the hand. Sits. The crate is prop_dock_crate, the volume stall, not a new mesh.",
+      "gives": ["q_s10_gap_between"],
+      "yields_to": ["enc_stair_switch", "raid_unpaid_shift"],
+      "note": "Odd day_index he is absent all day so the stair window keeps the midpoint. He does not spend the bandit budget of 3 or the labor budget of 6. The sheet's morning corner does not spawn a second Bell. crime_alley_corner has no coordinate; this pair is the gap S09 already measured."
+    }
+  ],
+  "political_encounters": [
+    {
+      "id": "enc_s10_estate_audience",
+      "where": "iron_rose_estate",
+      "bodies": ["mama_delgado"],
+      "hours": "8–12",
+      "health": null,
+      "what": "One coat, one gold knuckle, no lieutenants in the room. The skim is a count of three with no names. The truce is seven minutes with no transcript. Tomás's quarters are not a second chair."
+    },
+    {
+      "id": "enc_s10_south_morning",
+      "where": "14th_precinct_house, halloran_greer_office, north_market_main_block",
+      "bodies": ["captain_marquez_14th", "pi_lead_halloran", "gang_lead_dom_north_market"],
+      "hours": "Marquez and Halloran 8–12. Dom 9–13. Overlap 9–12 is three pins, not one crowd.",
+      "distances_m": {"house_to_office": 9.49, "house_to_block": 13.23, "office_to_block": 17.04, "capitals_precinct_to_halloran": 1.03},
+      "health": null,
+      "what": "Nobody paths onto another's pin. The 1.03 m is between capitals. The doors the hash placed are a short walk, not a shared desk."
+    },
+    {
+      "id": "enc_s10_two_desks",
+      "where": "hexshore_holdings_office and federal_field_office_secure_floor",
+      "bodies": ["accountant_iris_hexshore", "agent_navarro_federal"],
+      "hours": "7–12 both, 93.22 m apart",
+      "health": null,
+      "what": "They do not meet. The source stays the public word unknown. The safe house 2.73 m from Navarro is empty. The two warrens near Iris are empty."
+    },
+    {
+      "id": "enc_s10_corner_sit",
+      "where": "floor_unclaimed_street",
+      "bodies": ["informant_silas_bell"],
+      "hours": "10–16 on even day_index",
+      "health": null,
+      "what": "A sitter, not a bandit. On odd days the stair window keeps the asphalt. He does not join enc_outstanding and he does not buy his own tip."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s10_seven_minutes",
+      "title": "Estate — Seven Minutes, No Transcript",
+      "world_id": "Crime",
+      "giver_npc_id": "mama_delgado",
+      "giver_spawn": "presence_mama_estate. Clock 8–12.",
+      "backstory_id": "story_q_seven",
+      "extends_lore_id": "lore_first_truce",
+      "does_not_replace": ["q_crime_rose_errand", "q_crime_invoice_lands"],
+      "objectives": [
+        {"id": "obj_q_s10_seven_1", "verb": "talk", "target": "mama_delgado", "count": 1, "text": "At the estate pin, ask when the cease-fire started. She will say a seven-minute meeting, both walked out alive, and she will not add a sentence."},
+        {"id": "obj_q_s10_seven_2", "verb": "reach", "target": "floor_dockside_warehouses", "count": 1, "text": "Walk to the warehouse anchor S09 already placed at (10.72, 32.9). It is 18.88 m from the estate and inside both circles. Do not move the labor or the hounds."},
+        {"id": "obj_q_s10_seven_3", "verb": "witness", "target": "empty_capitals", "count": 1, "text": "From that anchor, leave the Ghost capital and the Rose capital empty. Do not step onto (2.72, 38.9) or (−6.41, 40.5). There is no halal room to enter."},
+        {"id": "obj_q_s10_seven_4", "verb": "deliver", "target": "mama_delgado", "count": 1, "text": "Bring back the public fact only: seven minutes, both alive, no transcript, no pin in your hand."}
+      ],
+      "fail": ["Ask what was said", "Name Vesper Kane", "Stage the dockside back room", "Enter either capital", "Carry item_rose_pin", "Break the cease-fire", "Hand her q_crime_rose_errand's door as if it were this meeting"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "The estate board shows seven minutes and no added line.", "gossip_on_complete": "Mama confirmed the night and did not confirm the words.", "prop_or_door": "The estate pin. No new room. No shotgun."},
+      "turn_in": {"npc_id": "mama_delgado", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_three_unnamed",
+      "title": "Estate — A Count of Three",
+      "world_id": "Crime",
+      "giver_npc_id": "mama_delgado",
+      "giver_spawn": "presence_mama_estate. Same window. Turn this in before noon or she is gone.",
+      "backstory_id": "story_q_three",
+      "extends_lore_id": "lore_iron_rose_consolidation",
+      "does_not_replace": ["q_crime_rose_errand", "q_s10_seven_minutes"],
+      "objectives": [
+        {"id": "obj_q_s10_three_1", "verb": "talk", "target": "mama_delgado", "count": 1, "text": "Ask about the skim. She will say three lieutenants, and that she is letting it run. She will not say a name."},
+        {"id": "obj_q_s10_three_2", "verb": "witness", "target": "unnamed_three", "count": 3, "text": "Write the count three. The pin holds Mama alone. Do not seat a lieutenant to make the number visible."},
+        {"id": "obj_q_s10_three_3", "verb": "reach", "target": "iron_rose_syndicate_capital", "count": 1, "text": "Walk the 12 m to the Rose capital at (−6.41, 40.5). The three are not standing there. Do not build them."},
+        {"id": "obj_q_s10_three_4", "verb": "deliver", "target": "mama_delgado", "count": 1, "text": "Return the count with empty hands. Do not collect the skim and do not bring Tomás out of his quarters."}
+      ],
+      "fail": ["Name a lieutenant", "Collect money", "Follow her afternoon route", "Tell Jax", "Stand Tomás on the pin", "Decide the heir"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Three unnamed, still running.", "gossip_on_complete": "Mama kept the count and kept the names.", "prop_or_door": "No ledger prop. No coin stack."},
+      "turn_in": {"npc_id": "mama_delgado", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_other_call",
+      "title": "14th — The Other Call",
+      "world_id": "Crime",
+      "giver_npc_id": "captain_marquez_14th",
+      "giver_spawn": "presence_marquez_house. Clock 8–12.",
+      "backstory_id": "story_q_other_call",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_crime_morgue_cross", "crime_thorpe_03_haldane"],
+      "objectives": [
+        {"id": "obj_q_s10_call_1", "verb": "talk", "target": "captain_marquez_14th", "count": 1, "text": "At the house pin, ask which call the house answers. He will say the motto, and that protection money is taken quietly. He will not name a lieutenant."},
+        {"id": "obj_q_s10_call_2", "verb": "witness", "target": "quiet_cut", "count": 1, "text": "Write that the cut is quiet. Do not open a drawer to prove it."},
+        {"id": "obj_q_s10_call_3", "verb": "reach", "target": "14th_precinct_evidence_locker", "count": 1, "text": "Walk toward the locker pin 16.70 m off. See that nobody from this facet staffs it. Do not open it."},
+        {"id": "obj_q_s10_call_4", "verb": "deliver", "target": "captain_marquez_14th", "count": 1, "text": "Return with the motto and without a decision about the lieutenant or the agent."}
+      ],
+      "fail": ["Flip the lieutenant", "Flip the agent", "Name a godson", "Open the locker", "Carry a file to Navarro", "Draw a firearm", "Stage the lunch diner"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "The house answered. The locker stayed shut.", "gossip_on_complete": "Marquez kept the decision he has not made.", "prop_or_door": "House pin. Locker unstaffed."},
+      "turn_in": {"npc_id": "captain_marquez_14th", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_walkup_door",
+      "title": "Walkup — Not the Precinct Door",
+      "world_id": "Crime",
+      "giver_npc_id": "pi_lead_halloran",
+      "giver_spawn": "presence_halloran_office. Clock 8–12. He does not cross to Marquez.",
+      "backstory_id": "story_q_walkup",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s10_other_call"],
+      "objectives": [
+        {"id": "obj_q_s10_walk_1", "verb": "talk", "target": "pi_lead_halloran", "count": 1, "text": "At the office pin, ask which door is his. He will say this walkup, not the house 9.49 m away."},
+        {"id": "obj_q_s10_walk_2", "verb": "witness", "target": "two_doors", "count": 2, "text": "See both pins during 8–12 without either man leaving his own. The capitals 1.03 m apart are the overlap of the claims, not a shared desk."},
+        {"id": "obj_q_s10_walk_3", "verb": "reach", "target": "halloran_residence_secure", "count": 1, "text": "Walk the 12.13 m to the residence pin. It is empty. Do not enter. Do not carry a story into it."},
+        {"id": "obj_q_s10_walk_4", "verb": "deliver", "target": "pi_lead_halloran", "count": 1, "text": "Return to the office with the two doors counted and nothing else."}
+      ],
+      "fail": ["Tell the daughter", "Name the man she is seeing", "Name his father", "Open the fifteen-year file", "Stage halloran_lunch_diner", "Path Halloran onto the precinct pin"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Two doors, 9.49 m, neither one a residence.", "gossip_on_complete": "Halloran kept his office and kept his mouth.", "prop_or_door": "Walkup pin. Residence empty."},
+      "turn_in": {"npc_id": "pi_lead_halloran", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_source_unknown",
+      "title": "Secure Floor — Source Unknown",
+      "world_id": "Crime",
+      "giver_npc_id": "agent_navarro_federal",
+      "giver_spawn": "presence_navarro_floor. Clock 7–12.",
+      "backstory_id": "story_q_unknown",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s10_ledger_undecided"],
+      "objectives": [
+        {"id": "obj_q_s10_unk_1", "verb": "talk", "target": "agent_navarro_federal", "count": 1, "text": "At the secure floor, ask about the tips. She will say they match the Hexshore ledger and that the source is unknown."},
+        {"id": "obj_q_s10_unk_2", "verb": "witness", "target": "word_unknown", "count": 1, "text": "Write the word unknown. Do not improve it."},
+        {"id": "obj_q_s10_unk_3", "verb": "reach", "target": "task_force_safe_house", "count": 1, "text": "Step to the safe-house pin 2.73 m away. It is empty. It is not the source. Do not enter."},
+        {"id": "obj_q_s10_unk_4", "verb": "deliver", "target": "agent_navarro_federal", "count": 1, "text": "Return the word unknown. Do not set out for the Hexshore office to finish her sentence."}
+      ],
+      "fail": ["Name Iris Halverson", "Say Navarro already knows", "Arrest anyone", "Mint a subpoena item", "Walk the 93.22 m as an accusation", "Add the Ghost Network to the RICO list"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Tips match. Source unknown.", "gossip_on_complete": "Navarro left the blank blank.", "prop_or_door": "Secure floor. Safe house empty."},
+      "turn_in": {"npc_id": "agent_navarro_federal", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_ledger_undecided",
+      "title": "Hexshore — She Has Not Decided",
+      "world_id": "Crime",
+      "giver_npc_id": "accountant_iris_hexshore",
+      "giver_spawn": "presence_iris_office. Clock 7–12.",
+      "backstory_id": "story_q_ledger",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s10_source_unknown"],
+      "objectives": [
+        {"id": "obj_q_s10_led_1", "verb": "talk", "target": "accountant_iris_hexshore", "count": 1, "text": "At the office pin, ask about the private ledger. She will say an internal accountant keeps one, and that she has not decided whether to fire that person or partner them."},
+        {"id": "obj_q_s10_led_2", "verb": "witness", "target": "indecision", "count": 1, "text": "Leave the meeting without a decision. Do not offer one."},
+        {"id": "obj_q_s10_led_3", "verb": "reach", "target": "shell_warrens", "count": 2, "text": "See both warren pins. Both are empty. Do not open either door."},
+        {"id": "obj_q_s10_led_4", "verb": "deliver", "target": "accountant_iris_hexshore", "count": 1, "text": "Bring back the indecision and the two shut doors."}
+      ],
+      "fail": ["Fire the accountant", "Partner the accountant", "Read the ledger", "Identify Iris as the tip source", "Name the Hexshore principal", "Carry the ledger to Navarro"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Two warrens shut. No decision.", "gossip_on_complete": "Iris left the ledger where it was.", "prop_or_door": "Office pin. Warren doors unstaffed."},
+      "turn_in": {"npc_id": "accountant_iris_hexshore", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_pitch_refused",
+      "title": "Block — The Pitch Already Failed",
+      "world_id": "Crime",
+      "giver_npc_id": "gang_lead_dom_north_market",
+      "giver_spawn": "presence_dom_block. Clock 9–13.",
+      "backstory_id": "story_q_pitch",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s10_walkup_door", "q_s10_other_call"],
+      "objectives": [
+        {"id": "obj_q_s10_pitch_1", "verb": "talk", "target": "gang_lead_dom_north_market", "count": 1, "text": "At the block pin, ask about the pitch. He will say a nephew turned it down, and that no one under 16 works this block. He will not say the nephew's name."},
+        {"id": "obj_q_s10_pitch_2", "verb": "witness", "target": "age_rule", "count": 1, "text": "Write the rule. Do not call a child out to illustrate it. Pidgeon is not on this pin."},
+        {"id": "obj_q_s10_pitch_3", "verb": "reach", "target": "north_market_alley_network", "count": 1, "text": "Walk to the alley-network pin. It is empty. The Iron Rose corner he watches is not staffed by this facet. Do not post a recruiter."},
+        {"id": "obj_q_s10_pitch_4", "verb": "deliver", "target": "gang_lead_dom_north_market", "count": 1, "text": "Return the refusal as a thing that already happened. Do not start the retaliation."}
+      ],
+      "fail": ["Name the nephew", "Hire anyone under 16", "Call the precinct", "Call Iron Rose", "Send Dom to Halloran", "Start a fight on the block", "Spawn a child"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "The pitch was refused. The alley is empty.", "gossip_on_complete": "Dom kept the morning and did not keep a war.", "prop_or_door": "Block pin. Alley network empty."},
+      "turn_in": {"npc_id": "gang_lead_dom_north_market", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s10_gap_between",
+      "title": "Gap — Docks One Way, Block the Other",
+      "world_id": "Crime",
+      "giver_npc_id": "informant_silas_bell",
+      "giver_spawn": "presence_bell_gap. Even day_index, 10–16. If he has no mesh, this quest cannot be turned in.",
+      "backstory_id": "story_q_gap",
+      "extends_lore_id": "crime_anchor_disaster",
+      "does_not_replace": ["q_crime_bell_tip", "q_crime_gull_drop", "q_crime_hood_reading", "q_crime_collar_stays"],
+      "objectives": [
+        {"id": "obj_q_s10_gap_1", "verb": "talk", "target": "informant_silas_bell", "count": 1, "text": "On an even day, at the gap midpoint, sit long enough for him to not sell you anything. He may say he has worked three precincts and two families. He will not name them, and he will not give a free tip."},
+        {"id": "obj_q_s10_gap_2", "verb": "reach", "target": "floor_dockside_warehouses", "count": 1, "text": "Face the placed docks. The warehouse anchor is 35.55 m from his crate. That is the overlap, rain and sodium, not a pier. Do not hang a memorial here. The eleven and the three belong on the wharf, and the wharf set is unplaced."},
+        {"id": "obj_q_s10_gap_3", "verb": "reach", "target": "north_market_main_block", "count": 1, "text": "Walk south to Dom's hash pin, 78.59 m from the warehouse and 44.45 m from the crate. That is the inland block. Do not recruit on the way."},
+        {"id": "obj_q_s10_gap_4", "verb": "deliver", "target": "informant_silas_bell", "count": 1, "text": "Come back without a purchase. The slate stays at one. q_crime_bell_tip is the purchase, if it is taken at all."}
+      ],
+      "fail": ["Buy a tip", "Buy a second tip", "Ask about a Hub shipment", "Follow the gulls", "Move Bell onto the hash dockside or the subway pin", "Hold the Anchor memorial on the warehouse", "Stand him up during enc_stair_switch"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "One slate. The gap still has no country on it.", "gossip_on_complete": "Bell sat. The docks stayed north. The block stayed south.", "prop_or_door": "prop_dock_crate on the midpoint. No new stock id."},
+      "turn_in": {"npc_id": "informant_silas_bell", "requires_all_objectives": true}
+    }
+  ]
+}

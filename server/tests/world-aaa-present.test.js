@@ -22,10 +22,14 @@ describe("packAaaSnapshot", () => {
     const db = new Database(":memory:");
     db.exec(`
       CREATE TABLE lattice_born_quests (
-        id TEXT PRIMARY KEY, title TEXT, status TEXT, kind TEXT, world_id TEXT
+        id TEXT PRIMARY KEY,
+        quest_id TEXT,
+        drift_type TEXT,
+        realisation_outcome TEXT,
+        world_id TEXT
       );
     `);
-    db.prepare(`INSERT INTO lattice_born_quests VALUES ('q-lat','Lattice thread','open','rumor','concordia-hub')`).run();
+    db.prepare(`INSERT INTO lattice_born_quests VALUES ('q-lat','Lattice thread','rumor',NULL,'concordia-hub')`).run();
     const extra = packAaaSnapshot(db, "concordia-hub", { userId: "u1" });
     assert.ok(extra.quests.some((q) => q.id === "q-lat"));
     assert.ok(extra.authoredCatalog.some((q) => q.id === "founding_day_01_gather"));

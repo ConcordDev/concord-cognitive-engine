@@ -4,6 +4,10 @@
 // share one extraction/horde run. The mode owns its run table (which now has a
 // party_id column); this owns the participant roster + the join decision.
 
+// Table names can't be bound with `?`, so the run table is interpolated —
+// only ever one of these literals (every caller passes one).
+const RUN_TABLES = new Set(["extraction_runs", "horde_runs"]);
+
 function tableExists(db, name) {
   try { return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name); }
   catch { return false; }
@@ -24,7 +28,7 @@ export function addRunParticipant(db, runKind, runId, userId) {
  * `runTable` is extraction_runs / horde_runs. Returns the row or null.
  */
 export function findActiveRunForUser(db, runTable, runKind, userId) {
-  if (!db || !userId || !runTable || !tableExists(db, runTable)) return null;
+  if (!db || !userId || !RUN_TABLES.has(runTable) || !tableExists(db, runTable)) return null;
   try {
     const owned = db.prepare(
       `SELECT * FROM ${runTable} WHERE user_id = ? AND ended_at IS NULL`
@@ -57,7 +61,7 @@ export function runParticipants(db, runKind, runId) {
  * ended_at columns. Returns the active run id for the party, or null.
  */
 export function findActivePartyRun(db, runTable, partyId) {
-  if (!db || !partyId || !runTable || !tableExists(db, runTable)) return null;
+  if (!db || !partyId || !RUN_TABLES.has(runTable) || !tableExists(db, runTable)) return null;
   try {
     const row = db.prepare(
       `SELECT id FROM ${runTable} WHERE party_id = ? AND ended_at IS NULL ORDER BY rowid DESC LIMIT 1`

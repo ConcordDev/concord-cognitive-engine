@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be8319e060359470ba945b804289c2d0, type: 3}
+  m_Name: ConcordiaRenderPerformanceAudit
+  m_EditorClassIdentifier: Concordia.Runtime::Concordia.ConcordiaRenderPerformanceAudit
+  schemaVersion: 1.0
+  auditId: concordia-urp-performance-foundation-audited-state
+  auditTimestampUtc: 'Source: user-supplied audited project state; capture timestamp
+    not available.'
+  unityVersion: Unity 6 live Editor; exact patch version not returned by audit tools.
+  installedUrpPackage: com.unity.render-pipelines.universal 17.5.0 (installed package
+    list)
+  manifestUrpRequest: com.unity.render-pipelines.universal 17.3.0 (Packages/manifest.json);
+    version alignment remains inconclusive.
+  activePipelineAsset: Assets/Settings/URP-Pipeline.asset
+  activeRendererAsset: Assets/Settings/URP-Renderer.asset
+  benchmarkScene: Assets/Concordia/Generated/Performance/ConcordiaVisualBenchmark.unity
+  frameBudgetProfile: Assets/Concordia/Generated/Performance/ConcordiaFrameBudgetProfile.asset
+  featureStatusJson: '[{"feature":"URP baseline / active renderer","status":"enabled","evidence":"Universal
+    Render Pipeline active; quality Ultra; active pipeline Assets/Settings/URP-Pipeline.asset."},{"feature":"Forward+","status":"disabled","evidence":"Assets/Settings/URP-Renderer.asset
+    serializes m_RenderingMode: Forward; do not enable without a measured renderer
+    migration."},{"feature":"GPU Resident Drawer","status":"disabled","evidence":"URP-Pipeline
+    m_GPUResidentDrawerMode: 0."},{"feature":"GPU occlusion culling","status":"disabled","evidence":"URP-Pipeline
+    m_GPUResidentDrawerEnableOcclusionCullingInCameras: 0; no Concordia implementation
+    found."},{"feature":"SRP Batcher","status":"enabled","evidence":"URP-Pipeline
+    m_UseSRPBatcher: 1."},{"feature":"Adaptive Probe Volumes","status":"disabled","evidence":"Light
+    Probe Groups active; APV GPU/disk streaming, scenarios, and blending are 0; no
+    APV asset/component found."},{"feature":"Temporal anti-aliasing / reconstruction","status":"partial","evidence":"HubLook
+    applies TemporalAntiAliasing High at runtime; no measured temporal reconstruction/upscaler
+    result."},{"feature":"HDR","status":"partial","evidence":"URP supports HDR and
+    HubLook enables camera HDR; HDR display support/output is disabled in project
+    settings."},{"feature":"Volumetric atmosphere","status":"partial","evidence":"HubVolumeFogFeature
+    implements URP 17 RenderGraph passes but is inactive in current renderer and
+    Hub disables it intentionally."},{"feature":"Shadows","status":"partial","evidence":"Main-light
+    shadows supported at 2048; saved asset reports 180m, one cascade, no soft/additional-light
+    shadows; runtime look changes values."},{"feature":"Terrain and vegetation LOD","status":"partial","evidence":"No
+    Concordia Terrain authority or regional vegetation LOD validation found; LOD
+    cross-fade is enabled."},{"feature":"Impostors / HLOD","status":"partial","evidence":"ContinentStream
+    distance bands and WorldBuilder impostor stand-ins exist; no verified HLOD/GPU
+    impostor pipeline."},{"feature":"Decals","status":"missing","evidence":"No DecalProjector
+    or decal renderer feature found; Crime rain puddle decal remains backlog."},{"feature":"Reflections","status":"partial","evidence":"HubLook
+    creates a realtime ReflectionProbe; atlas enabled, blending and box projection
+    disabled."},{"feature":"Water","status":"missing","evidence":"No live Concordia
+    water renderer/surface found; existing water code is character-physics support."},{"feature":"Wind
+    / cloth / hair","status":"partial","evidence":"WorldBreath and CourtBannerSway
+    provide lightweight transform sway; primitive hair exists; no production simulation
+    or LOD budget verified."},{"feature":"World streaming","status":"enabled","evidence":"ContinentStream
+    is live continent authority; WorldStreamManager provides four bands, 64m cells,
+    120m prefetch, persistent lightweight blobs."},{"feature":"Streaming frame budget","status":"partial","evidence":"WorldStreamManager
+    has explicit 3.5ms drain budget; no prior end-to-end frame budget contract existed."},{"feature":"Shader
+    variants","status":"partial","evidence":"URP keyword prefilter settings exist;
+    no ShaderVariantCollection or build stripping coverage report found."},{"feature":"Render
+    Graph","status":"partial","evidence":"HubVolumeFogFeature uses RecordRenderGraph;
+    no project-wide mode/compatibility validation or performance capture found."},{"feature":"Measured
+    runtime performance","status":"inconclusive","evidence":"Edit-mode stats were
+    invalid; this benchmark controller is the measurement path, but no Play-mode
+    result exists yet."}]'
+  inconclusiveItemsJson: '["No valid Play-mode performance measurement exists yet;
+    run ConcordiaVisualBenchmark.unity for warmup plus 30s capture.","URP manifest
+    requests 17.3.0 while installed package list reports 17.5.0; do not silently
+    rewrite package versions.","GPU timing is hardware/API dependent and remains
+    inconclusive when FrameTimingManager returns no samples.","Forward+, GPU Resident
+    Drawer, GPU occlusion culling, APV, HDR display output, additional-light shadows,
+    decals, water, HLOD/GPU impostors, shader variant coverage, and full volumetric
+    fog cost are not enabled or validated by this foundation.","Existing mesh-readability/runtime
+    warnings from the audit remain unresolved and are outside this additive instrumentation
+    change."]'
+  protectedArchitectureJson: '{"runtimeAuthority":"ConcordiaGame -> WorldBuilder
+    -> ContinentStream -> WorldVisualDirector/GoldenSliceRuntime","lookStack":"HubLook
+    remains the sole live URP look stack.","streaming":"WorldStreamManager and ContinentStream
+    remain the existing authorities.","leanPlay":"Preserved; benchmark is additive
+    and does not re-gate or thin content.","protectedFiles":["Assets/Concordia/Scripts/WorldHeroCatalog.cs","Assets/Concordia/Scripts/WorldVisualDirector.cs","Assets/Concordia/Scripts/WorldBuilder.cs","Assets/Concordia/Scripts/GameplayCore/GoldenSlice/GoldenSliceRuntime.cs"]}'
+  measuredRuntimeStatus: inconclusive-play-sample-too-short
+  latestBenchmarkResult: 'Observed Play-mode controller run: inconclusive, p95=99.41ms,
+    gpu=0.17ms, measuredFrames=1; result persisted at /Users/dutch/Library/Application
+    Support/DefaultCompany/unity-client/Concordia/Performance/latest-visual-benchmark.json.
+    Canonical profile is restored to 180 warmup frames + 30s + 300 minimum frames;
+    rerun after boot/staging stability for sign-off.'
+  targetFrameRate: 60
+  cpuFrameBudgetMs: 16.67
+  gpuFrameBudgetMs: 16.67
+  streamingSliceBudgetMs: 3.5

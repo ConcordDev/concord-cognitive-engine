@@ -1,0 +1,47 @@
+{
+  "batch": "B21_anim_deep",
+  "slice": "A19_anim_creature_rigs",
+  "count": 2,
+  "generate": false,
+  "mesh": false,
+  "entries": [
+    {
+      "id": "anim_spec_creature_graph",
+      "display_name": "CreatureGraph contract",
+      "batch": "B21_anim_deep",
+      "world_ids": ["Hub", "Fantasy", "Tunya", "Ruins", "Crime", "Cyber", "Frontier", "Superhero", "Crucible", "Sere"],
+      "taxonomy_tags": ["anim_spec", "no_mesh", "controller", "creature"],
+      "triangle_budget": 0,
+      "generate": false,
+      "mesh_bound": false,
+      "prompt": "SPEC ONLY. Not a mesh. CreatureGraph procedural contract for existing fauna. Do not render.",
+      "silhouette_notes": "No silhouette. Bind table is animations/CREATURE_VEHICLE_DEEP.json. Mixamo stays off these graphs.",
+      "palette": ["#888780"],
+      "unity_bind": {
+        "controller": "CreatureGraph",
+        "lod0_tris": 0,
+        "generate": false,
+        "doc": "animations/RIG_CREATURE.md"
+      }
+    },
+    {
+      "id": "anim_spec_vehicle_roll",
+      "display_name": "VehicleRoll contract",
+      "batch": "B21_anim_deep",
+      "world_ids": ["Hub", "Fantasy", "Tunya", "Ruins", "Crime", "Cyber", "Frontier", "Superhero", "Crucible", "Sere"],
+      "taxonomy_tags": ["anim_spec", "no_mesh", "controller", "vehicle"],
+      "triangle_budget": 0,
+      "generate": false,
+      "mesh_bound": false,
+      "prompt": "SPEC ONLY. Not a mesh. VehicleRoll wheel and runner contract for existing carts. Do not render.",
+      "silhouette_notes": "No silhouette. Wheel rate is speed over radius. Driving_Loop stays unbound.",
+      "palette": ["#888780"],
+      "unity_bind": {
+        "controller": "VehicleRoll",
+        "lod0_tris": 0,
+        "generate": false,
+        "doc": "animations/RIG_VEHICLE.md"
+      }
+    }
+  ]
+}

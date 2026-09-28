@@ -1,0 +1,265 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S21_crossworld_trade_politics",
+  "world_id": "Cross",
+  "canon_world_id": null,
+  "display_world": "Cross",
+  "facet": "trade_politics",
+  "title": "Cross-world — trade, politics, culture intersections",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Cross is not a WorldId. This file does not rewrite Canon.Gates, GatePost, CrossRing, WorldGeography borders, blend kits, faction files, volume quests, density weights, or slices S01 through S20.",
+  "canon_pins": {
+    "mediation": "Hub mediates nine destinations: the eight Canon.Gates spokes, plus Sere as a waystone. The Hub is the mediator, not a tenth spoke.",
+    "two_nines": "Destinations: eight gates plus Sere. The ninth Refusal is the Hub ground in lore id hub_the_ninth_refusal. The founding oath is seven sub-worlds, and the Seven Spokes is an inn. These counts stay distinct.",
+    "hub_law_radius_m": 42,
+    "court_radius_m": 16,
+    "ring_radius_m": 34,
+    "wall_radius_m": 56,
+    "arena_anchor": {"x": 0, "y": 0, "z": 18, "steel_radius_m": 8},
+    "present_ring_m": 220,
+    "present_formula": "MegaworldMap.CivilizationRadiusKm 400 * PresentMetersPerKm 0.55",
+    "arrive_m": 68,
+    "sere_present": {"x": -125.27, "z": -269.29, "angle_rad": 4.276991, "radius_m": 297},
+    "sere_rule": "Absent from Canon.Gates. HasLinkGate false. AngleOf is Crime's 5π/4 plus 0.35 rad. GatePost.waystone is true only when a WorldGate destination is Sere: tariff 0, inspection 0, ownerFaction empty. This slice does not create that gate.",
+    "ring_tariff": 0.05,
+    "disputed_tariff_dormant": 0.12,
+    "hub_face_owner": "Concordant Watch",
+    "hub_face_inspection": 1,
+    "flower_law": "Canon.InHubCourt is radius <= 42. Canon.SteelLive is false on Hub only when the clock is Hub and the point is inside that disk and outside the Arena. Past the lip, steel is live while the clock can still be Hub.",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "rule": "S01 owns the lettering. No board in this slice uses that name."
+    },
+    "humanoid_body": "CX male or CX female, Concordia face, when a person is stood. The only people this facet acknowledges are the gate guards GatePost already spawns. A Quaternius body is not. A child is not stood in for an adult.",
+    "gate_guards": "ConcordiaHost.GateGuards is 2. Hub clock spawns 2 per gate. A non-Lean spoke clock spawns 1. Name is 'a guard'. Not an authored citizen.",
+    "fight_style": "Canon.PickFight by world: Hub and Superhero Karate, Crime and Sere Wing Chun, Cyber and Tunya Capoeira, Frontier Muay Thai, Fantasy and Ruins and Crucible Sword. This facet stands no fighter.",
+    "firearms": "Verb coverage is zero. No firearm mesh on a plaque or a border.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/lore.json events hub_the_embassy_era, hub_the_ninth_refusal, hub_concordant_oath, hub_seven_spokes_founding",
+    "gates": "Canon.cs Gates, RingRadius 34, HubLawRadius 42, WallRadius 56",
+    "gate_post": "WorldGate.cs GatePost.Ensure, OwnerOf",
+    "tariff": "WorldBook.cs CrossRing.RingTariff 0.05 and Arrive paid = value * RingTariff",
+    "borders": "WorldGeography.cs BuildBordersAndRoutes, IsDisputed, TariffFor, CountryAt",
+    "soft_enter": "ContinentStream.cs SoftEnter and ReceiveHere",
+    "map": "MegaworldMap.cs Present, ArriveM, HasLinkGate, Toward, AngleOf",
+    "staples": "KingdomBook.Staple",
+    "factions_index_0": "factions.json first object per spoke folder, display name used by OwnerOf",
+    "intersections": "native-bible/architecture/INTERSECTIONS.md",
+    "kits": "native-bible/architecture/KITS.json arch_ix_grid_coast, arch_ix_sunder_dawn, arch_ix_crucible_foundry",
+    "taxonomy": "native-bible/01_TAXONOMY.md hybrids on named borders, never a plaza mash",
+    "art": "native-bible/00_ART_DIRECTION.md three blends",
+    "prior_slices": "S02 Hub politics, S09 billdrone window, S11 Cyber cap 0, S13 and S14 Frontier ground, S17 foundry creatures, S19 empty tariff, S20 Sere boards"
+  },
+  "left_in_place": [
+    "q_hub_two_streets",
+    "q_hub_fan_closed",
+    "q_hub_eight_cords",
+    "q_hub_law_lip_rose",
+    "q_hub_slate_at_grid_gate",
+    "q_hub_three_distances",
+    "q_s19_empty_tariff",
+    "enc_rotor_saddle",
+    "hyb_billdrone"
+  ],
+  "unresolved_on_purpose": [
+    "No WorldId is named Cross. Binders key boards by slice id and notice id.",
+    "The 0.12 disputed tariff matches no authored country pair. It stays dormant. No dispute is invented.",
+    "Caravan arrival always multiplies by RingTariff and does not read BorderDef.tariffRate. This slice does not reconcile the two writers.",
+    "Hub has no countries.json and no BorderDef endpoint. A Hub-to-spoke walk writes a journey stamp and skips RecordBorderCrossing.",
+    "Frontier lore keeps no embassy. FirstFaction still writes frontier_couriers_guild onto border/concord-link-frontier/crime because factions.json order says so. That id is not an embassy.",
+    "The three arch_ix kits have no transform. Parent pairs are not ring-neighbor pairs, except that Frontier and Crime are neighbors while the foundry also names the Crucible.",
+    "border/crime/sere midpoint (-140.41, -212.43) lies inside both Arrive disks. CountryAt returns Crime because MegaworldMap.All lists Crime before Sere. No errand stands there.",
+    "Sere's first faction name, The Tessera, is never written by the waystone branch. q_s19_empty_tariff keeps the blank post inside Sere.",
+    "Gate guards are procedural. They are not given guest ids, dialogue, or a faction delta.",
+    "The sealed Voss genealogy, the seven-spoke oath, and the Seven Spokes Inn are named and not resolved.",
+    "hyb_billdrone remains S09's one windowed body. The wharf kit's permission is not a spawn."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "Mediation has no health bar. Spoke bosses, mini-bosses, and caps stay in S01 through S20. A politics walker who enters a spoke window does not become that window's finisher and does not receive its remembrance. Border role strings spawn no body. Blend kits spawn no body.",
+  "standing_ecology": {
+    "owner": "spoke slices S01 through S20",
+    "retune": false,
+    "political_reading": [
+      {
+        "id": "hyb_billdrone",
+        "reading": "world_ids Crime and Cyber, the wharf's parents. S09 fields one inside enc_rotor_saddle. S11 Cyber cap is 0. Uncounted Wharf has no floor, so this facet adds no drone."
+      },
+      {
+        "id": "gate_guard",
+        "reading": "Procedural CX, name 'a guard', count from ConcordiaHost.GateGuards. Title string follows the post owner. Not a faction roster entry. Count unchanged."
+      },
+      {
+        "id": "border_role_strings",
+        "reading": "border guard, inspector, road watch on an open border. They are checkpointInfo neighbors, not spawn rows. No cap is added at any midpoint."
+      }
+    ]
+  },
+  "destinations": [
+    {"world_id": "Cyber", "angle_rad": 0, "plaque": {"x": 34.00, "z": 0.00}, "lip": {"x": 42.00, "z": 0.00}, "present": {"x": 220.00, "z": 0.00}, "far_face_owner_name": "The Zero Collective", "far_face_faction_id": "zero_collective", "staple": "census", "refusal": "Refusal of Numbers"},
+    {"world_id": "Ruins", "angle_rad": 0.785398, "plaque": {"x": 24.04, "z": 24.04}, "lip": {"x": 29.70, "z": 29.70}, "present": {"x": 155.56, "z": 155.56}, "far_face_owner_name": "The Three Archivists", "far_face_faction_id": "ruins_archivists", "staple": "remnants", "refusal": "Refusal of Death"},
+    {"world_id": "Fantasy", "angle_rad": 1.570796, "plaque": {"x": 0.00, "z": 34.00}, "lip": {"x": 0.00, "z": 42.00}, "present": {"x": 0.00, "z": 220.00}, "far_face_owner_name": "The Wildwood Circle", "far_face_faction_id": "wildwood_circle", "staple": "ward", "refusal": "Refusal of Hostility"},
+    {"world_id": "Tunya", "angle_rad": 2.356194, "plaque": {"x": -24.04, "z": 24.04}, "lip": {"x": -29.70, "z": 29.70}, "present": {"x": -155.56, "z": 155.56}, "far_face_owner_name": "The Sanguire of Sandrun", "far_face_faction_id": "sandrun_sanguire", "staple": "harvest", "refusal": "Refusal of Harvest"},
+    {"world_id": "Frontier", "angle_rad": 3.141593, "plaque": {"x": -34.00, "z": 0.00}, "lip": {"x": -42.00, "z": 0.00}, "present": {"x": -220.00, "z": 0.00}, "far_face_owner_name": "The Couriers' Guild", "far_face_faction_id": "frontier_couriers_guild", "staple": "road", "refusal": "Refusal of the Dome", "embassy": "none. The plaque is the staff. The rate is still 0.05."},
+    {"world_id": "Crime", "angle_rad": 3.926991, "plaque": {"x": -24.04, "z": -24.04}, "lip": {"x": -29.70, "z": -29.70}, "present": {"x": -155.56, "z": -155.56}, "far_face_owner_name": "The Ghost Network", "far_face_faction_id": "ghost_network", "staple": "invoices", "refusal": "Refusal of Consequence"},
+    {"world_id": "Superhero", "angle_rad": 4.712389, "plaque": {"x": 0.00, "z": -34.00}, "lip": {"x": 0.00, "z": -42.00}, "present": {"x": 0.00, "z": -220.00}, "far_face_owner_name": "The Enforcers' Movement", "far_face_faction_id": "enforcers_movement", "staple": "mercy", "refusal": "Refusal of the Win"},
+    {"world_id": "Crucible", "angle_rad": 5.497787, "plaque": {"x": 24.04, "z": -24.04}, "lip": {"x": 29.70, "z": -29.70}, "present": {"x": 155.56, "z": -155.56}, "far_face_owner_name": "The Witnesses", "far_face_faction_id": "crucible_witnesses", "staple": "drift", "refusal": "The Eighth Refusal"},
+    {"world_id": "Sere", "angle_rad": 4.276991, "plaque": null, "lip": {"x": -17.71, "z": -38.08}, "present": {"x": -125.27, "z": -269.29}, "far_face_owner_name": null, "far_face_faction_id": "the_tessera", "staple": "marks", "refusal": "No Refusal held. The waystone is not given the Tessera's name.", "gate": false}
+  ],
+  "borders": [
+    {"id": "border/cyber/sovereign-ruins", "route_id": "route/cyber/sovereign-ruins", "midpoint": {"x": 187.78, "z": 77.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "zero_collective", "world_b_at_exact_mid": "Ruins"},
+    {"id": "border/sovereign-ruins/fantasy", "route_id": "route/sovereign-ruins/fantasy", "midpoint": {"x": 77.78, "z": 187.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "ruins_archivists", "world_b_at_exact_mid": "Fantasy"},
+    {"id": "border/fantasy/tunya", "route_id": "route/fantasy/tunya", "midpoint": {"x": -77.78, "z": 187.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "wildwood_circle", "world_b_at_exact_mid": "Tunya"},
+    {"id": "border/tunya/concord-link-frontier", "route_id": "route/tunya/concord-link-frontier", "midpoint": {"x": -187.78, "z": 77.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "sandrun_sanguire", "world_b_at_exact_mid": "Frontier"},
+    {"id": "border/concord-link-frontier/crime", "route_id": "route/concord-link-frontier/crime", "midpoint": {"x": -187.78, "z": -77.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "frontier_couriers_guild", "world_b_at_exact_mid": "Crime", "quest": "q_s21_open_border"},
+    {"id": "border/crime/superhero", "route_id": "route/crime/superhero", "midpoint": {"x": -77.78, "z": -187.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "ghost_network", "world_b_at_exact_mid": "Superhero"},
+    {"id": "border/superhero/lattice-crucible", "route_id": "route/superhero/lattice-crucible", "midpoint": {"x": 77.78, "z": -187.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "enforcers_movement", "world_b_at_exact_mid": "Crucible"},
+    {"id": "border/lattice-crucible/cyber", "route_id": "route/lattice-crucible/cyber", "midpoint": {"x": 187.78, "z": -77.78}, "hub_r_m": 203.25, "half_chord_m": 84.19, "tariff": 0.05, "status": "open", "controlling_faction_id": "crucible_witnesses", "world_b_at_exact_mid": "Cyber"},
+    {"id": "border/crime/sere", "route_id": "route/crime/sere", "midpoint": {"x": -140.41, "z": -212.43}, "hub_r_m": 254.64, "half_chord_m": 58.85, "tariff": 0.05, "status": "open", "controlling_faction_id": "ghost_network", "resolver": "Inside both Arrive disks. CountryAt returns Crime. No quest stands here."}
+  ],
+  "blends": [
+    {
+      "kit": "arch_ix_grid_coast",
+      "name": "Uncounted Wharf",
+      "parents": ["Cyber", "Crime"],
+      "placed": false,
+      "ring_neighbors": false,
+      "law": "Flower Law does not apply. One wet-asphalt floor. Fiber inside a Coast pipe. Neon cloth soot-stained. Sodium wins the rain.",
+      "creature_cite": "hyb_billdrone allowed by the kit note, spawned only by S09 enc_rotor_saddle"
+    },
+    {
+      "kit": "arch_ix_sunder_dawn",
+      "name": "Held Crown Stair",
+      "parents": ["Fantasy", "Superhero"],
+      "placed": false,
+      "ring_neighbors": false,
+      "law": "skill_steel_mercy and skill_steel_curse_fold are both legal. A curse spent to take a final blow fails both laws. Granite is the foundation. Marble is the crown.",
+      "creature_cite": "S03 and S15 keep those worlds' creatures. None are moved here."
+    },
+    {
+      "kit": "arch_ix_crucible_foundry",
+      "name": "Unclosed Foundry",
+      "parents": ["Crucible", "Crime", "Frontier"],
+      "placed": false,
+      "ring_neighbors": "Frontier and Crime only. The Crucible is not on border/concord-link-frontier/crime.",
+      "law": "skill_craft_forge and skill_craft_unend share the bay when the bay exists. Leaving a recipe open must not soft-lock Coast craft. The arch stays short of closing.",
+      "creature_cite": "S17 keeps the foundry creatures. This facet does not place the bay to field them."
+    }
+  ],
+  "soft_enter": {
+    "kinds": ["walk", "link_gate"],
+    "walk_announces": "Canon title and refusal",
+    "link_gate_announces": false,
+    "kill_line": "Preserved across Enter. A journey stamp does not replace it.",
+    "journey_from_hub": "You left Hub for {title}.",
+    "journey_home": "You came home from {title}.",
+    "journey_between": "You crossed into {title}.",
+    "border_record": "RecordBorderCrossing only when kind is walk, the world changed, and RouteBetween(from, to) exists. Hub has no route, so a Court-to-spoke walk records no border.",
+    "in_hub_court": "Radius <= 42 forces the next SoftEnter target to Hub.",
+    "country_at": "Present within 68 m wins first, in MegaworldMap.All order. Else a route within width 4.2 + 8 m, split at globalT 0.5 toward world B. Else legacy Hub until some arrive disk.",
+    "frontier_gap": "At (-43.50, 0.00) steel is live, Toward is Frontier, clock stays Hub until the arrive disk near radius 152."
+  },
+  "notices": [
+    {"id": "notice_one_rate", "at": {"x": 34.00, "z": 0.00}, "spawn_count": 0, "hours": "all", "text": "Tariff 0.05. Inspection 1. Owner: Concordant Watch."},
+    {"id": "notice_steel_before_spoke", "at": {"x": -34.00, "z": 0.00}, "spawn_count": 0, "hours": "all", "text": "The road is our door. The rate on this face is still 0.05."},
+    {"id": "notice_open_border", "at": {"x": -24.04, "z": -24.04}, "spawn_count": 0, "hours": "all", "text": "Spoke to spoke is a border. The foundry is not this plaque."},
+    {"id": "notice_no_ninth_plaque", "at": {"x": 24.04, "z": -24.04}, "spawn_count": 0, "hours": "all", "text": "Eight gates. The next bearing has no arch."}
+  ],
+  "side_quests": [
+    {
+      "id": "q_s21_one_rate",
+      "title": "One Rate on Three Faces",
+      "world_id": "Hub",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_one_rate at (34.00, 0.00), all hours. Spawn count 0.",
+      "backstory_id": "story_q_one_rate",
+      "extends_lore_id": "hub_the_ninth_refusal",
+      "extends_faction_id": null,
+      "does_not_replace": ["q_hub_slate_at_grid_gate", "q_hub_eight_cords", "q_hub_law_lip_rose"],
+      "objectives": [
+        {"id": "obj_q_s21_rate_1", "verb": "witness", "target": "notice_one_rate", "count": 1, "text": "At (34.00, 0.00), read tariff 0.05, inspection 1, owner Concordant Watch. Leave the Zero Collective's name on the far face, where it belongs only after the clock is Cyber."},
+        {"id": "obj_q_s21_rate_2", "verb": "witness", "target": "frontier_plaque", "count": 1, "text": "At (−34.00, 0.00), read the same three lines. The refusal on the gate is The road is our door. The missing embassy does not zero the rate."},
+        {"id": "obj_q_s21_rate_3", "verb": "witness", "target": "crucible_plaque", "count": 1, "text": "At (24.04, −24.04), read the same three lines. Do not post a ninth Refusal on this plaque. The eighth is the Crucible's. The ninth is the ground inside the disk."},
+        {"id": "obj_q_s21_rate_4", "verb": "deliver", "target": "notice_one_rate", "count": 1, "text": "Return to the Cyber plaque. The three faces still match. No coin is put down. The market was used by being read."}
+      ],
+      "fail": ["Change any of the three rates", "Write a spoke faction onto a Hub-clock owner line", "Zero the Frontier plaque", "Add a ninth spoken Refusal", "Pay or collect coin", "Replace q_hub_slate_at_grid_gate"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "0.05. Inspection 1. Concordant Watch. The same on the door with no embassy.", "gossip_on_complete": "Three plaques were read and left on the ring rate.", "prop_or_door": "Existing Hub gate plaques. No new arch."},
+      "turn_in": {"npc_id": null, "board_id": "notice_one_rate", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s21_steel_before_the_spoke",
+      "title": "Steel Before the Spoke",
+      "world_id": "Hub",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_steel_before_spoke at (−34.00, 0.00), all hours. Spawn count 0.",
+      "backstory_id": "story_q_steel_gap",
+      "extends_lore_id": "hub_the_embassy_era",
+      "extends_faction_id": null,
+      "does_not_replace": ["q_s21_one_rate", "q_frontier_hand_to_mira"],
+      "objectives": [
+        {"id": "obj_q_s21_gap_1", "verb": "witness", "target": "notice_steel_before_spoke", "count": 1, "text": "At (−34.00, 0.00), still inside the disk, note the last event as it stands. A kill line, if one is already filed, is part of the note."},
+        {"id": "obj_q_s21_gap_2", "verb": "reach", "target": "frontier_past_lip", "count": 1, "text": "Walk to (−43.50, 0.00). Steel is live. Toward reads Frontier. The clock is Hub. Do not continue to the arrive disk near radius 152. Do not take a link_gate."},
+        {"id": "obj_q_s21_gap_3", "verb": "witness", "target": "no_border_row", "count": 1, "text": "Confirm no Hub route exists to record. Leaving the mercy is not a BorderDef crossing. The Frontier present stays (−220.00, 0.00), outside this errand."},
+        {"id": "obj_q_s21_gap_4", "verb": "deliver", "target": "notice_steel_before_spoke", "count": 1, "text": "Return to the plaque. The last event is the one you noted, kill line included. The clock is still Hub."}
+      ],
+      "fail": ["SoftEnter into Frontier", "Take kind link_gate", "Replace a kill line with a journey stamp", "Treat radius 152 as the lip", "Retune S13 or S14", "Build an embassy on the plaque"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Past the lip the sword works. The spoke has not taken the clock.", "gossip_on_complete": "Someone walked one step out of the mercy and came back on the same clock.", "prop_or_door": "Frontier plaque. The lip step is empty ground."},
+      "turn_in": {"npc_id": null, "board_id": "notice_steel_before_spoke", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s21_open_border",
+      "title": "The Open Border",
+      "world_id": "Cross",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_open_border at (−24.04, −24.04), all hours. Spawn count 0.",
+      "backstory_id": "story_q_open_border",
+      "extends_lore_id": "hub_the_embassy_era",
+      "extends_faction_id": null,
+      "does_not_replace": ["q_s21_steel_before_the_spoke"],
+      "objectives": [
+        {"id": "obj_q_s21_border_1", "verb": "witness", "target": "notice_open_border", "count": 1, "text": "At the Crime plaque (−24.04, −24.04), read the Hub face: 0.05, inspection 1, Concordant Watch. The foundry is not this door."},
+        {"id": "obj_q_s21_border_2", "verb": "reach", "target": "border/concord-link-frontier/crime", "count": 1, "text": "Walk to (−187.78, −77.78). Half-chord 84.19 m puts this point outside both arrive disks. Read tariff 0.05, status open, controlling faction id frontier_couriers_guild. At the exact half, CountryAt returns Crime."},
+        {"id": "obj_q_s21_border_3", "verb": "witness", "target": "arch_ix_crucible_foundry", "count": 1, "text": "Leave the Unclosed Foundry unplaced. Frontier and Crime are the neighbor pair. The Crucible is not a member of this border. Do not chalk 0.12. The country files do not dispute this pair."},
+        {"id": "obj_q_s21_border_4", "verb": "deliver", "target": "notice_open_border", "count": 1, "text": "Return to the Crime plaque. No guard was stood on the midpoint. No caravan row was written. The Couriers' id on the border is file order, not an embassy."}
+      ],
+      "fail": ["Place arch_ix_crucible_foundry", "Set the border to disputed or 0.12", "Spawn a border guard", "Append tariffsCsv", "Call the Couriers an embassy", "Finish a spoke raid on the way"],
+      "rewards": {"xp": 55, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Open. 0.05. The bay with the missing numeral is not this road.", "gossip_on_complete": "The Frontier–Crime border was read and the foundry was left unbuilt.", "prop_or_door": "Crime plaque, then the existing BorderDef. No foundry module."},
+      "turn_in": {"npc_id": null, "board_id": "notice_open_border", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s21_no_ninth_plaque",
+      "title": "No Ninth Plaque",
+      "world_id": "Hub",
+      "giver_npc_id": null,
+      "giver_spawn": "notice_no_ninth_plaque at (24.04, −24.04), all hours. Spawn count 0.",
+      "backstory_id": "story_q_no_ninth",
+      "extends_lore_id": "hub_the_ninth_refusal",
+      "extends_faction_id": null,
+      "does_not_replace": ["q_s19_empty_tariff", "q_s21_one_rate"],
+      "objectives": [
+        {"id": "obj_q_s21_ninth_1", "verb": "witness", "target": "notice_no_ninth_plaque", "count": 1, "text": "At (24.04, −24.04), count the gates you can see the ring use: eight. Sere is not among the plaques."},
+        {"id": "obj_q_s21_ninth_2", "verb": "reach", "target": "sere_bearing_lip", "count": 1, "text": "Walk to (−17.71, −38.08), the 42 m lip on angle 4.276991 rad. There is no arch. The 34 m point on this ray, (−14.34, −30.83), is not a gate center. Do not cut one."},
+        {"id": "obj_q_s21_ninth_3", "verb": "witness", "target": "waystone_unbuilt", "count": 1, "text": "Leave tariff, inspection, and owner unwritten, because there is no GatePost. Do not travel to (−125.27, −269.29). Do not stand on (−140.41, −212.43): CountryAt returns Crime there. q_s19_empty_tariff already owns the blank post inside Sere."},
+        {"id": "obj_q_s21_ninth_4", "verb": "deliver", "target": "notice_no_ninth_plaque", "count": 1, "text": "Return to the Crucible plaque. Eight gates remain. The ninth Refusal is the disk you crossed back into, and it still has no plaque of its own."}
+      ],
+      "fail": ["Add Sere to Canon.Gates", "Build a WorldGate on the Sere bearing", "Write tariff 0.05 on the empty lip", "Write the Tessera as owner", "Enter Sere to finish", "Treat the Crime–Sere midpoint as the waystone", "Teach a spoken ninth Refusal"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Eight arches. The bearing between Crime and the Dawn is empty.", "gossip_on_complete": "The lip on Sere's bearing was left without a plaque.", "prop_or_door": "Crucible plaque. The Sere lip stays bare ground."},
+      "turn_in": {"npc_id": null, "board_id": "notice_no_ninth_plaque", "requires_all_objectives": true}
+    }
+  ]
+}

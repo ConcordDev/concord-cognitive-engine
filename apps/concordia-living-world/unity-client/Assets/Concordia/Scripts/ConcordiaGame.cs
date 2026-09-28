@@ -4,20 +4,22 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Convai.Runtime.Components;
-using Convai.Runtime.Core.Async;
-using Convai.Runtime.Core.Coordinators;
-using Convai.Runtime.Core.Providers;
 using UnityEngine;
 using UnityEngine.Scripting;
+using Concordia.GameplayCore;
+using Concordia.GameplayCore.Persistence;
+
 
 namespace Concordia
 {
     public class ConcordiaGame : MonoBehaviour
     {
+        public static ConcordiaGame Live { get; private set; }
         public GameObject soldierPrefab;
         public WorldId world = WorldId.Hub;
         ConcordiaPlayer _player;
+        bool _leanDressDone;
+        float _leanStreamAt;
         WorldBuilder _world;
         WorldGate[] _gates;
         CityGate[] _cities;
@@ -29,10 +31,38 @@ namespace Concordia
         CookStation[] _cooks;
         KernelTomb[] _tombs;
         float _probeAt;
+        PersistenceEnvelope _loadedPersistence;
+        GameplayCoreBridge _coreBridge;
+
+        void OnEnable()
+        {
+            Live = this;
+            if (!_player) _player = ConcordiaPlayer.Live;
+        }
+
+        void OnDisable()
+        {
+            if (Live == this) Live = null;
+        }
 
         async void Start()
         {
+            Live = this;
+            _loadedPersistence = ConcordiaPersistenceService.Load();
+            if (_loadedPersistence != null && _loadedPersistence.payload != null && _loadedPersistence.payload.world != null)
+            {
+                if (Enum.TryParse(_loadedPersistence.payload.world.activeWorld, true, out WorldId savedWorld))
+                    world = savedWorld;
+            }
+            // LeanPlay: saved Tunya (or other realm) pulls GoldenSlice/Fabric into first frames and
+            // starves the editor while Hub is still staging. Force Hub boot; restore can re-enter later.
+            if (ConcordiaHost.LeanPlay && world != WorldId.Hub)
+            {
+                Debug.Log("[Concordia] LeanPlay: force Hub boot (saved world was " + world + ")");
+                world = WorldId.Hub;
+            }
             HubObjectives.Reset();
+            ContentBindCatalog.Preload();
             try { File.WriteAllText("/tmp/concordia-play-started.txt", System.DateTime.Now.ToString("o") + " world=" + world); } catch {}
             if (Camera.main) Camera.main.gameObject.SetActive(false);
 
@@ -46,16 +76,14 @@ namespace Concordia
 
             var pgo = new GameObject("Player");
             pgo.transform.position = new Vector3(Canon.Spawn.x, 0.12f, Canon.Spawn.z);
-            var cc = pgo.AddComponent<CharacterController>();
-            cc.height = 1.8f;
-            cc.center = new Vector3(0, 0.9f, 0);
-            cc.radius = 0.28f;
+            var cc = Grounding.EnsureController(pgo, 1.8f);
             _player = pgo.AddComponent<ConcordiaPlayer>();
             _player.cc = cc;
             _player.cam = chase;
             _player.world = world;
             chase.target = pgo.transform;
             chase.yaw = Mathf.PI;
+            chase.pitch = 0.08f;
             chase.pov = 0;
             chase.distance = 3.4f;
             chase.shoulder = 0.62f;
@@ -67,8 +95,8 @@ namespace Concordia
             camGo.transform.LookAt(new Vector3(Canon.Spawn.x, 1.4f, Canon.Spawn.z));
 
             var look = AppearanceStore.HasSaved ? AppearanceStore.Load() : new Appearance();
-            _player.person = ModularPerson.AttachHero(pgo.transform, look);
-            _player.EquipWorldKit();
+            // Defer AttachHero until Hub staged for Full and Lean — sync Rocketbox at Start + sync Hub was the cliff.
+            Debug.Log("[Concordia] defer ModularPerson.AttachHero until Hub staged (no sync hero at Start)");
             _player.onInteract = TryInteract;
             _player.onTalkSend = SubmitTalk;
             pgo.AddComponent<ConcordiaHUD>().player = _player;
@@ -80,8 +108,6 @@ namespace Concordia
             var kernelGo = new GameObject("ConcordClient");
             var kernel = kernelGo.AddComponent<ConcordClient>();
             kernel.OnEvent += HandleKernelEvent;
-            var convaiGo = new GameObject("ConcordConvai");
-            convaiGo.AddComponent<ConcordConvaiManager>();
 
             var wgo = new GameObject("WorldBuilder");
             _world = wgo.AddComponent<WorldBuilder>();
@@ -89,34 +115,171 @@ namespace Concordia
             await HubKit.EnsureLoaded();
             _world.Build(world);
             WorldClock.Enter(world);
+            // Full and Lean: Bridge + hero after staged Hub (BuildChunkStaged / realmfill_done).
+            Debug.Log("[Concordia] defer GameplayCoreBridge.Install until Hub staged");
+            StartCoroutine(DressHeroAfterHub(look, chase, kernel));
+            if (!ConcordiaHost.LeanPlay && _loadedPersistence != null)
+            {
+                // Persistence restore after Expand in DressHero — stash for then.
+            }
             Grounding.Snap(cc);
             camGo.transform.position = pgo.transform.position + new Vector3(1.7f, 2.55f, -5.2f);
             camGo.transform.LookAt(pgo.transform.position + Vector3.up * 1.3f);
             try { HubLook.Apply(cam, world); } catch (Exception e) { Debug.LogException(e); }
             try { HubLook.UpgradeStandardMaterials(); } catch (Exception e) { Debug.LogException(e); }
 
-            if (!AppearanceStore.HasSaved)
-            {
-                pgo.transform.rotation = Quaternion.identity;
-                chase.creatorFraming = true;
-                CharacterCreator.Open(_player.person, _player, chase, () =>
-                {
-                    ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
-                    Debug.Log("Concordia: " + _player.person.look.displayName + " entered the Unburned Court.");
-                });
-            }
-            else
-            {
-                pgo.transform.rotation = Quaternion.identity;
-                chase.yaw = Mathf.PI;
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
-                ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
-            }
+            // Character creator needs a live ModularPerson — open after DressHero AttachHero if wanted.
+            if (_loadedPersistence == null) pgo.transform.rotation = Quaternion.identity;
+            chase.yaw = Mathf.PI;
+            chase.pitch = 0.08f;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+            ConcordiaHUD.Announce(Canon.Hub.title, Canon.Hub.refusal);
             Debug.Log("Concordia hub: Unburned Court under the bronze dome. Eight named gates. No soldier.");
+            Application.runInBackground = true;
+#if UNITY_EDITOR
+            // Grab used to unpause and ForceGameView. LeanPlay skips Grab, so
+            // Play froze on frame 1 unless the Game view had focus.
+            UnityEditor.EditorApplication.isPaused = false;
+#endif
+            Time.timeScale = 1f;
             StartCoroutine(ConcordiaShot.Grab());
             if (File.Exists("/tmp/concordia-request-tour"))
                 StartCoroutine(ConcordiaShot.Tour(this));
+            StartCoroutine(PlayHeartbeat());
+        }
+
+        System.Collections.IEnumerator PlayHeartbeat()
+        {
+            var path = System.IO.Path.Combine(Application.dataPath, "Concordia/Generated/play-heartbeat.txt");
+            var start = Time.realtimeSinceStartup;
+            try { File.WriteAllText(path, "STARTED " + System.DateTime.Now.ToString("o") + "\\n"); } catch { }
+            while (Time.realtimeSinceStartup - start < 60f)
+            {
+                yield return new WaitForSecondsRealtime(1f);
+                try
+                {
+                    File.WriteAllText(path, "RUNNING " + (Time.realtimeSinceStartup - start).ToString("F1") + "s\\n");
+                }
+                catch { }
+            }
+            try
+            {
+                File.WriteAllText(path, "SUCCESS 60s " + System.DateTime.Now.ToString("o") + "\\n");
+                Debug.Log("[Concordia] SUCCESS 60s");
+            }
+            catch { }
+        }
+
+        void OfferFoundingDay()
+        {
+            TryOfferHubQuest("founding_day_01_gather");
+        }
+
+        static void TryOfferHubQuest(string id)
+        {
+            var q = WorldBook.QuestById(WorldId.Hub, id);
+            if (q != null) QuestLog.Offer(q, WorldId.Hub);
+        }
+
+System.Collections.IEnumerator DressHeroAfterHub(Appearance look, ChaseCamera chase, ConcordClient kernel)
+        {
+            var stagePath = System.IO.Path.Combine(Application.dataPath, "Concordia/Generated/runtime-stage.txt");
+            float giveUp = Time.realtimeSinceStartup + 120f;
+            while (Time.realtimeSinceStartup < giveUp)
+            {
+                if (_world && _world.HubStageComplete)
+                    break;
+                var mega = GameObject.Find("Megaworld");
+                if (mega && mega.transform.Find("ContinentGround") && mega.transform.Find("CourtGround"))
+                {
+                    Debug.Log("[Concordia] initial Court ground ready; binding hero while Hub dressing continues");
+                    break;
+                }
+                try
+                {
+                    if (System.IO.File.Exists(stagePath))
+                    {
+                        var text = System.IO.File.ReadAllText(stagePath);
+                        if (text.Contains("realmfill_done"))
+                            break;
+                    }
+                }
+                catch { }
+                yield return null;
+            }
+            // Let guest/gate CX settle — AttachHero same frame as last guest was the cliff.
+            for (int i = 0; i < 20; i++) yield return null;
+
+            var lean = _player ? _player.transform.Find("LeanHero") : null;
+            if (lean) Destroy(lean.gameObject);
+            if (_player && _player.person == null)
+            {
+                if (!AppearanceStore.HasSaved)
+                {
+                    look = look ?? new Appearance();
+                    look.displayName = string.IsNullOrEmpty(look.displayName) || look.displayName == "Walker"
+                        ? "Court Walker" : look.displayName;
+                    look.outfit = 0; // Court linen
+                    look.hairVal = 0.16f;
+                    look.hairSat = 0.42f;
+                }
+
+                ModularPerson.CastingWorld = WorldId.Hub;
+                for (int attempt = 1; attempt <= 3 && _player.person == null; attempt++)
+                {
+                    Debug.Log("[Concordia] LeanPlay: AttachHero after Hub settle attempt=" + attempt + " (Court traveler, no capsule)");
+                    try
+                    {
+                        _player.person = ModularPerson.AttachHero(_player.transform, look);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning("[Concordia] AttachHero attempt " + attempt + " failed: " + ex.Message);
+                    }
+                    if (_player.person == null) yield return null;
+                }
+
+                if (_player.person == null)
+                {
+                    Debug.LogError("[Concordia] AttachHero failed after 3 attempts; hero binding remains incomplete");
+                    yield break;
+                }
+                _player.EquipWorldKit();
+            }
+            // Spread kit/gear work off the bind frame.
+            for (int i = 0; i < 12; i++) yield return null;
+
+            Debug.Log("[Concordia] LeanPlay: GameplayCoreBridge.Install (locomotion-light)");
+            try
+            {
+                _coreBridge = GameplayCoreBridge.Install(this, _player, chase, kernel);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("[Concordia] LeanPlay: Bridge.Install failed: " + ex.Message);
+            }
+            for (int i = 0; i < 8; i++) yield return null;
+
+            if (_coreBridge != null)
+                yield return _coreBridge.ExpandSystemsStaged();
+
+            // Skip persistence Restore/ReceiveHere during Full Play stabilize — was part of post-Expand melt.
+            if (_loadedPersistence != null)
+                Debug.Log("[Concordia] LeanPlay: skip persistence Restore/ReceiveHere (post-Expand stability)");
+
+            // After any persistence restore (it replaces QuestLog wholesale). Offer is
+            // idempotent: already-active or done quests are left alone.
+            OfferFoundingDay();
+
+            if (kernel != null)
+            {
+                // Defer WS + RestoreAgentSoul — both sat on the ~28–29s post-Expand melt.
+                // Probe SUCCESS first; re-enable once Play holds 60s with buildings.
+                Debug.Log("[Concordia] LeanPlay: skip EnsureConnected/RestoreAgentSoul (post-Expand stability)");
+                _leanDressDone = true;
+                Debug.Log("[Concordia] LeanPlay: DressHeroAfterHub complete (Bridge locomotion; Expand guests live)");
+            }
         }
 
         void RefreshProbe()
@@ -135,21 +298,52 @@ namespace Concordia
 
         void Update()
         {
+            if (!_player) _player = ConcordiaPlayer.Live;
+            if (ContinentStream.Live == null && _world)
+                ContinentStream.Bind(_world);
+            // Stream before the Boot/creator gates so chunks load while the
+            // character creator is open and the traveler is received before the
+            // chunk hitch. Throttled LeanPlay ticks inside its own branch below.
+            bool leanThrottled = ConcordiaHost.LeanPlay && _leanDressDone;
+            if (_player && !leanThrottled)
+                ContinentStream.Live?.Tick(_player.transform.position);
+            WorldClock.Tick(Time.deltaTime);
+            // Frame 1 is Boot. Probe FindObjects across chunks here used to
+            // keep Time.time at 0 so WalkBearing never took a step.
+            if (Time.frameCount < 2) return;
             if (!_player || CharacterCreator.IsOpen) return;
-            ContinentStream.Live?.Tick(_player.transform.position);
+            // LeanPlay after Dress: stream/proximity live but throttled; RefreshProbe rare.
+            if (leanThrottled)
+            {
+                if (Time.unscaledTime - _leanStreamAt > 2f)
+                {
+                    _leanStreamAt = Time.unscaledTime;
+                    if (_player)
+                        ContinentStream.Live?.Tick(_player.transform.position);
+                    ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
+                }
+                if (_gates == null || Time.unscaledTime - _probeAt > 60f) RefreshProbe();
+                return;
+            }
+            // LeanPlay: keep prompts, but RefreshProbe rare (FindObjects storm starved Play).
             ProximityVoice.Tick(_player.transform.position, WorldBook.Folder(_player.world));
-            if (_gates == null || Time.unscaledTime - _probeAt > 0.25f) RefreshProbe();
+            float probeEvery = ConcordiaHost.LeanPlay ? 60f : 0.25f;
+            if (_gates == null || Time.unscaledTime - _probeAt > probeEvery) RefreshProbe();
             var pos = _player.transform.position;
             string prompt = null;
             float best = 3.2f;
+            WorldGate nearGate = null;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; prompt = g.Prompt; }
+                    if (d < gateBest) { gateBest = d; nearGate = g; }
                     if (d < 9f && g.def.world != WorldId.Hub) HubObjectives.NoteGateWalked(g.def.world);
                 }
+            if (nearGate)
+                prompt = nearGate.Prompt;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -223,14 +417,26 @@ namespace Concordia
                     prompt = bi != null && bi.entered ? "E  ·  Leave" : door.Prompt;
                 }
             }
+            var fabricResolution = _coreBridge != null ? _coreBridge.ResolveInteraction(pos) : null;
+            if (fabricResolution != null && fabricResolution.found && fabricResolution.distance <= best)
+            {
+                best = fabricResolution.distance;
+                prompt = fabricResolution.prompt;
+            }
+            if (nearGate) prompt = nearGate.Prompt;
+            if (string.IsNullOrEmpty(prompt) && !string.IsNullOrEmpty(RoadWorld.NearLine))
+                prompt = RoadWorld.NearLine;
             _player.SetNearPrompt(prompt);
             QuestLog.TickBeacons(pos);
-            WorldClock.Tick(Time.deltaTime);
         }
 
         string TryInteract(Vector3 pos)
         {
             RefreshProbe();
+            var coreMessage = GameplayCoreBridge.Live?.TryInteractVehicle(pos);
+            if (!string.IsNullOrEmpty(coreMessage)) return coreMessage;
+            var coreEconomy = GameplayCoreBridge.Live?.TryInteract(pos);
+            if (!string.IsNullOrEmpty(coreEconomy)) return coreEconomy;
             WorldGate gate = null;
             CityGate city = null;
             LoreStone stone = null;
@@ -240,14 +446,20 @@ namespace Concordia
             Gatherable loot = null;
             CookStation cook = null;
             KernelTomb tomb = null;
-            float best = 3.2f;
+            float gateBest = 5.2f;
             if (_gates != null)
                 foreach (var g in _gates)
                 {
                     if (!g) continue;
                     var d = Vector3.Distance(pos, g.transform.position);
-                    if (d < best) { best = d; gate = g; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; tomb = null; }
+                    if (d < gateBest) { gateBest = d; gate = g; }
                 }
+            if (gate != null)
+            {
+                Travel(gate.def.world);
+                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
+            }
+            float best = 3.2f;
             if (_cities != null)
                 foreach (var c in _cities)
                 {
@@ -304,11 +516,6 @@ namespace Concordia
                     var d = Vector3.Distance(pos, t.transform.position);
                     if (d < best) { best = d; tomb = t; gate = null; city = null; stone = null; npc = null; board = null; hold = null; loot = null; cook = null; }
                 }
-            if (gate != null)
-            {
-                Travel(gate.def.world);
-                return "The Ring opens — " + gate.def.name + ". " + gate.def.theNo;
-            }
             if (hold != null)
                 return EnterHold(hold);
             if (city != null)
@@ -342,11 +549,13 @@ namespace Concordia
             {
                 var life = npc.GetComponent<NpcLife>();
                 if (life) life.NoticePlayer(8f);
+                npc.hailed = false;
+                Bonds.TalkBump(Bonds.Key(npc));
                 if (npc.def.id == "lamplighter") HubObjectives.NoteLamp();
                 QuestLog.NoteTalk(npc.personId ?? npc.def.id, npc.def.name);
-                var offered = WorldBook.OfferedBy(world, npc.personId ?? npc.def.id);
-                if (offered.Length > 0)
-                    return npc.def.name + ": " + npc.def.line + "\n" + QuestLog.Offer(offered[0], world);
+                var firstTalkOffer = ConcordiaDialogueService.FirstTalkQuestOffer(npc, world);
+                if (!string.IsNullOrEmpty(firstTalkOffer))
+                    return firstTalkOffer;
                 if (npc.questHooks != null)
                     foreach (var hook in npc.questHooks)
                     {
@@ -445,9 +654,11 @@ namespace Concordia
         }
 
         /// <summary>
-        /// MEGAWORLD: current mode is region_rebuild (_world.Build). Destination
-        /// topology is one continuous universe with overlapping WorldFields;
-        /// Link gates are the only fast travel. Flower Law is Hub-only.
+        /// MEGAWORLD: live path is ContinentStream (one plane). Link gates
+        /// teleport; walking SoftEnters. Travel never calls _world.Build —
+        /// that PurgeNamed("Megaworld") + Canon.SteelSpawn wipe emptied the
+        /// Hub Ring after repeated Travel. Boot is the only Build caller.
+        /// Flower Law is the Unburned Court only.
         /// See docs/CONCORDIA_PERSISTENT_MEGAWORLD.md.
         /// </summary>
         public void Travel(WorldId next)
@@ -458,21 +669,11 @@ namespace Concordia
             HubObjectives.NoteTravel(world, next);
             world = next;
             _player.world = next;
-            if (ContinentStream.Live != null)
-                ContinentStream.Live.Teleport(_player, next);
+            var stream = ContinentStream.Bind(_world);
+            if (stream)
+                stream.Teleport(_player, next);
             else
-            {
-                var spawn = next == WorldId.Hub ? Canon.Spawn : Canon.SteelSpawn;
-                _player.cc.enabled = false;
-                _player.transform.position = spawn;
-                _player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
-                _player.cc.enabled = true;
-                if (_player.cam) _player.cam.yaw = Mathf.PI;
-                _world.Build(next);
-                WorldClock.Enter(next);
-                _player.EquipWorldKit();
-                Grounding.Snap(_player.cc);
-            }
+                Debug.LogError("Concordia Travel: ContinentStream missing; refusing single-world Build (SteelSpawn wipe).");
             ModularPerson.RecastBody(_player.person);
             try { if (Camera.main) HubLook.Apply(Camera.main, next); } catch (Exception e) { Debug.LogException(e); }
             var w = Canon.Get(next);
@@ -485,9 +686,18 @@ namespace Concordia
                 _player.Notice(crossed);
             else if (!string.IsNullOrEmpty(WorldClock.LastEvent) && WorldClock.LastEvent.Contains("away"))
                 _player.Notice(WorldClock.LastEvent);
-            var client = ConcordClient.Live;
-            if (client && client.Connected)
-                _ = client.RequestScene(WorldBook.Folder(next));
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(next));
+        }
+
+        /// <summary>
+        /// SoftEnter / walk-in world change. Same kernel join Travel uses.
+        /// Overland players must not keep sending the previous region id.
+        /// JoinWorld connects kitchen if Start() missed it.
+        /// </summary>
+        public void NoteWorld(WorldId id)
+        {
+            world = id;
+            _ = ConcordClient.JoinWorld(WorldBook.Folder(id));
         }
 
         public string EnterCity(WorldBook.CityDef city)
@@ -558,8 +768,22 @@ namespace Concordia
             _player?.AppendTalk(npc.def.name + ": " + reply);
         }
 
+        void OnApplicationQuit()
+        {
+#if UNITY_EDITOR
+            // Unity's Play-mode stop destroys the scene while OnApplicationQuit is
+            // raised; a full object graph capture at that point can stall teardown.
+            // GameplayCoreBridge.OnDisable owns the editor-stop save path.
+            if (UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) return;
+#endif
+            string error;
+            if (!ConcordiaPersistenceService.TrySave(out error) && !string.IsNullOrEmpty(error))
+                Debug.LogWarning("[Concordia] unified lifecycle save: " + error);
+        }
+
         void OnDestroy()
         {
+            if (Live == this) Live = null;
             WorldClock.Leave();
             var kernel = ConcordClient.Live;
             if (kernel != null) kernel.OnEvent -= HandleKernelEvent;
@@ -582,10 +806,10 @@ namespace Concordia
             public string reason;
         }
     }
-
-    /// <summary>
+#if false
     /// Convai talks to Concord 2B, not the Convai cloud LLM.
-    /// </summary>
+    /// Parked: the Convai package is not in this project, and these types
+    /// block HubLook compile. Restore when the SDK is present.
     public class ConcordConvaiManager : ConvaiManager
     {
         protected override IConversationProvider GetConversationProvider() =>
@@ -701,4 +925,5 @@ namespace Concordia
             return default;
         }
     }
+#endif
 }

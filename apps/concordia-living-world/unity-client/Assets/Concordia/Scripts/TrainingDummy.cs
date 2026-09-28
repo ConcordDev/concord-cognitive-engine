@@ -10,6 +10,45 @@ namespace Concordia
         [SerializeField] string kernelTargetId = "ArenaDummy";
         /// <summary>Kernel combat id. GameObject name is presentation-only (L4).</summary>
         public string KernelId => string.IsNullOrEmpty(kernelTargetId) ? "ArenaDummy" : kernelTargetId;
+        /// <summary>Court gym only. Road hostiles and fauna stay dead.</summary>
+        public bool Gym => !living && GetComponent<Hostile>() == null && GetComponent<FaunaLife>() == null;
+        /// <summary>
+        /// Kernel owns the Arena dummy and dungeon bosses. Road hostiles are
+        /// Unity-authored (`road-*`) — kernel reject used to eat the kill.
+        /// </summary>
+        public bool KernelAuthored
+        {
+            get
+            {
+                if (living) return false;
+                if (GetComponent<Hostile>()) return false;
+                if (GetComponent<FaunaLife>()) return false;
+                if (!string.IsNullOrEmpty(kernelTargetId) && kernelTargetId.StartsWith("road-"))
+                    return false;
+                return true;
+            }
+        }
+        /// <summary>Toast a person, not the HP vessel type name.</summary>
+        public string GuestLabel
+        {
+            get
+            {
+                var guest = GetComponent<GuestNpc>() ?? GetComponentInParent<GuestNpc>();
+                if (guest != null && guest.def != null && !string.IsNullOrEmpty(guest.def.name))
+                    return guest.def.name;
+                if (name.StartsWith("Bandit_")) return "Bandit";
+                if (name.StartsWith("DelveBoss_")) return "Camp boss";
+                if (name.StartsWith("Watcher_")) return "Watcher";
+                if (name.StartsWith("Fauna_")) return "Beast";
+                if (Gym) return "Dummy";
+                return name;
+            }
+        }
+
+        public void BindId(string id)
+        {
+            if (!string.IsNullOrEmpty(id)) kernelTargetId = id;
+        }
         float _reviveAt;
         Vector3 _home;
         Vector3 _scale0;
@@ -73,6 +112,13 @@ namespace Concordia
             hp -= dmg;
             _flash = 0.16f;
             transform.position += -transform.forward * 0.42f + Vector3.up * 0.06f;
+            transform.rotation *= Quaternion.Euler(0f, dmg >= 22f ? 16f : 7f, 0f);
+            var person = GetComponentInChildren<ModularPerson>();
+            person?.Hurt();
+            if (dmg >= 22f) person?.Stagger();
+            var av = GetComponentInChildren<MixamoAvatar>();
+            av?.Hit();
+            if (dmg >= 22f) av?.Stagger();
             if (hp > 0) return;
             var boss = GetComponent<WorldBoss>();
             if (boss)
@@ -81,6 +127,33 @@ namespace Concordia
                 return;
             }
             QuestLog.NoteDefeat(name);
+            if (!Gym)
+            {
+                if (GetComponent<FaunaLife>() == null)
+                {
+                    try { WorldClock.NoteKill(KernelId); }
+                    catch (System.Exception e) { Debug.LogException(e); }
+                }
+                RoadWorld.DropSpoils(transform);
+                KitBag.AddLoot("road-spoils", "road spoils");
+                var who = GuestLabel;
+                RoadWorld.NoticeKill(who, transform.position);
+                if (ConcordiaPlayer.Live) ConcordiaPlayer.Live.Notice(who + " down.");
+                var hostile = GetComponent<Hostile>();
+                if (hostile) hostile.enabled = false;
+                if (world == WorldId.Ruins || world == WorldId.Crucible)
+                {
+                    unburied = true;
+                    _reviveAt = Time.time + 7f;
+                    SetVisible(false);
+                }
+                else
+                {
+                    SetVisible(false);
+                    gameObject.SetActive(false);
+                }
+                return;
+            }
             if (world == WorldId.Ruins || world == WorldId.Crucible)
             {
                 unburied = true;
@@ -104,7 +177,7 @@ namespace Concordia
 
         void SetVisible(bool v)
         {
-            if (_rend == null) _rend = GetComponentsInChildren<Renderer>(true);
+            _rend = GetComponentsInChildren<Renderer>(true);
             foreach (var r in _rend) if (r) r.enabled = v;
             foreach (var c in GetComponentsInChildren<Collider>(true))
                 if (c) c.enabled = v;

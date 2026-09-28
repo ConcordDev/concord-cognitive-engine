@@ -21,10 +21,12 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.match(guide, /UNITY_ART_LOCK/);
   });
 
-  it("P0-1 LoadPersonPrefab reads CastingWorld; steel worlds are Knight not polo", () => {
+  it("P0-1 hero body reads CastingWorld; steel worlds are Knight not polo", () => {
     const person = src("ModularPerson.cs");
-    assert.match(person, /CastingWorld != WorldId\.Hub/);
-    assert.match(person, /SteelCostumePath\(CastingWorld\)/);
+    // Costume choice moved to CxDress.HeroPrefabPath (CX Steel vs Court hero plates).
+    assert.match(person, /CxDress\.HeroPrefabPath\(CastingWorld,/);
+    assert.match(src("CxDress.cs"), /var steel = world != WorldId\.Hub && Canon\.SteelLive\(world, position\)/);
+    assert.match(src("CxDress.cs"), /CX_Hero_Steel_front\.prefab/);
     assert.match(person, /kaykit\/adventures\/gltf\/Knight\.glb/);
     assert.match(person, /RecastBody\(/);
     assert.match(person, /RebuildForWorld\(/);
@@ -42,7 +44,9 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     assert.doesNotMatch(plaza, /Rib/);
     assert.doesNotMatch(plaza, /GodRays/);
     assert.doesNotMatch(plaza, /RingBoxes/);
-    assert.doesNotMatch(plaza, /PrimitiveType\.Cylinder/);
+    // Only permitted primitive: the LeanPlay floor, as the LAST fallback after two pack meshes.
+    assert.equal((plaza.match(/PrimitiveType\.Cylinder/g) || []).length, 1);
+    assert.match(plaza, /SpawnStore\("granite_panel", root, Vector3\.zero[^\n]*\n\s*\?\? HubLook\.Prim\(root, PrimitiveType\.Cylinder/);
     assert.doesNotMatch(src("WorldBuilder.cs"), /Material_SandLumpy/);
   });
 
@@ -65,7 +69,9 @@ describe("Concordia P0 visual punch-list — source contracts", () => {
     const book = src("WorldBook.cs");
     assert.match(look, /ApplyHour\(/);
     assert.match(look, /Sun01\(/);
-    assert.match(look, /0\.06f \+ 1\.12f \* sun01/);
+    // Aura relight: Hub key is modest and Sun01-driven; night floor is non-zero moonlight.
+    assert.match(look, /\? 0\.12f \+ 0\.28f \* sun01/);
+    assert.match(book, /0\.06f \+ 1\.12f \* sun01/);
     assert.match(book, /HubLook\.ApplyHour\(World, Hour\)/);
     assert.doesNotMatch(book, /0\.92f \+ 0\.38f \* day/);
   });

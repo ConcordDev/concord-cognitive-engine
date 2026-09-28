@@ -1,0 +1,255 @@
+{
+  "batch": "B25_creatures_ruins",
+  "world_ids": [
+    "Ruins"
+  ],
+  "count": 4,
+  "entries": [
+    {
+      "id": "faun_ruins_staple_beetle",
+      "display_name": "Staple Beetle",
+      "batch": "B25_creatures_ruins",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "underworld",
+        "detritivore"
+      ],
+      "triangle_budget": 2400,
+      "aura_prompt": "One small ash beetle, body a low oval, six short thick legs, one cold-iron staple lying flat across the back as a single bar, fossil dust, no thin legs, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small ash beetle, body a low oval, six short thick legs, one cold-iron staple lying flat across the back as a single bar, fossil dust, no thin legs, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Low oval with one bar across the back. Separate from the rib crawler's pillar-leg shell and from the sunned rib lizard diamond.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "lore_blurb": "Ash under the catalogue slabs. Ambient. The staple is worn iron, not a weapon.",
+      "scale_vs_player": "0.18 m tall, 0.32 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_ruins_staple_beetle/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 2400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_critter",
+        "anim_controller": "creature_critter",
+        "clips": [
+          "critter.idle",
+          "critter.scuttle",
+          "critter.hit",
+          "critter.death"
+        ],
+        "spawn_weight": 0,
+        "s07_caps": "unchanged",
+        "avoid": [
+          "enc_catalogue_walks",
+          "enc_rib_basket",
+          "enc_returned_kill",
+          "enc_late_breath",
+          "enc_unfinished",
+          "bone_yard",
+          "unburial_court",
+          "catalogue_hall",
+          "denier_overlap",
+          "north_shelf"
+        ],
+        "geography_hook": "ash under catalogue slabs, unplaced, not sunned bone",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "oval plus one bar"
+      }
+    },
+    {
+      "id": "faun_ruins_vault_bat",
+      "display_name": "Vault Bat",
+      "batch": "B25_creatures_ruins",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "underworld"
+      ],
+      "triangle_budget": 3400,
+      "aura_prompt": "One ash bat hanging, wings folded into one downward triangle, two short ear bars, feet hooked, dull fossil dust, eyes dark, wings not spread. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One ash bat hanging, wings folded into one downward triangle, two short ear bars, feet hooked, dull fossil dust, eyes dark, wings not spread. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One downward triangle and two short ear bars. Separate from the catalogue crow's wedge bill and fingered wings.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "lore_blurb": "Hangs under fossil ribs in the ash vault. Ambient. Eyes do not glow.",
+      "scale_vs_player": "0.28 m folded",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_ruins_vault_bat/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 3400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_bird",
+        "anim_controller": "creature_bird",
+        "clips": [
+          "bat.hang",
+          "bird.flap",
+          "bird.takeoff",
+          "bird.land"
+        ],
+        "spawn_weight": 0,
+        "s07_caps": "unchanged",
+        "avoid": [
+          "enc_catalogue_walks",
+          "enc_rib_basket",
+          "enc_returned_kill",
+          "enc_late_breath",
+          "enc_unfinished",
+          "bone_yard",
+          "unburial_court",
+          "catalogue_hall",
+          "denier_overlap",
+          "north_shelf"
+        ],
+        "geography_hook": "under env_ruins_rib_bridge, unplaced, not the forum cypress",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "downward triangle"
+      }
+    },
+    {
+      "id": "faun_ruins_ash_grub",
+      "display_name": "Ash Grub",
+      "batch": "B25_creatures_ruins",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "underworld"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One thick ash grub, body a legless comma, one pale segment ring, ash crust, no legs, no antennae, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick ash grub, body a legless comma, one pale segment ring, ash crust, no legs, no antennae, no glow. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Legless comma with one pale ring. Separate from the Crucible comma mite, which keeps one long leg.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "lore_blurb": "Lives in the ash drift under the slabs. Ambient. Not a swarm and not a king.",
+      "scale_vs_player": "0.40 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_ruins_ash_grub/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_grub",
+        "anim_controller": "creature_grub",
+        "clips": [
+          "grub.curl",
+          "grub.inch",
+          "grub.hit",
+          "grub.death"
+        ],
+        "spawn_weight": 0,
+        "s07_caps": "unchanged",
+        "avoid": [
+          "enc_catalogue_walks",
+          "enc_rib_basket",
+          "enc_returned_kill",
+          "enc_late_breath",
+          "enc_unfinished",
+          "bone_yard",
+          "unburial_court",
+          "catalogue_hall",
+          "denier_overlap",
+          "north_shelf"
+        ],
+        "geography_hook": "ash drift under slabs, unplaced",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "legless comma"
+      }
+    },
+    {
+      "id": "faun_ruins_cinder_newt",
+      "display_name": "Cinder Newt",
+      "batch": "B25_creatures_ruins",
+      "world_ids": [
+        "Ruins"
+      ],
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "underworld",
+        "seep"
+      ],
+      "triangle_budget": 2800,
+      "aura_prompt": "One low ash newt, body a straight bar, four stub legs, tail a straight rod, darker wet band along the belly, no frill, eyes dark. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low ash newt, body a straight bar, four stub legs, tail a straight rod, darker wet band along the belly, no frill, eyes dark. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Straight bar and a rod tail. Separate from the rib lizard diamond and from the Sere hook-tail newt.",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "lore_blurb": "Ash seep under the forum, off the sunned bone. Ambient. No glowing eyes.",
+      "scale_vs_player": "0.08 m tall, 0.42 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/faun_ruins_cinder_newt/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "kit_id": "arch_kit_ruins_ash",
+        "lod0_tris": 2800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "snap_grid_m": 1,
+        "pistol_clips": "unbound",
+        "rig": "creature_sprawl",
+        "anim_controller": "creature_sprawl",
+        "clips": [
+          "sprawl.bask",
+          "sprawl.skitter",
+          "sprawl.hit",
+          "sprawl.death"
+        ],
+        "spawn_weight": 0,
+        "s07_caps": "unchanged",
+        "avoid": [
+          "enc_catalogue_walks",
+          "enc_rib_basket",
+          "enc_returned_kill",
+          "enc_late_breath",
+          "enc_unfinished",
+          "bone_yard",
+          "unburial_court",
+          "catalogue_hall",
+          "denier_overlap",
+          "north_shelf"
+        ],
+        "geography_hook": "ash seep under the forum, unplaced, not sunned bone, not flora_ruins_ash_cypress",
+        "spawner": "weight 0 until a density slice",
+        "body_read": "bar plus rod tail"
+      }
+    }
+  ]
+}

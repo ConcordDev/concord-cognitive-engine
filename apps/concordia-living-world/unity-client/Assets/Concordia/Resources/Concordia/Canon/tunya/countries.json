@@ -10,22 +10,22 @@
       "description": "First of the three Bloc territories (Dinye-Aekon-Asbir). Closed to outsiders by treaty. Orthodox Tunyan culture, energy-bloodline majority.",
       "capital": {
         "name": "Dinye Gate",
-        "x": 0,
-        "z": 0
+        "x": 0.0,
+        "z": 12.0
       },
       "anchors": [
         {
           "id": "dinye_gate",
           "name": "Dinye Gate",
-          "x": 0,
-          "z": 0,
+          "x": 0.0,
+          "z": 12.0,
           "kind": "lore_anchor"
         },
         {
           "id": "dinye_court",
           "name": "Dinye Council",
-          "x": 60,
-          "z": 40,
+          "x": 9.0,
+          "z": 18.0,
           "kind": "neutral_zone"
         }
       ],
@@ -55,7 +55,8 @@
       "extends_world": "tunya",
       "preferred_visit_order": 6,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 24.0
     },
     {
       "country_id": "aekon",
@@ -64,25 +65,25 @@
       "theme": "bloc-ice-frontier",
       "tech_level": "pre-industrial",
       "magic_level": "medium",
-      "description": "Second of the Bloc territories. Northernmost — frozen plateaus, ice-bloodline majority. Slow to grant entry, fast to defend.",
+      "description": "Second of the Bloc territories. Northernmost \u2014 frozen plateaus, ice-bloodline majority. Slow to grant entry, fast to defend.",
       "capital": {
         "name": "Aekon Glacier Gate",
-        "x": 0,
-        "z": 0
+        "x": -15.0,
+        "z": 68.0
       },
       "anchors": [
         {
           "id": "aekon_gate",
           "name": "Aekon Glacier Gate",
-          "x": 0,
-          "z": 0,
+          "x": -15.0,
+          "z": 68.0,
           "kind": "lore_anchor"
         },
         {
           "id": "aekon_forge",
           "name": "Aekon Ice-Forge",
-          "x": 30,
-          "z": -50,
+          "x": -10.5,
+          "z": 60.5,
           "kind": "trade_zone"
         }
       ],
@@ -112,7 +113,8 @@
       "extends_world": "tunya",
       "preferred_visit_order": 7,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 24.0
     },
     {
       "country_id": "asbir",
@@ -121,25 +123,25 @@
       "theme": "bloc-with-ark",
       "tech_level": "pre-industrial",
       "magic_level": "medium",
-      "description": "Third of the Bloc territories. Holds the Asbir Ark — pre-arrival memory archive. Lightning-bloodline majority. Players who reach the Ark with enough solar charge unlock pre-arrival N.A. cultural memory.",
+      "description": "Third of the Bloc territories. Holds the Asbir Ark \u2014 pre-arrival memory archive. Lightning-bloodline majority. Players who reach the Ark with enough solar charge unlock pre-arrival N.A. cultural memory.",
       "capital": {
         "name": "Asbir Threshold",
-        "x": 0,
-        "z": 0
+        "x": -72.0,
+        "z": -28.0
       },
       "anchors": [
         {
           "id": "asbir_gate",
           "name": "Asbir Threshold",
-          "x": 0,
-          "z": 0,
+          "x": -72.0,
+          "z": -28.0,
           "kind": "lore_anchor"
         },
         {
           "id": "asbir_ark",
           "name": "The Asbir Ark",
-          "x": -120,
-          "z": -200,
+          "x": -90.0,
+          "z": -58.0,
           "kind": "lore_anchor"
         }
       ],
@@ -170,7 +172,8 @@
       "extends_world": "lattice-crucible",
       "preferred_visit_order": 11,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 24.0
     },
     {
       "country_id": "fluxom",
@@ -182,22 +185,22 @@
       "description": "Brutal poison-bloodline territory. Where the cactem dye-bug strips grow. Refugees flow out under aggressive policies; players who drive a kingdom into Fluxom's territory can collapse it and scoop the assets.",
       "capital": {
         "name": "Fluxom Gate",
-        "x": 0,
-        "z": 0
+        "x": 62.0,
+        "z": 18.0
       },
       "anchors": [
         {
           "id": "fluxom_gate",
           "name": "Fluxom Gate",
-          "x": 0,
-          "z": 0,
+          "x": 62.0,
+          "z": 18.0,
           "kind": "lore_anchor"
         },
         {
           "id": "fluxom_dye_strip",
           "name": "Cactem Dye-Strip",
-          "x": 80,
-          "z": 100,
+          "x": 74.0,
+          "z": 33.0,
           "kind": "trade_zone"
         }
       ],
@@ -227,7 +230,8 @@
       "extends_world": "crime",
       "preferred_visit_order": 9,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "nil",
@@ -236,18 +240,18 @@
       "theme": "closed-ancestral-enclave",
       "tech_level": "pre-industrial",
       "magic_level": "high",
-      "description": "Pure Tunyan ancestral enclave. Closed by ancient covenant — no outsider has ever passed the threshold and returned. Players who attempt entry experience refusal_field strength ≥ 6 (compound refusal, glyph algebra). The world watches what happens.",
+      "description": "Pure Tunyan ancestral enclave. Closed by ancient covenant \u2014 no outsider has ever passed the threshold and returned. Players who attempt entry experience refusal_field strength \u2265 6 (compound refusal, glyph algebra). The world watches what happens.",
       "capital": {
         "name": "Nil Threshold",
-        "x": 0,
-        "z": 0
+        "x": 18.0,
+        "z": -8.0
       },
       "anchors": [
         {
           "id": "nil_threshold",
           "name": "Nil Threshold",
-          "x": 0,
-          "z": 0,
+          "x": 18.0,
+          "z": -8.0,
           "kind": "lore_anchor"
         }
       ],
@@ -277,7 +281,8 @@
       "extends_world": "sovereign-ruins",
       "preferred_visit_order": 13,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "akeia",
@@ -289,22 +294,22 @@
       "description": "Matriarchal Tunyan culture along the coast. Water-bloodline majority. Akeia's councils admit only those who pass the Tide-Honoring rite (Mig 158 festival).",
       "capital": {
         "name": "Akeia Capital",
-        "x": 0,
-        "z": 0
+        "x": 25.0,
+        "z": 35.0
       },
       "anchors": [
         {
           "id": "akeia_capital",
           "name": "Akeia Capital",
-          "x": 0,
-          "z": 0,
+          "x": 39.0,
+          "z": 43.0,
           "kind": "neutral_zone"
         },
         {
           "id": "akeia_harbor",
           "name": "Akeia Harbor",
-          "x": 50,
-          "z": -80,
+          "x": 32.5,
+          "z": 23.0,
           "kind": "trade_zone"
         }
       ],
@@ -334,7 +339,8 @@
       "extends_world": "concord-link-frontier",
       "preferred_visit_order": 4,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "sangree",
@@ -343,18 +349,18 @@
       "theme": "fire-bloodline-homeland",
       "tech_level": "pre-industrial",
       "magic_level": "high",
-      "description": "Sangree homeland — fire-bloodline, large/furred natives. The founders of the Sanguire lineage. Tolerates Vrellan alongside; their coexistence with Vessine is awkward.",
+      "description": "Sangree homeland \u2014 fire-bloodline, large/furred natives. The founders of the Sanguire lineage. Tolerates Vrellan alongside; their coexistence with Vessine is awkward.",
       "capital": {
         "name": "Sangree Fire Forge",
-        "x": 0,
-        "z": 0
+        "x": -4.43,
+        "z": -65.85
       },
       "anchors": [
         {
           "id": "sangree_forge",
           "name": "Sangree Fire Forge",
-          "x": 0,
-          "z": 0,
+          "x": -4.43,
+          "z": -65.85,
           "kind": "lore_anchor"
         }
       ],
@@ -384,7 +390,8 @@
       "extends_world": "fantasy",
       "preferred_visit_order": 8,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 28.0
     },
     {
       "country_id": "vessine",
@@ -396,22 +403,22 @@
       "description": "Vessine healer's island. Site of the original Vessine ship crash. Males wear taboo body-coverings per local custom. Healing-bloodline majority. Visitors are screened for fire-bloodline ancestry on entry.",
       "capital": {
         "name": "The Crash Site",
-        "x": 0,
-        "z": 0
+        "x": 48.0,
+        "z": -42.0
       },
       "anchors": [
         {
           "id": "vessine_crash_site",
           "name": "The Crash Site",
-          "x": 0,
-          "z": 0,
+          "x": 48.0,
+          "z": -42.0,
           "kind": "lore_anchor"
         },
         {
           "id": "vessine_stillrooms",
           "name": "Vessine Stillrooms",
-          "x": 40,
-          "z": 30,
+          "x": 58.0,
+          "z": -54.0,
           "kind": "trade_zone"
         }
       ],
@@ -442,7 +449,8 @@
       "extends_world": "superhero",
       "preferred_visit_order": 10,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 18.0
     },
     {
       "country_id": "sahm",
@@ -451,25 +459,25 @@
       "theme": "meritocracy-diaspora",
       "tech_level": "pre-industrial",
       "magic_level": "medium",
-      "description": "Sahm diaspora — 'smartest and strongest', a self-conception that drives both their imperial ambitions and their tendency to over-extend. Precision-bloodline majority. Wealthier than the Bloc, less close-knit.",
+      "description": "Sahm diaspora \u2014 'smartest and strongest', a self-conception that drives both their imperial ambitions and their tendency to over-extend. Precision-bloodline majority. Wealthier than the Bloc, less close-knit.",
       "capital": {
         "name": "Sahm Academy",
-        "x": 0,
-        "z": 0
+        "x": -20.0,
+        "z": 45.0
       },
       "anchors": [
         {
           "id": "sahm_academy",
           "name": "Sahm Academy",
-          "x": 0,
-          "z": 0,
+          "x": -20.0,
+          "z": 45.0,
           "kind": "lore_anchor"
         },
         {
           "id": "sahm_emporium",
           "name": "Sahm Emporium",
-          "x": 100,
-          "z": 60,
+          "x": -5.0,
+          "z": 54.0,
           "kind": "trade_zone"
         }
       ],
@@ -499,7 +507,8 @@
       "extends_world": "fantasy",
       "preferred_visit_order": 3,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "bahiij",
@@ -508,25 +517,25 @@
       "theme": "elephant-plain",
       "tech_level": "pre-industrial",
       "magic_level": "low",
-      "description": "Vast grass plains. The Bahiij elephants are the largest authored quadruped mounts — slow, heavy, indispensable for caravan trade.",
+      "description": "Vast grass plains. The Bahiij elephants are the largest authored quadruped mounts \u2014 slow, heavy, indispensable for caravan trade.",
       "capital": {
         "name": "Bahiij Crossing",
-        "x": 0,
-        "z": 0
+        "x": -48.0,
+        "z": 28.0
       },
       "anchors": [
         {
           "id": "bahiij_capital",
           "name": "Bahiij Crossing",
-          "x": 0,
-          "z": 0,
+          "x": -34.0,
+          "z": 36.0,
           "kind": "neutral_zone"
         },
         {
           "id": "bahiij_elephant_corral",
           "name": "Bahiij Elephant Corral",
-          "x": 50,
-          "z": 50,
+          "x": -40.5,
+          "z": 35.5,
           "kind": "trade_zone"
         }
       ],
@@ -556,7 +565,8 @@
       "extends_world": "concord-link-frontier",
       "preferred_visit_order": 12,
       "climate_warning": null,
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "ancient-tunyan-ruins",
@@ -565,25 +575,25 @@
       "theme": "pre-arrival-mystery",
       "tech_level": "ruin",
       "magic_level": "low",
-      "description": "Pre-arrival structures predating every known Tunyan culture. Climate-driven exploration: the ruins are deadly during Wound (95-110°F) without preparation; safe in Quicken/Thaw.",
+      "description": "Pre-arrival structures predating every known Tunyan culture. Climate-driven exploration: the ruins are deadly during Wound (95-110\u00b0F) without preparation; safe in Quicken/Thaw.",
       "capital": {
         "name": "Ruins Entrance",
-        "x": 0,
-        "z": 0
+        "x": -55.0,
+        "z": -55.0
       },
       "anchors": [
         {
           "id": "ruins_entrance",
           "name": "Ruins Entrance",
-          "x": 0,
-          "z": 0,
+          "x": -55.0,
+          "z": -55.0,
           "kind": "lore_anchor"
         },
         {
           "id": "ruins_archive",
           "name": "Sealed Archive Chamber",
-          "x": -150,
-          "z": -100,
+          "x": -77.5,
+          "z": -70.0,
           "kind": "lore_anchor"
         }
       ],
@@ -613,7 +623,8 @@
       "extends_world": "lattice-crucible",
       "preferred_visit_order": 14,
       "climate_warning": "wound_month_deadly",
-      "disputed_border": null
+      "disputed_border": null,
+      "territory_radius": 22.0
     },
     {
       "country_id": "cactem-strip",
@@ -625,22 +636,22 @@
       "description": "Disputed border strip with Fluxom. The cactem dye-bug breeding grounds. Source of the textile_cactem chain's first step (Phase 11). Routinely raided by Fluxom; defended by Tunyan caravans.",
       "capital": {
         "name": "Cactem Breeder Camp",
-        "x": 0,
-        "z": 0
+        "x": 70.0,
+        "z": 55.0
       },
       "anchors": [
         {
           "id": "cactem_breeder",
           "name": "Cactem Breeder Camp",
-          "x": 0,
-          "z": 0,
+          "x": 80.0,
+          "z": 43.0,
           "kind": "trade_zone"
         },
         {
           "id": "cactem_raid_marker",
           "name": "Last Raid Marker",
-          "x": -60,
-          "z": 30,
+          "x": 61.0,
+          "z": 59.5,
           "kind": "lore_anchor"
         }
       ],
@@ -673,7 +684,8 @@
       "disputed_border": [
         "fluxom",
         "dinye"
-      ]
+      ],
+      "territory_radius": 22.0
     }
   ]
 }

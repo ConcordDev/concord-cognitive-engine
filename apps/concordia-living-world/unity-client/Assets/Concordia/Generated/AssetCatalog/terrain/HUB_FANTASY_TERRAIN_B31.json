@@ -1,0 +1,741 @@
+{
+  "batch": "B31_terrain",
+  "slice": "A13_terrain_hub_fantasy",
+  "count": 15,
+  "rule": "Modules, not maps. Three scatter kits. B18 and B20 parents stay. No lettering. No stag retune. Ash grove is the Sundering east march, not the Ruins cypress.",
+  "kits": [
+    {
+      "id": "terr_kit_pinewood",
+      "world_ids": [
+        "Hub"
+      ],
+      "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+      "keeps": [
+        "flora_hub_pinewood_pine",
+        "env_hub_pinewood_milepost",
+        "env_hub_salt_verge"
+      ],
+      "modules": [
+        "terr_hub_pine_needle_mat",
+        "terr_hub_pine_fallen_limb",
+        "terr_hub_pine_sapling",
+        "terr_hub_pine_stump",
+        "terr_hub_pine_bark_slab"
+      ]
+    },
+    {
+      "id": "terr_kit_salt_road",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+      "keeps": [
+        "env_hub_salt_verge",
+        "flora_hub_salt_grass",
+        "env_sunder_salt_toll",
+        "env_hub_pinewood_milepost"
+      ],
+      "modules": [
+        "terr_salt_rut_tile",
+        "terr_salt_crust_pan",
+        "terr_salt_dust_berm",
+        "terr_salt_crown_stone",
+        "terr_salt_wheel_chip"
+      ]
+    },
+    {
+      "id": "terr_kit_ash_grove",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+      "keeps": [
+        "flora_sunder_thorn_oak",
+        "flora_sunder_fold_willow",
+        "flora_sunder_rune_pine",
+        "flora_ruins_ash_cypress",
+        "env_sunder_fold_lip"
+      ],
+      "modules": [
+        "flora_sunder_grove_ash",
+        "terr_sunder_ash_litter",
+        "terr_sunder_ash_log",
+        "terr_sunder_ash_moss_lip",
+        "flora_sunder_ash_whip"
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "terr_hub_pine_needle_mat",
+      "display_name": "Pine Needle Mat",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "pinewood",
+        "dressing",
+        "ground"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One flat mat of pine needles, a single wedge of duff. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Salt dust in the needles, no tree, no sign, no animal. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low wedge of needles. No trunk.",
+      "palette": [
+        "#c4b49a",
+        "#8a9a68",
+        "#e6dcc8",
+        "#c8721a",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Scatter under the standing pine. Not the 8 m salt verge.",
+      "scale_vs_player": "2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_hub_pine_needle_mat/",
+        "kit_id": "terr_kit_pinewood",
+        "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+        "flower_law": "outside_42m",
+        "keeps": "flora_hub_pinewood_pine, env_hub_pinewood_milepost, env_hub_salt_verge"
+      },
+      "prompt": "One flat mat of pine needles, a single wedge of duff. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Salt dust in the needles, no tree, no sign, no animal. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_hub_pine_fallen_limb",
+      "display_name": "Fallen Pine Limb",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "pinewood",
+        "dressing"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One fallen pine limb, needle plates still attached, salt on the windward side. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Broken at one end, no stump, no standing tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A single bar of limb with plate needles. Horizontal.",
+      "palette": [
+        "#c4b49a",
+        "#8a9a68",
+        "#e6dcc8",
+        "#c8721a",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "A dropped limb beside the salt road. Not flora_hub_pinewood_pine.",
+      "scale_vs_player": "2.4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_hub_pine_fallen_limb/",
+        "kit_id": "terr_kit_pinewood",
+        "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+        "flower_law": "outside_42m",
+        "keeps": "flora_hub_pinewood_pine, env_hub_pinewood_milepost, env_hub_salt_verge"
+      },
+      "prompt": "One fallen pine limb, needle plates still attached, salt on the windward side. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Broken at one end, no stump, no standing tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_hub_pine_sapling",
+      "display_name": "Pinewood Sapling",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "flora",
+        "pinewood",
+        "dressing"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One short pine sapling, three needle plates, salt crust at the foot. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. One trunk, no milepost, no second tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short layered cone. Separate from the 14 m pine.",
+      "palette": [
+        "#c4b49a",
+        "#8a9a68",
+        "#e6dcc8",
+        "#c8721a",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Young pine outside the wall. The hero pine stays flora_hub_pinewood_pine.",
+      "scale_vs_player": "2.8 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_hub_pine_sapling/",
+        "kit_id": "terr_kit_pinewood",
+        "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+        "flower_law": "outside_42m",
+        "keeps": "flora_hub_pinewood_pine, env_hub_pinewood_milepost, env_hub_salt_verge"
+      },
+      "prompt": "One short pine sapling, three needle plates, salt crust at the foot. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. One trunk, no milepost, no second tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_hub_pine_stump",
+      "display_name": "Pine Root Stump",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "pinewood",
+        "dressing"
+      ],
+      "triangle_budget": 3500,
+      "aura_prompt": "One pine stump with a root flare and a pale salt ring. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Cut face, no log, no road tile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low flared stump. Not the cut log end on the salt verge.",
+      "palette": [
+        "#c4b49a",
+        "#8a9a68",
+        "#e6dcc8",
+        "#c8721a",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "A stump in the pinewood scatter. env_hub_salt_verge keeps its own log end.",
+      "scale_vs_player": "0.7 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 3500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_hub_pine_stump/",
+        "kit_id": "terr_kit_pinewood",
+        "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+        "flower_law": "outside_42m",
+        "keeps": "flora_hub_pinewood_pine, env_hub_pinewood_milepost, env_hub_salt_verge"
+      },
+      "prompt": "One pine stump with a root flare and a pale salt ring. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Cut face, no log, no road tile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_hub_pine_bark_slab",
+      "display_name": "Salt Bark Slab",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "pinewood",
+        "dressing"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One leaning slab of pine bark, salt crust on the outer face. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. One plate, curled edge, no trunk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A single curled bark plate. Reads as a slab, not a shield.",
+      "palette": [
+        "#c4b49a",
+        "#8a9a68",
+        "#e6dcc8",
+        "#c8721a",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Windward bark fallen off the pine. No lettering.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_hub_pine_bark_slab/",
+        "kit_id": "terr_kit_pinewood",
+        "place": "Hub local, outside the 56 m wall, around Pinewood Crossing (62, -28). Not inside the 42 m Flower Law disk. Not the milepost. Stag caps stay as authored.",
+        "flower_law": "outside_42m",
+        "keeps": "flora_hub_pinewood_pine, env_hub_pinewood_milepost, env_hub_salt_verge"
+      },
+      "prompt": "One leaning slab of pine bark, salt crust on the outer face. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. One plate, curled edge, no trunk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_salt_rut_tile",
+      "display_name": "Salt Rut Tile",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "salt_road",
+        "dressing",
+        "ground"
+      ],
+      "triangle_budget": 6000,
+      "aura_prompt": "One short road tile with two wheel ruts and a pale salt crust. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. No log end, no grass tuft, no post, no sign. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A 4 m tile. Two parallel ruts. Repeatable along the road.",
+      "palette": [
+        "#e6dcc8",
+        "#c4b49a",
+        "#8a9a68",
+        "#d9cbb8",
+        "#ffe6c0"
+      ],
+      "lore_blurb": "Chains beside the salt verge. Does not replace env_hub_salt_verge.",
+      "scale_vs_player": "4 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 4,
+        "lod0_tris": 6000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_salt_rut_tile/",
+        "kit_id": "terr_kit_salt_road",
+        "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+        "flower_law": "outside_42m",
+        "keeps": "env_hub_salt_verge, flora_hub_salt_grass, env_sunder_salt_toll, env_hub_pinewood_milepost"
+      },
+      "prompt": "One short road tile with two wheel ruts and a pale salt crust. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. No log end, no grass tuft, no post, no sign. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_salt_crust_pan",
+      "display_name": "Salt Crust Pan",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "salt_road",
+        "dressing",
+        "ground"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One flat pan of white salt crust, cracked once. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. A single plate, pale, no bowl, no chain. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat cracked plate. Not the toll bowl.",
+      "palette": [
+        "#e6dcc8",
+        "#c4b49a",
+        "#8a9a68",
+        "#d9cbb8",
+        "#ffe6c0"
+      ],
+      "lore_blurb": "Dry crust on the salt road. env_sunder_salt_toll keeps the bowl.",
+      "scale_vs_player": "1.6 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_salt_crust_pan/",
+        "kit_id": "terr_kit_salt_road",
+        "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+        "flower_law": "outside_42m",
+        "keeps": "env_hub_salt_verge, flora_hub_salt_grass, env_sunder_salt_toll, env_hub_pinewood_milepost"
+      },
+      "prompt": "One flat pan of white salt crust, cracked once. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. A single plate, pale, no bowl, no chain. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_salt_dust_berm",
+      "display_name": "Salt Dust Berm",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "salt_road",
+        "dressing"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One low berm of pale road dust, a single wedge. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. No grass, no pine, no cairn. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low pale wedge. Shoulder dust, not a hill.",
+      "palette": [
+        "#e6dcc8",
+        "#c4b49a",
+        "#8a9a68",
+        "#d9cbb8",
+        "#ffe6c0"
+      ],
+      "lore_blurb": "Dust the wheels leave. Not flora_hub_salt_grass.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_salt_dust_berm/",
+        "kit_id": "terr_kit_salt_road",
+        "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+        "flower_law": "outside_42m",
+        "keeps": "env_hub_salt_verge, flora_hub_salt_grass, env_sunder_salt_toll, env_hub_pinewood_milepost"
+      },
+      "prompt": "One low berm of pale road dust, a single wedge. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. No grass, no pine, no cairn. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_salt_crown_stone",
+      "display_name": "Road Crown Stone",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "salt_road",
+        "dressing"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One split crown stone set in a road, pale crust on the top. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. One stone, a crack that sheds water, no stack. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A single stone with one split. Not a cairn and not a ward stone.",
+      "palette": [
+        "#e6dcc8",
+        "#c4b49a",
+        "#8a9a68",
+        "#d9cbb8",
+        "#ffe6c0"
+      ],
+      "lore_blurb": "The crown that drains the salt road. Not env_frontier_walker_cairn.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_salt_crown_stone/",
+        "kit_id": "terr_kit_salt_road",
+        "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+        "flower_law": "outside_42m",
+        "keeps": "env_hub_salt_verge, flora_hub_salt_grass, env_sunder_salt_toll, env_hub_pinewood_milepost"
+      },
+      "prompt": "One split crown stone set in a road, pale crust on the top. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. One stone, a crack that sheds water, no stack. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_salt_wheel_chip",
+      "display_name": "Wheel-Scar Chip",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "salt_road",
+        "dressing"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One chipped road stone with a pale wheel scar. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. One chip, a curved scar, no wheel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small stone. The scar is a curve, not a letter.",
+      "palette": [
+        "#e6dcc8",
+        "#c4b49a",
+        "#8a9a68",
+        "#d9cbb8",
+        "#ffe6c0"
+      ],
+      "lore_blurb": "A kicked chip. veh_spare_iron_wheel stays the wheel.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 1200,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_salt_wheel_chip/",
+        "kit_id": "terr_kit_salt_road",
+        "place": "Salt road outside the Hub 56 m wall, Pinewood side, and the Sundering south salt track beside env_sunder_salt_toll. Not the toll post. Not inside 42 m. Not the Frontier plaque at (-34, 0).",
+        "flower_law": "outside_42m",
+        "keeps": "env_hub_salt_verge, flora_hub_salt_grass, env_sunder_salt_toll, env_hub_pinewood_milepost"
+      },
+      "prompt": "One chipped road stone with a pale wheel scar. Single subject, three-quarter view, centered, entire subject in frame, road dusk, soft even light, no text, no watermark, 3D game asset concept render. One chip, a curved scar, no wheel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "flora_sunder_grove_ash",
+      "display_name": "Grove Ash",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "flora",
+        "ash_grove",
+        "dressing",
+        "biome_defining"
+      ],
+      "triangle_budget": 12000,
+      "aura_prompt": "One grove ash, pale grey trunk, open crown, two opposite forks. Single subject, three-quarter view, centered, entire subject in frame, east forest, soft even light, no text, no watermark, 3D game asset concept render. Moss on the south face only, no gold glow, no forum, no bones. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Open crown, pale trunk, opposite forks. Not a narrow dark cypress.",
+      "palette": [
+        "#3a6a48",
+        "#c8c2b4",
+        "#c8b48a",
+        "#b7c4b0",
+        "#c8a060"
+      ],
+      "lore_blurb": "East-march ash. flora_ruins_ash_cypress stays the Ruins forum tree.",
+      "scale_vs_player": "11 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 4,
+        "lod0_tris": 12000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_grove_ash/",
+        "kit_id": "terr_kit_ash_grove",
+        "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+        "flower_law": "n/a",
+        "keeps": "flora_sunder_thorn_oak, flora_sunder_fold_willow, flora_sunder_rune_pine, flora_ruins_ash_cypress, env_sunder_fold_lip"
+      },
+      "prompt": "One grove ash, pale grey trunk, open crown, two opposite forks. Single subject, three-quarter view, centered, entire subject in frame, east forest, soft even light, no text, no watermark, 3D game asset concept render. Moss on the south face only, no gold glow, no forum, no bones. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_sunder_ash_litter",
+      "display_name": "Ash Leaf Mat",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "ash_grove",
+        "dressing",
+        "ground"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One mat of grey ash leaves, compound leaflets as one flat mass. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. Grey leaflets, a little moss at one edge, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat grey mat. One mass of leaflets.",
+      "palette": [
+        "#3a6a48",
+        "#c8c2b4",
+        "#c8b48a",
+        "#b7c4b0",
+        "#c8a060"
+      ],
+      "lore_blurb": "Grove floor off the salt track. Quiet. No bones.",
+      "scale_vs_player": "2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 2500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_sunder_ash_litter/",
+        "kit_id": "terr_kit_ash_grove",
+        "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+        "flower_law": "n/a",
+        "keeps": "flora_sunder_thorn_oak, flora_sunder_fold_willow, flora_sunder_rune_pine, flora_ruins_ash_cypress, env_sunder_fold_lip"
+      },
+      "prompt": "One mat of grey ash leaves, compound leaflets as one flat mass. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. Grey leaflets, a little moss at one edge, no tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_sunder_ash_log",
+      "display_name": "Fallen Ash Log",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "ash_grove",
+        "dressing"
+      ],
+      "triangle_budget": 5000,
+      "aura_prompt": "One fallen ash log, pale bark, moss only on the underside. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. One log, broken end, no limbs as a second tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A pale horizontal log. Moss is a dark strip underneath.",
+      "palette": [
+        "#3a6a48",
+        "#c8c2b4",
+        "#c8b48a",
+        "#b7c4b0",
+        "#c8a060"
+      ],
+      "lore_blurb": "A fallen ash. Not the thorn-oak limb and not a Ruins bone.",
+      "scale_vs_player": "2.6 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 5000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_sunder_ash_log/",
+        "kit_id": "terr_kit_ash_grove",
+        "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+        "flower_law": "n/a",
+        "keeps": "flora_sunder_thorn_oak, flora_sunder_fold_willow, flora_sunder_rune_pine, flora_ruins_ash_cypress, env_sunder_fold_lip"
+      },
+      "prompt": "One fallen ash log, pale bark, moss only on the underside. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. One log, broken end, no limbs as a second tree. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "terr_sunder_ash_moss_lip",
+      "display_name": "Ash Moss Lip",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "terrain",
+        "ash_grove",
+        "dressing"
+      ],
+      "triangle_budget": 4000,
+      "aura_prompt": "One knee-high granite lip where moss stops on a grey soil line. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. No drop, no water sheet, no glow, no teal seam. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low lip. Moss ends in a straight grey line.",
+      "palette": [
+        "#3a6a48",
+        "#c8c2b4",
+        "#c8b48a",
+        "#b7c4b0",
+        "#c8a060"
+      ],
+      "lore_blurb": "Ash-meets-moss at knee height. Not env_sunder_fold_lip and not a Crucible seam.",
+      "scale_vs_player": "0.5 m high, 2 m long",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 4000,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/terr_sunder_ash_moss_lip/",
+        "kit_id": "terr_kit_ash_grove",
+        "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+        "flower_law": "n/a",
+        "keeps": "flora_sunder_thorn_oak, flora_sunder_fold_willow, flora_sunder_rune_pine, flora_ruins_ash_cypress, env_sunder_fold_lip"
+      },
+      "prompt": "One knee-high granite lip where moss stops on a grey soil line. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. No drop, no water sheet, no glow, no teal seam. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    },
+    {
+      "id": "flora_sunder_ash_whip",
+      "display_name": "Ash Whip",
+      "batch": "B31_terrain",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "taxonomy_tags": [
+        "flora",
+        "ash_grove",
+        "dressing"
+      ],
+      "triangle_budget": 3500,
+      "aura_prompt": "One thin ash whip, two opposite forks, pale bark, no crown mass. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. One stem, moss at the foot, no gold scar. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin stem and two opposite forks. Not the oak and not the cypress.",
+      "palette": [
+        "#3a6a48",
+        "#c8c2b4",
+        "#c8b48a",
+        "#b7c4b0",
+        "#c8a060"
+      ],
+      "lore_blurb": "Young ash in the quiet grove. The hero ash is flora_sunder_grove_ash.",
+      "scale_vs_player": "2.2 m",
+      "unity_bind": {
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "no_lettering": true,
+        "module_not_map": true,
+        "snap_grid_m": 1,
+        "lod0_tris": 3500,
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_ash_whip/",
+        "kit_id": "terr_kit_ash_grove",
+        "place": "Sundering east march toward Ruins, off the salt track. Ash meets moss. Kits do not merge. Not flora_ruins_ash_cypress. Not a forum. Not a fourth world.",
+        "flower_law": "n/a",
+        "keeps": "flora_sunder_thorn_oak, flora_sunder_fold_willow, flora_sunder_rune_pine, flora_ruins_ash_cypress, env_sunder_fold_lip"
+      },
+      "prompt": "One thin ash whip, two opposite forks, pale bark, no crown mass. Single subject, three-quarter view, centered, entire subject in frame, grove floor, soft even light, no text, no watermark, 3D game asset concept render. One stem, moss at the foot, no gold scar. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting."
+    }
+  ]
+}

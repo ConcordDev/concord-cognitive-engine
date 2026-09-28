@@ -1,0 +1,1461 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S02_hub_politics_culture_sidequests",
+  "world_id": "Hub",
+  "display_world": "Unburned Court",
+  "facet": "politics_quests",
+  "title": "Unburned Court — politics, culture, Hub side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite concordia-hub faction rows, native-bible catalogs, volume quests, or S01 ecology caps.",
+  "canon_pins": {
+    "world_id": "Hub",
+    "canon_world_def_title": "The Unburned Court",
+    "hub_law_radius_m": 42,
+    "court_radius_m": 16,
+    "ring_radius_m": 34,
+    "wall_radius_m": 56,
+    "arena_anchor": {
+      "x": 0,
+      "y": 0,
+      "z": 18,
+      "steel_radius_m": 8
+    },
+    "law_text": "No live steel in the Court. Blades die as flowers except in the Arena.",
+    "steel_live_rule": "Canon.SteelLive: true inside the Arena disk; false on Hub when the point is inside the 42m disk and outside that Arena disk; true again past 42m.",
+    "gate_placement": "HubPlaza.PlaceGate: (cos(angle) * RingRadius, 0, sin(angle) * RingRadius). Every gate center sits at 34m, inside Flower Law.",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing"
+    },
+    "humanoid_body": "CX only. Concordia face. Heights from Canon.HubGuests and Canon.Pillars.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "playable_scale_note": "lore.json calls the hub a walled world-city the size of a country. The instance this slice binds is the Canon radii. Embassy 'streets' in dialogue are political speech. Objectives use the stands and spokes that already exist."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/lore.json",
+    "cities": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/cities.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/factions.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/npcs.json",
+    "guests": "Canon.HubGuests and Canon.Pillars",
+    "guest_redesign": "native-bible/npcs/HUB_GUESTS_REDESIGN.md",
+    "intersections": "native-bible/architecture/INTERSECTIONS.md Uncounted Wharf",
+    "wharf_kit": "native-bible/architecture/KITS.json arch_ix_grid_coast",
+    "prior_slice": "grok-slices/out/S01_hub_ecology_mobs"
+  },
+  "left_in_place": [
+    "q_hub_pinewood_milepost",
+    "q_hub_flower_urn",
+    "q_hub_brackish_supper",
+    "q_hub_three_notebooks",
+    "q_hub_lamplighter_round",
+    "q_hub_nesha_gap",
+    "q_hub_moth_count",
+    "q_hub_mouser_third_crate",
+    "q_hub_hare_empty_hands",
+    "q_hub_ditch_spit",
+    "founding_day_01_gather",
+    "founding_day_02_reading",
+    "founding_day_03_sign",
+    "brackish_01_notice",
+    "brackish_02_choice",
+    "brackish_03_intelligence",
+    "sealed_01_notice",
+    "nesha_seam_01_pattern",
+    "impossible_print_01_kiren",
+    "first_cycle_cook",
+    "first_cycle_fight",
+    "the_choice"
+  ],
+  "unresolved_on_purpose": [
+    "Speaker Mira Lattice has not told the Assembly that the southern arc is weakening. No quest here forces the vote.",
+    "The sealed Voss genealogy stays sealed. No quest reads the ancestor's first name.",
+    "Asbir's wall cavity and Iyatte's record stay on sealed_record.",
+    "Old Seam and Nesha keep the twenty-year gap unless nesha_seam_03_mediate is already done. This slice does not restage it.",
+    "The Impossible Print stays three unjoined clues.",
+    "Frontier still keeps no embassy. The plaque at angle π is the whole staff."
+  ],
+  "bosses": [],
+  "mini_bosses": [
+    {
+      "id": "mb_hub_unsigned_courier",
+      "name": "The Unsigned Cord",
+      "kind": "shoulder_scuffle",
+      "not_a_court_boss": true,
+      "role_id": "npc_role_shadow_courier",
+      "body": "CX",
+      "height_m": 1.78,
+      "cap": 1,
+      "where": "Frontier spoke on the wall shoulder, planar (-46, 0). That point is 46 m out: past Flower Law, inside the 56 m wall. Steel is live because Canon.SteelLive is true there.",
+      "law": "Hail first. Capoeira and wpn_throw_court_lantern only if the player attacks on the shoulder. If the courier is pulled inside 42 m and off the Arena sand, the throw resolves as a flower, the scuffle ends, and they walk back to (-46, 0). No kill credit for the flowering. No loot either way.",
+      "phases": [
+        "Hail. They offer one extra cord, a ninth knot, for a contract Jax already refuses. Signing is the loss.",
+        "Scuffle, only outside the disk. Low, satchel-as-square, no mask. This is a person, not a raid.",
+        "Flower. Inside the law the ground ends it. They are carried by their own feet back to the shoulder, not by a tide large enough to clear the plaza."
+      ],
+      "preferred_resolution": "Refuse the cord. They leave. q_hub_eight_cords still forbids stepping past 42 m, so that quest never requires this fight.",
+      "story_id": "story_unsigned_courier",
+      "does_not_replace": [
+        "q_hub_eight_cords"
+      ],
+      "wharf_relation": "None. They are a Hub shoulder role. hyb_billdrone stays off this spoke."
+    }
+  ],
+  "boss_rule": "No health-bar boss inside 42 m. Year 38 already refused a court conquest. Gale's sand is the existing steel lesson, not a new champion. The one mini-boss is The Unsigned Cord, and only on the Frontier shoulder where steel is already legal. Pulling them back into the disk ends the fight as flowers. enc_milepost_fold stays on the Fantasy side of Pinewood Crossing. hyb_billdrone stays on Crime and Cyber.",
+  "rings": [
+    {
+      "id": "ring_unpaved_court",
+      "from_m": 0,
+      "to_m": 16,
+      "law": "flower",
+      "exclude": [
+        "arena_disk"
+      ],
+      "what_stands_here": "The unpaved battlefield. Pillars: Concordia (0, -6.4), Concord (0, 6.2), Sovereign (8.6, 0.3). Most HubGuest idles also fall inside 16m. Founding Day is read here. The arrangement is the text. Nobody names it as a confession."
+    },
+    {
+      "id": "ring_embassy_approaches",
+      "from_m": 16,
+      "to_m": 34,
+      "law": "flower",
+      "exclude": [
+        "arena_disk"
+      ],
+      "what_stands_here": "Guest idles that sit just outside the inner court: Seraphine (16.4, 4.2), Jax (-18.2, -5.5), Nyx (-14.5, -12.2), Thorne (12.8, -14.5), Zero (-22, 2.4), Mama (22.5, 8.8). Arena center (0, 18) is in this band and is the steel hole."
+    },
+    {
+      "id": "ring_of_doors",
+      "radius_m": 34,
+      "law": "flower",
+      "what_stands_here": "Eight gate centers. Embassy politics happens at the plaques. The gates are inside the mercy, not beyond it."
+    },
+    {
+      "id": "ring_flower_law",
+      "from_m": 34,
+      "to_m": 42,
+      "law": "flower",
+      "what_stands_here": "Eight meters of cobble past each plaque before steel returns. The law lip on a spoke is the civic edge a guest can point at."
+    },
+    {
+      "id": "ring_arena",
+      "anchor": "Canon.Arena",
+      "radius_m": 8,
+      "law": "steel_exception",
+      "what_stands_here": "Gale at (0, 18). Poise, open helm, estoc on the sand, flower when he steps off it. No fauna from S01. No census officer. No new duel boss."
+    },
+    {
+      "id": "ring_wall_shoulder",
+      "from_m": 42,
+      "to_m": 56,
+      "law": "steel_live_road",
+      "what_stands_here": "Concordant Watch shoulder. Warden patrol walks here with live steel because the Court has ended. Pinewood, Broken Spire, Upper Grove, and Three Refusals Tavern are farther Hub approaches, not new worlds."
+    }
+  ],
+  "gates": [
+    {
+      "world_id": "Cyber",
+      "short": "CYBER",
+      "name": "The Grid",
+      "angle_rad": 0,
+      "x": 34,
+      "z": 0,
+      "law_lip": [
+        42,
+        0
+      ],
+      "the_no": "I will not be counted.",
+      "embassy": "Grid. Zero studies the gap. Nyx organizes the uncounted from the same embassy. The count slate is hers."
+    },
+    {
+      "world_id": "Ruins",
+      "short": "RUINS",
+      "name": "Sovereign Ruins",
+      "angle_rad": 0.785398,
+      "x": 24.04,
+      "z": 24.04,
+      "law_lip": [
+        29.7,
+        29.7
+      ],
+      "the_no": "We will not allow our ending to be final.",
+      "embassy": "Catalogue embassy. Maren's boots still carry Ruins ash. This slice does not open a ruin."
+    },
+    {
+      "world_id": "Fantasy",
+      "short": "SUNDERING",
+      "name": "The Sundering",
+      "angle_rad": 1.570796,
+      "x": 0,
+      "z": 34,
+      "law_lip": [
+        0,
+        42
+      ],
+      "the_no": "I will not become the thing destroying me.",
+      "embassy": "Crimson Court. Seraphine. Blackmail dressed as etiquette. Thorne comes for the grove, not for her fan."
+    },
+    {
+      "world_id": "Tunya",
+      "short": "TUNYA",
+      "name": "Tunya",
+      "angle_rad": 2.356194,
+      "x": -24.04,
+      "z": 24.04,
+      "law_lip": [
+        -29.7,
+        29.7
+      ],
+      "the_no": "We will not be reaped.",
+      "embassy": "Verdant approach is Upper Grove at (-70, 36), outside the wall. Lyra keeps the second hour in the plaza and does not teach a ninth Refusal."
+    },
+    {
+      "world_id": "Frontier",
+      "short": "FRONTIER",
+      "name": "The Frontier",
+      "angle_rad": 3.141593,
+      "x": -34,
+      "z": 0,
+      "law_lip": [
+        -42,
+        0
+      ],
+      "the_no": "The road is our door.",
+      "embassy": "None. The other seven read that as insult or envy. Jax still carries the frayed cord."
+    },
+    {
+      "world_id": "Crime",
+      "short": "CRIME",
+      "name": "Crime World",
+      "angle_rad": 3.926991,
+      "x": -24.04,
+      "z": -24.04,
+      "law_lip": [
+        -29.7,
+        -29.7
+      ],
+      "the_no": "What we do will not catch up to us.",
+      "embassy": "Delgado Syndicate. Mama launders reputation. The knife stays undrawn inside the disk. The gate at 34m is still Flower Law."
+    },
+    {
+      "world_id": "Superhero",
+      "short": "DAWN",
+      "name": "The Permanent Dawn",
+      "angle_rad": 4.712389,
+      "x": 0,
+      "z": -34,
+      "law_lip": [
+        0,
+        -42
+      ],
+      "the_no": "I will not take the final victory.",
+      "embassy": "Vesper Kane, Luminary. Half the charities, the debt of the other half. She does not take a finishing blow."
+    },
+    {
+      "world_id": "Crucible",
+      "short": "CRUCIBLE",
+      "name": "The Crucible",
+      "angle_rad": 5.497787,
+      "x": 24.04,
+      "z": -24.04,
+      "law_lip": [
+        29.7,
+        -29.7
+      ],
+      "the_no": "A thing that refuses completion cannot be written down.",
+      "embassy": "Eighth Refusal on the plaque. The ninth is the hub itself, stood upon, and Lyra will not recite it."
+    }
+  ],
+  "approaches_outside_the_wall": [
+    {
+      "city_id": "pinewood_crossing",
+      "name": "Pinewood Crossing",
+      "x": 62,
+      "z": -28,
+      "faction_row": "bazaar_consortium",
+      "note": "Salt-road hold. Lettering stays Pinewood Crossing. S01 ecology and q_hub_pinewood_milepost already own the post, the stag, and the ditch."
+    },
+    {
+      "city_id": "broken_spire",
+      "name": "Broken Spire",
+      "x": 8,
+      "z": 78,
+      "faction_row": "concordant_watch",
+      "note": "North-shore wreck. Named in cities.json. This slice does not stock it."
+    },
+    {
+      "city_id": "upper_grove",
+      "name": "Upper Grove",
+      "x": -70,
+      "z": 36,
+      "faction_row": "refusal_keep",
+      "note": "Verdant Veil approach. Thorne's night grove in the lore is this direction. He still idles in the plaza at (12.8, -14.5)."
+    },
+    {
+      "city_id": "three_refusals_tavern",
+      "name": "Three Refusals Tavern",
+      "x": -48,
+      "z": -58,
+      "faction_row": "bazaar_consortium",
+      "note": "Roadhouse. Distinct from the Seven Spokes inn, which is Baren Hollow's neutral room and has no city coordinate in cities.json."
+    }
+  ],
+  "uncounted_wharf": {
+    "kit_id": "arch_ix_grid_coast",
+    "canonical_name": "Uncounted Wharf",
+    "world_ids": [
+      "Cyber",
+      "Crime"
+    ],
+    "on_hub_map": false,
+    "hub_xz": null,
+    "flower_law": false,
+    "why_it_is_in_this_slice": "Hub guest politics names it. Nyx organizes the uncounted. Zero studies the gap the Census wants filled. Mama's hem still carries dock rain. Jax's satchel has a Grid-colored cord. The blend is where Census drones are legally not supposed to count, and do. That sentence is the wharf's whole political use here.",
+    "spawn_in_this_slice": "None. No hyb_billdrone, no npc_role_grid_officer patrol, no npc_role_coast_labor, no pipe kit. A player who wants the asphalt walks a later cross slice. This one stops at the Grid plaque inside the Court.",
+    "forbidden_moves": [
+      "Drag Grid neon into the plaza",
+      "Letter a Hub district Uncounted Wharf",
+      "Move Pinewood Crossing to the water"
+    ]
+  },
+  "compact_seats": [
+    {
+      "id": "concordant_assembly",
+      "name": "Concordant Assembly",
+      "leader_npc_id": "elder_mira_lattice",
+      "leader_is_hub_guest": false,
+      "headquarters": "hub_assembly_chamber",
+      "stance": "consolidate",
+      "seat_in_the_court": "Speaker convenes. Power sits in the seats. No crown. Mira knows the dome may fail inside the year and has not put it to a vote. That silence is live. These side quests leave it live."
+    },
+    {
+      "id": "concordant_curators",
+      "name": "Concordant Curators",
+      "leader_npc_id": "lord_curator_asbir_thelane",
+      "guest_id": "asbir",
+      "leader_is_hub_guest": true,
+      "headquarters": "hub_archive",
+      "stance": "consolidate",
+      "seat_in_the_court": "Asbir keeps facts, inferences, and the difference. Maren (archivist_maren) writes what she sees. The sealed genealogy and the cavity stay on their existing chains. A guest who hands him a guess gets it in the second book."
+    },
+    {
+      "id": "concordant_watch",
+      "name": "Concordant Watch",
+      "leader_npc_id": "captain_ren_solare",
+      "leader_is_hub_guest": false,
+      "guest_face_id": "warden",
+      "guest_face_note": "Arena Warden Gale is the Iron Wardens' sand. Ren Solare is the Watch's captain in factions.json. They are not the same person. Gale does not inherit her southern-arc secret in this slice.",
+      "headquarters": "hub_watch_barracks",
+      "stance": "consolidate",
+      "lore_alias": "iron_wardens in the Ring of Doors event and in Canon.PickFight. The faction row id is concordant_watch.",
+      "seat_in_the_court": "Accountable to the Assembly. Patrols the wall and the gatehouses. Inside 42m and off the sand the baton and the sword are flowers."
+    },
+    {
+      "id": "bazaar_consortium",
+      "name": "Bazaar Consortium",
+      "leader_npc_id": "merchant_velka_ironhand",
+      "leader_is_hub_guest": false,
+      "headquarters": "hub_bazaar_central_row",
+      "stance": "expand",
+      "lore_alias": "merchant_collective in lore.json. The faction row id is bazaar_consortium.",
+      "seat_in_the_court": "Haggling is the craft. Vesper feeds half the city and holds paper on the other half; she is a guest, not the Consortium's master. Velka arbitrates the Well. Off-ledger fences stay on Brackish's existing tip and are not re-proven here."
+    },
+    {
+      "id": "refusal_keep",
+      "name": "Refusal Keep",
+      "leader_npc_id": "oracle_nesha_keep",
+      "leader_is_hub_guest": false,
+      "guest_face_id": "lyra",
+      "guest_face_note": "Lyra Silentchant keeps the second hour and refuses to teach a ninth. Nesha is Oracle of the field. Old Seam follows Nesha at a distance. q_hub_nesha_gap already measures that distance.",
+      "headquarters": "hub_refusal_keep_main_hall",
+      "stance": "rebuild",
+      "seat_in_the_court": "The ninth refusal is the hub, stood upon. Lyra's staff is wood. The Keep's anchor-readings are Nesha's, and this slice does not mint a spell."
+    }
+  ],
+  "lore_names_without_a_hub_faction_row": [
+    {
+      "lore_tag": "the_three_pillars",
+      "binds_to": "Canon.Pillars",
+      "rule": "Permanent authority. They are not a sixth compact seat and not a crown."
+    },
+    {
+      "lore_tag": "crimson_court",
+      "binds_to": "guest seraphine",
+      "rule": "Embassy instrument. No new faction id."
+    },
+    {
+      "lore_tag": "grid_authority",
+      "binds_to": "guests zero and nyx",
+      "rule": "Same embassy, opposite work. Census Authority is a Cyber role faction, not a Hub row."
+    },
+    {
+      "lore_tag": "delgado_syndicate",
+      "binds_to": "guest mama",
+      "rule": "Reputation, not a Hub mint."
+    },
+    {
+      "lore_tag": "anti_sovereign_movement",
+      "binds_to": "guest elias",
+      "rule": "A basement two streets over, played as a walk between two stands."
+    },
+    {
+      "lore_tag": "luminary_industries",
+      "binds_to": "guest vesper",
+      "rule": "Charity and debt. No finishing blow."
+    },
+    {
+      "lore_tag": "frontier_freenodes",
+      "binds_to": "Frontier plaque only",
+      "rule": "No embassy staff."
+    },
+    {
+      "lore_tag": "shadow_network",
+      "binds_to": "guest jax",
+      "rule": "Named in the Ring of Doors event. No factions.json row. Contracts from all eight, loyalty from none. Do not invent a Shadow seat."
+    },
+    {
+      "lore_tag": "verdant_veil",
+      "binds_to": "refusal_keep and Upper Grove",
+      "rule": "Eight Refusals codified. The ninth is the ground."
+    },
+    {
+      "lore_tag": "scholars",
+      "binds_to": "concordant_curators",
+      "rule": "Alias, not a second archive."
+    }
+  ],
+  "guest_politics": [
+    {
+      "guest_id": "lamplighter",
+      "canon_npc_id": null,
+      "stand": [
+        10.2,
+        -6.4
+      ],
+      "instrument": "One true sentence to a newcomer, once. Eastern path. Lights lamps that are already lit. Lineage may once have been two people and one lantern. He does not brief the Assembly."
+    },
+    {
+      "guest_id": "elias",
+      "canon_npc_id": null,
+      "stand": [
+        -9.5,
+        8.2
+      ],
+      "instrument": "Anti-Sovereign. Works where he can see the tower and is not in it. Shares a name with Seraphine and an apparatus of mutual surveillance. Will not discuss the bloodline. Wing Chun if pressed, which the plaza will flower.",
+      "quest_id": "q_hub_two_streets"
+    },
+    {
+      "guest_id": "vesper",
+      "canon_npc_id": null,
+      "stand": [
+        7.2,
+        9.1
+      ],
+      "instrument": "Luminary. Feeds half, holds the debt of half. Bread basket or ledger, never both as a pile. Karate only to show Dawn law. She does not finish a fallen person.",
+      "quest_id": "q_hub_two_books"
+    },
+    {
+      "guest_id": "seraphine",
+      "canon_npc_id": null,
+      "stand": [
+        16.4,
+        4.2
+      ],
+      "instrument": "Crimson Court. Closed wooden fan. Smile is a facial blend. Etiquette is the weapon. The Sundering gate is her plaque. The sealed ancestor stays sealed.",
+      "quest_id": "q_hub_fan_closed"
+    },
+    {
+      "guest_id": "jax",
+      "canon_npc_id": null,
+      "stand": [
+        -18.2,
+        -5.5
+      ],
+      "instrument": "Eight frayed cords, one per gate color, including the Frontier cord for a door that has no staff. Taking a contract is a different life. This slice's walk refuses every contract.",
+      "quest_id": "q_hub_eight_cords"
+    },
+    {
+      "guest_id": "mama",
+      "canon_npc_id": null,
+      "stand": [
+        22.5,
+        8.8
+      ],
+      "instrument": "Delgado. Rose pin. Flower in the hand because the plaza already took the knife. Dock rain in the hem. She sleeps in a different world on a different night. The Court gets the flower.",
+      "quest_id": "q_hub_law_lip_rose"
+    },
+    {
+      "guest_id": "zero",
+      "canon_npc_id": null,
+      "stand": [
+        -22,
+        2.4
+      ],
+      "instrument": "Studies the Sovereign's refusal as a gap in a count. Visor up. Hands empty. He will accept Nyx's slate if a player is careless. That acceptance fails her quest.",
+      "quest_id": "q_hub_blank_count"
+    },
+    {
+      "guest_id": "nyx",
+      "canon_npc_id": null,
+      "stand": [
+        -14.5,
+        -12.2
+      ],
+      "instrument": "Blackout. Count slate with names scratched out. She organizes the people the Wharf's drones still tally. Shorter than Zero, tools on the shoulder, question left to him.",
+      "quest_id": "q_hub_slate_at_grid_gate"
+    },
+    {
+      "guest_id": "thorne",
+      "canon_npc_id": null,
+      "stand": [
+        12.8,
+        -14.5
+      ],
+      "instrument": "Comes for the grove. Curse is cloth and posture. Sword only outside the plaza, fold before cut. He is not Seraphine's champion and not a boss.",
+      "quest_id": "q_hub_held_inward"
+    },
+    {
+      "guest_id": "lyra",
+      "canon_npc_id": null,
+      "stand": [
+        5.5,
+        14.8
+      ],
+      "instrument": "Second hour. Wood staff. She ends the lamp round by saying whether the hour has started. Asking for a ninth Refusal is the wrong question. The hub is already that refusal.",
+      "quest_id": "q_hub_no_ninth_line"
+    },
+    {
+      "guest_id": "warden",
+      "canon_npc_id": null,
+      "stand": [
+        0,
+        18
+      ],
+      "instrument": "Sand exception. Open helm, face visible. He does not police embassy debts. Ren polices the streets. The urn quest already teaches the flower."
+    },
+    {
+      "guest_id": "asbir",
+      "canon_npc_id": "lord_curator_asbir_thelane",
+      "stand": [
+        -6.8,
+        -8.4
+      ],
+      "instrument": "Three notebooks. Audience without haste. He lost a wife in the Year 89 dome. This slice does not make the player his confessor."
+    },
+    {
+      "guest_id": "archivist_maren",
+      "canon_npc_id": null,
+      "stand": [
+        6.4,
+        -3.1
+      ],
+      "instrument": "Writes what she sees. Ash on the boots, none on the quill. She files distances and refusals. She does not file an embassy's claim as a sighting."
+    },
+    {
+      "guest_id": "brackish",
+      "canon_npc_id": "child_mira_brackish",
+      "stand": [
+        3.2,
+        -8.8
+      ],
+      "instrument": "Sees lieutenants. Bread, not a chase, is already a quest. Her three tips already name the cavity, Velka's fence, and Ren's arc. Do not pay those tips out again."
+    },
+    {
+      "guest_id": "oldseam",
+      "canon_npc_id": "preacher_old_seam",
+      "stand": [
+        -11.2,
+        -4.1
+      ],
+      "instrument": "Mends pavers. Follows Nesha at a distance. Pinewood's name is already his milepost quest."
+    },
+    {
+      "guest_id": "concordia",
+      "canon_npc_id": null,
+      "volume_alias": "concordia_first_breath",
+      "stand": [
+        0,
+        -6.4
+      ],
+      "instrument": "Warm apex. Open hands. Real flowers, slightly wilted. She wishes for less politics and gets the city. No crown, no bride staging."
+    },
+    {
+      "guest_id": "concord",
+      "canon_npc_id": null,
+      "stand": [
+        0,
+        6.2
+      ],
+      "instrument": "Faces her. Measures. The slate stays blank. That is the office.",
+      "quest_id": "q_hub_three_distances"
+    },
+    {
+      "guest_id": "sovereign",
+      "canon_npc_id": null,
+      "stand": [
+        8.6,
+        0.3
+      ],
+      "instrument": "Back to both. Line is the ellipsis. Being noticed is the rarest status. Elias's quest must not earn it."
+    }
+  ],
+  "rituals": [
+    {
+      "id": "ritual_founding_day",
+      "name": "Founding Day reading",
+      "where": "Unpaved ring, inside 16m",
+      "when": "Once a year. The existing founding_day chain is the playable surface.",
+      "order": "Concordia at the warm apex, open-handed. Concord facing her with a slate he does not write on. The Sovereign with his back to both. The Concordant Law is read aloud. No reader names the triangle. No sheath clears.",
+      "this_slice": "Described so the measure quest can exist on ordinary days. The reading itself is not re-authored."
+    },
+    {
+      "id": "ritual_lamp_round",
+      "name": "Eastern lamps",
+      "where": "Eastern path from the Lamplighter's stand",
+      "when": "Before the second hour",
+      "order": "He walks. Posts that are already lit are lit again. A newcomer may receive one true sentence and will not receive a second.",
+      "this_slice": "q_hub_lamplighter_round and q_hub_moth_count already use this walk."
+    },
+    {
+      "id": "ritual_second_hour",
+      "name": "Second hour",
+      "where": "Lyra's stand (5.5, 14.8), wood staff, hood down",
+      "when": "She says when it has started",
+      "order": "The hour is walked into. It is not a lesson. Eight Refusals stay eight. The ninth is the ground under the walk.",
+      "this_slice": "skill_presence_second_hour may be recognized. It is not granted by a new quest."
+    },
+    {
+      "id": "ritual_market_well",
+      "name": "Market Well",
+      "where": "Bazaar row. Velka arbitrates. No polygon in cities.json.",
+      "when": "Dusk trade, when Ren's evening patrol already watches it",
+      "order": "Haggling is the craft. A price said twice is a price. Vesper's ledger is a different book from Velka's.",
+      "this_slice": "Vesper's walk uses one licensed stall as the Well, because cities.json gives the Well no polygon. She does not collect the debt. Brackish's loaf stays its own quest."
+    },
+    {
+      "id": "ritual_seven_spokes_cellar",
+      "name": "Unrecorded room",
+      "where": "Seven Spokes. Baren Hollow. Neutral since his grandmother's day, Year -47.",
+      "when": "When Watch, Bazaar, and Keep need one room and no minutes",
+      "order": "Baren runs it. The cost is a favour to all three. The Impossible Print's back room is this inn's existing use. Do not schedule a second secret meeting on top of it.",
+      "this_slice": "Culture only."
+    },
+    {
+      "id": "ritual_law_lip",
+      "name": "The lip of the disk",
+      "where": "42m along a spoke",
+      "when": "Any day a guest needs to show where mercy ends",
+      "order": "Inside, steel is a flower. On the lip, the guest stops. Past it, the road has ordinary weapons and the Watch's patrol.",
+      "this_slice": "Mama's quest walks the Crime spoke to the lip and stops."
+    },
+    {
+      "id": "ritual_triangle_measure",
+      "name": "Ordinary measure",
+      "where": "The three pillar stands",
+      "when": "Any day that is not the reading",
+      "order": "Three distances, filed as lengths. The slate Concord carries stays blank. Maren may copy the numbers. Nobody adds a motive.",
+      "this_slice": "q_hub_three_distances."
+    }
+  ],
+  "civic_presences": [
+    {
+      "id": "presence_watch_shoulder",
+      "role_id": "npc_role_iron_warden",
+      "body": "CX",
+      "cap": 6,
+      "where": "Between 42m and 56m, gatehouse mouths, never the Arena sand and never inside 16m.",
+      "law": "Steel is live on this shoulder. If a warden steps inside 42m and off the sand, the sword resolves as wpn_1h_court_flower until they step out.",
+      "temper": "Patrol. Hail. They are not a hostile camp. Accountable to the Assembly. They do not take embassy bribes in this slice, and they do not know Mira's silence.",
+      "leader_on_the_row": "captain_ren_solare",
+      "face_on_the_sand": "warden",
+      "story_id": "story_watch_shoulder"
+    },
+    {
+      "id": "presence_court_stall",
+      "role_id": "npc_role_court_merchant",
+      "body": "CX",
+      "cap": 4,
+      "where": "Inside 42m, off the sand, off the unpaved triangle. Flower in the buttonhole. Brass scale.",
+      "law": "Flower. No steel sale completes inside the disk.",
+      "temper": "Trade. Haggling is the verb. They are Velka's licensees, not a mob.",
+      "story_id": "story_stall_license"
+    }
+  ],
+  "civic_encounters": [
+    {
+      "id": "enc_hub_count_fails",
+      "name": "The Count That Cannot Stand",
+      "kind": "guest_scale_intrusion",
+      "not_a_boss": true,
+      "role_id": "npc_role_grid_officer",
+      "body": "CX",
+      "height_m": 1.78,
+      "cap": 1,
+      "arms_only_during": "q_hub_slate_at_grid_gate",
+      "spawn_anchor": "Grid gate hold, (34, 0), already inside Flower Law",
+      "path": "One step toward the plaza origin along the spoke. They do not reach the unpaved ring. They do not path the Arena.",
+      "weapon_id": "wpn_1h_grid_pulseblade",
+      "law_override": "The pulseblade becomes a flower on the first step. No health table. No loot. No kill credit. The officer is carried back onto the gate membrane by root and bloom, the Year 38 tide at the scale of one person.",
+      "fails_if": "The player draws steel, pursues onto the sand, or hands item_count_slate to guest zero.",
+      "wharf_relation": "The officer's slate uses the same prop language as the Wharf's illegal tally. The Wharf itself does not load.",
+      "story_id": "story_count_fails"
+    }
+  ],
+  "fauna_policy": "S01 owns plaza fauna, caps, and the salt wyrm. This slice spawns no faun_ and no hyb_ row. Founding Day pigeons stay on that ecology. A census of birds is still refused.",
+  "quests": [
+    {
+      "id": "q_hub_two_streets",
+      "title": "Two Streets Over",
+      "world_id": "Hub",
+      "giver_guest_id": "elias",
+      "giver_canon_npc_id": null,
+      "giver_stand": [
+        -9.5,
+        8.2
+      ],
+      "backstory_id": "story_q_two_streets",
+      "does_not_replace": [
+        "sealed_01_notice",
+        "q_hub_fan_closed"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_two_streets_1",
+          "verb": "talk",
+          "target": "elias",
+          "count": 1,
+          "text": "Accept the walk at Elias's stand. He is working. He is not recruiting a conquest."
+        },
+        {
+          "id": "obj_q_hub_two_streets_2",
+          "verb": "reach",
+          "target": "sovereign_stand",
+          "count": 1,
+          "text": "Walk to the Sovereign's stand at (8.6, 0.3). Stay off the Arena sand. Do not speak to him. His line stays the ellipsis."
+        },
+        {
+          "id": "obj_q_hub_two_streets_3",
+          "verb": "reach",
+          "target": "elias",
+          "count": 1,
+          "text": "Walk back. The two legs are the two streets the plaza can actually hold."
+        },
+        {
+          "id": "obj_q_hub_two_streets_4",
+          "verb": "talk",
+          "target": "elias",
+          "count": 1,
+          "text": "Report that you were not noticed. If you claim he turned, the quest fails and Maren will not file it."
+        }
+      ],
+      "fail": [
+        "Speak to the Sovereign",
+        "Step onto Arena sand to 'get a cleaner line'",
+        "Offer Seraphine's name as leverage",
+        "Open any genealogy"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": [
+          "skill_presence_witness"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Elias kept his distance. The tower did not answer.",
+        "gossip_on_complete": "Someone walked from the Anti-Sovereign to the Sovereign's back and came back unnoticed.",
+        "prop_or_door": "No new door. The stands are the set."
+      },
+      "turn_in": {
+        "guest_id": "elias",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_fan_closed",
+      "title": "The Fan Stays Shut",
+      "world_id": "Hub",
+      "giver_guest_id": "seraphine",
+      "giver_stand": [
+        16.4,
+        4.2
+      ],
+      "backstory_id": "story_q_fan_closed",
+      "does_not_replace": [
+        "q_hub_two_streets",
+        "sealed_01_notice"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_fan_closed_1",
+          "verb": "talk",
+          "target": "seraphine",
+          "count": 1,
+          "text": "Let her invite you to the Sundering plaque. Smile is allowed. A weapon is not the courtesy."
+        },
+        {
+          "id": "obj_q_hub_fan_closed_2",
+          "verb": "reach",
+          "target": "gate_sundering_plaque",
+          "count": 1,
+          "text": "Stand at the Sundering gate (0, 34). Read the refusal on the stone. The fan in her hand stays closed."
+        },
+        {
+          "id": "obj_q_hub_fan_closed_3",
+          "verb": "talk",
+          "target": "seraphine",
+          "count": 1,
+          "text": "Object to one courtesy she offers, out loud, while the flower law holds. The objection is the point of the smile."
+        },
+        {
+          "id": "obj_q_hub_fan_closed_4",
+          "verb": "deliver",
+          "target": "refusal_of_an_unread_name",
+          "count": 1,
+          "text": "Refuse to trade a Voss name you have not read. She keeps the fan shut. Turn the quest in on that refusal."
+        }
+      ],
+      "fail": [
+        "Draw steel",
+        "Invent or guess the ancestor's first name",
+        "Ask Elias to confirm a bloodline",
+        "Ask Asbir to open the vault"
+      ],
+      "rewards": {
+        "xp": 45,
+        "coin": 0,
+        "items": [
+          {
+            "id": "item_flower_wreath",
+            "count": 1
+          }
+        ],
+        "skill_ids": [
+          "skill_presence_etiquette"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "A courtesy at the Sundering plaque ended with the fan still closed.",
+        "gossip_on_complete": "Lady Seraphine smiled at a refusal and did not write it down.",
+        "prop_or_door": "Closed fan. Sundering plaque. No vault door."
+      },
+      "turn_in": {
+        "guest_id": "seraphine",
+        "requires_all_objectives": true
+      },
+      "spawns_mob": "mob_hub_courtesy_press"
+    },
+    {
+      "id": "q_hub_eight_cords",
+      "title": "Eight Cords, No Contract",
+      "world_id": "Hub",
+      "giver_guest_id": "jax",
+      "giver_stand": [
+        -18.2,
+        -5.5
+      ],
+      "backstory_id": "story_q_eight_cords",
+      "does_not_replace": [
+        "q_hub_pinewood_milepost"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_eight_cords_1",
+          "verb": "talk",
+          "target": "jax",
+          "count": 1,
+          "text": "Look at the eight cords on the satchel. Accept the ring walk. Accept no job."
+        },
+        {
+          "id": "obj_q_hub_eight_cords_2",
+          "verb": "reach",
+          "target": "gate_plaque",
+          "count": 8,
+          "text": "Touch all eight plaques in ring order, starting at the Grid and turning with the angles in Canon.Gates. Read each theNo. Sign nothing."
+        },
+        {
+          "id": "obj_q_hub_eight_cords_3",
+          "verb": "witness",
+          "target": "gate_frontier_plaque",
+          "count": 1,
+          "text": "At the Frontier plaque (-34, 0), witness the empty staff. The cord for that gate is frayed because the road is their door."
+        },
+        {
+          "id": "obj_q_hub_eight_cords_4",
+          "verb": "deliver",
+          "target": "unsigned_circuit",
+          "count": 1,
+          "text": "Return to Jax with empty hands. He knots nothing new."
+        }
+      ],
+      "fail": [
+        "Accept a contract at any plaque",
+        "Leave the 42m disk to 'finish the road'",
+        "Rename Pinewood Crossing while passing the salt spoke"
+      ],
+      "rewards": {
+        "xp": 50,
+        "coin": 2,
+        "items": [],
+        "skill_ids": [
+          "skill_presence_unchosen"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The ring was walked. No cord was sold.",
+        "gossip_on_complete": "Jax Rivera sent someone around the doors and paid them for coming back unsigned.",
+        "prop_or_door": "Eight gate plaques. Satchel cords. No new embassy.",
+        "shoulder_note": "From the Frontier lip at (-42, 0) a courier may be visible at (-46, 0). They are mb_hub_unsigned_courier. They are not an objective. Stepping out to them fails this quest."
+      },
+      "turn_in": {
+        "guest_id": "jax",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_law_lip_rose",
+      "title": "The Rose at the Lip",
+      "world_id": "Hub",
+      "giver_guest_id": "mama",
+      "giver_stand": [
+        22.5,
+        8.8
+      ],
+      "backstory_id": "story_q_law_lip",
+      "does_not_replace": [
+        "q_hub_flower_urn"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_law_lip_rose_1",
+          "verb": "talk",
+          "target": "mama",
+          "count": 1,
+          "text": "Meet Mama in the plaza. The rose pin is at the collar. The flower is in her hand. Ask nothing about a drawn knife."
+        },
+        {
+          "id": "obj_q_hub_law_lip_rose_2",
+          "verb": "reach",
+          "target": "gate_crime_plaque",
+          "count": 1,
+          "text": "Walk with her to the Crime plaque at (-24.04, -24.04). Steel is still a flower here. The gate is inside the disk."
+        },
+        {
+          "id": "obj_q_hub_law_lip_rose_3",
+          "verb": "reach",
+          "target": "crime_spoke_law_lip",
+          "count": 1,
+          "text": "Continue on that spoke to the law lip at (-29.7, -29.7). Stop. Do not step past 42m."
+        },
+        {
+          "id": "obj_q_hub_law_lip_rose_4",
+          "verb": "talk",
+          "target": "mama",
+          "count": 1,
+          "text": "Hear her name the hub method: reputation, laundered, while the flower stays in the hand. Turn in on the lip."
+        }
+      ],
+      "fail": [
+        "Cross the lip",
+        "Enter the Arena to make the knife steel",
+        "Follow her into Crime World",
+        "Open a syndicate ledger"
+      ],
+      "rewards": {
+        "xp": 45,
+        "coin": 0,
+        "items": [
+          {
+            "id": "item_rose_pin",
+            "count": 1
+          }
+        ],
+        "skill_ids": [
+          "skill_presence_flower_law"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Mama Iron Rose stopped where the flowers stop.",
+        "gossip_on_complete": "The Syndicate's hub envoy showed someone the lip and did not cross it.",
+        "prop_or_door": "prop_rose_pin. Crime plaque. No wharf."
+      },
+      "turn_in": {
+        "guest_id": "mama",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_slate_at_grid_gate",
+      "title": "Names Scratched Out",
+      "world_id": "Hub",
+      "giver_guest_id": "nyx",
+      "giver_stand": [
+        -14.5,
+        -12.2
+      ],
+      "backstory_id": "story_q_slate",
+      "does_not_replace": [
+        "q_hub_moth_count",
+        "q_hub_eight_cords"
+      ],
+      "spawns_encounter": "enc_hub_count_fails",
+      "objectives": [
+        {
+          "id": "obj_q_hub_slate_at_grid_gate_1",
+          "verb": "talk",
+          "target": "nyx",
+          "count": 1,
+          "text": "Read her slate. The names are scratched out. She will say Uncounted Wharf once: drones tally there, where they are legally not supposed to. You are not going there."
+        },
+        {
+          "id": "obj_q_hub_slate_at_grid_gate_2",
+          "verb": "reach",
+          "target": "gate_grid_plaque",
+          "count": 1,
+          "text": "Carry the fact to the Grid plaque at (34, 0). Do not step through the membrane."
+        },
+        {
+          "id": "obj_q_hub_slate_at_grid_gate_3",
+          "verb": "witness",
+          "target": "enc_hub_count_fails",
+          "count": 1,
+          "text": "Witness the officer's one step. The pulseblade flowers. The ground carries them back. Do not strike them."
+        },
+        {
+          "id": "obj_q_hub_slate_at_grid_gate_4",
+          "verb": "deliver",
+          "target": "nyx",
+          "count": 1,
+          "text": "Bring the slate back to Nyx with the scratched names still scratched. She keeps it."
+        }
+      ],
+      "fail": [
+        "Give the slate to Zero",
+        "Kill or chase the officer onto the sand",
+        "Cross the membrane into the Grid",
+        "Count the pigeons on the way"
+      ],
+      "rewards": {
+        "xp": 55,
+        "coin": 0,
+        "items": [],
+        "skill_ids": [
+          "skill_presence_refuse_count"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "A count tried the Grid plaque and left as flowers.",
+        "gossip_on_complete": "Nyx Torres still has the slate. Zero does not.",
+        "prop_or_door": "prop_count_slate. Grid plaque. Wharf not loaded."
+      },
+      "turn_in": {
+        "guest_id": "nyx",
+        "requires_all_objectives": true
+      },
+      "mutual_fail_with": "q_hub_blank_count"
+    },
+    {
+      "id": "q_hub_three_distances",
+      "title": "Three Distances",
+      "world_id": "Hub",
+      "giver_guest_id": "concord",
+      "giver_stand": [
+        0,
+        6.2
+      ],
+      "backstory_id": "story_q_three_distances",
+      "does_not_replace": [
+        "founding_day_01_gather",
+        "founding_day_02_reading",
+        "founding_day_03_sign"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_three_distances_1",
+          "verb": "talk",
+          "target": "concord",
+          "count": 1,
+          "text": "Stand with Concord at (0, 6.2). He is measuring. Ask for the lengths, not the meaning."
+        },
+        {
+          "id": "obj_q_hub_three_distances_2",
+          "verb": "reach",
+          "target": "pillar_stands",
+          "count": 3,
+          "text": "Visit Concordia (0, -6.4), Concord (0, 6.2), and the Sovereign (8.6, 0.3). Record the three pairwise distances: 12.6m, 10.43m, and 10.90m."
+        },
+        {
+          "id": "obj_q_hub_three_distances_3",
+          "verb": "deliver",
+          "target": "archivist_maren",
+          "count": 1,
+          "text": "Give Maren the three numbers as seen. She files them as lengths. If you add a motive, she strikes the line."
+        },
+        {
+          "id": "obj_q_hub_three_distances_4",
+          "verb": "talk",
+          "target": "concord",
+          "count": 1,
+          "text": "Return. He does not write on the slate. The turn-in is his sentence that measuring was enough."
+        }
+      ],
+      "fail": [
+        "Name the arrangement as love",
+        "Ask Concordia to confirm a confession",
+        "Wait for the Sovereign to turn",
+        "Replace the Founding Day reading with this walk"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [
+          {
+            "id": "item_witness_slate",
+            "count": 1
+          }
+        ],
+        "skill_ids": [
+          "skill_presence_witness"
+        ]
+      },
+      "faction_delta": [
+        {
+          "faction_id": "concordant_curators",
+          "delta": 1
+        }
+      ],
+      "world_hooks": {
+        "board_line": "Three lengths are in the archive. The slate on the ring is still blank.",
+        "gossip_on_complete": "Maren filed a triangle and refused a caption.",
+        "prop_or_door": "item_witness_slate. No new monument."
+      },
+      "turn_in": {
+        "guest_id": "concord",
+        "requires_all_objectives": true
+      },
+      "distance_check": {
+        "concord_to_concordia_m": 12.6,
+        "concord_to_sovereign_m": 10.43,
+        "concordia_to_sovereign_m": 10.9,
+        "tolerance_m": 0.15,
+        "source": "Canon.Pillars stands, planar distance"
+      }
+    },
+    {
+      "id": "q_hub_two_books",
+      "title": "Two Books, Not a Pile",
+      "world_id": "Hub",
+      "giver_guest_id": "vesper",
+      "giver_stand": [
+        7.2,
+        9.1
+      ],
+      "backstory_id": "story_q_two_books",
+      "does_not_replace": [
+        "q_hub_brackish_supper"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_two_books_1",
+          "verb": "talk",
+          "target": "vesper",
+          "count": 1,
+          "text": "At Vesper's stand she is holding either the bread basket or the paper ledger, never both as one pile. Accept the walk that keeps them apart."
+        },
+        {
+          "id": "obj_q_hub_two_books_2",
+          "verb": "reach",
+          "target": "presence_court_stall",
+          "count": 1,
+          "text": "Stand with one licensed stall inside the disk. Hear a price said twice. Do not take the stall's coin. The Well has no polygon in cities.json, so the stall is the Well."
+        },
+        {
+          "id": "obj_q_hub_two_books_3",
+          "verb": "reach",
+          "target": "gate_dawn_plaque",
+          "count": 1,
+          "text": "Walk to the Dawn plaque at (0, -34). Read the refusal: I will not take the final victory. A debt collected from someone already down would be that victory."
+        },
+        {
+          "id": "obj_q_hub_two_books_4",
+          "verb": "talk",
+          "target": "vesper",
+          "count": 1,
+          "text": "Return the ledger uncollected. She may give one loaf from the charity half. She does not stack it on the paper."
+        }
+      ],
+      "fail": [
+        "Collect the stall's debt",
+        "Stack bread on the ledger",
+        "Draw steel",
+        "Use the Arena to finish a person",
+        "Repeat Brackish's loaf errand as if it were this one"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [
+          {
+            "id": "item_court_bread",
+            "count": 1
+          }
+        ],
+        "skill_ids": [
+          "skill_presence_bargain"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Vesper Kane kept the basket and the ledger in different hands.",
+        "gossip_on_complete": "Half the feeding happened. The other half's debt was not called in.",
+        "prop_or_door": "item_court_bread. Dawn plaque. No Luminary faction row."
+      },
+      "turn_in": {
+        "guest_id": "vesper",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_held_inward",
+      "title": "Held Inward",
+      "world_id": "Hub",
+      "giver_guest_id": "thorne",
+      "giver_stand": [
+        12.8,
+        -14.5
+      ],
+      "backstory_id": "story_q_held_inward",
+      "does_not_replace": [
+        "q_hub_fan_closed"
+      ],
+      "objectives": [
+        {
+          "id": "obj_q_hub_held_inward_1",
+          "verb": "talk",
+          "target": "thorne",
+          "count": 1,
+          "text": "He will say he carries a curse he could turn outward and win with. Accept the walk that refuses that win. He is not Seraphine's champion."
+        },
+        {
+          "id": "obj_q_hub_held_inward_2",
+          "verb": "reach",
+          "target": "gate_sundering_plaque",
+          "count": 1,
+          "text": "Stand at the Sundering plaque (0, 34). The refusal on the stone is his: I will not become the thing destroying me. The sword stays sheathed. The fold is the cloth on his hands."
+        },
+        {
+          "id": "obj_q_hub_held_inward_3",
+          "verb": "reach",
+          "target": "gate_tunya_plaque",
+          "count": 1,
+          "text": "Continue to the Tunya plaque at (-24.04, 24.04), still inside the law. Read: We will not be reaped. Stop. Upper Grove at (-70, 36) is not this objective."
+        },
+        {
+          "id": "obj_q_hub_held_inward_4",
+          "verb": "talk",
+          "target": "thorne",
+          "count": 1,
+          "text": "Return to his stand. The braid stays loose. Turn the quest in on the refusal, not on a cut."
+        }
+      ],
+      "fail": [
+        "Ask him to draw inside the disk",
+        "Step onto Arena sand",
+        "Path to Upper Grove",
+        "Turn the curse outward for a final blow"
+      ],
+      "rewards": {
+        "xp": 45,
+        "coin": 0,
+        "items": [],
+        "skill_ids": [
+          "skill_presence_bond"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Thorne Blackroot walked two plaques and did not reap anything.",
+        "gossip_on_complete": "The grove's guest refused a win the Court would have flowered anyway.",
+        "prop_or_door": "Wrapped hands. Two plaques. Upper Grove unstocked."
+      },
+      "turn_in": {
+        "guest_id": "thorne",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_no_ninth_line",
+      "title": "No Ninth Line",
+      "world_id": "Hub",
+      "giver_guest_id": "lyra",
+      "giver_stand": [
+        5.5,
+        14.8
+      ],
+      "backstory_id": "story_q_no_ninth",
+      "does_not_replace": [
+        "q_hub_lamplighter_round",
+        "q_hub_nesha_gap"
+      ],
+      "recognizes_skill_id": "skill_presence_second_hour",
+      "grant_note": "Does not grant the second hour. If the lattice already has it, the walk recognizes it. Lyra still speaks no ninth sentence.",
+      "objectives": [
+        {
+          "id": "obj_q_hub_no_ninth_line_1",
+          "verb": "talk",
+          "target": "lyra",
+          "count": 1,
+          "text": "At (5.5, 14.8) her staff is wood and the hood is down. Ask for the ninth Refusal. She will not teach it. Accept the walk instead."
+        },
+        {
+          "id": "obj_q_hub_no_ninth_line_2",
+          "verb": "reach",
+          "target": "pillar_stands",
+          "count": 3,
+          "text": "Walk the unpaved court. Visit Concordia (0, -6.4), Concord (0, 6.2), and the Sovereign (8.6, 0.3). Stay inside 16 m for the circuit. Ask none of them for a spell."
+        },
+        {
+          "id": "obj_q_hub_no_ninth_line_3",
+          "verb": "witness",
+          "target": "ring_unpaved_court",
+          "count": 1,
+          "text": "Stand on the cobble with empty hands. The ninth refusal is the ground. Do not write a line on Concord's slate."
+        },
+        {
+          "id": "obj_q_hub_no_ninth_line_4",
+          "verb": "talk",
+          "target": "lyra",
+          "count": 1,
+          "text": "Return. She may say whether the second hour has started. She will not recite a ninth. Turn in on that silence."
+        }
+      ],
+      "fail": [
+        "Ask Asbir to mint a spell",
+        "Ask Nesha's quest to close the twenty-year gap as payment",
+        "Write a ninth refusal on the slate",
+        "Leave for Upper Grove to fetch the lesson the keepers think she is hiding"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Lyra Silentchant walked someone into the hour and taught nothing.",
+        "gossip_on_complete": "Eight refusals stayed eight. The ninth was the cobble.",
+        "prop_or_door": "wpn_focus_lyra_staff stays wood. No new glyph."
+      },
+      "turn_in": {
+        "guest_id": "lyra",
+        "requires_all_objectives": true
+      }
+    },
+    {
+      "id": "q_hub_blank_count",
+      "title": "The Blank Count",
+      "world_id": "Hub",
+      "giver_guest_id": "zero",
+      "giver_stand": [
+        -22,
+        2.4
+      ],
+      "backstory_id": "story_q_blank_count",
+      "does_not_replace": [
+        "q_hub_slate_at_grid_gate",
+        "q_hub_two_streets"
+      ],
+      "mutual_fail_with": "q_hub_slate_at_grid_gate",
+      "objectives": [
+        {
+          "id": "obj_q_hub_blank_count_1",
+          "verb": "talk",
+          "target": "zero",
+          "count": 1,
+          "text": "Visor up, hands empty, serial pendant and no rifle. He wants a number for the people the Sovereign has not turned to face. Accept the errand that will not bring him one."
+        },
+        {
+          "id": "obj_q_hub_blank_count_2",
+          "verb": "reach",
+          "target": "sovereign_stand",
+          "count": 1,
+          "text": "Stand at (8.6, 0.3). Do not speak. Do not earn his notice. His line stays the ellipsis. Elias's quest, if active, still fails if you speak; this one fails too."
+        },
+        {
+          "id": "obj_q_hub_blank_count_3",
+          "verb": "reach",
+          "target": "gate_grid_plaque",
+          "count": 1,
+          "text": "Go to the Grid plaque at (34, 0). Read: I will not be counted. Do not cross the membrane. Do not summon the Census officer. That step belongs to Nyx's quest."
+        },
+        {
+          "id": "obj_q_hub_blank_count_4",
+          "verb": "talk",
+          "target": "zero",
+          "count": 1,
+          "text": "Report the refusal, not a tally. If you speak a number, or hand him Nyx's slate, both this quest and her slate quest fail."
+        }
+      ],
+      "fail": [
+        "Hand item_count_slate or the scratched slate to Zero",
+        "Speak a census number",
+        "Count the pigeons",
+        "Speak to the Sovereign",
+        "Cross into the Grid",
+        "Drag Uncounted Wharf onto the plaque"
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": [
+          "skill_presence_refuse_count"
+        ]
+      },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Zero asked for a number and was given the refusal on the stone.",
+        "gossip_on_complete": "The gap is still a gap. Nyx still has the slate, if she had it.",
+        "prop_or_door": "Ground-off serial pendant. Grid plaque. Wharf not loaded."
+      },
+      "turn_in": {
+        "guest_id": "zero",
+        "requires_all_objectives": true
+      }
+    }
+  ],
+  "revision": "2026-09-22 depth pass. Prior six quests kept. Added Vesper, Thorne, Lyra, and Zero loops; one witness press; one shoulder scuffle. No new continent, no faction row, no S01 fauna.",
+  "civic_mobs": [
+    {
+      "id": "mob_hub_courtesy_press",
+      "name": "The Courtesy Press",
+      "kind": "witness_crowd",
+      "hostile": false,
+      "body": "CX",
+      "cap": 5,
+      "composition": [
+        {
+          "role_id": "npc_role_court_merchant",
+          "count": 3
+        },
+        {
+          "role_id": "npc_role_court_labor",
+          "count": 2
+        }
+      ],
+      "arms_only_during": "q_hub_fan_closed",
+      "where": "Sundering spoke, between Seraphine's stand (16.4, 4.2) and the plaque at (0, 34). Inside 42 m. Off the Arena sand. Off the pillar triangle.",
+      "law": "Flower. No steel sale, no bounty, no health table, no loot. They are the audience etiquette needs. When the fan stays shut, or the quest fails, they go back to stall and labor.",
+      "story_id": "story_courtesy_press",
+      "spawn_rule": "Missing CX mesh for either role: spawn none of the press. Do not fill the gap with a beast or a Quaternius body."
+    }
+  ]
+}

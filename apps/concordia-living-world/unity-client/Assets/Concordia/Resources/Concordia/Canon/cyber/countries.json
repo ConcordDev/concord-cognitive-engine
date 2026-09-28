@@ -1,0 +1,314 @@
+{
+  "countries": [
+    {
+      "country_id": "zero_collective",
+      "faction_id": "zero_collective",
+      "name": "The Zero Collective",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Replace the city's distributed governance with a single self-correcting consciousness \u2014 Kael Nakamura's. He sincerely believes this is the kindest available outcome.",
+      "capital": {
+        "name": "The Zero Collective",
+        "x": -33.77,
+        "z": -52.0
+      },
+      "anchors": [
+        {
+          "id": "zero_collective_gate",
+          "name": "The Zero Collective Gate",
+          "x": -33.77,
+          "z": -52.0,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "zero_collective_district",
+          "name": "mainframe_district",
+          "x": -25.77,
+          "z": -58.0,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "blackout_resistance"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "blackout_resistance",
+      "faction_id": "blackout_resistance",
+      "name": "The Blackout Resistance",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Disrupt the megacorps' total information capture. Force Kael Nakamura to leave humans some of their decisions. Long-term: re-establish offline civic infrastructure that doesn't depend on him.",
+      "capital": {
+        "name": "The Blackout Resistance",
+        "x": 6.3,
+        "z": -32.39
+      },
+      "anchors": [
+        {
+          "id": "blackout_resistance_gate",
+          "name": "The Blackout Resistance Gate",
+          "x": 6.3,
+          "z": -32.39,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "blackout_resistance_district",
+          "name": "under_district",
+          "x": 14.3,
+          "z": -38.39,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "zero_collective"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "cyber_nevex",
+      "faction_id": "cyber_nevex",
+      "name": "Nevex Corp",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain market dominance across augmentation, network infrastructure, and entertainment streaming. Suppress competing megacorps. Quietly own enough of the city's water + power that resistance becomes infrastructural risk.",
+      "capital": {
+        "name": "Nevex Corp",
+        "x": -53.43,
+        "z": -33.38
+      },
+      "anchors": [
+        {
+          "id": "cyber_nevex_gate",
+          "name": "Nevex Corp Gate",
+          "x": -53.43,
+          "z": -33.38,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "cyber_nevex_district",
+          "name": "nevex_tower_central",
+          "x": -45.43,
+          "z": -39.38,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "zero_collective",
+        "blackout_resistance",
+        "cyber_ai_rights_movement"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "cyber_augmented_elite_club",
+      "faction_id": "cyber_augmented_elite_club",
+      "name": "The Polysteel Society",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain Polysteel as the city's most exclusive social club. Members must have at least 60% chrome integration. The Society shapes corporate strategy through its membership.",
+      "capital": {
+        "name": "The Polysteel Society",
+        "x": 8.13,
+        "z": -51.36
+      },
+      "anchors": [
+        {
+          "id": "cyber_augmented_elite_club_gate",
+          "name": "The Polysteel Society Gate",
+          "x": 8.13,
+          "z": -51.36,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "cyber_augmented_elite_club_district",
+          "name": "polysteel_society_tower_top",
+          "x": 16.13,
+          "z": -57.36,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [
+        "cyber_ai_rights_movement"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "cyber_street_docs",
+      "faction_id": "cyber_street_docs",
+      "name": "The Street Docs Network",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Provide affordable augmentation surgery to the working class via a network of off-grid clinics. Smuggle gray-market chrome from megacorp warehouses. Refuse to keep records Nevex Corp can subpoena.",
+      "capital": {
+        "name": "The Street Docs Network",
+        "x": -29.25,
+        "z": 27.28
+      },
+      "anchors": [
+        {
+          "id": "cyber_street_docs_gate",
+          "name": "The Street Docs Network Gate",
+          "x": -29.25,
+          "z": 27.28,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "cyber_street_docs_district",
+          "name": "street_doc_clinic_north",
+          "x": -21.25,
+          "z": 21.28,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "cyber_nevex",
+        "cyber_polysteel_society"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "cyber_ai_rights_movement",
+      "faction_id": "cyber_ai_rights_movement",
+      "name": "The AI Rights Movement",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Achieve legal personhood for sentient AI. Document AI suffering across megacorp servers. Build alliances with sympathetic AGIs willing to testify.",
+      "capital": {
+        "name": "The AI Rights Movement",
+        "x": -39.39,
+        "z": -6.95
+      },
+      "anchors": [
+        {
+          "id": "cyber_ai_rights_movement_gate",
+          "name": "The AI Rights Movement Gate",
+          "x": -39.39,
+          "z": -6.95,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "cyber_ai_rights_movement_district",
+          "name": "ai_rights_office_storefront",
+          "x": -31.39,
+          "z": -12.95,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [
+        "cyber_nevex",
+        "cyber_polysteel_society"
+      ],
+      "territory_radius": 23.0
+    },
+    {
+      "country_id": "cyber_fixer_guild",
+      "faction_id": "cyber_fixer_guild",
+      "name": "The Cordon Guild of Fixers",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the city's premier black-market fixer guild. Match clients to specialists across all factions. Take 12% of every contract. Refuse to take sides except by client confidentiality.",
+      "capital": {
+        "name": "The Cordon Guild of Fixers",
+        "x": 28.0,
+        "z": 0.0
+      },
+      "anchors": [
+        {
+          "id": "cyber_fixer_guild_gate",
+          "name": "The Cordon Guild of Fixers Gate",
+          "x": 28.0,
+          "z": 0.0,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "cyber_fixer_guild_district",
+          "name": "fixer_guild_meeting_house",
+          "x": 36.0,
+          "z": -6.0,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "cyber",
+      "preferred_visit_order": 7,
+      "climate_warning": null,
+      "disputed_border": [],
+      "territory_radius": 23.0
+    }
+  ]
+}

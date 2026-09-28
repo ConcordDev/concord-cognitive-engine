@@ -1,0 +1,1712 @@
+{
+  "batch": "B23_props_softenter",
+  "count": 38,
+  "entries": [
+    {
+      "id": "prop_hub_se_flower_box",
+      "display_name": "Hall Flower Box",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "flora_prop"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One limestone flower box with a single court bloom and soil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Timber lip, worn stone, one flower, cobble contact. No second planter. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone flower box with a single court bloom and soil. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Timber lip, worn stone, one flower, cobble contact. No second planter. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low rectangle with one bloom sticking up.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Apron clutter for the council bay.",
+      "scale_vs_player": "0.8 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_flower_box/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_cobble_loose",
+      "display_name": "Loose Cobble",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One loose court cobble, chipped, sitting proud of an implied joint. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone, grit, no stack of stones, no figure. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One loose court cobble, chipped, sitting proud of an implied joint. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone, grit, no stack of stones, no figure. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A single wedge, readable as a stone not a creature.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Ground clutter. One stone.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_cobble_loose/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_bench",
+      "display_name": "Council Bench",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "sittable"
+      ],
+      "triangle_budget": 2500,
+      "aura_prompt": "One court bench, timber seat, limestone legs, no cushion lettering. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn seat, brass nail heads, empty. Sits against a hall wall. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One court bench, timber seat, limestone legs, no cushion lettering. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn seat, brass nail heads, empty. Sits against a hall wall. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long low bar. Seat reads longer than it is tall.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Sit target for Sitting_* clips.",
+      "scale_vs_player": "1.6 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_bench/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_bucket",
+      "display_name": "Court Bucket",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One wooden water bucket with a rope handle, half full. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Staves, iron hoop darkened, water line inside. No brand mark. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wooden water bucket with a rope handle, half full. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Staves, iron hoop darkened, water line inside. No brand mark. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cylinder with an arch handle.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Well-adjacent clutter. Not a weapon.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_bucket/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_notice_blank",
+      "display_name": "Blank Notice Board",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interactable"
+      ],
+      "triangle_budget": 1500,
+      "aura_prompt": "One blank timber notice board on a short post, no letters, no paper scraps with writing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn wood, two empty nails, limestone court. Surface is bare. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One blank timber notice board on a short post, no letters, no paper scraps with writing. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn wood, two empty nails, limestone court. Surface is bare. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A rectangle on a post. Blank face.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Unlettered. Pinewood Crossing is the only milepost lettering.",
+      "scale_vs_player": "1.5 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_notice_blank/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_doorstop",
+      "display_name": "Doorstop Stone",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One doorstop stone, cut limestone wedge with a rope groove. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gall on the groove, cobble dust. No metal spike. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One doorstop stone, cut limestone wedge with a rope groove. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gall on the groove, cobble dust. No metal spike. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A wedge. Reads heavy.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Holds the hall door leaf.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_doorstop/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_lintel_bracket",
+      "display_name": "Lintel Bracket",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One timber lintel bracket with a lantern hook, empty hook. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn oak, one iron hook, no lantern mesh in this subject, no neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One timber lintel bracket with a lantern hook, empty hook. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn oak, one iron hook, no lantern mesh in this subject, no neon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "An L of timber with a hook at the tip.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Traversal bracket at about 2.2 m. Lantern is the existing post prop.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_lintel_bracket/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_clay_cup",
+      "display_name": "Clay Cup",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One clay cup, chipped rim, empty, warm glaze. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court table scale, no inscription, no liquid hero. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One clay cup, chipped rim, empty, warm glaze. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court table scale, no inscription, no liquid hero. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small tapered cylinder.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Table clutter.",
+      "scale_vs_player": "0.10 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_clay_cup/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_stool",
+      "display_name": "Market Stool",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "sittable"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One three-leg market stool, worn timber, no cushion. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Uneven legs, cobble scuff. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One three-leg market stool, worn timber, no cushion. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Uneven legs, cobble scuff. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small triangle of legs under a round seat.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Stall clutter beside the market facade.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_stool/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_awning_bundle",
+      "display_name": "Folded Awning Bundle",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "cloth"
+      ],
+      "triangle_budget": 1000,
+      "aura_prompt": "One folded awning cloth bundle tied with rope, market cloth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Static folds, no shop name, no pole forest. A single parcel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One folded awning cloth bundle tied with rope, market cloth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Static folds, no shop name, no pole forest. A single parcel. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tied rectangle. Distinct from the hanging skinned awning.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Static counterpart to anim_org_hanging_awning_cloth.",
+      "scale_vs_player": "0.5 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_awning_bundle/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_sconce_hook",
+      "display_name": "Interior Sconce Hook",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One iron sconce hook on a small limestone block, hook empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Warm iron, soot kiss, no candle mesh, no cyan. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron sconce hook on a small limestone block, hook empty. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Warm iron, soot kiss, no candle mesh, no cyan. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A block with a single curl of iron.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Wall point for a later candle. This mesh is the hook.",
+      "scale_vs_player": "0.25 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_sconce_hook/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_ash_pan",
+      "display_name": "Cold Ash Pan",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One cold ash pan, shallow iron, a skim of gray ash, no fire. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court hearth tool, worn rim, no embers, no eye, no furnace glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cold ash pan, shallow iron, a skim of gray ash, no fire. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court hearth tool, worn rim, no embers, no eye, no furnace glow. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low dish. Ash is a flat tint, not a flame.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Hearth clutter. Cold.",
+      "scale_vs_player": "0.35 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_ash_pan/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_quoin_cap",
+      "display_name": "Loose Quoin Cap",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One loose limestone quoin cap, beveled edges, chipped corner. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court stone, grit in the arris. A single block. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One loose limestone quoin cap, beveled edges, chipped corner. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court stone, grit in the arris. A single block. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A beveled cube. Reads as masonry, not a crate.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Set-dress stone at the hall corner.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_quoin_cap/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_threshold_mat",
+      "display_name": "Rush Threshold Mat",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One rush threshold mat, oval, worn, no pattern text. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court doorway scale, dust, a few loose reeds. No rug crest. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One rush threshold mat, oval, worn, no pattern text. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court doorway scale, dust, a few loose reeds. No rug crest. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat oval darker than cobble.",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Door threshold for the council bay.",
+      "scale_vs_player": "0.9 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_threshold_mat/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true
+      }
+    },
+    {
+      "id": "prop_hub_se_market_counter",
+      "display_name": "Market Counter",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron",
+        "interactable"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One empty timber market counter, worn top, limestone feet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed apron edge, empty top, brass nail heads. One counter. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty timber market counter, worn top, limestone feet. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed apron edge, empty top, brass nail heads. One counter. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long low slab. The top reads wider than the feet.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Trade surface on the market apron. Empty.",
+      "scale_vs_player": "1.4 m long",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_market_counter/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "market apron, off the awning, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_trade_weight",
+      "display_name": "Trade Weight",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron"
+      ],
+      "triangle_budget": 350,
+      "aura_prompt": "One squat brass trade weight with a ring handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn cylinder, thumb ring, court brass. One weight. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One squat brass trade weight with a ring handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Worn cylinder, thumb ring, court brass. One weight. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short cylinder. The ring is the high point.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "A hand weight. The scale pan stays prop_scale_pan.",
+      "scale_vs_player": "0.08 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_trade_weight/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 350,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "on the counter or the apron, outside 42 m"
+      }
+    },
+    {
+      "id": "prop_hub_se_shutter_stay",
+      "display_name": "Shutter Stay",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron",
+        "interactable"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One iron shutter stay, a short bar on a wall eye. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Forged bar, pivot eye, worn tip. One stay. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron shutter stay, a short bar on a wall eye. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Forged bar, pivot eye, worn tip. One stay. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short diagonal bar. The eye is the mass.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Holds the market shutter. Not the hall shutter leaf.",
+      "scale_vs_player": "0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_shutter_stay/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "market jamb, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_cork_jar",
+      "display_name": "Corked Jar",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One corked clay jar with a rope collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court clay, cork seated, rope at the neck. Closed. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One corked clay jar with a rope collar. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Court clay, cork seated, rope at the neck. Closed. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tall jar. Shoulder wider than the foot.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Closed water jar on the apron. The court bucket stays.",
+      "scale_vs_player": "0.42 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_cork_jar/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "market apron, outside 42 m"
+      }
+    },
+    {
+      "id": "prop_hub_se_awning_stone",
+      "display_name": "Awning Stone",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One limestone awning stone with a short cloth tail tucked under it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. River-worn block, orange cloth corner trapped, cobble contact. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone awning stone with a short cloth tail tucked under it. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. River-worn block, orange cloth corner trapped, cobble contact. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low stone. The cloth corner is a small flag.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Weights the awning. The folded bundle stays its own mesh.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_awning_stone/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "awning foot on the apron, not on the cloth bay"
+      }
+    },
+    {
+      "id": "prop_hub_se_empty_tray",
+      "display_name": "Empty Tray",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "market_apron"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One empty timber tray, low rim, worn corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Open tray, grease stain, empty. One tray. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty timber tray, low rim, worn corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Open tray, grease stain, empty. One tray. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat rectangle. The rim is the silhouette.",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Empty serve tray. Not a crate.",
+      "scale_vs_player": "0.55 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_empty_tray/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_market_facade",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "market apron, outside 42 m"
+      }
+    },
+    {
+      "id": "prop_hub_se_sand_pail",
+      "display_name": "Sand Pail",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron"
+      ],
+      "triangle_budget": 1000,
+      "aura_prompt": "One wood sand pail, dry sand to the rim, rope handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stave pail, heaped dry sand, rope bail. One pail. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wood sand pail, dry sand to the rim, rope handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Stave pail, heaped dry sand, rope bail. One pail. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cylinder with a heap. The handle is a thin arch.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Dry sand beside the arena gate. The gate mesh keeps its own threshold sand.",
+      "scale_vs_player": "0.38 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_sand_pail/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "arena apron, off the door clear, not on the leaf"
+      }
+    },
+    {
+      "id": "prop_hub_se_practice_post",
+      "display_name": "Practice Post",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One short timber practice post, scuffed shaft, buried foot. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Round post, rope scar, sand at the foot. Wood only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short timber practice post, scuffed shaft, buried foot. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Round post, rope scar, sand at the foot. Wood only. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A vertical post. Taller than a player waist, shorter than a door.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Wood post on the sand. Drawn steel stays on the warden.",
+      "scale_vs_player": "1.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_practice_post/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "arena sand apron, off the gate leaf"
+      }
+    },
+    {
+      "id": "prop_hub_se_gate_coil",
+      "display_name": "Gate Coil",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One hemp gate coil with a timber toggle, ends tucked. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tight spiral, wood toggle through the eye, sand dust. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One hemp gate coil with a timber toggle, ends tucked. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Tight spiral, wood toggle through the eye, sand dust. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A round coil. The toggle sticks out one side.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Door stay for the arena leaf. Hitch rope stays a vehicle prop.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_gate_coil/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "beside the arena leaf, off the clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_empty_flask",
+      "display_name": "Empty Flask",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One collapsed leather flask, empty, cork on a thong. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Folded skin, dry, cork against the neck. One flask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One collapsed leather flask, empty, cork on a thong. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Folded skin, dry, cork against the neck. One flask. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat skin. The cork is the small knob.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Empty drink skin on the sand. Not a waterskin fill.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_empty_flask/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "arena apron"
+      }
+    },
+    {
+      "id": "prop_hub_se_gate_pin",
+      "display_name": "Gate Pin",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron",
+        "interactable"
+      ],
+      "triangle_budget": 450,
+      "aura_prompt": "One iron arena drop pin with a ring head. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short pin, ring head, sand polish. A fitting. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron arena drop pin with a ring head. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short pin, ring head, sand polish. A fitting. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short vertical pin. The ring is the top.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Drops through the arena leaf. Not a weapon. Wagon pin stays B26.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_gate_pin/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 450,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "arena jamb, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_sand_block",
+      "display_name": "Sand Block",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "arena_apron",
+        "sittable"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One limestone sit block, flat top, sand scuff. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cube block, worn seat, sand in the arris. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One limestone sit block, flat top, sand scuff. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cube block, worn seat, sand in the arris. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A cube. The top is the sit plane.",
+      "palette": [
+        "#c4b49a",
+        "#e0d2b4",
+        "#6a5a40",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "lore_blurb": "Sit target for Sitting_* clips on the sand lip.",
+      "scale_vs_player": "0.45 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_sand_block/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_arena_gate",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "place": "arena sand lip, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_hay_rack",
+      "display_name": "Hay Rack",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One wall hay rack of timber with loose hay. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two rails, hay spilling the front, pine dust. One rack. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wall hay rack of timber with loose hay. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two rails, hay spilling the front, pine dust. One rack. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A wall rectangle. Hay is the soft front mass.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Stable feed rack. No horse.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_hay_rack/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "Pinewood Crossing (62, -28), inside the bay, off the half-door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_water_trough",
+      "display_name": "Water Trough",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One stone water trough with a still water plane. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone box, dark still plane, pine stain on the lip. One trough. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One stone water trough with a still water plane. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Limestone box, dark still plane, pine stain on the lip. One trough. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long box. The water is a flat dark top.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Still water. No splash mesh. No horse.",
+      "scale_vs_player": "1.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_water_trough/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "Pinewood bay, off the half-door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_empty_peg",
+      "display_name": "Empty Peg",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One bare oak peg on a small wall block. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Empty peg, worn hole, no strap. One peg. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One bare oak peg on a small wall block. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Empty peg, worn hole, no strap. One peg. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short peg. The block is the wall bite.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Empty tack peg. Draft collar stays a vehicle prop.",
+      "scale_vs_player": "0.20 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_empty_peg/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "stable wall, Pinewood Crossing"
+      }
+    },
+    {
+      "id": "prop_hub_se_grain_scoop",
+      "display_name": "Grain Scoop",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable"
+      ],
+      "triangle_budget": 450,
+      "aura_prompt": "One empty wood grain scoop. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short handle, open bowl, grain dust, empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty wood grain scoop. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short handle, open bowl, grain dust, empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A scoop. Bowl wider than the handle.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Empty feed scoop on the stable floor.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_grain_scoop/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 450,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "stable floor, off the half-door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_half_latch",
+      "display_name": "Half-Door Latch",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable",
+        "interactable"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One iron thumb latch for a stable half-door. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Thumb pad, short bar, pine screw stain. One latch. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron thumb latch for a stable half-door. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Thumb pad, short bar, pine screw stain. One latch. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small iron bar. The thumb pad is the knob.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Latch only. The half-door stays on the stable hero.",
+      "scale_vs_player": "0.16 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_half_latch/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "half-door stile, not in the clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_salt_lick",
+      "display_name": "Salt Lick",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "pinewood_stable"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One pale salt lick on a timber shoe. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. White-gray block, wood shoe, salt crust. One block. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pale salt lick on a timber shoe. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. White-gray block, wood shoe, salt crust. One block. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A pale block on a low shoe.",
+      "palette": [
+        "#8a6a3a",
+        "#c4b49a",
+        "#efe6d4",
+        "#6a5a40",
+        "#d9cbb8"
+      ],
+      "lore_blurb": "Stable salt. The salt keg skid stays a vehicle prop. Unlettered.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_salt_lick/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_pinewood_stable",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "outside_42m",
+        "place": "stable floor, Pinewood Crossing, no lettering"
+      }
+    },
+    {
+      "id": "prop_hub_se_ink_pot",
+      "display_name": "Ink Pot",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior"
+      ],
+      "triangle_budget": 400,
+      "aura_prompt": "One closed ceramic ink pot with a dark mouth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Small pot, cork seated in the mouth, dark lip, no spill. One pot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One closed ceramic ink pot with a dark mouth. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Small pot, cork seated in the mouth, dark lip, no spill. One pot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small pot. Mouth darker than the body.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "Council ink. Closed. The clay cup stays a drink cup.",
+      "scale_vs_player": "0.08 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_ink_pot/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "beside arch_int_hub_council_table, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_closed_book",
+      "display_name": "Closed Book",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior",
+        "interactable"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One closed blank book, plain leather cover. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Shut cover, worn corners, plain face, no title. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One closed blank book, plain leather cover. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Shut cover, worn corners, plain face, no title. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat rectangle. Thicker than a slate.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "Blank book on the council table. Not the archive shelf bay.",
+      "scale_vs_player": "0.24 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_closed_book/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "on arch_int_hub_council_table"
+      }
+    },
+    {
+      "id": "prop_hub_se_quill",
+      "display_name": "Court Quill",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior"
+      ],
+      "triangle_budget": 300,
+      "aura_prompt": "One goose quill, worn shaft, cut nib. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One feather, pale shaft, dark nib. One quill. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One goose quill, worn shaft, cut nib. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One feather, pale shaft, dark nib. One quill. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long curve. The nib is the point.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "One quill beside the ink pot.",
+      "scale_vs_player": "0.25 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_quill/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 300,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "beside the ink pot, on the table"
+      }
+    },
+    {
+      "id": "prop_hub_se_cold_wax",
+      "display_name": "Cold Wax",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior"
+      ],
+      "triangle_budget": 350,
+      "aura_prompt": "One cold wax stub, dark wick, unlit. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short stub, pooled rim, wick black, no flame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One cold wax stub, dark wick, unlit. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Short stub, pooled rim, wick black, no flame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short cylinder. The wick is a dark tip.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "Unlit wax. The wall sconce and the cold hearth stay their own meshes.",
+      "scale_vs_player": "0.06 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_cold_wax/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 350,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "table edge, no flame mesh"
+      }
+    },
+    {
+      "id": "prop_hub_se_side_chair",
+      "display_name": "Side Chair",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior",
+        "sittable"
+      ],
+      "triangle_budget": 2000,
+      "aura_prompt": "One court side chair, timber frame, rush seat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One seat, four legs, rush, worn. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One court side chair, timber frame, rush seat. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. One seat, four legs, rush, worn. Empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A chair. Seat at knee height. Back is a short frame.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "Sit target for Sitting_* clips. Not the long council bench.",
+      "scale_vs_player": "0.90 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_side_chair/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 2000,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "beside the council table, off the door clear"
+      }
+    },
+    {
+      "id": "prop_hub_se_empty_hod",
+      "display_name": "Empty Hod",
+      "batch": "B23_props_softenter",
+      "world_ids": [
+        "Hub"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "softenter_adjacent",
+        "arch_kit_hub_court",
+        "interior"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One empty iron coal hod, tipped mouth, cold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Open mouth, loop handle, empty, soot stain, no coal, no flame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One empty iron coal hod, tipped mouth, cold. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Open mouth, loop handle, empty, soot stain, no coal, no flame. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A tilted scoop. The handle is the high loop.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4",
+        "#3a3228",
+        "#6a5a40",
+        "#c8721a"
+      ],
+      "lore_blurb": "Empty hod beside the cold hearth. The ash pan stays flat.",
+      "scale_vs_player": "0.40 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_hub_se_empty_hod/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_hub_court",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "parent_hall": "arch_hero_hub_council_hall",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "door_clear_m": [
+          1.2,
+          2.2
+        ],
+        "flower_law": "inside_42m",
+        "interior": true,
+        "place": "beside arch_int_hub_hearth_cold, off the door clear"
+      }
+    }
+  ]
+}

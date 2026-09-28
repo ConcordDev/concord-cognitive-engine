@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { awardSparks } from "./currency.js";
+import { publish as publishRuntimeEvent } from "./runtime/event-bus.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = path.resolve(__dirname, "..", "..", "content", "achievements");
@@ -245,6 +246,24 @@ export function unlockAchievement(db, userId, achievementId, ctx = {}) {
         rewardSparks, rewardTitle: a.rewardTitle || null,
       });
     } catch { /* emit best-effort */ }
+
+    // Concord Runtime — durable half. Same gap class as marketplace sale
+    // notifications: the realtimeEmit above is a real-time-only toast, so
+    // a player offline at the exact unlock moment (a real case — the PK
+    // guard above means an achievement can genuinely fire from a
+    // heartbeat-driven condition check, not just a live user action) sees
+    // nothing, ever. This publishes onto the cross-domain runtime bus so
+    // lib/runtime/reactions.js can create a persistent notification. This
+    // is genuinely platform-wide: all 38 authored achievements span
+    // combat/economy/exploration/mastery/social — most of which are
+    // outside Concordia entirely.
+    try {
+      publishRuntimeEvent("achievement.unlocked", {
+        userId, achievementId,
+        title: a.title, rarity: a.rarity || null,
+        rewardSparks, rewardTitle: a.rewardTitle || null,
+      });
+    } catch { /* event-bus publish is best-effort — never affects a real, already-persisted unlock */ }
 
     return { unlocked: true, id: achievementId, title: a.title, rewardSparks, rewardTitle: a.rewardTitle || null };
   } catch (err) {

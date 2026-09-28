@@ -1,0 +1,232 @@
+{
+    "generatedAt": "2026-09-22T01:25:54.2987530Z",
+    "verbCount": 442,
+    "honestyFailures": [],
+    "slices": [
+        {
+            "name": "locomotion",
+            "total": 26,
+            "real": 4,
+            "procedural": 2,
+            "reused": 0,
+            "missing": 20,
+            "percent": 23.076923370361329
+        },
+        {
+            "name": "traversal",
+            "total": 24,
+            "real": 3,
+            "procedural": 1,
+            "reused": 0,
+            "missing": 20,
+            "percent": 16.66666603088379
+        },
+        {
+            "name": "combat",
+            "total": 86,
+            "real": 3,
+            "procedural": 6,
+            "reused": 0,
+            "missing": 77,
+            "percent": 10.465116500854493
+        },
+        {
+            "name": "firearms",
+            "total": 30,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 30,
+            "percent": 0.0
+        },
+        {
+            "name": "magic",
+            "total": 10,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 10,
+            "percent": 0.0
+        },
+        {
+            "name": "reaction",
+            "total": 11,
+            "real": 2,
+            "procedural": 3,
+            "reused": 0,
+            "missing": 6,
+            "percent": 45.45454406738281
+        },
+        {
+            "name": "interaction",
+            "total": 10,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 10,
+            "percent": 0.0
+        },
+        {
+            "name": "work",
+            "total": 13,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 13,
+            "percent": 0.0
+        },
+        {
+            "name": "creatures",
+            "total": 124,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 124,
+            "percent": 0.0
+        },
+        {
+            "name": "boss",
+            "total": 16,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 16,
+            "percent": 0.0
+        },
+        {
+            "name": "hybrid",
+            "total": 7,
+            "real": 0,
+            "procedural": 2,
+            "reused": 0,
+            "missing": 5,
+            "percent": 28.571428298950197
+        },
+        {
+            "name": "sports",
+            "total": 4,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 4,
+            "percent": 0.0
+        },
+        {
+            "name": "fauna_social",
+            "total": 17,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 17,
+            "percent": 0.0
+        },
+        {
+            "name": "crafting",
+            "total": 6,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 6,
+            "percent": 0.0
+        },
+        {
+            "name": "furniture",
+            "total": 7,
+            "real": 0,
+            "procedural": 1,
+            "reused": 0,
+            "missing": 6,
+            "percent": 14.285714149475098
+        },
+        {
+            "name": "social",
+            "total": 11,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 11,
+            "percent": 0.0
+        },
+        {
+            "name": "daily",
+            "total": 4,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 4,
+            "percent": 0.0
+        },
+        {
+            "name": "archetype",
+            "total": 9,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 9,
+            "percent": 0.0
+        },
+        {
+            "name": "gear",
+            "total": 5,
+            "real": 0,
+            "procedural": 4,
+            "reused": 0,
+            "missing": 1,
+            "percent": 80.0
+        },
+        {
+            "name": "facial",
+            "total": 2,
+            "real": 0,
+            "procedural": 2,
+            "reused": 0,
+            "missing": 0,
+            "percent": 100.0
+        },
+        {
+            "name": "procedural",
+            "total": 3,
+            "real": 0,
+            "procedural": 3,
+            "reused": 0,
+            "missing": 0,
+            "percent": 100.0
+        },
+        {
+            "name": "vehicle",
+            "total": 4,
+            "real": 0,
+            "procedural": 1,
+            "reused": 0,
+            "missing": 3,
+            "percent": 25.0
+        },
+        {
+            "name": "monsters",
+            "total": 3,
+            "real": 0,
+            "procedural": 0,
+            "reused": 0,
+            "missing": 3,
+            "percent": 0.0
+        },
+        {
+            "name": "environment",
+            "total": 5,
+            "real": 0,
+            "procedural": 3,
+            "reused": 0,
+            "missing": 2,
+            "percent": 60.0
+        },
+        {
+            "name": "secondary",
+            "total": 5,
+            "real": 0,
+            "procedural": 5,
+            "reused": 0,
+            "missing": 0,
+            "percent": 100.0
+        }
+    ]
+}

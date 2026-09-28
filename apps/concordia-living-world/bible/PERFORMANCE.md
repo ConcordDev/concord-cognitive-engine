@@ -3,7 +3,7 @@
 **Status:** UNBUDGETED · Hub over target  
 **Authority:** Unity frame · Concord tick  
 
-Proposed: Hub <400 renderers, 20–30 skinned NPCs, ≤8 point lights, 60 fps 1080p Game view, one World root.
+Proposed: Hub <400 renderers, 20–30 skinned NPCs, ≤8 point lights, 60 fps 1080p Game view, one World root. Cinematic shots in `CINEMATIC.md` use the **Desktop** profile; LeanPlay is allowed to thin density, not to freeze Play.
 
 Observed: ~1143 World children. Cognitive LOD not implemented.
 

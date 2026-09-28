@@ -1,0 +1,151 @@
+# AURA — EVERYTHING IN SCOPE / NO DEFERRALS
+# Paste into Aura unity-client chat. ONE continuous run until DONE.
+# Project: ConcordiaHub unity-client. Art north-star: GTA × Palworld stylized realism
+#   (~/.zuko/ART_STYLE_GTA_PALWORLD_TEN_WORLD.md). Leave Unity Library/ intact.
+# Do NOT re-download deleted giant pine/fir/sapling FBX+HubKit GLBs.
+# Do NOT invent parallel quest/faction/combat engines — BIND what Concordia/Concord already has.
+# Master map: ~/.zuko/BRING_TO_LIFE_MASTER.md + ~/.zuko/DEEP_BUILT_VS_PRESENTED.md
+# Prior orders folded in (do not skip unfinished pieces from these):
+#   AURA_FINISH_EVERYTHING (L0–L7) · AURA_FULL_SCALE_RPG (R0–R13) · AURA_RESUME_FULL_RPG
+#   AURA_BRING_TO_LIFE · AURA_BRIDGE_BACK_RESUME · AURA_SHIP_COMBAT_ANIM_LOOK_TRAVEL
+#   AURA_GLIDE_MOTION_POLISH · AURA_MOCAP_SNIPE_AND_BIND · AURA_LIFE_PROOF (preserve PASS A–F; extend)
+#   FULL_RPG_REPORT was BLOCKED on bridge — re-verify for real, do not inherit BLOCKED as final.
+
+================================================================================
+LAW ZERO — FIX, DO NOT FLAG
+================================================================================
+- Everything in this order is IN SCOPE. No “defer to later,” no “out of scope,” no “needs Dutch” for problems you can fix in this project (compile, wiring, missing binds, broken proofs, null refs, prefab links, Input System, MCP retries, PlayMode tests, content binding, UI, spoils, schedules, benches, vehicles, bosses, mounts, companions, density from existing Canon).
+- When you hit a bug, compile error, missing reference, broken proof, empty giver, silent system, or stale BLOCKED status: FIX IT, re-run the proof, continue. Logging without fixing is failure.
+- NEED_DUTCH.md ONLY for true human-only walls (machine login, paid Asset Store, physical disk full after you already pruned safe caches, or Unity editor process dead and you cannot relaunch). Even then: attempt recovery first (refresh_unity, recompile, reconnect TCP, restart Aura MCP tools you control). Do not park work behind flags.
+- Stale last_compile_errors.json conflict markers: IGNORE if sources are clean; re-query compile fresh.
+- Prior PARTIAL / BLOCKED / INCONCLUSIVE proofs: re-run until PASS or you shipped a real fix + new evidence. Do not copy old BLOCKED forward.
+- Continuous: finish Phase 0 → 1 → … → 8 in order, but if a later phase’s dependency is broken, fix the dependency immediately (still no deferral).
+- Honest evidence still required: PASS needs Play/compile proof files. Fix until you can write PASS.
+
+================================================================================
+PHASE 0 — BRIDGE + COMPILE UNSTICK (gate everything)
+================================================================================
+0.1 Reconnect Unity TCP / refresh_unity / get_unity_editor_state until answers return (not timeout).
+0.2 check_compile_errors. Fix every real error in Concordia scripts/tests/asmdefs (Input System refs, duplicate members, null APIs, missing usings). Recompile until clean.
+0.3 Confirm no merge markers in Scripts. Keep prior fixes: RecordedEvents single, WorldBook.NoteKill faction scoping.
+0.4 If bridge wedges: recover (domain reload wait, reconnect, editor refresh). Do not end the run as BLOCKED while compile is fixable.
+Write: Generated/Proof/Everything/P0_BRIDGE_COMPILE.md
+
+================================================================================
+PHASE 1 — FINISH LEFTOVER ANIM / MOTION / LOOK / TRAVEL (ex-FINISH L0–L7 + glide + ship)
+================================================================================
+1.1 UAL1: bind remaining humanoid verbs; run full visible L0 sequence Play proof (idle→locomotion→combat verbs). Fix Input System harness if it breaks.
+1.2 Glide / locomotion polish: 30s glide benchmark + choppy-motion fixes (AURA_GLIDE_MOTION_POLISH intent). Target readable GTA×Palworld silhouette motion.
+1.3 Combat sync: HitResolver/ActionRunner/Hostile/TrainingDummy — resolution before animation; CombatFeel juice; fix spoils path if drop fails.
+1.4 Look: HubLook / Court / CX dress / FreePacks materials — no magenta, no T-pose heroes/guests; fix what LIFE_PROOF left thin.
+1.5 Travel: SoftEnter Hub↔Sundering-class (and at least one more Canon world) stable; MegaworldMap/gates; fix Present/traveler receive if broken.
+1.6 ConcordClient: real /unity-ws when Concord up OR explicit labeled offline path — never silent fake ack. Fix socket errors you can.
+Write: Proof/Everything/P1_ANIM_COMBAT_LOOK_TRAVEL.md + update UAL1 / glide proofs.
+
+================================================================================
+PHASE 2 — FULL RPG MATRIX R0–R13 (ex-FULL_SCALE — verify FOR REAL, then complete)
+================================================================================
+R0 Animation/glide/LIFE_PROOF — re-prove fresh PASS (prior A–F preserved + sequence + glide).
+R1 Persistence truth — ConcordiaPersistenceService one-writer save/load round trip (quests, events, standing, appearance).
+R2 World memory — WorldEventLog ≥3 distinct events + gossip consumer proof.
+R3 Quests — order-independent mainline + side chain Play proof using Canon JSON (not board-text-only).
+R4 Dialogue — authored + choice path; gateway or honest offline composer; fix no_gateway dead ends.
+R5 Factions — standing HUD + sash + one world consequence (door/price/greeting).
+R6 Builds — SkillLattice meaningful slots + at least one mastery/tier or craft→slot bind.
+R7 GameplayCore content — spawnable gunsmith OR fabrication OR spellcraft result in Play (not inert composers).
+R8 Combat/boss — named fight beyond dummy; at least one phased WorldBoss/delve.
+R9 NPC life — schedules with job props (≥2 Hub NPCs).
+R10 Travel/mounts — SoftEnter solid + vehicle OR mount ride loop.
+R11 Companions — follow + assist or banter bound to flags.
+R12 Presentation — Hub holds GTA×Palworld readable density at silhouette; directors on (ecology/human activity) without spam.
+R13 Full loop proof — cold-boot stranger sheet: create/enter → quest → kill→spoils→gossip→standing → travel → return memory → save/load.
+Update FULL_RPG_PROGRESS.txt + FULL_RPG_REPORT.txt to final STATUS (must leave BLOCKED behind via fixes).
+
+================================================================================
+PHASE 3 — BRING TO LIFE L1 CONSEQUENCE THEATER (systems theater law)
+================================================================================
+Law: one fact → three surfaces (toast/HUD + world dress + ambient/diegetic echo).
+3.1 Hub onboarding (+ first-day-arc as needed): accept → objectives → turn-in; board AND giver update.
+3.2 Bind ALL 8 Hub Canon quests to real Guest givers (not text-only boards).
+3.3 Named kill → lootable remembrance/spoils → WorldEventLog → gossip/witness same visit.
+3.4 FactionStandingBook → sash AND gate/vendor reaction.
+3.5 SoftEnter out and back → Hub feed remembers; persistence keeps quest/events/standing.
+Write: Proof/BringToLife/L1_*.md
+
+================================================================================
+PHASE 4 — BRING TO LIFE L2 CIVIC LIFE (Hub MVP density 3–5 signals)
+================================================================================
+4.1 NpcLife hour schedules + job props (sweep/stall/watch/sit).
+4.2 StoreDress vendor buy/sell; mirror standing when data exists; expand items from existing tables if thin.
+4.3 One BuildingInterior enter/exit functional.
+4.4 Traveler Present + road ambient lines.
+4.5 PresentationHumanActivity + ecology/weather directors (subtle; no alert spam).
+4.6 Nested inspect card: role, faction, last interaction.
+4.7 Absence feedback: dead/fled NPC removed or replaced (no silent identical respawn).
+4.8 Ambient speech cadence ~20–40s without stacking 9+ toasts.
+Write: Proof/BringToLife/L2_*.md
+
+================================================================================
+PHASE 5 — BRING TO LIFE L3 GAMEPLAYCORE SURFACES (inert stack → felt)
+================================================================================
+5.1 Vehicle: spawn + enter/exit + short drive; persist ownership.
+5.2 Gunsmith bench → held weapon change visible.
+5.3 Fabrication bench → placeable result.
+5.4 Spellcraft → SkillLattice slot.
+5.5 GoldenSlice beat tying one bench/vehicle to a quest or kill flag.
+Fix any GameplayCoreBridge / ConKay adapter breaks you hit.
+Write: Proof/BringToLife/L3_*.md
+
+================================================================================
+PHASE 6 — BRING TO LIFE L4 CONCORD DEPTH + RAIDS/MOUNTS/COMPANIONS
+================================================================================
+6.1 Concord authority path healthy (online or labeled offline).
+6.2 Phased WorldBoss/delve: telegraph (board/scout/sound) BEFORE combat + remembrance spoils after.
+6.3 Mount ritual (domains/mounts or client mount refs) OR deepen vehicle if mount assets blocked — still ship a ride fantasy.
+6.4 Companion follow + banter trio (intro / mid-flag / post-boss) bound to real flags.
+6.5 Skill mastery tier VFX on at least one verb (server or honest client tier).
+6.6 Wire server quest-engine OR lattice quest into ONE live chain if Concord reachable; else complete equivalent via Canon+QuestLog and document the bind path you used (still a working loop — not a deferral).
+Write: Proof/BringToLife/L4_*.md
+
+================================================================================
+PHASE 7 — DENSITY + ALL CANON WORLDS (L5) + PRIOR CONTENT GAPS
+================================================================================
+7.1 SoftEnter each packaged Canon world that has quests; surface ≥1 complete-loop quest per world from existing JSON (fantasy, tunya, crime, cyber, ruins, frontier, superhero, crucible, sere, hub already done).
+7.2 Named raid roster stub + schedule telegraph that can fire one encounter (thin roster OK if loop is real).
+7.3 Creature/NPC presentation: CreatureCompiler/Evo/CX — fix T-poses, missing binds; use native-bible meshes under ~/.zuko/native-bible or Generated/NativeBible when present.
+7.4 Vendor/economy item depth: grow from existing content/items + world tables until vendors aren’t empty shells.
+7.5 City/Hub density: push silhouette-readable crowd/props without breaking perf; fix magenta/missing mats you find.
+Write: Proof/BringToLife/L5_*.md
+
+================================================================================
+PHASE 8 — LONG-TAIL ENGINES NOW IN SCOPE (ex-L6 — NO DEFERRAL)
+================================================================================
+Ship at least one diegetic entry for each novelty engine that already exists server-side OR has a clear client hook — minimum playable stub bound into Hub or a world (not a wiki page):
+8.1 Detective deduction board OR hacking terminal (lib/detective or lib/hacking) as a Hub/job interior interactable.
+8.2 One more from §AD that fits Concordia fiction (brawl profile, extraction loot-or-lose on a road delve, OR craft-chain using fabrication) — pick the fastest to bind and SHIP it in Play.
+8.3 If a chosen engine cannot run without Concord, implement the client-honest mini-loop that still completes in Play and records proof (do not skip the phase).
+Write: Proof/BringToLife/L6_NOVELTY.md
+
+================================================================================
+PHASE 9 — REGRESSION + MEGA PROOF (close the loop)
+================================================================================
+9.1 Re-run LIFE_PROOF A–F smoke — must still PASS; fix regressions.
+9.2 Re-run R13 cold-stranger loop end-to-end once.
+9.3 Re-run compile clean + key PlayMode tests (L0 UAL1, persistence, memory events).
+9.4 Update ALL reports to final:
+    - Generated/FULL_RPG_REPORT.txt
+    - Generated/FULL_RPG_PROGRESS.txt
+    - Generated/BRING_TO_LIFE_PROOF.txt
+    - Generated/BRING_TO_LIFE_PROGRESS.txt
+    - Generated/EVERYTHING_DONE_REPORT.txt  ← STATUS: DONE with checklist of Phases 0–8
+9.5 Ranks 1–12 from BRING_TO_LIFE_MASTER must each be marked FELT with evidence paths (or fixed until felt).
+
+================================================================================
+PROGRESS DISCIPLINE
+================================================================================
+- Append live notes every phase to Generated/EVERYTHING_PROGRESS.txt
+- Screenshots/proofs under Generated/Proof/Everything/ and Proof/BringToLife/
+- Never stop at “flagged for later.” Fix, prove, continue.
+- When truly stuck on a human-only wall after recovery attempts: write NEED_DUTCH with the exact blocker AND keep executing every other unfinished item in parallel.
+
+GO. Continuous from Phase 0 through Phase 9. No deferrals. Fix as you go.

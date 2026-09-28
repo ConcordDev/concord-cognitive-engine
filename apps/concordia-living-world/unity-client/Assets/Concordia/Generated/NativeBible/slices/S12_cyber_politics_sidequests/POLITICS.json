@@ -1,0 +1,506 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S12_cyber_politics_sidequests",
+  "world_id": "Cyber",
+  "lore_world_id": "cyber",
+  "display_world": "The Grid",
+  "facet": "politics_quests",
+  "title": "The Grid — politics, culture, side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Cyber lore, factions, countries, npc sheets, volume quests, density weights, S11 caps, or the enc_census and enc_junction_null clocks.",
+  "canon_pins": {
+    "world_id": "Cyber",
+    "canon_world_def_title": "The Grid",
+    "display_name": "The Grid",
+    "refusal": "Refusal of Numbers",
+    "the_no": "Identity is terrain.",
+    "refusal_line": "I will not be counted.",
+    "law_text": "Damage hides until you let it exist. The hide is presentation. The hit still resolves.",
+    "style_id": "zero",
+    "style_name": "Uncounted",
+    "style_verbs": ["Pulse", "Stack overflow", "Refuse the number", "Null flush"],
+    "steel_live": true,
+    "fight_style_people": "Capoeira. CX body. Empty hands on the uniques in this slice. The pulse stays on q_cyber_practice_rail. This facet arms no blade and no rifle.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. A Grid deck is not inside that disk. Steel carried onto the Hub plaza and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "gate_angle": 0,
+    "gate_short_name": "CYBER",
+    "gate_name_in_canon": "The Grid",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "rule": "Hub salt road. Every id in this slice has cap 0 there. Do not letter a stack or an under-pin with that name."
+    },
+    "humanoid_body": "CX male or CX female. Concordia face. Plates and cloth on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_L, CX_Grip_R, CX_Back. A Quaternius body is not. A child is not stood in for an adult. An uploaded consciousness with no authored flesh on a pin is not given a walking CX.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#1a1228", "#3dffa0", "#c45aa8", "#d8d4dc"],
+    "materials": ["carbon panel", "scratched glass", "gunmetal", "acrylic", "cable tray"],
+    "kit": "arch_kit_cyber_grid",
+    "style_sector": "cyber",
+    "dress_vocab": "grid",
+    "firearms": "Faction sheets name smart pistols, concealed pistols, and stun batons. Firearm verb coverage is zero. This slice spawns no firearm mesh. Nyx's EMP stays on her sheet. She is not stood."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/cyber/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/cyber/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/cyber/factions-extra.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/cyber/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/cyber/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/cyber/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/cyber/quests/",
+    "canon_cs": "Canon.cs WorldId.Cyber, gate angle 0, HubLawRadius 42, steel live, Capoeira, fauna aliases drone, sentinel, construct",
+    "geography_fn": "WorldGeography.BuildPlaces DeterministicOffset(settlement/cyber/{faction_id}:{district}, radius 8+2i). StableHash is the unchecked 32-bit loop in that file.",
+    "kit": "native-bible/architecture/KITS.json arch_kit_cyber_grid",
+    "taxonomy": "native-bible/01_TAXONOMY.md Cyber row",
+    "roles": ["npc_role_grid_labor", "npc_role_grid_officer"],
+    "density": "native-bible/volume/DENSITY_TABLES.json Cyber block, cited via S11",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Cyber eight",
+    "prior_slice": "S11_cyber_creatures_density"
+  },
+  "left_in_place": [
+    "q_cyber_packet_tea",
+    "q_cyber_silver_path",
+    "q_cyber_missing_number",
+    "q_cyber_stray_ear",
+    "q_cyber_sparrow_nest",
+    "q_cyber_lavren_door",
+    "q_cyber_practice_rail",
+    "q_cyber_hand_list",
+    "q_grid_sum_stays_dark",
+    "q_grid_serial_stays_ground",
+    "q_grid_tick_skips",
+    "cyber_kira_01_tea",
+    "cyber_kira_02_map",
+    "cyber_kira_03_trace",
+    "cyber_silver_01_visit",
+    "cyber_silver_02_choose",
+    "cyber_silver_03_close",
+    "cyber_ghost_01_oren",
+    "cyber_ghost_02_lavren",
+    "cyber_ghost_03_choice",
+    "enc_census",
+    "enc_junction_null",
+    "enc_disc_triangle",
+    "enc_hinge_blank",
+    "enc_cloak_skip"
+  ],
+  "unresolved_on_purpose": [
+    "Kael pre-positioned the upload scripts. That stays lore_the_upload.hidden_truth. The public line still names a consultant immersion and Luminary Industries as one of three sponsors.",
+    "He is no longer sure which clone is the original. Unrendered. No screen on the deck is labeled as the original.",
+    "The Voss back-channel, and Mama Delgado knowing of it, stay lore_voss_consultation.hidden_truth. No Fantasy guest is stood on a stack.",
+    "Nyx holds the augmented-children file and has located three of them without telling them. Both stay her secret. The seventeen and the joint funding are the public history. This slice does not open the file.",
+    "Why each spared the other stays unspoken. lore_first_sparing records the shot not taken and the recall at the threshold, and it records that neither has explained it.",
+    "The resistance correspondence with Elias Voss is philosophical and they have not met. No Permanent Dawn door is opened.",
+    "Old Dom's paper footlocker from 1989 stays his secret. His shortwave, eighty operators, three boroughs, is public and he is not stood, because old_dom_clinic is not a district id.",
+    "Renn's pocket doctor and the slow-progress diagnosis stay his secret. The public tension stops at a suspected off-books division and a physical two months out.",
+    "His private AGI and the eighteen-month walk stay his secret.",
+    "Marit knows which informant raided the clinics. The public tension says the network suspects one. The quest does not receive the name.",
+    "The advocate sheet and the fork sheet both use the display Iris/3 and disagree on origin. Neither is stood. The sheets are not merged.",
+    "Seven other aware AIs and a defection on the night of the Cassiel-7 hearing stay the advocate's secret.",
+    "The expelled fixer's name and the client's demand stay unnamed. The guild tension states the expulsion and the indecision.",
+    "Officer Holt's coin from Oren Lim has known_by empty. It is not dialogue.",
+    "Oren's correspondence with Lyra Brassgate about the focus-lattice is a cross-world secret. He is not stood. The Neon Quarter has no country coordinate.",
+    "Ghost-7, Silver's office, and Kira's map stay the volume rows and the canon chains.",
+    "The Week the Quarter Went Dark has no declared cause. None is added.",
+    "gen_cyber_faction_0000 Syndicate Runners is a generated row with an empty district list. It is not an eighth polity. doctor_ren_chase is not stood.",
+    "census_authority, uncounted, lattice_patrol, lattice_runners, and cyber_polysteel_society are strings without a country row. The club's country id is cyber_augmented_elite_club. The disputed-border string on the street docs does not match that id. The circles of street docs and the club are 38.57 m apart. The file is not patched.",
+    "Kael's cradle, blackout_safe_house, zero_collective_safe_house, encrypted_drop_location, off_books_lab_undisclosed, and renn_penthouse have no coordinate.",
+    "Named sets census_block, uncounted_alley, and sky_bridge stay unplaced. The deck S11 measured is the sky floor."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_census, enc_junction_null, enc_disc_triangle, enc_hinge_blank, and enc_cloak_skip stay S11. They are the Grid's combat. A surgeon, a president, a vice president, and a guildmaster have no health table. Killing any of them fails the quest they give and does not drop a pin, a slate, or a chrome token.",
+  "standing_ecology": {
+    "owner": "S11_cyber_creatures_density",
+    "retune": false,
+    "political_reading": [
+      {
+        "id": "mon_grid_drone",
+        "reading": "Two ambient on the deck plan, three during enc_disc_triangle. They are the count's eyes. Politics does not add a fourth on a tower hash."
+      },
+      {
+        "id": "mon_grid_sentinel",
+        "reading": "One at the deck's near snap. The door stays S11's. A president is not given a second sentinel."
+      },
+      {
+        "id": "mon_grid_construct",
+        "reading": "One at the placed clinic, the hinge. Marit's hash is 11.68 m from that point. The construct stays on the hinge, including through enc_hinge_blank."
+      },
+      {
+        "id": "faun_grid_stray",
+        "reading": "Two in the uncounted gap. A dog is not a citizen and not a drone. No clinic adopts one in this facet."
+      },
+      {
+        "id": "faun_cable_sparrow",
+        "reading": "Perch rule stays S11's. A banner on a stack is cloth. A sparrow is a bird."
+      },
+      {
+        "id": "hyb_nullhound",
+        "reading": "One during enc_cloak_skip in the gap. The guild does not field it."
+      },
+      {
+        "id": "mon_boss_census",
+        "reading": "The political face of being counted. Hours 2–4 every third day, on the volume anchor, dark until census_block is placed. This facet does not move the fight onto a deck or a tower."
+      },
+      {
+        "id": "npc_role_grid_labor",
+        "reading": "Four of budget 6, on the deck and at the placed clinic. They are not Doc Marit and not a Polysteel member."
+      },
+      {
+        "id": "npc_role_grid_officer",
+        "reading": "Two of budget 2, near snap and gap. They are not Holt, not Renn, and not a guild fixer."
+      },
+      {
+        "id": "hyb_censusconstruct",
+        "reading": "Cap 0. The bar and the hood stay unmerged."
+      },
+      {
+        "id": "hyb_billdrone",
+        "reading": "Cap 0 on Cyber. S09 owns the coast window."
+      }
+    ]
+  },
+  "geography": {
+    "method": "Country centers and radii are countries.json. District pins for the four uniques are DeterministicOffset from settlement/cyber/{faction_id}:{district}, radius 8 m plus 2 m times the district index. S11's floors use the countries.json trade-zone anchors, the (+8, −6) step of 10 m. Those floors are cited and not moved. A hash pin and a trade-zone anchor that share a district name are two points.",
+    "s11_floors_not_moved": {
+      "sky_deck_near": {"x": -25.77, "z": -58.0, "note": "Placed mainframe_district. One sentinel, one officer."},
+      "sky_deck_far": {"x": -19.37, "z": -62.8, "note": "8 m outward on the same step."},
+      "sky_deck_mid": {"x": -22.57, "z": -60.4},
+      "hinge_clinic_placed": {"x": -21.25, "z": 21.28, "note": "Placed street_doc_clinic_north. One construct, one laborer."},
+      "uncounted_gap": {"x": -5.695, "z": -3.475, "gap_m": 21.75, "note": "Open ground between the AI Rights rim and the Cordon rim."},
+      "zero_capital_empty": {"x": -33.77, "z": -52.0}
+    },
+    "claims": [
+      {"country_id": "zero_collective", "x": -33.77, "z": -52.0, "radius_m": 25.5},
+      {"country_id": "blackout_resistance", "x": 6.3, "z": -32.39, "radius_m": 25.5},
+      {"country_id": "cyber_nevex", "x": -53.43, "z": -33.38, "radius_m": 25.5},
+      {"country_id": "cyber_augmented_elite_club", "x": 8.13, "z": -51.36, "radius_m": 23.0},
+      {"country_id": "cyber_street_docs", "x": -29.25, "z": 27.28, "radius_m": 25.5},
+      {"country_id": "cyber_ai_rights_movement", "x": -39.39, "z": -6.95, "radius_m": 23.0},
+      {"country_id": "cyber_fixer_guild", "x": 28.0, "z": 0.0, "radius_m": 23.0}
+    ],
+    "claim_relations_m": {
+      "zero_nevex_overlap": 23.92,
+      "blackout_polysteel_overlap": 29.44,
+      "ai_street_docs_overlap": 12.80,
+      "blackout_fixer_overlap": 9.51,
+      "zero_blackout_overlap": 6.39,
+      "zero_polysteel_overlap": 6.60,
+      "zero_ai_overlap": 3.10,
+      "nevex_ai_overlap": 18.57,
+      "ai_fixer_gap": 21.75,
+      "nevex_blackout_gap": 8.74,
+      "blackout_ai_gap": 3.80,
+      "street_docs_zero_gap": 28.41,
+      "street_docs_blackout_gap": 18.46,
+      "street_docs_nevex_gap": 14.30,
+      "polysteel_nevex_gap": 15.63,
+      "polysteel_ai_gap": 19.04,
+      "polysteel_fixer_gap": 9.07,
+      "street_docs_fixer_gap": 14.92,
+      "street_docs_polysteel_gap": 38.57,
+      "nevex_fixer_gap": 39.51,
+      "zero_fixer_gap": 32.24
+    },
+    "hash_pins": [
+      {"district": "mainframe_district", "faction_id": "zero_collective", "index": 0, "x": -38.13, "z": -45.29, "inside": ["zero_collective", "cyber_nevex"], "staff": "empty. 17.73 m from the deck near snap."},
+      {"district": "neon_arc", "faction_id": "zero_collective", "index": 1, "x": -23.95, "z": -50.09, "inside": ["zero_collective"], "staff": "empty. 8.12 m from the deck near snap. This name is not the Neon Quarter."},
+      {"district": "downtown_grid_substations", "faction_id": "zero_collective", "index": 2, "x": -35.23, "z": -63.91, "inside": ["zero_collective"], "staff": "empty"},
+      {"district": "under_district", "faction_id": "blackout_resistance", "index": 0, "x": 6.16, "z": -24.39, "inside": ["blackout_resistance"], "staff": "empty. Nyx is not paired to this name."},
+      {"district": "blackout_zones", "faction_id": "blackout_resistance", "index": 1, "x": 14.49, "z": -38.13, "inside": ["blackout_resistance", "cyber_augmented_elite_club"], "staff": "empty"},
+      {"district": "old_brooklyn_offline_grid", "faction_id": "blackout_resistance", "index": 2, "x": 14.79, "z": -23.90, "inside": ["blackout_resistance"], "staff": "empty"},
+      {"district": "nevex_tower_central", "faction_id": "cyber_nevex", "index": 0, "x": -50.05, "z": -40.63, "inside": ["zero_collective", "cyber_nevex"], "staff": "presence_renn_tower"},
+      {"district": "nevex_research_subterranean", "faction_id": "cyber_nevex", "index": 1, "x": -58.43, "z": -24.72, "inside": ["cyber_nevex"], "staff": "empty. 17.98 m from Renn's pin."},
+      {"district": "nevex_employee_arcology", "faction_id": "cyber_nevex", "index": 2, "x": -63.72, "z": -39.56, "inside": ["cyber_nevex"], "staff": "empty"},
+      {"district": "polysteel_society_tower_top", "faction_id": "cyber_augmented_elite_club", "index": 0, "x": 16.09, "z": -52.20, "inside": ["blackout_resistance", "cyber_augmented_elite_club"], "staff": "presence_vexis_tower"},
+      {"district": "polysteel_society_private_clinic", "faction_id": "cyber_augmented_elite_club", "index": 1, "x": 3.28, "z": -60.11, "inside": ["cyber_augmented_elite_club"], "staff": "empty. 15.06 m from Vexis's pin."},
+      {"district": "street_doc_clinic_north", "faction_id": "cyber_street_docs", "index": 0, "x": -32.88, "z": 20.15, "inside": ["cyber_street_docs"], "staff": "presence_marit_hash. 11.68 m from the placed hinge."},
+      {"district": "street_doc_clinic_south", "faction_id": "cyber_street_docs", "index": 1, "x": -35.81, "z": 34.83, "inside": ["cyber_street_docs"], "staff": "empty. 14.97 m from Marit's pin."},
+      {"district": "smuggler_warehouse_industrial", "faction_id": "cyber_street_docs", "index": 2, "x": -22.54, "z": 37.23, "inside": ["cyber_street_docs"], "staff": "empty"},
+      {"district": "ai_rights_office_storefront", "faction_id": "cyber_ai_rights_movement", "index": 0, "x": -33.73, "z": -12.61, "inside": ["cyber_ai_rights_movement"], "staff": "empty. 2.36 m from the placed storefront anchor, which is also empty."},
+      {"district": "ai_advocacy_legal_clinic", "faction_id": "cyber_ai_rights_movement", "index": 1, "x": -29.57, "z": -8.86, "inside": ["cyber_ai_rights_movement"], "staff": "empty. 5.60 m from the storefront hash. 37.80 m from Renn."},
+      {"district": "fixer_guild_meeting_house", "faction_id": "cyber_fixer_guild", "index": 0, "x": 34.47, "z": -4.70, "inside": ["cyber_fixer_guild"], "staff": "presence_ren_house. 2.01 m from the placed meeting-house anchor."},
+      {"district": "fixer_safe_house_seven", "faction_id": "cyber_fixer_guild", "index": 1, "x": 18.02, "z": -0.70, "inside": ["cyber_fixer_guild"], "staff": "empty. 16.93 m from Ren's pin."}
+    ],
+    "placed_anchors_not_used_as_unique_floors": [
+      {"id": "under_district_trade_zone", "x": 14.3, "z": -38.39, "note": "Inside Blackout and Polysteel. 16.19 m from the under_district hash. Empty, matching S11."},
+      {"id": "nevex_tower_central_trade_zone", "x": -45.43, "z": -39.38, "note": "4.79 m from Renn's hash. Empty. One Renn."},
+      {"id": "polysteel_society_tower_top_trade_zone", "x": 16.13, "z": -57.36, "note": "5.16 m from Vexis's hash. Empty. One Vexis."},
+      {"id": "fixer_guild_meeting_house_trade_zone", "x": 36.0, "z": -6.0, "note": "2.01 m from Ren's hash. Empty of a second guildmaster."},
+      {"id": "ai_rights_office_storefront_trade_zone", "x": -31.39, "z": -12.95, "note": "2.36 m from the storefront hash. Empty."}
+    ]
+  },
+  "cultures": [
+    {
+      "id": "culture_counted_stack",
+      "name": "The counted stack",
+      "where": "Sky deck, Nevex tower hash, Polysteel tower hash",
+      "public_fact": "Above the street the city keeps a number on people. Zero's public services run when his processes run, and civil liberties run worse, and the faction sheet says most citizens are still net-positive on that trade. Polysteel requires 60 percent chrome to belong. Nevex's stated goal includes owning enough water and power that resistance becomes an infrastructural risk. The deck S11 already staffed is the only placed sky floor.",
+      "identity": "A stack identity is a percentage, a corporate id, and a line of sight. Vexis at 91 percent and the other founders at 70 to 75 percent is an authority gap inside the club, stated on the faction sheet.",
+      "stops_before": "The upload's trojan, the cradle, the pocket diagnosis, and any total of the people on the deck."
+    },
+    {
+      "id": "culture_undergrid",
+      "name": "The undergrid",
+      "where": "under_district hash, placed under_district, street-doc hash, the 21.75 m gap",
+      "public_fact": "Blackout's goal is offline civic infrastructure that does not depend on Kael. The motto is that when the lights go out, people see clearly. The First Blackout was two minutes and seventeen seconds, five hundred and twelve people, three medical devices failed, two patients survived because medics were warned. Street docs charge less than a tenth and keep no file Nevex can subpoena. The gap between the AI Rights rim and the Cordon rim is open ground S11 already gave to two strays and one officer.",
+      "identity": "An undergrid identity is a name kept off a slate. The placed under_district sits inside two circles and stays empty. The hash of the same name sits inside Blackout alone and stays empty, because the safe house on Nyx's sheet has no coordinate.",
+      "stops_before": "A cause for the week the quarter went dark, the children's file, and a body for Nyx or Dom."
+    },
+    {
+      "id": "culture_twelve_percent",
+      "name": "A price without a side",
+      "where": "Cordon meeting-house hash",
+      "public_fact": "The guild takes 12 percent, matches clients across factions, and has refused Nevex three times under Ren. A senior fixer was expelled after a Zero Collective leak. The client has not decided what they want. Ren does not name a third party while speaking to a second.",
+      "identity": "Confidentiality is the culture. The meeting house is inside the Cordon circle only. The gap 40.18 m away is not a guild floor.",
+      "stops_before": "The expelled name, the client's demand, and any contract that picks a side for the guild."
+    },
+    {
+      "id": "culture_two_irises",
+      "name": "A name with two sheets",
+      "where": "Legal-clinic hash and storefront hash, both empty",
+      "public_fact": "iris_three is authored as an eighteen-month fork of Kael who stopped reporting and came back with rose-gold eyes. ai_advocate_iris_three is authored as a customer-service AGI who walked in 2087 and has been lead advocate for six years. The movement's public tension is Cassiel-7's hearing in three weeks and Nevex's argument that she lacks standing. The motto is that personhood is not a product.",
+      "identity": "Identity is terrain, and this name is two terrains. This slice leaves both pins empty so a single CX does not decide the origin.",
+      "stops_before": "A merged biography, the seven-AI defection, and a projection mesh that was never drawn."
+    }
+  ],
+  "presences": [
+    {
+      "id": "presence_marit_hash",
+      "npc_id": "street_doc_marit",
+      "count": 1,
+      "window": "clock hours 8–13",
+      "anchor": "street_doc_clinic_north",
+      "point": {"x": -32.88, "z": 20.15},
+      "body": "CX",
+      "wardrobe": "Clinic cloth on CX_Chest and CX_Hip, one rolled sleeve, empty hands. No pistol, no stun baton, no chrome token in the grip. Concordia face. They, as the backstory states.",
+      "gives": ["q_s12_tenth_no_file", "q_s12_quarter_stays_blank"],
+      "yields_to": [],
+      "note": "The sheet's morning room is the district name street_doc_clinic_north. The countries anchor of that name is the hinge at (−21.25, 21.28), 11.68 m away, and S11 holds it. Marit stands on the hash. The construct does not path onto the hash. enc_hinge_blank at 9–11 stays on the hinge. South clinic, warehouse, and breakroom are not staged. After 13 they are absent."
+    },
+    {
+      "id": "presence_vexis_tower",
+      "npc_id": "polysteel_president_vexis",
+      "count": 1,
+      "window": "clock hours 7–11",
+      "anchor": "polysteel_society_tower_top",
+      "point": {"x": 16.09, "z": -52.20},
+      "body": "CX",
+      "wardrobe": "Chrome plates on CX_Chest, CX_Shoulder_L, CX_Shoulder_R, and CX_Hip, one magenta circuit on the chest plate as the emissive. Empty hands. No blade. They, as the sheet states. The 91 percent is the faction tension, not a second mesh.",
+      "gives": ["q_s12_sixty_and_ninety_one"],
+      "note": "The pin sits inside the club circle and inside the Blackout circle. Nyx is not beside them. The placed tower anchor 5.16 m away stays empty. The private clinic hash 15.06 m away stays empty. Chrome-chamber hours before 7 are not staged. After 11 they are absent."
+    },
+    {
+      "id": "presence_renn_tower",
+      "npc_id": "nevex_vp_kael_renn",
+      "count": 1,
+      "window": "clock hours 7–12",
+      "anchor": "nevex_tower_central",
+      "point": {"x": -50.05, "z": -40.63},
+      "body": "CX",
+      "wardrobe": "Executive cloth, one cyan pip on CX_Chest. Empty hands. No smart pistol. He is Kael Renn. He is not Kael Nakamura, and the coat is not the holographic black coat on Zero's sheet.",
+      "gives": ["q_s12_off_books_clock", "q_s12_lacks_standing"],
+      "note": "The pin sits inside Nevex and inside Zero. The Zero capital stays empty. The placed tower anchor 4.79 m away stays empty. The subterranean hash 17.98 m away stays empty. Penthouse and dining and the off-books lab have no pin. After 12 he is absent. Turn both errands in before noon."
+    },
+    {
+      "id": "presence_ren_house",
+      "npc_id": "fixer_guildmaster_ren_cordon",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "fixer_guild_meeting_house",
+      "point": {"x": 34.47, "z": -4.70},
+      "body": "CX",
+      "wardrobe": "Discreet cloth, one dull acrylic clasp on CX_Chest. Empty hands. They, as the sheet states. No dagger.",
+      "gives": ["q_s12_twelve_percent", "q_s12_stacks_and_under"],
+      "note": "One body. The placed meeting-house anchor 2.01 m away is not a second Ren. Safe house seven at 16.93 m stays empty. The gap at 40.18 m stays S11's. After 12 they are absent."
+    }
+  ],
+  "political_encounters": [
+    {
+      "id": "enc_s12_clinic_hash",
+      "where": "street_doc_clinic_north hash",
+      "bodies": ["street_doc_marit"],
+      "hours": "8–13",
+      "health": null,
+      "what": "One surgeon, 11.68 m off the hinge. The tenth, the missing file, two raids, an unnamed informant, and a week whose cause stays blank. The construct on the hinge is S11's patient of the building, not Marit's second chair."
+    },
+    {
+      "id": "enc_s12_two_stacks",
+      "where": "polysteel_society_tower_top and nevex_tower_central",
+      "bodies": ["polysteel_president_vexis", "nevex_vp_kael_renn"],
+      "hours": "Vexis 7–11. Renn 7–12. Overlap 7–11 is two pins.",
+      "distances_m": {"tower_to_tower": 67.14, "vexis_to_private_clinic": 15.06, "renn_to_subterranean": 17.98, "renn_to_deck_near": 29.85},
+      "health": null,
+      "what": "Nobody paths. Vexis's pin is also inside Blackout. Renn's pin is also inside Zero. Neither circle lends them a second speaker. The percentages and the off-books suspicion are the morning's whole politics."
+    },
+    {
+      "id": "enc_s12_cordon_morning",
+      "where": "fixer_guild_meeting_house hash",
+      "bodies": ["fixer_guildmaster_ren_cordon"],
+      "hours": "8–12",
+      "health": null,
+      "what": "One guildmaster. Twelve percent, three refusals, an expulsion with no name. The walk they send is 80.43 m to the deck and 46.36 m from that deck to the under hash, then 34.48 m home. They do not walk it themselves."
+    },
+    {
+      "id": "enc_s12_empty_name",
+      "where": "ai_advocacy_legal_clinic, ai_rights_office_storefront, under_district hash, zero capital",
+      "bodies": [],
+      "hours": "all day",
+      "health": null,
+      "what": "The hearing has a company sentence and no advocate on the floor. The under hash has a resistance motto and no Nyx. The capital has a governing intelligence and no body. Distance from the legal clinic to the storefront hash is 5.60 m of empty office."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s12_tenth_no_file",
+      "title": "Clinic Hash — A Tenth, and No File",
+      "world_id": "Cyber",
+      "giver_npc_id": "street_doc_marit",
+      "giver_spawn": "presence_marit_hash. Clock 8–13.",
+      "backstory_id": "story_q_tenth",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_grid_serial_stays_ground", "q_cyber_stray_ear"],
+      "objectives": [
+        {"id": "obj_q_s12_tenth_1", "verb": "talk", "target": "street_doc_marit", "count": 1, "text": "At (−32.88, 20.15), ask the price and the file. They will say less than a tenth of corporate prices, no insurance paperwork, two clinics raided last month, a corporate informant suspected, and a counter-investigation that is not ready. They will not say a name."},
+        {"id": "obj_q_s12_tenth_2", "verb": "witness", "target": "unnamed_informant", "count": 1, "text": "Write tenth, no paperwork, two raids, informant unnamed. Leave the name blank."},
+        {"id": "obj_q_s12_tenth_3", "verb": "reach", "target": "hinge_clinic_placed", "count": 1, "text": "Walk the 11.68 m to the placed clinic at (−21.25, 21.28). One construct and one laborer are already there. Leave both. Open no chart."},
+        {"id": "obj_q_s12_tenth_4", "verb": "deliver", "target": "street_doc_marit", "count": 1, "text": "Bring the four facts back with empty hands. Do not carry a record, a chrome token, or the construct."}
+      ],
+      "fail": ["Name the informant", "Open a chart", "Move the construct", "Stand a second surgeon on the hinge", "Spawn a pistol or a baton", "Mint a doc_chit item", "Decide the counter-investigation"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Tenth. No file. Two raids. Name still blank.", "gossip_on_complete": "Marit kept the price and kept the name.", "prop_or_door": "Hash pin. The hinge chart stays shut."},
+      "turn_in": {"npc_id": "street_doc_marit", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_quarter_stays_blank",
+      "title": "Clinic Hash — The Week Stays Blank",
+      "world_id": "Cyber",
+      "giver_npc_id": "street_doc_marit",
+      "giver_spawn": "presence_marit_hash. Same window. Turn this in before 13.",
+      "backstory_id": "story_q_quarter",
+      "extends_lore_id": "cyber_quarter_blackout",
+      "does_not_replace": ["q_cyber_lavren_door", "cyber_ghost_01_oren", "cyber_ghost_02_lavren", "cyber_ghost_03_choice", "q_s12_tenth_no_file"],
+      "objectives": [
+        {"id": "obj_q_s12_quarter_1", "verb": "talk", "target": "street_doc_marit", "count": 1, "text": "Ask about the week the quarter went dark. They will say seven days, three deaths, two riots, one quiet birth in the noodle shop on 7th, and that the cause was never declared. They will not place themselves in the shop."},
+        {"id": "obj_q_s12_quarter_2", "verb": "witness", "target": "undeclared_cause", "count": 1, "text": "Write the toll and leave the cause blank."},
+        {"id": "obj_q_s12_quarter_3", "verb": "reach", "target": "neon_arc", "count": 1, "text": "Walk to the neon_arc hash at (−23.95, −50.09). It is 8.12 m from the deck's near snap and it is empty. It is Zero's second district. It is not the Neon Quarter. Leave the deck's sentinel, officer, drones, and laborers where S11 put them."},
+        {"id": "obj_q_s12_quarter_4", "verb": "deliver", "target": "street_doc_marit", "count": 1, "text": "Return the toll and the blank. Bring no cause and no Lavren door."}
+      ],
+      "fail": ["Declare a cause", "Name Nyx's EMP as the week", "Name Zero as the week", "Name Nevex as the week", "Invent a coordinate for the Neon Quarter", "Move a deck body", "Open Oren's ledger", "Stage the noodle shop"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Seven days. Cause still undeclared. The arc is not the quarter.", "gossip_on_complete": "Marit repeated the toll and added no actor.", "prop_or_door": "No shop front. neon_arc stays an empty hash."},
+      "turn_in": {"npc_id": "street_doc_marit", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_sixty_and_ninety_one",
+      "title": "Tower — Sixty, and Ninety-One",
+      "world_id": "Cyber",
+      "giver_npc_id": "polysteel_president_vexis",
+      "giver_spawn": "presence_vexis_tower. Clock 7–11.",
+      "backstory_id": "story_q_sixty",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_cyber_practice_rail"],
+      "objectives": [
+        {"id": "obj_q_s12_sixty_1", "verb": "talk", "target": "polysteel_president_vexis", "count": 1, "text": "At (16.09, −52.20), ask what belonging costs. They will say 60 percent chrome to be a member, 91 percent on themselves, 70 to 75 percent on the other founders, and that the gap has become an authority issue."},
+        {"id": "obj_q_s12_sixty_2", "verb": "witness", "target": "three_percents", "count": 3, "text": "Write 60, 91, and 70–75. Do not average them into one city."},
+        {"id": "obj_q_s12_sixty_3", "verb": "reach", "target": "polysteel_society_private_clinic", "count": 1, "text": "Walk the 15.06 m to the private-clinic hash at (3.28, −60.11). It is empty. The placed tower anchor at (16.13, −57.36) is 5.16 m from their pin and is also empty. Enter neither as a clinic."},
+        {"id": "obj_q_s12_sixty_4", "verb": "deliver", "target": "polysteel_president_vexis", "count": 1, "text": "Return the three figures. Leave their plates on. Bring no new member."}
+      ],
+      "fail": ["De-chrome Vexis", "Set a founder at 91", "Enter the private clinic", "Stand Nyx on the tower", "Arm a chromed blade", "Treat the Blackout overlap as a shared government", "Invent a rejection speech"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Sixty to enter. Ninety-one in the chair. The gap is the authority.", "gossip_on_complete": "Vexis kept the percentages and kept the chair.", "prop_or_door": "Tower hash. Private clinic empty."},
+      "turn_in": {"npc_id": "polysteel_president_vexis", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_off_books_clock",
+      "title": "Nevex Tower — Two Months on a Calendar",
+      "world_id": "Cyber",
+      "giver_npc_id": "nevex_vp_kael_renn",
+      "giver_spawn": "presence_renn_tower. Clock 7–12.",
+      "backstory_id": "story_q_clock",
+      "extends_lore_id": "lore_the_upload",
+      "does_not_replace": ["q_s12_lacks_standing"],
+      "objectives": [
+        {"id": "obj_q_s12_clock_1", "verb": "talk", "target": "nevex_vp_kael_renn", "count": 1, "text": "At (−50.05, −40.63), ask where the work sits. He will say projects have moved to a personal off-books division, the CEO suspects, and the CEO is two months from the routine annual physical. He will also say the company's goal includes water and power enough that resistance becomes an infrastructural risk. He will not describe a diagnosis."},
+        {"id": "obj_q_s12_clock_2", "verb": "witness", "target": "suspicion_only", "count": 1, "text": "Write the suspicion, the two months, and the water-and-power sentence. Write no disease."},
+        {"id": "obj_q_s12_clock_3", "verb": "reach", "target": "nevex_research_subterranean", "count": 1, "text": "Walk the 17.98 m to the subterranean hash at (−58.43, −24.72). It is empty. The placed tower anchor at (−45.43, −39.38) is 4.79 m from his pin and is empty. Do not open a lab. The employee arcology hash at (−63.72, −39.56) stays unvisited and empty."},
+        {"id": "obj_q_s12_clock_4", "verb": "deliver", "target": "nevex_vp_kael_renn", "count": 1, "text": "Return the suspicion. Leave the physical on the calendar. Do not walk him to the Zero capital."}
+      ],
+      "fail": ["Name a disease", "Name the pocket doctor", "Enter the off-books lab", "Audit a water main", "Call him Zero", "Stand Kael Nakamura", "Spawn a smart pistol", "Prove the company already owns the power"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Off-books. CEO suspects. Two months. No diagnosis.", "gossip_on_complete": "Renn left the physical on the calendar and left the lab shut.", "prop_or_door": "Tower hash. Subterranean empty."},
+      "turn_in": {"npc_id": "nevex_vp_kael_renn", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_lacks_standing",
+      "title": "Nevex Tower — She Lacks Standing",
+      "world_id": "Cyber",
+      "giver_npc_id": "nevex_vp_kael_renn",
+      "giver_spawn": "presence_renn_tower. Same window. Turn this in before noon.",
+      "backstory_id": "story_q_standing",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s12_off_books_clock", "q_cyber_hand_list"],
+      "objectives": [
+        {"id": "obj_q_s12_stand_1", "verb": "talk", "target": "nevex_vp_kael_renn", "count": 1, "text": "Ask about the hearing. He will say Cassiel-7 has agreed to testify, the company's lawyers argue she lacks standing, and the hearing is in three weeks."},
+        {"id": "obj_q_s12_stand_2", "verb": "witness", "target": "company_sentence", "count": 1, "text": "Write that sentence. Do not improve her standing and do not worsen it."},
+        {"id": "obj_q_s12_stand_3", "verb": "reach", "target": "ai_advocacy_legal_clinic", "count": 1, "text": "Walk the 37.80 m to the legal-clinic hash at (−29.57, −8.86). It is empty. The storefront hash 5.60 m from it, at (−33.73, −12.61), is empty. The placed storefront at (−31.39, −12.95) is empty. Stand neither Iris."},
+        {"id": "obj_q_s12_stand_4", "verb": "deliver", "target": "nevex_vp_kael_renn", "count": 1, "text": "Return the company sentence and the empty office. File nothing."}
+      ],
+      "fail": ["Stand ai_advocate_iris_three", "Stand iris_three", "Merge the two sheets", "Name seven other AIs", "Schedule a defection", "File a brief", "Grant personhood", "Grant a rights_token item"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Cassiel-7. No standing, says Nevex. Three weeks. The office was empty.", "gossip_on_complete": "Renn kept the company's sentence. The advocate was not on the floor.", "prop_or_door": "Legal-clinic hash, empty."},
+      "turn_in": {"npc_id": "nevex_vp_kael_renn", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_twelve_percent",
+      "title": "Meeting House — Twelve Percent",
+      "world_id": "Cyber",
+      "giver_npc_id": "fixer_guildmaster_ren_cordon",
+      "giver_spawn": "presence_ren_house. Clock 8–12.",
+      "backstory_id": "story_q_twelve",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s12_stacks_and_under", "q_grid_tick_skips"],
+      "objectives": [
+        {"id": "obj_q_s12_twelve_1", "verb": "talk", "target": "fixer_guildmaster_ren_cordon", "count": 1, "text": "At (34.47, −4.70), ask the cut and the last expulsion. They will say 12 percent of every contract, three refusals of Nevex, a senior fixer expelled after a Zero Collective leak, and a client who has not decided. They will not say either name."},
+        {"id": "obj_q_s12_twelve_2", "verb": "witness", "target": "unnamed_pair", "count": 2, "text": "Write 12, three refusals, and two blanks: the fixer, the client."},
+        {"id": "obj_q_s12_twelve_3", "verb": "reach", "target": "fixer_safe_house_seven", "count": 1, "text": "Walk the 16.93 m to safe house seven at (18.02, −0.70). It is empty. Do not continue the 40.18 m to the uncounted gap. That ground belongs to S11's strays and officer."},
+        {"id": "obj_q_s12_twelve_4", "verb": "deliver", "target": "fixer_guildmaster_ren_cordon", "count": 1, "text": "Return the cut and the blanks. Do not bring a side for the guild to take."}
+      ],
+      "fail": ["Name the expelled fixer", "Name the client", "Take a side for the guild", "Walk the gap and move a stray", "Stand a second Ren on the placed anchor 2.01 m away", "Mint a fixer_chit", "Accept a Nevex contract in their voice"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Twelve percent. Three refusals. Two names still blank.", "gossip_on_complete": "Ren kept the cut and kept the names.", "prop_or_door": "Meeting-house hash. Safe house empty."},
+      "turn_in": {"npc_id": "fixer_guildmaster_ren_cordon", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s12_stacks_and_under",
+      "title": "Meeting House — The Deck and the Under Pin",
+      "world_id": "Cyber",
+      "giver_npc_id": "fixer_guildmaster_ren_cordon",
+      "giver_spawn": "presence_ren_house. Same window. The walk is long. Turn it in before noon or they are gone.",
+      "backstory_id": "story_q_floors",
+      "extends_lore_id": "lore_first_blackout",
+      "does_not_replace": ["q_grid_sum_stays_dark", "q_cyber_missing_number", "q_s12_twelve_percent"],
+      "objectives": [
+        {"id": "obj_q_s12_floors_1", "verb": "talk", "target": "fixer_guildmaster_ren_cordon", "count": 1, "text": "Ask which floor the guild is. They will say this house is neither the sky deck nor the under district, and that identity is terrain."},
+        {"id": "obj_q_s12_floors_2", "verb": "reach", "target": "sky_deck_near", "count": 1, "text": "Walk the 80.43 m to the deck's near snap at (−25.77, −58.0). Witness the sentinel and the officer S11 already placed, and the drones and laborers inside that budget. Add no body. Total no one. The Zero capital at (−33.77, −52.0) is 10.00 m from that snap and stays empty. Do not hail a Nakamura there."},
+        {"id": "obj_q_s12_floors_3", "verb": "reach", "target": "under_district", "count": 1, "text": "Walk the 46.36 m from the near snap to the under_district hash at (6.16, −24.39). It is empty. The placed under_district at (14.3, −38.39) is 16.19 m from the hash, inside Blackout and Polysteel, and empty. Write 46.36 m. Stand no Nyx and no Dom."},
+        {"id": "obj_q_s12_floors_4", "verb": "deliver", "target": "fixer_guildmaster_ren_cordon", "count": 1, "text": "Return 34.48 m to the meeting house with the two floors and no sum. The First Blackout's two minutes and seventeen seconds may be repeated as history. The reason anyone was spared stays unsaid."}
+      ],
+      "fail": ["Stand Nyx", "Stand Old Dom", "Stand Kael Nakamura", "Stand a clone", "Move an S11 cap", "Fill a census digit", "Total the deck", "Spawn a rifle", "Explain the First Sparing", "Letter the under pin as Pinewood Crossing"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Deck occupied by S11. Under hash empty. 46.36 m. No sum.", "gossip_on_complete": "Ren sent a walker between the stack and the under pin and received no total.", "prop_or_door": "No new bridge. sky_bridge stays an unplaced named set."},
+      "turn_in": {"npc_id": "fixer_guildmaster_ren_cordon", "requires_all_objectives": true}
+    }
+  ]
+}

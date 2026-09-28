@@ -1,6 +1,6 @@
 # UX Polish Audit — HONEST mode
 
-Generated: 2026-09-10T01:00:30.000Z
+Generated: 2026-09-25T01:00:08.433Z
 
 Mode: **honest**
 
@@ -30,14 +30,14 @@ Lenses scanned: 266
 | Signal | Lenses with it | % |
 |---|---:|---:|
 | loading | 265 | 99.6% |
-| emptyState | 264 | 99.2% |
+| emptyState | 265 | 99.6% |
 | errorUI | 264 | 99.2% |
-| aria | 262 | 98.5% |
+| aria | 263 | 98.9% |
 | keyboardHandlers | 171 | 64.3% |
 | nativeButtons | 266 | 100.0% |
 | responsive | 263 | 98.9% |
 | animation | 266 | 100.0% |
-| toasts | 55 | 20.7% |
+| toasts | 54 | 20.3% |
 | altOnImages | 266 | 100.0% |
 
 ## Anti-patterns

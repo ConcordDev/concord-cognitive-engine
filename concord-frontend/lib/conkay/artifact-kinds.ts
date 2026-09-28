@@ -36,6 +36,14 @@
 //                                                species_id, creatureId, spawned }
 //                                                (server/domains/creatures.js#creature-publish; topology is the
 //                                                 REAL generated rig topology — renders via createCreatureMesh)
+//       organic-mesh     ← evo-asset.organic-job → { status:'done', result:{ ok, evoAssetId, stages }, plan }
+//                                                (server/domains/evo-asset.js#organic-job, polling a job started by
+//                                                 evo-asset.generate-organic — the ConKay "artifact→interactive-3D"
+//                                                 path for a free-text prompt, no native-bible entry required: FLUX
+//                                                 concept → TRELLIS image-to-3D → normalized, budgeted LODs →
+//                                                 evo_assets. Requires a genuinely finished job with a real
+//                                                 evoAssetId; renders the ACTUAL generated mesh via GLTFLoader from
+//                                                 /api/evo-asset/file/:id, never a placeholder while queued/running)
 //
 // This module is intentionally React-free so it can be unit-tested as a pure
 // function (see tests/lib/conkay/artifact-kinds.test.ts). The mapping from
@@ -65,7 +73,8 @@ export type ConkayArtifactKind =
   | 'foundry-worldspec'
   | 'forge-app'
   | 'robotics-arm'
-  | 'creature';
+  | 'creature'
+  | 'organic-mesh';
 
 /** A kind-agnostic summary of one inspectable sub-part of an artifact (a
  *  drawList object / FEA member / activated system / project). Used for the
@@ -222,6 +231,26 @@ export interface ConkayCreatureArtifact extends ConkayArtifactBase {
   spawned: boolean;
 }
 
+/** A completed organic-generation job — a REAL mesh, sitting behind a real
+ *  evo_assets id, loaded from /api/evo-asset/file/:id. This is ConKay's
+ *  "artifact → interactive-3D" path for content that was never pre-authored
+ *  (a free-text prompt, not a native-bible id) — see evo-asset.generate-organic. */
+export interface ConkayOrganicMeshArtifact extends ConkayArtifactBase {
+  kind: 'organic-mesh';
+  /** The real evo_assets row id this job registered. */
+  evoAssetId: string;
+  /** The real, servable mesh URL (/api/evo-asset/file/:evoAssetId). */
+  glbUrl: string;
+  /** The job's id (a bible id, or a synthetic adhoc_* id for a free-text request). */
+  displayName: string | null;
+  /** budgetFor()'s category bucket the job planned against (or null). */
+  category: string | null;
+  /** The actual LOD0 triangle count the mesh pass produced (or null). */
+  lod0Tris: number | null;
+  /** The mesh-stage provider label (e.g. "local-gpu:TRELLIS-image-large"). */
+  provider: string | null;
+}
+
 /** The canonical artifact union — every member is a pure function of a real
  *  macro result (see the per-normalizer sources above). */
 export type ConkayArtifact =
@@ -231,7 +260,8 @@ export type ConkayArtifact =
   | ConkayFoundryArtifact
   | ConkayForgeArtifact
   | ConkayRoboticsArtifact
-  | ConkayCreatureArtifact;
+  | ConkayCreatureArtifact
+  | ConkayOrganicMeshArtifact;
 
 // ── small honest coercers (mirror conkayHudStore's `num`/`asRecordArray`) ────
 function asObj(v: unknown): Record<string, unknown> {
@@ -426,6 +456,41 @@ function normalizeCreature(domain: string, macro: string, _input: unknown, resul
   };
 }
 
+/** evo-asset.organic-job → a completed organic-mesh artifact. This macro is
+ *  POLLED (evo-asset.generate-organic just queues it), so most calls return a
+ *  job that's still queued/running/failed — all of those honestly produce no
+ *  artifact yet; only a genuinely finished job with a real evoAssetId lights
+ *  up the STOP-POINT into an actual renderable mesh. */
+function normalizeOrganicMesh(domain: string, macro: string, _input: unknown, result: unknown): ConkayOrganicMeshArtifact | null {
+  if (domain !== 'evo-asset' || macro !== 'organic-job') return null;
+  const res = asObj(result);
+  if (res.status !== 'done') return null; // queued/running/failed ⟹ no artifact yet
+  const jobResult = asObj(res.result);
+  if (jobResult.ok !== true) return null; // honest failure (quota/provider/etc) ⟹ STOP-POINT
+  const evoAssetId = str(jobResult.evoAssetId);
+  if (!evoAssetId) return null; // no db at generation time ⟹ nothing registered to load
+  const stages = asObj(jobResult.stages);
+  const lodsStage = asObj(stages.lods);
+  const meshStage = asObj(stages.mesh);
+  const plan = asObj(res.plan);
+  const displayName = str(res.id);
+  const components: ConkayArtifactComponent[] = [
+    { id: evoAssetId, label: displayName ?? evoAssetId, kind: 'mesh' },
+  ];
+  return {
+    kind: 'organic-mesh',
+    evoAssetId,
+    glbUrl: `/api/evo-asset/file/${evoAssetId}`,
+    displayName,
+    category: str(plan.category),
+    lod0Tris: typeof lodsStage.lod0Tris === 'number' && Number.isFinite(lodsStage.lod0Tris) ? lodsStage.lod0Tris : null,
+    provider: str(meshStage.provider),
+    components,
+    sourceDomain: domain,
+    sourceMacro: macro,
+  };
+}
+
 /** True iff a value carries the load-bearing fields BuildingRenderer3D needs to
  *  render honestly (id + numeric w/h/d dimensions + a structure spec). */
 function isBuildingDtu(v: unknown): v is BuildingDTU {
@@ -593,6 +658,7 @@ export const ARTIFACT_KINDS: ArtifactKindEntry[] = [
   { kind: 'forge-app', label: 'Forge app', normalize: normalizeForge },
   { kind: 'robotics-arm', label: 'Robotic arm', normalize: normalizeRobotics },
   { kind: 'creature', label: 'Creature', normalize: normalizeCreature },
+  { kind: 'organic-mesh', label: 'Generated mesh', normalize: normalizeOrganicMesh },
   {
     kind: 'building',
     label: 'Structural building',

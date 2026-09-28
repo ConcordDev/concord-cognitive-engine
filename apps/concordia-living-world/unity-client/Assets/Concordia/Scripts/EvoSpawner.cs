@@ -62,6 +62,9 @@ namespace Concordia
         Renderer[] _rend;
         bool _hidden;
 
+        /// <summary>
+        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
+        /// </summary>
         public void BindGenome(CreatureGenome g)
         {
             if (!g) return;
@@ -69,6 +72,7 @@ namespace Concordia
             predator = g.predator;
             if (!string.IsNullOrEmpty(g.speciesId)) critterId = g.speciesId;
             else if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
+            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Start()
@@ -81,18 +85,6 @@ namespace Concordia
             var genome = GetComponent<CreatureGenome>();
             if (genome) BindGenome(genome);
             Pick();
-        }
-
-        /// <summary>
-        /// Kernel genome drives fly / predator / gait. Missing fields stay as spawned.
-        /// </summary>
-        public void BindGenome(CreatureGenome g)
-        {
-            if (!g) return;
-            if (!string.IsNullOrEmpty(g.id)) critterId = g.id;
-            fly = g.fly;
-            predator = g.predator;
-            if (g.walkMps > 0.1f) _walkMps = g.walkMps;
         }
 
         void Update()
@@ -228,7 +220,8 @@ namespace Concordia
                 _vel.x = Mathf.Lerp(_vel.x, dir.x * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
                 _vel.z = Mathf.Lerp(_vel.z, dir.z * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
                 if (fly) _vel.y = Mathf.Sin(Time.time) * 0.35f;
-                _cc.Move(_vel * Time.deltaTime);
+                if (Grounding.CanMove(_cc))
+                    _cc.Move(_vel * Time.deltaTime);
             }
             else
                 transform.position += dir * speed * Time.deltaTime;
@@ -243,7 +236,8 @@ namespace Concordia
             else if (!fly) _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;
             _vel.z = 0f;
-            _cc.Move(_vel * Time.deltaTime);
+            if (Grounding.CanMove(_cc))
+                _cc.Move(_vel * Time.deltaTime);
         }
 
         void Show(bool on)

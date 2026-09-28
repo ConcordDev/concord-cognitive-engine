@@ -1,0 +1,23 @@
+{
+  "task_id": "9d8a37d5-9749-46d8-a8fb-07fe93464e4a",
+  "original_generation_task_id": "782c510c-612c-4d47-acf7-2ce57d8237a8",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/782c510c-612c-4d47-acf7-2ce57d8237a8/tripo_model_782c510c-612c-4d47-acf7-2ce57d8237a8.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvNzgyYzUxMGMtNjEyYy00ZDQ3LWFjZjctMmNlNTdkODIzN2E4L3RyaXBvX21vZGVsXzc4MmM1MTBjLTYxMmMtNGQ0Ny1hY2Y3LTJjZTU3ZDgyMzdhOC5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzcwODJ9fX1dfQ__&Signature=jyQIu2VUaoCt5rYOrLtcRPD8P3pwqHJOt0ThWkTko9FIqrXcrWe89f2OsTKg6Y0QFDUo-lY-v9oOHEs2ni0Ywq9a97RLRy9kJCSpzdfIXd2uyE0lPiWfcVaGlEbAMe74~uKIixp-K3Q1Prmkyx2tt4cmNdXDqrw2WEb90kqd6D5zW7JIQZZ1QByF-3GZko2YOZmu80iLRy~eFIrQjI9djebwesLs3~~UXBegh2M30cuJY-btWHxjRRmEChGec0nicUR-NqrQh9Ya91WbFlLDK3qiZjYM~6kZWSlaV0MSMCtZXkVk23the~uIt4pRqcfLYzOMS5ucWKkAIpYTA1YEkA__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:51:34.048798",
+  "description": "Provisional, non-canon generation brief: create the Seven Doors monument as the hero landmark, preserving seven distinct door openings including the unclassified seventh door, with observation/documentation infrastructure around it. Ground the composition in crucible_lore_seven_doors, crucible_lore_charter_question, crucible_lore_seventh_door_origin, and crucible_lore_drift_walker; allow visible instability without inventing a ninth door or closing the Charter Question. Reserve binding at Chunk_Crucible/VisualFidelity/SevenDoors.",
+  "negative_prompt": "No eighth or ninth door, stable completed palace, generic crystal temple, invented drift classification, invented walker allegiance, or authored verdict on intervention versus observation.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/SevenDoors/SevenDoors_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/SevenDoors/SevenDoors.fbx"
+}

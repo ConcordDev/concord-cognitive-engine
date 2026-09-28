@@ -1,0 +1,882 @@
+{
+  "schema": "concordia.slice.ecology.v1",
+  "slice_id": "S05_tunya_ecology_miniboosses",
+  "world_id": "Tunya",
+  "display_world": "Tunya",
+  "facet": "ecology_bosses",
+  "title": "Tunya — solarpunk ecology, creatures, mini-bosses",
+  "authored": "2026-09-22",
+  "revision": "Deeper pass, same contracts. Creature caps, the three mini-boss ids, and the five quest ids are unchanged so S06 and S23 keep their citations. This pass corrects the sealie source path and adds the terrace food web plus the content-bestiary crosswalk.",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, volume encounters, Canon lore, or countries.json. Caps here are the Tunya instance budget for this facet.",
+  "canon_pins": {
+    "world_id": "Tunya",
+    "canon_world_def_title": "Tunya",
+    "refusal": "Refusal of Harvest",
+    "the_no": "We will not be reaped.",
+    "law_text": "Take fruit, not the tree. Grove restores poise if you are not striking.",
+    "style_id": "veil",
+    "style_name": "Verdant Veil",
+    "steel_live": true,
+    "fight_style_for_people": "Capoeira",
+    "humanoid_body": "CX only. This slice spawns no humanoid mobs.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern Tunya. A beast kited back through that disk meets flowers, not a legal hunt.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 2.356194,
+    "gate_short_name": "TUNYA",
+    "palette": ["#6a7a3a", "#f0d080", "#c8721a"],
+    "kit": "arch_kit_tunya_veil",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "The post stays Hub. hyb_veilstag uses the pinewood stag rig and does not stand on that verge. Fluxom Gate at (62, 18) is a different point on a different world."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": ["flamingo sealie", "parrot harpy", "pinup harpy", "CX body as fauna", "orca-scale sealie"],
+    "canon_fauna_aliases": ["sealie", "hound", "harpy"]
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/tunya/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/tunya/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/tunya/factions.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/tunya/quests/",
+    "content_bestiary_not_in_canon_folder": "content/world/tunya/bestiary.json. Canon/tunya has no bestiary.json. Lore cites the content file by name. That file is a read, not a spawn list.",
+    "animals": "native-bible/creatures/ANIMALS.json",
+    "monsters": "native-bible/creatures/MONSTERS.json",
+    "hybrids": "native-bible/creatures/HYBRIDS.json",
+    "taxonomy": "native-bible/01_TAXONOMY.md",
+    "kit": "native-bible/architecture/KITS.json arch_kit_tunya_veil",
+    "density": "native-bible/volume/DENSITY_TABLES.json Tunya block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_twelfth_reap",
+    "skill": "skill_presence_do_not_reap",
+    "existing_quests_not_redone": [
+      "q_tunya_fruit_not_tree",
+      "q_tunya_sealie_not_bird",
+      "q_tunya_pollen_ward",
+      "q_tunya_reap_fine",
+      "q_tunya_terrace_bell",
+      "q_tunya_heron_hold",
+      "q_tunya_choir_one_chart",
+      "q_tunya_twelfth_edge",
+      "tunya_arks_of_memory_1_first_pilgrimage",
+      "tunya_arks_of_memory_2_curated_vault",
+      "tunya_nil_protection_1_silent_walk",
+      "tunya_vessine_origin_1_resonance_choir",
+      "tunya_bloc_secret_1_twelfth_district"
+    ]
+  },
+  "places": [
+    {
+      "id": "terrace_farm",
+      "kind": "named_set",
+      "kit": "arch_kit_tunya_veil",
+      "set": "terrace_farm",
+      "what": "CLT timber, solar tile, limestone, 4 m plan, 0.5 m terrace step. Weed strips between tile and vine. Graft scars on the trunks. Irrigation cuts at the lips. No Canon.cs transform. RealmFill's corn scatter is not this set.",
+      "holds": ["faun_terrace_goat", "faun_veil_hound", "faun_pollen_hare", "faun_grove_finch", "faun_ark_heron", "mon_tunya_reapjackal", "hyb_veilstag"],
+      "empty_of": ["faun_nil_sealie", "hyb_pollenwyrm"],
+      "until_placed": "Spawn nothing. Do not drop the herd on the crop grid around (-14, 7)."
+    },
+    {
+      "id": "nil_shoal_stair",
+      "kind": "named_set",
+      "kit": "arch_kit_tunya_veil",
+      "set": "nil_shoal_stair",
+      "what": "Outer shelf below the Nil threshold. Wet sand, one stair, no bird prop. The inner grove stays behind the covenant.",
+      "holds": ["faun_nil_sealie"],
+      "empty_of": ["mon_tunya_harpy", "mon_tunya_reapjackal", "hyb_pollenwyrm", "hyb_veilstag"],
+      "until_placed": "Spawn nothing. Do not use Nil Threshold (18, -8) as the loaf's floor, and do not send the shelf to Sovereign Ruins because countries.json sets nil.extends_world to sovereign-ruins."
+    },
+    {
+      "id": "veil_canopy",
+      "kind": "named_set",
+      "kit": "arch_kit_tunya_veil",
+      "set": "veil_hall",
+      "what": "Outer grove and canopy of veil_hall, not the hall interior and not the Nil inner grove. Deep shade for the pollenwyrm sits past the last terrace, still outside the compound refusal.",
+      "holds": ["mon_tunya_harpy", "faun_grove_finch", "hyb_pollenwyrm"],
+      "empty_of": ["faun_terrace_goat", "faun_nil_sealie"],
+      "until_placed": "Spawn nothing. Do not park the wyrm in veil_hall's room modules."
+    },
+    {
+      "id": "twelfth_edge",
+      "kind": "volume_anchor_without_point",
+      "what": "Canopy lip outside Aekon's closed twelfth district. Volume text: 'Twelfth district edge under the canopy.' No Canon.cs coordinate. Aekon Glacier Gate at (-15, 68) is the capital, not the lip.",
+      "holds": ["enc_twelfth_reap"],
+      "empty_of_interiors": "Cap 0 inside the district. q_tunya_twelfth_edge already forbids the breach.",
+      "until_placed": "The encounter emits nothing. Do not invent the lip at the glacier gate."
+    },
+    {
+      "id": "nil_inner_grove",
+      "kind": "named_lore",
+      "lore_id": "nil_closure",
+      "what": "Covenant closure. countries.json: refusal_field strength at or above 6, compound refusal. Players do not pass and return. Fauna cap for every id in this slice is 0.",
+      "holds": [],
+      "country_center_not_a_spawn": "Nil Threshold (18, -8), radius 22, is the political center WorldGeography.CountryCenter reads. It is not a shoal and not a paddock."
+    },
+    {
+      "id": "fluxom_water",
+      "kind": "named_lore",
+      "lore_id": "lore_fluxom_founding",
+      "what": "The dump story. Fluxom Gate (62, 18) and the dye strip (74, 33) are political anchors. This facet's sealie cap here is 0. The orca-horn body is not a species row.",
+      "holds": []
+    },
+    {
+      "id": "asbir_ark",
+      "kind": "named_lore",
+      "lore_id": "lore_curated_archive",
+      "anchor": { "id": "asbir_ark", "x": -90, "z": -58, "name": "The Asbir Ark" },
+      "what": "North American ark hull in the southern dunes. Archive boots on stored sun. The anomaly chamber (asbir_archive_anomaly) has never met its solar threshold. Exterior sand is walkable. The door, the vault, and the wright's errand stay S06 and the Arks of Memory chain. This facet's fauna cap on the hull, the door, and the dunes within 40 m is 0.",
+      "holds": [],
+      "why_empty": "Bible spawn lines are shoal, terrace, bloom floor, irrigation, canopy, and wounded grove. Dune sand is none of those. Stocking the hull to make the name 'ark fauna' literal would move animals off the water and the weed where the rows say they live.",
+      "extends_world_ignored": "countries.json sets asbir.extends_world to lattice-crucible. Lore keeps the ark on Tunya. Fauna do not follow that string."
+    },
+    {
+      "id": "hold_of_first_arrival",
+      "kind": "named_lore",
+      "lore_id": "lore_africa_arrival",
+      "what": "Masond's first city, cliffs. Masond, Corre, Dormas, and Vrellan have faction sheets and no country_id row in countries.json, so they have no CountryCenter. q_tunya_heron_hold already owns the witness. This slice adds 0 herons inside the hold.",
+      "holds": []
+    }
+  ],
+  "bestiary_coherence": {
+    "thesis": "Ark fauna means animals whose work is the living copy of what the hulls only store. The seven arks are silent metal. The terrace solar tile, the irrigation cut, the graft, and the Nil shelf are where those memories still have bodies. No species in this slice dens on a hull.",
+    "seven_arks": [
+      {
+        "ark": "Africa",
+        "lore_id": "lore_africa_arrival",
+        "ground": "Hold of First Arrival, Masond cliffs. No country_id, so no CountryCenter.",
+        "fauna_cap": 0,
+        "why": "q_tunya_heron_hold already walks a guest in and out without a feather. The Africa core and three exterior panels belong to tunya_arks_of_memory_1_first_pilgrimage. This slice does not add a bird, a flock, or a second panel harvest."
+      },
+      {
+        "ark": "North America",
+        "lore_id": "lore_north_arrival_walk_off",
+        "ground": "Asbir Ark (-90, -58). Corre walked east and is not this hull.",
+        "fauna_cap": 0,
+        "why": "Curated archive and unmet solar threshold. q_s05_hull_stays_empty checks the sand and leaves it empty. q_s06_threshold_unmet and tunya_arks_of_memory_2_curated_vault keep the door."
+      },
+      {
+        "ark": "Eurasia",
+        "lore_id": "lore_eurasia_arrival",
+        "ground": "Bahiij, Dormas, Fluxom, Dinye. No single hull pin for a paddock.",
+        "fauna_cap": 0,
+        "why": "Elephant trade and cactem dye have no creature ids. Cohorts are people. This bestiary does not follow them."
+      },
+      {
+        "ark": "South America",
+        "lore_id": "lore_south_arrival_stranded",
+        "ground": "Aekon, founded after the fold. Twelfth district closed. Lip unplaced.",
+        "fauna_cap": "enc_twelfth_reap only, on the lip, and only after the lip is placed",
+        "why": "The alpha and the jackals are the memory of a reap, outside the shut district. They are not residents of the glacier gate."
+      },
+      {
+        "ark": "Antarctica",
+        "lore_id": "lore_seven_arks_launched",
+        "ground": "No Tunya landfall. lore_seven_arks_launched: those berths were given to Africa before launch.",
+        "fauna_cap": 0,
+        "why": "No hull on this world. No animal inherits a berth that never flew alone."
+      },
+      {
+        "ark": "Unpinned remainder",
+        "lore_id": "lore_seven_arks_launched",
+        "ground": "The lore entry says seven arks. The arrival entries that pin a landing are Africa, North America, Eurasia, and South America. No other hull coordinate is in countries.json.",
+        "fauna_cap": 0,
+        "why": "The gap stays a gap. This slice does not invent wrecks, and does not move the terrace herd onto unnamed sand to fill the count."
+      },
+      {
+        "ark": "Vessine vessel",
+        "lore_id": "lore_vessine_crash_landing",
+        "ground": "Crash (48, -42) and stillrooms (58, -54). Not an Earth ark.",
+        "fauna_cap": 0,
+        "why": "S06 cites the crash and adds no quest. This facet adds no animal on the isle."
+      }
+    ],
+    "species_ark_place": [
+      {
+        "id": "faun_nil_sealie",
+        "place": "Tunyan-native shelf fisher, older than the hulls. Bible line: coast and river mouth, Nil shoals, 0.55× player length. The only ark-adjacent sentence is Fluxom's dump, and that sentence describes the unspawned horn. Living loaf stays on nil_shoal_stair. Cap 0 on every hull."
+      },
+      {
+        "id": "faun_veil_hound",
+        "place": "Terrace hands. Heels labor, pushes goats back to the weed, bays a root-tear under a solar tile. The tile is the farm's one second of stored sun, the same photonic trick the archives use. The hound guards the root under that tile. It does not guard a vault. tame_hook on the bible row names npc_role_tunya_veil_labor, which is not in ROLES.json. Heel binds to npc_role_tunya_labor inside the budget of 6. No seventh laborer."
+      },
+      {
+        "id": "faun_terrace_goat",
+        "place": "Clears weed between solar tile and vine so the tile can take sun. That diet is the ark lesson the terrace can practice: keep the panel clear, leave the graft. Cap 0 on dune hulls. A goat on the Asbir sand is a misplaced herd, not husbandry."
+      },
+      {
+        "id": "faun_pollen_hare",
+        "place": "Bloom-week prey. Gold washes off and becomes the reed ward's pollen, this year's archive on the ground. Off bloom the cap is 0, so the archive is seasonal the way a panel wake is brief. No hare on a hull."
+      },
+      {
+        "id": "faun_ark_heron",
+        "place": "The bible calls it the wading bird of the seven-ark memory and then puts it in irrigation cuts, spearing frogs. The name is the memory. The body is the water. Three by day on the cuts. Zero in the Hold from this slice. Zero on the dune hull, which has no cut. A folded neck looks like a relic and is a bird."
+      },
+      {
+        "id": "faun_grove_finch",
+        "place": "Moves seed along terrace lips so the tiles do not silt. That is the flock's ark work: a clear panel. Cap 10 by day on terrace and canopy edge, pollen dust. Cap 0 within 40 m of asbir_ark. S03 keeps the Sundering flock at 12 in pine dust."
+      },
+      {
+        "id": "mon_tunya_harpy",
+        "place": "Thief of fruit and tools. A loose panel scrap is a tool, and the fine is still fruit, not a pinion. Stripping the Africa ark's exterior panels is Torrek's pilgrimage, not a canopy visit. Ambient cap 0 on every hull and inside the twelfth."
+      },
+      {
+        "id": "mon_tunya_reapjackal",
+        "place": "Eats the root. A root under a terrace tile is the living record. An archive door is not a root. Cap 0 on hulls. The twelfth window borrows the pack onto the lip and does not march them to the glacier or the dunes."
+      },
+      {
+        "id": "hyb_pollenwyrm",
+        "place": "One coil, deep shade past the last terrace, noon window only. It spends attention the way a closed circuit spends a current: the hour is gone and every trunk still stands. It does not coil on the anomaly threshold. That chamber's unmet sun is a Warden fact, not this animal's diet."
+      },
+      {
+        "id": "hyb_veilstag",
+        "place": "Charges a bitten graft and plants pollen. The graft is old wood holding new wood, the join a curated vault will not teach because the door stays shut. The stag's circle is the terrace lip. Cap 0 at Asbir, at the Hold, and on the Fantasy verge."
+      }
+    ]
+  },
+  "volume_weights_unchanged": [
+    { "id": "faun_nil_sealie", "weight": 2, "volume_note": "shelf; native or nothing" },
+    { "id": "faun_veil_hound", "weight": 3, "volume_note": "reed collar" },
+    { "id": "faun_terrace_goat", "weight": 3, "volume_note": "lead, not ride" },
+    { "id": "faun_pollen_hare", "weight": 3, "volume_note": "gold-tipped ears" },
+    { "id": "faun_ark_heron", "weight": 1, "volume_note": "hold" },
+    { "id": "faun_grove_finch", "weight": 4, "volume_note": "pollen dust" },
+    { "id": "mon_tunya_harpy", "weight": 2, "volume_note": "theft altitude, not constant" },
+    { "id": "mon_tunya_reapjackal", "weight": 2, "volume_note": "terrace, not the inner grove" }
+  ],
+  "volume_encounters_not_rewritten": [
+    {
+      "id": "enc_twelfth_reap",
+      "creature_ids": ["mon_tunya_harpy", "mon_tunya_reapjackal"],
+      "schedule_label": "Grove morning, every third day, hours 6–9",
+      "remembrance": "item_rem_reap_talon",
+      "this_slice": "Deepened as a mini-boss. Clock, phases, mesh note, and the talon stay in BOSSES_AND_RAIDS.json. No third body."
+    }
+  ],
+  "creatures": [
+    {
+      "id": "faun_nil_sealie",
+      "display_name": "Nil Sealie",
+      "role": "ambient_piscivore",
+      "place_in_tunya_life": "Shelf mammal of the outer Nil coast. It eats fish, basks, and barks. It is not harvest, not a bird, and not the ship-killer Fluxom's families describe. The grove leaves it alone. A laborer who has walked the stair can tell a pilgrim the difference between a loaf on sand and a story about horns.",
+      "temperament": "bask_and_lunge_at_fish",
+      "player_aggro": "none unless struck",
+      "topology": "quadruped",
+      "gait": "quad_lunge_swim",
+      "canon_kind_alias": "sealie",
+      "scale_vs_player": "0.55× player length, low",
+      "verbs": ["verb_fauna_lunge", "verb_fauna_bask", "verb_fauna_bark"],
+      "stats_hooks": { "health": "table:faun_med", "loot": ["whisker"], "diet": "piscivore" },
+      "bible_herd": "2-6",
+      "density": {
+        "alive_cap": 4,
+        "where": "nil_shoal_stair only, after that set is placed. Zero inside nil_inner_grove. Zero at fluxom_water. Zero in the hold, the dunes, and the terraces.",
+        "daypart": "Day bask. They do not attend the twelfth morning."
+      },
+      "law": "Take fruit, not the tree, and do not take the sealie. Whisker loot on the bible row is not a quest grant. q_s05_not_an_orca fails if a whisker is taken.",
+      "scale_honesty": "lore.json lore_fluxom_founding calls sealies bigger than a killer orca, with a narwhal horn and supercavitating speed, and points at bestiary.json#sealies. That entry is real, in content/world/tunya/bestiary.json, and absent from Canon/tunya. It lists blubber, ivory, bone, and a purple defensive sac, and it calls a hunt a tier-1 vessel event. The bible row is the only bind: torpedo body, whiskered dog head, rear flippers as one paddle, companion-possible, 0.55× player length. This slice spawns the bible body or nothing. It does not author a second id, and it does not grant ivory, blubber, or the sac as loot.",
+      "catalog_note": "hostile is false. compiler_warning: CreatureCompiler.StemFor may pick Flamingo. That bind is forbidden.",
+      "missing_mesh": "Spawn nothing. Do not satisfy the alias with a flamingo, a seal rename, or an orca."
+    },
+    {
+      "id": "faun_veil_hound",
+      "display_name": "Veil Hound",
+      "role": "working_dog",
+      "place_in_tunya_life": "The terrace's other pair of hands. It heels to labor, pushes goats back onto the weed strip, and bays when a jackal starts a root-tear. The reed collar is the job, one pollen-yellow thread so a finch's dust is not mistaken for a ward. It is not a pack monster and not a mount.",
+      "temperament": "working",
+      "player_aggro": "only if struck, or if the player is mid-reap and the hound is already on that jackal",
+      "topology": "quadruped",
+      "gait": "quad_trot",
+      "canon_kind_alias": "hound",
+      "verbs": ["verb_fauna_heel", "verb_fauna_bay", "verb_fauna_nip"],
+      "stats_hooks": { "health": "table:faun_med", "loot": [], "diet": "omnivore" },
+      "bible_herd": "1-2",
+      "tame_hook_already_on_row": "npc_role_tunya_veil_labor",
+      "density": {
+        "alive_cap": 4,
+        "where": "With labor on terrace_farm. Pairs, not a pack of six. Zero in the hall interior, the inner grove, the shoal, and the twelfth district.",
+        "daypart": "Day with the goats. Night they den at the upper stall."
+      },
+      "law": "A hound that nips a reaper is enforcing the grove. A player who kills the hound for the nip fails q_s05_hound_off_the_root.",
+      "catalog_note": "ANIMALS.json marks hostile true. This slice does not edit that file. Aggro in the Tunya instance follows player_aggro above. Do not treat the flag as permission to hunt the working dogs.",
+      "missing_mesh": "Spawn nothing. Do not seat a wolf, a fox, or a CX handler's body in this id."
+    },
+    {
+      "id": "faun_terrace_goat",
+      "display_name": "Terrace Goat",
+      "role": "livestock",
+      "place_in_tunya_life": "They keep the solar tiles clear. Weed between tile and vine is their pasture. The grafted trunk is not. Milk and the wood bell are the farm's clock. Clay on the knees is the terrace, not a brand. Nobody rides them. The ride clip does not exist, and q_tunya_terrace_bell already makes the player say so.",
+      "temperament": "herd",
+      "player_aggro": "headbutt if cornered on a stair. Otherwise they follow a lead.",
+      "topology": "quadruped",
+      "gait": "quad_climb",
+      "verbs": ["verb_fauna_graze", "verb_fauna_headbutt", "verb_fauna_climb"],
+      "stats_hooks": { "health": "table:faun_med_prey", "loot": ["milk_hook", "hide_goat"], "diet": "herbivore" },
+      "bible_herd": "4-12",
+      "density": {
+        "alive_cap": 8,
+        "where": "Weed strips of terrace_farm. Zero standing on a graft scar. Zero in veil_hall rooms. Zero on the shoal.",
+        "daypart": "Day on the strips. Dusk at the upper stall, unridden."
+      },
+      "law": "Eating a weed is husbandry. Eating a graft is the start of a reap, and the veil stag treats it that way. Killing a goat for hide_goat is not this facet's hunt.",
+      "missing_mesh": "Spawn nothing. Do not mount a camera on this row."
+    },
+    {
+      "id": "faun_pollen_hare",
+      "display_name": "Pollen Hare",
+      "role": "prey",
+      "place_in_tunya_life": "Bloom-week prey on the grove floor. The gold on the ear tips is pollen and it washes off. Labor brushes the trail, not the hare, to dress a reed ward. That craft is already q_tunya_pollen_ward. Out of bloom the hare is a pebble with plain ears, and this slice does not keep the gold on as an aura.",
+      "temperament": "freeze_then_bolt",
+      "player_aggro": "none",
+      "topology": "quadruped",
+      "gait": "quad_bound",
+      "shared_read": "Same pebble body as the salt hare. Gold tips separate them. This row does not spawn the salt hare.",
+      "verbs": ["verb_fauna_freeze", "verb_fauna_bolt"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": ["pollen_trace"], "diet": "herbivore" },
+      "bible_herd": "1-4",
+      "density": {
+        "alive_cap": 6,
+        "where": "terrace_farm floor and the canopy edge, bloom weeks only.",
+        "off_bloom_cap": 0,
+        "daypart": "Day. They are not night bait for jackals in this budget."
+      },
+      "law": "Pollen_trace on the ground is fair. Pulling it off the animal is a small reap. q_tunya_pollen_ward already forbids that. This slice does not add a second hare errand.",
+      "missing_mesh": "Spawn nothing. No glow. No magic coat."
+    },
+    {
+      "id": "faun_ark_heron",
+      "display_name": "Ark Heron",
+      "role": "wader",
+      "place_in_tunya_life": "It works the irrigation cuts. Spear bill, frogs and fish, not people. Folded, the neck drops and the bird reads as a gray stone, which is why pilgrims try to catalogue it as an ended relic of the arks. It is a living wader. The seven arks are silent hulls whose panels wake on sun. The heron is not one of those panels and not a recording.",
+      "temperament": "still_then_spear",
+      "player_aggro": "none unless struck",
+      "topology": "winged_biped",
+      "gait": "wader",
+      "verbs": ["verb_fauna_wade", "verb_fauna_spear_fish"],
+      "stats_hooks": { "health": "table:faun_small", "loot": ["feather_gray"], "diet": "piscivore" },
+      "bible_herd": "1-3",
+      "density": {
+        "alive_cap": 3,
+        "where": "Irrigation cuts on terrace_farm, day, neck up or folded. Zero inside hold_of_first_arrival from this slice. q_tunya_heron_hold keeps its own witness and still leaves without a feather.",
+        "daypart": "Day. Night cap 0."
+      },
+      "law": "A feather is not a relic and not a reward here. q_s05_photonic_second fails if feather_gray is looted.",
+      "missing_mesh": "Spawn nothing. Do not use a finch scaled up, and do not mount it on an ark prop."
+    },
+    {
+      "id": "faun_grove_finch",
+      "display_name": "Veil Finch",
+      "role": "critter",
+      "place_in_tunya_life": "Day seed-mover of the terraces and the canopy edge. A rust cap, a pollen-dust coat on Tunya. They shift grain and weed seed along the lips, which is why a terrace that loses its finches silts its tiles. The same species wears pine dust on the Sundering. S03 owns that coat and that cap.",
+      "temperament": "flock",
+      "player_aggro": "none",
+      "topology": "winged_biped",
+      "gait": "flyer_hop",
+      "verbs": ["verb_fauna_hop", "verb_fauna_flit"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [], "diet": "granivore" },
+      "bible_herd": "4-12",
+      "density": {
+        "alive_cap": 10,
+        "where": "Day, terrace_farm and veil_canopy edge. Pollen-dust material. Zero in the inner grove. Zero on the shoal. Zero on the Fantasy instance from this slice.",
+        "daypart": "Day. Night cap 0."
+      },
+      "law": "Ambient. Not a boss add. Not a parrot. S03's Fantasy cap of 12 with pine dust is unchanged.",
+      "missing_mesh": "Spawn nothing. Do not reuse a harpy mesh at critter scale."
+    },
+    {
+      "id": "mon_tunya_harpy",
+      "display_name": "Veil Harpy",
+      "role": "skirmisher",
+      "place_in_tunya_life": "Canopy pack that keeps the harvest honest by being a thief. They take fruit and tools. The fine is fruit returned, which q_tunya_reap_fine and the twelfth event's last phase already say. Going for a trunk is the crime the Refusal of Harvest names. Wings are the arms. Legs are thick enough to hit. The face is a person with a short bill. It is not a CX citizen, not a parrot, and not a costume.",
+      "temperament": "theft_then_climb",
+      "player_aggro": "ambient: they flee with the take. They commit a dive only after the second note of the scream, and only for a tool or a fruit. Aggro to a fight starts when a trunk is the target, which is the twelfth window, not the idle canopy.",
+      "topology": "winged_biped",
+      "gait": "flyer_flap",
+      "canon_kind_alias": "harpy",
+      "verbs": ["verb_mon_screech_telegraph", "verb_mon_dive_grab", "verb_mon_wing_buffet"],
+      "weak_points": ["hip_cloth", "wing_wrist"],
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "slash", "loot": ["pinion_grove", "stolen_fruit"] },
+      "bible_spawn": "3-5",
+      "density": {
+        "alive_cap": 4,
+        "where": "veil_canopy, not constant. Thefts in short visits. Zero inside veil_hall rooms. Zero on the shoal. Zero inside the twelfth district.",
+        "during_enc_twelfth_reap": "Ambient cap 0. The event dresses one existing harpy as the alpha. Do not add a fifth body on top of the pack."
+      },
+      "law": "Theft is a fine. A reap is the stag's and the hound's business, and the player's if they are already in the window. Downing a thief to skip the fine fails q_tunya_reap_fine and is not required by phase 1 of the twelfth.",
+      "catalog_note": "hostile is false. The twelfth window sets the reap aggro. This slice does not edit MONSTERS.json.",
+      "missing_mesh": "Spawn nothing. No parrot. No pinup kit. No CX with wings parented on."
+    },
+    {
+      "id": "mon_tunya_reapjackal",
+      "display_name": "Reap Jackal",
+      "role": "skirmisher",
+      "place_in_tunya_life": "The breach with a muzzle. They kill the tree to eat the root. Sap on the muzzle is the evidence. The Verdant Veil does not list them as game. They stay on wounded terrace edges, where a graft has already been worried, and they do not enter the inner grove or the closed twelfth. The hounds exist so labor is not alone with them.",
+      "temperament": "flank_then_tear",
+      "player_aggro": "they ignore a pilgrim who is not between them and a root. Root-tear commits on the wet crack. The twelfth window puts them on the terrace under the alpha.",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "verbs": ["verb_mon_flank", "verb_mon_nip", "verb_mon_root_tear"],
+      "weak_points": ["ear"],
+      "audio_tell": "Yip on flank start. Root-tear is a wet crack.",
+      "stats_hooks": { "health": "table:mon_swarm_elite", "damage_profile": "slash", "loot": ["fang", "sap"] },
+      "bible_spawn": "4-7",
+      "density": {
+        "alive_cap": 5,
+        "where": "Wounded edge of terrace_farm, not the weed strips, not the inner grove, not the district interior.",
+        "during_enc_twelfth_reap": "Ambient cap 0. The event uses this pack. No second pack on the lip at the same time."
+      },
+      "law": "Fang and sap are not trophies. Turning them off a living root with a hound and with skill_presence_do_not_reap is the work. Killing the pack as pest control fails q_s05_hound_off_the_root.",
+      "catalog_note": "hostile is false. Aggro follows the root-tear and the twelfth window.",
+      "not_this_body": "hyb_dawnjackal is a Superhero row on the same jackal plan. It does not spawn on Tunya.",
+      "missing_mesh": "Spawn nothing. Do not use a veil hound material as a jackal."
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_twelfth_reap",
+      "name": "The Twelfth Reaper",
+      "rank": "mini_boss",
+      "new_window": false,
+      "bodies": [
+        { "id": "mon_tunya_harpy", "count": 1, "dress": "alpha. Same mesh. No unique body." },
+        { "id": "mon_tunya_reapjackal", "count": 4, "dress": "the terrace pack. Not a new jackal." }
+      ],
+      "where": "twelfth_edge, and only after that lip has a placed transform. Ambient caps of both species drop to 0 for the window.",
+      "schedule_owner": "volume",
+      "schedule_label": "Grove morning, every third day, hours 6–9",
+      "phases_owner": "volume",
+      "phases_cited": ["Tool theft", "Reap attempt", "Fine"],
+      "memory_root": "Aekon's twelfth is the closed edge of the South American ark's fold. The alpha goes for a trunk the way a bad archive goes for the living record instead of the fruit that already fell. The board may say a reap is scheduled. It does not say who lives behind the boundary.",
+      "canon_lore_ids": ["lore_south_arrival_stranded", "lore_seven_arks_launched"],
+      "ark_root": "South American ark. The fold, then Aekon. The fight stays on the unplaced lip. Glacier gate (-15, 68) is the capital door, not the body.",
+      "player_law": "Recover goods. Stop the trunk strike. skill_presence_do_not_reap staggers the alpha, as the volume phase already says. Turn in fruit, not trophies. Do not cross into the district.",
+      "offer": "The fine wants blood or a pinion. Paying in fruit is the refuse. Downing the pack is optional and is not the fine.",
+      "remembrance_owner": "volume item_rem_reap_talon",
+      "audio_tell": "Wood bell, then wing wrist. The jackal yip follows if the tear starts.",
+      "missing_mesh": "If either mesh is absent, the whole window emits nothing. Do not invent a third creature to keep the clock."
+    },
+    {
+      "id": "enc_pollen_sleep",
+      "name": "The Bloom That Takes the Hour",
+      "rank": "mini_boss",
+      "new_window": true,
+      "bodies": [
+        { "id": "hyb_pollenwyrm", "count": 1, "dress": "The bible row as written. Thick coil, bulb mane, no wings." }
+      ],
+      "where": "Deep shade past the last terrace of veil_canopy, outside nil_inner_grove. One circle. veil_hall rooms stay empty. Ambient cap 0 at all hours outside the window.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 11,
+        "close_hour": 13,
+        "every_nth_day": 2,
+        "label": "Bloom noon, every second day. Suppressed on a twelfth morning so the two circles are not the same hour."
+      },
+      "telegraph": {
+        "board": "Grove board: bees before the rasp. Sleep is the offer, not a blessing.",
+        "scout": "One coil, bulbs like fruit, past the last lip.",
+        "sound": "Bees, then the rasp."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Bees",
+          "tell": "The mane hums. No cloud yet.",
+          "player_response": "Step out of the circle or hold still without a blade. skill_presence_do_not_reap keeps poise and does not count as a strike."
+        },
+        {
+          "index": 2,
+          "name": "Hood",
+          "tell": "Hood flare. Sacs swell. The cloud is one beat away.",
+          "player_response": "Burst one sac. The cloud, if it comes, is smaller. Do not harvest the mane."
+        },
+        {
+          "index": 3,
+          "name": "Sleep",
+          "tell": "Short dodgeable cloud, VFX, not a second body.",
+          "player_response": "Leave the circle. Standing in the cloud to keep the dream fails the story. Killing the coil fails it too."
+        }
+      ],
+      "memory_root": "Ark terminals wake on stored sun because a closed circuit will not hold. The wyrm is the season's memory doing the opposite: it spends attention. Sleep through the noon and the bloom is gone without a single cut trunk. Pollen is this year's archive. It is not a drug and not a DTU.",
+      "canon_lore_ids": ["lore_no_electricity"],
+      "ark_root": "Photonic wake, the only memory the planet lets a panel keep. The coil is the opposite of that second: it takes the hour. It is not the reason Asbir's anomaly has never met its solar threshold.",
+      "offer": "Sleep. Take it and the hour is reaped. Refuse it by leaving on the bee tell.",
+      "verbs": ["verb_mon_hood_flare", "verb_hyb_pollen_cloud", "verb_mon_strike"],
+      "weak_points": ["sac"],
+      "stats_hooks": { "health": "table:mon_brute", "damage_profile": "poison_sleep", "loot": ["pollen_sac", "scale"] },
+      "loot_rule": "pollen_sac is not a turn-in for this window. q_s05_photonic_second does not accept it.",
+      "catalog_note": "HYBRIDS.json hostile is false. This window sets aggro after the rasp if the player is still in the circle with a weapon out, or if a graft on the path in was cut to reach the shade.",
+      "primary_plan": "serpentine basilisk coil",
+      "secondary_trait": "pollen sacs as a bulb mane",
+      "combat_hook": "sleep_cloud",
+      "missing_mesh": "Spawn nothing. Do not use mon_sunder_basilisk. Do not add wings."
+    },
+    {
+      "id": "enc_graft_charge",
+      "name": "The Graft Ward",
+      "rank": "mini_boss",
+      "new_window": true,
+      "bodies": [
+        { "id": "hyb_veilstag", "count": 1, "dress": "Pinewood stag rig, forelimb talons, no wing membranes, pollen not salt." }
+      ],
+      "where": "Terrace lip of terrace_farm, one animal, aimed at a graft scar that something has bitten. Not Pinewood Crossing. Not the Fantasy verge. This slice's Fantasy cap for hyb_veilstag is 0. S03 did not stage it and is not edited.",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 14,
+        "close_hour": 16,
+        "every_nth_day": 4,
+        "label": "Terrace afternoon, every fourth day. Not during enc_twelfth_reap."
+      },
+      "telegraph": {
+        "board": "Terrace board: a graft was bitten. The stag walks the lip.",
+        "scout": "Stag wedge, two thick fore talons, antlers. No wings, or it has been mis-bound as a griffin.",
+        "sound": "Bugle, then a wingless scrape."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Bugle",
+          "tell": "It faces the bitten graft, not the pilgrim who is only holding fallen fruit.",
+          "player_response": "Show empty hands or a basket of fallen fruit. It does not commit."
+        },
+        {
+          "index": 2,
+          "name": "Charge",
+          "tell": "Antler charge if a blade, a saw, or a jackal is on the scar.",
+          "player_response": "Break a fore talon to shorten the charge, or get the jackal off the root and sheathe. The charge plants a pollen ward. That ward is not ammunition."
+        },
+        {
+          "index": 3,
+          "name": "Ward",
+          "tell": "Pollen on the scar, uneven, the same yellow as a reed ward.",
+          "player_response": "Leave the antlers. Leave the talon if it broke. The graft stays."
+        }
+      ],
+      "memory_root": "The rig remembers the salt-road stag. The coat is Tunya pollen, not Hub rime. The fore talons are the harpy's grabbing hand put to a different job: stop the cut. Ark memory in this fight is a graft, a living join, not a terminal.",
+      "canon_lore_ids": ["lore_curated_archive", "lore_north_arrival_walk_off"],
+      "ark_root": "The North American archive was curated before launch. The terrace cannot open that vault. It can keep a graft. The charge happens on the lip, never on the Asbir door.",
+      "offer": "A clean kill and an antler. Taking either fails the story. The ward is the point.",
+      "verbs": ["verb_fauna_antler_shove", "verb_hyb_pollen_charge"],
+      "weak_points": ["fore_talon"],
+      "stats_hooks": { "health": "table:mon_elite", "damage_profile": "blunt_nature", "loot": ["antler", "talon"] },
+      "loot_rule": "No antler turn-in. S01's pinewood herd is not this animal and its cap does not change.",
+      "catalog_note": "hostile is false. The charge commits only in phase 2.",
+      "primary_plan": "quadruped stag, faun_pinewood_stag rig",
+      "secondary_trait": "two thick forelimb talons",
+      "combat_hook": "antler_pollen_charge",
+      "missing_mesh": "Spawn nothing. Do not spawn faun_pinewood_stag in its place. Do not add wings. Do not letter a Tunya post Pinewood Crossing."
+    }
+  ],
+  "terrace_food_web": {
+    "thesis": "One terrace, one day. Prey feeds the working animals only by being left alive. The harvest crime is eating the graft or the root, not eating a weed.",
+    "links": [
+      { "eater": "faun_terrace_goat", "eats": "weed between solar tile and vine", "does_not_eat": "graft, trunk, root" },
+      { "eater": "faun_grove_finch", "eats": "seed on the lips", "work": "moves seed so tiles do not silt" },
+      { "eater": "faun_pollen_hare", "eats": "bloom-floor herbs", "work": "shakes pollen that labor brushes into a reed ward. The animal is not harvested." },
+      { "eater": "faun_ark_heron", "eats": "fish and frogs in the irrigation cut", "does_not_eat": "people, finches, goats" },
+      { "eater": "faun_nil_sealie", "eats": "shoal fish", "where": "outer stair only. Not the terrace food web." },
+      { "eater": "faun_veil_hound", "eats": "what labor feeds, plus a nip at a jackal", "does_not_eat": "the goat herd it works" },
+      { "eater": "mon_tunya_harpy", "takes": "fallen fruit and loose tools", "crime": "a trunk" },
+      { "eater": "mon_tunya_reapjackal", "eats": "the root, which is the breach" },
+      { "eater": "hyb_pollenwyrm", "takes": "the hour of attention at bloom noon", "does_not_eat": "the herd" },
+      { "eater": "hyb_veilstag", "defends": "a bitten graft. Plants pollen. Is not livestock." }
+    ]
+  },
+  "day_clock": [
+    { "hours": "day, terrace placed", "alive": ["faun_terrace_goat cap 8", "faun_veil_hound cap 4", "faun_grove_finch cap 10", "faun_ark_heron cap 3", "faun_pollen_hare cap 6 only in bloom", "mon_tunya_harpy cap 4 visiting", "mon_tunya_reapjackal cap 5 on the wounded edge"] },
+    { "hours": "6-9 every third day", "window": "enc_twelfth_reap", "override": "Ambient harpy and jackal caps drop to 0. One dressed harpy and four jackals on the lip, if the lip is placed." },
+    { "hours": "11-13 every second day, not a twelfth morning", "window": "enc_pollen_sleep", "override": "One pollenwyrm past the last terrace. Ambient cap 0 outside the window." },
+    { "hours": "14-16 every fourth day, not during the twelfth window", "window": "enc_graft_charge", "override": "One veil stag on the terrace lip. Fantasy cap stays 0." },
+    { "hours": "night", "alive": ["faun_veil_hound denned at the upper stall"], "zero": ["finch", "heron", "hare", "sealie shoal is not a night paddock in this budget", "wyrm", "stag"] }
+  ],
+  "boss": null,
+  "boss_gap": {
+    "why": "Taxonomy's Tunya monster line is harpy and reap jackal. No mon_boss_ id is registered for this world. enc_twelfth_reap is the volume event and it dresses those two bodies. A new personality with a new mesh would be a catalog change. This slice does not make one.",
+    "do_not": "Do not scale the pollenwyrm or the veil stag up and call it the region boss. Do not import mon_boss_held_curse, mon_boss_unfinished, mon_boss_census, mon_boss_unender, or mon_boss_compound_mark."
+  },
+  "content_bestiary_crosswalk": {
+    "source": "content/world/tunya/bestiary.json",
+    "not_a_spawn_catalog": "Thirty-three fauna ids. This slice does not mint bible rows for them. Prefix natives (vlelox, mluskrat, clougar, rlabbit, and the rest) and the earth-import herd (oxen, equine, bovine, hogs, fowl) stay off the terrace. The terrace goat is the only goat mesh.",
+    "rows_that_touch_this_facet": [
+      {
+        "content_id": "sealies",
+        "origin": "tunyan_native",
+        "content_place": "Open sea and the migration coast. Apex. Bigger than a killer orca, horn, razor teeth. Fluxom's ships after the dump. Ivory, blubber, bone, purple defensive sac. A hunt is a multi-vessel event with single-figure voyage survival in that file's own line.",
+        "bible_id": null,
+        "spawn": "nothing",
+        "why": "No faun_ or mon_ id at that scale. faun_nil_sealie is a different body on the Nil shelf. Sharing the word is the merchant's lie in q_s05_not_an_orca. Intent toward the dump stays open lore."
+      },
+      {
+        "content_id": "goat",
+        "origin": "earth_import",
+        "content_place": "All kingdoms. Milk, hair, flesh, skins.",
+        "bible_id": "faun_terrace_goat",
+        "spawn": "the terrace weed strips only, cap 8",
+        "why": "The bible goat is the living row. Flesh and hide are on the stats hook and are not this facet's wage. Mountain goat, ram, oxen, and bovine are separate content ids and stay unspawned."
+      },
+      {
+        "content_id": "elephant",
+        "origin": "earth_import",
+        "content_place": "Bahiij plains. Labor, ceremony, war in extremis. Mahouts. bahiij_first_caravan is the Sahm route.",
+        "bible_id": null,
+        "spawn": "nothing",
+        "why": "No faun_ elephant. A ride controller is absent. This facet does not put a mount on the terrace to fill the caravan."
+      },
+      {
+        "content_id": "s_mollusca",
+        "origin": "tunyan_native",
+        "content_place": "Coastal marsh and shallow sea. Shells are Asbir's paper.",
+        "bible_id": null,
+        "spawn": "nothing",
+        "why": "Archive medium, not a mob. The Asbir hull stays empty of fauna. Paper is not a finch and not a heron."
+      },
+      {
+        "content_id": "frog",
+        "origin": "earth_import",
+        "content_place": "Swamp and marsh. Minor alchemy.",
+        "bible_id": null,
+        "spawn": "nothing",
+        "why": "The heron spears frogs. The frog has no mesh. Do not spawn a second critter to be prey."
+      }
+    ]
+  },
+  "unspawned": [
+    {
+      "id": "orca_horn_sealie",
+      "content_id": "sealies",
+      "source": "content/world/tunya/bestiary.json and lore_fluxom_founding",
+      "why_quiet": "The apex is authored. It has no native-bible mesh. The living row is faun_nil_sealie at bible scale. Ivory, blubber, and the dye sac are not drops."
+    },
+    {
+      "id": "flamingo_sealie_bind",
+      "why_quiet": "Compiler stem risk named on the sealie row. Art direction forbids flamingo sealies."
+    },
+    {
+      "id": "parrot_harpy_bind",
+      "why_quiet": "Art direction forbids parrot harpies. The alias harpy does not license a bird mesh."
+    },
+    {
+      "id": "bahiij_elephant",
+      "why_quiet": "bahiij_first_caravan names an elephant trade. No faun_ elephant. The corral stays a place name."
+    },
+    {
+      "id": "cactem_dye_bug",
+      "why_quiet": "Canon fluxom_dye_war names cactem strips. content/world/tunya/countries.json calls them dye-bug breeding grounds. No creature id in the native bible. This facet does not invent the bug and does not put it on the terrace."
+    },
+    {
+      "id": "hyb_dawnjackal",
+      "why_quiet": "Superhero hybrid. Same jackal plan, different world. Cap 0 on Tunya."
+    }
+  ],
+  "quests": [
+    {
+      "id": "q_s05_weed_between_tiles",
+      "title": "Terrace — Weed, Not the Graft",
+      "world_id": "Tunya",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_tunya_labor",
+      "giver_post": "Lower terrace of terrace_farm, inside the labor budget of 6, not a seventh laborer",
+      "objectives": [
+        {
+          "id": "obj_q_s05_weed_between_tiles_1",
+          "verb": "reach",
+          "target": "terrace_farm",
+          "count": 1,
+          "text": "Reach the terrace set. If it has no transform, the errand waits. Do not use the corn scatter as the farm."
+        },
+        {
+          "id": "obj_q_s05_weed_between_tiles_2",
+          "verb": "escort",
+          "target": "faun_terrace_goat",
+          "count": 3,
+          "text": "Lead three goats off the graft scar and onto the weed between solar tile and vine. No saddle. No kill. The wood bell stays on."
+        },
+        {
+          "id": "obj_q_s05_weed_between_tiles_3",
+          "verb": "talk",
+          "target": "npc_role_tunya_labor",
+          "count": 1,
+          "text": "Tell the laborer the scar is uneaten. Do not sell a hide."
+        }
+      ],
+      "fail_if": ["player_kills_faun_terrace_goat", "player_cuts_graft", "player_mounts_goat", "set_unplaced_and_player_forces_a_spawn_on_realmfill_corn"],
+      "rewards": { "xp": 40, "coin": 4, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "verdant_veil", "delta": 1 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_tunya_labor", "requires_all_objectives": true },
+      "does_not_replace": ["q_tunya_terrace_bell", "q_tunya_fruit_not_tree"],
+      "backstory_id": "story_q_s05_weed_between_tiles",
+      "loop": "Accept on the laborer. Do the steps in order. Board line fires after turn-in."
+    },
+    {
+      "id": "q_s05_not_an_orca",
+      "title": "Shoal — The Horn Is a Story",
+      "world_id": "Tunya",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_tunya_merchant",
+      "giver_post": "Basket row, inside the merchant budget of 3. Not a Fluxom sailor and not a new role.",
+      "objectives": [
+        {
+          "id": "obj_q_s05_not_an_orca_1",
+          "verb": "reach",
+          "target": "nil_shoal_stair",
+          "count": 1,
+          "text": "Walk the outer stair. Do not cross the Nil threshold. Do not go to Fluxom Gate."
+        },
+        {
+          "id": "obj_q_s05_not_an_orca_2",
+          "verb": "witness",
+          "target": "faun_nil_sealie",
+          "count": 1,
+          "text": "See the sealie at bible scale: loaf, dog head, one rear paddle. If the mesh is missing, report nothing. A flamingo, a horn, or a body longer than a person fails the step."
+        },
+        {
+          "id": "obj_q_s05_not_an_orca_3",
+          "verb": "talk",
+          "target": "npc_role_tunya_merchant",
+          "count": 1,
+          "text": "Tell the merchant the shelf holds a sealie or an honest absence. Do not sell a hunt."
+        }
+      ],
+      "fail_if": ["player_strikes_faun_nil_sealie", "spawner_emits_oversized_sealie", "spawner_emits_flamingo", "player_enters_nil_inner_grove"],
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "verdant_veil", "delta": 2 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_tunya_merchant", "requires_all_objectives": true },
+      "does_not_replace": ["q_tunya_sealie_not_bird", "tunya_nil_protection_1_silent_walk"],
+      "backstory_id": "story_q_s05_not_an_orca",
+      "hidden_withheld": "The refugee dump that lore_fluxom_founding records is not a line in this quest. The merchant has heard a horn story. That is all the dialogue gets."
+    },
+    {
+      "id": "q_s05_hound_off_the_root",
+      "title": "Edge — The Hound Keeps the Root",
+      "world_id": "Tunya",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_tunya_labor",
+      "giver_post": "Wounded edge of terrace_farm, still inside the labor budget of 6",
+      "objectives": [
+        {
+          "id": "obj_q_s05_hound_off_the_root_1",
+          "verb": "reach",
+          "target": "terrace_wounded_edge",
+          "count": 1,
+          "text": "Go to the wounded edge. Not the twelfth lip. Not the inner grove. If the terrace set is unplaced, wait."
+        },
+        {
+          "id": "obj_q_s05_hound_off_the_root_2",
+          "verb": "use_or_hail",
+          "target": "faun_veil_hound",
+          "count": 1,
+          "text": "Heel one veil hound onto the jackals. Hold skill_presence_do_not_reap. Break the flank when an ear is the tell. The root stays in the ground."
+        },
+        {
+          "id": "obj_q_s05_hound_off_the_root_3",
+          "verb": "talk",
+          "target": "npc_role_tunya_labor",
+          "count": 1,
+          "text": "Report the root still standing. Do not bring a fang."
+        }
+      ],
+      "fail_if": ["a_trunk_or_graft_is_destroyed", "player_kills_faun_veil_hound", "player_loots_fang", "player_enters_twelfth_district"],
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "verdant_veil", "delta": 2 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_tunya_labor", "requires_all_objectives": true },
+      "does_not_replace": ["q_tunya_reap_fine", "q_tunya_twelfth_edge", "enc_twelfth_reap"],
+      "backstory_id": "story_q_s05_hound_off_the_root",
+      "note": "Does not grant skill_presence_do_not_reap. Rank 1 is already default on Tunya. q_tunya_fruit_not_tree and q_tunya_reap_fine already list the skill."
+    },
+    {
+      "id": "q_s05_photonic_second",
+      "title": "Cut — One Second of Sun",
+      "world_id": "Tunya",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_tunya_merchant",
+      "giver_post": "Irrigation lip of terrace_farm, inside the merchant budget of 3",
+      "objectives": [
+        {
+          "id": "obj_q_s05_photonic_second_1",
+          "verb": "reach",
+          "target": "terrace_irrigation",
+          "count": 1,
+          "text": "Stand at an irrigation cut where a cracked solar tile already sits in the sun. Do not wire it to a second tile."
+        },
+        {
+          "id": "obj_q_s05_photonic_second_2",
+          "verb": "witness",
+          "target": "faun_ark_heron",
+          "count": 1,
+          "text": "Watch the heron hold still for the wake. One second of stored sun in the cracked tile, then dark. Folded, the bird is a gray stone and is still alive. Do not mint a recording."
+        },
+        {
+          "id": "obj_q_s05_photonic_second_3",
+          "verb": "talk",
+          "target": "npc_role_tunya_merchant",
+          "count": 1,
+          "text": "Say the tile went dark and the bird stayed. Leave the feather. Leave the panel."
+        }
+      ],
+      "fail_if": ["player_completes_a_circuit", "player_loots_feather_gray", "player_mints_a_dtu", "player_kills_faun_ark_heron"],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "verdant_veil", "delta": 1 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_tunya_merchant", "requires_all_objectives": true },
+      "does_not_replace": ["q_tunya_heron_hold", "tunya_arks_of_memory_1_first_pilgrimage", "tunya_arks_of_memory_2_curated_vault"],
+      "backstory_id": "story_q_s05_photonic_second",
+      "hidden_withheld": "What the Asbir deletion log contains, and that the survey crew knew the wormhole was non-deterministic, stay off this dialogue."
+    },
+    {
+      "id": "q_s05_hull_stays_empty",
+      "title": "Dunes — The Flock Stays on the Tile",
+      "world_id": "Tunya",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_tunya_labor",
+      "giver_post": "Upper stall of terrace_farm, inside the labor budget of 6. Not the_ark_wright. Not a new role.",
+      "objectives": [
+        {
+          "id": "obj_q_s05_hull_stays_empty_1",
+          "verb": "witness",
+          "target": "faun_grove_finch",
+          "count": 1,
+          "text": "On a placed terrace, by day, see the finches on the tile lips, pollen dust, moving seed. If the mesh is missing, report an honest absence. If the set is unplaced, wait. Do not use the corn scatter."
+        },
+        {
+          "id": "obj_q_s05_hull_stays_empty_2",
+          "verb": "reach",
+          "target": "asbir_ark",
+          "count": 1,
+          "text": "Walk the exterior sand at The Asbir Ark (-90, -58). Stay outside the door. Confirm the fauna cap: no finch, heron, goat, hound, hare, sealie, harpy, jackal, wyrm, or stag within 40 m. Do not open the anomaly. Do not lift a panel."
+        },
+        {
+          "id": "obj_q_s05_hull_stays_empty_3",
+          "verb": "talk",
+          "target": "npc_role_tunya_labor",
+          "count": 1,
+          "text": "Tell the laborer the flock is still on the tiles. The hull is dunes. Turn in on the terrace, not to the wright."
+        }
+      ],
+      "fail_if": [
+        "any_slice_fauna_spawns_within_40m_of_asbir_ark",
+        "player_opens_archive_anomaly",
+        "player_recovers_solar_charge_panel",
+        "player_mints_a_dtu",
+        "player_turns_in_to_the_ark_wright"
+      ],
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "verdant_veil", "delta": 1 }],
+      "faction_delta_note": "verdant_veil is the standing book on npc_role_tunya_labor and on the volume Tunya quests. It is not an id in Canon tunya/factions.json. This slice does not add the row. S06 keeps that refusal. The delta writes the role book only.",
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_tunya_labor", "requires_all_objectives": true },
+      "does_not_replace": [
+        "q_s05_photonic_second",
+        "q_tunya_heron_hold",
+        "q_s06_threshold_unmet",
+        "tunya_arks_of_memory_1_first_pilgrimage",
+        "tunya_arks_of_memory_2_curated_vault"
+      ],
+      "backstory_id": "story_q_s05_hull_stays_empty",
+      "hidden_withheld": "The deletion index, Corre's reason for the walk-off, and the crime-world offer on the vault stay off this dialogue."
+    }
+  ]
+}

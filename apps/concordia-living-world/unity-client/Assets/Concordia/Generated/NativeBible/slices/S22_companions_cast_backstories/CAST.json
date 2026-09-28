@@ -1,0 +1,1475 @@
+{
+  "schema": "concordia.slice.companions.v1",
+  "slice_id": "S22_companions_cast_backstories",
+  "world": "Cross",
+  "world_id": null,
+  "facet": "companions",
+  "title": "Companions — cast, banter, backstories",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Cycle 2 deepens the same twelve ids. Does not rewrite volume/COMPANIONS.json, GuestDef rows, npc sheets, lore, factions, density, bosses, or slices S01–S21 and S23–S24. Cross is not a WorldId.",
+  "canon_pins": {
+    "cross": "Hub mediation of eight Canon.Gates spokes plus the Sere waystone. No tenth continent.",
+    "flower_law_m": 42,
+    "ring_of_doors_m": 34,
+    "wall_m": 56,
+    "arena": {
+      "x": 0,
+      "z": 18,
+      "radius_m": 8,
+      "rule": "Steel lives only inside this disk. Elsewhere in the 42 m Court a blade is a flower."
+    },
+    "pinewood_crossing": {
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing"
+    },
+    "sere_lip": {
+      "x": -17.71,
+      "z": -38.08,
+      "rule": "No plaque. HasLinkGate is false. This slice does not stand Esha here."
+    },
+    "humanoid_body": "CX male or CX female. Concordia face. Plates and cloth on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_L, CX_Grip_R, CX_Back. A Quaternius body is not a person.",
+    "firearms": "Verb coverage is zero. No companion draws a rifle, a pistol, or a phase-sniper.",
+    "pillars_are_not_companions": [
+      "concordia",
+      "concord",
+      "sovereign"
+    ],
+    "one_emissive": "One accent. No full-body tattoo glow, plasma skin, hologram cloth, or cape of light.",
+    "banter": "Flags, not a timer. Intro once. Mid when that companion's own mid flag flips. Postboss only if the player still holds the remembrance and did not spend it as coin, ink, gold, or a mask."
+  },
+  "source_rows": {
+    "volume_companions": "native-bible/volume/COMPANIONS.json",
+    "guest_def": "Assets/Concordia/Scripts/Canon.cs HubGuests and Pillars",
+    "guest_plate": "native-bible/npcs/HUB_GUESTS_REDESIGN.md",
+    "roles": "native-bible/npcs/ROLES.json",
+    "skills": "native-bible/skills/SKILLS.json and VERB_MAP.md",
+    "encounters": "native-bible/volume/BOSSES_AND_RAIDS.json",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json",
+    "sheets": [
+      "concordia-hub/npcs.json child_mira_brackish, courier_kel_sandren, preacher_old_seam",
+      "fantasy/npcs.json thorne_blackroot",
+      "fantasy/npcs-extra.json witch_maeris",
+      "fantasy/lore.json root curse, quiet grove, bog",
+      "cyber/npcs.json nyx_torres",
+      "crime/npcs.json jax_rivera",
+      "superhero/npcs.json luminary_vesper",
+      "sovereign-ruins/npcs-extra.json rebel_calla_bren",
+      "sovereign-ruins/lore.json ruins_third_uprising, ruins_zaen_secret",
+      "sere/npcs.json esha_of_the_open_table",
+      "concord-link-frontier/quests/silas-quinn-portal.json"
+    ],
+    "prior_slice": "S21_crossworld_trade_politics"
+  },
+  "left_in_place": [
+    "volume companion ids comp_brackish through comp_vesper",
+    "q_hub_pinewood_milepost",
+    "q_hub_flower_urn",
+    "q_hub_brackish_supper",
+    "q_hub_three_notebooks",
+    "q_hub_nesha_gap",
+    "q_fantasy_held_offer",
+    "fantasy_maeris_02_steps",
+    "q_cyber_missing_number",
+    "q_crime_invoice_lands",
+    "q_frontier_find_kel",
+    "frontier_silas_02_kel",
+    "q_ruins_wraith_unfinished",
+    "q_ruins_fourth_plan",
+    "q_ruins_mask_scout",
+    "q_sere_open_table",
+    "q_sere_one_brand",
+    "q_sere_furnace_scout",
+    "q_s21_one_rate",
+    "q_s21_steel_before_the_spoke",
+    "q_s21_open_border",
+    "q_s21_no_ninth_plaque",
+    "enc_held_curse",
+    "enc_fold_basilisk",
+    "enc_unfinished",
+    "enc_catalogue_walks",
+    "enc_census",
+    "enc_junction_null",
+    "enc_outstanding",
+    "enc_last_dome",
+    "enc_road_followed",
+    "enc_unfinished_sunrise",
+    "enc_unender",
+    "enc_compound_mark",
+    "enc_twelfth_reap",
+    "enc_milepost_fold"
+  ],
+  "party": {
+    "walker_count_through_a_gate": 1,
+    "hub_exception": "Inside the Court and on the salt road, Brackish and Old Seam may walk the same errand. That is not a gate party and not a combat party.",
+    "stands_remain": "Naming a walker does not despawn the other eleven. GuestDef coordinates stay occupied by the stand-in who is not walking.",
+    "pillars": "Concordia, Concord, and the Sovereign are never nameable.",
+    "romance": "None on this cast. Brackish is eleven. The pillars' private speech stays off every line.",
+    "postboss_rule": "Flag companion_<id>_postboss flips only when the player returns to that person's stand still holding the remembrance, and only if it was not sold, inked, set in gold, or worn. Maren will not write the fight if the player did not see it. A shared flag name from volume/COMPANIONS.json must not be reused or the whole cast speaks at once.",
+    "skill_grants": "This slice grants no skill. Assist verbs are the companion's action. Where a volume quest already granted the same id to the player, that grant stays that quest's."
+  },
+  "not_promoted": [
+    {
+      "id": "lamplighter",
+      "why": "Hub guest. Night labor. Not a walker."
+    },
+    {
+      "id": "elias",
+      "why": "Hub guest. Anti-Sovereign. His war is not a follow slot."
+    },
+    {
+      "id": "seraphine",
+      "why": "Hub guest. Three refusals with Thorne stay an unwritten rule, not a party."
+    },
+    {
+      "id": "mama",
+      "why": "Hub guest. She has not told Jax what she knows. This slice does not make her the channel."
+    },
+    {
+      "id": "zero",
+      "why": "Hub guest. Nyx's nemesis. Studying the gap is not an assist."
+    },
+    {
+      "id": "lyra",
+      "why": "Hub guest. She still will not teach a ninth Refusal. Maeris borrowing the second-hour verb does not replace her."
+    },
+    {
+      "id": "asbir",
+      "why": "Hub guest. Three notebooks stay his. Maren does not take the case."
+    },
+    {
+      "id": "tunya_cast",
+      "why": "No volume companion row has world_home Tunya. Iyatte stays Calla's unsaid tavern meeting."
+    },
+    {
+      "id": "crucible_cast",
+      "why": "No volume companion row has world_home Crucible. Maeris looks through the bog and does not stay."
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_brackish",
+      "name": "Brackish",
+      "volume_npc_id": "brackish",
+      "sheet_npc_id": "child_mira_brackish",
+      "guest_id": "brackish",
+      "role_id": "npc_role_plaza_urchin",
+      "age_years": 11,
+      "height_m": 1.42,
+      "pronouns_on_sheet": "she",
+      "plate_drift": "HUB_GUESTS_REDESIGN.md says 'do not age him up' in one sentence. The hub npc sheet uses her. This slice follows the sheet.",
+      "world_home": "Hub",
+      "volume_world_home": "Hub",
+      "stand_xz": [
+        3.2,
+        -8.8
+      ],
+      "follow_radius": "Court, bell-tower, market, back alleys, and the salt road out to Pinewood Crossing (62, -28). She stops at a gate center. She does not enter an arrive disk.",
+      "gate_walker": false,
+      "assist_verb": "skill_presence_gossip",
+      "assist_note": "Speaks one WorldEventLog line she saw. Lean-in, hand beside the mouth. No damage. No steel.",
+      "unlock_quest_ids": [
+        "q_hub_brackish_supper"
+      ],
+      "will_not_attend": [
+        "every enc_*"
+      ],
+      "backstory": "Brackish is eleven. She does not remember her parents. She sleeps in the bell-tower when the weather allows, scavenges the market at Stratus, and trades what she has actually seen for bread and small kindnesses. She trusts almost no one. She adores Captain Ren Solare and will not say so. The sheet's secret is that she has been watching the player since they arrived and has not decided whether to speak or to steal; kindness in the first hour makes her a witness, not a pet, and the other road makes her a recurring thief. This slice takes the supper that already exists: one loaf from Vesper's stall at the stranger price, offered in the plaza or at the tower, with no chase. The fact she tells is a thing she saw today. Maren may write that fact. Brackish does not become an adult to fill a hero frame, does not fight, and is never a romance. Her shirt is too big, her feet are bare or one-shoed, and the flower scrap is cloth. Capoeira in the idle is play.",
+      "banter": {
+        "intro": {
+          "flag": "companion_brackish_intro",
+          "line": "If you stand still the Court will tell you a secret. I already heard it. I might tell you if the bread was real."
+        },
+        "mid": {
+          "flag": "companion_brackish_mid",
+          "line": "Pinewood Crossing. I said it out loud and the letters did not change. I am still deciding about you."
+        },
+        "postboss": {
+          "flag": "companion_brackish_postboss",
+          "line": "You came back with a thing from a boss and you did not try to impress me with it. Good. I do not go where those things are made."
+        }
+      },
+      "secrets_not_spoken": [
+        "That she has been watching the player since arrival, until the supper has been offered without a threat.",
+        "The locations of the secret doors. Knowing she knows is the fact. The doors are not a dungeon added here."
+      ],
+      "voice": "Fast, cheeky. Drops to honesty when surprised. The sheet's dialogue_style.",
+      "home_speak_phases": [
+        {
+          "phase": "Stratus",
+          "room": "hub_market_district",
+          "doing": "morning scavenge"
+        },
+        {
+          "phase": "Freeus",
+          "room": "hub_great_plaza",
+          "doing": "watches the plaza; trades information"
+        },
+        {
+          "phase": "Quartus",
+          "room": "hub_back_alleys",
+          "doing": "explores; sometimes shadows the Watch. Shadowing is not joining the Watch."
+        },
+        {
+          "phase": "Penanus",
+          "room": "hub_great_plaza",
+          "doing": "evening scavenge; cadges meals"
+        }
+      ],
+      "home_silent_phases": [
+        "Dominus and Solnus in hub_bell_tower. Sleep. Not interactable. The milepost return must land before Solnus."
+      ],
+      "court_stand_always": true,
+      "sheet_facts_cycle_2": "She knows where every secret door is. This slice does not open one. No door on the hub sheet has a metre.",
+      "banter_alts": {
+        "intro": {
+          "if": "The first hour was unkind and the sheet's thief road is the live one.",
+          "line": "You can pay me or you can chase me. Bread was the other road. You did not take it."
+        },
+        "mid": {
+          "if": "q_s22_milepost_names is complete and she came back.",
+          "line": "I said Pinewood Crossing and I am still eleven. Do not make a job out of that."
+        },
+        "postboss": {
+          "if": "A remembrance is in the player's hands at her stand.",
+          "line": "That thing is not a story for the tower. Put it away before Solnus. I am going to sleep."
+        }
+      },
+      "mid_fires_on": "q_s22_milepost_names"
+    },
+    {
+      "id": "comp_old_seam",
+      "name": "Old Seam",
+      "volume_npc_id": "preacher_old_seam",
+      "sheet_npc_id": "preacher_old_seam",
+      "guest_id": "oldseam",
+      "role_id": "npc_role_court_labor",
+      "height_m": 1.58,
+      "pronouns_on_sheet": "she",
+      "world_home": "Hub",
+      "volume_world_home": "Hub",
+      "stand_xz": [
+        -11.2,
+        -4.1
+      ],
+      "follow_radius": "The streets she mends, the dome perimeter at Quartus, the Seven Spokes when Baren feeds her, and the salt road to Pinewood. She does not take a gate. She does not close the gap with Nesha.",
+      "gate_walker": false,
+      "assist_verb": "skill_presence_lantern_step",
+      "assist_note": "Walks the next post. The stoop is age and work, not another species. Hands carry needle, cord, and a cracked paver.",
+      "unlock_quest_ids": [
+        "q_hub_nesha_gap"
+      ],
+      "will_not_attend": [
+        "every enc_*",
+        "the Nesha reunion"
+      ],
+      "backstory": "Old Seam has wandered the Hub for as long as anyone alive remembers. She sleeps where the day ends. She is faintly amused by most people and serious about exactly three things: the goddess Concordia, the dome, and good bread. She was the previous Oracle's master. Nesha was her student, briefly. They have not spoken in twenty years. At Quartus she walks the dome perimeter and sometimes follows Nesha at a distance. q_hub_nesha_gap already measures that distance and logs no reconciliation. A remembrance is not a reunion, and this slice does not stage one. Her Link correspondence with Esha Varan is mentor to heir: Seam lost a smaller version of the open table, and Esha has designed around every warning, which is the first time the warning met a student who listened. The player does not carry a new warning to the Sere lip. S21 already proved that lip has no plaque. Seam stays on the Court. Her faction id on the sheet is preachers_of_concordia; the personality line also says she refuses faction affiliation. Both sentences stay. The companion does not enroll her anywhere.",
+      "banter": {
+        "intro": {
+          "flag": "companion_old_seam_intro",
+          "line": "Walk soft. I have mended this street since before the gates had names."
+        },
+        "mid": {
+          "flag": "companion_old_seam_mid",
+          "line": "Quartus. Nesha is on the other ring. We are not speaking. You measured it. Do not call that a meeting."
+        },
+        "postboss": {
+          "flag": "companion_old_seam_postboss",
+          "line": "A remembrance is not a reunion. Do not ask me to pretend it is, and do not ask Esha to stand here and agree with you."
+        }
+      },
+      "secrets_not_spoken": [
+        "The content of the Seam–Esha letters beyond the public fact that the correspondence exists and that Esha already designed around the warnings."
+      ],
+      "voice": "Cryptic, then plain if the player waits through the cryptic part. Kind. Serious only about the goddess, the dome, and bread.",
+      "home_speak_phases": [
+        {
+          "phase": "Stratus",
+          "room": "hub_market_district",
+          "doing": "begs bread"
+        },
+        {
+          "phase": "Freeus",
+          "room": "hub_great_plaza",
+          "doing": "preaches softly; mostly to herself"
+        },
+        {
+          "phase": "Quartus",
+          "room": "hub_dome_perimeter",
+          "doing": "walks the perimeter; sometimes follows Nesha at a distance. Distance is not a reunion."
+        },
+        {
+          "phase": "Penanus",
+          "room": "hub_seven_spokes_common_room",
+          "doing": "Baren Hollow, innkeeper of the Seven Spokes, gives her a small supper. He is not promoted."
+        }
+      ],
+      "home_silent_phases": [
+        "Dominus and Solnus on the plaza, asleep where the day ended. Not interactable."
+      ],
+      "court_stand_always": true,
+      "sheet_facts_cycle_2": "The Innkeep in her Penanus line is Baren Hollow. Introducing her to Nesha is the sheet's weaponise_at and would reset something old. This slice still does not.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player waited through a cryptic sentence.",
+          "line": "There. That was the plain part. The goddess, the dome, and bread. You may sit."
+        },
+        "mid": {
+          "if": "Quartus and Nesha is on the other ring.",
+          "line": "She is still on the other ring. Waiting did not move her. Do not call the waiting an introduction."
+        },
+        "postboss": {
+          "if": "The player offers a remembrance as if it were the reunion.",
+          "line": "Bread would have been the right offering. That token is not bread, and it is not twenty years."
+        }
+      },
+      "mid_fires_on": "q_s22_milepost_names"
+    },
+    {
+      "id": "comp_maren",
+      "name": "Maren Ashveil",
+      "volume_npc_id": "archivist_maren",
+      "sheet_npc_id": null,
+      "guest_id": "archivist_maren",
+      "role_id": "npc_role_scholar",
+      "height_m": 1.7,
+      "pronouns_on_plate": "she",
+      "world_home": "Hub",
+      "volume_world_home": "Hub",
+      "stand_xz": [
+        6.4,
+        -3.1
+      ],
+      "follow_radius": "The Court, and as far as a Hub-face gate plaque when she is writing a fact. She does not enter an arrive disk. She does not file an inference as a fact.",
+      "gate_walker": false,
+      "assist_verb": "skill_presence_witness",
+      "assist_note": "Points at what was seen. Strikes inference into the second book, which is Asbir's book, not a case she carries.",
+      "unlock_quest_ids": [
+        "q_hub_brackish_supper"
+      ],
+      "will_not_attend": [
+        "every enc_* circle. She will write a remembrance only if the player saw the fight."
+      ],
+      "backstory": "Maren has a GuestDef and a plate, and no century on a npc sheet. Inventing one would be a lie. She is the archivist at (6.4, -3.1), height 1.70, cooler gray-blue, one book and a chain, a shorter hood than a Ruins keeper. The plate puts ash on her boots and keeps the ash off the quill, because she is standing in the Court. That is a costume note, not a biography of the Catalogue. Her line is the job: write what you see, not what the embassies will claim you saw. Asbir Thelane keeps three notebooks, facts and inferences and the difference. Maren does not take that case. When Brackish repeats a plaza fact, Maren writes it as seen. When a player returns with a boss token and did not see the fight, she refuses the sentence. She may walk to a plaque S21 already lettered and copy the rate that is already cut there. She does not change the rate. Inside 42 m her stylus is not steel.",
+      "banter": {
+        "intro": {
+          "flag": "companion_maren_intro",
+          "line": "Write what you see. Not what the embassies will claim you saw."
+        },
+        "mid": {
+          "flag": "companion_maren_mid",
+          "line": "Two guests. One plaza. Not a pair. That is a fact. The reason they are not a pair is an inference, and it goes in the second book."
+        },
+        "postboss": {
+          "flag": "companion_maren_postboss",
+          "line": "If this token is a story, say who held it. If you did not see the fight, say that. I will not supply the missing sentence."
+        }
+      },
+      "secrets_not_spoken": [
+        "Any embassy claim she has not watched. Asbir's inferences. The Jax unit betrayal, which she does not write down on q_s22_not_a_pair."
+      ],
+      "voice": "No sheet. The plate's job is the voice: short, exact, present tense. She does not warm up into a memoir.",
+      "home_speak_phases": [],
+      "home_silent_phases": [
+        "No daily_schedule exists. She speaks at the GuestDef (6.4, -3.1) when the player is there. Do not invent hours."
+      ],
+      "court_stand_always": true,
+      "sheet_facts_cycle_2": "Still no npc sheet. Cycle 2 does not supply the missing century.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player offers an embassy sentence before a seen fact.",
+          "line": "That is what they will claim. I asked what you saw."
+        },
+        "mid": {
+          "if": "q_s22_not_a_pair turn-in and the betrayal was not spoken.",
+          "line": "Two guests. One plaza. Not a pair. I am not writing a second sentence."
+        },
+        "postboss": {
+          "if": "The player was not in the circle.",
+          "line": "You are holding a token and a rumor. I file the token as unseen. The rumor does not get a line."
+        }
+      },
+      "mid_fires_on": "q_s22_not_a_pair"
+    },
+    {
+      "id": "comp_gale",
+      "name": "Arena Warden Gale",
+      "volume_npc_id": "warden",
+      "sheet_npc_id": null,
+      "guest_id": "warden",
+      "role_id": "npc_role_iron_warden",
+      "height_m": 1.9,
+      "pronouns_on_plate": "he",
+      "world_home": "Hub",
+      "volume_world_home": "Hub",
+      "stand_xz": [
+        0,
+        18
+      ],
+      "follow_radius": "The Arena disk, center (0, 18), radius 8 m, for steel and for skill_steel_parry. The urn demonstration in the plaza is q_hub_flower_urn and ends when he is back on the sand. He is not a gate walker.",
+      "gate_walker": false,
+      "assist_verb": "skill_steel_parry",
+      "assist_note": "Parry window on Arena sand only. Inside the rest of the 42 m Court he does not swing. Flower Law applies. Poise, not luck. Open helm, face visible. Estoc stays on the sand.",
+      "unlock_quest_ids": [
+        "q_hub_flower_urn"
+      ],
+      "will_not_attend": [
+        "enc_unfinished_sunrise",
+        "enc_unender",
+        "enc_held_curse",
+        "every spoke raid"
+      ],
+      "backstory": "Gale has a GuestDef and a plate, and no war memoir on a sheet. He stands at the Arena, (0, 18), height 1.90, Iron Wardens gray, open helm, chest plate and fauld on a CX body. His idle is a settled guard. The Court forbids conquest. The sand does not. q_hub_flower_urn already proves the split: a blade is a flower in the plaza and steel on the sand. This slice does not send him through a gate to be a bodyguard. A crest shard brought onto his sand is sheathed before anyone brags. He does not attend Permanent Dawn's unfinished sunrise or the unender. Those fights have their own law, mercy and the refusal of a final win, and his law is the disk under his boots. No rifle. No second warden invented to fill a roster.",
+      "banter": {
+        "intro": {
+          "flag": "companion_gale_intro",
+          "line": "The Court forbids conquest. The sand does not. Poise, not luck."
+        },
+        "mid": {
+          "flag": "companion_gale_mid",
+          "line": "Your flower is still a flower. Good. Do not ask me to walk it out past the wall."
+        },
+        "postboss": {
+          "flag": "companion_gale_postboss",
+          "line": "You brought a crest shard onto my sand. Sheathe it before you brag. I was not in that circle, so I will not pretend I saw the blow."
+        }
+      },
+      "secrets_not_spoken": [
+        "Any biography beyond the GuestDef, the plate, and the urn quest."
+      ],
+      "voice": "No sheet. Plate idle is a settled guard. Short. Poise, not luck. Volume COMPANIONS.json says 'she' once in the assist note. The plate says he. Banter uses no pronoun.",
+      "home_speak_phases": [],
+      "home_silent_phases": [
+        "Steel speech only inside the Arena disk. The plaza urn line is q_hub_flower_urn and ends when the warden is back on the sand."
+      ],
+      "court_stand_always": false,
+      "sheet_facts_cycle_2": "Still no war memoir. The volume file's one 'she' is a pronoun slip against the plate. This slice does not retcon either document.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player draws steel in the plaza, outside the 8 m disk.",
+          "line": "That is a flower. The sand is behind me. Walk it back before you ask for a lesson."
+        },
+        "mid": {
+          "if": "q_hub_flower_urn is turned in.",
+          "line": "You watched it become a flower and you watched it become steel. Do not ask me to carry the second one out of the disk."
+        },
+        "postboss": {
+          "if": "A crest shard is on the sand.",
+          "line": "Sheathe it. I was not in that circle. Bragging here does not make me a witness."
+        }
+      },
+      "mid_fires_on": "q_hub_flower_urn"
+    },
+    {
+      "id": "comp_thorne",
+      "name": "Thorne Blackroot",
+      "volume_npc_id": "thorne",
+      "sheet_npc_id": "thorne_blackroot",
+      "guest_id": "thorne",
+      "role_id": "npc_role_sunder_guard",
+      "height_m": 1.96,
+      "pronouns_on_sheet": "he",
+      "world_home": "Fantasy",
+      "volume_world_home": "Fantasy",
+      "stand_xz": [
+        12.8,
+        -14.5
+      ],
+      "follow_radius": "One gate at a time after q_fantasy_held_offer is turned in as a refusal. He leaves the party if the player takes the curse offer. He does not enter the raid circle of enc_held_curse.",
+      "gate_walker": true,
+      "assist_verb": "skill_steel_curse_fold",
+      "assist_note": "Folds hostility inward. The player's own copy of this verb, if any, came from q_fantasy_held_offer and is not granted again here. Sword style only outside the plaza, and the fold comes before the cut. On the Court the weapon is a flower.",
+      "unlock_quest_ids": [
+        "q_fantasy_held_offer"
+      ],
+      "leave_if": "The player takes the Held Curse offer, or takes a bone bead off the braid (q_s22_bead_count). Either one returns him to (12.8, -14.5). The guest is not deleted.",
+      "will_not_attend": [
+        "enc_held_curse as a striker",
+        "enc_fold_basilisk"
+      ],
+      "body_override": "The fantasy sheet says elf, dreadlocks, a black eye with an emerald pupil, and full-body glowing tattoos. The plate and the art direction forbid that body. He is CX, 1.96 m, travel coat, pine resin and mud, hands wrapped in clean cloth, a loose braid, bone beads in the hair as the anchors the sheet already names. One green thread at the wrist is the only emissive. No antlers. No second skeleton.",
+      "backstory": "Thorne guarded the great forests for two centuries before a curse moved through the elder roots and merged with him. He can turn that pool outward, as thorns or as a drain, or inward, as a heal. He cannot turn it off. The forests are going quiet, and the quiet grove is a place he walks once a week and leaves more silent. The curse came from inside the Wildwood Circle, from a former apprentice he loved. He has not told that, not even all the way through to himself. Velora Mossheart trained him, carries a bone-and-yew arrow carved the day he took the curse, and will not loose it unless he kills first. Seraphine Voss offered alliance three times. He refused three times. The unwritten rule holds. He sent Nyx Torres one riddle about wolves and walls, by a Hub messenger. She framed it. That message is not waiting on a reply. q_fantasy_held_offer is the unlock: hear the offer at the fold lip, do not take it, tell him you did not win with the curse. If the player takes it, he leaves. A crest shard is a refusal, not a trophy, and it is not set in gold. The boar that lived is the better count, and that quest stays q_fantasy_boar_off_path.",
+      "banter": {
+        "intro": {
+          "flag": "companion_thorne_intro",
+          "line": "I carry a curse I could turn outward and win with. I refuse, every day."
+        },
+        "mid": {
+          "flag": "companion_thorne_mid",
+          "line": "The boar lived. So did you. That is the better count. Do not ask me who started the quiet."
+        },
+        "postboss": {
+          "flag": "companion_thorne_postboss",
+          "line": "The crest shard is a refusal, not a trophy. Do not set it in gold. I did not enter that circle to fetch it for you."
+        }
+      },
+      "secrets_not_spoken": [
+        "The apprentice's name and fate.",
+        "That the curse began inside the Circle, beyond the public fact that the Circle is split.",
+        "Velora's arrow, except as a thing that exists and has not been loosed.",
+        "Whether the apprentice is still alive. The fear is on the sheet. The answer is not."
+      ],
+      "voice": "Slow, long pauses, half-truths, a question back. Dry humor only when he is about to do something terrible. That humor is not an assist cue.",
+      "sheet_display_name": "Thorne Blackroot",
+      "home_speak_phases": [
+        {
+          "phase": "afternoon",
+          "room": "sheet socialize window",
+          "doing": "The fantasy schedule's afternoon is the only loose hour. Court lines still happen at the GuestDef, because the guest is placed on the Court."
+        }
+      ],
+      "home_silent_phases": [
+        "Dawn meditation in thornwood_glade_inner is curse containment. Do not play companion banter over it. Do not remove the bone beads during it."
+      ],
+      "court_stand_always": true,
+      "sheet_facts_cycle_2": "The bone beads are the anchors that keep his consciousness intact. Remove them and he loses himself. Velora has not spoken, for twelve years, about being the one who would put him down. Fire clears curse-roots and consecrated ground silences the magic; neither is a new combat number in this file. His fear, that the apprentice is still alive and a meeting would finish the curse, stays a fear.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player asks a direct question about the curse's source.",
+          "line": "You want the root. Tell me what you are afraid you would do with it."
+        },
+        "mid": {
+          "if": "q_s22_bead_count is complete and nothing was taken.",
+          "line": "The braid is whole. That is the count that matters today. The boar's count still stands."
+        },
+        "postboss": {
+          "if": "The player moves to set a crest shard in gold.",
+          "line": "Gold is the offer in another metal. I will not walk with that."
+        }
+      },
+      "mid_fires_on": "q_s22_framed_riddle"
+    },
+    {
+      "id": "comp_maeris",
+      "name": "Maeris",
+      "volume_npc_id": "witch_maeris",
+      "sheet_npc_id": "witch_maeris",
+      "guest_id": null,
+      "role_id": "npc_role_sunder_mystic",
+      "height_m": null,
+      "pronouns_on_sheet": "she",
+      "world_home": "Fantasy",
+      "volume_world_home": "Fantasy",
+      "stand_xz": null,
+      "stand_room": "fantasy_bog_clearing",
+      "follow_radius": "The bog crossing already used by fantasy_maeris_02_steps, including the lattice edge, and back. She does not stay on the lattice side. She does not enter a Crucible raid. She is not given a Hub guest coordinate.",
+      "gate_walker": true,
+      "gate_limit": "She may be the one walker as far as the bog's existing lattice edge. She is not the walker for the Crucible arrive disk.",
+      "assist_verb": "skill_presence_second_hour",
+      "assist_note": "The verb id is Lyra's hour. Maeris uses it as a presence that invents a step and then stops. She does not become Lyra, and she does not teach a ninth Refusal. Lyra remains the person who will not teach it.",
+      "unlock_quest_ids": [
+        "fantasy_maeris_02_steps"
+      ],
+      "will_not_attend": [
+        "enc_fold_basilisk",
+        "enc_unender",
+        "any Crucible circle"
+      ],
+      "backstory": "Maeris lives in the bog, laughs more than people expect, and does not laugh about the bog. She refuses Thornwood's invitations and treats anyone who finds her. The bog expanded forty paces in a season; she came out unchanged, and Greenmire never again appeared on a map. She can see through the underbrush into the lattice of the Crucible. That sight is not an invitation to stay. fantasy_maeris_02_steps is the unlock: eight steps at moonrise, three of them invented, emerge on the lattice side, do not stay, and name which step she invented. A wrong answer sends the walker back. It does not open a ninth way. She says she remembers one song the hedge witches brought back from the lattice three centuries before the Thorns. She does not sing it on a companion line. A boss token is not a crossing permit. The basilisk is scouted from the overlook by its own quest, not by her follow mode. Her body is CX, forties, one white streak, ragged green, copper bracelets. No mage final-form silhouette.",
+      "banter": {
+        "intro": {
+          "flag": "companion_maeris_intro",
+          "line": "Eight steps. Three I will make up. You will not know which until you are back."
+        },
+        "mid": {
+          "flag": "companion_maeris_mid",
+          "line": "You planted what you cut. The verge noticed. The lattice side is not a home."
+        },
+        "postboss": {
+          "flag": "companion_maeris_postboss",
+          "line": "A boss token is not a crossing permit. Put it away before the bog. I will not trade it for a ninth step."
+        }
+      },
+      "secrets_not_spoken": [
+        "The song.",
+        "Whatever she sees of scout_emer_voss through the underbrush. The sheet names that resonance and this slice does not stage him."
+      ],
+      "sheet_name": "Maeris of the Bog",
+      "voice": "Musical, allusive, one prophecy at a time. She laughs. She does not laugh about the bog.",
+      "home_speak_phases": [
+        {
+          "phase": "Freeus",
+          "room": "fantasy_bog_clearing",
+          "doing": "open audience; receives petitioners"
+        },
+        {
+          "phase": "Penanus",
+          "room": "fantasy_bog_clearing",
+          "doing": "receives petitioners"
+        }
+      ],
+      "home_silent_phases": [
+        "Dominus moon-vigil, Stratus meditation, Quartus spirit-walk, Solnus private prayer. Not interactable. Do not wake the vigil for banter."
+      ],
+      "court_stand_always": false,
+      "sheet_facts_cycle_2": "The sheet's weaponise_at says a lattice fragment will make her teach a crossing. fantasy_maeris_02_steps already is the crossing, and it requires coming back. This slice does not add the fragment path. concord_link_resonance names scout_emer_voss. He is not staged.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player offers a lattice fragment.",
+          "line": "Put that back on the side you found it. Eight steps, three invented, and you come back. That is the crossing I already give."
+        },
+        "mid": {
+          "if": "The player names the invented step correctly.",
+          "line": "You came back, and you knew which step was mine. The verge can keep the rest."
+        },
+        "postboss": {
+          "if": "The player tries to pay the bog with a boss token.",
+          "line": "The bog does not take trophies. Greenmire already paid once. Put it away."
+        }
+      },
+      "mid_fires_on": "fantasy_maeris_02_steps"
+    },
+    {
+      "id": "comp_nyx",
+      "name": "Nyx Torres",
+      "volume_npc_id": "nyx",
+      "sheet_npc_id": "nyx_torres",
+      "guest_id": "nyx",
+      "role_id": "npc_role_grid_officer",
+      "role_note": "The role id is the nearest CX plate the volume already picked. She is Blackout, not a Census officer. Do not put a Census visor on her. Zero wears the visor, pushed up.",
+      "height_m": 1.7,
+      "pronouns_on_sheet": "she",
+      "world_home": "Cyber",
+      "volume_world_home": "Cyber",
+      "stand_xz": [
+        -14.5,
+        -12.2
+      ],
+      "follow_radius": "One gate at a time after q_cyber_missing_number. On the Grid her assist pulls the player off a number painted on the ground. She does not join enc_junction_null as a striker and she does not bring the two hundred operatives into follow mode.",
+      "gate_walker": true,
+      "assist_verb": "skill_presence_refuse_count",
+      "assist_note": "Pulls the player out of a painted number. EMP, supercharged fists, and the block-wide blackout stay on the sheet and are not bound. One knuckle accent is the only emissive. Cable coil and the count slate are the readable props.",
+      "unlock_quest_ids": [
+        "q_cyber_missing_number"
+      ],
+      "will_not_attend": [
+        "enc_junction_null",
+        "enc_census as a killer of the uncounted"
+      ],
+      "backstory": "Nyx was an enforcer whose job was to silence whistleblowers before they reached a press. She found that her employer was running unconsented neural-augmentation trials on the children of low-income employees. She took the documentation, got out, and spent three years building a resistance from people who had been inside. She is hot-tempered, sarcastic, and quiet for a long breath before a hard call. Kael Nakamura is the ideological nemesis. Each has spared the other at least once. The cease-fire is unspoken, and follow mode does not break it. She hired Jax once, for a hostage extraction her own cell could not do. That contract is over. Thorne's riddle about wolves and walls is already framed on her Court stand. It is not an unanswered commission. She has located three of the children from the original file. They are adults now. She has not told them what was done to them. That sentence does not become banter. Her fear, that a resistance without an opponent becomes the thing it fought, stays her fear. The missing-number token stays dark. If the player inks it, she is done walking.",
+      "banter": {
+        "intro": {
+          "flag": "companion_nyx_intro",
+          "line": "He counts. I organize the uncounted. The riddle on the wall already has all its words."
+        },
+        "mid": {
+          "flag": "companion_nyx_mid",
+          "line": "The stray is a dog. Leave the scar as skin. Do not add a word to a message that was finished before you arrived."
+        },
+        "postboss": {
+          "flag": "companion_nyx_postboss",
+          "line": "That missing-number token stays dark. If you ink it, we are done. I was not your EMP."
+        }
+      },
+      "secrets_not_spoken": [
+        "The names and whereabouts of the three adults from the trial file.",
+        "That she has not told them.",
+        "Old Dom's paper records, which are his secret, not hers to show.",
+        "The eye replacement she has not publicly acknowledged. Absence of glow is the bind. The fact is not a confession line."
+      ],
+      "voice": "Fast, blunt, often profane. The sarcasm drops for a civilian or for someone she has decided is on the same side. She goes completely quiet for about thirty seconds before a hard call. Do not fill that quiet.",
+      "home_speak_phases": [
+        {
+          "phase": "midday through dusk",
+          "room": "her Grid work hours on the sheet",
+          "doing": "Work. Follow mode is one person, not the two hundred."
+        }
+      ],
+      "home_silent_phases": [
+        "Dawn and morning rest. The thirty-second quiet before a hard call is silence, not a missing line."
+      ],
+      "court_stand_always": true,
+      "body_override_cycle_2": "The cyber sheet gives violet circuits at the elbows and the knuckles, and eyes that are black with violet pupils. The plate allows one emissive. The knuckle stays the accent. Elbows stay dark. The eye replacement is the sheet's unacknowledged fact and is not drawn as a second glow. No Census visor.",
+      "sheet_facts_cycle_2": "Old Dom can tell her she is wrong without losing his standing. He is not promoted and his paper records stay his. Her current goal is a cradle strike that takes Kael offline without killing him, and she is not sure the second clause is possible. Follow mode does not start it. Grief at a reminder of the augmented children can stop her; that is a weakness, not a banter topic. Elias corresponds on the thesis that power stays with the people. He stays a Hub guest, not a second walker.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player uses a corporate word for the uncounted.",
+          "line": "Say people. I have no patience for the other word, and the riddle on the wall does not need a caption."
+        },
+        "mid": {
+          "if": "She has gone quiet before a hard call.",
+          "line": "The quiet is the line. Thirty seconds. Do not help."
+        },
+        "postboss": {
+          "if": "The player inks the missing-number token.",
+          "line": "Dark was the condition. You inked it. I am walking back to my stand."
+        }
+      },
+      "mid_fires_on": "q_s22_framed_riddle"
+    },
+    {
+      "id": "comp_jax",
+      "name": "Jax Rivera",
+      "volume_npc_id": "jax",
+      "sheet_npc_id": "jax_rivera",
+      "guest_id": "jax",
+      "role_id": "npc_role_shadow_courier",
+      "height_m": 1.8,
+      "pronouns_on_sheet": "he",
+      "world_home": "Crime",
+      "volume_world_home": "Crime",
+      "stand_xz": [
+        -18.2,
+        -5.5
+      ],
+      "follow_radius": "One gate at a time after q_crime_invoice_lands. He will not be the walker in the same party as Vesper, including on the Court. He produces the paper. He does not erase it.",
+      "gate_walker": true,
+      "mutually_exclusive_with": [
+        "comp_vesper"
+      ],
+      "assist_verb": "skill_steel_invoice",
+      "assist_note": "Short thrust, Wing Chun or knife, the invoice verb. Phase shift, shadow veil, and marksmanship stay on the sheet and are not bound. No mask. No rifle. Eight worn cords on the satchel, one per gate color. Capoeira idle, weight on the back foot. Inside the 42 m Court the knife is a flower.",
+      "unlock_quest_ids": [
+        "q_crime_invoice_lands"
+      ],
+      "will_not_attend": [
+        "a contract on a child, a civilian, or a uniform he respects",
+        "enc_outstanding as a way to hide the bill"
+      ],
+      "backstory": "Jax had three commendations and one betrayal. His unit was sold out by its corporate liaison. Half the team died in front of him. The liaison told the inquiry the unit had gone rogue, and the inquiry believed it. He disappeared and came back as the Ghost, a network of people with nowhere left to go. He talks less than anyone in the room. He will not take a contract on a child, a civilian, or a uniform he respects. The sheet says he has confirmed that Luminary Industries authorized the betrayal. Mama Delgado and he have a cease-fire and sometimes share information, never the same kind twice. Vesper and Mama have a back-channel on their own sheets. Neither sheet says Mama already holds the authorization and is choosing not to tell him. Cycle 1 inferred that. It is withdrawn. This slice is still not the conversation that tells him, and it is not the conversation that tells Vesper the Ghost's face. q_s22_not_a_pair exists so Maren can write that the two stands are occupied and not a pair, without the player speaking the unit. Cipher Marks runs his logistics and is not promoted. The bill always arrives. Delay is not cancellation. A stamp from a billhound is still a bill, and he will not hide it in the lining. Home is the Iron Coast even though the guest stand is the Court.",
+      "banter": {
+        "intro": {
+          "flag": "companion_jax_intro",
+          "line": "Contracts from all eight. Loyalty from none."
+        },
+        "mid": {
+          "flag": "companion_jax_mid",
+          "line": "The invoice landed. Do not call that cruelty. Do not stand me next to the stall."
+        },
+        "postboss": {
+          "flag": "companion_jax_postboss",
+          "line": "A stamp from a billhound is still a bill. I will not hide it in the lining, and I will not spend it at her slate."
+        }
+      },
+      "secrets_not_spoken": [
+        "The liaison's punishment, which this slice does not stage.",
+        "Mama's knowledge, which the player does not deliver.",
+        "Any contract he has refused.",
+        "The survivor list and its counts. The fear that the one at Luminary is bait."
+      ],
+      "voice": "Short complete sentences. He can finish a conversation without meeting anyone's eyes and still know where everyone is.",
+      "home_speak_phases": [
+        {
+          "phase": "midday",
+          "room": "the sheet's socialize window",
+          "doing": "He talks less than anyone in the room. Court lines happen at (-18.2, -5.5)."
+        }
+      ],
+      "home_silent_phases": [
+        "Dawn and morning rest. A contract conversation is not owed to the player."
+      ],
+      "court_stand_always": true,
+      "body_override_cycle_2": "The crime sheet gives a glowing blue neck tattoo and a shadow-veil mask. The plate forbids the mask and a second emissive. The neck mark is not lit. The eight worn cords are the readable prop. Phase shift, veil, and marksmanship stay unbound. No rifle.",
+      "sheet_facts_cycle_2": "He keeps a list of the operatives who survived the original unit. The sheet's counts — six alive, three hiding, two with him, one at Luminary Industries who does not know he knows — stay on the sheet. This slice does not read the list aloud and does not stage the bait fear. Mama Delgado's sheet gives a cease-fire and information shared never the same kind twice. Vesper's sheet gives her a back-channel with Mama. Neither sheet says Mama holds the authorization and is withholding it from him. Cycle 1 stated that as fact. Cycle 2 withdraws it. The player is still not the person who tells him.",
+      "banter_alts": {
+        "intro": {
+          "if": "Vesper is already the named walker.",
+          "line": "The stall has a walker. I do not share a party with that stand."
+        },
+        "mid": {
+          "if": "q_s22_not_a_pair is complete and the betrayal was not spoken.",
+          "line": "She wrote that we are not a pair. That is enough paper."
+        },
+        "postboss": {
+          "if": "The player offers to spend the remembrance at the stall.",
+          "line": "Not her slate. Not my lining. The bill stays a bill."
+        }
+      },
+      "mid_fires_on": "q_s22_not_a_pair"
+    },
+    {
+      "id": "comp_kel",
+      "name": "Kel Sandren",
+      "volume_npc_id": "kel",
+      "sheet_npc_id": "courier_kel_sandren",
+      "guest_id": null,
+      "role_id": "npc_role_frontier_guard",
+      "role_note": "Volume picked the Frontier road-warden plate. The sheet is a Crosswind courier in a grey-and-white tabard with a brass pin and a staff marked for weight. Use the courier read. Do not put a dome-bandit kit on him. He has no interest in fighting.",
+      "age_years": 22,
+      "height_m": null,
+      "pronouns_on_sheet": "the secret line uses they",
+      "world_home": "Hub",
+      "volume_world_home": "Frontier",
+      "volume_world_home_note": "The volume string Frontier is the Silas quest's label. The person sleeps at hub_courier_house and sorts bags at hub_portal_plaza. Those rooms have no metre in Canon. Do not invent one.",
+      "stand_xz": null,
+      "stand_room": "hub_portal_plaza",
+      "follow_radius": "The routes he already runs, after q_frontier_find_kel. He pays the Refusal Keep the toll the sheet already names. No seated camera. No mounted hero. A remembrance may ride in the satchel. He is the person who teaches the one-walker rule, because he is the one who already crosses.",
+      "gate_walker": true,
+      "assist_verb": "skill_presence_witness",
+      "assist_note": "He asks for the sound of the portal and refuses the theory. Witness, not a drawn wagon iron.",
+      "unlock_quest_ids": [
+        "q_frontier_find_kel",
+        "frontier_silas_02_kel"
+      ],
+      "will_not_attend": [
+        "enc_last_dome",
+        "enc_road_followed",
+        "any fight he would have to finish"
+      ],
+      "backstory": "Kel Sandren is twenty-two, a Crosswind courier, cousin to Taro Sandren, proud of never having lost a parcel, and uninterested in the pit. He apprenticed at fifteen and runs the standing portals between the Hub and the spokes, paying the Refusal Keep a small toll each crossing. He has noticed one portal opening off-schedule, by minutes and then by hours, and he has not reported it because he does not know who to tell. Silas Quinn has seen the same anomaly on the Frontier's western perimeter. q_frontier_find_kel and the canon chain frontier_silas_02_kel already ask the player to carry that observation to Kel at the portal plaza. This slice binds him as a companion after that turn-in. It does not retune the dome clocks S13 and S14 own, and it does not put him on a horse. There is no seated clip. The letter he carries on the milepost errand's cousin-quest stays sealed; that is why he is still walking. He will say the sound. He will not teach the Handshake algebra. Vela, the parcel, and the third relay stay Frontier's hidden truths.",
+      "banter": {
+        "intro": {
+          "flag": "companion_kel_intro",
+          "line": "Tell me the sound of the portal. Keep the theory. One walker through a gate. I already paid the toll for myself."
+        },
+        "mid": {
+          "flag": "companion_kel_mid",
+          "line": "The letter stayed sealed. That is why I am still walking with you. The off-schedule minute is not your story to finish."
+        },
+        "postboss": {
+          "flag": "companion_kel_postboss",
+          "line": "Remembrance in a saddlebag is fine. A mounted hero shot is not. There is no seated clip, and I did not fight the dome for you."
+        }
+      },
+      "secrets_not_spoken": [
+        "Who he thinks he should tell about the off-schedule portal.",
+        "The Frontier hidden truths listed in S14.",
+        "The creature-breach reading of the anomaly. The sheet names it as a later clue. This facet does not confirm it."
+      ],
+      "voice": "Fast, friendly, lets a piece of route gossip slip and then keeps walking. Twenty-two. No interest in the pit.",
+      "home_speak_phases": [
+        {
+          "phase": "Stratus",
+          "room": "hub_portal_plaza",
+          "doing": "morning crossing"
+        },
+        {
+          "phase": "Freeus",
+          "room": "hub_portal_plaza",
+          "doing": "deliveries inbound; sorts the bags"
+        },
+        {
+          "phase": "Quartus",
+          "room": "hub_great_plaza",
+          "doing": "deliveries within the hub"
+        },
+        {
+          "phase": "Penanus",
+          "room": "hub_portal_plaza",
+          "doing": "evening crossing; checks the off-schedule portal"
+        },
+        {
+          "phase": "Solnus",
+          "room": "hub_courier_house",
+          "doing": "supper with the courier house; logs the day's runs. Interactable. The log is not handed over."
+        }
+      ],
+      "home_silent_phases": [
+        "Dominus in the courier-house dormitory. Asleep. Not interactable."
+      ],
+      "court_stand_always": false,
+      "sheet_facts_cycle_2": "The sheet's weaponise_at calls the off-schedule portal the third clue toward a cross-world creature breach. q_s22_penanus_minute lets the player watch the minute get logged. It does not report it and it does not open the breach. His cross_world_hook is that he already carries messages. This slice does not add a second mail system. The staff is marked for weight. The tabard is Crosswind grey and white with a brass pin. Cousin to Taro Sandren. Taro is not promoted.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player asks him to carry a new unsealed letter.",
+          "line": "I carry what is already sealed. I do not open yours to make a quest."
+        },
+        "mid": {
+          "if": "q_s22_penanus_minute is complete.",
+          "line": "The minute is in the log. I still do not know who to tell. You do not get to pick them for me."
+        },
+        "postboss": {
+          "if": "The player tries to mount for the return.",
+          "line": "The satchel is the seat. There is no clip where I ride. Walk."
+        }
+      },
+      "mid_fires_on": "q_s22_penanus_minute"
+    },
+    {
+      "id": "comp_esha",
+      "name": "Esha of the Open Table",
+      "sheet_name": "Esha Varan",
+      "volume_npc_id": "esha_of_the_open_table",
+      "sheet_npc_id": "esha_of_the_open_table",
+      "guest_id": null,
+      "role_id": "npc_role_sere_enforcer",
+      "role_note": "Wrong coat. Her work is the open table. The enforcer plate is a crowd silhouette until a dedicated one exists. Do not give her a Tessera tile, a flag pin, or a brand of her own.",
+      "height_m": null,
+      "pronouns_on_sheet": "she",
+      "world_home": "Sere",
+      "volume_world_home": "Sere",
+      "stand_xz": null,
+      "stand_room": "the_open_table_meeting_ground",
+      "follow_radius": "Sere only, after q_sere_open_table, on ground that quest already walks. She is not instanced on the Court. She is not stood on the Sere lip. If a furnace eye would see the seed library, she turns around.",
+      "gate_walker": false,
+      "cross_note": "Her cross-world fact is correspondence with Old Seam, already written on both sheets. The player does not become the post.",
+      "assist_verb": "skill_presence_name_holder",
+      "assist_note": "Names who holds a mark. Will not display the open ledger in a capital. One brand on a hound is the existing q_sere_one_brand. A second mark is how the machine eats a name.",
+      "unlock_quest_ids": [
+        "q_sere_open_table"
+      ],
+      "will_not_attend": [
+        "enc_compound_mark as a display of the ledger",
+        "the furnace interior"
+      ],
+      "backstory": "Esha watched the Mercy Fund rescue her delta and walked away owning nothing. She read how every prior Open Table died and built the next one around those failure modes. She is not angry, which unsettles people who expect a revolutionary to be angry. She is patient and exact. She does not want to fight the Tessera, because a shape is not a person you can beat. She wants the thing that makes it obsolete. The sheet's secret is a working open ledger and a seed library that let people trade and eat without the Mark. It works. It is small. It is the most dangerous object on Sere. Its longer shadow, the ark, stays off this slice's lines. She plants at dawn and dusk with calloused hands, convenes at the long table, and corresponds at night with Old Seam, who lost this fight in a smaller world. q_sere_open_table is the unlock. q_sere_one_brand and q_sere_furnace_scout stay Sere's quests and are not retuned. She will not make the ledger famous, and she will not carry it into a capital to prove a point. Plain clothes. Seed packets. No Tessera tile.",
+      "banter": {
+        "intro": {
+          "flag": "companion_esha_intro",
+          "line": "The ledger works. It is small. Do not make it famous."
+        },
+        "mid": {
+          "flag": "companion_esha_mid",
+          "line": "One brand on the hound. A second mark is how the machine eats a name. Seam already told me. I designed around it."
+        },
+        "postboss": {
+          "flag": "companion_esha_postboss",
+          "line": "If the furnace eye saw the seed library, we turn around. The token in your hand is not worth that."
+        }
+      },
+      "secrets_not_spoken": [
+        "The ark.",
+        "The ledger's working pages.",
+        "The exact warnings in the Seam letters."
+      ],
+      "voice": "Earnest, grieving, unbroken. Patient. Exact. Not angry. People who expected anger stay unsettled. That is not a performance for the player.",
+      "home_speak_phases": [
+        {
+          "phase": "dawn",
+          "room": "the_unbound_provinces_field_edge",
+          "doing": "walks the planting rows"
+        },
+        {
+          "phase": "morning",
+          "room": "the_open_table_meeting_ground",
+          "doing": "convenes"
+        },
+        {
+          "phase": "midday",
+          "room": "a_shared_long_table",
+          "doing": "eats and listens"
+        },
+        {
+          "phase": "afternoon",
+          "room": "kesh_orans_workshop",
+          "doing": "tests the ledger against old failure modes. Kesh Oran is not promoted."
+        },
+        {
+          "phase": "dusk",
+          "room": "the_seed_beds",
+          "doing": "plants by hand"
+        }
+      ],
+      "home_silent_phases": [
+        "Night, in a plain room, guarding the ledger and corresponding with Old Seam. Not interactable. The player is not the post and is not invited in to see the pages."
+      ],
+      "court_stand_always": false,
+      "sheet_facts_cycle_2": "Healing the Dovrane–Keshar Pact is the sheet's weaponise_at for Sere's main arc. This follow slot does not start that healing. The ark stays the long shadow.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player asks to see the ledger pages.",
+          "line": "It works because it is small. The pages are not a tour."
+        },
+        "mid": {
+          "if": "Night, and the player is still at the door.",
+          "line": "This hour is Seam's letter and the lock. Come back at dawn if you are planting."
+        },
+        "postboss": {
+          "if": "The furnace eye would see the beds.",
+          "line": "We turn around before the eye. The token can wait on the safe side of the row."
+        }
+      },
+      "mid_fires_on": "q_sere_one_brand"
+    },
+    {
+      "id": "comp_calla",
+      "name": "Calla",
+      "sheet_name": "Calla Bren",
+      "volume_npc_id": "calla",
+      "sheet_npc_id": "rebel_calla_bren",
+      "guest_id": null,
+      "role_id": "npc_role_ruins_elite",
+      "height_m": null,
+      "pronouns_on_sheet": "she",
+      "world_home": "Ruins",
+      "volume_world_home": "Ruins",
+      "stand_xz": null,
+      "stand_room": "ruins_rebel_war_tent",
+      "follow_radius": "One gate at a time after q_ruins_wraith_unfinished. Follow mode opens a staple. It does not start the fourth uprising. She is not a Hub guest and is not given a plaza coordinate.",
+      "gate_walker": true,
+      "assist_verb": "skill_steel_unburial",
+      "assist_note": "Heavy cut that pulls a fall back, the Ruins verb. It opens a staple. It does not finish a wraith and it does not launch q_ruins_fourth_plan. Inside a Hub Court visit the sword is a flower. She is not stood there by this slice.",
+      "unlock_quest_ids": [
+        "q_ruins_wraith_unfinished"
+      ],
+      "will_not_attend": [
+        "enc_unfinished as a finisher",
+        "enc_catalogue_walks as a conquest"
+      ],
+      "backstory": "Calla Bren led the third uprising. She lost. She buried seventy-three. She is leading the fourth, and the fourth has its own quest, q_ruins_fourth_plan, which this slice does not start from follow mode. She leads with conscience, fights with both hands, and sleeps with one eye open. The war-tent vigil at Dominus is private. The unlock is q_ruins_wraith_unfinished: leave the wraith unfinished, because she has buried enough completed people. The mask in q_ruins_mask_scout is a question. Wear it and the answer is wrong. Zaen Drift has met her in disguise twice and has not killed her. The Court does not know. A companion boast would tell the Court, so she does not boast. The tavern meeting with Iyatte of Tunya, when they were girls, stays unsaid on both sides. Her body is CX, mid-thirties, weather in the face, leather and chain as plates on the chest, a long sword on the hip that Flower Law would flower if she ever stood in the plaza. This slice does not place her there. Seventy-three is a number she knows. She does not recite the names for the player's benefit.",
+      "banter": {
+        "intro": {
+          "flag": "companion_calla_intro",
+          "line": "You can hear the plan. Hearing is not dawn."
+        },
+        "mid": {
+          "flag": "companion_calla_mid",
+          "line": "Leave the wraith unfinished. I have buried enough completed people. Seventy-three was the third time. I am not starting the fourth from your shadow."
+        },
+        "postboss": {
+          "flag": "companion_calla_postboss",
+          "line": "The mask is a question. Wear it and you answered wrong. A staple is open. That is the whole assist."
+        }
+      },
+      "secrets_not_spoken": [
+        "The Iyatte meeting.",
+        "Zaen's two disguises, as news the Court could use.",
+        "The three things she wants done before dawn. Those belong to the rebellion chain."
+      ],
+      "voice": "Direct, sharp, occasionally tender. The tender line is not the uprising.",
+      "home_speak_phases": [
+        {
+          "phase": "Stratus",
+          "room": "ruins_rebel_camp",
+          "doing": "drilling fighters"
+        },
+        {
+          "phase": "Freeus",
+          "room": "ruins_rebel_camp",
+          "doing": "inspects the levy"
+        },
+        {
+          "phase": "Penanus",
+          "room": "ruins_rebel_war_tent",
+          "doing": "planning. Interactable. Planning is not the start of q_ruins_fourth_plan."
+        }
+      ],
+      "home_silent_phases": [
+        "Dominus private war-vigil in the tent. Speaks to no one. Not interactable. Quartus war-council is not interactable. Solnus correspondence and light sleep are not interactable."
+      ],
+      "court_stand_always": false,
+      "sheet_facts_cycle_2": "Seventy-three is the lore line for the third uprising, not a roster this slice recites. The Iyatte tavern meeting stays unsaid. Zaen's two disguises stay unsaid.",
+      "banter_alts": {
+        "intro": {
+          "if": "The player tries to speak during the Dominus vigil.",
+          "line": "This hour I speak to no one. Come back when the camp is drilling."
+        },
+        "mid": {
+          "if": "The player asks for the names of the seventy-three.",
+          "line": "I know the number. I am not spending the names on a companion line."
+        },
+        "postboss": {
+          "if": "The player puts the mask on.",
+          "line": "You answered. The answer was wrong. Take it off. The staple is still only a staple."
+        }
+      },
+      "mid_fires_on": "q_ruins_wraith_unfinished"
+    },
+    {
+      "id": "comp_vesper",
+      "name": "Vesper Kane",
+      "volume_npc_id": "vesper",
+      "sheet_npc_id": "luminary_vesper",
+      "guest_id": "vesper",
+      "role_id": "npc_role_court_merchant",
+      "role_note": "Volume's role is the Court stallkeeper. The plate also calls her the adult of the Dawn mystic role, visiting. Use the stall read on the Hub stand: pale coat, worn cuffs, a bread basket or a paper ledger, never both as clutter. No halo. No half-mask. No plasma.",
+      "height_m": 1.78,
+      "pronoun_conflict": "superhero/npcs.json writes him. HUB_GUESTS_REDESIGN.md writes her. GuestDef has no pronoun. Banter in this slice uses the name and no pronoun. A binder that must pick a CX sex for the Hub stand uses the plate already in the plaza. This slice does not retcon the Dawn sheet.",
+      "world_home": "Superhero",
+      "volume_world_home": "Hub",
+      "volume_world_home_note": "The volume string Hub is the guest stand, (7.2, 9.1). The sheet world is Permanent Dawn. Both are true. The stall is where the companion speaks. The empire is not a follow dungeon.",
+      "stand_xz": [
+        7.2,
+        9.1
+      ],
+      "follow_radius": "The stall. Vesper does not enter raids and cannot be named as the gate walker. Karate only if someone is demonstrating the Dawn law on this stand, and the demonstration does not take a finishing blow.",
+      "gate_walker": false,
+      "mutually_exclusive_with": [
+        "comp_jax"
+      ],
+      "assist_verb": "skill_presence_bargain",
+      "assist_note": "Adjusts a stall price to standing. The loaf Brackish's supper buys is the stranger price. Boss tokens are not currency. Plasma, drones, orbital strike, and Overdrive stay on the Dawn sheet and are not bound.",
+      "unlock_quest_ids": [
+        "q_hub_brackish_supper"
+      ],
+      "will_not_attend": [
+        "enc_unfinished_sunrise",
+        "enc_unender",
+        "enc_outstanding"
+      ],
+      "backstory": "On the Court, Vesper Kane keeps half the city fed and the other half honest. That is the GuestDef line, and it is the companion. The stall sells bread. Standing moves the price of the loaf. A remembrance is not a coin, and a keeper who wants a token can be told to go to a keeper. The Dawn sheet is a different magnitude: public orphanages and disaster response, a private belief that the masses should not govern themselves, and a goal of saving a city in order to own it. Those sentences stay on that sheet. They are not spoken as a confession at the stall, and they are not played as plasma in the plaza. q_superhero_no_final, q_superhero_erase_win, and q_superhero_leave_standing stay the Dawn slice. Jax's confirmation that Luminary Industries authorized his unit's betrayal stays Jax's sheet and Mama's withheld sentence. Standing the two of them in one follow slot would force that sentence into the air. The mutual exclusion is the whole politics this facet adds. The coat is pale and clean relative to the plaza, and the cuffs are still worn. No golden mask. No cape of light.",
+      "banter": {
+        "intro": {
+          "flag": "companion_vesper_intro",
+          "line": "I keep half this city fed. The other half I keep honest. The stranger price is on the slate."
+        },
+        "mid": {
+          "flag": "companion_vesper_mid",
+          "line": "Your standing just moved the loaf. Look at the slate before you complain. The Ghost's stand is not this stall."
+        },
+        "postboss": {
+          "flag": "companion_vesper_postboss",
+          "line": "Boss tokens are not currency at this stall. Sell them to a keeper if you must. I did not walk into that circle, and I will not price what I did not see."
+        }
+      },
+      "secrets_not_spoken": [
+        "The Dawn sheet's private goal, as a stall confession.",
+        "The unit betrayal, to Jax or to the plaza.",
+        "Any off-books funding Vale has prepared to expose.",
+        "That the Ghost's face is Jax. The sheet says Vesper does not know yet. The player does not teach it."
+      ],
+      "voice_on_the_stall": "The Court line, half the city fed and the other half honest, at the stranger price. No Dawn confession.",
+      "voice_on_the_dawn_sheet": "Polished, one tier of vocabulary above the room, silence as a weapon. The public smile is warm and the sheet calls it fake. Genuine feeling leaks only alone or past control. None of that is spoken at the stall. Age on the sheet is 29. The stall does not announce it.",
+      "home_speak_phases": [],
+      "home_silent_phases": [
+        "The companion speaks at the stall (7.2, 9.1) only. Dawn raids, unfinished sunrise, and the unender are not her hours. Karate on this stand does not take a finishing blow."
+      ],
+      "court_stand_always": true,
+      "sheet_facts_cycle_2": "The Dawn sheet says Vesper does not yet know the public Ghost is Jax, and that he will, soon. The player does not get to be the soon. Public orphanages and the private aim of saving a city in order to own it stay on that sheet and off the stall. Plasma, drones, the orbital, and Overdrive stay unbound. No halo, no half-mask.",
+      "banter_alts": {
+        "intro": {
+          "if": "Jax is already the named walker.",
+          "line": "The Ghost's stand is not this stall. One walker. Not both."
+        },
+        "mid": {
+          "if": "The player asks the stall to price a remembrance.",
+          "line": "The slate prices bread. A keeper prices tokens. I am not that keeper."
+        },
+        "postboss": {
+          "if": "The player says the Ghost's name at the stall.",
+          "line": "I did not ask for a name. The loaf is the same price it was."
+        }
+      },
+      "mid_fires_on": "q_s22_not_a_pair"
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s22_one_walker",
+      "title": "Portal Plaza — Name One",
+      "giver_npc_id": "courier_kel_sandren",
+      "giver_volume_alias": "kel",
+      "prerequisites": [
+        "q_frontier_find_kel"
+      ],
+      "world_clock": "Hub",
+      "offer_room": "hub_portal_plaza",
+      "objectives": [
+        {
+          "id": "obj_s22_one_walker_1",
+          "verb": "talk",
+          "text": "Hear Kel's rule. One companion through a gate. The stands stay occupied. Naming none is allowed."
+        },
+        {
+          "id": "obj_s22_one_walker_2",
+          "verb": "choose",
+          "text": "Name one unlocked gate walker, or name none. Gate walkers are Thorne, Maeris within her bog limit, Nyx, Jax, Kel, and Calla. Naming Brackish, Old Seam, Maren, Gale, Esha, or Vesper as the gate walker fails the objective."
+        },
+        {
+          "id": "obj_s22_one_walker_3",
+          "verb": "talk",
+          "text": "If Jax is named, Vesper is locked out of the same party, and the reverse. Say that back to Kel. Do not explain why beyond 'not a pair.'"
+        }
+      ],
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The courier will take one walker. The other stands did not empty.",
+      "does_not": [
+        "Dispatch a caravan.",
+        "Change RingTariff.",
+        "Invent a metre for the portal plaza.",
+        "Grant a skill."
+      ]
+    },
+    {
+      "id": "q_s22_milepost_names",
+      "title": "Salt Road — The Child Says the Name",
+      "giver_npc_id": "brackish",
+      "prerequisites": [
+        "q_hub_pinewood_milepost",
+        "q_hub_brackish_supper",
+        "q_hub_nesha_gap"
+      ],
+      "world_clock": "Hub",
+      "objectives": [
+        {
+          "id": "obj_s22_mile_1",
+          "verb": "talk",
+          "target_xz": [
+            -11.2,
+            -4.1
+          ],
+          "text": "Meet Old Seam at her stand. She is not asked to speak to Nesha."
+        },
+        {
+          "id": "obj_s22_mile_2",
+          "verb": "reach",
+          "target_xz": [
+            62,
+            -28
+          ],
+          "text": "Walk with both of them to Pinewood Crossing. Read the letters as Pinewood Crossing. Any other name fails the objective."
+        },
+        {
+          "id": "obj_s22_mile_3",
+          "verb": "deliver",
+          "item": "item_court_bread",
+          "text": "Offer bread on the road. Pay nothing new if the loaf was already bought. Do not enter a gate as payment."
+        },
+        {
+          "id": "obj_s22_mile_4",
+          "verb": "reach",
+          "room": "hub_bell_tower",
+          "text": "Return Brackish to the bell-tower before the night phase. Seam may peel off at her stand."
+        }
+      ],
+      "sets_flags": [
+        "companion_brackish_mid",
+        "companion_old_seam_mid"
+      ],
+      "rewards": {
+        "xp": 45,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The child can say the name and still came back. The gap with Nesha was not closed.",
+      "overlap_note": "Same milepost as q_hub_pinewood_milepost. Different mouths. Do not reset that quest. S01 still owns the hitch inside 12 m. Do not spawn a stag, a wolf, or a wagon.",
+      "hub_exception": "Two locals and the player. Not a gate party."
+    },
+    {
+      "id": "q_s22_not_a_pair",
+      "title": "Court — Not a Pair",
+      "giver_npc_id": "archivist_maren",
+      "prerequisites": [
+        "q_hub_brackish_supper"
+      ],
+      "world_clock": "Hub",
+      "objectives": [
+        {
+          "id": "obj_s22_pair_1",
+          "verb": "reach",
+          "target_xz": [
+            -18.2,
+            -5.5
+          ],
+          "text": "Stand at Jax's guest mark. Do not speak the unit, the liaison, or Luminary Industries."
+        },
+        {
+          "id": "obj_s22_pair_2",
+          "verb": "reach",
+          "target_xz": [
+            7.2,
+            9.1
+          ],
+          "text": "Stand at Vesper's stall. Do not ask the stall to price a boss token. Do not repeat the sentence you did not say at the other mark."
+        },
+        {
+          "id": "obj_s22_pair_3",
+          "verb": "talk",
+          "target": "archivist_maren",
+          "text": "Let Maren write: two guests, one plaza, not a pair. If the betrayal was spoken, she strikes the page and the quest fails."
+        }
+      ],
+      "sets_flags": [
+        "companion_maren_mid",
+        "companion_jax_mid",
+        "companion_vesper_mid"
+      ],
+      "fail_if": "The player tells Jax, Vesper, or the plaza that Luminary Industries authorized the unit betrayal.",
+      "rewards": {
+        "xp": 50,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The archivist wrote that two guests are not a pair. She did not write why.",
+      "does_not": [
+        "Start a fight between the stands.",
+        "Move either GuestDef.",
+        "Pay a faction delta to ghost_network or luminary_empire."
+      ]
+    },
+    {
+      "id": "q_s22_framed_riddle",
+      "title": "Court — Wolves and Walls",
+      "giver_npc_id": "nyx",
+      "prerequisites": [],
+      "world_clock": "Hub",
+      "objectives": [
+        {
+          "id": "obj_s22_riddle_1",
+          "verb": "reach",
+          "target_xz": [
+            -14.5,
+            -12.2
+          ],
+          "text": "Read the framed riddle at Nyx's stand. Wolves and walls. It was delivered before this errand existed."
+        },
+        {
+          "id": "obj_s22_riddle_2",
+          "verb": "refuse",
+          "text": "Add no word. Do not copy it onto a new scrap to carry to Thorne."
+        },
+        {
+          "id": "obj_s22_riddle_3",
+          "verb": "reach",
+          "target_xz": [
+            12.8,
+            -14.5
+          ],
+          "text": "Look at Thorne's stand. Confirm he is not waiting on an answer. Do not ask him who released the curse."
+        },
+        {
+          "id": "obj_s22_riddle_4",
+          "verb": "talk",
+          "target": "nyx",
+          "text": "Turn in to Nyx. The frame stays on the wall."
+        }
+      ],
+      "sets_flags": [
+        "companion_nyx_mid",
+        "companion_thorne_mid"
+      ],
+      "rewards": {
+        "xp": 35,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The riddle was already finished. Nobody added a word.",
+      "does_not": [
+        "Enter the Grid.",
+        "Retune enc_census or S12.",
+        "Teach refusal algebra.",
+        "Spawn a wolf."
+      ]
+    },
+    {
+      "id": "q_s22_penanus_minute",
+      "title": "Portal Plaza — The Minute",
+      "giver_npc_id": "courier_kel_sandren",
+      "giver_volume_alias": "kel",
+      "prerequisites": [
+        "q_s22_one_walker"
+      ],
+      "world_clock": "Hub",
+      "phase": "Penanus",
+      "offer_room": "hub_portal_plaza",
+      "turn_in_room": "hub_courier_house",
+      "turn_in_phase": "Solnus",
+      "objectives": [
+        {
+          "id": "obj_s22_minute_1",
+          "verb": "reach",
+          "room": "hub_portal_plaza",
+          "phase": "Penanus",
+          "text": "Stand with Kel while he checks the portal that opens off schedule. Do not step through it."
+        },
+        {
+          "id": "obj_s22_minute_2",
+          "verb": "listen",
+          "text": "Hear that the slip is minutes, and has been hours. Do not ask who he should tell. Do not name the Refusal Keep, Silas Quinn, or the Assembly as the listener."
+        },
+        {
+          "id": "obj_s22_minute_3",
+          "verb": "reach",
+          "room": "hub_courier_house",
+          "phase": "Solnus",
+          "text": "Watch him log the day. Do not read the page. Do not copy the minute onto a report."
+        }
+      ],
+      "sets_flags": [
+        "companion_kel_mid"
+      ],
+      "fail_if": "The player enters the portal, reads the log, or delivers the minute to any named authority.",
+      "rewards": {
+        "xp": 40,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The courier logged a minute. He still has not chosen a listener. The breach was not opened.",
+      "does_not": [
+        "Spawn the cross-world creature the sheet calls a later clue.",
+        "Retune S13 or S14 dome clocks.",
+        "Invent a metre for hub_portal_plaza or hub_courier_house.",
+        "Grant a mail power."
+      ],
+      "backstory": "Kel apprenticed at fifteen and has never lost a parcel. The one portal that will not keep time is the secret he has not assigned. The sheet says that anomaly is the third clue toward a creature breach. A companion errand that catches the creature would steal a clue that is not this facet's. Logging the minute, and leaving the listener unchosen, is as far as his trust goes."
+    },
+    {
+      "id": "q_s22_bead_count",
+      "title": "Court — The Braid",
+      "giver_npc_id": "thorne_blackroot",
+      "giver_volume_alias": "thorne",
+      "prerequisites": [
+        "q_fantasy_held_offer"
+      ],
+      "requires": "q_fantasy_held_offer was turned in as a refusal. If the offer was taken, Thorne is already gone and this quest does not offer.",
+      "world_clock": "Hub",
+      "offer_xz": [
+        12.8,
+        -14.5
+      ],
+      "objectives": [
+        {
+          "id": "obj_s22_bead_1",
+          "verb": "reach",
+          "target_xz": [
+            12.8,
+            -14.5
+          ],
+          "text": "Stand at Thorne's mark while he counts the bone beads in the braid."
+        },
+        {
+          "id": "obj_s22_bead_2",
+          "verb": "refuse",
+          "text": "Do not ask to hold one. Do not take one. The beads are the anchors. Removing them is how he loses himself, on his own sheet."
+        },
+        {
+          "id": "obj_s22_bead_3",
+          "verb": "talk",
+          "text": "Do not ask who released the curse, and do not ask if that person is still alive. Turn in when the count is done and the braid is whole."
+        }
+      ],
+      "sets_flags": [],
+      "fail_if": "The player takes a bead. Thorne leaves the walker slot and returns to the stand. The guest row is not deleted. This is the same dismissal as taking the Held Curse offer.",
+      "rewards": {
+        "xp": 30,
+        "coin": 0,
+        "items": [],
+        "skill_ids": []
+      },
+      "faction_delta": [],
+      "gossip_on_complete": "The braid was counted. Nothing was taken. The apprentice was not named.",
+      "does_not": [
+        "Spawn a loose bead as loot.",
+        "Start root_of_the_curse or bone_bead_recovery as a solved quest.",
+        "Retune enc_held_curse.",
+        "Put an elf body on the stand."
+      ],
+      "backstory": "The fantasy sheet's weaknesses say the bone beads keep his consciousness intact. The plate already put them in the loose braid as beads, not a trophy rack. An errand that recovers a bead for the player would be the weakness used as a fetch. The errand is the refusal to fetch."
+    }
+  ],
+  "revision": "cycle-2",
+  "cycle_2": {
+    "adds": [
+      "Home-world speak windows taken from each sheet's interactable phases. Banter does not fire in a silent phase.",
+      "One conditional line per stage. The flag still flips once. The line chosen is the one whose if matches at that moment.",
+      "q_s22_penanus_minute logs Kel's off-schedule minute and does not open the creature breach the sheet names as a later clue.",
+      "q_s22_bead_count refuses to take a bone bead. Taking one dismisses Thorne the same way the Held Curse offer does.",
+      "Mama's knowledge of the unit authorization is no longer stated as a sheet fact. The sheets give a cease-fire and a back-channel. The player is still not the channel."
+    ],
+    "does_not": [
+      "A thirteenth companion.",
+      "A lattice-fragment crossing taught by Maeris.",
+      "A report of the portal minute to the Refusal Keep, Silas, or the Assembly.",
+      "Opening a secret door Brackish knows.",
+      "Nyx's cradle strike.",
+      "The fourth uprising.",
+      "A Nesha reunion.",
+      "Telling Vesper that the Ghost is Jax."
+    ]
+  }
+}

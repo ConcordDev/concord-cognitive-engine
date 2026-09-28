@@ -1,0 +1,16 @@
+UNITY-CLIENT CHAT ONLY. MCP bridge must be green first.
+W1 ONLY — small batches. Do not touch materials/plates. Do not symlink PolyHaven into AuraRefs.
+
+Before any execute_code: call get_unity_editor_state and confirm it returns in <10s with hasCompilationErrors false. If timeout, STOP and say bridge still dead.
+
+Batch size: max 5 prefabs per execute_code, then SaveAssets + get_unity_editor_state ping.
+
+Start:
+1) Prefabs/P0/Bandits ×5 (captain, dusk, hitch, marrow, nettle) from Materials/P0/Bandits/*.mat on CX_Humanoid_Male
+2) Ping bridge
+3) Prefabs/P3/Guests — first 5 HubGuests
+4) Ping bridge
+5) Continue guests 6–10, 11–15
+6) Then P0 weapons left / spoils / road NPCs in fives
+Report after each batch: created paths + still remaining count.
+If any batch times out: stop, do not retry mega-script.

@@ -1,0 +1,59 @@
+{
+  "cities": [
+    {
+      "id": "hub",
+      "name": "Hub",
+      "factionId": "concordant_assembly",
+      "description": "Walled concentric capital of the Concordant Compact — city-state, no single crown. Four-way power (Scholars, Merchants, Iron Wardens, Shadow Network) shares the Heart. Resonance Stone and Unburned Court sit in the civic core.",
+      "x": 0.0,
+      "z": 0.0,
+      "districts": [
+        "council_chamber",
+        "archive_quarter",
+        "market_district",
+        "warden_ring_wall"
+      ],
+      "status": "living"
+    },
+    {
+      "id": "pinewood_crossing",
+      "name": "Pinewood Crossing",
+      "factionId": "bazaar_consortium",
+      "description": "Salt road hold outside the Warden ring-wall. Year 80 brothers lore. Medium-ring approach landmark on the Crown Road spoke.",
+      "x": 62.0,
+      "z": -28.0,
+      "districts": ["salt_road_hold"],
+      "status": "stub"
+    },
+    {
+      "id": "broken_spire",
+      "name": "Broken Spire",
+      "factionId": "concordant_watch",
+      "description": "North shore wreck from the Three-Day War. Cross-world dungeon scars. Medium-ring approach landmark on the Crown Road spoke.",
+      "x": 8.0,
+      "z": 78.0,
+      "districts": ["spire_wreck"],
+      "status": "stub"
+    },
+    {
+      "id": "upper_grove",
+      "name": "Upper Grove",
+      "factionId": "refusal_keep",
+      "description": "Verdant Veil approach; root-cellars dungeon mouth. Medium-ring approach landmark on the Crown Road spoke.",
+      "x": -70.0,
+      "z": 36.0,
+      "districts": ["verdant_veil"],
+      "status": "stub"
+    },
+    {
+      "id": "three_refusals_tavern",
+      "name": "Three Refusals Tavern",
+      "factionId": "bazaar_consortium",
+      "description": "Roadhouse and rumor mill on the Crown Road approach. Medium-ring approach landmark (tavern mass + annex).",
+      "x": -48.0,
+      "z": -58.0,
+      "districts": ["roadhouse"],
+      "status": "stub"
+    }
+  ]
+}

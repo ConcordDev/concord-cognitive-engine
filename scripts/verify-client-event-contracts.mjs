@@ -391,6 +391,15 @@ function resolveHelperCallSites(files, helpers) {
 
       const argsRaw = stripped.slice(openIdx + 1, closeIdx);
       const argList = splitTopLevelArgs(argsRaw);
+      // emitWorldEvent({ event: "boss:state", ... }) — destructured object
+      // helper. Positional paramIndex cannot see the property; harvest
+      // event: "literal" from the first object argument.
+      const firstArg = (argList[0] || "").trim();
+      if (fnName === "emitWorldEvent" && firstArg.startsWith("{")) {
+        const objEventRe = /\bevent\s*:\s*(['"`])([a-zA-Z][\w:.-]*?)\1/g;
+        let om;
+        while ((om = objEventRe.exec(firstArg)) != null) live.add(om[2]);
+      }
       for (const paramIndex of helpers.get(fnName)) {
         const arg = argList[paramIndex];
         if (!arg) continue;

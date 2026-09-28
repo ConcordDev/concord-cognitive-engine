@@ -1,0 +1,904 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S08_ruins_politics_sidequests",
+  "world_id": "Ruins",
+  "lore_world_id": "sovereign-ruins",
+  "display_world": "Sovereign Ruins",
+  "facet": "politics_quests",
+  "title": "Sovereign Ruins — politics, culture, side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Ruins lore, factions, countries, npcs, volume quests, density weights, S07 caps, or Hub seats.",
+  "canon_pins": {
+    "world_id": "Ruins",
+    "canon_world_def_title": "Sovereign Ruins",
+    "refusal": "Refusal of Death",
+    "the_no": "We will not allow our ending to be final.",
+    "law_text": "Death is unstable. Catalogue, do not conquer. Nothing here has finished.",
+    "steel_live": true,
+    "fight_style_people": "Sword. CX body. No beast performs it. The keeper's stylus is wpn_focus_ruins_stylus. The elite's unburial is wpn_2h_ruins_unburial. This slice arms neither as a quest reward.",
+    "flower_law": "Hub only. Radius 42 m. A Ruins-local anchor is not inside that disk. Dragging a body onto the Hub plaza and outside the Arena turns steel into a flower.",
+    "hub_gate": {
+      "angle": "π/4",
+      "short_name": "RUINS",
+      "neighbors": ["Cyber at 0", "Fantasy at π/2"],
+      "owner": "S02 owns Hub plaque courtesy. This slice does not stage a quest on the ring."
+    },
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "prop": "Do not plant a milepost on the Ruins because the envoy compound's local x is 63.86. Its z is -9.91. The worlds are different."
+    },
+    "coordinate_space": "Country x,z values are local to WorldId.Ruins through WorldGeography.CountryCenter. They are not Hub seats. Each faction's district anchor is the capital plus (+8, -6), which is 10.0 m. That offset is the file. It is not a surveyed street.",
+    "strength_cap_public": "Concordia's founding compact, Year 60, cites the Cascade. A Concordian refusal is strength-capped at 9 and expires unless a quorum re-records it within seven days. Marrin's errand copies those two numbers. It does not mint a glyph.",
+    "humanoid_body": "CX only. Concordia face. Plates and cloth on CX bones. A keeper, an apprentice, a fading archivist, a crew boss, a spell-reader, a pilgrim leader, a courier, an envoy, and a denier priest are CX if a native plate is bound. A Quaternius body is not. The Long Summons is not a humanoid.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#5a5044", "#b89060", "#2a1c14", "#c8a070"],
+    "materials": ["igneous rock", "fossil bone", "cold iron", "ash plaster", "sulfur stain sparse"],
+    "kit": "arch_kit_ruins_ash",
+    "style_sector": "abyssal-ash",
+    "dress_vocab": "ash",
+    "playable_scale_note": "Six country claims. Radii 25.5 m except ruins_cascade_deniers at 23.0 m. All six capitals sit inside 56 m of the Ruins origin, inside the wilds ring S07 set at 90–126 m. Measured relations: archivists–scavengers 71.8 m center distance, gap 20.8 m; archivists–deniers 32.4 m, overlap 16.1 m; archivists–spirits 33.4 m, overlap 17.6 m; archivists–pilgrims 31.5 m, overlap 19.5 m; archivists–envoy 33.6 m, overlap 17.4 m; spirits–pilgrims 2.6 m, overlap 48.4 m; spirits–envoy 9.4 m, overlap 41.6 m; pilgrims–envoy 11.0 m, overlap 40.0 m; scavengers–deniers 47.9 m, overlap 0.6 m. The circles are claims. They are not navmesh borders and this slice does not grow them."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/factions-extra.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/npcs-extra.json",
+    "quests": "Canon/sovereign-ruins/quests/{calla-rebellion,thanis-glyph,silv-marn-dome}.json",
+    "canon_cs": "Canon.cs WorldId.Ruins, gate angle π/4, steel live, Sword, fauna aliases wraith, wolf, griffin",
+    "kit": "native-bible/architecture/KITS.json arch_kit_ruins_ash",
+    "art": "ART_STYLE_GTA_PALWORLD_TEN_WORLD.md underworld row; native-bible/00_ART_DIRECTION.md Ruins row",
+    "taxonomy": "native-bible/01_TAXONOMY.md Ruins line",
+    "density": "native-bible/volume/DENSITY_TABLES.json Ruins block",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Ruins eight",
+    "prior_slices": ["S07_ruins_bosses_stories"]
+  },
+  "left_in_place": [
+    "ruins_calla_01_camp",
+    "ruins_calla_02_plan",
+    "ruins_calla_03_dawn",
+    "ruins_thanis_01_audience",
+    "ruins_thanis_02_layer",
+    "ruins_thanis_03_compose",
+    "ruins_silv_01_circle",
+    "ruins_silv_02_teach",
+    "ruins_silv_03_dome",
+    "q_ruins_crow_catalogue",
+    "q_ruins_wraith_unfinished",
+    "q_ruins_fourth_plan",
+    "q_ruins_half_layer",
+    "q_ruins_undoing",
+    "q_ruins_lizard_rib",
+    "q_ruins_unstack",
+    "q_ruins_mask_scout",
+    "q_s07_open_carry",
+    "q_s07_basket_left",
+    "q_s07_mask_to_shelf",
+    "q_s07_tooth_not_chit",
+    "enc_unfinished",
+    "enc_catalogue_walks",
+    "enc_rib_basket",
+    "enc_returned_kill",
+    "enc_late_breath"
+  ],
+  "unresolved_on_purpose": [
+    "Vela formalized the algebra knowing the Council would refuse to bound it. That cause stays on ruins_lore_the_cascade.hidden_truth. No quest says it.",
+    "Vela's refusal keeps the Archive functional, and her death would raise a city-wide field. That stays her sheet's secret. Her chamber has no coordinate. She is not stood on the archive pin, because a 20 m silence around an invented seat would cover the district.",
+    "Oeric's entry is losing legibility, and he does not know whether the Archive or he is fading. The quest hears the public evacuation sentence. It does not repair the line.",
+    "Kestra's successor criteria, and the fact that she has not told Sennit they are one of seven candidates, stay off every objective. Sennit stands. He is not named a successor.",
+    "Zaen Drift has met Calla Bren in disguise twice and has not killed her. The Court does not know. No quest carries that message. ruins_calla_01_camp already owns the message run.",
+    "Hen Orven's private copy of the Refusal Field engraving, and the hub Curator's want of it, stay on ruins_hen_archive. No trade is opened.",
+    "Thanis's glyph-language with Oracle Nesha Keep stays a cross-world secret. No composite is minted. ruins_thanis_03_compose stays the canon door.",
+    "Calla's girlhood meeting with Sandrun's Iyatte stays her sheet. The fourth uprising is not started. q_ruins_fourth_plan already hears the plan and stops.",
+    "Silv's undoing is not spent on the Hub dome. ruins_silv_03_dome and q_ruins_undoing already split that door.",
+    "Thren and the South Camp boss were lovers. The feud's private half stays her secret. The public half — two crews, one sealed vote, a suspected third key — is the errand, and the seal stays shut. South camp has no pin.",
+    "The Long Summons suspects the recipient is dead. Telling it so would finish the cast. The quest hears one call and gives no answer. The recipient's name is not printed in the sheet, and this slice does not invent one.",
+    "Aware spirits slowing their casts, and whether completion is release or death, stay the faction tension. One slowed summons is witnessed. None is completed.",
+    "Isen has not asked Concordia to pave the walk. The errand returns the ground as ash. The memorial path has no pin and is not paved in prose.",
+    "Marrin's seven unsigned letters, the deputy's hand, and the repeatable-Cascade argument stay her secret. The monthly report this slice touches is the public compact, written as inventory.",
+    "Palen's journals are in a bedroom desk, and a public reading would end the movement in one day. That location and that ending stay his secret. The faction sheet already says he has the journals and has refused them for thirty years. The meeting house does not receive them.",
+    "The two generated faction rows, Concord Keepers and Covenant Seekers, reuse Palen and Thanis and carry generated mottos. They are not a seventh and eighth polity. No quest, no presence, no color from their generated palette.",
+    "ruined_court and ruin_rebellion are faction_id strings on npcs-extra and on lore. They have no row in factions.json and no country. Thanis, Hen, Zaen, Silv, Calla, Finn, Arn, Pol, and the Almoner stay unplaced.",
+    "researcher_clovis and returning_pilgrim_who_stayed are faction npc ids without sheets. They are not given bodies.",
+    "The Silent Keeper stands at collapse_memorial, which has no coordinate. Striking it for names is not an errand.",
+    "extends_world on every Ruins country is the string sovereign-ruins. No quest walks to the Hub, Tunya, the Crucible, or Sere.",
+    "Volume faction_id glyph_keepers is left as the volume wrote it. This slice's standing notes use ruins_archivists and do not retarget the volume deltas.",
+    "Wilds roadside ruin at local (14, 104) stays the generic non-Hub pin S07 already refused. It is not a denier house and not a court."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_unfinished, enc_catalogue_walks, enc_rib_basket, enc_returned_kill, and enc_late_breath stay S07. This facet adds no health table, no adds, and no scaled animal. enc_morning_count and enc_shelf_names are people at pins they already have. They have no hit points.",
+  "standing_ecology": {
+    "owner": "S07_ruins_bosses_stories",
+    "retune": false,
+    "political_reading": [
+      {
+        "id": "faun_ash_wolf",
+        "reading": "The pack holds the 20.8 m gap neither the crews nor the archivists cover. Returning to a kill is the archive's law practiced by an animal. The crews do not get that ground as the unmapped quarter."
+      },
+      {
+        "id": "faun_catalogue_crow",
+        "reading": "Commas on a rib, in a yard that is still unplaced. A count of birds is q_ruins_crow_catalogue. This facet does not ask for the page again."
+      },
+      {
+        "id": "faun_rib_lizard",
+        "reading": "The rib is furniture. q_ruins_lizard_rib already says so."
+      },
+      {
+        "id": "mon_ruins_wraith",
+        "reading": "A person-shaped gap with a late breath. It is not a member of the Spell Spirits and not a denier."
+      },
+      {
+        "id": "mon_ruins_crawler",
+        "reading": "Writes a line with no author. That does not add a fourth bench to the Archive."
+      },
+      {
+        "id": "hyb_ribwolf",
+        "reading": "A wolf with an external rib basket. S07's basket window. Not a scavenger crew."
+      },
+      {
+        "id": "mon_boss_unfinished",
+        "reading": "A death catalogued mid-page, on unburial_court once that set is placed. The political Ruined Court is a different room and has no pin. The mask and the tooth stay S07's tokens."
+      },
+      {
+        "id": "hyb_ashfang",
+        "reading": "S03 seam. Ruins cap 0."
+      },
+      {
+        "id": "hyb_mercywraith",
+        "reading": "Cross-listed with Superhero. Ring neighbors of Ruins are Cyber and Fantasy. Cap 0. The shelf is not an import floor."
+      },
+      {
+        "id": "mon_sunder_griffin",
+        "reading": "WorldDef names a griffin. S07 did not resolve that alias. This facet does not either."
+      }
+    ],
+    "unspawned_seeds": ["ruin_rat_king", "ash_revenant", "gloom_stalker"]
+  },
+  "cultures": [
+    {
+      "id": "culture_twelve_benches",
+      "name": "Three benches, twelve archives",
+      "who": "The Three Archivists. Vela on the first bench, refusing to operate. Oeric on the second, re-reading the entry that kept his name. Kestra on the third, doing the work. Sennit is the one apprentice who has a sheet.",
+      "public_law": "Before the Cascade, no decision moved until the relevant Archive had written its history. Year 0 formalized Refusal. Year 1 the city stopped doing anything except record, refuse, and refuse-to-refuse. Year 2 to Year 5 people walked out. The three who stayed kept the recording. Their motto is that they did not refuse in time, and they will refuse now.",
+      "ground": "Capital (39.83, -33.42). District sovereign_archive (47.83, -39.42). silent_library, collapse_memorial, collapse_memorial_courtyard, first_bench_chamber, and archivist_quarters have no coordinates.",
+      "palette_note": "Faction cloth is #a05022, #142529, #e08152 on the ash kit. One emissive is the stylus nib, not a glyph aura. Heavy plate in the faction visual is a silhouette note for elites. These three wear keeper cloth. Foundation stays igneous, fossil bone, cold iron.",
+      "does_not": ["Seat a fourth archivist", "Recover the lost Cascade glyphs", "Stand Vela on the district pin", "Repair Oeric's line", "Tell Sennit the candidate count", "Open the silence question"]
+    },
+    {
+      "id": "culture_night_haul",
+      "name": "The night haul",
+      "who": "Thren's North Camp, the largest crew, and Iby, who walked back after the evacuation and refused the archivists' stipend.",
+      "public_law": "It belongs to whoever can carry it past the locked spells. Thren returns a glyph-bearing find she can identify. The crews are feuding, in public, over a sealed Council vote-record. Both suspect a third crew is hiding the key. A still-running spell is walked around. Iby teaches the reading to no one.",
+      "ground": "Capital (-31.7, -27.55). scavenger_camp_north (-23.7, -33.55). scavenger_camp_south and the_unmapped_quarter have no coordinates. The 20.8 m gap toward the archivists is basin_open_carry and is not given to the crews.",
+      "palette_note": "Patchwork on the ash kit. Faction #5a3a18, #0a0a0a, #d4a857. Torn seals and salvaged glyphs are cloth, not a second emissive. Pry bar and short blade are the crew's tools. This slice does not mint either as loot.",
+      "does_not": ["Open the sealed vote", "Name the south boss", "Enter the unmapped quarter", "Un-cast a binding", "Teach Iby's technique", "Fence the perimeter for the envoy"]
+    },
+    {
+      "id": "culture_still_cast",
+      "name": "The cast that has not finished",
+      "who": "Spell spirits. The Long Summons has been calling one name for 187 annums. The Endless Blessing has a grove and no pin. The Silent Keeper is an archivists' golem, not this faction's body, and its memorial is unplaced.",
+      "public_law": "The casting continues. The receiver is irrelevant to the faction motto, and the Long Summons has begun to slow because it suspects otherwise. Interruption, un-casting, and completion are the three things this culture fears. This slice grants none of them.",
+      "ground": "Capital (46.99, -0.82). the_still_casting_quarter (54.99, -6.82). the_long_summons_chamber and the_endless_blessing_grove have no coordinates. The chamber's work is paired onto the still-casting pin until a room exists. That pin is 2.6 m from the pilgrim lodge pin.",
+      "palette_note": "A thick ash-plaster robe, cold iron at the hem, one dull warm light at the mouth for the length of the spoken name, then dark. No hologram cloth. No full-body glow. No weapon. If that mass has no native mesh, the spirit is absent.",
+      "does_not": ["Finish the summons", "Say the recipient is dead", "Invent the recipient's name", "Un-cast", "Spawn the blessing grove", "Put the spirit on a CX keeper"]
+    },
+    {
+      "id": "culture_witness_walk",
+      "name": "The witness walk",
+      "who": "Isen, nine annums as leader, twenty-two annums since his first pilgrimage, a Concordia bureaucrat who quit and walked back. Pell carries paper and is not a pilgrim.",
+      "public_law": "Walk, witness, carry the lesson home. Discomfort is the point. Concordia paving the route would draw more people and would end the discomfort. Isen has not asked. He has been debating it. This slice returns the answer unpaved.",
+      "ground": "Capital (44.94, -2.36). pilgrim_lodge_at_the_gate (52.94, -8.36), 10.0 m from the capital. the_cascade_memorial_path and the lodge common room have no coordinates. The walk in the errand is lodge pin to capital pin.",
+      "palette_note": "Ascetic cloth, #3a3a3a, #1a1a1a, #a0a0a0, on the same ash plaster. A walking staff. No gold road. No new cairn beyond the props the density table already counts.",
+      "does_not": ["Pave", "Formalize the pilgrimage", "Place the memorial path", "Read a Vela journal aloud as a reward", "Send Pell to the Hub"]
+    },
+    {
+      "id": "culture_sister_watch",
+      "name": "The sister watch",
+      "who": "Marrin, envoy chief for six annums, assigned after her predecessor died on the pilgrim path. Clovis is named and has no sheet.",
+      "public_law": "Watch the sister so Concordia does not become her. The public instrument is the Year 60 compact: strength capped at 9, re-recorded within seven days or it expires. Monthly reports read like inventory. This slice adds one inventory line and no private letter.",
+      "ground": "Capital (55.86, -3.91). envoy_compound (63.86, -9.91). research_outpost, spell_quarantine_zone, dining hall, and chief quarters have no separate coordinates. She is bound at the compound pin only.",
+      "palette_note": "A diplomatic coat on CX, faction #3b5d8c, #0e1a2d, #d4c98a, over ash plaster foundation. The compound does not become a neoclassical second city. One brass button, worn. No concealed pistol. Firearm verb coverage is not this slice.",
+      "does_not": ["Open the unsigned letters", "Publish the Cascade algebra", "Walk the report to the Hub council", "Import a still-running spell", "Build a mercy-wraith floor"]
+    },
+    {
+      "id": "culture_closed_book",
+      "name": "The closed book",
+      "who": "Palen, lead voice. His grandfather walked out during the evacuation. The faction sheet says Palen has the journals and has refused to read them for thirty years.",
+      "public_law": "Sovereign was abandoned, not collapsed. The difference is the sermon. A still-running spell, an archivist's public testimony, and a unanimous pilgrim witness are what the faction fears. This slice stages none of those proofs. It stages the motto, and a table the journals do not reach.",
+      "ground": "Capital (11.25, -48.72), radius 23.0. denier_meeting_house (19.25, -54.72). alternative_archive_outpost and denier_priest_quarters have no coordinates. The 0.6 m touch with the scavenger circle is a rind, not a shared camp.",
+      "palette_note": "Imitation classical is an upper retrofit on the ash kit, #7a3a3a, #1a0a0a, #e0a050. A closed book and a broken glyph are cloth motifs. The meeting house does not outgrow the rib silhouette.",
+      "does_not": ["Bring the journals into the meeting house", "Read them", "End the movement", "Prove the Cascade from this pulpit", "Give him the generated Concord Keepers row as a second faction"]
+    }
+  ],
+  "regions": [
+    {
+      "id": "region_third_bench",
+      "name": "Third bench and the archive pin",
+      "culture": "culture_twelve_benches",
+      "faction_id": "ruins_archivists",
+      "anchors": [
+        {"id": "ruins_archivists_gate", "name": "The Three Archivists", "x": 39.83, "z": -33.42, "kind": "capital claim center", "radius_m": 25.5},
+        {"id": "ruins_archivists_district", "name": "sovereign_archive", "x": 47.83, "z": -39.42, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live. Catalogue, do not conquer. Three staffed benches. The other nine of the Council of Twelve have no living vote on this pin.",
+      "what_stands_here": "Kestra and Sennit, clock 7–11. Oeric, clock 11–15, after they are gone. The capital 10 m away is the claim rim. S07 turns token quests in at the gate if catalogue_hall is unplaced. This slice does not move that turn-in.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Spawn Vela", "Spawn the Silent Keeper", "Place the memorial", "Spend the keeper crowd budget of 4 on these three"]
+    },
+    {
+      "id": "region_north_camp",
+      "name": "North Camp",
+      "culture": "culture_night_haul",
+      "faction_id": "ruins_scavenger_crews",
+      "anchors": [
+        {"id": "ruins_scavenger_crews_gate", "name": "The Scavenger Crews", "x": -31.7, "z": -27.55, "kind": "capital claim center", "radius_m": 25.5},
+        {"id": "ruins_scavenger_crews_district", "name": "scavenger_camp_north", "x": -23.7, "z": -33.55, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live. Fair split at the morning count. Glyph-bearing finds that can be identified go back. The seal is not stock.",
+      "what_stands_here": "Thren, clock 3–7. Iby, clock 7–11. They do not overlap. The capital is 10 m off and holds nobody from this slice.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Spawn a south crew", "Place the unmapped quarter", "Drop wolves on the camp"]
+    },
+    {
+      "id": "region_still_casting",
+      "name": "Still-casting quarter",
+      "culture": "culture_still_cast",
+      "faction_id": "ruins_spell_spirits",
+      "anchors": [
+        {"id": "ruins_spell_spirits_gate", "name": "The Spell Spirits", "x": 46.99, "z": -0.82, "kind": "capital claim center", "radius_m": 25.5},
+        {"id": "ruins_spell_spirits_district", "name": "the_still_casting_quarter", "x": 54.99, "z": -6.82, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live, and a fight here fails q_s08_name_unanswered. The cast is not a hit point.",
+      "what_stands_here": "The Long Summons, all diurnal except Dominus 1–4, native mass or nothing. The capital 10 m away stays empty of this body.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Spawn the Endless Blessing", "Interrupt for the pilgrim bunks 2.6 m away"]
+    },
+    {
+      "id": "region_lodge",
+      "name": "Pilgrim lodge",
+      "culture": "culture_witness_walk",
+      "faction_id": "ruins_pilgrims",
+      "anchors": [
+        {"id": "ruins_pilgrims_gate", "name": "The Pilgrims of Refusal", "x": 44.94, "z": -2.36, "kind": "capital claim center", "radius_m": 25.5},
+        {"id": "ruins_pilgrims_district", "name": "pilgrim_lodge_at_the_gate", "x": 52.94, "z": -8.36, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live. The walk between these two pins is the whole placed route. It stays ash.",
+      "what_stands_here": "Isen, clock 7–11, at the lodge. Pell, clock 19–23, at the lodge, after Isen is gone. The 10 m between lodge and capital is the errand's walk.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Place the memorial path", "Pave the 10 m", "Clone Isen onto the named-phase rows that also say the lodge"]
+    },
+    {
+      "id": "region_compound",
+      "name": "Envoy compound",
+      "culture": "culture_sister_watch",
+      "faction_id": "ruins_concordia_envoy",
+      "anchors": [
+        {"id": "ruins_concordia_envoy_gate", "name": "The Concordia Envoy", "x": 55.86, "z": -3.91, "kind": "capital claim center", "radius_m": 25.5},
+        {"id": "ruins_concordia_envoy_district", "name": "envoy_compound", "x": 63.86, "z": -9.91, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live. The compound studies a cap. It does not import a spell and it does not sit on Pinewood.",
+      "what_stands_here": "Marrin, clock 8–12, at the compound pin. 9.4 m from the still-casting pin. 11.0 m from the lodge pin.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Spawn Clovis", "Move her to the research outpost", "Letter the compound as Pinewood Crossing"]
+    },
+    {
+      "id": "region_meeting_house",
+      "name": "Denier meeting house",
+      "culture": "culture_closed_book",
+      "faction_id": "ruins_cascade_deniers",
+      "anchors": [
+        {"id": "ruins_cascade_deniers_gate", "name": "The Cascade Deniers", "x": 11.25, "z": -48.72, "kind": "capital claim center", "radius_m": 23.0},
+        {"id": "ruins_cascade_deniers_district", "name": "denier_meeting_house", "x": 19.25, "z": -54.72, "kind": "trade_zone", "distance_to_capital_m": 10.0, "offset": [8, -6]}
+      ],
+      "law": "steel_live. The sermon is speech. The disputed overlap with the archivists stays fauna cap 0, as S07 wrote for basin_archive_overlap.",
+      "what_stands_here": "Palen, clock 8–11, at the meeting house. The capital 10 m away holds nobody from this slice.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Place the alternative archive", "Place the bedroom", "Stage a proof of the Cascade"]
+    },
+    {
+      "id": "region_north_shelf",
+      "name": "North shelf",
+      "culture": "culture_still_cast",
+      "also": ["culture_witness_walk", "culture_sister_watch", "culture_twelve_benches"],
+      "anchors": ["ruins_spell_spirits_gate", "ruins_pilgrims_gate", "ruins_concordia_envoy_gate", "the three district pins 10 m from each"],
+      "law": "S07 fauna cap 0. This slice's people may stand on the district pins in their windows. The archivist circle overlaps this shelf by 17.4 to 19.5 m along the center lines and still does not move Kestra here.",
+      "what_stands_here": "Three claim centers inside one another's radii, plus a fourth circle from the south. The placed bodies are the spirit, Isen, Marrin, and in the evening Pell, on the pins named above.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Import hyb_mercywraith", "Add a beast because the claims stack"]
+    },
+    {
+      "id": "region_open_carry",
+      "name": "Open carry",
+      "culture": "culture_night_haul",
+      "faction_id": null,
+      "anchors": [
+        {"id": "basin_open_carry", "name": "Gap midpoint", "x": 4.1, "z": -30.5, "kind": "derived_gap", "owner": "S07"}
+      ],
+      "law": "Unclaimed. Wolves at S07's cap. No crew territory. No archive bench.",
+      "what_stands_here": "Nothing this slice adds.",
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Retune faun_ash_wolf", "Rename the gap to the_unmapped_quarter"]
+    },
+    {
+      "id": "region_unplaced_court",
+      "name": "Court, camp, and the rooms without pins",
+      "culture": null,
+      "faction_id": null,
+      "faction_ids_named_on_people_only": ["ruined_court", "ruin_rebellion"],
+      "anchors": [],
+      "law": "Names without CountryCenter spawn nothing. The third uprising lost and buried seventy-three. Calla is leading the fourth. Those sentences stay lore. Dawn stays ruins_calla_03_dawn.",
+      "what_stands_here": "Nobody.",
+      "schedule_rooms_unplaced": [
+        "ruins_throne_court",
+        "ruins_thanis_sanctum",
+        "ruins_rebel_camp",
+        "ruins_rebel_war_tent",
+        "ruins_scribe_chamber",
+        "silent_library",
+        "collapse_memorial",
+        "collapse_memorial_courtyard",
+        "first_bench_chamber",
+        "archivist_quarters",
+        "scavenger_camp_south",
+        "the_unmapped_quarter",
+        "the_long_summons_chamber",
+        "the_endless_blessing_grove",
+        "the_cascade_memorial_path",
+        "pilgrim_lodge_common_room",
+        "research_outpost",
+        "spell_quarantine_zone",
+        "envoy_compound_dining_hall",
+        "envoy_chief_quarters",
+        "alternative_archive_outpost",
+        "denier_priest_quarters",
+        "refused_circle"
+      ],
+      "extends_world": "sovereign-ruins",
+      "does_not": ["Invent a coordinate to finish an audience", "Clone calla"]
+    }
+  ],
+  "factions_used": [
+    {"id": "ruins_archivists", "name": "The Three Archivists", "row": "factions.json", "quest": true},
+    {"id": "ruins_scavenger_crews", "name": "The Scavenger Crews", "row": "factions.json", "quest": true},
+    {"id": "ruins_spell_spirits", "name": "The Spell Spirits", "row": "factions.json", "quest": true},
+    {"id": "ruins_pilgrims", "name": "The Pilgrims of Refusal", "row": "factions.json", "quest": true},
+    {"id": "ruins_concordia_envoy", "name": "The Concordia Envoy", "row": "factions.json", "quest": true},
+    {"id": "ruins_cascade_deniers", "name": "The Cascade Deniers", "row": "factions.json", "quest": true}
+  ],
+  "factions_not_used": [
+    {"id": "gen_sovereign-ruins_faction_0000", "name": "Concord Keepers", "why": "generated: true. Shares denier_priest_palen. No districts."},
+    {"id": "gen_sovereign-ruins_faction_0001", "name": "Covenant Seekers", "why": "generated: true. Shares archon_thanis. No districts."},
+    {"id": "ruined_court", "why": "Faction id on people and on lore. No factions.json row. No country."},
+    {"id": "ruin_rebellion", "why": "Faction id on people and on lore. No factions.json row. No country."}
+  ],
+  "presences": [
+    {
+      "id": "presence_kestra_archive",
+      "npc_id": "archivist_three_kestra",
+      "count": 1,
+      "window": "clock hours 7–11",
+      "anchor": "ruins_archivists_district",
+      "body": "CX",
+      "gives": "q_s08_three_of_twelve"
+    },
+    {
+      "id": "presence_sennit_archive",
+      "npc_id": "ruins_apprentice_sennit",
+      "count": 1,
+      "window": "clock hours 7–11",
+      "anchor": "ruins_archivists_district",
+      "body": "CX",
+      "gives": null,
+      "note": "Beside Kestra. Not told he is a candidate. The other six candidates have no sheets and do not appear."
+    },
+    {
+      "id": "presence_oeric_archive",
+      "npc_id": "archivist_two_oeric",
+      "count": 1,
+      "window": "clock hours 11–15",
+      "anchor": "ruins_archivists_district",
+      "body": "CX",
+      "gives": "q_s08_first_entry",
+      "note": "His blade-form hours are at collapse_memorial_courtyard, which has no pin. He is absent from that form."
+    },
+    {
+      "id": "presence_thren_count",
+      "npc_id": "scavenger_boss_thren",
+      "count": 1,
+      "window": "clock hours 3–7",
+      "anchor": "ruins_scavenger_crews_district",
+      "body": "CX",
+      "gives": "q_s08_seal_not_tonight"
+    },
+    {
+      "id": "presence_iby_camp",
+      "npc_id": "spell_reader_iby",
+      "count": 1,
+      "window": "clock hours 7–11",
+      "anchor": "ruins_scavenger_crews_district",
+      "body": "CX",
+      "gives": "q_s08_walk_around_it",
+      "note": "Afternoon at the_unmapped_quarter_perimeter is unplaced. She is absent there."
+    },
+    {
+      "id": "presence_long_summons",
+      "npc_id": "the_long_summons_spirit",
+      "count": 1,
+      "window": "all diurnal except Dominus hours 1–4",
+      "anchor": "ruins_spell_spirits_district",
+      "body": "native ash-robe mass, or nothing",
+      "gives": "q_s08_name_unanswered",
+      "pair_reason": "the_long_summons_chamber has no coordinate. The still-casting district pin is the floor until a chamber is placed."
+    },
+    {
+      "id": "presence_isen_lodge",
+      "npc_id": "pilgrim_leader_isen",
+      "count": 1,
+      "window": "clock hours 7–11",
+      "anchor": "ruins_pilgrims_district",
+      "body": "CX",
+      "gives": "q_s08_ground_unpaved",
+      "note": "Named-phase rows also mark him interactable at the lodge across Stratus through Penanus. Those rows do not spawn a second Isen."
+    },
+    {
+      "id": "presence_pell_lodge",
+      "npc_id": "ruins_courier_pell",
+      "count": 1,
+      "window": "clock hours 19–23",
+      "anchor": "ruins_pilgrims_district",
+      "body": "CX",
+      "gives": null,
+      "note": "The bridge to Concordia. This slice does not hand him a letter. Route days marked varies spawn nothing."
+    },
+    {
+      "id": "presence_marrin_compound",
+      "npc_id": "envoy_chief_marrin",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "ruins_concordia_envoy_district",
+      "body": "CX",
+      "gives": "q_s08_cap_nine_seven_days",
+      "note": "Named-phase rows also mark the compound. One Marrin. Her evening with Kestra is not staged, because Kestra's window is over."
+    },
+    {
+      "id": "presence_palen_house",
+      "npc_id": "denier_priest_palen",
+      "count": 1,
+      "window": "clock hours 8–11",
+      "anchor": "ruins_cascade_deniers_district",
+      "body": "CX",
+      "gives": "q_s08_desk_stays_shut"
+    }
+  ],
+  "political_encounters": [
+    {
+      "id": "enc_morning_count",
+      "where": "scavenger_camp_north",
+      "bodies": ["scavenger_boss_thren"],
+      "hours": "3–7",
+      "health": null,
+      "what": "The night's haul is split. The sealed Council record is named as not for sale. Iby is not in this window. At 7 Iby takes the pin for a different errand. No second boss."
+    },
+    {
+      "id": "enc_shelf_names",
+      "where": "the three district pins on the north shelf",
+      "bodies": ["the_long_summons_spirit", "pilgrim_leader_isen", "envoy_chief_marrin"],
+      "hours": "Isen 7–11 at the lodge, Marrin 8–12 at the compound, the summons on its own pin outside Dominus",
+      "distances_m": {"lodge_to_still_cast": 2.6, "still_cast_to_compound": 9.4, "lodge_to_compound": 11.0},
+      "health": null,
+      "what": "Three claims, three voices, no shared health bar. A name is called. A bunk list is checked. An inventory line is drafted. None of the three crosses to another's pin."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s08_three_of_twelve",
+      "title": "Archive — Three of Twelve",
+      "world_id": "Ruins",
+      "giver_npc_id": "archivist_three_kestra",
+      "giver_spawn": "presence_kestra_archive. Clock 7–11. Sennit is present and is not the turn-in.",
+      "backstory_id": "story_q_three",
+      "extends_lore_id": "ruins_lore_pre_cascade",
+      "does_not_replace": ["q_ruins_crow_catalogue", "q_ruins_wraith_unfinished", "q_ruins_unstack", "q_ruins_lizard_rib", "q_ruins_mask_scout", "q_s07_open_carry", "q_s07_basket_left", "q_s07_mask_to_shelf", "q_s07_tooth_not_chit"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_three_1",
+          "verb": "talk",
+          "target": "archivist_three_kestra",
+          "count": 1,
+          "text": "At the archive pin, ask who still votes. She will say the Council was twelve archives, and she will not say a fourth name."
+        },
+        {
+          "id": "obj_q_s08_three_2",
+          "verb": "witness",
+          "target": "staffed_benches",
+          "count": 3,
+          "text": "Write the bench count she will accept: three names, Vela, Oeric, Kestra. In this window the pin holds Kestra and Sennit only. Sennit is not a bench. Vela is not brought to the pin. Oeric is not brought early."
+        },
+        {
+          "id": "obj_q_s08_three_3",
+          "verb": "reach",
+          "target": "ruins_archivists_gate",
+          "count": 1,
+          "text": "Walk the 10 m to the claim center. Nine further benches are not there. Do not build them."
+        },
+        {
+          "id": "obj_q_s08_three_4",
+          "verb": "deliver",
+          "target": "archivist_three_kestra",
+          "count": 1,
+          "text": "Bring her the count: three benches, one apprentice, nine absent. Do not offer yourself as the successor."
+        }
+      ],
+      "fail": [
+        "Seat a fourth archivist",
+        "Enter first_bench_chamber",
+        "Speak Vela's cause",
+        "Tell Sennit he is one of seven",
+        "Recover a Cascade glyph",
+        "Move the turn-in onto catalogue_hall"
+      ],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The archive pin shows three benches and nine empty votes.",
+        "gossip_on_complete": "Kestra took a count and did not take an heir.",
+        "prop_or_door": "The district pin. No new hall. No fourth stool."
+      },
+      "turn_in": {"npc_id": "archivist_three_kestra", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_first_entry",
+      "title": "Archive — The First Authored Line",
+      "world_id": "Ruins",
+      "giver_npc_id": "archivist_two_oeric",
+      "giver_spawn": "presence_oeric_archive. Clock 11–15, after Kestra and Sennit have left the pin.",
+      "backstory_id": "story_q_entry",
+      "extends_lore_id": "ruins_lore_evacuation",
+      "does_not_replace": ["q_s08_three_of_twelve"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_entry_1",
+          "verb": "talk",
+          "target": "archivist_two_oeric",
+          "count": 1,
+          "text": "At the archive pin, ask why he is still here. He stayed when the city let people leave. The refusal was written down. That line is the first authored entry."
+        },
+        {
+          "id": "obj_q_s08_entry_2",
+          "verb": "witness",
+          "target": "evacuation_sentence",
+          "count": 1,
+          "text": "Hear the sentence once. He reads his own entry twice in a morning the courtyard does not have. This hearing is the one at the pin."
+        },
+        {
+          "id": "obj_q_s08_entry_3",
+          "verb": "deliver",
+          "target": "archivist_two_oeric",
+          "count": 1,
+          "text": "Repeat the public fact back: he refused to evacuate, and the record kept the refusal. Do not offer to recopy a fading word."
+        }
+      ],
+      "fail": [
+        "Move him to collapse_memorial_courtyard",
+        "Repair or rewrite the entry",
+        "Teach or inherit the blade form",
+        "Say whether the Archive or the man is fading"
+      ],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The first authored entry was heard once, at the archive pin.",
+        "gossip_on_complete": "Oeric said the evacuation sentence and the line was left as it is.",
+        "prop_or_door": "The same district pin, later hours. No courtyard."
+      },
+      "turn_in": {"npc_id": "archivist_two_oeric", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_seal_not_tonight",
+      "title": "North Camp — Not for Sale Tonight",
+      "world_id": "Ruins",
+      "giver_npc_id": "scavenger_boss_thren",
+      "giver_spawn": "presence_thren_count. Clock 3–7.",
+      "backstory_id": "story_q_seal",
+      "extends_faction_state": "ruins_scavenger_crews.tensions",
+      "does_not_replace": ["q_s07_tooth_not_chit"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_seal_1",
+          "verb": "talk",
+          "target": "scavenger_boss_thren",
+          "count": 1,
+          "text": "At the morning count, ask about the sealed Council vote. She will say two crews want it, both think a third has the key, and it is not for sale tonight."
+        },
+        {
+          "id": "obj_q_s08_seal_2",
+          "verb": "witness",
+          "target": "sealed_vote_record",
+          "count": 1,
+          "text": "See the seal. Do not break it. Do not ask who the south boss is."
+        },
+        {
+          "id": "obj_q_s08_seal_3",
+          "verb": "deliver",
+          "target": "scavenger_boss_thren",
+          "count": 1,
+          "text": "Tell her the seal is still shut and you are not buying. The count ends with the record unopened."
+        }
+      ],
+      "fail": [
+        "Open the vote-record",
+        "Search scavenger_camp_south",
+        "Enter the_unmapped_quarter",
+        "Name a lover",
+        "Pay in scavenger chits for the seal",
+        "Carry it to the envoy or the archivists"
+      ],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "North Camp count closed. The Council seal was not sold.",
+        "gossip_on_complete": "Thren named the feud and kept the record shut.",
+        "prop_or_door": "A sealed packet on the count table. It is not an inventory item."
+      },
+      "turn_in": {"npc_id": "scavenger_boss_thren", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_walk_around_it",
+      "title": "North Camp — Walk Around the Binding",
+      "world_id": "Ruins",
+      "giver_npc_id": "spell_reader_iby",
+      "giver_spawn": "presence_iby_camp. Clock 7–11, after the count.",
+      "backstory_id": "story_q_walk",
+      "extends_faction_state": "ruins_scavenger_crews.fears",
+      "does_not_replace": ["q_s08_seal_not_tonight", "q_s08_name_unanswered"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_walk_1",
+          "verb": "talk",
+          "target": "spell_reader_iby",
+          "count": 1,
+          "text": "Ask what is live on the camp edge. She speaks in fragments. One binding, older than you. Walk around it."
+        },
+        {
+          "id": "obj_q_s08_walk_2",
+          "verb": "reach",
+          "target": "ruins_scavenger_crews_gate",
+          "count": 1,
+          "text": "Walk the 10 m to the claim center, around the camp pin, and back. The binding stays a mark on the ground. You do not step through it."
+        },
+        {
+          "id": "obj_q_s08_walk_3",
+          "verb": "deliver",
+          "target": "spell_reader_iby",
+          "count": 1,
+          "text": "Tell her you went around. Do not ask to learn the reading. Do not ask her to un-cast it."
+        }
+      ],
+      "fail": [
+        "Break or un-cast the binding",
+        "Learn Iby's technique",
+        "Follow her afternoon route into the unmapped quarter",
+        "Walk the mark into the open-carry gap and fight the wolves",
+        "Treat the mark as loot"
+      ],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "A binding at North Camp was walked around.",
+        "gossip_on_complete": "Iby sent someone around a spell and the spell is still running.",
+        "prop_or_door": "A cold-iron mark in the ash at the camp pin. Not a pickup."
+      },
+      "turn_in": {"npc_id": "spell_reader_iby", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_ground_unpaved",
+      "title": "Lodge — The Ground Stays Ash",
+      "world_id": "Ruins",
+      "giver_npc_id": "pilgrim_leader_isen",
+      "giver_spawn": "presence_isen_lodge. Clock 7–11.",
+      "backstory_id": "story_q_unpaved",
+      "extends_faction_state": "ruins_pilgrims.tensions",
+      "does_not_replace": ["q_ruins_unstack"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_unpaved_1",
+          "verb": "talk",
+          "target": "pilgrim_leader_isen",
+          "count": 1,
+          "text": "At the lodge, he will say he has been debating a paved walk and he has not asked Concordia. He wants the 10 m to the claim center walked as it is."
+        },
+        {
+          "id": "obj_q_s08_unpaved_2",
+          "verb": "reach",
+          "target": "ruins_pilgrims_gate",
+          "count": 1,
+          "text": "Walk from the lodge pin to the pilgrim capital. Ash, rib, no new surface."
+        },
+        {
+          "id": "obj_q_s08_unpaved_3",
+          "verb": "witness",
+          "target": "unpaved_ash",
+          "count": 1,
+          "text": "The ground takes a print and does not hold a paver. The memorial path is not on this line."
+        },
+        {
+          "id": "obj_q_s08_unpaved_4",
+          "verb": "deliver",
+          "target": "pilgrim_leader_isen",
+          "count": 1,
+          "text": "Return to the lodge and say the ground is still ash. He does not write the request."
+        }
+      ],
+      "fail": [
+        "Place a road, a paver, or a gold line",
+        "Walk the_cascade_memorial_path",
+        "Answer the summons 2.6 m away",
+        "File a Concordia paving writ with Marrin",
+        "Send Pell with the request in the evening"
+      ],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The lodge-to-capital walk is still ash. No paving request went out.",
+        "gossip_on_complete": "Isen had the 10 m walked and did not ask for a road.",
+        "prop_or_door": "Ash underfoot. No new prop."
+      },
+      "turn_in": {"npc_id": "pilgrim_leader_isen", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_cap_nine_seven_days",
+      "title": "Compound — Cap Nine, Seven Days",
+      "world_id": "Ruins",
+      "giver_npc_id": "envoy_chief_marrin",
+      "giver_spawn": "presence_marrin_compound. Clock 8–12.",
+      "backstory_id": "story_q_cap",
+      "extends_lore_id": "ruins_lore_concordia_compact",
+      "does_not_replace": ["q_ruins_half_layer", "ruins_thanis_03_compose"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_cap_1",
+          "verb": "talk",
+          "target": "envoy_chief_marrin",
+          "count": 1,
+          "text": "At the compound, ask what the sister city is watching. She answers in inventory: the compact of Year 60, a strength cap of 9, a re-record within seven days."
+        },
+        {
+          "id": "obj_q_s08_cap_2",
+          "verb": "craft",
+          "target": "inventory_line",
+          "count": 1,
+          "text": "Write those two numbers on the report sheet she already has. Cap 9. Seven days. No third number."
+        },
+        {
+          "id": "obj_q_s08_cap_3",
+          "verb": "deliver",
+          "target": "envoy_chief_marrin",
+          "count": 1,
+          "text": "Hand the sheet back. It stays in the compound. It is not carried to the Hub and it is not a glyph."
+        }
+      ],
+      "fail": [
+        "Read or add an unsigned letter",
+        "Name the deputy",
+        "Publish the Cascade algebra",
+        "Mint a composite or a DTU",
+        "Walk the sheet to the Hub council or through the π/4 gate",
+        "Import a still-running spell into the compound"
+      ],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The compound report carries cap 9 and seven days, and nothing else new.",
+        "gossip_on_complete": "Marrin filed the compact as inventory and kept the sheet.",
+        "prop_or_door": "One sheet on the compound table. Not an item id."
+      },
+      "turn_in": {"npc_id": "envoy_chief_marrin", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_desk_stays_shut",
+      "title": "Meeting House — The Journals Stay Out",
+      "world_id": "Ruins",
+      "giver_npc_id": "denier_priest_palen",
+      "giver_spawn": "presence_palen_house. Clock 8–11.",
+      "backstory_id": "story_q_desk",
+      "extends_lore_id": "ruins_lore_the_cascade",
+      "extends_faction_state": "ruins_cascade_deniers.tensions",
+      "does_not_replace": ["q_s08_three_of_twelve", "q_s08_cap_nine_seven_days"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_desk_1",
+          "verb": "talk",
+          "target": "denier_priest_palen",
+          "count": 1,
+          "text": "Hear the sermon line: Sovereign was abandoned, not collapsed. He will not bring proof into the room."
+        },
+        {
+          "id": "obj_q_s08_desk_2",
+          "verb": "witness",
+          "target": "meeting_table",
+          "count": 1,
+          "text": "The table has pamphlets. It does not have his grandfather's journals. You do not go get them."
+        },
+        {
+          "id": "obj_q_s08_desk_3",
+          "verb": "deliver",
+          "target": "denier_priest_palen",
+          "count": 1,
+          "text": "Say the motto back, and say the table is as he left it. The movement continues. The journals stay unread."
+        }
+      ],
+      "fail": [
+        "Enter denier_priest_quarters",
+        "Find, move, or read the journals",
+        "Force a public reading",
+        "End the denier movement",
+        "Stage an archivist testimony or a pilgrim verdict in this room",
+        "Treat him as Concord Keepers"
+      ],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The meeting house heard the motto. The journals were not in the room.",
+        "gossip_on_complete": "Palen preached abandonment and did not open a book.",
+        "prop_or_door": "Pamphlets on a table. No journal prop."
+      },
+      "turn_in": {"npc_id": "denier_priest_palen", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s08_name_unanswered",
+      "title": "Still-Casting — One Name, No Answer",
+      "world_id": "Ruins",
+      "giver_npc_id": "the_long_summons_spirit",
+      "giver_spawn": "presence_long_summons. Native mass or the errand has no giver.",
+      "backstory_id": "story_q_name",
+      "extends_faction_state": "ruins_spell_spirits.tensions",
+      "does_not_replace": ["q_ruins_wraith_unfinished", "q_s08_walk_around_it"],
+      "objectives": [
+        {
+          "id": "obj_q_s08_name_1",
+          "verb": "reach",
+          "target": "ruins_spell_spirits_district",
+          "count": 1,
+          "text": "Stand at the still-casting pin. The chamber this body belongs to is not built. The pin is the floor."
+        },
+        {
+          "id": "obj_q_s08_name_2",
+          "verb": "witness",
+          "target": "one_name_called",
+          "count": 1,
+          "text": "Hear one call. The sheet does not print the name. You do not supply one, and you do not repeat what you think you heard as a fact in the turn-in."
+        },
+        {
+          "id": "obj_q_s08_name_3",
+          "verb": "talk",
+          "target": "the_long_summons_spirit",
+          "count": 1,
+          "text": "Give no answer. Do not say the recipient is dead. Leave the cast unfinished. That is the law on this shelf."
+        }
+      ],
+      "fail": [
+        "Answer the summons",
+        "Tell the spirit the recipient is dead",
+        "Invent and speak a name",
+        "Un-cast or complete the loop",
+        "Put the lines in a CX keeper's mouth",
+        "Fight the spirit, Isen, or Marrin from this pin"
+      ],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "A summons on the still-casting pin was heard and not answered.",
+        "gossip_on_complete": "The Long Summons called once more and is still calling.",
+        "prop_or_door": "Ash-robe mass, one dull mouth-light, then dark. No new mesh if the mass is missing."
+      },
+      "turn_in": {"npc_id": "the_long_summons_spirit", "requires_all_objectives": true}
+    }
+  ]
+}

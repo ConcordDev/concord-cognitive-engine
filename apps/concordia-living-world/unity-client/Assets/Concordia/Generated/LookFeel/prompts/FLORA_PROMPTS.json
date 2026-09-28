@@ -1,0 +1,1065 @@
+{
+  "schema": "concordia-lookfeel-prompts/1.0",
+  "family": "flora",
+  "batch": "B20_lookfeel_flora",
+  "count": 33,
+  "clip_note": "aura_prompt is a single-subject concept. The constraint is the first sentence. Feed aura_prompt verbatim. Do not prepend a second framing block.",
+  "entries": [
+    {
+      "id": "flora_hub_court_linden",
+      "display_name": "Court Linden",
+      "lore_blurb": "The plaza tree. One trunk, one crown, lantern clearance underneath.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Trunk splits once. Crown is a single oval. Clear stem to 2.2 m.",
+      "aura_prompt": "One court linden, a single oval crown, clear stem tall enough to walk under. Single subject, three-quarter view, centered, entire subject in frame, plaza daylight, soft even light, no text, no watermark, 3D game asset concept render. Warm limestone behind, soot on the bark, a brass lantern hook empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One court linden, a single oval crown, clear stem tall enough to walk under. Single subject, three-quarter view, centered, entire subject in frame, plaza daylight, soft even light, no text, no watermark, 3D game asset concept render. Warm limestone behind, soot on the bark, a brass lantern hook empty. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_hub_court_linden/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "crown 8 m, stem clear 2.2 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "flora_hub_pinewood_pine",
+      "display_name": "Pinewood Pine",
+      "lore_blurb": "The salt-road tree. Pinewood Crossing stands among these.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One trunk, layered plates of needles, salt at the foot.",
+      "aura_prompt": "One salt-dusted pine, layered needle plates, a single trunk. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Pale crust on the windward bark, needle duff. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One salt-dusted pine, layered needle plates, a single trunk. Single subject, three-quarter view, centered, entire subject in frame, dusk verge, soft even light, no text, no watermark, 3D game asset concept render. Pale crust on the windward bark, needle duff. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_hub_pinewood_pine/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "14 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "flora_hub_law_shrub",
+      "display_name": "Law Box Shrub",
+      "lore_blurb": "The flower box as a plant mass. One shrub, square-clipped, one bloom color.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A cube of leaf with one flower mass on top.",
+      "aura_prompt": "One square-clipped box shrub with a single bronze-orange bloom mass. Single subject, three-quarter view, centered, entire subject in frame, plaza, soft even light, no text, no watermark, 3D game asset concept render. Limestone planter, chipped corner. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One square-clipped box shrub with a single bronze-orange bloom mass. Single subject, three-quarter view, centered, entire subject in frame, plaza, soft even light, no text, no watermark, 3D game asset concept render. Limestone planter, chipped corner. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_hub_law_shrub/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "shrub 1.1 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "flora_hub_salt_grass",
+      "display_name": "Salt Verge Grass",
+      "lore_blurb": "Shoulder grass. A clump, not a lawn sheet.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One tuft, blades as a single wedge.",
+      "aura_prompt": "One clump of salt-crusted verge grass, blades reading as a single wedge. Single subject, three-quarter view, centered, entire subject in frame, road shoulder, soft even light, no text, no watermark, 3D game asset concept render. Dust, a pebble. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One clump of salt-crusted verge grass, blades reading as a single wedge. Single subject, three-quarter view, centered, entire subject in frame, road shoulder, soft even light, no text, no watermark, 3D game asset concept render. Dust, a pebble. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_hub_salt_grass/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "clump 0.6 m",
+      "palette": [
+        "#c4b49a",
+        "#ffe6c0",
+        "#c8721a",
+        "#d9cbb8",
+        "#e0a04a"
+      ]
+    },
+    {
+      "id": "flora_sunder_thorn_oak",
+      "display_name": "Thornwood Oak",
+      "lore_blurb": "Wildwood's tree. Thick trunk, one low limb thick enough to mantle.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Trunk is a pillar. Limb is a bar. Crown is one mass.",
+      "aura_prompt": "One thornwood oak, pillar trunk, a single low limb as thick as a torso. Single subject, three-quarter view, centered, entire subject in frame, forest daylight, soft even light, no text, no watermark, 3D game asset concept render. Moss, a thin gold scar in the bark, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thornwood oak, pillar trunk, a single low limb as thick as a torso. Single subject, three-quarter view, centered, entire subject in frame, forest daylight, soft even light, no text, no watermark, 3D game asset concept render. Moss, a thin gold scar in the bark, no castle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_thorn_oak/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "16 m, limb at 2.4 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "flora_sunder_pillar_fern",
+      "display_name": "Pillar Fern",
+      "lore_blurb": "Fern at the titan pillar's foot. One crown of fronds.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A fountain of fronds from one stump.",
+      "aura_prompt": "One pillar fern, fronds from a single stump, mossy. Single subject, three-quarter view, centered, entire subject in frame, forest shade, soft even light, no text, no watermark, 3D game asset concept render. Granite contact. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pillar fern, fronds from a single stump, mossy. Single subject, three-quarter view, centered, entire subject in frame, forest shade, soft even light, no text, no watermark, 3D game asset concept render. Granite contact. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_pillar_fern/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.8 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "flora_sunder_rune_pine",
+      "display_name": "Rune-Scar Pine",
+      "lore_blurb": "A pine with one scar that reads as a closed mark, not a spell circle.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Pine silhouette. One pale scar spiral that does not glow.",
+      "aura_prompt": "One pine with a single pale closed scar in the bark, no glow. Single subject, three-quarter view, centered, entire subject in frame, alpine edge, soft even light, no text, no watermark, 3D game asset concept render. Needle plates, forest floor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One pine with a single pale closed scar in the bark, no glow. Single subject, three-quarter view, centered, entire subject in frame, alpine edge, soft even light, no text, no watermark, 3D game asset concept render. Needle plates, forest floor. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_rune_pine/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "12 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "flora_sunder_fold_willow",
+      "display_name": "Fold Willow",
+      "lore_blurb": "The ravine lip tree. Curtain of whips, trunk still thick.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Thick trunk, one curtain. Not a thin weeping sketch.",
+      "aura_prompt": "One fold willow, thick trunk, a single heavy curtain of whips. Single subject, three-quarter view, centered, entire subject in frame, ravine, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, ravine air. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One fold willow, thick trunk, a single heavy curtain of whips. Single subject, three-quarter view, centered, entire subject in frame, ravine, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, ravine air. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sunder_fold_willow/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "10 m",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a",
+        "#c8a060",
+        "#b7c4b0",
+        "#d4b56a"
+      ]
+    },
+    {
+      "id": "flora_tunya_terrace_tree",
+      "display_name": "Terrace Fruit Tree",
+      "lore_blurb": "The law is fruit, not the tree. The mesh is the tree. Fruit is a few masses.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Low wide crown, thick trunk, three fruit masses.",
+      "aura_prompt": "One terrace fruit tree, low wide crown, thick trunk, three fruit masses. Single subject, three-quarter view, centered, entire subject in frame, terrace sun, soft even light, no text, no watermark, 3D game asset concept render. Limestone terrace, solar eave out of focus, no ladder of loot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One terrace fruit tree, low wide crown, thick trunk, three fruit masses. Single subject, three-quarter view, centered, entire subject in frame, terrace sun, soft even light, no text, no watermark, 3D game asset concept render. Limestone terrace, solar eave out of focus, no ladder of loot. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_terrace_tree/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "7 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_tunya_nil_fig",
+      "display_name": "Nil Listening Fig",
+      "lore_blurb": "Buttress and a dark hollow. The grove's silence is the space under it.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Buttresses as walls. One crown above.",
+      "aura_prompt": "One listening fig, buttress walls and a single dark hollow, one crown. Single subject, three-quarter view, centered, entire subject in frame, dark wet grove, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, one dim lichen, no village. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One listening fig, buttress walls and a single dark hollow, one crown. Single subject, three-quarter view, centered, entire subject in frame, dark wet grove, soft even light, no text, no watermark, 3D game asset concept render. Wet bark, one dim lichen, no village. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_nil_fig/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "buttress 6 m, crown 14 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_tunya_cliff_reed",
+      "display_name": "Masond Cliff Reed",
+      "lore_blurb": "Reed at the cliff stair's river. A bundle.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One bundle, vertical, seed heads as a bar.",
+      "aura_prompt": "One bundle of cliff reed, seed heads as a single bar. Single subject, three-quarter view, centered, entire subject in frame, cliff river, soft even light, no text, no watermark, 3D game asset concept render. River stone, mist. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One bundle of cliff reed, seed heads as a single bar. Single subject, three-quarter view, centered, entire subject in frame, cliff river, soft even light, no text, no watermark, 3D game asset concept render. River stone, mist. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_cliff_reed/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "2.4 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_tunya_ice_rim_grass",
+      "display_name": "Aekon Rim Grass",
+      "lore_blurb": "Grass at the glacier's edge. Frost is weather, not a spell.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A low wedge of grass, frost on one side.",
+      "aura_prompt": "One wedge of rim grass, frost crusted on the windward side only. Single subject, three-quarter view, centered, entire subject in frame, glacier light, soft even light, no text, no watermark, 3D game asset concept render. Ice block behind, no crystal flowers. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wedge of rim grass, frost crusted on the windward side only. Single subject, three-quarter view, centered, entire subject in frame, glacier light, soft even light, no text, no watermark, 3D game asset concept render. Ice block behind, no crystal flowers. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_ice_rim_grass/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "0.5 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_tunya_dye_reed",
+      "display_name": "Fluxom Dye Reed",
+      "lore_blurb": "Canal reed. Dye is a stain on the stem.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A clump, stems stained to the waterline.",
+      "aura_prompt": "One clump of canal reed, stems dye-stained to a waterline. Single subject, three-quarter view, centered, entire subject in frame, harbor, soft even light, no text, no watermark, 3D game asset concept render. Wet timber edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One clump of canal reed, stems dye-stained to a waterline. Single subject, three-quarter view, centered, entire subject in frame, harbor, soft even light, no text, no watermark, 3D game asset concept render. Wet timber edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_dye_reed/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.6 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_tunya_ash_scrub",
+      "display_name": "Sangree Ash Scrub",
+      "lore_blurb": "Scrub that survives the forge yard. Low, blackened on one side.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A low dome of twig. One side soot.",
+      "aura_prompt": "One low ash scrub, a dome of twigs, soot on the forge-facing side. Single subject, three-quarter view, centered, entire subject in frame, forge yard, soft even light, no text, no watermark, 3D game asset concept render. Cinder ground. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low ash scrub, a dome of twigs, soot on the forge-facing side. Single subject, three-quarter view, centered, entire subject in frame, forge yard, soft even light, no text, no watermark, 3D game asset concept render. Cinder ground. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_tunya_ash_scrub/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.2 m",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080",
+        "#c8721a",
+        "#e4d7b0",
+        "#f0b040"
+      ]
+    },
+    {
+      "id": "flora_ruins_ash_cypress",
+      "display_name": "Ash Cypress",
+      "lore_blurb": "The forum tree. Narrow, dark, one trunk.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A flame-shaped crown, very narrow. Trunk thick.",
+      "aura_prompt": "One ash cypress, narrow dark crown, thick trunk, dust in the bark. Single subject, three-quarter view, centered, entire subject in frame, ash daylight, soft even light, no text, no watermark, 3D game asset concept render. Limestone forum, no bones. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One ash cypress, narrow dark crown, thick trunk, dust in the bark. Single subject, three-quarter view, centered, entire subject in frame, ash daylight, soft even light, no text, no watermark, 3D game asset concept render. Limestone forum, no bones. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_ruins_ash_cypress/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "12 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "flora_ruins_catalogue_vine",
+      "display_name": "Catalogue Vine",
+      "lore_blurb": "Vine on a column. A thick rope of stem, not hair.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One stem rope and a leaf mass.",
+      "aura_prompt": "One thick vine rope on a limestone drum, a single leaf mass. Single subject, three-quarter view, centered, entire subject in frame, forum, soft even light, no text, no watermark, 3D game asset concept render. Ash, moss. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick vine rope on a limestone drum, a single leaf mass. Single subject, three-quarter view, centered, entire subject in frame, forum, soft even light, no text, no watermark, 3D game asset concept render. Ash, moss. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_ruins_catalogue_vine/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "climbs 4 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "flora_ruins_bone_moss",
+      "display_name": "Bone Moss",
+      "lore_blurb": "Moss on fossil rib. A pad, not a creature.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A thick pad of moss following a curve.",
+      "aura_prompt": "One thick moss pad following a fossil curve, dull green. Single subject, three-quarter view, centered, entire subject in frame, shade, soft even light, no text, no watermark, 3D game asset concept render. Ash dust on the high side. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick moss pad following a fossil curve, dull green. Single subject, three-quarter view, centered, entire subject in frame, shade, soft even light, no text, no watermark, 3D game asset concept render. Ash dust on the high side. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_ruins_bone_moss/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "pad 1 m",
+      "palette": [
+        "#5a5044",
+        "#b89060",
+        "#2a1c14",
+        "#8a8178",
+        "#c4a070"
+      ]
+    },
+    {
+      "id": "flora_crime_plane",
+      "display_name": "Wharf Plane Tree",
+      "lore_blurb": "The street tree that survives sodium and rain. Mottled bark.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One trunk, one high crown, clear walk underneath.",
+      "aura_prompt": "One wharf plane tree, mottled bark, high crown, clear stem. Single subject, three-quarter view, centered, entire subject in frame, rain street, soft even light, no text, no watermark, 3D game asset concept render. Wet brick behind, sodium stain on the trunk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wharf plane tree, mottled bark, high crown, clear stem. Single subject, three-quarter view, centered, entire subject in frame, rain street, soft even light, no text, no watermark, 3D game asset concept render. Wet brick behind, sodium stain on the trunk. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_crime_plane/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "stem clear 2.4 m, crown 10 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "flora_crime_gutter_fern",
+      "display_name": "Gutter Fern",
+      "lore_blurb": "A fern in a wall crack. One crown.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Fronds from a crack. Small.",
+      "aura_prompt": "One gutter fern growing from a single brick crack. Single subject, three-quarter view, centered, entire subject in frame, alley, soft even light, no text, no watermark, 3D game asset concept render. Damp, rust streak. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One gutter fern growing from a single brick crack. Single subject, three-quarter view, centered, entire subject in frame, alley, soft even light, no text, no watermark, 3D game asset concept render. Damp, rust streak. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_crime_gutter_fern/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "0.4 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "flora_crime_dock_reed",
+      "display_name": "Dock Reed",
+      "lore_blurb": "Reed in the piling gap. Oil at the base.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A thin clump that still reads as one wedge.",
+      "aura_prompt": "One dock reed clump, oil-dark at the base, one wedge of stems. Single subject, three-quarter view, centered, entire subject in frame, harbor, soft even light, no text, no watermark, 3D game asset concept render. Timber pile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One dock reed clump, oil-dark at the base, one wedge of stems. Single subject, three-quarter view, centered, entire subject in frame, harbor, soft even light, no text, no watermark, 3D game asset concept render. Timber pile. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_crime_dock_reed/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.4 m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ]
+    },
+    {
+      "id": "flora_cyber_well_weed",
+      "display_name": "Service-Well Weed",
+      "lore_blurb": "The Grid's plant. One weed in a cracked well.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A small vigorous clump. Not a forest.",
+      "aura_prompt": "One vigorous weed clump in a cracked service well. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. Wet concrete, a cyan reflection, no bioluminescent forest. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One vigorous weed clump in a cracked service well. Single subject, three-quarter view, centered, entire subject in frame, night alley, soft even light, no text, no watermark, 3D game asset concept render. Wet concrete, a cyan reflection, no bioluminescent forest. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_cyber_well_weed/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "0.5 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "flora_cyber_roof_moss",
+      "display_name": "Roof Moss Pad",
+      "lore_blurb": "Moss on a sky-bridge gasket. A pad.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A flat pad of moss on metal.",
+      "aura_prompt": "One flat moss pad on a scratched metal gasket. Single subject, three-quarter view, centered, entire subject in frame, roof dusk, soft even light, no text, no watermark, 3D game asset concept render. Soot, acrylic edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flat moss pad on a scratched metal gasket. Single subject, three-quarter view, centered, entire subject in frame, roof dusk, soft even light, no text, no watermark, 3D game asset concept render. Soot, acrylic edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_cyber_roof_moss/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "pad 0.8 m",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#2a2040",
+        "#3dffa0"
+      ]
+    },
+    {
+      "id": "flora_frontier_wind_grass",
+      "display_name": "Wind Grass",
+      "lore_blurb": "The open country's ground cover as one clump, bent.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Blades bent as a single comb.",
+      "aura_prompt": "One clump of wind grass, blades bent as a single comb. Single subject, three-quarter view, centered, entire subject in frame, open plain, soft even light, no text, no watermark, 3D game asset concept render. Dust, canvas fibre. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One clump of wind grass, blades bent as a single comb. Single subject, three-quarter view, centered, entire subject in frame, open plain, soft even light, no text, no watermark, 3D game asset concept render. Dust, canvas fibre. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_frontier_wind_grass/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "0.8 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "flora_frontier_sage",
+      "display_name": "Dust Sage",
+      "lore_blurb": "Pronghorn country. A low silver bush.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One dome, silver, twiggy, thick at the base.",
+      "aura_prompt": "One low silver dust-sage bush, thick base, one dome. Single subject, three-quarter view, centered, entire subject in frame, plain daylight, soft even light, no text, no watermark, 3D game asset concept render. Dry ground, no mesa required. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low silver dust-sage bush, thick base, one dome. Single subject, three-quarter view, centered, entire subject in frame, plain daylight, soft even light, no text, no watermark, 3D game asset concept render. Dry ground, no mesa required. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_frontier_sage/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.1 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "flora_frontier_cottonwood",
+      "display_name": "Dust Cottonwood",
+      "lore_blurb": "The water tree of the road. One trunk, pale leaf mass.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Thick trunk, one fluttering mass of pale leaf.",
+      "aura_prompt": "One dust cottonwood, thick trunk, a single pale leaf mass. Single subject, three-quarter view, centered, entire subject in frame, open daylight, soft even light, no text, no watermark, 3D game asset concept render. Dry creek stones, no dome. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One dust cottonwood, thick trunk, a single pale leaf mass. Single subject, three-quarter view, centered, entire subject in frame, open daylight, soft even light, no text, no watermark, 3D game asset concept render. Dry creek stones, no dome. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_frontier_cottonwood/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "13 m",
+      "palette": [
+        "#c8b070",
+        "#efe6d4",
+        "#4a3828",
+        "#e6d8b8",
+        "#f0d090"
+      ]
+    },
+    {
+      "id": "flora_dawn_park_plane",
+      "display_name": "Dawn Park Plane",
+      "lore_blurb": "Civic park tree under the spires. Cleaner than the Coast plane, still worn.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "High crown, pale bark, one prune scar.",
+      "aura_prompt": "One park plane tree, high crown, one prune scar, pale bark. Single subject, three-quarter view, centered, entire subject in frame, park dawn, soft even light, no text, no watermark, 3D game asset concept render. Dawn light, composite paving. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One park plane tree, high crown, one prune scar, pale bark. Single subject, three-quarter view, centered, entire subject in frame, park dawn, soft even light, no text, no watermark, 3D game asset concept render. Dawn light, composite paving. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_dawn_park_plane/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "12 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "flora_dawn_roof_olive",
+      "display_name": "Roof Olive",
+      "lore_blurb": "A roof-garden tree in a square planter. Restrained.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Low trunk, one gray-green crown, square planter.",
+      "aura_prompt": "One roof olive in a square planter, low trunk, one gray-green crown. Single subject, three-quarter view, centered, entire subject in frame, rooftop, soft even light, no text, no watermark, 3D game asset concept render. Chrome scuff on the planter, no heroic topiary. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One roof olive in a square planter, low trunk, one gray-green crown. Single subject, three-quarter view, centered, entire subject in frame, rooftop, soft even light, no text, no watermark, 3D game asset concept render. Chrome scuff on the planter, no heroic topiary. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_dawn_roof_olive/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "3 m",
+      "palette": [
+        "#d8d4dc",
+        "#ffd0a0",
+        "#3a78ff",
+        "#e7e4ea",
+        "#ffd0a0"
+      ]
+    },
+    {
+      "id": "flora_crucible_seam_lichen",
+      "display_name": "Seam Lichen",
+      "lore_blurb": "Lichen along a teal crack. The plant is dull. The crack is the light.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A crust following one line.",
+      "aura_prompt": "One crust of dull lichen following a single teal rock crack. Single subject, three-quarter view, centered, entire subject in frame, dusk rock, soft even light, no text, no watermark, 3D game asset concept render. Basalt, no sparkle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One crust of dull lichen following a single teal rock crack. Single subject, three-quarter view, centered, entire subject in frame, dusk rock, soft even light, no text, no watermark, 3D game asset concept render. Basalt, no sparkle. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_crucible_seam_lichen/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "crust 1 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "flora_crucible_fault_moss",
+      "display_name": "Fault Moss",
+      "lore_blurb": "Moss in the quartz fault. A thick pad.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Pad in a split. One mass.",
+      "aura_prompt": "One thick moss pad seated in a quartz fault split. Single subject, three-quarter view, centered, entire subject in frame, ground dusk, soft even light, no text, no watermark, 3D game asset concept render. Basalt slabs. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick moss pad seated in a quartz fault split. Single subject, three-quarter view, centered, entire subject in frame, ground dusk, soft even light, no text, no watermark, 3D game asset concept render. Basalt slabs. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_crucible_fault_moss/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "0.6 m",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#c8b4ff",
+        "#3a5558",
+        "#20ffd0"
+      ]
+    },
+    {
+      "id": "flora_sere_furnace_scrub",
+      "display_name": "Furnace Scrub",
+      "lore_blurb": "Scrub that lives on soot. Low, one-sided.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A low bush, burned on the stack side.",
+      "aura_prompt": "One low furnace scrub, the stack-facing side blackened. Single subject, three-quarter view, centered, entire subject in frame, smog yard, soft even light, no text, no watermark, 3D game asset concept render. Cinder, brick dust. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low furnace scrub, the stack-facing side blackened. Single subject, three-quarter view, centered, entire subject in frame, smog yard, soft even light, no text, no watermark, 3D game asset concept render. Cinder, brick dust. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sere_furnace_scrub/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "flora_sere_flood_reed",
+      "display_name": "Flood Reed",
+      "lore_blurb": "Reed in polluted water. A stain line.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "One clump, two-tone from the flood line.",
+      "aura_prompt": "One flood reed clump, a hard stain line from polluted water. Single subject, three-quarter view, centered, entire subject in frame, gray water, soft even light, no text, no watermark, 3D game asset concept render. Concrete pier edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flood reed clump, a hard stain line from polluted water. Single subject, three-quarter view, centered, entire subject in frame, gray water, soft even light, no text, no watermark, 3D game asset concept render. Concrete pier edge. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sere_flood_reed/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.8 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "flora_sere_stubble",
+      "display_name": "Breadland Stubble",
+      "lore_blurb": "Exhausted grain. A patch of cut stems, not a golden field.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "Short verticals as one mat.",
+      "aura_prompt": "One mat of cut grain stubble, gray-gold, dust in it. Single subject, three-quarter view, centered, entire subject in frame, smog field, soft even light, no text, no watermark, 3D game asset concept render. Flat exhausted ground. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One mat of cut grain stubble, gray-gold, dust in it. Single subject, three-quarter view, centered, entire subject in frame, smog field, soft even light, no text, no watermark, 3D game asset concept render. Flat exhausted ground. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sere_stubble/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "mat 2 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    },
+    {
+      "id": "flora_sere_highland_thorn",
+      "display_name": "Highland Thorn",
+      "lore_blurb": "Wind thorn on the highland. Thick twigs.",
+      "taxonomy_tags": [
+        "flora",
+        "biome_defining"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "batch": "B20_lookfeel_flora",
+      "silhouette_notes": "A leaning bush, one direction of wind.",
+      "aura_prompt": "One highland thorn bush leaning with the wind, thick twigs. Single subject, three-quarter view, centered, entire subject in frame, highland smog, soft even light, no text, no watermark, 3D game asset concept render. Extraction headframe far and out of focus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One highland thorn bush leaning with the wind, thick twigs. Single subject, three-quarter view, centered, entire subject in frame, highland smog, soft even light, no text, no watermark, 3D game asset concept render. Extraction headframe far and out of focus. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/flora_sere_highland_thorn/",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "softenter_landmark": false,
+        "continent_stream": "impostor at L1, hero mesh at L3",
+        "spawner": "WorldGeography biome dress, not a creature compiler"
+      },
+      "scale_vs_player": "1.6 m",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#8a3030",
+        "#6a5848",
+        "#e07030"
+      ]
+    }
+  ]
+}

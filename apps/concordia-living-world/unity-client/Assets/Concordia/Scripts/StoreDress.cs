@@ -25,7 +25,6 @@ namespace Concordia
             }
             Place(StandLit, root, new Vector3(0f, 0f, 0f), 0f, 1.7f);
             FreePacks.Spawn(DressVocab.Well(), root, new Vector3(-8.4f, 0f, 6.2f), 20f, 1.6f, required: false);
-            FreePacks.Spawn(DressVocab.Cart(), root, new Vector3(9.2f, 0f, -5.4f), -35f, 2.1f, required: false);
             FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, new Vector3(-14f, 0f, 11f), 12f, 9f, required: false);
             FreePacks.Spawn(DressVocab.Tree(WorldId.Hub), root, new Vector3(13.4f, 0f, 12.2f), -28f, 8.2f, required: false);
             FreePacks.Spawn(DressVocab.Rock(), root, new Vector3(-11.2f, 0f, -8.6f), 40f, 1.3f, required: false);

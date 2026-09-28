@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!49 &4900000
+TextAsset:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: CX_P2_PLATE_REGISTRY
+  m_Script: "{\n  \"wave\": \"P2-world-gear-vfx\",\n  \"sourceRoot\": \"Assets/Concordia/Generated/P2\",\n 
+    \"converted\": 43,\n  \"skippedVerify\": 5,\n  \"errors\": [],\n  \"plates\":
+    [\n    {\"plate\":\"CX_Create_Body_Heavy\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Body_Heavy.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Body_Heavy.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Body_Slight\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Body_Slight.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Body_Slight.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Face_ShortHair\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Face_ShortHair.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Face_ShortHair.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Face_Stern\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Face_Stern.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Face_Stern.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Face_Walker\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Face_Walker.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Face_Walker.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Hair_Bun\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Bun.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Hair_Bun.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Hair_Crop\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Crop.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Hair_Crop.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Hair_Long\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Long.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Hair_Long.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Create_Hair_Topknot\",\"source\":\"Assets/Concordia/Generated/P2/Create/CX_Create_Hair_Topknot.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Create/CX_Create_Hair_Topknot.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Gear_BanditScrap\",\"source\":\"Assets/Concordia/Generated/P2/Gear/CX_Gear_BanditScrap.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Gear/CX_Gear_BanditScrap.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Gear_CourtTunic\",\"source\":\"Assets/Concordia/Generated/P2/Gear/CX_Gear_CourtTunic.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Gear/CX_Gear_CourtTunic.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Gear_CrimsonCourt\",\"source\":\"Assets/Concordia/Generated/P2/Gear/CX_Gear_CrimsonCourt.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Gear/CX_Gear_CrimsonCourt.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Gear_NightMarket\",\"source\":\"Assets/Concordia/Generated/P2/Gear/CX_Gear_NightMarket.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Gear/CX_Gear_NightMarket.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Gear_SteelJerkin\",\"source\":\"Assets/Concordia/Generated/P2/Gear/CX_Gear_SteelJerkin.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Gear/CX_Gear_SteelJerkin.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_CrimeFixer\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_CrimeFixer.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_CrimeFixer.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_DawnWatcher\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_DawnWatcher.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_DawnWatcher.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_FrontierScout\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_FrontierScout.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_FrontierScout.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_GlyphKeeper\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_GlyphKeeper.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_GlyphKeeper.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_GridRunner\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_GridRunner.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_GridRunner.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_GroveMerchant\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_GroveMerchant.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_GroveMerchant.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_IronWarden\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_IronWarden.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_IronWarden.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_NPC_LatticeWalker\",\"source\":\"Assets/Concordia/Generated/P2/NPCs/CX_NPC_LatticeWalker.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/NPCs/CX_NPC_LatticeWalker.mat\",\"binding\":\"authored-cx-material\"},\n   
+    {\"plate\":\"CX_Prop_ArenaDummy\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_ArenaDummy.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_ArenaDummy.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_Campfire\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_Campfire.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_Campfire.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_CourtLantern\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_CourtLantern.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_CourtLantern.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_Crate\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_Crate.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_Crate.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_DelveMouth\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_DelveMouth.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_DelveMouth.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_FishingKit\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_FishingKit.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_FishingKit.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_Forge\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_Forge.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_Forge.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_MarketStall\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_MarketStall.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_MarketStall.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_Shrine\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_Shrine.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_Shrine.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_Well\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_Well.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_Well.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Prop_WreckWagon\",\"source\":\"Assets/Concordia/Generated/P2/Props/CX_Prop_WreckWagon.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Props/CX_Prop_WreckWagon.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Sign_RingPost\",\"source\":\"Assets/Concordia/Generated/P2/Signs/CX_Sign_RingPost.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Signs/CX_Sign_RingPost.mat\",\"binding\":\"environment-prop-material\"},\n   
+    {\"plate\":\"CX_Tile_AshCinder\",\"source\":\"Assets/Concordia/Generated/P2/Tiles/CX_Tile_AshCinder.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Tiles/CX_Tile_AshCinder.mat\",\"binding\":\"world-tile-material\"},\n   
+    {\"plate\":\"CX_Tile_CourtCobble\",\"source\":\"Assets/Concordia/Generated/P2/Tiles/CX_Tile_CourtCobble.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Tiles/CX_Tile_CourtCobble.mat\",\"binding\":\"world-tile-material\"},\n   
+    {\"plate\":\"CX_Tile_MossFloor\",\"source\":\"Assets/Concordia/Generated/P2/Tiles/CX_Tile_MossFloor.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Tiles/CX_Tile_MossFloor.mat\",\"binding\":\"world-tile-material\"},\n   
+    {\"plate\":\"CX_Tile_PackedEarth\",\"source\":\"Assets/Concordia/Generated/P2/Tiles/CX_Tile_PackedEarth.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Tiles/CX_Tile_PackedEarth.mat\",\"binding\":\"world-tile-material\"},\n   
+    {\"plate\":\"CX_Tile_SandGravel\",\"source\":\"Assets/Concordia/Generated/P2/Tiles/CX_Tile_SandGravel.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/Tiles/CX_Tile_SandGravel.mat\",\"binding\":\"world-tile-material\"},\n   
+    {\"plate\":\"CX_VFX_CurseFold\",\"source\":\"Assets/Concordia/Generated/P2/VFX/CX_VFX_CurseFold.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/VFX/CX_VFX_CurseFold.mat\",\"binding\":\"combat-vfx-material\"},\n   
+    {\"plate\":\"CX_VFX_FlowerStep\",\"source\":\"Assets/Concordia/Generated/P2/VFX/CX_VFX_FlowerStep.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/VFX/CX_VFX_FlowerStep.mat\",\"binding\":\"combat-vfx-material\"},\n   
+    {\"plate\":\"CX_VFX_HitSparks\",\"source\":\"Assets/Concordia/Generated/P2/VFX/CX_VFX_HitSparks.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/VFX/CX_VFX_HitSparks.mat\",\"binding\":\"combat-vfx-material\"},\n   
+    {\"plate\":\"CX_VFX_ParryRing\",\"source\":\"Assets/Concordia/Generated/P2/VFX/CX_VFX_ParryRing.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P2/VFX/CX_VFX_ParryRing.mat\",\"binding\":\"combat-vfx-material\"}\n 
+    ]\n}"

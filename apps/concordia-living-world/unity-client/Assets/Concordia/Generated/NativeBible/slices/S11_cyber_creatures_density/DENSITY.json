@@ -1,0 +1,632 @@
+{
+  "schema": "concordia.slice.density.v1",
+  "slice_id": "S11_cyber_creatures_density",
+  "world_id": "Cyber",
+  "canon_world_id": "cyber",
+  "display_world": "The Grid",
+  "facet": "creatures_density",
+  "title": "The Grid — drones, constructs, density tables",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, the enc_census clock, the enc_junction_null clock, Canon lore, countries.json, factions, or prior slices S01–S10.",
+  "canon_pins": {
+    "world_id": "Cyber",
+    "canon_world_def_title": "The Grid",
+    "gate_name": "The Grid",
+    "gate_short_name": "CYBER",
+    "gate_angle_rad": 0,
+    "gate_color": "#3dffa0",
+    "refusal_gate": "Refusal of Numbers",
+    "refusal_line": "I will not be counted.",
+    "the_no": "Identity is terrain.",
+    "law_text": "Damage hides until you let it exist. The hide is presentation. The hit still resolves in HitResolver. A finished sum fails the Refusal of Numbers even if the bar breaks.",
+    "density_law": "Do not be counted. Dogs are not drones. No rifles in ambient hands.",
+    "style_id": "zero",
+    "style_name": "Uncounted",
+    "style_verbs": ["Pulse", "Stack overflow", "Refuse the number", "Null flush"],
+    "steel_live": true,
+    "fight_style_for_people": "Capoeira",
+    "combat": "drone and pulse",
+    "weather": "neon",
+    "traversal": "parkour infrastructure",
+    "humanoid_body": "CX male or CX female. Concordia face. Wardrobe on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_R, CX_Back. People in this slice are npc_role_grid_labor and npc_role_grid_officer.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m. It does not govern the Grid. Steel carried inside that disk and outside the Arena dies as flowers.",
+    "hub_law_radius_m": 42,
+    "palette": ["#1a1228", "#3dffa0", "#c45aa8", "#d8d4dc"],
+    "kit": "arch_kit_cyber_grid",
+    "sky_bridge_module": {
+      "length_m": 8,
+      "width_m": 4,
+      "modules": "2 long, 1 wide",
+      "snap": "both decks",
+      "source": "KITS.json arch_kit_cyber_grid footprint"
+    },
+    "named_sets_without_canon_point": ["census_block", "uncounted_alley", "sky_bridge"],
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "distance_to_nearest_cyber_capital_m": 44.05,
+      "nearest_capital": "cyber_fixer_guild",
+      "rule": "Outside every Cyber circle. Every id in this slice has cap 0 on that verge."
+    },
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "forbidden_stand_ins": [
+      "Quaternius body",
+      "Kenney body",
+      "CX body as a drone",
+      "CX body as a sentinel",
+      "CX body as a construct",
+      "CX body as a dog or a bird",
+      "disc mesh as the stray",
+      "stray mesh as the drone",
+      "hyb_billdrone on a Grid deck",
+      "hyb_censusconstruct as a substitute sentinel or construct",
+      "rifle in ambient hands",
+      "self-replicating swarm from the Canon seed"
+    ],
+    "canon_fauna_aliases": ["drone", "sentinel", "construct"],
+    "alias_resolution": "On Cyber, drone resolves to mon_grid_drone at the cap in this file. sentinel resolves to mon_grid_sentinel. construct resolves to mon_grid_construct. drone does not resolve to hyb_billdrone, mon_boss_census, or the Canon seed rogue_drone_swarm. Crime's drone alias stays hyb_billdrone inside S09's enc_rotor_saddle."
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/cyber/lore.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/cyber/countries.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/cyber/factions.json",
+    "canon_creature_seeds": "Assets/Concordia/Resources/Concordia/Canon/cyber/creatures.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/cyber/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/cyber/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/cyber/quests/",
+    "animals": "native-bible/creatures/ANIMALS.json faun_grid_stray, faun_cable_sparrow",
+    "monsters": "native-bible/creatures/MONSTERS.json mon_grid_drone, mon_grid_sentinel, mon_grid_construct, mon_boss_census",
+    "hybrids": "native-bible/creatures/HYBRIDS.json hyb_nullhound, hyb_censusconstruct, hyb_billdrone",
+    "roles": ["npc_role_grid_labor", "npc_role_grid_officer"],
+    "taxonomy": "native-bible/01_TAXONOMY.md Cyber row",
+    "kit": "native-bible/architecture/KITS.json arch_kit_cyber_grid",
+    "density": "native-bible/volume/DENSITY_TABLES.json Cyber block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json enc_census, enc_junction_null",
+    "tokens": ["item_rem_missing_number", "item_rem_null_ring", "item_count_slate"],
+    "skills_cited": ["skill_steel_pulse", "skill_presence_refuse_count"],
+    "geography": "Country capital x,z and territory_radius from countries.json. District anchors are the authored (+8, -6) step, 10 m, already in that file. Not WorldGeography.DeterministicOffset."
+  },
+  "existing_quests_not_redone": [
+    "q_cyber_packet_tea",
+    "q_cyber_silver_path",
+    "q_cyber_missing_number",
+    "q_cyber_stray_ear",
+    "q_cyber_sparrow_nest",
+    "q_cyber_lavren_door",
+    "q_cyber_practice_rail",
+    "q_cyber_hand_list",
+    "cyber_kira_01_tea",
+    "cyber_kira_02_map",
+    "cyber_kira_03_trace",
+    "cyber_silver_01_visit",
+    "cyber_silver_02_choose",
+    "cyber_silver_03_close",
+    "cyber_ghost_01_oren",
+    "cyber_ghost_02_lavren",
+    "cyber_ghost_03_choice"
+  ],
+  "unique_npcs_do_not_clone": [
+    "nyx",
+    "kira",
+    "silver",
+    "lavren",
+    "zero_nakamura",
+    "iris_three",
+    "nyx_torres",
+    "old_dom",
+    "walker_static_tap",
+    "nevex_vp_kael_renn",
+    "polysteel_president_vexis",
+    "street_doc_marit",
+    "ai_advocate_iris_three",
+    "fixer_guildmaster_ren_cordon",
+    "fixer_oren_lim",
+    "datadiver_kira_zane",
+    "merchant_kix_orange",
+    "officer_jin_holt",
+    "child_pixel",
+    "ghost_in_the_machine",
+    "doctor_ren_chase",
+    "broker_silver_vey",
+    "courier_zip",
+    "the_fixer_lo",
+    "the_arbiter_vell",
+    "the_grid_worker_sal"
+  ],
+  "politics_left_for_a_later_cyber_slice": [
+    "Zero Collective cradle and clone threshold",
+    "Blackout Resistance safe-house and the first EMP block",
+    "Nevex tower, the off-books division, and the annual physical",
+    "Polysteel Society and the 91 percent chrome gap",
+    "AI Rights storefront and the Cassiel-7 hearing",
+    "Cordon Guild confidentiality vote",
+    "Officer Holt's second promotion and Oren Lim's coin",
+    "Ghost-7 and Lavren's door",
+    "Silver Vey's sister and the forged identity",
+    "lattice_patrol and lattice_runners, named in lore and npcs-extra, with no country circle",
+    "The Voss visit and the resistance correspondence",
+    "vendors"
+  ],
+  "hidden_truths_withheld": [
+    "lore_the_upload",
+    "lore_augmented_children_program",
+    "lore_voss_consultation"
+  ],
+  "geography": {
+    "method": "Floors are a placed country anchor, an 8 m deck derived from that anchor along the country's own step, or a gap between two CountryCenter circles. A faction capital is a rim. A kit named set with no Canon point is not a floor. District anchors in countries.json are capital + (8, -6), length 10 m. The sky-bridge is 8 m, so it cannot be the capital-to-district step. It continues outward from the district.",
+    "overlaps_left_empty": [
+      { "pair": ["zero_collective", "cyber_nevex"], "overlap_m": 23.92, "note": "nevex_tower_central (-45.43, -39.38) sits in both circles. Cap 0." },
+      { "pair": ["blackout_resistance", "cyber_augmented_elite_club"], "overlap_m": 29.44, "note": "under_district (14.3, -38.39) sits in both circles. Cap 0. Blackout's disputed_border lists only zero_collective. The geometry is what empties the district." },
+      { "pair": ["cyber_street_docs", "cyber_ai_rights_movement"], "overlap_m": 12.80, "note": "Circles overlap. The clinic point does not. The clinic stays a floor. The overlap band stays empty." },
+      { "pair": ["zero_collective", "blackout_resistance"], "overlap_m": 6.39 },
+      { "pair": ["zero_collective", "cyber_augmented_elite_club"], "overlap_m": 6.60 },
+      { "pair": ["zero_collective", "cyber_ai_rights_movement"], "overlap_m": 3.10 },
+      { "pair": ["blackout_resistance", "cyber_fixer_guild"], "overlap_m": 9.51 },
+      { "pair": ["cyber_nevex", "cyber_ai_rights_movement"], "overlap_m": 18.57 }
+    ],
+    "sky_deck": {
+      "id": "floor_mainframe_deck",
+      "kind": "placed_anchor_plus_module",
+      "anchor_id": "zero_collective_district",
+      "district_name": "mainframe_district",
+      "country_id": "zero_collective",
+      "capital": { "x": -33.77, "z": -52.0, "radius": 25.5 },
+      "near_snap": { "x": -25.77, "z": -58.0 },
+      "near_snap_distance_to_capital_m": 10,
+      "step_unit": { "x": 0.8, "z": -0.6 },
+      "far_snap": { "x": -19.37, "z": -62.8 },
+      "far_snap_distance_to_capital_m": 18,
+      "span_midpoint": { "x": -22.57, "z": -60.4 },
+      "span_midpoint_distance_to_capital_m": 14,
+      "length_m": 8,
+      "width_m": 4,
+      "inside": ["zero_collective"],
+      "far_snap_inside_any_other_circle": false,
+      "what": "The census sky deck. Eyes go up because a slate treats the deck as not-ground. One door at the near snap. No second door at the far snap.",
+      "holds": ["mon_grid_sentinel", "mon_grid_drone", "faun_cable_sparrow", "npc_role_grid_labor", "npc_role_grid_officer", "enc_disc_triangle"],
+      "kit_rule": "arch_kit_cyber_grid named set sky_bridge has no Canon point. The anchor plus the 8 m plan is the floor. hall_bridge dresses it when the set is placed. Drones hover on the plan either way. Sparrows wait for a junction box or a cable tray."
+    },
+    "clinic_hinge": {
+      "id": "floor_clinic_hinge",
+      "kind": "placed_anchor",
+      "anchor_id": "cyber_street_docs_district",
+      "district_name": "street_doc_clinic_north",
+      "country_id": "cyber_street_docs",
+      "capital": { "x": -29.25, "z": 27.28, "radius": 25.5 },
+      "point": { "x": -21.25, "z": 21.28 },
+      "distance_to_capital_m": 10,
+      "inside": ["cyber_street_docs"],
+      "what": "The only placed Street Docs coordinate that sits in that circle alone. A construct with a ground-off serial is the no-records rule in a body. The capital stays empty.",
+      "holds": ["mon_grid_construct", "npc_role_grid_labor", "enc_hinge_blank"],
+      "kit_rule": "A hinge-room module is dressing on this point, not a second floor."
+    },
+    "uncounted_gap": {
+      "id": "floor_uncounted_gap",
+      "kind": "derived_gap",
+      "what": "Open ground between the AI Rights circle and the Cordon Guild circle. No country radius covers the midpoint. Dogs the Census misses stand here. The nullhound's one skipped tick stands here.",
+      "inputs": {
+        "ai_rights_capital": { "x": -39.39, "z": -6.95, "radius": 23.0, "country_id": "cyber_ai_rights_movement" },
+        "fixer_capital": { "x": 28.0, "z": 0.0, "radius": 23.0, "country_id": "cyber_fixer_guild" }
+      },
+      "derived": {
+        "center_distance_m": 67.747,
+        "gap_along_centers_m": 21.747,
+        "ai_edge": { "x": -16.511, "z": -4.591 },
+        "fixer_edge": { "x": 5.121, "z": -2.360 },
+        "floor_midpoint": { "x": -5.695, "z": -3.475 },
+        "midpoint_inside_any_country_circle": false,
+        "stray_toward_ai": { "x": -9.674, "z": -3.885, "offset_along_gap_m": -4 },
+        "stray_toward_fixer": { "x": -1.716, "z": -3.065, "offset_along_gap_m": 4 }
+      },
+      "holds": ["faun_grid_stray", "npc_role_grid_officer", "enc_cloak_skip"],
+      "kit_rule": "Named set uncounted_alley has no Canon point. The gap is legal ground. Stray points stay on the open segment, off both rims."
+    },
+    "empty_of_this_facet": [
+      { "id": "zero_capital", "point": { "x": -33.77, "z": -52.0 }, "why": "Cradle. Not a paddock." },
+      { "id": "blackout_capital", "point": { "x": 6.3, "z": -32.39 }, "why": "Nyx's ground. Politics." },
+      { "id": "under_district", "point": { "x": 14.3, "z": -38.39 }, "why": "Inside Blackout and Polysteel." },
+      { "id": "nevex_capital", "point": { "x": -53.43, "z": -33.38 }, "why": "Corporate rim." },
+      { "id": "nevex_tower_central", "point": { "x": -45.43, "z": -39.38 }, "why": "Inside Nevex and Zero." },
+      { "id": "polysteel_capital", "point": { "x": 8.13, "z": -51.36 }, "why": "Club. Politics." },
+      { "id": "polysteel_tower_top", "point": { "x": 16.13, "z": -57.36 }, "why": "Exclusive deck of a faction this facet does not stock." },
+      { "id": "street_docs_capital", "point": { "x": -29.25, "z": 27.28 }, "why": "Marit's hunt. The clinic district is the floor." },
+      { "id": "ai_storefront", "point": { "x": -31.39, "z": -12.95 }, "why": "Hearing. Rim of the gap, not the gap." },
+      { "id": "fixer_meeting_house", "point": { "x": 36.0, "z": -6.0 }, "why": "Twelve percent book. Rim of the gap, not the gap." },
+      { "id": "census_block", "why": "Named set, no coordinate. enc_census stays dark until it is placed." },
+      { "id": "pinewood_crossing", "point": { "x": 62, "z": -28 }, "why": "Hub verge. Cap 0." }
+    ]
+  },
+  "density_budgets_cited_not_edited": {
+    "law": "Do not be counted. Dogs are not drones. No rifles in ambient hands.",
+    "faun_grid_stray_weight": 2,
+    "faun_cable_sparrow_weight": 4,
+    "mon_grid_drone_weight": 3,
+    "mon_grid_sentinel_weight": 1,
+    "mon_grid_construct_weight": 1,
+    "npc_role_grid_labor": { "budget": 6, "where": "cables" },
+    "npc_role_grid_officer": { "budget": 2, "where": "counts they refuse to finish" },
+    "prop_clutter": { "prop_cable_coil": 8, "prop_junction_box": 5, "prop_count_slate": 3, "prop_gunsmith_vise": 1 },
+    "unique_npcs_do_not_clone_from_volume": ["nyx", "kira", "silver", "lavren"]
+  },
+  "sky_bridge_density": {
+    "floor": "floor_mainframe_deck",
+    "plan_m": { "length": 8, "width": 4 },
+    "slots_along_length_from_near_snap": [
+      { "t_m": 0, "id": "mon_grid_sentinel", "count": 1, "note": "The only door. Not hostile." },
+      { "t_m": 1.2, "id": "npc_role_grid_officer", "count": 1, "note": "Cloth shoulders. Witness. Does not finish the sum." },
+      { "t_m": 4, "id": "npc_role_grid_labor", "count": 1, "note": "Hail giver for q_grid_sum_stays_dark. One module along, outside the triangle's outer half." },
+      { "t_m": 6.4, "id": "npc_role_grid_labor", "count": 2, "note": "On the two rails, 1.2 m off the centerline, so they are not vertices." },
+      { "t_m": 5.5, "id": "mon_grid_drone", "count": 2, "note": "Ambient, spaced. Replaced, not added, when the triangle is up." }
+    ],
+    "triangle_when_window_up": {
+      "vertices": ["span midpoint", "far snap, 1.2 m to one rail", "far snap, 1.2 m to the other rail"],
+      "lead": "The lens whose tick is fastest.",
+      "passable": false,
+      "note": "An 8 by 4 deck locked by three discs is the window. Ambient spacing is what keeps the deck walkable the rest of the night."
+    },
+    "sparrow_perch": "prop_junction_box or cable tray at the near snap. Cap 4 day, 2 night. Absent perch, cap 0.",
+    "not_on_this_deck": ["faun_grid_stray", "hyb_nullhound", "mon_grid_construct", "mon_boss_census", "hyb_billdrone", "hyb_censusconstruct"]
+  },
+  "creature_caps": [
+    {
+      "id": "mon_grid_drone",
+      "role": "swarmer",
+      "floor": "floor_mainframe_deck",
+      "ambient": 2,
+      "window_id": "enc_disc_triangle",
+      "window_count": 3,
+      "ambient_during_window": 0,
+      "peak": 3,
+      "other_world_caps": { "Crime": 0, "Sere": 0 },
+      "other_cyber_floors": 0,
+      "catalog_hostile": true,
+      "catalog_spawn_line_not_used": "4-8",
+      "health": "table:mon_swarm",
+      "loot_strings_not_item_ids": ["lens_shard", "acrylic"]
+    },
+    {
+      "id": "mon_grid_sentinel",
+      "role": "tank",
+      "floor": "floor_mainframe_deck",
+      "point": { "x": -25.77, "z": -58.0 },
+      "ambient": 1,
+      "ambient_during_enc_junction_null": 0,
+      "other_world_caps": { "Superhero": 0 },
+      "catalog_hostile": false,
+      "aggro_in_this_slice": false,
+      "health": "table:mon_tank",
+      "loot_strings_not_item_ids": ["coil", "plate_sentinel"]
+    },
+    {
+      "id": "mon_grid_construct",
+      "role": "skirmisher",
+      "floor": "floor_clinic_hinge",
+      "point": { "x": -21.25, "z": 21.28 },
+      "ambient": 1,
+      "window_id": "enc_hinge_blank",
+      "window_uses_same_instance": true,
+      "peak": 1,
+      "other_world_caps": { "Crucible": 0 },
+      "catalog_hostile": false,
+      "health": "table:mon_skirmisher",
+      "loot_strings_not_item_ids": ["serial_blank", "toolhead"]
+    },
+    {
+      "id": "faun_grid_stray",
+      "role": "ambient",
+      "floor": "floor_uncounted_gap",
+      "ambient": 2,
+      "points": [
+        { "x": -9.674, "z": -3.885 },
+        { "x": -1.716, "z": -3.065 }
+      ],
+      "deck_cap": 0,
+      "clinic_cap": 0,
+      "catalog_hostile": false,
+      "health": "table:faun_small",
+      "loot": []
+    },
+    {
+      "id": "faun_cable_sparrow",
+      "role": "ambient",
+      "floor": "floor_mainframe_deck",
+      "requires_perch": true,
+      "day": 4,
+      "night": 2,
+      "without_perch": 0,
+      "catalog_hostile": false,
+      "health": "table:faun_critter",
+      "loot": []
+    },
+    {
+      "id": "hyb_nullhound",
+      "role": "skirmisher",
+      "floor": "floor_uncounted_gap",
+      "point": { "x": -5.695, "z": -3.475 },
+      "ambient": 0,
+      "window_id": "enc_cloak_skip",
+      "window_count": 1,
+      "catalog_hostile": false,
+      "health": "table:mon_skirmisher",
+      "loot_strings_not_item_ids": ["null_plate"]
+    },
+    {
+      "id": "npc_role_grid_labor",
+      "body": "CX",
+      "fight_style": "Capoeira",
+      "budget": 6,
+      "spent": [
+        { "count": 1, "where": "deck t=4 m", "job": "giver, q_grid_sum_stays_dark" },
+        { "count": 2, "where": "deck rails at t=6.4 m", "job": "witnesses" },
+        { "count": 1, "where": "clinic", "job": "giver, q_grid_serial_stays_ground" }
+      ],
+      "unspent": 2,
+      "joins_rosters": false
+    },
+    {
+      "id": "npc_role_grid_officer",
+      "body": "CX",
+      "fight_style": "Capoeira",
+      "weapon_id": "wpn_1h_grid_pulseblade",
+      "rifles": 0,
+      "budget": 2,
+      "spent": [
+        { "count": 1, "where": "near snap, 1.2 m along", "job": "witness, unfinished count" },
+        { "count": 1, "where": "gap midpoint", "job": "giver, q_grid_tick_skips" }
+      ],
+      "unspent": 0,
+      "joins_rosters": false,
+      "role_faction_string_not_a_country": "census_authority"
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_disc_triangle",
+      "name": "The Disc Triangle",
+      "status": "new window, existing drone, no new mesh",
+      "creature_ids": ["mon_grid_drone"],
+      "count": 3,
+      "floor": "floor_mainframe_deck",
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 21,
+        "close_hour": 23,
+        "day_index_mod": 2,
+        "day_index_equals": 0,
+        "label": "Grid night, even day index"
+      },
+      "suppressed_when": ["enc_census active", "enc_junction_null active"],
+      "catalog_note": "hostile is already true. Ambient 2 are removed for the window so the peak stays 3.",
+      "telegraph": {
+        "board": "The near-snap slate shows three digits and no total.",
+        "scout": "Three thick discs, one triangle, the fastest tick on the lead lens. Readable at 100 m as discs, not birds.",
+        "sound": "Three counting ticks. One of them pulls ahead."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Paint",
+          "tell": "Three digits on the acrylic. No sum yet.",
+          "player_response": "Read them. Do not add them up out loud on a slate."
+        },
+        {
+          "index": 2,
+          "name": "Sum",
+          "tell": "The triangle offers the total.",
+          "player_response": "Stay off the finished number. A completed sum makes you terrain."
+        },
+        {
+          "index": 3,
+          "name": "Lead lens",
+          "tell": "The fast lens commits hide-number. Magenta is not on these discs. Cyan is the windup.",
+          "player_response": "skill_steel_pulse on that lens. Sparrows, techs, and the officer are not targets. The other two discs scatter. They do not replicate."
+        }
+      ],
+      "loot_conditions": {
+        "items": "None. lens_shard and acrylic are card strings, not item ids.",
+        "item_rem_missing_number": "Never. That token is enc_census."
+      }
+    },
+    {
+      "id": "enc_hinge_blank",
+      "name": "The Open Hinge",
+      "status": "new window, existing construct, no new mesh",
+      "creature_ids": ["mon_grid_construct"],
+      "count": 1,
+      "same_instance_as_ambient": true,
+      "floor": "floor_clinic_hinge",
+      "point": { "x": -21.25, "z": 21.28 },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 9,
+        "close_hour": 11,
+        "day_index_mod": 3,
+        "day_index_equals": 1,
+        "label": "Clinic morning, every third day offset"
+      },
+      "suppressed_when": ["enc_census active", "enc_junction_null active"],
+      "catalog_note": "hostile is false on the monster row. This window sets aggro. The file is not edited.",
+      "telegraph": {
+        "board": "The clinic door has a blank where the serial plate was. Fresh grind marks.",
+        "scout": "Asymmetric hood, tool arm lifted toward its own chest, hand arm loose. Not a sentinel. No bar visor.",
+        "sound": "A grind, then a spark."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "Aim",
+          "tell": "The tool points at the ground-off serial.",
+          "player_response": "Do not fit a digit into the blank."
+        },
+        {
+          "index": 2,
+          "name": "Spark",
+          "tell": "Windup is the grind. The spark is the commit.",
+          "player_response": "Knock the toolhead if you must. skill_presence_refuse_count helps if you already have it. The quest does not require the skill."
+        },
+        {
+          "index": 3,
+          "name": "Still blank",
+          "tell": "The tool lowers. The frame walks.",
+          "player_response": "Leave it walking and blank. A corpse fails the clinic quest. A stamped serial fails the refusal."
+        }
+      ],
+      "loot_conditions": {
+        "items": "None. serial_blank and toolhead are card strings, not item ids.",
+        "item_rem_null_ring": "Never. That ring is enc_junction_null."
+      }
+    },
+    {
+      "id": "enc_cloak_skip",
+      "name": "The Skipped Tick",
+      "status": "new window, existing hybrid, no new mesh",
+      "creature_ids": ["hyb_nullhound"],
+      "count": 1,
+      "floor": "floor_uncounted_gap",
+      "point": { "x": -5.695, "z": -3.475 },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "day_index_mod": 3,
+        "day_index_equals": 2,
+        "label": "Gap dawn, every third day, after the Census hour"
+      },
+      "suppressed_when": ["enc_census active", "enc_junction_null active"],
+      "catalog_note": "hostile is false on the hybrid row. This window sets aggro. The file is not edited.",
+      "telegraph": {
+        "board": "No slate owns this ground. A tick is audible with nowhere to land.",
+        "scout": "Dog chevron, two rectangles on the ribs, larger than the one-eared strays standing 4 m off the midpoint.",
+        "sound": "A counting tick that skips one beat."
+      },
+      "phases": [
+        {
+          "index": 1,
+          "name": "File",
+          "tell": "The tick tries to finish a number for the plated dog.",
+          "player_response": "Do not complete it. The strays are not part of the file."
+        },
+        {
+          "index": 2,
+          "name": "Cloak",
+          "tell": "Plates slide shut. Silhouette stays. One dodge window.",
+          "player_response": "The skip is the tell. Jamming the hinge ends the cloak and is a hit, not a capture. Do not chip the one-eared stray because the plates looked like a diagram."
+        },
+        {
+          "index": 3,
+          "name": "Plates open",
+          "tell": "It is a dog with metal on the ribs again.",
+          "player_response": "Leave it in the gap. Do not haul it to the deck and do not skin it into faun_grid_stray."
+        }
+      ],
+      "loot_conditions": {
+        "items": "None. null_plate is a card string, not an item id."
+      }
+    }
+  ],
+  "boss_cited_not_moved": {
+    "id": "enc_census",
+    "creature_ids": ["mon_boss_census"],
+    "schedule_label": "Grid small hours, every third day",
+    "open_hour": 2,
+    "close_hour": 4,
+    "every_nth_day": 3,
+    "spawn_anchor": "Census junction, scout from the cable walk",
+    "named_set": "census_block",
+    "placed": false,
+    "remembrance_item_id": "item_rem_missing_number",
+    "rule": "Hours, phases, and the token stay in BOSSES_AND_RAIDS.json. This slice does not retune them and does not assign the mainframe deck as a substitute anchor. Unplaced, the boss spawns nothing."
+  },
+  "volume_window_cited_not_moved": {
+    "id": "enc_junction_null",
+    "creature_ids": ["mon_grid_sentinel", "mon_grid_construct"],
+    "mesh_note": "Sentinel is the event lead. Construct is the hinge. Drones are ambient, not this roster.",
+    "schedule_label": "Grid midday, every second day",
+    "open_hour": 13,
+    "close_hour": 15,
+    "every_nth_day": 2,
+    "spawn_anchor": "Live junction box, nest already moved by q_cyber_sparrow_nest if that quest is done",
+    "placed": false,
+    "remembrance_item_id": "item_rem_null_ring",
+    "rule": "Not one of the three new mini-bosses. No coordinate, so it stays dark. While it is active the ambient sentinel cap is 0 and the three new windows wait. The clinic construct is a different instance and does not walk to a missing box."
+  },
+  "raid": null,
+  "side_quests": [
+    {
+      "id": "q_grid_sum_stays_dark",
+      "title": "Deck — The Sum Stays Dark",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_grid_labor",
+      "backstory_public": "A cable tech on the Zero deck has watched a finished sum become a floor. The same acrylic, the next night, pings a person who walks it because the number was allowed to exist. They want the lead lens broken while the other two digits are still paint.",
+      "withheld": ["lore_the_upload", "Kael's private reason for the first sparing"],
+      "objectives": [
+        { "id": "obj_q_grid_sum_stays_dark_1", "verb": "talk", "target": "npc_role_grid_labor", "count": 1, "text": "Take the watch from the hail tech one module along the deck. They stay at that mark." },
+        { "id": "obj_q_grid_sum_stays_dark_2", "verb": "reach", "target": "floor_mainframe_deck", "count": 1, "text": "Stand on the deck during enc_disc_triangle, or on the paint if the window has closed and the digits are still there." },
+        { "id": "obj_q_grid_sum_stays_dark_3", "verb": "witness", "target": "unfinished_sum", "count": 1, "text": "See three digits and no total. If the window is up, break the lead lens. Bring the unfinished sum back. Leave the sparrows." }
+      ],
+      "fail": "Completing the sum, or killing a sparrow or a witness to clear the deck.",
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "item_note": "item_count_slate is not granted. q_cyber_packet_tea already hands one out.",
+      "skill_note": "skill_steel_pulse is not granted. q_cyber_practice_rail already can.",
+      "faction_delta": [{ "faction_id": "blackout_resistance", "delta": 1 }],
+      "faction_alias_note": "The labor role's faction_id is zero_collective. This quest writes blackout_resistance once, because the public act is an unfinished count. It does not also write zero_collective, and it does not open a book named uncounted.",
+      "prerequisites": [],
+      "budget": "The giver is the one laborer at 4 m along the deck."
+    },
+    {
+      "id": "q_grid_serial_stays_ground",
+      "title": "Clinic — The Serial Stays Ground",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_grid_labor",
+      "backstory_public": "Street Docs keep no file Nevex can subpoena. The construct at the clinic door tries, on its mornings, to engrave itself back into the count that ground its serial off. The tech on that cable wants a witness who will not help it succeed.",
+      "withheld": ["lore_augmented_children_program", "Which corp funded the seventeen children"],
+      "objectives": [
+        { "id": "obj_q_grid_serial_stays_ground_1", "verb": "talk", "target": "npc_role_grid_labor", "count": 1, "text": "Accept from the laborer at the clinic point. They are not a named doc and not a clone of Marit." },
+        { "id": "obj_q_grid_serial_stays_ground_2", "verb": "reach", "target": "floor_clinic_hinge", "count": 1, "text": "Be at the clinic during enc_hinge_blank." },
+        { "id": "obj_q_grid_serial_stays_ground_3", "verb": "witness", "target": "ground_off_serial", "count": 1, "text": "See the frame walk away with the serial still blank. Tell the laborer. Do not stamp a digit." }
+      ],
+      "fail": "A stamped serial, or a dead construct at phase 3.",
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "skill_note": "skill_presence_refuse_count is not granted. q_cyber_missing_number and q_cyber_lavren_door already can.",
+      "faction_delta": [{ "faction_id": "cyber_street_docs", "delta": 1 }],
+      "faction_alias_note": "The giver's role row says zero_collective. The act is the clinic's no-records rule. Write cyber_street_docs once. The country file's disputed_border string cyber_polysteel_society is not a country id. Do not open that book.",
+      "prerequisites": [],
+      "budget": "The giver is the one laborer spent at the clinic."
+    },
+    {
+      "id": "q_grid_tick_skips",
+      "title": "Gap — The Tick Skips",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_grid_officer",
+      "backstory_public": "An officer with the bar down and the coat on was put on the open meters because a miss there is not yet a defect in somebody's circle. They can tell the plated dog from the one-eared dog. They want the skip seen, and the scar left as skin.",
+      "withheld": ["Officer Holt's coin", "lore_voss_consultation"],
+      "objectives": [
+        { "id": "obj_q_grid_tick_skips_1", "verb": "talk", "target": "npc_role_grid_officer", "count": 1, "text": "Accept from the officer in the gap. That body is not Holt and not the officer on the deck." },
+        { "id": "obj_q_grid_tick_skips_2", "verb": "reach", "target": "floor_uncounted_gap", "count": 1, "text": "Stand at the midpoint during enc_cloak_skip. The strays are 4 m off that point." },
+        { "id": "obj_q_grid_tick_skips_3", "verb": "witness", "target": "hyb_nullhound", "count": 1, "text": "See the tick skip and the silhouette stay. Tell the officer. Do not fit a port to the stray. Do not write a total." }
+      ],
+      "fail": "Porting the stray, or killing either dog to simplify the report.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "item_note": "No slate. q_cyber_hand_list and q_cyber_packet_tea already move slates.",
+      "faction_delta": [{ "faction_id": "blackout_resistance", "delta": 1 }],
+      "faction_alias_note": "The officer role's faction_id is census_authority. That string is not a country. Write blackout_resistance once. Do not open census_authority or uncounted.",
+      "prerequisites": [],
+      "budget": "The giver is the one officer spent in the gap."
+    }
+  ],
+  "unspawned": [
+    { "id": "glitch_hound", "source": "Canon/cyber/creatures.json", "reason": "No bible id. A hard-light kennel escape is not faun_grid_stray and not hyb_nullhound." },
+    { "id": "neural_parasite", "source": "Canon/cyber/creatures.json", "reason": "No bible id. Nothing invisible is fielded to stand in for it." },
+    { "id": "black_ice_construct", "source": "Canon/cyber/creatures.json", "reason": "No bible id. mon_grid_construct is the frame. Ice is not added." },
+    { "id": "void_walker", "source": "Canon/cyber/creatures.json", "reason": "No bible id. People stay CX. A phased stranger is not an officer." },
+    { "id": "rogue_drone_swarm", "source": "Canon/cyber/creatures.json", "reason": "No bible id. The triangle is three mon_grid_drone discs. They do not replicate." },
+    { "id": "hyb_censusconstruct", "reason": "Real row, Cyber and Crucible. Cap 0. The sentinel already owns the bar. The construct already owns the ground-off serial. Crucible cap 0 with them." },
+    { "id": "hyb_billdrone", "reason": "S09 enc_rotor_saddle. Cyber cap 0. A spinal rotor is not a census disc." },
+    { "id": "mon_boss_census", "reason": "Volume clock only, and only when census_block is placed." },
+    { "id": "chrome_enforcer", "reason": "S09 left this Crime seed unspawned and said Grid bodies are S11. It still has no bible id. It stays unspawned." }
+  ]
+}

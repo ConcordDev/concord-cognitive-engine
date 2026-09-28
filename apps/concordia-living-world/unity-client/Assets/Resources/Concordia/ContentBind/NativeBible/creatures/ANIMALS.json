@@ -1,0 +1,1666 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "animals",
+  "count": 30,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "faun_pinewood_stag",
+      "display_name": "Pinewood Stag",
+      "lore_blurb": "Salt-road herd deer of Pinewood Crossing, outside the Unburned Court walls. The Year-80 brothers' road; Kael returned along this verge.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd",
+        "biome_court_ring"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Court dust in the coat, salt rime on the fetlocks, warm lantern bounce on the flank at dusk.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long neck, narrow antler crown that reads as a tuning fork, deep chest. Antlers stay inside the body width so the 100m read is a tall wedge, not a scribble.",
+      "palette": [
+        "#6a5340",
+        "#c4b49a",
+        "#2a241c",
+        "#8a9a68"
+      ],
+      "scale_vs_player": "1.35\u00d7 player height at the shoulder (~1.6m)",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_pinewood_stag",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_pinewood_stag.prefab",
+        "animator_stub": "AC_faun_pinewood_stag",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. A salt-dusted stag on a pine road at dusk, antlers like a tuning fork, worn hide, Concordia Pinewood Crossing, no city signage.",
+      "stats_hooks": {
+        "health": "table:faun_large_prey",
+        "loot": [
+          "hide_salt",
+          "antler_pine"
+        ],
+        "diet": "herbivore",
+        "herd": "4-9",
+        "spawn": "Hub ring past WallRadius 56m and Fantasy pine verge, day"
+      },
+      "verb_ids": [
+        "verb_fauna_graze",
+        "verb_fauna_bolt",
+        "verb_fauna_antler_shove"
+      ]
+    },
+    {
+      "id": "faun_saltroad_hare",
+      "display_name": "Salt-Road Hare",
+      "lore_blurb": "The small life of the road between Court and Sundering. Bolts at steel, freezes at flowers.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "critter",
+        "biome_court_ring"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust-caked belly, salt crystals in the whiskers, no cute plush shading.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two tall ears as one vertical mark; body is a single pebble. Ears fold flat in the bolt pose.",
+      "palette": [
+        "#c4b49a",
+        "#6a5a40",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.28\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_saltroad_hare",
+          "topology": "quadruped",
+          "gaitKind": "quad_bound",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_saltroad_hare.prefab",
+        "animator_stub": "AC_faun_saltroad_hare",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small salt-crusted hare, ears as one vertical blade, dusty pine-road verge, stylized realism.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [
+          "meat_small"
+        ],
+        "diet": "herbivore",
+        "herd": "1-3",
+        "spawn": "road shoulders, dawn and dusk"
+      },
+      "verb_ids": [
+        "verb_fauna_freeze",
+        "verb_fauna_bolt"
+      ]
+    },
+    {
+      "id": "faun_court_pigeon",
+      "display_name": "Court Pigeon",
+      "lore_blurb": "Roof bird of the Unburned Court. They nest the lantern iron and will not cross a live blade.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "ambient",
+        "biome_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot on the breast from lantern smoke, iridescent neck kept to one restrained teal, not a rainbow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Round body, short fan tail, one pale neck ring. Flock reads as a dotted arc, not individual noise.",
+      "palette": [
+        "#8a8680",
+        "#c8b48a",
+        "#3a342c"
+      ],
+      "scale_vs_player": "0.22\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_court_pigeon",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flap",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_court_pigeon.prefab",
+        "animator_stub": "AC_faun_court_pigeon",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Sooty court pigeon on warm limestone and brass lantern iron, Unburned Court roofs, restrained teal neck.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "8-24",
+        "spawn": "Hub roofs inside WallRadius, day"
+      },
+      "verb_ids": [
+        "verb_fauna_perch",
+        "verb_fauna_flock_arc"
+      ]
+    },
+    {
+      "id": "faun_lantern_moth",
+      "display_name": "Lantern Moth",
+      "lore_blurb": "Night critter of the Court. Wings take the lantern color and nothing else; they are not will-o-wisps and they do not deal damage.",
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "ambient",
+        "nocturnal"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dusty wing scales, brass-warm emissive only on the wing eye, body stays matte.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One warm diamond of wing. At 100m a swarm is a drifting warm haze, each moth still a single diamond up close.",
+      "palette": [
+        "#1a140e",
+        "#ffe6c0",
+        "#c8721a"
+      ],
+      "scale_vs_player": "0.06\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_lantern_moth",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flutter",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_lantern_moth.prefab",
+        "animator_stub": "AC_faun_lantern_moth",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Large dusty moth, single warm lantern diamond on each wing, night limestone court, no magic runes.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "nectar",
+        "herd": "12-40",
+        "spawn": "Hub night, lantern radii only"
+      },
+      "verb_ids": [
+        "verb_fauna_flutter",
+        "verb_fauna_lamp_orbit"
+      ]
+    },
+    {
+      "id": "faun_court_cat",
+      "display_name": "Market Mouser",
+      "lore_blurb": "Archive and market cat. Scholars claim they index mice. The cats do not comment.",
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "ambient",
+        "biome_court"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Worn collar cord optional, never a costume. One crimson market-thread on some individuals, not all.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low wedge, tail as a question mark that straightens when stalking. Ears are the tell.",
+      "palette": [
+        "#3a342c",
+        "#c4b49a",
+        "#6a2030"
+      ],
+      "scale_vs_player": "0.32\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_court_cat",
+          "topology": "quadruped",
+          "gaitKind": "quad_stalk",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_court_cat.prefab",
+        "animator_stub": "AC_faun_court_cat",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean court cat, limestone dust, one frayed crimson thread collar, market crates, stylized realism.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [],
+        "diet": "carnivore",
+        "herd": "1",
+        "spawn": "Hub market and archive, any time"
+      },
+      "verb_ids": [
+        "verb_fauna_stalk",
+        "verb_fauna_pounce_mouse"
+      ]
+    },
+    {
+      "id": "faun_sunder_wolf",
+      "display_name": "Sundering Wolf",
+      "lore_blurb": "The canon wolf of the Sundering. Pack hunter, not a monster family. Hostility in this wood turns inward; the wolves still hunt outward.",
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Mud and pine resin in the ruff, scarred ears, eyes are a dull amber not a glow stick.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Long muzzle, high withers, tail carried low. Pack silhouette is staggered chevrons, never a blob.",
+      "palette": [
+        "#2a3028",
+        "#6a7a62",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "0.72\u00d7 player height at shoulder",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_sunder_wolf",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": "wolf"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_sunder_wolf.prefab",
+        "animator_stub": "AC_faun_sunder_wolf",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Lean pine wolf, scarred ears, mud-resin ruff, dull amber eye, Sundering wildwood, readable pack chevron.",
+      "stats_hooks": {
+        "health": "table:faun_med_predator",
+        "loot": [
+          "hide_wolf",
+          "fang"
+        ],
+        "diet": "carnivore",
+        "herd": "3-6",
+        "spawn": "Fantasy wildwood, dusk-night",
+        "damage_profile": "slash_light"
+      },
+      "verb_ids": [
+        "verb_fauna_lope",
+        "verb_fauna_nip",
+        "verb_fauna_howl"
+      ]
+    },
+    {
+      "id": "faun_wardwood_boar",
+      "display_name": "Wardwood Boar",
+      "lore_blurb": "Rooting prey that will wreck a camp if cornered. Sundering hunters take the shoulder, never the curse-marked tusk.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "territorial"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Caked mud plates on the shoulder, broken bristles, wet snout.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bristle ridge is one dark blade down the spine. Tusks are short hooks, not swords.",
+      "palette": [
+        "#4a3828",
+        "#8a6a48",
+        "#d8d0c4"
+      ],
+      "scale_vs_player": "0.7\u00d7 player height, longer than a wolf",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_wardwood_boar",
+          "topology": "quadruped",
+          "gaitKind": "quad_charge",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_wardwood_boar.prefab",
+        "animator_stub": "AC_faun_wardwood_boar",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Heavy wild boar, single bristle blade, short hooked tusks, mud plates, Sundering wardwood.",
+      "stats_hooks": {
+        "health": "table:faun_med_prey_tough",
+        "loot": [
+          "hide_boar",
+          "tusk_short"
+        ],
+        "diet": "omnivore",
+        "herd": "2-5",
+        "spawn": "Fantasy oak pockets, day"
+      },
+      "verb_ids": [
+        "verb_fauna_root",
+        "verb_fauna_charge",
+        "verb_fauna_thrash"
+      ]
+    },
+    {
+      "id": "faun_cursefold_owl",
+      "display_name": "Cursefold Owl",
+      "lore_blurb": "Night bird that sits the curse-stones and does not speak prophecy. If it screams, something in the fold already turned.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "nocturnal"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Barred feathers with real wear, one pale primary, no rune paint.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Broad flat face, short tail, wings make a rectangle in glide. Perched read is a tombstone with eyes.",
+      "palette": [
+        "#1a1814",
+        "#c8b070",
+        "#3a6a48"
+      ],
+      "scale_vs_player": "0.4\u00d7 player height, wingspan 1.1\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_cursefold_owl",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_glide",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_cursefold_owl.prefab",
+        "animator_stub": "AC_faun_cursefold_owl",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Broad-faced forest owl, rectangular glide, barred worn feathers, curse-stone perch, no prophecy glow.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [
+          "feather_barred"
+        ],
+        "diet": "carnivore",
+        "herd": "1",
+        "spawn": "Fantasy night, stone folds"
+      },
+      "verb_ids": [
+        "verb_fauna_perch",
+        "verb_fauna_stoop"
+      ]
+    },
+    {
+      "id": "faun_blackroot_elk",
+      "display_name": "Blackroot Elk",
+      "lore_blurb": "The large herd of Thorne's road. Antlers carry shed bark that looks like black root, not jewelry.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Bark strips snagged in the rack, scarred knees, wet nose.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Huge shoulder, antlers as a dark thicket contained in a diamond. Calf silhouette drops the thicket.",
+      "palette": [
+        "#3a3028",
+        "#1a1410",
+        "#8a9a68"
+      ],
+      "scale_vs_player": "1.7\u00d7 player height at the shoulder",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_blackroot_elk",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_blackroot_elk.prefab",
+        "animator_stub": "AC_faun_blackroot_elk",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Massive elk, antlers like a dark thicket not a crown, bark strips, Sundering blackroot road.",
+      "stats_hooks": {
+        "health": "table:faun_large_prey",
+        "loot": [
+          "hide_elk",
+          "antler_blackroot"
+        ],
+        "diet": "herbivore",
+        "herd": "3-8",
+        "spawn": "Fantasy meadows, dawn"
+      },
+      "verb_ids": [
+        "verb_fauna_graze",
+        "verb_fauna_bugle",
+        "verb_fauna_antler_shove"
+      ]
+    },
+    {
+      "id": "faun_nil_sealie",
+      "display_name": "Nil Sealie",
+      "lore_blurb": "Canon Tunya fauna. Coastal ark mammal of the Nil shoals: paddle forelimbs, dog-like honest face, no flamingo neck. The grove law is take fruit, not the tree \u2014 sealies are not harvest.",
+      "taxonomy_tags": [
+        "animal",
+        "amphibious",
+        "canon_fauna",
+        "companion_possible"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet specular on the hide, sand crust on the belly, barnacle on one shoulder only.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Torpedo body, whiskered dog head, rear flippers as one paddle. On land the read is a sliding loaf, not a bird.",
+      "palette": [
+        "#6a7a6a",
+        "#c8b48a",
+        "#4a6870"
+      ],
+      "scale_vs_player": "0.55\u00d7 player length, low",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_nil_sealie",
+          "topology": "quadruped",
+          "gaitKind": "quad_lunge_swim",
+          "canon_kind_alias": "sealie"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_nil_sealie.prefab",
+        "animator_stub": "AC_faun_nil_sealie",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Coastal seal-dog, paddle forelimbs, whiskered honest face, wet hide, Tunya Nil shoal. Not a flamingo, not a bird.",
+      "stats_hooks": {
+        "health": "table:faun_med",
+        "loot": [
+          "whisker"
+        ],
+        "diet": "piscivore",
+        "herd": "2-6",
+        "spawn": "Tunya coast and river mouth",
+        "mount": false
+      },
+      "verb_ids": [
+        "verb_fauna_lunge",
+        "verb_fauna_bask",
+        "verb_fauna_bark"
+      ],
+      "compiler_warning": "CreatureCompiler.StemFor currently may pick Flamingo for 'sealie'. Native bible forbids that bind. Ship faun_nil_sealie mesh or spawn nothing."
+    },
+    {
+      "id": "faun_veil_hound",
+      "display_name": "Veil Hound",
+      "lore_blurb": "Canon Tunya hound. Working dog of the Verdant Veil: herd goat, track boar-sign, refuse a reap.",
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "working",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sun-faded coat, grass stains, reed collar with one pollen-yellow thread.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Square head, curled working tail, deep chest. Collar is braided reed, not metal.",
+      "palette": [
+        "#c8b070",
+        "#3a4a28",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.58\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_veil_hound",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": "hound"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_veil_hound.prefab",
+        "animator_stub": "AC_faun_veil_hound",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Working grove hound, square head, reed collar, sun-faded coat, Tunya terrace, stylized realism.",
+      "stats_hooks": {
+        "health": "table:faun_med",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "1-2",
+        "spawn": "Tunya settlements and terraces",
+        "tame_hook": "npc_role_tunya_veil_labor"
+      },
+      "verb_ids": [
+        "verb_fauna_heel",
+        "verb_fauna_bay",
+        "verb_fauna_nip"
+      ]
+    },
+    {
+      "id": "faun_terrace_goat",
+      "display_name": "Terrace Goat",
+      "lore_blurb": "Tunya herd stock. They eat the weed between solar-tile and vine, never the grafted trunk.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd",
+        "livestock"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Clay dust, chipped horn, bell is wood not brass.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blocky body, short horns as two commas, sure-footed stance on a 30\u00b0 terrace.",
+      "palette": [
+        "#efe6d4",
+        "#6a7a3a",
+        "#c8721a"
+      ],
+      "scale_vs_player": "0.62\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_terrace_goat",
+          "topology": "quadruped",
+          "gaitKind": "quad_climb",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_terrace_goat.prefab",
+        "animator_stub": "AC_faun_terrace_goat",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Blocky terrace goat, short comma horns, wooden bell, Tunya vineyard wall, sunlit.",
+      "stats_hooks": {
+        "health": "table:faun_med_prey",
+        "loot": [
+          "milk_hook",
+          "hide_goat"
+        ],
+        "diet": "herbivore",
+        "herd": "4-12",
+        "spawn": "Tunya terraces, day"
+      },
+      "verb_ids": [
+        "verb_fauna_graze",
+        "verb_fauna_headbutt",
+        "verb_fauna_climb"
+      ]
+    },
+    {
+      "id": "faun_pollen_hare",
+      "display_name": "Pollen Hare",
+      "lore_blurb": "Grove hare dusted gold in bloom weeks. Prey. The gold is pollen, and it washes off.",
+      "taxonomy_tags": [
+        "animal",
+        "prey"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Pollen is a surface coat, uneven, not a magic aura.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same pebble body as the salt hare; ears tipped gold so the two species separate at a glance.",
+      "palette": [
+        "#efe6d4",
+        "#e0c060",
+        "#3a4a28"
+      ],
+      "scale_vs_player": "0.26\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_pollen_hare",
+          "topology": "quadruped",
+          "gaitKind": "quad_bound",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_pollen_hare.prefab",
+        "animator_stub": "AC_faun_pollen_hare",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small hare with uneven pollen gold on ear tips only, Tunya grove floor, no glow.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [
+          "pollen_trace"
+        ],
+        "diet": "herbivore",
+        "herd": "1-4",
+        "spawn": "Tunya bloom weeks"
+      },
+      "verb_ids": [
+        "verb_fauna_freeze",
+        "verb_fauna_bolt"
+      ]
+    },
+    {
+      "id": "faun_ark_heron",
+      "display_name": "Ark Heron",
+      "lore_blurb": "Wading bird of the seven-ark memory. Stands the irrigation cuts and spears frogs, not people.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "wading"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Algae stain on the legs, clean chest, bill has a nick.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One vertical line plus a spear bill. Folded neck drops it to a gray stone.",
+      "palette": [
+        "#8aa0b4",
+        "#f0d080",
+        "#2a3030"
+      ],
+      "scale_vs_player": "0.85\u00d7 player height when neck is up",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_ark_heron",
+          "topology": "winged_biped",
+          "gaitKind": "wader",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_ark_heron.prefab",
+        "animator_stub": "AC_faun_ark_heron",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tall gray heron, spear bill, algae-stained legs, Tunya irrigation cut, bright sun.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [
+          "feather_gray"
+        ],
+        "diet": "piscivore",
+        "herd": "1-3",
+        "spawn": "Tunya water, day"
+      },
+      "verb_ids": [
+        "verb_fauna_wade",
+        "verb_fauna_spear_fish"
+      ]
+    },
+    {
+      "id": "faun_ash_wolf",
+      "display_name": "Catalogue Wolf",
+      "lore_blurb": "Ruins subspecies of the Sundering wolf. Same skeleton family. The coat holds ash; the pack catalogues kills by returning to them, which the Keepers notice.",
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "subspecies"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Shared rig with faun_sunder_wolf. Ash is a material variant, not a new topology.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same chevron as faun_sunder_wolf. Ash crust squares the silhouette slightly; ears are ragged.",
+      "palette": [
+        "#5a5044",
+        "#2a241c",
+        "#b89060"
+      ],
+      "scale_vs_player": "0.72\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_ash_wolf",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": "wolf"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_ash_wolf.prefab",
+        "animator_stub": "AC_faun_ash_wolf",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-crusted wolf, ragged ears, same lean chevron as a pine wolf, Sovereign Ruins, dull light.",
+      "stats_hooks": {
+        "health": "table:faun_med_predator",
+        "loot": [
+          "hide_ash",
+          "fang"
+        ],
+        "diet": "carnivore",
+        "herd": "2-5",
+        "spawn": "Ruins ash roads",
+        "shared_skeleton": "faun_sunder_wolf"
+      },
+      "verb_ids": [
+        "verb_fauna_lope",
+        "verb_fauna_nip",
+        "verb_fauna_howl"
+      ]
+    },
+    {
+      "id": "faun_catalogue_crow",
+      "display_name": "Catalogue Crow",
+      "lore_blurb": "Ruins scavenger. They sit unburied ribs and remember which corpse was catalogued. Ambient, not a wraith.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "scavenger"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash film on the feathers, one pale primary, eye is dark not glowing.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wedge bill, fingered wings. A murder reads as black commas over a rib.",
+      "palette": [
+        "#1a140e",
+        "#b89060",
+        "#5a5044"
+      ],
+      "scale_vs_player": "0.3\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_catalogue_crow",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flap",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_catalogue_crow.prefab",
+        "animator_stub": "AC_faun_catalogue_crow",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Ash-filmed crow, wedge bill, one pale primary, perched on fossil rib, Sovereign Ruins.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [
+          "feather_ash"
+        ],
+        "diet": "scavenger",
+        "herd": "4-15",
+        "spawn": "Ruins day, near corpses and catalogues"
+      },
+      "verb_ids": [
+        "verb_fauna_perch",
+        "verb_fauna_mob"
+      ]
+    },
+    {
+      "id": "faun_rib_lizard",
+      "display_name": "Rib Lizard",
+      "lore_blurb": "Small basker on fossil bone. Critter. Not a basilisk and not a combat hitbox.",
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "basking"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Bone dust, cracked scales, heat shimmer only if the ground is warm.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Flat diamond body, tail as long as the body, four honest legs.",
+      "palette": [
+        "#6a5848",
+        "#2a1c14",
+        "#c8a070"
+      ],
+      "scale_vs_player": "0.18\u00d7 player length",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_rib_lizard",
+          "topology": "quadruped",
+          "gaitKind": "quad_scuttle",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_rib_lizard.prefab",
+        "animator_stub": "AC_faun_rib_lizard",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small flat lizard on fossil bone, bone-dust scales, Sovereign Ruins, no frill, no magic.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "insectivore",
+        "herd": "1-4",
+        "spawn": "Ruins sunned bone, day"
+      },
+      "verb_ids": [
+        "verb_fauna_bask",
+        "verb_fauna_scuttle"
+      ]
+    },
+    {
+      "id": "faun_dock_hound",
+      "display_name": "Wharf Hound",
+      "lore_blurb": "Canon Crime hound. Dock dog of the Iron Coast. It knows who hasn't paid.",
+      "taxonomy_tags": [
+        "animal",
+        "working",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Shared skeleton faun_veil_hound. Oil stain on the chest, rope collar, sodium-yellow eye-catch only from street lamps.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same hound family as the Veil hound; ears cropped by wear not fashion, tail low.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "0.6\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_dock_hound",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": "hound"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_dock_hound.prefab",
+        "animator_stub": "AC_faun_dock_hound",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Oil-stained dock hound, rope collar, low tail, Iron Coast rain, sodium lamps.",
+      "stats_hooks": {
+        "health": "table:faun_med",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "1",
+        "spawn": "Crime docks",
+        "shared_skeleton": "faun_veil_hound"
+      },
+      "verb_ids": [
+        "verb_fauna_heel",
+        "verb_fauna_bay"
+      ]
+    },
+    {
+      "id": "faun_sodium_rat",
+      "display_name": "Sodium Rat",
+      "lore_blurb": "Iron Coast alley rat. Critter. The yellow is the lamp, not the fur.",
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "urban"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Grease, a torn ear, no glowing eyes.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low teardrop, naked tail as a single line. Swarm reads as floor movement.",
+      "palette": [
+        "#4a4038",
+        "#2a241c",
+        "#c8a060"
+      ],
+      "scale_vs_player": "0.12\u00d7 player length",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_sodium_rat",
+          "topology": "quadruped",
+          "gaitKind": "quad_scuttle",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_sodium_rat.prefab",
+        "animator_stub": "AC_faun_sodium_rat",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Grease-stained alley rat, naked tail, torn ear, sodium streetlight, no glowing eyes.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "6-20",
+        "spawn": "Crime and Sere alleys, night"
+      },
+      "verb_ids": [
+        "verb_fauna_scuttle",
+        "verb_fauna_swarm_floor"
+      ]
+    },
+    {
+      "id": "faun_rain_gull",
+      "display_name": "Rain Gull",
+      "lore_blurb": "Iron Coast aerial. Screams over the bill, eats the scrap, leaves.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Oil speckles on the white chest, salt on the bill.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Bent wing, hooked bill, white chest. Flock is a low ragged line over water.",
+      "palette": [
+        "#d8d4cc",
+        "#8a6a48",
+        "#3a342c"
+      ],
+      "scale_vs_player": "0.45\u00d7 player height wingspan",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_rain_gull",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_glide",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_rain_gull.prefab",
+        "animator_stub": "AC_faun_rain_gull",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Harbor gull, oil-speckled white chest, hooked bill, rain, Iron Coast cranes.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "5-20",
+        "spawn": "Crime waterfront, day"
+      },
+      "verb_ids": [
+        "verb_fauna_glide",
+        "verb_fauna_scream"
+      ]
+    },
+    {
+      "id": "faun_dust_wolf",
+      "display_name": "Dome Wolf",
+      "lore_blurb": "Frontier wolf. Same skeleton as the Sundering wolf. The Refusal of the Dome means no shelter; these packs use the wind.",
+      "taxonomy_tags": [
+        "animal",
+        "predator",
+        "pack",
+        "subspecies"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Shared skeleton faun_sunder_wolf. Dust in every crease, no collar.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Leaner than the pine wolf, pale, ears taller. Chevron still reads.",
+      "palette": [
+        "#c8b070",
+        "#8a7048",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.7\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_dust_wolf",
+          "topology": "quadruped",
+          "gaitKind": "quad_lope",
+          "canon_kind_alias": "wolf"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_dust_wolf.prefab",
+        "animator_stub": "AC_faun_dust_wolf",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Pale dust wolf, tall ears, lean chevron, Frontier wind, no saddle.",
+      "stats_hooks": {
+        "health": "table:faun_med_predator",
+        "loot": [
+          "hide_dust"
+        ],
+        "diet": "carnivore",
+        "herd": "3-7",
+        "spawn": "Frontier open range",
+        "shared_skeleton": "faun_sunder_wolf"
+      },
+      "verb_ids": [
+        "verb_fauna_lope",
+        "verb_fauna_nip"
+      ]
+    },
+    {
+      "id": "faun_wagon_horse",
+      "display_name": "Wagon Horse",
+      "lore_blurb": "Frontier mount and draft. CX_Mount_Horse.prefab already exists; riding logic does not. This row is the animal, not a promise that you can ride today.",
+      "taxonomy_tags": [
+        "animal",
+        "mount",
+        "livestock"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sweat, harness gall, dust. Court visits wear a flower braid that is cloth, not a spell.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Honest horse: deep chest, one-tone mane, no unicorn, no armor fused to skin. Tack is a separate prop.",
+      "palette": [
+        "#6a4a30",
+        "#c8b070",
+        "#2a241c"
+      ],
+      "scale_vs_player": "1.45\u00d7 player height at the ear",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_wagon_horse",
+          "topology": "quadruped",
+          "gaitKind": "quad_gallop",
+          "canon_kind_alias": "horse"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_wagon_horse.prefab",
+        "animator_stub": "AC_faun_wagon_horse",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.mount",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Working horse, harness gall, dust coat, Frontier wagon, no horn, no fused armor. Tack separate.",
+      "stats_hooks": {
+        "health": "table:faun_mount",
+        "loot": [],
+        "diet": "herbivore",
+        "herd": "1-4",
+        "spawn": "Frontier camps and Hub stable outside Flower Law",
+        "ride_status": "prefab CX_Mount_Horse exists; ride controller ABSENT \u2014 do not fake a mounted camera"
+      },
+      "verb_ids": [
+        "verb_fauna_walk",
+        "verb_fauna_trot",
+        "verb_fauna_rear"
+      ]
+    },
+    {
+      "id": "faun_wind_pronghorn",
+      "display_name": "Wind Pronghorn",
+      "lore_blurb": "Frontier herd. Faster than the player on foot. Hunting them is a dust-sprint problem, not a damage sponge.",
+      "taxonomy_tags": [
+        "animal",
+        "prey",
+        "herd"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust only on the legs, clean flanks.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. White rump as a flash signal, short prongs, long legs. Herd turns as one pale flag.",
+      "palette": [
+        "#efe6d4",
+        "#c8b070",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "0.9\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_wind_pronghorn",
+          "topology": "quadruped",
+          "gaitKind": "quad_sprint",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_wind_pronghorn.prefab",
+        "animator_stub": "AC_faun_wind_pronghorn",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.prey",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Pale pronghorn, white rump flash, short horns, Frontier grass, herd turning as one.",
+      "stats_hooks": {
+        "health": "table:faun_med_prey",
+        "loot": [
+          "hide_pale"
+        ],
+        "diet": "herbivore",
+        "herd": "6-16",
+        "spawn": "Frontier plains, day"
+      },
+      "verb_ids": [
+        "verb_fauna_sprint",
+        "verb_fauna_flag"
+      ]
+    },
+    {
+      "id": "faun_grid_stray",
+      "display_name": "Uncounted Stray",
+      "lore_blurb": "Organic alley dog of the Grid. Not a drone, not a construct. The Census misses it on purpose, which is why Nyx feeds it.",
+      "taxonomy_tags": [
+        "animal",
+        "urban",
+        "ambient"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet neon bounce on the coat, no emissive implants.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Mixed-breed mutt, one ear, cable-scar on the shoulder that is healed skin not a port.",
+      "palette": [
+        "#2a241c",
+        "#3dffa0",
+        "#1a1228"
+      ],
+      "scale_vs_player": "0.5\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_grid_stray",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_grid_stray.prefab",
+        "animator_stub": "AC_faun_grid_stray",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Mixed-breed alley dog, one ear, healed cable scar, neon rain, The Grid. No implants, no robot parts.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "1-2",
+        "spawn": "Cyber uncounted alleys"
+      },
+      "verb_ids": [
+        "verb_fauna_skulk",
+        "verb_fauna_beg"
+      ]
+    },
+    {
+      "id": "faun_cable_sparrow",
+      "display_name": "Cable Sparrow",
+      "lore_blurb": "Tiny bird that nests junction boxes. Ambient life so the Grid is not only machines.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "critter"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Soot, a green lamp tick in the eye only as a reflection.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Round sparrow, short tail. Nest is fiber scrap, the bird is feather.",
+      "palette": [
+        "#6a5038",
+        "#1a1228",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "0.1\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_cable_sparrow",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_hop",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_cable_sparrow.prefab",
+        "animator_stub": "AC_faun_cable_sparrow",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small brown sparrow on a fiber junction box, neon rain, The Grid, feathers not plastic.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "2-8",
+        "spawn": "Cyber mid-level cables"
+      },
+      "verb_ids": [
+        "verb_fauna_hop",
+        "verb_fauna_flit"
+      ]
+    },
+    {
+      "id": "faun_aegis_kestrel",
+      "display_name": "Aegis Kestrel",
+      "lore_blurb": "Permanent Dawn roof hunter. Stoops pigeons. Refuses the last strike on anything that has already yielded \u2014 the city's law, learned by the bird or by the people who feed it.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "predator"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sun-bleached chest, city soot on the primaries.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Pointed wings make an anchor shape in the stoop. Hover is a kite.",
+      "palette": [
+        "#c8a070",
+        "#4a5870",
+        "#ffd0a0"
+      ],
+      "scale_vs_player": "0.34\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_aegis_kestrel",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_stoop",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_aegis_kestrel.prefab",
+        "animator_stub": "AC_faun_aegis_kestrel",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Kestrel hovering over a platinum city, anchor-shaped stoop, sun-bleached chest, Permanent Dawn.",
+      "stats_hooks": {
+        "health": "table:faun_small",
+        "loot": [
+          "feather_sun"
+        ],
+        "diet": "carnivore",
+        "herd": "1-2",
+        "spawn": "Superhero roofs, day"
+      },
+      "verb_ids": [
+        "verb_fauna_hover",
+        "verb_fauna_stoop"
+      ]
+    },
+    {
+      "id": "faun_lattice_moth",
+      "display_name": "Unclosed Moth",
+      "lore_blurb": "Crucible ambient. Wings show a pattern that does not repeat cleanly. Harmless. If the pattern completes, the moth is already dead and the row should despawn, not attack.",
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "ambient"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dusty scales, one teal emissive vein that stops before the edge.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Asymmetric wing pair so the silhouette never becomes a perfect bowtie.",
+      "palette": [
+        "#204040",
+        "#20ffd0",
+        "#1a1028"
+      ],
+      "scale_vs_player": "0.08\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_lattice_moth",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_flutter",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_lattice_moth.prefab",
+        "animator_stub": "AC_faun_lattice_moth",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Asymmetric dusty moth, one unfinished teal vein that stops before the wing edge, Crucible dark, no sacred geometry completion.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "nectar",
+        "herd": "3-10",
+        "spawn": "Crucible night",
+        "despawn_rule": "pattern_complete \u2192 remove, never aggro"
+      },
+      "verb_ids": [
+        "verb_fauna_flutter"
+      ]
+    },
+    {
+      "id": "faun_mark_hound",
+      "display_name": "Marked Hound",
+      "lore_blurb": "Sere street hound. Canon hound. The Mark on the shoulder is a brand scar, a debt, not a magic circle that ticks damage.",
+      "taxonomy_tags": [
+        "animal",
+        "working",
+        "canon_fauna"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Shared skeleton faun_veil_hound. Smog film, brand scar, no hologram.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Same hound skeleton as dock and veil. Brand is a single broken tile shape.",
+      "palette": [
+        "#3a3428",
+        "#c8a060",
+        "#1a140e"
+      ],
+      "scale_vs_player": "0.6\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_mark_hound",
+          "topology": "quadruped",
+          "gaitKind": "quad_trot",
+          "canon_kind_alias": "hound"
+        },
+        "skeleton_family": "quadruped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_mark_hound.prefab",
+        "animator_stub": "AC_faun_mark_hound",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": true,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.predator",
+          "Topology.quadruped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Smog-filmed hound with one broken-tile brand scar on the shoulder, Sere street, sodium and soot.",
+      "stats_hooks": {
+        "health": "table:faun_med",
+        "loot": [],
+        "diet": "omnivore",
+        "herd": "1",
+        "spawn": "Sere streets",
+        "shared_skeleton": "faun_veil_hound"
+      },
+      "verb_ids": [
+        "verb_fauna_heel",
+        "verb_fauna_bay"
+      ]
+    },
+    {
+      "id": "faun_smog_roach",
+      "display_name": "Smog Roach",
+      "lore_blurb": "Sere critter. Polyped, low, honest. Not a scorpion boss and not a hitbox family.",
+      "taxonomy_tags": [
+        "animal",
+        "critter",
+        "polyped"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Grease sheen, chipped shell, no acid spray.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Oval body, six short thick legs. Thin legs are forbidden; this is a pebble with feet.",
+      "palette": [
+        "#2a2418",
+        "#6a5840",
+        "#c8a060"
+      ],
+      "scale_vs_player": "0.08\u00d7 player length",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_smog_roach",
+          "topology": "polyped",
+          "gaitKind": "creep",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "polyped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_smog_roach.prefab",
+        "animator_stub": "AC_faun_smog_roach",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.polyped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Small thick-legged roach, grease sheen, Sere furnace soot, not a monster.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "detritivore",
+        "herd": "10-30",
+        "spawn": "Sere kitchens and furnaces"
+      },
+      "verb_ids": [
+        "verb_fauna_creep"
+      ]
+    },
+    {
+      "id": "faun_grove_finch",
+      "display_name": "Veil Finch",
+      "lore_blurb": "Shared small bird of Tunya and the Sundering edge. Ambient density.",
+      "taxonomy_tags": [
+        "animal",
+        "aerial",
+        "critter"
+      ],
+      "world_ids": [
+        "Tunya",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Real feather split, pollen or pine dust depending on world.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Seed body, one rust cap. Flocks are confetti, individuals are a cap.",
+      "palette": [
+        "#c8721a",
+        "#3a4a28",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.1\u00d7 player height",
+      "unity_bind": {
+        "compiler": "CreatureCompiler.Compile",
+        "card_fields": {
+          "speciesId": "faun_grove_finch",
+          "topology": "winged_biped",
+          "gaitKind": "flyer_hop",
+          "canon_kind_alias": null
+        },
+        "skeleton_family": "winged_biped",
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/faun_grove_finch.prefab",
+        "animator_stub": "AC_faun_grove_finch",
+        "evo_catalog": "EvoCatalog species row",
+        "spawner": "EvoSpawner biome weight; RoadWorld fauna list if canon_kind set",
+        "hostile": false,
+        "mesh_policy": "Dedicated Concordia mesh. Do not satisfy this id with a Quaternius or Kenney rename (no wolf\u2192Fox, no griffin\u2192Horse, no sealie\u2192Flamingo, no harpy\u2192Parrot). CX humanoid is not a fauna body. Clips may retarget later; the mesh is native.",
+        "gameplay_tags": [
+          "Creature.ambient",
+          "Topology.winged_biped"
+        ]
+      },
+      "aura_prompt": "Orthographic turnaround plus one hero pose, pure-black silhouette inset. Stylized realism, GTA wear, Palworld readable mass, saturated light, visible bevels, PBR albedo without baked light. Tiny finch with a rust cap, grove or pine edge, stylized realism, no jewel tones beyond the cap.",
+      "stats_hooks": {
+        "health": "table:faun_critter",
+        "loot": [],
+        "diet": "granivore",
+        "herd": "4-12",
+        "spawn": "Tunya groves and Fantasy edge, day"
+      },
+      "verb_ids": [
+        "verb_fauna_hop",
+        "verb_fauna_flit"
+      ]
+    }
+  ]
+}

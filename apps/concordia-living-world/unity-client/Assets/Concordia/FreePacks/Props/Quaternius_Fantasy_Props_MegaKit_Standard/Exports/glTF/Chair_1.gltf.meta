@@ -1,0 +1,103 @@
+fileFormatVersion: 2
+guid: 2939599e0aacc455d96a75090a225168
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 715df9372183c47e389bb6e19fbc3b52, type: 3}
+  editorImportSettings:
+    generateSecondaryUVSet: 0
+  importSettings:
+    nodeNameMethod: 1
+    animationMethod: 2
+    generateMipMaps: 1
+    texturesReadable: 0
+    defaultMinFilterMode: 9729
+    defaultMagFilterMode: 9729
+    anisotropicFilterLevel: 1
+  instantiationSettings:
+    mask: -1
+    layer: 0
+    skinUpdateWhenOffscreen: 1
+    lightIntensityFactor: 1
+    sceneObjectCreation: 2
+  assetDependencies:
+  - type: 0
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/Chair_1.bin
+    assetPath: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/Chair_1.bin
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_Normal.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_BaseColor.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_ORM.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_Normal.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_BaseColor.png
+    assetPath: 
+  - type: 1
+    originalUri: Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_ORM.png
+    assetPath: 
+  reportItems:
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_Normal.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_Normal.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_BaseColor.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_BaseColor.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_ORM.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Furniture_ORM.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_Normal.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_Normal.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_BaseColor.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_BaseColor.png
+  - type: 0
+    code: 43
+    messages:
+    - Couldn't load texture at Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_ORM.png
+    - Assets/Concordia/FreePacks/Props/Quaternius_Fantasy_Props_MegaKit_Standard/Exports/glTF/T_Trim_Metal_ORM.png
+  - type: 0
+    code: 45
+    messages:
+    - 1
+  - type: 0
+    code: 45
+    messages:
+    - 2
+  - type: 0
+    code: 45
+    messages:
+    - 0
+  - type: 0
+    code: 45
+    messages:
+    - 4
+  - type: 0
+    code: 45
+    messages:
+    - 5
+  - type: 0
+    code: 45
+    messages:
+    - 3

@@ -17,11 +17,13 @@ namespace Concordia.Editor
 
         static void Ensure()
         {
-            if (AssetDatabase.LoadAssetAtPath<AnimatorController>(Ctrl))
+            var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(Ctrl);
+            if (existing)
             {
                 var res = "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller";
                 if (!AssetDatabase.LoadAssetAtPath<AnimatorController>(res))
                     AssetDatabase.CopyAsset(Ctrl, res);
+                EnsureCombatOverlay(existing);
                 return;
             }
             AnimationClip idle = null, walk = null, run = null;
@@ -63,7 +65,46 @@ namespace Concordia.Editor
             var resCopy = "Assets/Concordia/Resources/Concordia/SoldierLocomotion.controller";
             if (!AssetDatabase.LoadAssetAtPath<AnimatorController>(resCopy))
                 AssetDatabase.CopyAsset(Ctrl, resCopy);
+            EnsureCombatOverlay(ac);
             Debug.Log("[Concordia] Soldier Idle/Walk/Run controller ready.");
+        }
+
+        const string UnarmedStrike =
+            "Assets/ExplosiveLLC/RPG Character Mecanim Animation Pack FREE/Animations/Unarmed/RPG-Character@Unarmed-Attack-R1.FBX";
+
+        static void EnsureCombatOverlay(AnimatorController ac)
+        {
+            if (!ac) return;
+            bool hasAttack = false;
+            foreach (var p in ac.parameters)
+                if (p.name == "Attack") hasAttack = true;
+            if (!hasAttack) ac.AddParameter("Attack", AnimatorControllerParameterType.Trigger);
+
+            var sm = ac.layers[0].stateMachine;
+            foreach (var st in sm.states)
+                if (st.state.name == "Strike") return;
+
+            AnimationClip clip = null;
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(UnarmedStrike))
+            {
+                var c = o as AnimationClip;
+                if (c == null || c.name.Contains("__preview")) continue;
+                clip = c;
+                break;
+            }
+            if (!clip) return;
+            var strike = sm.AddState("Strike");
+            strike.motion = clip;
+            var any = sm.AddAnyStateTransition(strike);
+            any.AddCondition(AnimatorConditionMode.If, 0, "Attack");
+            any.hasExitTime = false;
+            any.duration = 0.08f;
+            var back = strike.AddTransition(sm.defaultState);
+            back.hasExitTime = true;
+            back.exitTime = 0.82f;
+            back.duration = 0.12f;
+            EditorUtility.SetDirty(ac);
+            AssetDatabase.SaveAssets();
         }
     }
 }

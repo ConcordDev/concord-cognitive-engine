@@ -59,8 +59,9 @@ export function handleSchemeIntervene(db, userId, data = {}) {
     return { ...r, source: r.ok ? "kernel" : (r.reason || "kernel") };
   } catch (e) {
     const msg = String(e?.message || e);
-    if (/no such table/i.test(msg) || /npc_schemes/i.test(msg))
+    if (/no such table/i.test(msg) || /npc_schemes/i.test(msg)) {
       return { ok: false, reason: "scheme_not_found" };
+    }
     return { ok: false, reason: msg };
   }
 }
@@ -93,7 +94,14 @@ export function handleDodge(userId, data = {}) {
     ? raw
     : (data.wasParry ? "parry" : "dodge");
   try { grantIFrames(userId, ms, defense); } catch { /* in-memory optional */ }
-  return { ok: true, iframeMs: ms, perfect: !!perfect, action: defense };
+  // Same ack contract as the socket.io path (event-shapes "combat:dodge:ack"):
+  // direction is one of left/right/back (default back, never invented), and
+  // wasParry round-trips so a parry isn't silently reported as a plain dodge.
+  const direction = ["left", "right", "back"].includes(data.direction) ? data.direction : "back";
+  return {
+    ok: true, userId, direction, wasParry: data.wasParry === true, t: Date.now(),
+    iframeMs: ms, perfect: !!perfect, action: defense,
+  };
 }
 
 export function handleDungeonOpen(db, userId, data = {}) {

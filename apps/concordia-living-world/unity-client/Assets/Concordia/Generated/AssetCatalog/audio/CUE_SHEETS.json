@@ -1,0 +1,864 @@
+{
+  "batch": "B30_audio",
+  "slice": "A12_audio_cue_sheets",
+  "source": "lookfeel/FEEL_AUDIO_VISUAL_CUES.md",
+  "count": 44,
+  "rule": "Cue sheets only. audio_file is null on every row. The visual carries the tell. Telegraphs stay under 500 ms. Contact is the beat after the windup and still has no clip. No loot beam. No rarity pillar.",
+  "mesh_rows": [
+    "prop_hub_spoil_petal",
+    "prop_crime_spoil_bill",
+    "prop_frontier_spoil_rivet",
+    "prop_fantasy_spoil_crest"
+  ],
+  "reused_visuals": [
+    "flora_tunya_terrace_tree",
+    "vfx_cyber_number_break",
+    "prop_brand_tile",
+    "prop_unclosed_shard",
+    "vfx_hub_flame_pool",
+    "vfx_crime_chalk_tick",
+    "vfx_tunya_pollen_stance",
+    "vfx_crucible_unclosed_seam",
+    "vfx_fantasy_curse_fold",
+    "vfx_dawn_mercy_stop",
+    "env_sere_furnace_stack",
+    "env_cyber_census_plinth",
+    "vfx_steel_ground_wedge",
+    "vfx_invoice_ankle_gap",
+    "vfx_frontier_dust_fan",
+    "vfx_ruins_ash_stop",
+    "vfx_tunya_harvest_ring",
+    "vfx_hub_cut_flower"
+  ],
+  "refused": [
+    {
+      "id": "cue_refused_gunshot",
+      "reason": "No gunshot language. No rifles. Pistol clips stay unbound."
+    },
+    {
+      "id": "cue_refused_gallop",
+      "reason": "No mount gallop loop. Lead, hitch, or push. No rider."
+    },
+    {
+      "id": "cue_refused_stinger",
+      "reason": "No musical stinger ids. No audio binaries in this slice."
+    },
+    {
+      "id": "cue_refused_scream",
+      "reason": "Aerial scream is not a file. The shadow disc is the tell."
+    }
+  ],
+  "entries": [
+    {
+      "id": "cue_spoil_petal",
+      "kind": "spoil",
+      "world_ids": [
+        "Hub"
+      ],
+      "shape": "one petal, flat",
+      "color": "#c8721a",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "prop_hub_spoil_petal",
+      "reduced_motion": "show the petal",
+      "note": "Reminder, not loot. Inside 42 m. Not vfx_hub_cut_flower.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_petal"
+    },
+    {
+      "id": "cue_spoil_fruit",
+      "kind": "spoil",
+      "world_ids": [
+        "Tunya"
+      ],
+      "shape": "three small masses max, on the tree they were already on",
+      "color": "#c8721a",
+      "duration_ms": null,
+      "persist": "on_tree",
+      "visual_ref": "flora_tunya_terrace_tree",
+      "reduced_motion": "show at most three masses",
+      "note": "No new mesh. Tree stays uncut. Do not spawn a fruit cluster prop.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_fruit"
+    },
+    {
+      "id": "cue_spoil_ash",
+      "kind": "spoil",
+      "world_ids": [
+        "Ruins"
+      ],
+      "shape": "a pinch of dust that settles",
+      "color": "#b89060",
+      "duration_ms": 600,
+      "persist": "pinch",
+      "visual_ref": null,
+      "reduced_motion": "show the settled pinch",
+      "note": "Catalogue dust. Not prop_ash_cairn. Not vfx_ruins_ash_page. No coin burst.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_ash"
+    },
+    {
+      "id": "cue_spoil_bill",
+      "kind": "spoil",
+      "world_ids": [
+        "Crime"
+      ],
+      "shape": "a paper rectangle on the ground",
+      "color": "#c8a060",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "prop_crime_spoil_bill",
+      "reduced_motion": "show the paper",
+      "note": "Blank face. Not ui_board_crime_bill.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_bill"
+    },
+    {
+      "id": "cue_spoil_digit",
+      "kind": "spoil",
+      "world_ids": [
+        "Cyber"
+      ],
+      "shape": "a dark token, one missing corner",
+      "color": "#3dffa0",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "vfx_cyber_number_break",
+      "reduced_motion": "show the broken token",
+      "note": "Cyan is the broken edge only. No digit. Do not re-prompt the B28 card.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_digit"
+    },
+    {
+      "id": "cue_spoil_rivet",
+      "kind": "spoil",
+      "world_ids": [
+        "Frontier"
+      ],
+      "shape": "a short iron bar",
+      "color": "#4a3828",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "prop_frontier_spoil_rivet",
+      "reduced_motion": "show the bar",
+      "note": "Only after item_rem_dome_rivet. Do not spawn the Last Dome.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_rivet"
+    },
+    {
+      "id": "cue_spoil_tile",
+      "kind": "spoil",
+      "world_ids": [
+        "Sere"
+      ],
+      "shape": "a chipped square",
+      "color": "#8a3030",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "prop_brand_tile",
+      "reduced_motion": "show the chip",
+      "note": "A mark broken. Not a gem. Tint the chip #8a3030. Do not re-prompt B10.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_tile"
+    },
+    {
+      "id": "cue_spoil_shard",
+      "kind": "spoil",
+      "world_ids": [
+        "Crucible"
+      ],
+      "shape": "a fat chip, not a sparkle",
+      "color": "#c8b4ff",
+      "duration_ms": 120,
+      "persist": "then_stone",
+      "visual_ref": "prop_unclosed_shard",
+      "reduced_motion": "skip the lilac frame; show stone",
+      "note": "Lilac one frame, then stone #204040. Not wpn_throw_crucible_shard. Construct cap stays 0.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_shard"
+    },
+    {
+      "id": "cue_spoil_crest",
+      "kind": "spoil",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "shape": "a closed crest, gold worn",
+      "color": "#c8a060",
+      "duration_ms": null,
+      "persist": "ground",
+      "visual_ref": "prop_fantasy_spoil_crest",
+      "reduced_motion": "show the closed crest",
+      "note": "The crest stays closed.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_spoil_crest"
+    },
+    {
+      "id": "cue_gossip_court",
+      "kind": "gossip",
+      "world_ids": [
+        "Hub"
+      ],
+      "shape": "small ring of lantern light on a passerby",
+      "color": "#e0a04a",
+      "duration_ms": 500,
+      "visual_ref": "vfx_hub_flame_pool",
+      "reduced_motion": "hold a dim ring",
+      "note": "No subtitle unless a quest already has a line. Inside 42 m.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_court"
+    },
+    {
+      "id": "cue_gossip_coast",
+      "kind": "gossip",
+      "world_ids": [
+        "Crime"
+      ],
+      "shape": "one chalk stroke on a wall",
+      "color": "#e0b050",
+      "duration_ms": 400,
+      "visual_ref": "vfx_crime_chalk_tick",
+      "reduced_motion": "show the stroke",
+      "note": "Sodium. One stroke. Not a chat tail.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_coast"
+    },
+    {
+      "id": "cue_gossip_grid",
+      "kind": "gossip",
+      "world_ids": [
+        "Cyber"
+      ],
+      "shape": "banner hem flickers once",
+      "color": "#3dffa0",
+      "duration_ms": 400,
+      "visual_ref": null,
+      "reduced_motion": "no flicker; hem stays",
+      "note": "The cloth does not change its word. No new banner mesh.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_grid"
+    },
+    {
+      "id": "cue_gossip_frontier",
+      "kind": "gossip",
+      "world_ids": [
+        "Frontier"
+      ],
+      "shape": "canvas snaps, a shape in the dust",
+      "color": "#c8b070",
+      "duration_ms": 400,
+      "visual_ref": null,
+      "reduced_motion": "show the dust shape",
+      "note": "No voice line. Not a wind-sail roof.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_frontier"
+    },
+    {
+      "id": "cue_gossip_sere",
+      "kind": "gossip",
+      "world_ids": [
+        "Sere"
+      ],
+      "shape": "furnace eye shutters",
+      "color": "#e07030",
+      "duration_ms": 500,
+      "visual_ref": "env_sere_furnace_stack",
+      "reduced_motion": "hold the eye shut",
+      "note": "People look. The UI does not explain. No flame tongue.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_sere"
+    },
+    {
+      "id": "cue_gossip_dawn",
+      "kind": "gossip",
+      "world_ids": [
+        "Superhero"
+      ],
+      "shape": "one office window goes dark",
+      "color": "#4a5870",
+      "duration_ms": 500,
+      "visual_ref": null,
+      "reduced_motion": "window stays dark",
+      "note": "Mercy is someone not finishing a cheer. No victory word. Do not fill the plaza heart.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_dawn"
+    },
+    {
+      "id": "cue_gossip_tunya",
+      "kind": "gossip",
+      "world_ids": [
+        "Tunya"
+      ],
+      "shape": "a few pollen grains knock loose",
+      "color": "#c8721a",
+      "duration_ms": 400,
+      "visual_ref": "vfx_tunya_pollen_stance",
+      "reduced_motion": "show a few grains",
+      "note": "Reuse the stance card small. No jar.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_tunya"
+    },
+    {
+      "id": "cue_gossip_ruins",
+      "kind": "gossip",
+      "world_ids": [
+        "Ruins"
+      ],
+      "shape": "a stele line does not grow",
+      "color": "#b89060",
+      "duration_ms": null,
+      "visual_ref": null,
+      "reduced_motion": "spawn nothing",
+      "note": "The absence is the gossip. No new stele mesh.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_ruins"
+    },
+    {
+      "id": "cue_gossip_crucible",
+      "kind": "gossip",
+      "world_ids": [
+        "Crucible"
+      ],
+      "shape": "a seam ticks and does not close",
+      "color": "#20ffd0",
+      "duration_ms": 400,
+      "visual_ref": "vfx_crucible_unclosed_seam",
+      "reduced_motion": "show the open seam",
+      "note": "The seam does not fill. Construct cap stays 0.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_crucible"
+    },
+    {
+      "id": "cue_gossip_sundering",
+      "kind": "gossip",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "shape": "a gold scar stays dull",
+      "color": "#8a7a68",
+      "duration_ms": null,
+      "visual_ref": null,
+      "reduced_motion": "keep the scar dull",
+      "note": "The curse was not used. Do not play vfx_fantasy_curse_fold.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_gossip_sundering"
+    },
+    {
+      "id": "cue_threat_melee",
+      "kind": "threat",
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "shape": "thick wedge on the ground along the swing",
+      "color": "world_accent",
+      "duration_ms": 400,
+      "visual_ref": "vfx_steel_ground_wedge",
+      "accent_by_world": {
+        "Hub": "#c8721a",
+        "Fantasy": "#c8a060",
+        "Tunya": "#c8721a",
+        "Ruins": "#b89060",
+        "Crime": "#e0b050",
+        "Cyber": "#3dffa0",
+        "Frontier": "#c8b070",
+        "Superhero": "#ffd0a0",
+        "Crucible": "#20ffd0",
+        "Sere": "#8a3030"
+      },
+      "reduced_motion": "hold the wedge; do not grow it",
+      "note": "Get off the wedge. In the world, under the feet. Not a screen flash. Ruins uses amber so the dark style accent still reads. Crime uses sodium, not the bill gold. Steel slash uses this wedge. Inside 42 m, Ward Cut stays vfx_hub_cut_flower.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_melee"
+    },
+    {
+      "id": "cue_threat_grab",
+      "kind": "threat",
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "shape": "a ring on the ankles, broken",
+      "color": "#e0b050",
+      "duration_ms": 400,
+      "visual_ref": "vfx_invoice_ankle_gap",
+      "accent_by_world": {
+        "Crime": "#e0b050",
+        "Sere": "#e07030"
+      },
+      "reduced_motion": "hold the broken ring",
+      "note": "Step out before it closes. Coast sodium or Sere furnace eye. The gap stays open. The thrust tick is cue_contact_invoice.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_grab"
+    },
+    {
+      "id": "cue_threat_count",
+      "kind": "threat",
+      "world_ids": [
+        "Cyber"
+      ],
+      "shape": "a digit ring with a gap",
+      "color": "#3dffa0",
+      "duration_ms": 400,
+      "visual_ref": "env_cyber_census_plinth",
+      "reduced_motion": "hold the gap",
+      "note": "On the Census plinth or a drone lens. The gap is the safe bearing. No numeral.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_count"
+    },
+    {
+      "id": "cue_threat_dust",
+      "kind": "threat",
+      "world_ids": [
+        "Frontier"
+      ],
+      "shape": "a low fan, ankle height",
+      "color": "#c8b070",
+      "duration_ms": 400,
+      "visual_ref": "vfx_frontier_dust_fan",
+      "reduced_motion": "hold the fan",
+      "note": "Lateral. Not a jump. Ankle height only. No shockwave. No dome.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_dust"
+    },
+    {
+      "id": "cue_threat_fold",
+      "kind": "threat",
+      "world_ids": [
+        "Fantasy"
+      ],
+      "shape": "a line that closes inward on the attacker",
+      "color": "#c8a060",
+      "duration_ms": 400,
+      "visual_ref": "vfx_fantasy_curse_fold",
+      "reduced_motion": "show the closed line",
+      "note": "The curse is theirs if they use it. Not a flamethrower.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_fold"
+    },
+    {
+      "id": "cue_threat_mercy",
+      "kind": "threat",
+      "world_ids": [
+        "Superhero"
+      ],
+      "shape": "a gold ring that stops short of the target",
+      "color": "#ffd0a0",
+      "duration_ms": 400,
+      "visual_ref": "vfx_dawn_mercy_stop",
+      "reduced_motion": "show the stopped ring",
+      "note": "The hit will not finish them. No beam. Dawn street mobs stay empty-handed.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_mercy"
+    },
+    {
+      "id": "cue_threat_unclosed",
+      "kind": "threat",
+      "world_ids": [
+        "Crucible"
+      ],
+      "shape": "a teal crack that opens again",
+      "color": "#20ffd0",
+      "duration_ms": 400,
+      "visual_ref": "vfx_crucible_unclosed_seam",
+      "reduced_motion": "show the open crack",
+      "note": "The pattern resets. The seam does not fill. Construct cap stays 0.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_unclosed"
+    },
+    {
+      "id": "cue_threat_ash",
+      "kind": "threat",
+      "world_ids": [
+        "Ruins"
+      ],
+      "shape": "a vertical stop, a line that ends",
+      "color": "#b89060",
+      "duration_ms": 400,
+      "visual_ref": "vfx_ruins_ash_stop",
+      "reduced_motion": "hold the stopped line",
+      "note": "The ending fails. Not vfx_ruins_ash_page. Windup only. The contact puff must not column.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_ash"
+    },
+    {
+      "id": "cue_threat_harvest",
+      "kind": "threat",
+      "world_ids": [
+        "Tunya"
+      ],
+      "shape": "a circle on the tree, not on the player",
+      "color": "#c8721a",
+      "duration_ms": 400,
+      "visual_ref": "vfx_tunya_harvest_ring",
+      "reduced_motion": "hold the circle on the tree",
+      "note": "Striking the tree is the mistake. The ring sits on flora_tunya_terrace_tree. Not on the player.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_harvest",
+      "parent": "flora_tunya_terrace_tree"
+    },
+    {
+      "id": "cue_threat_mark",
+      "kind": "threat",
+      "world_ids": [
+        "Sere"
+      ],
+      "shape": "a tile lighting under one foot",
+      "color": "#8a3030",
+      "duration_ms": 400,
+      "visual_ref": "prop_brand_tile",
+      "reduced_motion": "hold the lit tile",
+      "note": "Move before the compound. No flame tongue.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_mark"
+    },
+    {
+      "id": "cue_threat_aerial",
+      "kind": "threat",
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Frontier"
+      ],
+      "shape": "a shadow disc that grows",
+      "color": "#2a241c",
+      "duration_ms": 450,
+      "visual_ref": null,
+      "parents": [
+        "mon_sunder_griffin",
+        "mon_tunya_harpy",
+        "hyb_dustgriffin"
+      ],
+      "reduced_motion": "show the disc at full size",
+      "note": "The disc is the tell. A scream is not specified. No audio file.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_threat_aerial"
+    },
+    {
+      "id": "cue_flash_flower_law",
+      "kind": "flash",
+      "world_ids": [
+        "Hub"
+      ],
+      "shape": "tint of the existing grade",
+      "color": "#c8721a",
+      "duration_ms": 800,
+      "visual_ref": null,
+      "screen_flash": true,
+      "reduced_motion": "cut to the tinted grade",
+      "note": "Reserved for the flower transformation inside 42 m. Not a white hit.",
+      "audio_file": null,
+      "audio_slot": "cue_flash_flower_law"
+    },
+    {
+      "id": "cue_flash_furnace_eye",
+      "kind": "flash",
+      "world_ids": [
+        "Sere"
+      ],
+      "shape": "tint of the existing grade through a window",
+      "color": "#e07030",
+      "duration_ms": 500,
+      "visual_ref": "env_sere_furnace_stack",
+      "screen_flash": true,
+      "reduced_motion": "cut to the tinted grade",
+      "note": "Furnace eye seen through a window. Not a white hit. No flame tongue.",
+      "audio_file": null,
+      "audio_slot": "cue_flash_furnace_eye"
+    },
+    {
+      "id": "cue_contact_steel",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "shape": "the wedge ticks once and goes",
+      "color": "world_accent",
+      "duration_ms": 120,
+      "visual_ref": "vfx_steel_ground_wedge",
+      "reduced_motion": "show the wedge, then remove it",
+      "note": "Not inside the 42 m disk. Ward Cut there is cue_contact_flower. Not a screen flash. Do not stack Impact on the wedge.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_steel",
+      "pairs_with": "cue_threat_melee",
+      "accent_by_world": {
+        "Hub": "#c8721a",
+        "Fantasy": "#c8a060",
+        "Tunya": "#c8721a",
+        "Ruins": "#b89060",
+        "Crime": "#e0b050",
+        "Cyber": "#3dffa0",
+        "Frontier": "#c8b070",
+        "Superhero": "#ffd0a0",
+        "Crucible": "#20ffd0",
+        "Sere": "#8a3030"
+      },
+      "exception": "Hub inside 42 m uses cue_contact_flower"
+    },
+    {
+      "id": "cue_contact_flower",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Hub"
+      ],
+      "shape": "the cut flower is the contact",
+      "color": "#c8721a",
+      "duration_ms": 200,
+      "visual_ref": "vfx_hub_cut_flower",
+      "reduced_motion": "show the flower",
+      "note": "Inside 42 m only. The grade tint stays cue_flash_flower_law. Do not also spawn the steel wedge. Not a loot beam.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_flower",
+      "pairs_with": "cue_flash_flower_law",
+      "flower_law": "inside_42m_only"
+    },
+    {
+      "id": "cue_contact_invoice",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "shape": "one thrust tick",
+      "color": "#e0b050",
+      "duration_ms": 80,
+      "visual_ref": null,
+      "reduced_motion": "show the tick",
+      "note": "Pack vfx_Impact_01 for the thrust only. The ankle gap stays open. Not the chalk tick. Not the mercy ring.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_invoice",
+      "pairs_with": "cue_threat_grab",
+      "pack_prefab": "vfx_Impact_01",
+      "accent_by_world": {
+        "Crime": "#e0b050",
+        "Sere": "#e07030"
+      }
+    },
+    {
+      "id": "cue_contact_dust",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Frontier"
+      ],
+      "shape": "the fan settles at the ankle",
+      "color": "#c8b070",
+      "duration_ms": 200,
+      "visual_ref": "vfx_frontier_dust_fan",
+      "reduced_motion": "show the settled fan",
+      "note": "No shockwave. No dome. Gossip dust still spawns no mesh.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_dust",
+      "pairs_with": "cue_threat_dust"
+    },
+    {
+      "id": "cue_contact_ash",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Ruins"
+      ],
+      "shape": "one puff that does not rise",
+      "color": "#b89060",
+      "duration_ms": 180,
+      "visual_ref": null,
+      "reduced_motion": "show a short puff",
+      "note": "Pack vfx_Smoke_01 once. Must not column. Windup stays vfx_ruins_ash_stop. Not the ash page. Not the spoil pinch.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_ash",
+      "pairs_with": "cue_threat_ash",
+      "pack_prefab": "vfx_Smoke_01"
+    },
+    {
+      "id": "cue_contact_harvest",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Tunya"
+      ],
+      "shape": "the ring stays on the tree",
+      "color": "#c8721a",
+      "duration_ms": 200,
+      "visual_ref": "vfx_tunya_harvest_ring",
+      "reduced_motion": "hold the ring on the tree",
+      "note": "No spark on the player. Tree stays uncut. Fruit stays on the tree.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_harvest",
+      "pairs_with": "cue_threat_harvest",
+      "parent": "flora_tunya_terrace_tree"
+    },
+    {
+      "id": "cue_contact_mercy",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Superhero"
+      ],
+      "shape": "the ring stays short",
+      "color": "#ffd0a0",
+      "duration_ms": 200,
+      "visual_ref": "vfx_dawn_mercy_stop",
+      "reduced_motion": "show the stopped ring",
+      "note": "No Impact on the body under this cue. Dawn street jab and cross still use Impact and are not this row.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_mercy",
+      "pairs_with": "cue_threat_mercy"
+    },
+    {
+      "id": "cue_contact_aerial",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Fantasy",
+        "Tunya",
+        "Frontier"
+      ],
+      "shape": "the disc stops where it meets the ground",
+      "color": "#2a241c",
+      "duration_ms": 120,
+      "visual_ref": null,
+      "reduced_motion": "show the disc at full size",
+      "note": "No scream file. The disc is the tell.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_aerial",
+      "pairs_with": "cue_threat_aerial",
+      "parents": [
+        "mon_sunder_griffin",
+        "mon_tunya_harpy",
+        "hyb_dustgriffin"
+      ]
+    },
+    {
+      "id": "cue_contact_count",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Cyber"
+      ],
+      "shape": "the gap stays empty",
+      "color": "#3dffa0",
+      "duration_ms": 120,
+      "visual_ref": "env_cyber_census_plinth",
+      "reduced_motion": "hold the gap",
+      "note": "No digit. The broken token is the spoil, not this contact.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_count",
+      "pairs_with": "cue_threat_count"
+    },
+    {
+      "id": "cue_contact_fold",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Fantasy"
+      ],
+      "shape": "the line stays on the attacker",
+      "color": "#c8a060",
+      "duration_ms": 160,
+      "visual_ref": "vfx_fantasy_curse_fold",
+      "reduced_motion": "show the closed line",
+      "note": "Not a flamethrower. The dull gossip scar does not play this.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_fold",
+      "pairs_with": "cue_threat_fold"
+    },
+    {
+      "id": "cue_contact_unclosed",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Crucible"
+      ],
+      "shape": "the seam stays open",
+      "color": "#20ffd0",
+      "duration_ms": 160,
+      "visual_ref": "vfx_crucible_unclosed_seam",
+      "reduced_motion": "show the open seam",
+      "note": "The seam does not fill. Construct cap stays 0. Lilac stays inside the Gap Bracket.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_unclosed",
+      "pairs_with": "cue_threat_unclosed"
+    },
+    {
+      "id": "cue_contact_mark",
+      "kind": "contact",
+      "cycle": 2,
+      "world_ids": [
+        "Sere"
+      ],
+      "shape": "the tile dulls",
+      "color": "#8a3030",
+      "duration_ms": 160,
+      "visual_ref": "prop_brand_tile",
+      "reduced_motion": "show the dull tile",
+      "note": "No flame tongue. Not vfx_sere_coal_dark.",
+      "audio_file": null,
+      "screen_flash": false,
+      "audio_slot": "cue_contact_mark",
+      "pairs_with": "cue_threat_mark"
+    }
+  ],
+  "cycle2_count": 12,
+  "cycle2_file": "audio/CUE_CONTACTS_CYCLE2.json"
+}

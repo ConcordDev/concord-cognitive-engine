@@ -1,0 +1,86 @@
+UNITY-CLIENT CHAT ONLY. Project-root already set (unity-client / ConcordiaHub).
+START NOW — unfinished work ONLY. Do not redo completed steps.
+
+## DONE — skip entirely (do NOT regenerate)
+- 147 CX plates + 147 Materials under Generated/Materials/P0–P4
+- Prefab factory ≈ done: 146 prefabs under Generated/Prefabs (P0–P4)
+  - P0 Bandits ×5 (Sundering captain/dusk/hitch/marrow/nettle)
+  - P3 Guests ×15, Pillars ×3, Spoils pouch, Heroes/Weapons/Mount, P1 fauna/watchers, P2 props/VFX/tiles, P4 civic
+- Cascade code on disk (WorldBook NoteKill "fell"; SoftEnter won’t clobber kill; spoils off corpse; GossipEar)
+- CxDress already maps Hub guests + named bandits + pillars → CX_* plate names
+- AuraRefs pack + AURA_OPENWORLD_REFERENCE_PACK.md + north-star plates
+- Bridge healthy. Do NOT wipe Library, kill Concord, or re-import Poly Haven wholesale.
+- Do NOT remake plates/materials/prefabs unless LoadAsset fails or magenta.
+
+## READ (quality bar only — open once)
+Assets/Concordia/AuraRefs/AURA_OPENWORLD_REFERENCE_PACK.md
+AuraRefs/north-star/court-tree-plate.jpg
+AuraRefs/north-star/city-vinewood-density.jpg
+AuraRefs/hub-vistas/HUB-VISTA-crown-spoke-out-2026-09-20.png
+AuraRefs/world-tours/tour-HUB.png
+AuraRefs/world-tours/tour-SUNDERING.png
+
+## WAVE A — Bind so Play actually uses them (was W2)
+Verify + fix until each LoadAsset / spawn path resolves (csErrors=0; magenta=0):
+
+1) Hero: ModularPerson / CxDress → CX_Hero_Court_front (Hub) and CX_Hero_Steel_* when Steel; grips intact; no cube plates / viking helmet.
+2) Bandits: RoadWorld / TrainingDummy / Fantasy roads spawn ALL 5:
+   Generated/Prefabs/P0/Bandits/CX_Bandit_Sundering_{captain,dusk,hitch,marrow,nettle}.prefab
+3) Guests: GuestSystem / RealmFill / CxDress → all 15 Generated/Prefabs/P3/Guests/CX_Guest_*.prefab with Canon names.
+4) Spoils: DropSpoils / corpse loot → Generated/Prefabs/P0/Spoils/CX_Prop_Spoils_pouch.prefab
+5) Pillars ×3 on Hub plaza: CX_Pillar_Concord, CX_Pillar_Concordia, CX_Pillar_Sovereign
+6) P2 props → HubPlaza / RoadWorld / WorldKit scatter (crates, carts, signs — not empty pads)
+7) P4 civic → WorldKit / DressVocab / CxDress wayposts per WorldId (at least Hub + Sundering)
+8) P1: one wolf + one watcher on Fantasy roads
+9) Appearance / gear ← P2 Create/Gear where the create/equip path exists
+
+Spot-check: AssetDatabase.LoadAssetAtPath each class once. Report any missing path and fix before Wave B.
+
+## WAVE B — Travel delight Hub → Sundering (was W3)
+Against north-star + hub-vistas + vinewood density + tour-SUNDERING:
+
+1) Court tree weenie readable from the ring road
+2) Canon.Gates gatehouses dressed (not Prim cubes)
+3) Crown Road breadcrumbs every ~40–80m: P4 waypost, cart/crate, traveler or wildlife, shrine/sign
+4) Horizon shows ≥3 different POI types
+5) SoftEnter Fantasy: WorldId + look/civic shift toward tour-SUNDERING (wardpost / Sundering civic)
+
+BAN: PlazaPad tile hell, identical house spam, floating cloth, Quaternius as hero identity.
+SoftEnter = walk transition, not teleport.
+Screenshot: mid-spoke road + gate approach. Save under Assets/Concordia/Generated/Proof/ if helpful.
+
+## WAVE C — Living loop proof (mandatory — was W4)
+Play ConcordiaHub. Do A–F in one session. Write BOTH files when done (overwrite ok):
+
+  ~/.zuko/AURA_LIFE_PROOF.txt
+  Assets/Concordia/Generated/AURA_LIFE_PROOF.txt
+
+| Step | Action | PASS if |
+| A | Hub walk ≥10s | CX hero visible; sky not magenta; Court look |
+| B | Approach HubGuest | Canon name + CX plate dress (not blank/Prim) |
+| C | SoftEnter Fantasy | WorldId + look shift; Sundering civic/wardpost visible |
+| D | Kill named Sundering bandit | corpse dead; spoils>0; LastEvent/WorldBook contains "fell"; player still valid |
+| E | Gossip / feed / memory | kill remembered (not overwritten by journey-home stamp) |
+| F | SoftEnter Hub | Court still knows the kill |
+
+Screenshot each step (editor capture ok). STOP and fix blockers before claiming PASS.
+Format each line: `A PASS — …` or `A FAIL — …` then a one-line blocker + what you changed.
+
+## WAVE D — Only if A–F all PASS (optional)
+CINEMATIC breath: idle 10s motion; Court/Steel HUD live if easy; ten eye-shots; list remaining fails.
+NO new continents / Tunya sprawl until WAVE C PASSes.
+
+## Constraints
+- unity-client / ConcordiaHub only
+- Free packs = MESH; CX + north-star = LOOK; Poly Haven prefer `_2k.jpg`
+- Prefer bind/existing systems over new frameworks
+- Small MCP batches if bridge slows; never symlink heavy trees into Assets
+- Leave Concord running
+
+## Done when
+1) Wave A binds resolve in Play (guests, bandits, spoils, pillars, road life)
+2) Wave B Hub→Sundering road is not empty / Prim
+3) Wave C AURA_LIFE_PROOF.txt exists with A–F all PASS
+4) Brief chat report: PASS/FAIL table + prefab/bind counts (no plate regen)
+
+START Wave A now.

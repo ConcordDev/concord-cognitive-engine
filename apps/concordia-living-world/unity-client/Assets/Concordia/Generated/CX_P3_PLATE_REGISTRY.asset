@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!49 &4900000
+TextAsset:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: CX_P3_PLATE_REGISTRY
+  m_Script: "{\n  \"wave\": \"P3-named-faces\",\n  \"sourceRoot\": \"Assets/Concordia/Generated/P3\",\n 
+    \"converted\": 19,\n  \"skippedVerify\": 0,\n  \"errors\": [],\n  \"plates\":
+    [\n    {\"plate\":\"CX_Guest_AsbirThelane\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_AsbirThelane.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_AsbirThelane.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_Brackish\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_Brackish.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Brackish.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_EliasVoss\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_EliasVoss.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_EliasVoss.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_JaxRivera\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_JaxRivera.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_JaxRivera.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_KaelZero\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_KaelZero.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_KaelZero.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_Lamplighter\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_Lamplighter.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_Lamplighter.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_LyraSilentchant\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_LyraSilentchant.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_LyraSilentchant.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_MamaIronRose\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_MamaIronRose.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MamaIronRose.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_MarenAshveil\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_MarenAshveil.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_MarenAshveil.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_NyxTorres\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_NyxTorres.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_NyxTorres.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_OldSeam\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_OldSeam.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_OldSeam.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_SeraphineVoss\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_SeraphineVoss.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_SeraphineVoss.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_ThorneBlackroot\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_ThorneBlackroot.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_ThorneBlackroot.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_VesperKane\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_VesperKane.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_VesperKane.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Guest_WardenGale\",\"source\":\"Assets/Concordia/Generated/P3/Guests/CX_Guest_WardenGale.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Guests/CX_Guest_WardenGale.mat\",\"binding\":\"authored-cx-guest-material\"},\n   
+    {\"plate\":\"CX_Pillar_Concord\",\"source\":\"Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Concord.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concord.mat\",\"binding\":\"civic-pillar-material\"},\n   
+    {\"plate\":\"CX_Pillar_Concordia\",\"source\":\"Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Concordia.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Concordia.mat\",\"binding\":\"civic-pillar-material\"},\n   
+    {\"plate\":\"CX_Pillar_Sovereign\",\"source\":\"Assets/Concordia/Generated/P3/Pillars/CX_Pillar_Sovereign.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Pillars/CX_Pillar_Sovereign.mat\",\"binding\":\"civic-pillar-material\"},\n   
+    {\"plate\":\"CX_NPC_SereTessera\",\"source\":\"Assets/Concordia/Generated/P3/Worlds/CX_NPC_SereTessera.jpg\",\"material\":\"Assets/Concordia/Generated/Materials/P3/Worlds/CX_NPC_SereTessera.mat\",\"binding\":\"world-face-material\"}\n 
+    ]\n}"

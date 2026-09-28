@@ -1,0 +1,757 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S04_fantasy_geo_politics_sidequests",
+  "world_id": "Fantasy",
+  "lore_world_id": "fantasy",
+  "display_world": "The Sundering",
+  "facet": "geo_politics_quests",
+  "title": "Sundering — geography, politics, culture, side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite fantasy lore, factions, countries, npcs, volume quests, density weights, S03 caps, or Hub seats.",
+  "canon_pins": {
+    "world_id": "Fantasy",
+    "canon_world_def_title": "The Sundering",
+    "refusal": "Refusal of Hostility",
+    "the_no": "I will not become the thing destroying me.",
+    "law_text": "Hostility turns inward. Your own poise pays the curse. Gold in a wound is the curse trying to be used.",
+    "steel_live": true,
+    "flower_law": "Hub only. Radius 42 m. Arena exception is Gale's disk, not a Sundering rule. A Fantasy blade carried inside that disk and outside the Arena is a flower.",
+    "wall_radius_m": 56,
+    "sundering_lane": {
+      "x": 11.2,
+      "half_width_m": 2.6,
+      "z_min": -13.5,
+      "z_max": 240,
+      "rule": "Canon.BlocksSunderingWalk. No capital, temple, toll, or quest body whose radius reaches the strip."
+    },
+    "sundering_gate_plaque": { "x": 0, "z": 34, "note": "Hub ring. S02 owns plaque courtesy. This slice does not stage a quest on it." },
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "distance_m": 68.0,
+      "lettering": "Pinewood Crossing",
+      "prop": "The Fantasy density weight for prop_pine_milepost is 0. Read the Hub post. Do not plant a second one."
+    },
+    "humanoid_body": "CX only. Concordia face. Plates and cloth on CX bones. A league raider is a CX body in patchwork hide if a native plate is bound. A goblin head mesh is not a body.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#3a6a48", "#c8b48a", "#6a5438", "#c8a060"],
+    "materials": ["weathered granite", "moss", "timber", "gold leaf worn thin"],
+    "kit": "arch_kit_fantasy_sunder",
+    "style_sector": "mythical",
+    "playable_scale_note": "countries.json drops eight faction anchors inside or on the 56 m field, each with territory_radius 25.5. Those radii overlap the Court and each other. They are names with points, not navmesh countries. This slice does not grow them and does not spawn a kit on a point that fails the lane test or that would read as a steel castle inside 42 m."
+  },
+  "source_rows": {
+    "lore": "content/world/fantasy/lore.json and the Canon copy under Assets/Concordia/Resources/Concordia/Canon/fantasy/lore.json",
+    "factions": "content/world/fantasy/factions.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/fantasy/countries.json",
+    "npcs": "content/world/fantasy/npcs.json and npcs-extra.json",
+    "meta": "content/world/fantasy/meta.json",
+    "canon_cs": "Canon.cs WorldId.Fantasy, OnSunderingLane, BlocksSunderingWalk, gate angle π/2",
+    "kit": "native-bible/architecture/KITS.json arch_kit_fantasy_sunder",
+    "art": "ART_STYLE_GTA_PALWORLD_TEN_WORLD.md mythical row; native-bible/00_ART_DIRECTION.md Fantasy row",
+    "density": "native-bible/volume/DENSITY_TABLES.json Fantasy block",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Fantasy eight",
+    "prior_slices": ["S01_hub_ecology_mobs", "S02_hub_politics_culture_sidequests", "S03_fantasy_creatures_bosses"]
+  },
+  "left_in_place": [
+    "fantasy_maeris_01_fragment",
+    "fantasy_maeris_02_steps",
+    "fantasy_seraphine_01_audience",
+    "q_fantasy_held_offer",
+    "q_fantasy_boar_off_path",
+    "q_fantasy_quench",
+    "q_fantasy_elk_calf",
+    "q_fantasy_lacquer_box",
+    "q_fantasy_basilisk_scout",
+    "q_fantasy_moonleaf",
+    "q_s03_ash_return",
+    "q_s03_not_a_dome_wolf",
+    "q_s03_quiet_count",
+    "q_s03_inward_howl",
+    "q_hub_pinewood_milepost",
+    "q_hub_fan_closed"
+  ],
+  "unresolved_on_purpose": [
+    "King Aldous Ferrowyn IV (lore) and Queen Morwen (faction sheet) both stand. No quest merges them or sits anyone on the throne.",
+    "The heir born without scales stays the court's panic on the Crown sheet. No quest publishes or cures it.",
+    "The root-curse apprentice stays Thorne's secret. The three refusals stay an unwritten rule. This slice does not raid the fold.",
+    "Seraphine's mother, the vault under the masquerade, and Corin's knowledge of a hidden heir stay off every objective.",
+    "Kaelan's unanswered prayer stays off the priesthood quest.",
+    "Iyatte of Sandrun and the mirror-children stay on fantasy_seraphine_01_audience. No courier leaves for Tunya.",
+    "The bog's lattice underbrush stays on fantasy_maeris_01_fragment. No new crossing into the Crucible.",
+    "Renn has not accepted Voss's offer to make the Guild her enforcement arm. No quest accepts it.",
+    "Grokka has not taken a side. camp_south has no countries.json anchor and is not placed to balance camp_north.",
+    "Greenmire has no coordinate. The quest leaves that true.",
+    "Vaelmoor, Thornvale, Sereth, Ablon, Moonleaf Vigil, and thornwood_keep are lore names. They are not new faction ids.",
+    "meta.json sets skill_affinity.gun to 1.0 and also says there are no firearms. Nobody in this slice is armed with one."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "The region boss remains mon_boss_held_curse on enc_held_curse. The mini-bosses remain enc_fold_basilisk, enc_ashfang_seam, and enc_cursebeak_lip. enc_milepost_fold stays the Fantasy side of the Pinewood seam. This facet adds no health table, no adds, and no second wyrm. enc_salt_toll is a political presence with no hit points.",
+  "regions": [
+    {
+      "id": "region_salt_verge",
+      "name": "Salt verge",
+      "culture": "grove reading of a Hub road",
+      "anchor": { "id": "pinewood_crossing", "x": 62, "z": -28, "distance_m": 68.0 },
+      "law": "steel_live_outside_wall",
+      "kit": "arch_kit_fantasy_sunder where it is allowed to kiss arch_kit_hub_court at the salt road. The post itself stays court lettering.",
+      "what_stands_here": "The only named road with a city_id. Grove side looks at the same milepost S01 and the Hub milepost quest already use. Stags stay on the S01 cap. The toll stand is 8 m toward +Z at (62, -20), distance 65.2 m, still outside the wall and 50.8 m off the lane.",
+      "does_not": ["Rename the post", "Spawn prop_pine_milepost", "File the verge as a Sereth river-right", "Treat it as a Thornvale pass", "Pull the milepost griffin onto the post"]
+    },
+    {
+      "id": "region_approach_shoulder",
+      "name": "Approach shoulder",
+      "culture": "grove",
+      "anchor": "North of the 56 m wall, off the lane, the walk S03 already uses for finches and the pine-wolf pack.",
+      "law": "steel_live",
+      "kit": "arch_kit_fantasy_sunder. named_sets blackroot_road, cursefold_shrine, and ward_barrack still spawn nothing until those sets are placed.",
+      "what_stands_here": "Ward path in the density table. Lane center x = 11.2 stays empty. Quiet Grove, the fold, and the bog are not this shoulder.",
+      "does_not": ["Block Canon.BlocksSunderingWalk", "Restage S03 caps"]
+    },
+    {
+      "id": "region_wildwood",
+      "name": "Wildwood Circle",
+      "culture": "grove",
+      "faction_id": "wildwood_circle",
+      "anchors": [
+        { "id": "wildwood_circle_gate", "x": -29.55, "z": 37.82, "distance_m": 48.0, "disk": "wall shoulder, outside 42 m, steel live, far off the lane" },
+        { "id": "thornwood_glade", "x": -21.55, "z": 31.82, "distance_m": 38.4, "disk": "inside 42 m. Flower Law if a blade is drawn. This is the trade-zone name, not the siege keep." }
+      ],
+      "territory_radius_m": 25.5,
+      "territory_note": "The radius reaches the plaza. Do not build it as a collider.",
+      "unplaced_districts": ["elder_grove", "bone_orchard", "thornwood_keep"],
+      "what_stands_here": "Listening Oak is meta.json's elder_grove anchor and has no countries.json point. The Quiet Grove is Year 0 and has no point. The keep that held nineteen days has no point."
+    },
+    {
+      "id": "region_voss",
+      "name": "House Voss",
+      "culture": "granite hall, gold worn thin, masquerade cloth on the same kit",
+      "faction_id": "house_voss",
+      "anchors": [
+        { "id": "house_voss_gate", "x": 46.64, "z": 29.15, "distance_m": 55.0, "disk": "inside the wall, outside 42 m" },
+        { "id": "crimson_quarter", "x": 54.64, "z": 23.15, "distance_m": 59.3, "disk": "outside the wall" }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["voss_estate", "masquerade_district"],
+      "what_stands_here": "Seraphine's audience already uses fantasy_thornwood_throne. This slice does not open the estate, the vault, or a second throne.",
+      "does_not": ["Stage q_hub_fan_closed again", "Stage the lacquer box again"]
+    },
+    {
+      "id": "region_crown",
+      "name": "Obsidian Crown",
+      "culture": "granite columns, thin gold, no western dragon prop",
+      "faction_id": "fantasy_obsidian_crown",
+      "anchors": [
+        { "id": "fantasy_obsidian_crown_gate", "x": -53.83, "z": 15.44, "distance_m": 56.0, "disk": "on the wall line. Do not stride a palace across it." },
+        { "id": "obsidian_palace", "x": -45.83, "z": 9.44, "distance_m": 46.8, "disk": "inside the wall, outside 42 m" }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["drake_aerie", "royal_hunting_preserve"],
+      "what_stands_here": "A hollow throne by the Houses' design. Aldous and Morwen both remain. The Held Curse is not the Crown's mount."
+    },
+    {
+      "id": "region_league",
+      "name": "Goblin Warband League",
+      "culture": "same granite and timber. Patchwork is cloth on CX, not a second species kit.",
+      "faction_id": "fantasy_goblin_warband_league",
+      "anchors": [
+        { "id": "fantasy_goblin_warband_league_gate", "x": -58.26, "z": -21.21, "distance_m": 62.0, "disk": "outside the wall. 120 m from Pinewood Crossing. The salt road is not inside this radius." },
+        { "id": "goblin_warband_camp_north", "x": -50.26, "z": -27.21, "distance_m": 57.2, "disk": "outside the wall. Named, not stocked with a crowd." }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["goblin_warband_camp_south", "raid_corridor_three"],
+      "what_stands_here": "Two marks on one board. Seven warbands in the motto. One unsided warchief who does not spawn."
+    },
+    {
+      "id": "region_lit_veil",
+      "name": "Paladin Order of the Lit Veil",
+      "culture": "granite chapel mass, pale cloth, one warm practical. Not a sun-god kit from another world.",
+      "faction_id": "fantasy_paladin_order",
+      "anchors": [
+        { "id": "fantasy_paladin_order_gate", "x": -16.97, "z": -30.61, "distance_m": 35.0, "disk": "inside 42 m. A crusade blade is a flower here." },
+        { "id": "paladin_chapter_house", "x": -8.97, "z": -36.61, "distance_m": 37.7, "disk": "inside 42 m" }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["lit_veil_seminary", "vampire_crypt_perimeter"],
+      "what_stands_here": "Aria's case is thirty years old and still unexecuted. The gate is where this slice lets her say so."
+    },
+    {
+      "id": "region_spiremount",
+      "name": "Arcane University at Spiremount",
+      "culture": "granite spire on the 8 m round tower piece. Moss in the joints. Gold only as worn leaf.",
+      "faction_id": "fantasy_arcane_university",
+      "anchors": [
+        { "id": "fantasy_arcane_university_gate", "x": -49.73, "z": 5.23, "distance_m": 50.0, "disk": "inside the wall, outside 42 m" },
+        { "id": "spiremount_university", "x": -41.73, "z": -0.77, "distance_m": 41.7, "disk": "inside 42 m. Do not drop the practicum yard on this point." }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["arcane_library", "summoning_practicum_yard"],
+      "what_stands_here": "Eight schools. Necromancy graduating faster is the sheet's tension. No quest weaponizes it. Ablon's purchased title is discussed in the essay and not given a hall."
+    },
+    {
+      "id": "region_underwarrens",
+      "name": "Underwarrens",
+      "culture": "granite undercroft. The foundation silhouette stays a Sundering hall, not a Crime tenement.",
+      "faction_id": "fantasy_thieves_guild",
+      "anchors": [
+        { "id": "fantasy_thieves_guild_gate", "x": -17.94, "z": 32.36, "distance_m": 37.0, "disk": "inside 42 m" },
+        { "id": "underwarrens_main", "x": -9.94, "z": 26.36, "distance_m": 28.2, "disk": "inside 42 m" }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["thieves_court", "fence_market"],
+      "what_stands_here": "Renn's debate stays a debate. No fence stock, no raid."
+    },
+    {
+      "id": "region_pantheon",
+      "name": "Pantheon of the Twelve",
+      "culture": "twelve granite columns only if they do not intersect the lane. Until a set is placed off the stride, the gate is a person and a paper, not a temple mesh.",
+      "faction_id": "fantasy_pantheon_priesthood",
+      "anchors": [
+        { "id": "fantasy_pantheon_priesthood_gate", "x": 6.24, "z": 29.34, "distance_m": 30.0, "disk": "inside 42 m. 5.0 m off the lane center, 2.4 m clear of the blocked strip. A body may stand. A kit may not sprawl." },
+        { "id": "pantheon_temple_central", "x": 14.24, "z": 23.34, "distance_m": 27.3, "disk": "inside 42 m and 3.0 m off the lane center. Clearance to the blocked strip is 0.4 m. Spawn nothing here." }
+      ],
+      "territory_radius_m": 25.5,
+      "unplaced_districts": ["twelve_shrine_path", "high_priestess_quarters", "neutral_monastery"],
+      "what_stands_here": "The third refusal named a neutral monastery. It has no point. Kaelan meets at the gate."
+    },
+    {
+      "id": "region_ash_margin",
+      "name": "Ash margin",
+      "culture": "ash",
+      "anchor": "East edge of the NE pad near (28, 70), past 56 m. S03 already owns the animals.",
+      "law": "steel_live",
+      "what_stands_here": "Catalogue wolves, cap 4, ash material on the pine-wolf rig. Gold in the coat is closed. This is not Ruins and not arch_kit_ruins_ash.",
+      "does_not": ["Raise the cap", "Send a catalogue keeper across", "Repeat q_s03_ash_return"]
+    },
+    {
+      "id": "region_quiet_grove",
+      "name": "Quiet Grove",
+      "culture": "ash",
+      "anchor": null,
+      "law": "unplaced",
+      "what_stands_here": "Year 0. Trees alive, land not. Thorne walks it once a week on his own sheet. Fauna cap stays 0. q_s03_quiet_count is the count. No second rite.",
+      "lore_id": "lore_quiet_grove"
+    },
+    {
+      "id": "region_bog",
+      "name": "The bog",
+      "culture": "ash leaning on grove",
+      "anchor": null,
+      "named_targets_already": ["fantasy_bog_crossing", "fantasy_bog_clearing"],
+      "law": "unplaced until those targets have transforms",
+      "what_stands_here": "Maeris. Greenmire is the village the Year-02 growth took off every map. The bog grew forty paces. She came out unchanged. No new pin restores the village.",
+      "lore_ids": ["fantasy_bog_drift_event", "fantasy_first_crossing"],
+      "does_not": ["Open a Crucible crossing", "Invent three more of her eight steps"]
+    },
+    {
+      "id": "region_verge",
+      "name": "The Verge",
+      "culture": "grove road under war pressure",
+      "anchor": null,
+      "lore_id": "fantasy_thornwood_siege_year_03",
+      "what_stands_here": "Sandrun–Vessine pressure pushes refugees through a verge that has no point. Thornwood keep held a high road for nineteen days. The keep has no point. Sandrun is not entered.",
+      "does_not": ["Start a Tunya quest", "Place a refugee column"]
+    },
+    {
+      "id": "region_houses_without_rows",
+      "name": "Houses without faction rows",
+      "anchor": null,
+      "houses": [
+        { "id": "house_vaelmoor", "holds": "eastern grain and the oldest grievance", "row": false },
+        { "id": "house_thornvale", "holds": "the iron passes, sold to whoever bleeds", "row": false, "not_the_same_as": "thornwood_glade or thornwood_keep" },
+        { "id": "house_sereth", "holds": "every river-right still worth having", "row": false },
+        { "id": "house_ablon", "holds": "a title bought within living memory", "row": false }
+      ],
+      "what_stands_here": "Named in fantasy_the_five_houses_and_the_throne beside House Voss. No countries.json anchors. The salt quest refuses their claims on the verge. It does not build them halls."
+    }
+  ],
+  "cultures": [
+    {
+      "id": "culture_grove",
+      "name": "Grove",
+      "who": "Wildwood Circle, the ward path, the salt-road reading, the glade anchor.",
+      "palette_use": "Moss #3a6a48 in the joints of granite #c8b48a is the living color. Timber #6a5438. Gold #c8a060 is leaf worn through to stone, a trim, not a wound.",
+      "body": "CX. npc_role_sunder_guard: moss-leather plates, no shoes required by Thorne's own sheet and not required of every ward. One moss stitch may emissive. No full-body glow.",
+      "rite": "The forest remembers. A message cut into the Listening Oak uses the speaker's blood and is a Concord Link, not a quest step here. Hostility is turned inward. A ward who wins by becoming the curse has failed the world law.",
+      "currency": "forest_marks",
+      "does_not": "Burn a quiet tree to make a Vaelmoor field."
+    },
+    {
+      "id": "culture_ash",
+      "name": "Ash",
+      "who": "The quiet that followed the root curse: Quiet Grove, the bog's missing village, the NE margin where the coat goes grey.",
+      "palette_use": "Same four colors. Ash is soot in the mortar, not a Ruins igneous kit and not a new hex. Gold leaf on an ash collar is painted shut so it cannot read as gold opening in a wound.",
+      "body": "CX. npc_role_sunder_mystic, the curse-bearer role, is not Thorne and is not cloned from him. Emissive is one stitch.",
+      "rite": "Silence is a fact you leave in place. You do not heal the Quiet Grove by populating it, and you do not put Greenmire back on a map to be kind.",
+      "relation_to_grove": "The Circle split is the politics: one half wants Thorne home, one half wants him in the ground, and both know the curse started inside the Circle. Ash culture is the half that will look at the quiet and not rush the funeral.",
+      "does_not": "Catalogue the margin as Sovereign Ruins. q_s03_ash_return already drew that line."
+    }
+  ],
+  "factions": [
+    {
+      "id": "wildwood_circle",
+      "name": "The Wildwood Circle",
+      "motto": "The forest remembers what the cities forget.",
+      "rivals": ["house_voss", "fantasy_obsidian_crown"],
+      "allies": ["fantasy_arcane_university", "fantasy_pantheon_priesthood"],
+      "npc_ids": ["thorne_blackroot", "velora_mossheart"],
+      "currency": "forest_marks",
+      "sheet_tension": "Half the Circle wants Thorne home. Half wants him in the ground. The curse came from inside their ranks.",
+      "this_slice": "Geography and the salt reading. Does not restage the fold refusal or the inward howl."
+    },
+    {
+      "id": "house_voss",
+      "name": "House Voss",
+      "motto": "Blood is the only currency that does not depreciate.",
+      "rivals": ["wildwood_circle", "fantasy_paladin_order"],
+      "allies": ["fantasy_thieves_guild"],
+      "npc_ids": ["seraphine_voss", "caelan_voss"],
+      "currency": "blood_pacts",
+      "sheet_tension": "Public charm. Private sustenance. The three refusals with Thorne have held since Year -1.",
+      "this_slice": "Named and not entered. The unwritten rule is carried at the pantheon gate, not at her throne."
+    },
+    {
+      "id": "fantasy_obsidian_crown",
+      "name": "The Obsidian Crown",
+      "motto": "We were dragons before we were kings.",
+      "rivals": ["house_voss", "fantasy_goblin_warband_league"],
+      "allies": ["fantasy_paladin_order"],
+      "npc_ids": ["queen_morwen_obsidian"],
+      "currency": "scale_seal",
+      "sheet_tension": "The bloodline is frightened. Aldous has not ruled from the throne in ten years. Morwen's heir is the sheet's other wound. Both stay unresolved.",
+      "this_slice": "The throne stays hollow by design. No sister-line is recovered."
+    },
+    {
+      "id": "fantasy_goblin_warband_league",
+      "name": "The Goblin Warband League",
+      "motto": "We were here before the Crown. We will be here after.",
+      "rivals": ["fantasy_obsidian_crown", "fantasy_paladin_order"],
+      "allies": [],
+      "npc_ids": ["warchief_grokka_warband"],
+      "currency": "warband_token",
+      "sheet_tension": "Two warbands dispute the league. Grokka has not taken sides. A chieftain marrying into Voss is one of their fears and is not a quest.",
+      "this_slice": "One braid, two marks, no bodies added at the gate."
+    },
+    {
+      "id": "fantasy_paladin_order",
+      "name": "The Paladin Order of the Lit Veil",
+      "motto": "Where the dead walk, we follow with light.",
+      "rivals": ["house_voss", "fantasy_thieves_guild"],
+      "allies": ["fantasy_obsidian_crown", "fantasy_pantheon_priesthood"],
+      "npc_ids": ["paladin_commander_aria_lit_veil"],
+      "currency": "lit_veil_seal",
+      "sheet_tension": "Aria has built a case against Lady Voss for thirty years and has not decided to execute it.",
+      "this_slice": "She is handed the public fact she already has: no verdict. The case file does not gain a page."
+    },
+    {
+      "id": "fantasy_arcane_university",
+      "name": "The Arcane University at Spiremount",
+      "motto": "Magic is older than its rules. The rules are still being written.",
+      "rivals": ["house_voss"],
+      "allies": ["wildwood_circle", "fantasy_pantheon_priesthood"],
+      "npc_ids": ["archmage_chair_velith_spiremount"],
+      "currency": "spire_mark",
+      "sheet_tension": "Necromancy is graduating faster than the other schools. External pressure is suspected.",
+      "this_slice": "No quest. The gate is a region so the pressure stays visible and unweaponized."
+    },
+    {
+      "id": "fantasy_thieves_guild",
+      "name": "The Underwarrens Thieves' Guild",
+      "motto": "Take what is unguarded. Refuse what is asked.",
+      "rivals": ["fantasy_paladin_order", "fantasy_obsidian_crown"],
+      "allies": ["house_voss"],
+      "npc_ids": ["guildmaster_renn_underwarrens"],
+      "currency": "warren_chit",
+      "sheet_tension": "Renn is debating Voss's offer to become her enforcement arm. Most of the Guild would rather not.",
+      "this_slice": "No quest accepts the offer. The anchors stay inside Flower Law, so a warren knife drawn there is a flower."
+    },
+    {
+      "id": "fantasy_pantheon_priesthood",
+      "name": "The Pantheon Priesthood of the Twelve",
+      "motto": "Twelve gods, one balance.",
+      "rivals": [],
+      "allies": ["fantasy_paladin_order", "wildwood_circle", "fantasy_arcane_university"],
+      "npc_ids": ["high_priestess_kaelan_pantheon"],
+      "currency": "twelve_token",
+      "sheet_tension": "Private. Not spoken by q_s04_unwritten_third.",
+      "this_slice": "Kaelan keeps the three-refusal draft from becoming a treaty."
+    }
+  ],
+  "presences": [
+    {
+      "id": "presence_ward_pinewood",
+      "role_id": "npc_role_sunder_guard",
+      "count": 1,
+      "where": "Grove side of Pinewood Crossing, off the lettering, outside the wall.",
+      "budget": "One of the density budget of 5. Same body as the S03 pine-verge ward. Two errands, one mesh.",
+      "gives": ["q_s04_salt_writ", "q_s04_one_braid"]
+    },
+    {
+      "id": "presence_ward_ne",
+      "role_id": "npc_role_sunder_guard",
+      "count": 1,
+      "where": "S03 NE margin post. Unchanged. Not a giver here.",
+      "budget": "Second of 5."
+    },
+    {
+      "id": "presence_ward_wildwood_gate",
+      "role_id": "npc_role_sunder_guard",
+      "count": 1,
+      "where": "wildwood_circle_gate (-29.55, 37.82), 48 m, off the lane.",
+      "budget": "Third of 5. Steel live. Does not patrol into the 42 m disk.",
+      "gives": []
+    },
+    {
+      "id": "presence_ward_unplaced",
+      "role_id": "npc_role_sunder_guard",
+      "count": 2,
+      "where": "ward_barrack named set, when it exists.",
+      "budget": "Fourth and fifth of 5. Spawn nothing until that set is placed. Do not spend them on the pantheon temple point."
+    },
+    {
+      "id": "presence_mystic_bog",
+      "role_id": "npc_role_sunder_mystic",
+      "count": 1,
+      "where": "Bog edge, only after fantasy_bog_crossing has a transform.",
+      "budget": "One of 2. Not Maeris. Not Thorne."
+    },
+    {
+      "id": "presence_mystic_quiet",
+      "role_id": "npc_role_sunder_mystic",
+      "count": 1,
+      "where": "Quiet Grove, unplaced.",
+      "budget": "Second of 2. Spawn nothing. Do not relocate them to the ash margin to fill the cap."
+    },
+    {
+      "id": "presence_uniques",
+      "rule": "thorne, witch_maeris, and seraphine are density do-not-clone. Corin, Kaelan, Aria, Grokka, Velith, Renn, Morwen, Velora, and Caelan are singles. Missing CX mesh: that person is absent. No guard wears their name."
+    }
+  ],
+  "encounters": [
+    {
+      "id": "enc_salt_toll",
+      "name": "The Salt Writ",
+      "kind": "political_presence",
+      "role_id": "npc_role_road_bandit",
+      "count": 1,
+      "where": { "x": 62, "z": -20, "distance_m": 65.2, "note": "8 m +Z from the milepost. Outside the wall. Off the lane. Not on the lettering." },
+      "body": "CX road-bandit role. Patchwork hide plates. Granite and moss palette. No goblin mesh. No Quaternius body.",
+      "health": "none authored. Do not invent a table. He is not a mini-boss and not a creature.",
+      "aggro": "He demands a toll in blood or in a Thornvale writ's name. He has no writ. If the player draws, the quest fails. If the player drags him inside 42 m, the blade is a flower and the quest still fails. If he is killed, the quest fails.",
+      "story_id": "story_salt_writ",
+      "owned_by_quest": "q_s04_salt_writ",
+      "does_not_replace": ["enc_milepost_fold", "enc_fold_basilisk", "enc_ashfang_seam", "enc_cursebeak_lip", "enc_held_curse"]
+    }
+  ],
+  "cited_combat_ceiling": [
+    { "id": "mon_boss_held_curse", "political_reading": "The Circle's funeral and the Crown's weapon are the same offer. Refusing it is the realm's law. q_fantasy_held_offer already witnesses the refusal." },
+    { "id": "enc_fold_basilisk", "political_reading": "Stillness on the fold floor is not a house's hunt." },
+    { "id": "enc_ashfang_seam", "political_reading": "The ash margin's plate is the curse trying to be worn. Ash culture leaves it." },
+    { "id": "enc_cursebeak_lip", "political_reading": "One peck is an offer to become the fold. The lip is not a border war." },
+    { "id": "enc_milepost_fold", "political_reading": "Griffin on the Fantasy side of the seam. The post stays Pinewood. The toll does not command it." },
+    { "id": "faun_pinewood_stag", "political_reading": "Salt-road herd. S01 cap. Not Sereth property and not league game." },
+    { "id": "faun_sunder_wolf", "political_reading": "Grove pack. One pack. The league does not field it." },
+    { "id": "faun_ash_wolf", "political_reading": "Ash culture's animal, already capped. Not a Ruins claim." }
+  ],
+  "quests": [
+    {
+      "id": "q_s04_salt_writ",
+      "title": "Pinewood — The Writ He Cannot Show",
+      "world_id": "Fantasy",
+      "giver_role_id": "npc_role_sunder_guard",
+      "giver_post": "presence_ward_pinewood",
+      "backstory_id": "story_q_salt_writ",
+      "does_not_replace": ["q_hub_pinewood_milepost", "q_s03_not_a_dome_wolf", "q_fantasy_quench"],
+      "spawns_encounter": "enc_salt_toll",
+      "objectives": [
+        {
+          "id": "obj_q_s04_salt_writ_1",
+          "verb": "talk",
+          "target": "presence_ward_pinewood",
+          "count": 1,
+          "text": "Take the errand from the grove-side ward. Same person who can already tell a dome wolf from resin. This errand is the road, not the coat."
+        },
+        {
+          "id": "obj_q_s04_salt_writ_2",
+          "verb": "witness",
+          "target": "pinewood_crossing",
+          "count": 1,
+          "text": "Read the milepost. The letters are Pinewood Crossing. Do not recut them. If the stag is in the S01 herd, leave it. If the mesh is missing, the post still counts."
+        },
+        {
+          "id": "obj_q_s04_salt_writ_3",
+          "verb": "talk",
+          "target": "enc_salt_toll",
+          "count": 1,
+          "text": "At (62, -20), ask to see the Thornvale writ. He does not have one. Do not pay him in blood. Do not draw."
+        },
+        {
+          "id": "obj_q_s04_salt_writ_4",
+          "verb": "deliver",
+          "target": "presence_ward_pinewood",
+          "count": 1,
+          "text": "Tell the ward the verge is the salt road. It is not a Sereth ford and not a Thornvale pass. No river-right is signed."
+        }
+      ],
+      "fail": [
+        "Kill the toll or chase him into the 42 m disk",
+        "Loose an arrow at the stag",
+        "Change the lettering on the post",
+        "Sign a river-right, a pass-right, or a grain contract",
+        "Enter Tunya or the Hub plaza to finish the road"
+      ],
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The salt road kept its name. Nobody bought the verge.",
+        "gossip_on_complete": "A man at the grove side of Pinewood asked for a writ and went away without one.",
+        "prop_or_door": "Hub milepost, unread as a second post. No new toll house."
+      },
+      "turn_in": { "role_id": "npc_role_sunder_guard", "post": "presence_ward_pinewood", "requires_all_objectives": true }
+    },
+    {
+      "id": "q_s04_greenmire_blank",
+      "title": "The Bog — Leave the Blank",
+      "world_id": "Fantasy",
+      "giver_npc_id": "witch_maeris",
+      "giver_spawn": "Only the existing Maeris. If fantasy_bog_crossing has no transform, she is not moved and this quest does not complete by substitution.",
+      "backstory_id": "story_q_greenmire",
+      "does_not_replace": ["fantasy_maeris_01_fragment", "fantasy_maeris_02_steps"],
+      "objectives": [
+        {
+          "id": "obj_q_s04_greenmire_blank_1",
+          "verb": "talk",
+          "target": "witch_maeris",
+          "count": 1,
+          "text": "Find Maeris on the bog crossing she already uses. Do not place a new one. Ask what the map should say where Greenmire stood."
+        },
+        {
+          "id": "obj_q_s04_greenmire_blank_2",
+          "verb": "witness",
+          "target": "greenmire_absence",
+          "count": 1,
+          "text": "Hear that the bog took forty paces in Year 02 of the Thorns and the village never returned to a map. Do not sketch a house, a lane, or a grave row."
+        },
+        {
+          "id": "obj_q_s04_greenmire_blank_3",
+          "verb": "deliver",
+          "target": "witch_maeris",
+          "count": 1,
+          "text": "Bring her the blank. She does not invent the missing steps of the other quest, and you do not invent the village."
+        }
+      ],
+      "fail": [
+        "Place a Greenmire marker, mesh, or map pin",
+        "Clone Maeris",
+        "Open a lattice crossing",
+        "Populate the Quiet Grove to compensate"
+      ],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "Greenmire is still off the map.",
+        "gossip_on_complete": "Maeris was asked for a village and gave back the quiet.",
+        "prop_or_door": "No village prop. No new bog mesh."
+      },
+      "turn_in": { "npc_id": "witch_maeris", "requires_all_objectives": true }
+    },
+    {
+      "id": "q_s04_unwritten_third",
+      "title": "The Gate — Do Not File the Truce",
+      "world_id": "Fantasy",
+      "giver_npc_id": "high_priestess_kaelan_pantheon",
+      "giver_spawn": "Single. At fantasy_pantheon_priesthood_gate (6.24, 29.34) only. Never on pantheon_temple_central. Missing mesh: she is absent and no ward speaks her lines.",
+      "backstory_id": "story_q_unwritten",
+      "does_not_replace": ["q_fantasy_held_offer", "q_fantasy_lacquer_box", "lore_three_refusals"],
+      "objectives": [
+        {
+          "id": "obj_q_s04_unwritten_third_1",
+          "verb": "talk",
+          "target": "high_priestess_kaelan_pantheon",
+          "count": 1,
+          "text": "Meet Kaelan at the pantheon gate inside the 42 m disk. Take the draft. It is someone else's attempt to turn the three refusals into a treaty."
+        },
+        {
+          "id": "obj_q_s04_unwritten_third_2",
+          "verb": "witness",
+          "target": "three_meetings_named",
+          "count": 1,
+          "text": "Hear the three places: the Voss spring ball, the forest under safe-passage, the neutral monastery. Do not go to any of them. Do not walk the paper onto the Sundering lane."
+        },
+        {
+          "id": "obj_q_s04_unwritten_third_3",
+          "verb": "deliver",
+          "target": "high_priestess_kaelan_pantheon",
+          "count": 1,
+          "text": "Return the draft at the same gate with no mark on it. The rule stays unwritten. Steel drawn here is a flower, and drawing it fails the errand anyway."
+        }
+      ],
+      "fail": [
+        "Enter the Voss gate, the wildwood interior, or a monastery",
+        "File the draft with the Crown, the university, or Aria",
+        "Stand on pantheon_temple_central",
+        "Ask Kaelan which god has gone quiet",
+        "Break the truce by striking toward Thorne or Seraphine"
+      ],
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The three refusals were not written down.",
+        "gossip_on_complete": "The priesthood sent a draft back unmarked. Thorne and Seraphine still do not move on each other.",
+        "prop_or_door": "One paper. No temple mesh. No monastery door."
+      },
+      "turn_in": { "npc_id": "high_priestess_kaelan_pantheon", "requires_all_objectives": true }
+    },
+    {
+      "id": "q_s04_nineteen_days",
+      "title": "The Glade — No Favour Asked",
+      "world_id": "Fantasy",
+      "giver_npc_id": "knight_corin_hale",
+      "giver_spawn": "Single, at the thornwood_glade anchor (-21.55, 31.82), inside 42 m. The siege keep is not this point. Missing mesh: Corin is absent. The public oath is not reassigned to a ward.",
+      "backstory_id": "story_q_nineteen",
+      "does_not_replace": ["fantasy_seraphine_01_audience", "q_fantasy_lacquer_box"],
+      "objectives": [
+        {
+          "id": "obj_q_s04_nineteen_days_1",
+          "verb": "talk",
+          "target": "knight_corin_hale",
+          "count": 1,
+          "text": "Meet Ser Corin Hale in the glade. His edge, if he shows it, is a flower. He was knighted at twenty. He has not asked a favour in fifteen years."
+        },
+        {
+          "id": "obj_q_s04_nineteen_days_2",
+          "verb": "witness",
+          "target": "siege_heard",
+          "count": 1,
+          "text": "Hear the nineteen days: Thornwood keep held the high road, Seraphine's father fell on that wall, she took the keep at twenty-one. You are not in the keep. Do not place nineteen stones. Do not place them on the lane."
+        },
+        {
+          "id": "obj_q_s04_nineteen_days_3",
+          "verb": "deliver",
+          "target": "knight_corin_hale",
+          "count": 1,
+          "text": "Return without having asked Seraphine for his favour. Do not go to the Voss gate. Do not ask what he has kept for nine years."
+        }
+      ],
+      "fail": [
+        "Ask Seraphine, Caelan, or the Crown for Corin's favour",
+        "Enter the estate or the vault",
+        "Build a memorial on the lane or in the flower disk",
+        "Treat thornwood_keep as a new faction",
+        "Step out of the disk only to make his sword steel for the telling"
+      ],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The nineteen days were heard in the glade. The favour was not asked.",
+        "gossip_on_complete": "Ser Corin still has not asked. The keep is still not on the map.",
+        "prop_or_door": "No keep door. No stone row."
+      },
+      "turn_in": { "npc_id": "knight_corin_hale", "requires_all_objectives": true }
+    },
+    {
+      "id": "q_s04_one_braid",
+      "title": "The League Gate — Both Marks Stay",
+      "world_id": "Fantasy",
+      "giver_role_id": "npc_role_sunder_guard",
+      "giver_post": "presence_ward_pinewood",
+      "backstory_id": "story_q_braid",
+      "does_not_replace": ["q_s04_salt_writ"],
+      "objectives": [
+        {
+          "id": "obj_q_s04_one_braid_1",
+          "verb": "talk",
+          "target": "presence_ward_pinewood",
+          "count": 1,
+          "text": "Hear the public tension only: two warbands dispute the league, and Grokka has not taken a side. Do not ask the ward to become Grokka."
+        },
+        {
+          "id": "obj_q_s04_one_braid_2",
+          "verb": "reach",
+          "target": "fantasy_goblin_warband_league_gate",
+          "count": 1,
+          "text": "Go to the league gate at (-58.26, -21.21), 120 m from Pinewood, outside the wall. Read two marks on the board."
+        },
+        {
+          "id": "obj_q_s04_one_braid_3",
+          "verb": "witness",
+          "target": "two_marks_left",
+          "count": 1,
+          "text": "Leave both marks. Do not scratch one out. Do not add a third. Do not walk on to camp_north to raise a crowd. Do not search for camp_south."
+        },
+        {
+          "id": "obj_q_s04_one_braid_4",
+          "verb": "deliver",
+          "target": "presence_ward_pinewood",
+          "count": 1,
+          "text": "Tell the pinewood ward the board still has two marks. Grokka remains unsided and unspawned."
+        }
+      ],
+      "fail": [
+        "Spawn Grokka or any warband body",
+        "Choose a warband",
+        "Carry a mark to the Crown gate or the Voss gate",
+        "Rename Pinewood as a league post",
+        "Marry, broker, or joke a chieftain into House Voss"
+      ],
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The league gate still has two marks.",
+        "gossip_on_complete": "Grokka was not seen. The dispute was not settled from the outside.",
+        "prop_or_door": "One board, two marks. No camp props."
+      },
+      "turn_in": { "role_id": "npc_role_sunder_guard", "post": "presence_ward_pinewood", "requires_all_objectives": true }
+    },
+    {
+      "id": "q_s04_no_verdict",
+      "title": "The Lit Veil — No Verdict",
+      "world_id": "Fantasy",
+      "giver_npc_id": "paladin_commander_aria_lit_veil",
+      "giver_spawn": "Single, at fantasy_paladin_order_gate (-16.97, -30.61), 35 m, inside Flower Law. Missing mesh: Aria is absent. Her case is not handed to a ward.",
+      "backstory_id": "story_q_verdict",
+      "does_not_replace": ["q_fantasy_lacquer_box", "fantasy_seraphine_01_audience", "q_s04_unwritten_third"],
+      "objectives": [
+        {
+          "id": "obj_q_s04_no_verdict_1",
+          "verb": "talk",
+          "target": "paladin_commander_aria_lit_veil",
+          "count": 1,
+          "text": "Meet Aria at the Lit Veil gate. The disk is still flower. Do not offer to execute the case."
+        },
+        {
+          "id": "obj_q_s04_no_verdict_2",
+          "verb": "witness",
+          "target": "masquerade_public_record",
+          "count": 1,
+          "text": "Speak the public record only: seven guests vanished from a Voss masquerade, the other four Great Houses opened investigations, and none reached a verdict. The pattern is older than Aria's thirty years. You do not add a mechanism."
+        },
+        {
+          "id": "obj_q_s04_no_verdict_3",
+          "verb": "deliver",
+          "target": "paladin_commander_aria_lit_veil",
+          "count": 1,
+          "text": "Leave her with no new page. She does not ride on the Voss gate. You do not enter the estate, a vault, or the crypt perimeter."
+        }
+      ],
+      "fail": [
+        "Add a page, a name, or a theory of the body to her file",
+        "Enter house_voss anchors or the unplaced estate",
+        "Draw steel inside the disk to make the investigation real",
+        "Ask the thieves' gate to confirm a rumor",
+        "Open the lacquer box"
+      ],
+      "rewards": { "xp": 55, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "world_hooks": {
+        "board_line": "The Lit Veil gate heard no verdict, and filed none.",
+        "gossip_on_complete": "Commander Aria still has not moved. The masquerade is still unanswered in public.",
+        "prop_or_door": "No case folder added. No crypt door."
+      },
+      "turn_in": { "npc_id": "paladin_commander_aria_lit_veil", "requires_all_objectives": true }
+    }
+  ]
+}

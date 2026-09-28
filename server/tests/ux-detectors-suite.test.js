@@ -55,6 +55,19 @@ describe("UxBrokenLinkDetector", () => {
     } finally { teardown(dir); }
   });
 
+  it("does NOT flag an <a href> to an existing app route.ts (Unity WebGL index)", async () => {
+    const dir = withFixture({
+      "concord-frontend/app/unity-client/index.html/route.ts":
+        "export function GET() { return new Response('ok'); }\n",
+      "concord-frontend/app/download/concordia/page.tsx":
+        `export default function Page() { return <a href="/unity-client/index.html">Open WebGL directly</a>; }\n`,
+    });
+    try {
+      const r = await runUxBrokenLinkDetector({ root: dir });
+      assert.equal(r.findings.filter(f => f.id === "broken_link").length, 0);
+    } finally { teardown(dir); }
+  });
+
   it("does NOT flag a Link to an existing route", async () => {
     const dir = withFixture({
       "concord-frontend/app/lenses/foo/page.tsx": "export default function Foo() { return <div />; }\n",

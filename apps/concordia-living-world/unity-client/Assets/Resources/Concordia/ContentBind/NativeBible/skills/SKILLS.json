@@ -1,0 +1,5855 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "skills",
+  "count": 45,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "skill_steel_palm",
+      "display_name": "Court Palm",
+      "lore_blurb": "Karate palm of the Unburned Court. Legal under Flower Law. A strike, not a spell.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_light"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust off the palm, no chi glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open palm, elbow in. Reads at a glance as a hand not a fist.",
+      "palette": [
+        "#c4b49a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_palm",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_palm",
+        "animator_trigger": "Attack",
+        "action_runner": {
+          "startup_ms": 70,
+          "active_ms": 90,
+          "recovery_ms": 160
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Karate"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Small limestone dust puff on the palm impact, no energy beam.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_unarmed_light"
+      ],
+      "AbilityId": "skill_steel_palm",
+      "VerbId": "verb_unarmed_light",
+      "Cost": {
+        "resource": "stamina",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 0.55
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_blunt_light",
+          "magnitude_rank": "curve"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_palm",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:hub_unarmed"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:15"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:iron_wardens>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:arena_gale"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "trainer:gale_rank5"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_palm",
+        "trigger": "Attack",
+        "startup_ms": 70,
+        "active_ms": 90,
+        "recovery_ms": 160,
+        "fight_styles": [
+          "Karate"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_palm"
+      },
+      "AuraPrompt": "Small limestone dust puff on the palm impact, no energy beam.",
+      "WeaponFilter": [
+        "unarmed",
+        "wpn_1h_court_flower"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_shoulder",
+      "display_name": "Collective Shoulder",
+      "lore_blurb": "Muay Thai shoulder of the Merchant Collective. A poise check with a body behind it.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_heavy"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cloth folds, sweat, weight.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Shoulder leads, head tucked.",
+      "palette": [
+        "#8a6a48",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_shoulder",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_shoulder",
+        "animator_trigger": "AttackHeavy",
+        "action_runner": {
+          "startup_ms": 180,
+          "active_ms": 140,
+          "recovery_ms": 300
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Heavy body impact, dust and cloth snap, no aura.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_unarmed_heavy"
+      ],
+      "AbilityId": "skill_steel_shoulder",
+      "VerbId": "verb_unarmed_heavy",
+      "Cost": {
+        "resource": "stamina",
+        "value": 16
+      },
+      "Cooldown": {
+        "seconds": 1.4
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_blunt_heavy",
+          "poise": "high"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_shoulder",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:merchant_or_crime"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:10"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:merchant_collective>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:trade_wars_memory"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "trainer:mama_rose"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_shoulder",
+        "trigger": "AttackHeavy",
+        "startup_ms": 180,
+        "active_ms": 140,
+        "recovery_ms": 300,
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_shoulder"
+      },
+      "AuraPrompt": "Heavy body impact, dust and cloth snap, no aura.",
+      "WeaponFilter": [
+        "unarmed"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_chain",
+      "display_name": "Archive Chain",
+      "lore_blurb": "Wing Chun chain of short punches. Scholars and Ghost Contracts share the verb and not the politics.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_light"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ink cuff may flick. No afterimages.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Elbows on the centerline, three small motions.",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_chain",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_chain",
+        "animator_trigger": "Attack",
+        "action_runner": {
+          "startup_ms": 50,
+          "active_ms": 220,
+          "recovery_ms": 140
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Three tight impact ticks, paper-dry.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_unarmed_light"
+      ],
+      "AbilityId": "skill_steel_chain",
+      "VerbId": "verb_unarmed_light",
+      "Cost": {
+        "resource": "stamina",
+        "value": 6
+      },
+      "Cooldown": {
+        "seconds": 0.35
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_blunt_light",
+          "hit_count": 3
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_chain",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:wingchun_worlds"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:30"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:scholars_guild>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:asbir_notebook"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:three_hits_are_one_action"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_chain",
+        "trigger": "Attack",
+        "startup_ms": 50,
+        "active_ms": 220,
+        "recovery_ms": 140,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_chain"
+      },
+      "AuraPrompt": "Three tight impact ticks, paper-dry.",
+      "WeaponFilter": [
+        "unarmed"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_flower_step",
+      "display_name": "Flower Step",
+      "lore_blurb": "Capoeira dodge. Inside the plaza the recovery plants a flower where the foot left. Outside, it is only a dodge.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_dodge"
+      ],
+      "world_ids": [
+        "Hub",
+        "Tunya",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. A real petal decal, not a trail of light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Low spin, one hand on the ground.",
+      "palette": [
+        "#c8721a",
+        "#1a1028"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_flower_step",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_flower_step",
+        "animator_trigger": "Dodge",
+        "action_runner": {
+          "startup_ms": 40,
+          "active_ms": 180,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "iframe",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": [
+          "State.IFrame"
+        ]
+      },
+      "aura_prompt": "Foot plants, one cut flower appears only inside the Court.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_dodge"
+      ],
+      "AbilityId": "skill_steel_flower_step",
+      "VerbId": "verb_dodge",
+      "Cost": {
+        "resource": "stamina",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 0.9
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Committed"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_iframe",
+          "ms": 180
+        },
+        {
+          "id": "fx_flower_decal",
+          "only_if": "FlowerLaw"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_flower_step",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:capoeira_worlds"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:10"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:shadow_network>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:brackish"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:iframe_220ms"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_flower_step",
+        "trigger": "Dodge",
+        "startup_ms": 40,
+        "active_ms": 180,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "iframe",
+        "active_tags": [
+          "State.IFrame"
+        ],
+        "cue_id": "cue_flower_step"
+      },
+      "AuraPrompt": "Foot plants, one cut flower appears only inside the Court.",
+      "WeaponFilter": [
+        "unarmed",
+        "any"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_ward_cut",
+      "display_name": "Ward Cut",
+      "lore_blurb": "The Sundering one-hand cut. In the Court it dies into a flower and does not wound.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_slash"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Edge nick catches light. No rune along the blade.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. One diagonal, blade or flower stays on the silhouette line.",
+      "palette": [
+        "#3a6a48",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_ward_cut",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_ward_cut",
+        "animator_trigger": "Slash",
+        "action_runner": {
+          "startup_ms": 90,
+          "active_ms": 120,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Short steel trail, resin glint, or petals if Flower Law.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ],
+      "AbilityId": "skill_steel_ward_cut",
+      "VerbId": "verb_1h_slash",
+      "Cost": {
+        "resource": "stamina",
+        "value": 11
+      },
+      "Cooldown": {
+        "seconds": 0.8
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_slash",
+          "profile": "slash"
+        },
+        {
+          "id": "fx_flower_override",
+          "only_if": "FlowerLaw"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_ward_cut",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:wpn_1h_sunder_wardblade_or_court_flower"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:20"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:wildwood_circle>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:thorne_road"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "boss:mon_boss_held_curse refused"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_ward_cut",
+        "trigger": "Slash",
+        "startup_ms": 90,
+        "active_ms": 120,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_ward_cut"
+      },
+      "AuraPrompt": "Short steel trail, resin glint, or petals if Flower Law.",
+      "WeaponFilter": [
+        "verb_1h_slash"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_curse_fold",
+      "display_name": "Curse Fold",
+      "lore_blurb": "Heavy commit that pays the player's own poise. Hostility turns inward. Using it to execute the Held Curse without a refuse tag fails the story of the fight.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "world_ids": [
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Gold light leaks and closes on the user, not a fireball.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Weapon raised and folded back toward the chest before it goes out.",
+      "palette": [
+        "#1a3028",
+        "#c8a060"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_curse_fold",
+        "element_for_VfxPath": "ember",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "new_vfx_stub": "cue_curse_fold",
+        "animator_trigger": "AttackHeavy",
+        "action_runner": {
+          "startup_ms": 240,
+          "active_ms": 160,
+          "recovery_ms": 360
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking",
+          "Curse.Inward"
+        ]
+      },
+      "aura_prompt": "Dull gold seam on the caster's ribs that shuts as the hit lands.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ],
+      "AbilityId": "skill_steel_curse_fold",
+      "VerbId": "verb_2h_heavy",
+      "Cost": {
+        "resource": "poise",
+        "value": 22
+      },
+      "Cooldown": {
+        "seconds": 2.4
+      },
+      "RequiredTags": [
+        "State.Alive",
+        "Weapon.TwoHand"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_slash_heavy"
+        },
+        {
+          "id": "fx_self_poise",
+          "magnitude": -8
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_curse_fold",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:2h_or_cursefold_focus"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:8"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:wildwood_circle>=0.5"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:thorne_daily_refuse"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "boss:held_curse_refused"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ember",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "stub": "cue_curse_fold",
+        "trigger": "AttackHeavy",
+        "startup_ms": 240,
+        "active_ms": 160,
+        "recovery_ms": 360,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking",
+          "Curse.Inward"
+        ],
+        "cue_id": "cue_curse_fold"
+      },
+      "AuraPrompt": "Dull gold seam on the caster's ribs that shuts as the hit lands.",
+      "WeaponFilter": [
+        "verb_2h_heavy",
+        "wpn_focus_sunder_cursefold"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough poise.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_reed",
+      "display_name": "Reed Thrust",
+      "lore_blurb": "Verdant Veil thrust. Long, honest, stops at the end of the shaft.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_polearm_thrust"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wood bend, small iron glint.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Shaft is a line, body stays behind it.",
+      "palette": [
+        "#6a7a3a",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_reed",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_reed",
+        "animator_trigger": "Attack",
+        "action_runner": {
+          "startup_ms": 100,
+          "active_ms": 80,
+          "recovery_ms": 220
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Pollen puff at the tip on hit, no beam.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_polearm_thrust"
+      ],
+      "AbilityId": "skill_steel_reed",
+      "VerbId": "verb_polearm_thrust",
+      "Cost": {
+        "resource": "stamina",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 0.95
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_pierce",
+          "reach_m": 2.4
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_reed",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:polearm"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:15"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:verdant_veil>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:graft_scar"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:reach_2.8m"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_reed",
+        "trigger": "Attack",
+        "startup_ms": 100,
+        "active_ms": 80,
+        "recovery_ms": 220,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_reed"
+      },
+      "AuraPrompt": "Pollen puff at the tip on hit, no beam.",
+      "WeaponFilter": [
+        "verb_polearm_thrust",
+        "verb_polearm_sweep"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_salt_draw",
+      "display_name": "Salt Draw",
+      "lore_blurb": "Aim, draw, release. The upper body layers over locomotion. Arrow culture comes from the bow, not from a second skill.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_bow_release"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Tunya",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. String creak is the tell. No homing glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Elbow up, bow is a D.",
+      "palette": [
+        "#6a5340",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_salt_draw",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_bow",
+        "animator_trigger": "Attack",
+        "action_runner": {
+          "startup_ms": 120,
+          "active_ms": 40,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Aiming"
+        ]
+      },
+      "aura_prompt": "Arrow is a mesh. Impact is a thunk and a chip.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_bow_release"
+      ],
+      "AbilityId": "skill_steel_salt_draw",
+      "VerbId": "verb_bow_release",
+      "Cost": {
+        "resource": "stamina",
+        "value": 10
+      },
+      "Cooldown": {
+        "seconds": 0.7
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_projectile",
+          "speed": "arrow"
+        }
+      ],
+      "TargetingMode": "Projectile",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_salt_draw",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:bow"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:15"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_road>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:pinewood"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:draw_faster"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_bow",
+        "trigger": "Attack",
+        "startup_ms": 120,
+        "active_ms": 40,
+        "recovery_ms": 180,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Aiming"
+        ],
+        "cue_id": "cue_bow"
+      },
+      "AuraPrompt": "Arrow is a mesh. Impact is a thunk and a chip.",
+      "WeaponFilter": [
+        "verb_bow_release"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_lantern",
+      "display_name": "Lantern Toss",
+      "lore_blurb": "Throws the court lantern. Breaks into a small real flame if the glass fails. Legal in the plaza.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_thrown"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Practical fire, short.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Underhand box.",
+      "palette": [
+        "#ffe6c0",
+        "#c8721a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_lantern",
+        "element_for_VfxPath": "fire",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "new_vfx_stub": "cue_lantern",
+        "animator_trigger": "Throw",
+        "action_runner": {
+          "startup_ms": 80,
+          "active_ms": 40,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Karate"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Lantern arc, glass break, small flame pool.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ],
+      "AbilityId": "skill_steel_lantern",
+      "VerbId": "verb_thrown",
+      "Cost": {
+        "resource": "stamina",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 1.2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_throw",
+          "props": "prop_court_lantern_post"
+        },
+        {
+          "id": "fx_fire_small",
+          "if_break": true
+        }
+      ],
+      "TargetingMode": "Projectile",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_lantern",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "item:lantern"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:8"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:scholars_guild>=0.1"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:lamplighter"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:flame_persists_4s"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "fire",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "stub": "cue_lantern",
+        "trigger": "Throw",
+        "startup_ms": 80,
+        "active_ms": 40,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Karate"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_lantern"
+      },
+      "AuraPrompt": "Lantern arc, glass break, small flame pool.",
+      "WeaponFilter": [
+        "wpn_throw_court_lantern",
+        "verb_thrown"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_invoice",
+      "display_name": "Invoice",
+      "lore_blurb": "The short thrust of a switch or a stamp. On hit, FactionStandingBook may gain witness heat if a witness is in range.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_thrust"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Wet blade, no slash anime arc.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A short line from the hip.",
+      "palette": [
+        "#8a6a48",
+        "#e0c040"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_invoice",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_invoice",
+        "animator_trigger": "Attack",
+        "action_runner": {
+          "startup_ms": 70,
+          "active_ms": 80,
+          "recovery_ms": 160
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Tight thrust, paper-tear audio, no glow.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_1h_thrust"
+      ],
+      "AbilityId": "skill_steel_invoice",
+      "VerbId": "verb_1h_thrust",
+      "Cost": {
+        "resource": "stamina",
+        "value": 9
+      },
+      "Cooldown": {
+        "seconds": 0.7
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_pierce_light"
+        },
+        {
+          "id": "fx_witness_heat",
+          "if": "witness_present"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_invoice",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:1h_coast_or_tile"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:12"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:delgado_syndicate>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:bill_arrives"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:heat_+0.05"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_invoice",
+        "trigger": "Attack",
+        "startup_ms": 70,
+        "active_ms": 80,
+        "recovery_ms": 160,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_invoice"
+      },
+      "AuraPrompt": "Tight thrust, paper-tear audio, no glow.",
+      "WeaponFilter": [
+        "wpn_1h_coast_switchknife",
+        "verb_1h_slash",
+        "wpn_throw_sere_marktile"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_pulse",
+      "display_name": "Refuse the Number",
+      "lore_blurb": "Pulse cut. The wound number hides in the HUD until the target or the player allows it. HitResolver still applies the hit immediately.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_1h_slash"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cyan edge during the swing only.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Cleaver rectangle.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_pulse",
+        "element_for_VfxPath": "shock",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "new_vfx_stub": "cue_pulse",
+        "animator_trigger": "Slash",
+        "action_runner": {
+          "startup_ms": 90,
+          "active_ms": 110,
+          "recovery_ms": 190
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Cyan edge flash, impact spark, number glyph that fails to resolve.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_1h_slash"
+      ],
+      "AbilityId": "skill_steel_pulse",
+      "VerbId": "verb_1h_slash",
+      "Cost": {
+        "resource": "stamina",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 0.85
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_slash_pulse"
+        },
+        {
+          "id": "fx_hide_damage_number",
+          "presentation_only": true
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_pulse",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:pulse"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:12"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:zero_collective>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:nyx"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "boss:census_refused"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "shock",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "stub": "cue_pulse",
+        "trigger": "Slash",
+        "startup_ms": 90,
+        "active_ms": 110,
+        "recovery_ms": 190,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_pulse"
+      },
+      "AuraPrompt": "Cyan edge flash, impact spark, number glyph that fails to resolve.",
+      "WeaponFilter": [
+        "wpn_1h_grid_pulseblade",
+        "wpn_pole_grid_countpike"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_dust_kick",
+      "display_name": "Dust Kick",
+      "lore_blurb": "Open Road heavy kick. Drops a short dust curtain. The Refusal of the Dome: no shield is created.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_unarmed_heavy"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust is VFX, body is weight.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Knee high, hat stays on.",
+      "palette": [
+        "#c8b070",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_dust_kick",
+        "element_for_VfxPath": "dust",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "new_vfx_stub": "cue_dust_kick",
+        "animator_trigger": "AttackHeavy",
+        "action_runner": {
+          "startup_ms": 160,
+          "active_ms": 120,
+          "recovery_ms": 280
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Dust sheet at knee height, sun through it.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_unarmed_heavy"
+      ],
+      "AbilityId": "skill_steel_dust_kick",
+      "VerbId": "verb_unarmed_heavy",
+      "Cost": {
+        "resource": "stamina",
+        "value": 14
+      },
+      "Cooldown": {
+        "seconds": 1.3
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_blunt_heavy"
+        },
+        {
+          "id": "fx_dust_curtain",
+          "duration_s": 1.5
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_dust_kick",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:frontier"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:10"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_road>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:wagon"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:curtain_2.5s"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "dust",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "stub": "cue_dust_kick",
+        "trigger": "AttackHeavy",
+        "startup_ms": 160,
+        "active_ms": 120,
+        "recovery_ms": 280,
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_dust_kick"
+      },
+      "AuraPrompt": "Dust sheet at knee height, sun through it.",
+      "WeaponFilter": [
+        "unarmed",
+        "wpn_2h_frontier_wagoniron"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_mercy",
+      "display_name": "Mercy Shock",
+      "lore_blurb": "Dawn heavy. If the target is under 15% health the effect becomes a knockdown and will not kill. Taking the kill anyway is a faction loss with Aegis.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Blue only on the hit frame.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Maul head or orb held high, then down.",
+      "palette": [
+        "#d8d4dc",
+        "#3a78ff"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_mercy",
+        "element_for_VfxPath": "shock",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "new_vfx_stub": "cue_mercy",
+        "animator_trigger": "AttackHeavy",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 140,
+          "recovery_ms": 320
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Karate"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking",
+          "Law.NoFinalWin"
+        ]
+      },
+      "aura_prompt": "One blue shock ring on the ground, target stays standing or drops, no disintegration.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ],
+      "AbilityId": "skill_steel_mercy",
+      "VerbId": "verb_2h_heavy",
+      "Cost": {
+        "resource": "stamina",
+        "value": 18
+      },
+      "Cooldown": {
+        "seconds": 2.0
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_shock_heavy"
+        },
+        {
+          "id": "fx_nonlethal_below",
+          "hp_fraction": 0.15
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_mercy",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:dawn_maul_or_orb"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:8"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:aegis>=0.4"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:vesper"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "boss:refused_final_blow"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "shock",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "stub": "cue_mercy",
+        "trigger": "AttackHeavy",
+        "startup_ms": 200,
+        "active_ms": 140,
+        "recovery_ms": 320,
+        "fight_styles": [
+          "Karate"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking",
+          "Law.NoFinalWin"
+        ],
+        "cue_id": "cue_mercy"
+      },
+      "AuraPrompt": "One blue shock ring on the ground, target stays standing or drops, no disintegration.",
+      "WeaponFilter": [
+        "wpn_2h_dawn_shockmaul",
+        "wpn_focus_dawn_mercy"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_unburial",
+      "display_name": "Unburial",
+      "lore_blurb": "Heavy remnant cut. Can target a downed NPC to stamp them unfinished instead of deleted. Abandon is not delete; this is the combat form of that law.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_2h_heavy"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash sheet, not a soul orb.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Wide rectangle weapon.",
+      "palette": [
+        "#5a5044",
+        "#8aa0b4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_unburial",
+        "element_for_VfxPath": "ash",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "new_vfx_stub": "cue_unburial",
+        "animator_trigger": "AttackHeavy",
+        "action_runner": {
+          "startup_ms": 220,
+          "active_ms": 160,
+          "recovery_ms": 340
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Ash burst, cold iron glint, a staple sound.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_2h_heavy"
+      ],
+      "AbilityId": "skill_steel_unburial",
+      "VerbId": "verb_2h_heavy",
+      "Cost": {
+        "resource": "stamina",
+        "value": 20
+      },
+      "Cooldown": {
+        "seconds": 2.2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_slash_heavy"
+        },
+        {
+          "id": "fx_tombstone_if_downed"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_unburial",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "weapon:wpn_2h_ruins_unburial"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:8"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:catalogue_keepers>=0.4"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:unfinished"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "boss:page_closed"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ash",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "stub": "cue_unburial",
+        "trigger": "AttackHeavy",
+        "startup_ms": 220,
+        "active_ms": 160,
+        "recovery_ms": 340,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_unburial"
+      },
+      "AuraPrompt": "Ash burst, cold iron glint, a staple sound.",
+      "WeaponFilter": [
+        "verb_2h_heavy"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_parry",
+      "display_name": "Poise Answer",
+      "lore_blurb": "The parry window HitResolver already knows. This row publishes it as a skill with ranks that widen the window slightly, never into a passive god mode.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_parry"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Tunya",
+        "Crucible",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Spark from CombatFeel, culture-tinted.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Weapon or forearm meets the incoming line.",
+      "palette": [
+        "#efe6d4",
+        "#6a6860"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_parry",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_parry",
+        "animator_trigger": "Block",
+        "action_runner": {
+          "startup_ms": 0,
+          "active_ms": 140,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "parry",
+        "fight_styles": [
+          "Karate",
+          "MuayThai",
+          "WingChun",
+          "Capoeira",
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Parry"
+        ]
+      },
+      "aura_prompt": "One spark, a camera punch already owned by CombatFeel, no shockwave dome.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_parry"
+      ],
+      "AbilityId": "skill_steel_parry",
+      "VerbId": "verb_parry",
+      "Cost": {
+        "resource": "stamina",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 0.6
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_parry_window",
+          "ms_rank": [
+            120,
+            130,
+            140,
+            150,
+            160
+          ]
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_parry",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:any_combat"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:20"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "any_faction>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:arena"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:perfect_parry_riposte_tag"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_parry",
+        "trigger": "Block",
+        "startup_ms": 0,
+        "active_ms": 140,
+        "recovery_ms": 180,
+        "fight_styles": [
+          "Karate",
+          "MuayThai",
+          "WingChun",
+          "Capoeira",
+          "Sword"
+        ],
+        "hit": "parry",
+        "active_tags": [
+          "State.Parry"
+        ],
+        "cue_id": "cue_parry"
+      },
+      "AuraPrompt": "One spark, a camera punch already owned by CombatFeel, no shockwave dome.",
+      "WeaponFilter": [
+        "any",
+        "unarmed"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_steel_shard",
+      "display_name": "Shard Cast",
+      "lore_blurb": "Throws an unclosed shard. It breaks in two. It does not home.",
+      "taxonomy_tags": [
+        "skill",
+        "steel",
+        "verb_thrown"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Teal chip, short.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hand, gap visible.",
+      "palette": [
+        "#20ffd0",
+        "#204040"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "steel",
+        "skill_lattice_skillType": "skill_steel_shard",
+        "element_for_VfxPath": "energy",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_shard",
+        "animator_trigger": "Throw",
+        "action_runner": {
+          "startup_ms": 90,
+          "active_ms": 40,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "standard",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Attacking"
+        ]
+      },
+      "aura_prompt": "Shard splits once in the air, two impacts, pattern still incomplete.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_thrown"
+      ],
+      "AbilityId": "skill_steel_shard",
+      "VerbId": "verb_thrown",
+      "Cost": {
+        "resource": "stamina",
+        "value": 10
+      },
+      "Cooldown": {
+        "seconds": 1.1
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_throw_shard"
+        },
+        {
+          "id": "fx_split_once"
+        }
+      ],
+      "TargetingMode": "Projectile",
+      "ProgressionTable": {
+        "id": "prog_skill_steel_shard",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "item:shard"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:10"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_lattice>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:unender_left"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:split_tracks_a_second_target_manually"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "energy",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_shard",
+        "trigger": "Throw",
+        "startup_ms": 90,
+        "active_ms": 40,
+        "recovery_ms": 180,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "standard",
+        "active_tags": [
+          "State.Attacking"
+        ],
+        "cue_id": "cue_shard"
+      },
+      "AuraPrompt": "Shard splits once in the air, two impacts, pattern still incomplete.",
+      "WeaponFilter": [
+        "wpn_throw_crucible_shard",
+        "wpn_focus_crucible_unend"
+      ],
+      "tree": "steel",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_hail",
+      "display_name": "Hail",
+      "lore_blurb": "The hail already in NpcLife. This publishes it: a raised hand, a name, a bond tick if the NPC is not hostile.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Crucible",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. No sparkle. A person waving.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hand, empty.",
+      "palette": [
+        "#efe6d4",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_hail",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_hail",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 80,
+          "active_ms": 200,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": [
+          "State.Social"
+        ]
+      },
+      "aura_prompt": "None, or one lantern mote at night in the Court only.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_hail"
+      ],
+      "AbilityId": "skill_presence_hail",
+      "VerbId": "verb_social_hail",
+      "Cost": {
+        "resource": "focus",
+        "value": 0
+      },
+      "Cooldown": {
+        "seconds": 1.5
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.InCombat"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_bond_tick",
+          "if": "not_hostile"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_hail",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:all"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "any_bond"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:first_hail"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:hail_pulls_a_schedule_pause"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_hail",
+        "trigger": "Interact",
+        "startup_ms": 80,
+        "active_ms": 200,
+        "recovery_ms": 200,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [
+          "State.Social"
+        ],
+        "cue_id": "cue_hail"
+      },
+      "AuraPrompt": "None, or one lantern mote at night in the Court only.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_witness",
+      "display_name": "Witness Mark",
+      "lore_blurb": "Marks a seen crime into FactionStandingBook witness heat. You are the witness. It does not create evidence you did not see.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_mark"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. No scanning laser.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two fingers to the eye, then toward the act.",
+      "palette": [
+        "#8aa0b4",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_witness",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_witness",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 100,
+          "active_ms": 100,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "A brief chalk tick in the air that fades, Court or rain.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_mark"
+      ],
+      "AbilityId": "skill_presence_witness",
+      "VerbId": "verb_social_mark",
+      "Cost": {
+        "resource": "focus",
+        "value": 5
+      },
+      "Cooldown": {
+        "seconds": 6
+      },
+      "RequiredTags": [
+        "State.Alive",
+        "SawCrime"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_witness_heat",
+          "book": "FactionStandingBook.AddWitnessHeat"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_witness",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:first_witness"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:scholars_guild>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:night_of_whispers"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:heat_decays_slower"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_witness",
+        "trigger": "Interact",
+        "startup_ms": 100,
+        "active_ms": 100,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_witness"
+      },
+      "AuraPrompt": "A brief chalk tick in the air that fades, Court or rain.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_gossip",
+      "display_name": "Carry the Rumor",
+      "lore_blurb": "Teaches GossipEar's proven loop as a player verb: speak a WorldEventLog line to an NPC in range so they can carry it.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_gossip"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Breath in cold air only.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Lean-in, hand beside the mouth.",
+      "palette": [
+        "#c8b48a",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_gossip",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_gossip",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 120,
+          "active_ms": 240,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "No magical whisper ribbon. Optional subtitle from the real log line.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_gossip"
+      ],
+      "AbilityId": "skill_presence_gossip",
+      "VerbId": "verb_social_gossip",
+      "Cost": {
+        "resource": "focus",
+        "value": 4
+      },
+      "Cooldown": {
+        "seconds": 4
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_push_last_event",
+          "log": "WorldEventLog"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_gossip",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:after_first_kill_memory"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:shadow_network>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:return_to_hub"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:two_events_not_one"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_gossip",
+        "trigger": "Interact",
+        "startup_ms": 120,
+        "active_ms": 240,
+        "recovery_ms": 200,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_gossip"
+      },
+      "AuraPrompt": "No magical whisper ribbon. Optional subtitle from the real log line.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_flower_law",
+      "display_name": "Lay Down Steel",
+      "lore_blurb": "Sheathes live steel into flower form inside the Court. The Arena refuses this skill. Outside 42m it does nothing and says so.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. The mesh swap is the effect.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blade lowered into a bloom.",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_flower_law",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_flower_law",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 200,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "Law.Flower"
+        ]
+      },
+      "aura_prompt": "Steel folds into a cut flower in the hand. Petals, not particles pretending to be a sword.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_presence_flower_law",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "focus",
+        "value": 0
+      },
+      "Cooldown": {
+        "seconds": 2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_weapon_become_flower",
+          "radius_m": 42,
+          "except": "Arena"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_flower_law",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:hub"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:1"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:iron_wardens>=0.1"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:gale"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:allies_in_radius_also_flower"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_flower_law",
+        "trigger": "Interact",
+        "startup_ms": 200,
+        "active_ms": 200,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "Law.Flower"
+        ],
+        "cue_id": "cue_flower_law"
+      },
+      "AuraPrompt": "Steel folds into a cut flower in the hand. Petals, not particles pretending to be a sword.",
+      "WeaponFilter": [
+        "any_steel"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_refuse_count",
+      "display_name": "I Will Not Be Counted",
+      "lore_blurb": "Clears the counted tag from Census attacks. Identity is terrain. It does not turn you invisible.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_release"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. A number glyph breaks. The body stays visible.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Palm over the face, then away.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_refuse_count",
+        "element_for_VfxPath": "shock",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "new_vfx_stub": "cue_uncounted",
+        "animator_trigger": "Cast",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 100,
+          "recovery_ms": 240
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": [
+          "State.Uncounted"
+        ]
+      },
+      "aura_prompt": "Cyan digits crack and fall off the body. No cloak.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ],
+      "AbilityId": "skill_presence_refuse_count",
+      "VerbId": "verb_cast_release",
+      "Cost": {
+        "resource": "focus",
+        "value": 15
+      },
+      "Cooldown": {
+        "seconds": 12
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_clear_tag",
+          "tag": "State.Counted"
+        },
+        {
+          "id": "fx_grant",
+          "tag": "State.Uncounted",
+          "seconds": 8
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_refuse_count",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:nyx_or_zero"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:zero_collective>=0.4"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "boss:mon_boss_census ask"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:duration_12s"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "shock",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "stub": "cue_uncounted",
+        "trigger": "Cast",
+        "startup_ms": 200,
+        "active_ms": 100,
+        "recovery_ms": 240,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "State.Uncounted"
+        ],
+        "cue_id": "cue_uncounted"
+      },
+      "AuraPrompt": "Cyan digits crack and fall off the body. No cloak.",
+      "WeaponFilter": [
+        "none",
+        "wpn_focus_lyra_staff"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_do_not_reap",
+      "display_name": "Do Not Reap",
+      "lore_blurb": "Grove law as a stance. While you are not striking, poise restores. Striking cancels it. You may take fruit.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_loop"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Leaves move. No green beam into the sky.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands open, empty, at the sides.",
+      "palette": [
+        "#6a7a3a",
+        "#f0d080"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_do_not_reap",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_grove",
+        "animator_trigger": "CastLoop",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 800,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": [
+          "Law.DoNotReap"
+        ]
+      },
+      "aura_prompt": "Low pollen drift while the stance holds. Stops the frame a strike starts.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_cast_loop"
+      ],
+      "AbilityId": "skill_presence_do_not_reap",
+      "VerbId": "verb_cast_loop",
+      "Cost": {
+        "resource": "focus",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 10
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Attacking",
+        "State.Stunned"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_poise_regen",
+          "while": "not_striking"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_do_not_reap",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:tunya"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:verdant_veil>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:graft"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:regen_faster"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_grove",
+        "trigger": "CastLoop",
+        "startup_ms": 200,
+        "active_ms": 800,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "Law.DoNotReap"
+        ],
+        "cue_id": "cue_grove"
+      },
+      "AuraPrompt": "Low pollen drift while the stance holds. Stops the frame a strike starts.",
+      "WeaponFilter": [
+        "none",
+        "wpn_pole_tunya_reed"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_name_holder",
+      "display_name": "Name the Holder",
+      "lore_blurb": "Speaks the debtor a Mark actually belongs to. Redirects the Compound Mark's next slam if the name is a real faction id in the log.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_mark"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. A brand tile lights then points. Not a homing missile.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Point, open mouth, one word.",
+      "palette": [
+        "#c8a060",
+        "#1a140e"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_name_holder",
+        "element_for_VfxPath": "ash",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "new_vfx_stub": "cue_name_holder",
+        "animator_trigger": "Cast",
+        "action_runner": {
+          "startup_ms": 220,
+          "active_ms": 120,
+          "recovery_ms": 240
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "One tile flares and the boss's furnace eye turns toward the named banner.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_mark"
+      ],
+      "AbilityId": "skill_presence_name_holder",
+      "VerbId": "verb_social_mark",
+      "Cost": {
+        "resource": "focus",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 14
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_redirect_aggro",
+          "requires": "named_faction_in_log"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_name_holder",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:tessera"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:tessera_hold>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "boss:compound_mark"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:redirect_lasts_two_slams"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ash",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "stub": "cue_name_holder",
+        "trigger": "Cast",
+        "startup_ms": 220,
+        "active_ms": 120,
+        "recovery_ms": 240,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_name_holder"
+      },
+      "AuraPrompt": "One tile flares and the boss's furnace eye turns toward the named banner.",
+      "WeaponFilter": [
+        "wpn_focus_ruins_stylus",
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_etiquette",
+      "display_name": "Smile When You Object",
+      "lore_blurb": "Seraphine's craft. A social parry: cancels one intimidation or price gouge. It is not mind control.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cloth, a glove, no charm sparkles.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. A small bow, smile is facial blend, not a mask.",
+      "palette": [
+        "#6a2030",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_etiquette",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_etiquette",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 100,
+          "active_ms": 200,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "None. The UI line changes. Face plays a short blend.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_hail"
+      ],
+      "AbilityId": "skill_presence_etiquette",
+      "VerbId": "verb_social_hail",
+      "Cost": {
+        "resource": "focus",
+        "value": 6
+      },
+      "Cooldown": {
+        "seconds": 8
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_cancel_social_pressure"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_etiquette",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:seraphine"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:4"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:crimson_court>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:etiquette"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:refund_a_single_gouged_price"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_etiquette",
+        "trigger": "Interact",
+        "startup_ms": 100,
+        "active_ms": 200,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_etiquette"
+      },
+      "AuraPrompt": "None. The UI line changes. Face plays a short blend.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_bond",
+      "display_name": "Keep a Bond",
+      "lore_blurb": "Spends time. Raises a bond the NpcLife system already understands. No friendship meter made of fireworks.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Tunya",
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Shared idle.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Sit or stand beside, not a hug animation unless the bond is already high.",
+      "palette": [
+        "#c4b49a",
+        "#8aa0b4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_bond",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_bond",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 400,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "None.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_hail"
+      ],
+      "AbilityId": "skill_presence_bond",
+      "VerbId": "verb_social_hail",
+      "Cost": {
+        "resource": "focus",
+        "value": 0
+      },
+      "Cooldown": {
+        "seconds": 20
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.InCombat"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_bond_add"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_bond",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:after_three_hails"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "any_faction>=0.1"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:old_seam"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:bond_survives_a_world_hop"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_bond",
+        "trigger": "Interact",
+        "startup_ms": 200,
+        "active_ms": 400,
+        "recovery_ms": 200,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_bond"
+      },
+      "AuraPrompt": "None.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_lament",
+      "display_name": "Close the Page",
+      "lore_blurb": "Catalogue speech. Used on The Unfinished during the ask, or on a tombstone. Does not delete the dead.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_release"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Ash letters that are one word: closed.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Stylus down, like a period.",
+      "palette": [
+        "#b89060",
+        "#2a1c14"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_lament",
+        "element_for_VfxPath": "ash",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "new_vfx_stub": "cue_lament",
+        "animator_trigger": "Cast",
+        "action_runner": {
+          "startup_ms": 240,
+          "active_ms": 200,
+          "recovery_ms": 280
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Ash settles into a written line, then stops moving.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ],
+      "AbilityId": "skill_presence_lament",
+      "VerbId": "verb_cast_release",
+      "Cost": {
+        "resource": "focus",
+        "value": 10
+      },
+      "Cooldown": {
+        "seconds": 8
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_close_page"
+        },
+        {
+          "id": "fx_tombstone_write"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_lament",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:maren_or_keeper"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:catalogue_keepers>=0.4"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "boss:unfinished_ask"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:page_stays_closed"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ash",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "stub": "cue_lament",
+        "trigger": "Cast",
+        "startup_ms": 240,
+        "active_ms": 200,
+        "recovery_ms": 280,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_lament"
+      },
+      "AuraPrompt": "Ash settles into a written line, then stops moving.",
+      "WeaponFilter": [
+        "wpn_focus_ruins_stylus",
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_lantern_step",
+      "display_name": "Lantern Step",
+      "lore_blurb": "Lamplighter's walk. Lights a Court lantern you are near. Night navigation, not a damage aura.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Practical light turns on.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Reach up to the bracket.",
+      "palette": [
+        "#ffe6c0",
+        "#6a5a40"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_lantern_step",
+        "element_for_VfxPath": "ember",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "new_vfx_stub": "cue_lantern_step",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 80,
+          "active_ms": 100,
+          "recovery_ms": 120
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Lantern flame, warm, small.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_presence_lantern_step",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "focus",
+        "value": 2
+      },
+      "Cooldown": {
+        "seconds": 1
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_light_practical",
+          "target": "prop_court_lantern_post"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_lantern_step",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:hub_night"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "quest:lamplighter"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "faction:scholars_guild>=0.1"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:lights_a_short_path"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ember",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "stub": "cue_lantern_step",
+        "trigger": "Interact",
+        "startup_ms": 80,
+        "active_ms": 100,
+        "recovery_ms": 120,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_lantern_step"
+      },
+      "AuraPrompt": "Lantern flame, warm, small.",
+      "WeaponFilter": [
+        "wpn_throw_court_lantern",
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_bargain",
+      "display_name": "The Price",
+      "lore_blurb": "Merchant Collective bargain. Changes a buy price if faction standing allows. Never invents a stock the Container does not have.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Tunya",
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Coin, not a slot machine.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Scale lifted, then set down.",
+      "palette": [
+        "#c8a060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_bargain",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_bargain",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 100,
+          "active_ms": 150,
+          "recovery_ms": 150
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "None.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_hail"
+      ],
+      "AbilityId": "skill_presence_bargain",
+      "VerbId": "verb_social_hail",
+      "Cost": {
+        "resource": "focus",
+        "value": 4
+      },
+      "Cooldown": {
+        "seconds": 6
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_price_mod",
+          "from": "FactionStandingBook"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_bargain",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:merchant"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:merchant_collective>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:trade_wars"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:standing_discounts_stack_once"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_bargain",
+        "trigger": "Interact",
+        "startup_ms": 100,
+        "active_ms": 150,
+        "recovery_ms": 150,
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_bargain"
+      },
+      "AuraPrompt": "None.",
+      "WeaponFilter": [
+        "prop_scale_pan",
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_second_hour",
+      "display_name": "Second Hour",
+      "lore_blurb": "Lyra Silentchant's walk. A chant that does not teach a ninth Refusal. It steadies poise. It cannot be used to win a fight by damage.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_cast_loop"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Quiet. Dust motes in a shaft of light.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Staff planted, head bowed.",
+      "palette": [
+        "#3a3850",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_second_hour",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_second_hour",
+        "animator_trigger": "CastLoop",
+        "action_runner": {
+          "startup_ms": 300,
+          "active_ms": 1200,
+          "recovery_ms": 300
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": [
+          "State.Casting"
+        ]
+      },
+      "aura_prompt": "A still column of dust motes, no projectile.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_cast_loop"
+      ],
+      "AbilityId": "skill_presence_second_hour",
+      "VerbId": "verb_cast_loop",
+      "Cost": {
+        "resource": "focus",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 16
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_poise_steady"
+        },
+        {
+          "id": "fx_damage",
+          "magnitude": 0
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_second_hour",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:lyra"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:scholars_guild>=0.5"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:no_ninth"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:allies_in_4m"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_second_hour",
+        "trigger": "CastLoop",
+        "startup_ms": 300,
+        "active_ms": 1200,
+        "recovery_ms": 300,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "State.Casting"
+        ],
+        "cue_id": "cue_second_hour"
+      },
+      "AuraPrompt": "A still column of dust motes, no projectile.",
+      "WeaponFilter": [
+        "wpn_focus_lyra_staff",
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_presence_unchosen",
+      "display_name": "You Cannot Own the Heart",
+      "lore_blurb": "Concordia's line as a player refusal. Drops a claimed follow or a forced escort. Companions are not owned. The pillar is not a romance flag.",
+      "taxonomy_tags": [
+        "skill",
+        "presence",
+        "verb_social_hail"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. No heart VFX.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open hands, step back.",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "presence",
+        "skill_lattice_skillType": "skill_presence_unchosen",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_unchosen",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 200,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "None. The bond UI loosens.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_social_hail"
+      ],
+      "AbilityId": "skill_presence_unchosen",
+      "VerbId": "verb_social_hail",
+      "Cost": {
+        "resource": "focus",
+        "value": 0
+      },
+      "Cooldown": {
+        "seconds": 5
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_release_escort"
+        },
+        {
+          "id": "fx_log",
+          "line": "refused ownership"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_presence_unchosen",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:concordia_pillar"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:1"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "rank3:log_persists"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:founding_day"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:can_release_a_tamed_hound"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_unchosen",
+        "trigger": "Interact",
+        "startup_ms": 200,
+        "active_ms": 200,
+        "recovery_ms": 200,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_unchosen"
+      },
+      "AuraPrompt": "None. The bond UI loosens.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "presence",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_forge",
+      "display_name": "Forge Commit",
+      "lore_blurb": "GameplayCore fabrication commit at prop_bench_forge. Plays a hammer montage. Output is a real recipe or an honest empty bench.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sparks from metal, short.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hammer up, visor of the arm.",
+      "palette": [
+        "#c8a060",
+        "#2a241c"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_forge",
+        "element_for_VfxPath": "ember",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "new_vfx_stub": "cue_forge",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 400,
+          "recovery_ms": 300
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "State.Crafting"
+        ]
+      },
+      "aura_prompt": "Forge sparks, no enchantment swirl unless the recipe is a spell.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_forge",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "stamina",
+        "value": 14
+      },
+      "Cooldown": {
+        "seconds": 3
+      },
+      "RequiredTags": [
+        "State.AtStation"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_craft_commit",
+          "station": "Fabrication"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_forge",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "station:forge"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:iron_wardens>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:pinewood_smith"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:tier_up_one_material"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ember",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Flamethrower_01.prefab",
+        "stub": "cue_forge",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 400,
+        "recovery_ms": 300,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "State.Crafting"
+        ],
+        "cue_id": "cue_forge"
+      },
+      "AuraPrompt": "Forge sparks, no enchantment swirl unless the recipe is a spell.",
+      "WeaponFilter": [
+        "wpn_imp_forge_hammer"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_kitbash",
+      "display_name": "Kitbash",
+      "lore_blurb": "Combines two salvage props into a culture skin the weapon matrix already allows. Does not invent a new verb.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Crime",
+        "Frontier",
+        "Sere",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Bolts, tape, wear.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Two parts held up, then one.",
+      "palette": [
+        "#8a6a48",
+        "#c8b070"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_kitbash",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_kitbash",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 180,
+          "active_ms": 300,
+          "recovery_ms": 240
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "A wrench tick, parts seat.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_kitbash",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "stamina",
+        "value": 10
+      },
+      "Cooldown": {
+        "seconds": 4
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_kitbash",
+          "rule": "same_verb_family"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_kitbash",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "craft:forge_rank2"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:5"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_road>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:salvage"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:keep_both_palettes"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_kitbash",
+        "trigger": "Craft",
+        "startup_ms": 180,
+        "active_ms": 300,
+        "recovery_ms": 240,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_kitbash"
+      },
+      "AuraPrompt": "A wrench tick, parts seat.",
+      "WeaponFilter": [
+        "verb_improvised_swing"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_gunsmith",
+      "display_name": "Clear the Vise",
+      "lore_blurb": "Gunsmithing station. The code path exists and firearm animation coverage is 0%. This skill maintains, cleans, and stamps parts. It does not equip a rifle montage that does not exist.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Oil, cloth, metal.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands in the vise, no shouldered gun.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_gunsmith",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_vise",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 300,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Oil shine, cloth, a pin click. No muzzle flash.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_gunsmith",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 4
+      },
+      "RequiredTags": [
+        "State.AtStation"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_gunsmith_maintain",
+          "station": "Gunsmithing"
+        },
+        {
+          "id": "fx_honest_gap",
+          "note": "no_firearm_verb"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_gunsmith",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "station:vise"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:delgado_syndicate>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:bill"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:parts_quality"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_vise",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 300,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_vise"
+      },
+      "AuraPrompt": "Oil shine, cloth, a pin click. No muzzle flash.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_wagon",
+      "display_name": "Wagon Lash",
+      "lore_blurb": "Lashes cargo and harness. Ride controller is absent, so this does not mount the player. It readies faun_wagon_horse and prop_wagon.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Dust, leather.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands on a strap.",
+      "palette": [
+        "#c8b070",
+        "#4a3828"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_wagon",
+        "element_for_VfxPath": "dust",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "new_vfx_stub": "cue_wagon",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 150,
+          "active_ms": 300,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Strap pull, horse shifts weight. Camera stays on foot.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_craft_wagon",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "stamina",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_hitch"
+        },
+        {
+          "id": "fx_honest_gap",
+          "note": "no_ride_controller"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_wagon",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "prop:wagon"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_road>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:frontier_gate"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:cargo_container"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "dust",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "stub": "cue_wagon",
+        "trigger": "Interact",
+        "startup_ms": 150,
+        "active_ms": 300,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "MuayThai"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_wagon"
+      },
+      "AuraPrompt": "Strap pull, horse shifts weight. Camera stays on foot.",
+      "WeaponFilter": [
+        "wpn_imp_frontier_spade",
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_graft",
+      "display_name": "Graft",
+      "lore_blurb": "Heals a tree scar or a wood weapon. Reaping the trunk cancels the craft and drops Veil standing.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Sap, cloth wrap.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Knife small, both hands on a branch.",
+      "palette": [
+        "#3a4a28",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_graft",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_graft",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 400,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Sap shine, cloth wrap tightens, no nature explosion.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_graft",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 5
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_repair_wood"
+        },
+        {
+          "id": "fx_standing_loss_if_reap",
+          "faction": "verdant_veil"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_graft",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "tool:graft_knife"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:verdant_veil>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:do_not_reap"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:living_shaft_bonus"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_graft",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 400,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_graft"
+      },
+      "AuraPrompt": "Sap shine, cloth wrap tightens, no nature explosion.",
+      "WeaponFilter": [
+        "wpn_imp_grove_knife"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_catalogue",
+      "display_name": "Mend the Record",
+      "lore_blurb": "Repairs a cold-iron piece or a cairn staple. Does not conquer the ruin. Output is a maintained relic, not a new undead.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Iron, ash, no necromancy glow.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands placing a staple.",
+      "palette": [
+        "#8aa0b4",
+        "#5a5044"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_catalogue",
+        "element_for_VfxPath": "ash",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "new_vfx_stub": "cue_mend_record",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 300,
+          "recovery_ms": 240
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Staple seats, ash falls off the joint.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_catalogue",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 10
+      },
+      "Cooldown": {
+        "seconds": 5
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_repair_relic"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_catalogue",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "station:cairn_or_forge"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:catalogue_keepers>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:maren"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:staple_holds"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "ash",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "stub": "cue_mend_record",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 300,
+        "recovery_ms": 240,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_mend_record"
+      },
+      "AuraPrompt": "Staple seats, ash falls off the joint.",
+      "WeaponFilter": [
+        "wpn_focus_ruins_stylus",
+        "wpn_imp_forge_hammer"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_splice",
+      "display_name": "Splice",
+      "lore_blurb": "Joins fiber at a junction box. Can produce a cable whip or repair a Grid practical. Does not hack a god terminal.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. One spark, then a steady LED.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Both hands in the box.",
+      "palette": [
+        "#3dffa0",
+        "#1a1228"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_splice",
+        "element_for_VfxPath": "shock",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "new_vfx_stub": "cue_splice",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 160,
+          "active_ms": 240,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Single spark, LED settles to steady cyan.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_splice",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 3
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_splice",
+          "station": "Fabrication"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_splice",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "prop:junction"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:zero_collective>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:uncounted"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:clean_signal"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "shock",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Lightning_01.prefab",
+        "stub": "cue_splice",
+        "trigger": "Craft",
+        "startup_ms": 160,
+        "active_ms": 240,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_splice"
+      },
+      "AuraPrompt": "Single spark, LED settles to steady cyan.",
+      "WeaponFilter": [
+        "wpn_imp_grid_cable",
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_unend",
+      "display_name": "Un-End the Work",
+      "lore_blurb": "Refuses to complete a craft, which is how a Crucible recipe stays open. Used in the Un-Ender fight to stop a rewind if the work was left unfinished on purpose.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_cast_release"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. A seam that stops.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Open ring held in the gap of the work.",
+      "palette": [
+        "#20ffd0",
+        "#102828"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_unend",
+        "element_for_VfxPath": "energy",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_unend",
+        "animator_trigger": "Cast",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 150,
+          "recovery_ms": 240
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": [
+          "Law.Unend"
+        ]
+      },
+      "aura_prompt": "Teal seam runs and stops short. The last inch never fills.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_cast_release"
+      ],
+      "AbilityId": "skill_craft_unend",
+      "VerbId": "verb_cast_release",
+      "Cost": {
+        "resource": "focus",
+        "value": 14
+      },
+      "Cooldown": {
+        "seconds": 10
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_prevent_rewind"
+        },
+        {
+          "id": "fx_craft_leave_open"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_unend",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "quest:lattice"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_lattice>=0.4"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "boss:unender"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:rewind_blocked_for_allies"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "energy",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_unend",
+        "trigger": "Cast",
+        "startup_ms": 200,
+        "active_ms": 150,
+        "recovery_ms": 240,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "Law.Unend"
+        ],
+        "cue_id": "cue_unend"
+      },
+      "AuraPrompt": "Teal seam runs and stops short. The last inch never fills.",
+      "WeaponFilter": [
+        "wpn_focus_crucible_unend"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_quench",
+      "display_name": "Flower Quench",
+      "lore_blurb": "Quench a forged edge into flower form so it can be carried in the Court. Arena steel can be re-quenched back. A craft, not a curse.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Steam, then petals.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Blade into a barrel, lift a flower.",
+      "palette": [
+        "#c8721a",
+        "#6a6860"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_quench",
+        "element_for_VfxPath": "heal",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_quench",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 300,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Sword"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Quench steam, blade comes up as steel or as a flower, mesh swap.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_quench",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "stamina",
+        "value": 12
+      },
+      "Cooldown": {
+        "seconds": 4
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_toggle_flower_form"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_quench",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "station:forge_in_hub"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:forge_rank2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:iron_wardens>=0.3"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:flower_law"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:quench_is_reversible_fast"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "heal",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_quench",
+        "trigger": "Craft",
+        "startup_ms": 200,
+        "active_ms": 300,
+        "recovery_ms": 200,
+        "fight_styles": [
+          "Sword"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_quench"
+      },
+      "AuraPrompt": "Quench steam, blade comes up as steel or as a flower, mesh swap.",
+      "WeaponFilter": [
+        "verb_1h_slash",
+        "verb_2h_heavy"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_salvage",
+      "display_name": "Take the Plate",
+      "lore_blurb": "Pulls a broken monster plate or prop into KitBag salvage. Nothing that is not already a loot hook.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Sere",
+        "Ruins",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. A plate comes free.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Kneel, pry.",
+      "palette": [
+        "#8a6a48",
+        "#5a5044"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_salvage",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_salvage",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 120,
+          "active_ms": 200,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Pry spark, plate in hand.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_craft_salvage",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "stamina",
+        "value": 6
+      },
+      "Cooldown": {
+        "seconds": 1.5
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_loot_to_kitbag"
+        }
+      ],
+      "TargetingMode": "Enemy",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_salvage",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:after_first_break"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:8"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "any_faction>=0.1"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:road"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:rare_plate_chance_up"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_salvage",
+        "trigger": "Interact",
+        "startup_ms": 120,
+        "active_ms": 200,
+        "recovery_ms": 180,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_salvage"
+      },
+      "AuraPrompt": "Pry spark, plate in hand.",
+      "WeaponFilter": [
+        "wpn_imp_forge_hammer",
+        "wpn_imp_frontier_spade",
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_pollen",
+      "display_name": "Pollen Ward",
+      "lore_blurb": "Crafts a consumable wad that the pollen bow and the Veil Stag already use. Short slow, not a sleep nuke, unless the wyrm sac is the ingredient.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Powder, cloth packet.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands cupping powder.",
+      "palette": [
+        "#e0c060",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_pollen",
+        "element_for_VfxPath": "poison",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "new_vfx_stub": "cue_pollen",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 150,
+          "active_ms": 250,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Pollen dust packed into cloth. No jar of green liquid.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_pollen",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 6
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_consumable_pollen"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_pollen",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "craft:graft_rank1"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:4"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:verdant_veil>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:bloom"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:two_wads"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "poison",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Smoke_01.prefab",
+        "stub": "cue_pollen",
+        "trigger": "Craft",
+        "startup_ms": 150,
+        "active_ms": 250,
+        "recovery_ms": 180,
+        "fight_styles": [
+          "Capoeira"
+        ],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_pollen"
+      },
+      "AuraPrompt": "Pollen dust packed into cloth. No jar of green liquid.",
+      "WeaponFilter": [
+        "wpn_imp_grove_knife"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_dress",
+      "display_name": "Seat the Plate",
+      "lore_blurb": "Binds a gear plate to CX sockets through CxDress. Chest, fauld, pauldron. The face stays Concordia.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Ruins",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Superhero",
+        "Tunya",
+        "Crucible",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Straps, not a shimmering equip effect.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Plate lifted onto the chest.",
+      "palette": [
+        "#6a6860",
+        "#d8d4dc"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_dress",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_dress",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 150,
+          "active_ms": 250,
+          "recovery_ms": 180
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Buckles. No loot beam.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_dress",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 4
+      },
+      "Cooldown": {
+        "seconds": 2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_cxdress_equip"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_dress",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:first_plate"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "any_faction>=0.1"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:warden_or_local_elite"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:three_sockets_one_action"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_dress",
+        "trigger": "Craft",
+        "startup_ms": 150,
+        "active_ms": 250,
+        "recovery_ms": 180,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_dress"
+      },
+      "AuraPrompt": "Buckles. No loot beam.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_tack",
+      "display_name": "Set the Tack",
+      "lore_blurb": "Puts tack on faun_wagon_horse. Does not enable riding. The gap stays visible: you can tack a horse and still walk beside it.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Leather, horse hair.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands on the harness, both feet on the ground.",
+      "palette": [
+        "#6a4a30",
+        "#c8b070"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_tack",
+        "element_for_VfxPath": "dust",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "new_vfx_stub": "cue_tack",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 200,
+          "active_ms": 400,
+          "recovery_ms": 200
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Harness settles. No mounted camera.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_craft_tack",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "stamina",
+        "value": 8
+      },
+      "Cooldown": {
+        "seconds": 3
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_apply_tack"
+        },
+        {
+          "id": "fx_honest_gap",
+          "note": "ride_controller_absent"
+        }
+      ],
+      "TargetingMode": "Ally",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_tack",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "animal:faun_wagon_horse"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:2"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:open_road>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:hitch"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:tack_is_cosmetic_plus_cargo"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "dust",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Shockwave_01.prefab",
+        "stub": "cue_tack",
+        "trigger": "Interact",
+        "startup_ms": 200,
+        "active_ms": 400,
+        "recovery_ms": 200,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_tack"
+      },
+      "AuraPrompt": "Harness settles. No mounted camera.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough stamina.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_spellwell",
+      "display_name": "Spellwell",
+      "lore_blurb": "Spellcrafting basin. Binds an existing effect id into a consumable. Cannot author a new damage type.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_craft_commit"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Crucible",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Residue stirs and settles.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Hands over a basin, not a raised staff nuke.",
+      "palette": [
+        "#3a3850",
+        "#20ffd0"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_spellwell",
+        "element_for_VfxPath": "energy",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "new_vfx_stub": "cue_spellwell",
+        "animator_trigger": "Craft",
+        "action_runner": {
+          "startup_ms": 300,
+          "active_ms": 400,
+          "recovery_ms": 280
+        },
+        "hit_resolver": "none",
+        "fight_styles": [
+          "WingChun"
+        ],
+        "granted_tags_while_active": [
+          "State.Crafting"
+        ]
+      },
+      "aura_prompt": "Basin surface moves, a charge seats into a stone or shard. No sky pillar.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_craft_commit"
+      ],
+      "AbilityId": "skill_craft_spellwell",
+      "VerbId": "verb_craft_commit",
+      "Cost": {
+        "resource": "focus",
+        "value": 16
+      },
+      "Cooldown": {
+        "seconds": 8
+      },
+      "RequiredTags": [
+        "State.AtStation"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_spellcraft",
+          "station": "Spellcrafting",
+          "allowed_effects": "existing_only"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_spellwell",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "station:basin"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "craft:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "presence:second_hour_or_lament"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:lyra_or_lattice"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:two_charges"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "energy",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Heal_02.prefab",
+        "stub": "cue_spellwell",
+        "trigger": "Craft",
+        "startup_ms": 300,
+        "active_ms": 400,
+        "recovery_ms": 280,
+        "fight_styles": [
+          "WingChun"
+        ],
+        "hit": "none",
+        "active_tags": [
+          "State.Crafting"
+        ],
+        "cue_id": "cue_spellwell"
+      },
+      "AuraPrompt": "Basin surface moves, a charge seats into a stone or shard. No sky pillar.",
+      "WeaponFilter": [
+        "wpn_focus_lyra_staff",
+        "wpn_focus_crucible_unend",
+        "wpn_focus_sunder_cursefold"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    },
+    {
+      "id": "skill_craft_seal",
+      "display_name": "Seal the Container",
+      "lore_blurb": "Closes a GameplayCore container so the loot table cannot be double-dipped. A craft of honesty.",
+      "taxonomy_tags": [
+        "skill",
+        "craft",
+        "verb_interact"
+      ],
+      "world_ids": [
+        "Crime",
+        "Hub",
+        "Frontier",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Cord and wax or a lead stamp.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. Lid, cord, stamp.",
+      "palette": [
+        "#6a5340",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "player-scale",
+      "unity_bind": {
+        "skill_lattice_group": "craft",
+        "skill_lattice_skillType": "skill_craft_seal",
+        "element_for_VfxPath": "impact",
+        "existing_vfx_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "new_vfx_stub": "cue_seal",
+        "animator_trigger": "Interact",
+        "action_runner": {
+          "startup_ms": 100,
+          "active_ms": 150,
+          "recovery_ms": 150
+        },
+        "hit_resolver": "none",
+        "fight_styles": [],
+        "granted_tags_while_active": []
+      },
+      "aura_prompt": "Lid thumps, stamp clicks.",
+      "stats_hooks": {
+        "hit_resolver": "Core.HitResolver",
+        "action_runner": "Core.ActionRunner"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ],
+      "AbilityId": "skill_craft_seal",
+      "VerbId": "verb_interact",
+      "Cost": {
+        "resource": "focus",
+        "value": 3
+      },
+      "Cooldown": {
+        "seconds": 2
+      },
+      "RequiredTags": [
+        "State.Alive"
+      ],
+      "BlockedByTags": [
+        "State.Stunned",
+        "State.Dead"
+      ],
+      "EffectsToApply": [
+        {
+          "id": "fx_container_seal"
+        }
+      ],
+      "TargetingMode": "Self",
+      "ProgressionTable": {
+        "id": "prog_skill_craft_seal",
+        "ranks": [
+          {
+            "rank": 1,
+            "magnitude": 1.0,
+            "unlock": "default:first_container"
+          },
+          {
+            "rank": 2,
+            "magnitude": 1.12,
+            "unlock": "use:3"
+          },
+          {
+            "rank": 3,
+            "magnitude": 1.25,
+            "unlock": "faction:merchant_collective>=0.2"
+          },
+          {
+            "rank": 4,
+            "magnitude": 1.4,
+            "unlock": "quest:crate"
+          },
+          {
+            "rank": 5,
+            "magnitude": 1.55,
+            "unlock": "rank5:seal_shows_your_name"
+          }
+        ]
+      },
+      "VfxCue": {
+        "element": "impact",
+        "existing_prefab": "Assets/GabrielAguiarProductions/FreeQuickEffectsVol1/Prefabs/vfx_Impact_01.prefab",
+        "stub": "cue_seal",
+        "trigger": "Interact",
+        "startup_ms": 100,
+        "active_ms": 150,
+        "recovery_ms": 150,
+        "fight_styles": [],
+        "hit": "none",
+        "active_tags": [],
+        "cue_id": "cue_seal"
+      },
+      "AuraPrompt": "Lid thumps, stamp clicks.",
+      "WeaponFilter": [
+        "none"
+      ],
+      "tree": "craft",
+      "failure_feedback": {
+        "no_resource": "Not enough focus.",
+        "blocked_tag": "That stance will not take this verb.",
+        "out_of_range": "Out of reach.",
+        "flower_law": "Live steel dies as flowers inside the Court (42m). The Arena is the exception."
+      }
+    }
+  ]
+}

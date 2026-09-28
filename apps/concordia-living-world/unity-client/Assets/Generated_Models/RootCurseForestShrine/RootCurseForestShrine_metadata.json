@@ -1,0 +1,23 @@
+{
+  "task_id": "7487e2bf-c0c7-45f0-8c54-21c69b9e09cb",
+  "original_generation_task_id": "e2176fcd-fa6f-4ff1-ae2a-4b052943ccaf",
+  "original_model_url": "https://tripo-data.rg1.data.tripo3d.com/tcli_af214df3136f4037b860bb82d8a79830/20260920/e2176fcd-fa6f-4ff1-ae2a-4b052943ccaf/tripo_model_e2176fcd-fa6f-4ff1-ae2a-4b052943ccaf.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly90cmlwby1kYXRhLnJnMS5kYXRhLnRyaXBvM2QuY29tL3RjbGlfYWYyMTRkZjMxMzZmNDAzN2I4NjBiYjgyZDhhNzk4MzAvMjAyNjA5MjAvZTIxNzZmY2QtZmE2Zi00ZmYxLWFlMmEtNGIwNTI5NDNjY2FmL3RyaXBvX21vZGVsX2UyMTc2ZmNkLWZhNmYtNGZmMS1hZTJhLTRiMDUyOTQzY2NhZi5nbGIiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3ODk5NzU2MDR9fX1dfQ__&Signature=xL~Wz3XfHeZZFvmFX3fgkk4J0st0Qno5wFsENF-BnGQZBg41bxXN9Z70d098H~4HUaYN4yp8wfsu0N9IfQy-AwPba0Q6s67e4wubPNWco8NbTcOJDd1vb5G2pEw58~85xqhTzeiy2GRNiejkUSBNMK4FYqYdFct-jIGKrIsdlBFk48acA5NyDL4hY6NnAqvMjQIC0mtB9ut~b8jCkQqjHzkOCffVhwnlriL0Tt7V2cVJzrTy~T6uHNjvuGO5Y-JyhVVZW3NyMvClP1bX3zhyBsMdGio6PwSuyIDKIoB2ko0bK4A90OV4zFA1LetUJdNTV1lXGSKTet1OFdwtyCamsw__&Key-Pair-Id=K1676C64NMVM2J",
+  "generation_type": "text_to_model",
+  "generation_date": "2026-09-20T03:26:50.217252",
+  "description": "Bespoke Root Curse forest-shrine hero for The Sundering: an overgrown elder-root landmark where life and death have merged, with green-and-black curse traces, a quiet grove atmosphere, and a readable approach toward the Obsidian Crown world. Keep the form rooted in living forest rather than a generic fantasy village; provide root-safe collision and one inspection/interaction anchor. Bind as one authored hero in WorldVisualDirector.BuildChunkStaged, after WorldKit and before fauna, with all dress work frame-budgeted for LeanPlay.",
+  "negative_prompt": "No pointed elf village, generic tree ring, clean fairy shrine, European castle, dragon statue, glowing neon cyberpunk parts, or unrelated invented symbols.",
+  "pose_type": "Default",
+  "model_version": "P1-20260311",
+  "pbr": false,
+  "face_limit": 20000,
+  "quad": false,
+  "convert_to_fbx": true,
+  "texture_files": [
+    {
+      "role": "BaseColor",
+      "path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/RootCurseForestShrine/RootCurseForestShrine_BaseColor.jpg",
+      "mime_type": "image/jpeg"
+    }
+  ],
+  "file_path": "/Users/dutch/concord vs code/concord-cognitive-engine/apps/concordia-living-world/unity-client/Assets/Generated_Models/RootCurseForestShrine/RootCurseForestShrine.fbx"
+}

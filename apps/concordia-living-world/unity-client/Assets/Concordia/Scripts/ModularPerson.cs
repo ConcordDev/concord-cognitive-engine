@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
-namespace Concordia // FORCE_REFRESH_0023
+namespace Concordia // FORCE_REFRESH_0024
 {
     /// <summary>
     /// Authored Kenney person when the mesh is imported; primitive fallback otherwise.
@@ -14,6 +14,7 @@ namespace Concordia // FORCE_REFRESH_0023
         public Appearance look = new Appearance();
         public Transform rightHand, leftHand;
         public GameObject sword;
+        public bool HasAuthoredBody => _authored;
 
         Transform _hip, _spine, _chest, _neck, _head;
         Transform _uArmL, _fArmL, _handL, _uArmR, _fArmR, _handR;
@@ -23,10 +24,12 @@ namespace Concordia // FORCE_REFRESH_0023
         Transform _tunic, _coat, _coatL, _coatR, _sash, _pelvisMesh, _skull;
         Vector3 _tunic0, _coat0, _coatL0, _coatR0, _pelvis0, _skull0, _jaw0;
         Renderer[] _skin, _shirt, _pants, _trim, _hair, _eyes;
-        Quaternion _hipsRest, _spineRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
+        Quaternion _hipsRest, _spineRest, _chestRest, _lArmRest, _lForeRest, _rArmRest, _rForeRest;
         Quaternion _lUpRest, _lLegRest, _rUpRest, _rLegRest, _headRest;
         Vector3 _hipPos0;
-        float _speed, _vert, _slashT, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT;
+        float _speed, _vert, _slashT, _slashDur, _phase, _sit, _sitShown, _shown, _hitT, _landT, _anticipateT, _staggerT, _dodgeT, _dodgeYaw;
+        int _slashBeat;
+        bool _slashHeavy;
         bool _grounded = true;
         FightStyle _style = FightStyle.MuayThai;
         bool _built;
@@ -35,6 +38,8 @@ namespace Concordia // FORCE_REFRESH_0023
         bool _clipsFit;
         Animator _anim;
         SkinnedMeshRenderer _skinMesh;
+        Renderer _modelRenderer;
+        Transform _modelTransform;
         int _plantFrames;
         NpcLife _life;
         static int _bodySeq;
@@ -65,10 +70,14 @@ namespace Concordia // FORCE_REFRESH_0023
             root.transform.localPosition = Vector3.zero;
             root.transform.localRotation = Quaternion.identity;
             var p = root.AddComponent<ModularPerson>();
-            p.Build(hero);
+            p.Build(hero, hero ? CxDress.HeroPrefabPath(CastingWorld, root.transform.position) : null);
             p.Apply(look ?? new Appearance());
+            CxDress.EnsureSockets(p);
+            CxDress.Person(p, look, Canon.SteelLive(CastingWorld, root.transform.position));
             p.sword = MakeSword();
-            CharacterGear.Grip(p.sword, p.rightHand ? p.rightHand : p.transform, 1.05f, true, false);
+            p.GripSwordOrEmptyHands();
+            CharacterVisualProfile.Apply(root, CastingWorld, look);
+            if (hero) CxDress.HeroKit(p);
             _castBodyWorld = CastingWorld;
             return p;
         }
@@ -80,8 +89,10 @@ namespace Concordia // FORCE_REFRESH_0023
             go.transform.position = pos;
             go.transform.rotation = Quaternion.Euler(0, yaw, 0);
             var person = go.AddComponent<ModularPerson>();
-            person.Build();
+            person.Build(false, CxDress.NamedPrefabPath(look != null ? look.displayName : null));
             person.Apply(look ?? Appearance.Random(go.GetHashCode()));
+            CxDress.EnsureGripSockets(person);
+            CxDress.Person(person, look, Canon.SteelLive(CastingWorld, pos));
             var h = 1.7f * (look != null ? look.height : 1f);
             var cc = Grounding.EnsureController(go, h);
             Grounding.Snap(cc);
@@ -91,6 +102,8 @@ namespace Concordia // FORCE_REFRESH_0023
                 w.roam = roam;
             }
             PersonLabel.Attach(go.transform, look != null ? look.displayName : go.name, null);
+            CharacterVisualProfile.Apply(go, CastingWorld, look);
+            if (!go.GetComponent<StreamNpcPresence>()) go.AddComponent<StreamNpcPresence>();
             return go;
         }
 
@@ -102,20 +115,26 @@ namespace Concordia // FORCE_REFRESH_0023
             if (_anim && _anim.runtimeAnimatorController)
             {
                 _anim.enabled = true;
-                if (HasParam(_anim, "Speed")) _anim.SetFloat("Speed", grounded ? speed : 0f);
+                if (HasParam(_anim, "Speed")) _anim.SetFloat("Speed", grounded ? speed : 0f, 0.12f, Time.deltaTime);
                 if (HasParam(_anim, "Grounded")) _anim.SetBool("Grounded", grounded);
                 if (HasParam(_anim, "MotionSpeed")) _anim.SetFloat("MotionSpeed", grounded ? 1f : 0f);
             }
         }
 
-        public void Slash()
+        public void Slash() => Slash(false, 0);
+
+        public void Slash(bool heavy, int beat)
         {
-            _slashT = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
+            _slashHeavy = heavy;
+            _slashBeat = beat < 0 ? 0 : beat % 3;
+            _slashDur = CombatMotion.Duration(heavy, _style);
+            _slashT = _slashDur;
             _anticipateT = 0f;
             if (_anim && _anim.runtimeAnimatorController)
             {
                 if (HasParam(_anim, "Attack")) _anim.SetTrigger("Attack");
                 else if (HasParam(_anim, "Slash")) _anim.SetTrigger("Slash");
+                if (heavy && HasParam(_anim, "AttackHeavy")) _anim.SetTrigger("AttackHeavy");
             }
         }
         public void Anticipate() => _anticipateT = 0.32f;
@@ -123,10 +142,33 @@ namespace Concordia // FORCE_REFRESH_0023
         {
             _style = s;
             if (sword) sword.SetActive(s == FightStyle.Sword);
+            if (_anim && HasParam(_anim, "Sword")) _anim.SetBool("Sword", s == FightStyle.Sword);
         }
         public void Sit(bool on) => _sit = on ? 1f : 0f;
-        public void Hurt() => _hitT = 0.32f;
-        public void Land() => _landT = 0.22f;
+        public void Hurt()
+        {
+            _hitT = 0.42f;
+            if (_anim && _anim.runtimeAnimatorController && HasParam(_anim, "Hit")) _anim.SetTrigger("Hit");
+        }
+        public void Stagger() => _staggerT = 0.55f;
+        public void Land() => _landT = 0.28f;
+        public void Dodge() => Dodge(Vector3.zero);
+
+        public void Dodge(Vector3 planar)
+        {
+            _dodgeT = CombatMotion.DodgeDuration;
+            if (planar.sqrMagnitude > 0.01f)
+            {
+                var local = transform.InverseTransformDirection(new Vector3(planar.x, 0f, planar.z));
+                _dodgeYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+            }
+            else _dodgeYaw = 0f;
+            Concordia.Animation.AnimationVerbPlayback.TrySetTrigger(_anim, "trav.dodge", "Dodge");
+        }
+        public void Jump()
+        {
+            if (_anim && _anim.runtimeAnimatorController && HasParam(_anim, "Jump")) _anim.SetTrigger("Jump");
+        }
         public float PlanarSpeed => _speed;
 
         bool Talking()
@@ -135,22 +177,43 @@ namespace Concordia // FORCE_REFRESH_0023
             return _life && _life.IsTalking;
         }
 
-        public void Build() => Build(false);
+        public void Build() => Build(false, null);
 
-        public void Build(bool hero)
+        public void Build(bool hero) => Build(hero, null);
+
+        public void Build(bool hero, string preferredPrefabPath)
         {
             if (_built) return;
             _built = true;
-            if (TryBindAuthored(hero)) return;
-            BuildPrimitive();
+            if (TryBindAuthored(hero, preferredPrefabPath)) return;
+
+            // No primitive people. A missing imported human stays invisible and is
+            // reported once instead of degrading the world into training dummies.
+            _built = false;
+            Debug.LogWarning("Concordia ModularPerson has no usable imported human asset; visual body omitted.");
         }
 
-        bool TryBindAuthored(bool hero)
+        bool TryBindAuthored(bool hero, string preferredPrefabPath)
         {
-            var prefab = LoadPersonPrefab(hero);
+            var prefab = LoadPersonPrefab(hero, preferredPrefabPath);
             if (!prefab) return false;
             var body = Object.Instantiate(prefab, transform);
             body.name = "AuthoredPerson";
+            body.SetActive(true);
+            _modelRenderer = FindRendererBearingChild(body);
+            _modelTransform = _modelRenderer ? _modelRenderer.transform : null;
+            if (!_modelRenderer)
+            {
+                body.SetActive(false);
+                Debug.LogWarning("Concordia ModularPerson imported human has no renderer-bearing child; visual body omitted.");
+                return false;
+            }
+            foreach (var renderer in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!renderer) continue;
+                renderer.gameObject.SetActive(true);
+                renderer.enabled = true;
+            }
             DressFromPrefabFolder(body);
             FreePacks.PaintIfBlank(body, _lastPrefabPath);
             body.transform.localPosition = Vector3.zero;
@@ -158,33 +221,42 @@ namespace Concordia // FORCE_REFRESH_0023
             body.transform.localScale = Vector3.one;
             foreach (var c in body.GetComponentsInChildren<Collider>()) Object.Destroy(c);
 
+            // Quaternius (Casual_Male/Female etc.) uses its own dot-notation naming —
+            // "UpperArm.L", "Fist.L", "Foot.L" — that matched none of the existing Bip01/Mixamo
+            // candidates, so every Quaternius character silently fell into the "painted mesh, not
+            // Mixamo-rigged" fallback below: a static bind pose with no procedural motion at all.
+            // Confirmed via the live bone hierarchy (Hips, Head, Neck, Torso, Abdomen, UpperArm.L/R,
+            // LowerArm.L/R, Fist.L/R, UpperLeg.L/R, LowerLeg.L/R, Foot.L/R). Added as another
+            // aliased convention, same pattern as Bip01/mixamorig: — not a parallel system.
             _hip = FindBone(body.transform, "Bip01 Pelvis", "Bip01", "Hips", "mixamorig:Hips");
-            _spine = FindBone(body.transform, "Bip01 Spine", "Spine", "mixamorig:Spine");
-            _chest = FindBone(body.transform, "Bip01 Spine2", "Bip01 Spine1", "Chest", "UpperChest", "Spine1", "mixamorig:Spine1") ?? _spine;
+            _spine = FindBone(body.transform, "Bip01 Spine", "Spine", "mixamorig:Spine", "Abdomen");
+            _chest = FindBone(body.transform, "Bip01 Spine2", "Bip01 Spine1", "Chest", "UpperChest", "Spine1", "mixamorig:Spine1", "Torso") ?? _spine;
             _neck = FindBone(body.transform, "Bip01 Neck", "Neck", "mixamorig:Neck");
             _head = FindBone(body.transform, "Bip01 Head", "Head", "mixamorig:Head");
-            _uArmL = FindBone(body.transform, "Bip01 L UpperArm", "LeftArm", "Left_UpperArm", "mixamorig:LeftArm");
-            _fArmL = FindBone(body.transform, "Bip01 L Forearm", "LeftForeArm", "Left_LowerArm", "mixamorig:LeftForeArm");
-            _handL = FindBone(body.transform, "Bip01 L Hand", "LeftHand", "Left_Hand", "mixamorig:LeftHand");
-            _uArmR = FindBone(body.transform, "Bip01 R UpperArm", "RightArm", "Right_UpperArm", "mixamorig:RightArm");
-            _fArmR = FindBone(body.transform, "Bip01 R Forearm", "RightForeArm", "Right_LowerArm", "mixamorig:RightForeArm");
-            _handR = FindBone(body.transform, "Bip01 R Hand", "RightHand", "Right_Hand", "mixamorig:RightHand");
-            _uLegL = FindBone(body.transform, "Bip01 L Thigh", "LeftUpLeg", "Left_UpperLeg", "mixamorig:LeftUpLeg");
-            _lLegL = FindBone(body.transform, "Bip01 L Calf", "LeftLeg", "Left_LowerLeg", "mixamorig:LeftLeg");
-            _footL = FindBone(body.transform, "Bip01 L Foot", "LeftFoot", "Left_Foot", "mixamorig:LeftFoot");
-            _uLegR = FindBone(body.transform, "Bip01 R Thigh", "RightUpLeg", "Right_UpperLeg", "mixamorig:RightUpLeg");
-            _lLegR = FindBone(body.transform, "Bip01 R Calf", "RightLeg", "Right_LowerLeg", "mixamorig:RightLeg");
-            _footR = FindBone(body.transform, "Bip01 R Foot", "RightFoot", "Right_Foot", "mixamorig:RightFoot");
+            _uArmL = FindBone(body.transform, "Bip01 L UpperArm", "LeftArm", "Left_UpperArm", "mixamorig:LeftArm", "UpperArm.L");
+            _fArmL = FindBone(body.transform, "Bip01 L Forearm", "LeftForeArm", "Left_LowerArm", "mixamorig:LeftForeArm", "LowerArm.L");
+            _handL = FindBone(body.transform, "Bip01 L Hand", "LeftHand", "Left_Hand", "mixamorig:LeftHand", "Fist.L");
+            _uArmR = FindBone(body.transform, "Bip01 R UpperArm", "RightArm", "Right_UpperArm", "mixamorig:RightArm", "UpperArm.R");
+            _fArmR = FindBone(body.transform, "Bip01 R Forearm", "RightForeArm", "Right_LowerArm", "mixamorig:RightForeArm", "LowerArm.R");
+            _handR = FindBone(body.transform, "Bip01 R Hand", "RightHand", "Right_Hand", "mixamorig:RightHand", "Fist.R");
+            _uLegL = FindBone(body.transform, "Bip01 L Thigh", "LeftUpLeg", "Left_UpperLeg", "mixamorig:LeftUpLeg", "UpperLeg.L");
+            _lLegL = FindBone(body.transform, "Bip01 L Calf", "LeftLeg", "Left_LowerLeg", "mixamorig:LeftLeg", "LowerLeg.L");
+            _footL = FindBone(body.transform, "Bip01 L Foot", "LeftFoot", "Left_Foot", "mixamorig:LeftFoot", "Foot.L");
+            _uLegR = FindBone(body.transform, "Bip01 R Thigh", "RightUpLeg", "Right_UpperLeg", "mixamorig:RightUpLeg", "UpperLeg.R");
+            _lLegR = FindBone(body.transform, "Bip01 R Calf", "RightLeg", "Right_LowerLeg", "mixamorig:RightLeg", "LowerLeg.R");
+            _footR = FindBone(body.transform, "Bip01 R Foot", "RightFoot", "Right_Foot", "mixamorig:RightFoot", "Foot.R");
             leftHand = _handL;
             rightHand = _handR;
             if (!_hip || !_head || !_uArmL || !_uArmR)
             {
                 // Kenney mini-characters are painted meshes, not Mixamo rigs.
-                _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
-                float h = RendererHeight(body);
+                _skinMesh = _modelRenderer as SkinnedMeshRenderer;
+                float h = _modelRenderer ? RendererBoundsForValidation(_modelRenderer).size.y : RendererHeight(body);
                 if (h > 0.15f) body.transform.localScale *= Mathf.Clamp(1.72f / h, 0.05f, 10f);
                 _authored = true;
-                leftHand = rightHand = body.transform;
+                // No hand bones on a painted mesh: empty hands. Aliasing the body
+                // here made every grip glue its prop to the mesh root.
+                leftHand = rightHand = null;
                 return true;
             }
 
@@ -200,13 +272,13 @@ namespace Concordia // FORCE_REFRESH_0023
             body.transform.localPosition = Vector3.zero;
             body.transform.localRotation = Quaternion.identity;
 
-            _skinMesh = body.GetComponentInChildren<SkinnedMeshRenderer>();
+            _skinMesh = _modelRenderer as SkinnedMeshRenderer;
             if (_skinMesh)
             {
                 _skinMesh.updateWhenOffscreen = true;
                 _skinMesh.enabled = true;
             }
-            float worldH = RendererHeight(body);
+            float worldH = _modelRenderer ? RendererBoundsForValidation(_modelRenderer).size.y : RendererHeight(body);
             if (worldH > 0.2f && (worldH < 1.2f || worldH > 2.4f))
                 body.transform.localScale *= Mathf.Clamp(1.72f / worldH, 0.05f, 8f);
 
@@ -220,6 +292,7 @@ namespace Concordia // FORCE_REFRESH_0023
             Capture(_hip, ref _hipsRest);
             if (_hip) _hipPos0 = _hip.localPosition;
             Capture(_spine, ref _spineRest);
+            Capture(_chest, ref _chestRest);
             Capture(_uArmL, ref _lArmRest);
             Capture(_fArmL, ref _lForeRest);
             Capture(_uArmR, ref _rArmRest);
@@ -230,16 +303,24 @@ namespace Concordia // FORCE_REFRESH_0023
             Capture(_lLegR, ref _rLegRest);
             Capture(_head, ref _headRest);
 
-            // Mixamo/Kevin clips need a Humanoid avatar. Rocketbox ships Generic
-            // Bip01 — map it, or LateUpdate gait is the honest floor.
-            var built = TryBipedAvatar(body);
-            if (built) _anim.avatar = built;
-            var ctrl = LoadLocomotion();
+            // Rocketbox FBX import is now set to Humanoid/CreateFromThisModel (Playable
+            // Alive Slice rank 1 fix, 2026-09-20) — Unity's own importer builds a clean
+            // avatar for the Bip01 skeleton and the instantiated prefab already carries
+            // it on this Animator. Prefer that; only hand-roll one (TryBipedAvatar) for
+            // a body whose import never produced a valid Humanoid avatar.
             var av = _anim.avatar;
-            // Mixamo clips on 3ds Max Biped skate and sink the hips. Authored
-            // BipedHinge gait is the accurate walk for this skeleton. Clips
-            // stay available for a true Mixamo humanoid.
-            _clipsFit = !_biped && ctrl && av && av.isHuman && av.isValid;
+            if (!av || !av.isHuman || !av.isValid)
+            {
+                var built = TryBipedAvatar(body);
+                if (built) { _anim.avatar = built; av = built; }
+            }
+            var ctrl = LoadLocomotion();
+            // Verified 2026-09-20 (edit-mode AnimationMode sample of HumanoidWalk onto
+            // the import-baked Rocketbox avatar): hips bob a clean ~0.86-0.92m, feet
+            // swing -1.5..+0.35 in Z with no skate/sink. The old "Mixamo skates on 3ds
+            // Max Biped" finding was about the runtime-built avatar, not this one — do
+            // not reintroduce a !_biped exclusion without a fresh measured regression.
+            _clipsFit = ctrl && av && av.isHuman && av.isValid;
             bool clipsFit = _clipsFit;
             if (_clipsFit)
             {
@@ -269,60 +350,68 @@ namespace Concordia // FORCE_REFRESH_0023
                     " scale=" + body.transform.localScale + " hip=" + (_hip ? _hip.name : "null") + "\n");
             }
             catch { }
-            Debug.Log("Concordia ModularPerson bound prefab=" + (_lastPrefabPath ?? "") + " ctrl=" + (ctrl ? ctrl.name : "none"));
+            PlantAuthoredFeet(body.transform);
+            CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
+            Debug.Log("Concordia ModularPerson bound owner=" + name +
+                " model=" + (_modelTransform ? _modelTransform.name : "null") +
+                " prefab=" + (_lastPrefabPath ?? "") +
+                " ctrl=" + (ctrl ? ctrl.name : "none"));
             return true;
         }
 
-        static GameObject LoadPersonPrefab(bool hero)
+        void PlantAuthoredFeet(Transform body)
+        {
+            if (!body) return;
+            float minY = float.MaxValue;
+            foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r || !r.enabled) continue;
+                if (!(r is SkinnedMeshRenderer) && r.bounds.size.y > 6.5f) continue;
+                minY = Mathf.Min(minY, RendererBoundsForValidation(r).min.y);
+            }
+            if (minY > 1e8f) return;
+            float dy = transform.position.y - minY;
+            if (Mathf.Abs(dy) < 0.02f || Mathf.Abs(dy) > 2.6f) return;
+            body.position += Vector3.up * dy;
+        }
+
+static GameObject LoadPersonPrefab(bool hero, string preferredPrefabPath)
         {
             GameObject go = null;
+#if UNITY_EDITOR
+            if (!string.IsNullOrEmpty(preferredPrefabPath))
+            {
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(preferredPrefabPath);
+                if (go)
+                {
+                    _lastPrefabPath = preferredPrefabPath;
+                    return go;
+                }
+            }
 
-            // World-appropriate body (2026-09-11, root-caused this session): CastingWorld
-            // is set per-world by WorldBuilder but was never read here, so every world —
-            // Fantasy, Tunya, Ruins, all of them — got the same Rocketbox photoreal adult,
-            // whose baked texture is business-casual civilian wear by design (it's a
-            // Microsoft crowd-sim asset, not a game character). That's the actual "polo
-            // shirt hero" bug: not a missing tint (Rocketbox bakes skin+clothes into one
-            // continuous photo texture with no separate cloth UV region, so a multiplied
-            // tint would discolor visible skin too — a real dead end, not just untried),
-            // but a missing per-world body choice on an already-existing hook. Hub is the
-            // one world with solid textual grounding as modern/neutral (concordia-hub =
-            // "neutral baseline" in the retired ART_STYLE_GUIDE) — Rocketbox reads
-            // correctly there and keeps its current behavior. Everywhere else, prefer the
-            // already-painted, already-in-project KayKit Knight (no new assets needed).
-            // FreePacks.Mesh resolves in both Editor (AssetDatabase index) and Player/
-            // WebGL (HubKit/StreamingAssets), so this fixes the real shipped web client,
-            // not just the Editor. Whether every non-Hub world is genuinely "knight-coded"
-            // (Cyber/Crime plausibly want modern too) is a first-pass call, not verified
-            // lore — tune per-world as real per-world body assets are added.
-            if (CastingWorld != WorldId.Hub)
+            // CX is the authored character path for both the live player and road NPCs.
+            // Keep the existing Rocketbox pool only as an honest import fallback.
+            var cxPaths = hero
+                ? new[] { "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab" }
+                : ((Mathf.Abs(_bodySeq++) & 1) == 0
+                    ? new[]
+                    {
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab",
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab"
+                    }
+                    : new[]
+                    {
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Male.prefab",
+                        "Assets/Concordia/Generated/Prefabs/CX_Humanoid_Female.prefab"
+                    });
+            foreach (var path in cxPaths)
             {
-                go = FreePacks.Mesh("Knight");
-                if (go)
-                {
-#if UNITY_EDITOR
-                    _lastPrefabPath = AssetDatabase.GetAssetPath(go);
-#endif
-                    return go;
-                }
-                // Knight unresolved (asset missing) — honest fallback to Rocketbox below
-                // rather than returning no body at all.
+                go = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (!go) continue;
+                _lastPrefabPath = path;
+                return go;
             }
-#if UNITY_EDITOR
-            // Hub may keep one modern Rocketbox adult. Every steel world wears
-            // that world's imported costume (KayKit Knight / dress). CastingWorld
-            // is the dress code — never ignore it for a polo default.
-            if (CastingWorld != WorldId.Hub)
-            {
-                var steel = SteelCostumePath(CastingWorld);
-                go = AssetDatabase.LoadAssetAtPath<GameObject>(steel);
-                if (go)
-                {
-                    _lastPrefabPath = steel;
-                    return go;
-                }
-            }
-            // Mixamo Vanguard has no folder albedo. Rocketbox is the painted adult.
+
             var adult = new[]
             {
                 "Assets/Concordia/Models/humans/rocketbox/Male_Adult_01/Male_Adult_01.fbx",
@@ -341,9 +430,7 @@ namespace Concordia // FORCE_REFRESH_0023
                 return go;
             }
 #endif
-            string[] stems = CastingWorld == WorldId.Hub
-                ? new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01" }
-                : new[] { "Knight", "Barbarian", "Mage", "Male_Adult_01" };
+            var stems = new[] { "Male_Adult_01", "Male_Adult_05", "Female_Adult_01", "Female_Adult_04" };
             for (int i = 0; i < stems.Length; i++)
             {
                 go = FreePacks.Mesh(stems[i]);
@@ -353,7 +440,7 @@ namespace Concordia // FORCE_REFRESH_0023
 #endif
                 return go;
             }
-            return go;
+            return null;
         }
 
         static string SteelCostumePath(WorldId world)
@@ -392,6 +479,8 @@ namespace Concordia // FORCE_REFRESH_0023
             _clipsFit = false;
             _anim = null;
             _skinMesh = null;
+            _modelRenderer = null;
+            _modelTransform = null;
             _hip = _spine = _chest = _neck = _head = null;
             _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
             _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
@@ -400,8 +489,30 @@ namespace Concordia // FORCE_REFRESH_0023
             sword = null;
             Build(hero);
             Apply(look ?? new Appearance());
+            CxDress.EnsureSockets(this);
+            CxDress.Person(this, look, Canon.SteelLive(CastingWorld, transform.position));
             sword = MakeSword();
-            CharacterGear.Grip(sword, rightHand ? rightHand : transform, 1.05f, true, false);
+            GripSwordOrEmptyHands();
+            if (GetComponentInParent<ConcordiaPlayer>()) CxDress.HeroKit(this);
+        }
+
+        /// <summary>
+        /// Blade goes in a real right-hand bone (or its CX_Grip_R socket). No hand bone
+        /// means empty hands — never glue the sword to the body root, where it floats.
+        /// Same rule as CharacterGear.Socket and MixamoAvatar.
+        /// </summary>
+        void GripSwordOrEmptyHands()
+        {
+            if (!sword) return;
+            if (rightHand && rightHand != transform)
+            {
+                var socket = rightHand.Find("CX_Grip_R");
+                CharacterGear.Grip(sword, socket ? socket : rightHand, 1.05f, true, false);
+                return;
+            }
+            if (Application.isPlaying) Destroy(sword);
+            else DestroyImmediate(sword);
+            sword = null;
         }
 
         static void DressFromPrefabFolder(GameObject body)
@@ -501,7 +612,19 @@ namespace Concordia // FORCE_REFRESH_0023
 
         static RuntimeAnimatorController LoadLocomotion()
         {
-            var c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
+            // ConcordiaLocomotion (Playable Alive Slice rank 1) is the real controller —
+            // real Idle/Walk/Run/Sprint/JumpStart clips on a Humanoid avatar. SoldierLocomotion
+            // and the rest are pre-slice leftovers kept only as a last-resort fallback.
+            var c = Resources.Load<RuntimeAnimatorController>("Concordia/ConcordiaLocomotion");
+#if UNITY_EDITOR
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Anim/ConcordiaLocomotion.controller");
+            if (!c)
+                c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
+                    "Assets/Concordia/Resources/Concordia/ConcordiaLocomotion.controller");
+#endif
+            if (!c) c = Resources.Load<RuntimeAnimatorController>("Concordia/SoldierLocomotion");
 #if UNITY_EDITOR
             if (!c)
                 c = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(
@@ -527,12 +650,50 @@ namespace Concordia // FORCE_REFRESH_0023
             return false;
         }
 
+        static Bounds RendererBoundsForValidation(Renderer renderer)
+        {
+            if (!renderer) return default;
+            var skinned = renderer as SkinnedMeshRenderer;
+            if (skinned)
+            {
+                var local = skinned.localBounds;
+                if (local.size.sqrMagnitude < 0.000001f && skinned.sharedMesh)
+                    local = skinned.sharedMesh.bounds;
+                if (local.size.sqrMagnitude >= 0.000001f)
+                {
+                    var t = skinned.transform;
+                    var min = local.min;
+                    var max = local.max;
+                    var b = new Bounds(t.TransformPoint(new Vector3(min.x, min.y, min.z)), Vector3.zero);
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, min.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, max.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(min.x, max.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, min.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, min.y, max.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, max.y, min.z)));
+                    b.Encapsulate(t.TransformPoint(new Vector3(max.x, max.y, max.z)));
+                    return b;
+                }
+            }
+            return renderer.bounds;
+        }
+
+        static Renderer FindRendererBearingChild(GameObject go)
+        {
+            if (!go) return null;
+            foreach (var r in go.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                if (r && r.sharedMesh) return r;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                if (r) return r;
+            return null;
+        }
+
         static float RendererHeight(GameObject go)
         {
-            var rends = go.GetComponentsInChildren<Renderer>();
+            var rends = go.GetComponentsInChildren<Renderer>(true);
             if (rends.Length == 0) return 0f;
-            var b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            var b = RendererBoundsForValidation(rends[0]);
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(RendererBoundsForValidation(rends[i]));
             return b.size.y;
         }
 
@@ -714,6 +875,7 @@ namespace Concordia // FORCE_REFRESH_0023
                 Tint(_hair, a.HairColor());
                 Tint(_eyes, a.EyeColor() * 1.4f, true);
             }
+            FreePacks.PaintMagentaIfFallback(gameObject, a.ShirtColor());
 
             bool coat = a.HasCoat;
             if (_coat) _coat.gameObject.SetActive(coat);
@@ -765,29 +927,17 @@ namespace Concordia // FORCE_REFRESH_0023
         void LateUpdate()
         {
             if (!_built) return;
-            if (_authored && _plantFrames < 8)
+            if (_authored && _plantFrames < 24)
             {
-                StripGiantAndFallback();
-                if (_clipsFit && _plantFrames == 6 && _handL && _uArmL)
-                {
-                    float dy = _handL.position.y - _uArmL.position.y;
-                    if (dy > -0.22f)
-                    {
-                        _clipsFit = false;
-                        if (_anim)
-                        {
-                            _anim.runtimeAnimatorController = null;
-                            _anim.enabled = false;
-                        }
-                        HangAuthoredArms(0f);
-                    }
-                }
+                StripGiantAndFallback(_plantFrames >= 20);
+                var authoredBody = transform.Find("AuthoredPerson");
+                if (authoredBody && authoredBody.gameObject.activeInHierarchy)
+                    PlantAuthoredFeet(authoredBody);
                 _plantFrames++;
             }
 
-            bool animating = _clipsFit && !_biped && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
-                && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _grounded && _sit < 0.4f
-                && _speed > 0.35f;
+            bool animating = _clipsFit && _authored && _anim && _anim.enabled && _anim.runtimeAnimatorController
+                && _anim.avatar && _anim.avatar.isHuman && _anim.avatar.isValid && _sit < 0.4f;
             if (!animating)
             {
                 if (_authored) ApplyAuthoredGait();
@@ -796,50 +946,31 @@ namespace Concordia // FORCE_REFRESH_0023
             else
                 ApplyAuthoredAttitude();
 
+            // Owner-flagged 2026-09-20: HumanoidIdle (the only validated
+            // clip-driven idle loop, from the KinematicCharacterController
+            // Ethan pack) is an authored "at ease, hands behind the back"
+            // stance — measured, its right hand sits ~0.28m BEHIND the hip
+            // line vs ~0 neutral for a relaxed standing pose. Fine unarmed;
+            // with a weapon gripped, the blade reads as floating through the
+            // back because no one holds a sword that way. Swing the upper arm
+            // to BipedArm's straight-hang-at-the-side pose while a weapon is
+            // held and the body is idle-ish; fades out as Speed rises so it
+            // never fights the walk/run clip's own (already-natural) arm
+            // swing. This overrides the clip pose for this one bone only,
+            // same LateUpdate-overlay pattern as ApplyAuthoredAttitude/Strike.
+            if (animating && sword && _uArmR && _speed < 1.4f)
+            {
+                float idleFactor = Mathf.Clamp01(1f - _speed / 1.4f);
+                _uArmR.localRotation = Quaternion.Slerp(_uArmR.localRotation, BipedArm(_uArmR, _rArmRest, 6f, false), idleFactor);
+            }
+
+            ApplyDodgeOverlay();
             if (_slashT > 0f && _uArmR)
             {
-                _slashT -= Time.deltaTime;
-                var dur = _style == FightStyle.WingChun ? 0.28f : _style == FightStyle.Karate ? 0.36f : 0.48f;
-                var t = 1f - Mathf.Clamp01(_slashT / dur);
-                float wind = t < 0.08f ? t / 0.08f : t < 0.5f ? 1f : 1f - (t - 0.5f) / 0.5f;
-                if (_style == FightStyle.Capoeira && _uLegR)
-                {
-                    _uLegR.localRotation *= Quaternion.Euler(-90f * wind, 0f, 8f * wind);
-                    if (_hip) _hip.localRotation *= Quaternion.Euler(10f * wind, -28f * wind, 0f);
-                }
-                else if (_style == FightStyle.MuayThai && _uLegR)
-                {
-                    _uLegR.localRotation *= Quaternion.Euler(-62f * wind, 0f, 6f * wind);
-                    var arc = Mathf.Lerp(-20f, 70f, t) * wind;
-                    if (_biped) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.6f, false);
-                    else _uArmR.localRotation *= Quaternion.Euler(-40f * wind, 0f, -24f * wind);
-                }
-                else if (_style == FightStyle.WingChun)
-                {
-                    var chain = Mathf.Sin(t * Mathf.PI * 3f) * 22f * wind;
-                    if (_biped)
-                    {
-                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 28f + chain, false);
-                        if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 22f - chain * 0.5f, true);
-                    }
-                    else
-                    {
-                        _uArmR.localRotation *= Quaternion.Euler(-28f * wind + chain, 0f, 0f);
-                        if (_uArmL) _uArmL.localRotation *= Quaternion.Euler(-22f * wind - chain * 0.5f, 0f, 10f * wind);
-                    }
-                }
-                else
-                {
-                    var swing = t < 0.32f ? Mathf.Lerp(-20f, 125f, t / 0.32f) : Mathf.Lerp(125f, 0f, (t - 0.32f) / 0.68f);
-                    float arc = swing * wind;
-                    if (_biped)
-                    {
-                        _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
-                        if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * wind, false);
-                    }
-                    else
-                        _uArmR.localRotation *= Quaternion.Euler(arc, 18f * wind, 0f);
-                }
+                var authoredStrike = Concordia.Animation.AnimationVerbCatalog.HasAuthoredClip(
+                    _style == FightStyle.Sword ? "combat.sword.slash" : "combat.light");
+                if (authoredStrike) _slashT -= Time.deltaTime;
+                else ApplyAuthoredStrike();
             }
             else if (_anticipateT > 0f && _uArmR)
             {
@@ -864,6 +995,114 @@ namespace Concordia // FORCE_REFRESH_0023
             }
         }
 
+        void ApplyDodgeOverlay()
+        {
+            if (_dodgeT <= 0f || !_hip) return;
+            _dodgeT -= Time.deltaTime;
+            var u = 1f - Mathf.Clamp01(_dodgeT / CombatMotion.DodgeDuration);
+            var w = CombatMotion.DodgePulse(u);
+            _hip.localRotation *= Quaternion.Euler(16f * w, _dodgeYaw * 0.35f * w, 0f);
+            if (_uLegL) _uLegL.localRotation *= Quaternion.Euler(26f * w, 0f, 0f);
+            if (_uLegR) _uLegR.localRotation *= Quaternion.Euler(20f * w, 0f, 0f);
+            if (_spine) _spine.localRotation *= Quaternion.Euler(8f * w, _dodgeYaw * 0.2f * w, 0f);
+        }
+
+        void ApplyAuthoredStrike()
+        {
+            _slashT -= Time.deltaTime;
+            var dur = Mathf.Max(0.08f, _slashDur);
+            var u = 1f - Mathf.Clamp01(_slashT / dur);
+            var swing = CombatMotion.Pulse(u);
+            var beat = _slashBeat;
+            var heavy = _slashHeavy;
+            var kick = _style == FightStyle.Capoeira
+                || (_style == FightStyle.MuayThai && (heavy || beat == 2))
+                || (heavy && beat == 2 && _style != FightStyle.Sword && _style != FightStyle.WingChun);
+
+            if (_hip)
+            {
+                var yaw = beat == 1 ? -16f : 18f;
+                if (heavy) yaw *= 1.28f;
+                _hip.localRotation = _hipsRest * Quaternion.Euler(8f * swing, yaw * swing, 0f);
+            }
+            if (_spine)
+                _spine.localRotation = _spineRest * Quaternion.Euler((beat == 2 ? 16f : 8f) * swing, 0f, (beat == 1 ? 10f : -12f) * swing);
+
+            if (kick && _uLegR)
+            {
+                if (_biped)
+                {
+                    _uLegR.localRotation = BipedHinge(_uLegR, _rUpRest, -18f - 70f * swing);
+                    if (_lLegR) _lLegR.localRotation = BipedHinge(_lLegR, _rLegRest, 18f + 36f * swing);
+                    if (_uLegL) _uLegL.localRotation = BipedHinge(_uLegL, _lUpRest, 12f * swing);
+                    if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 22f, false);
+                    if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 16f, true);
+                }
+                else
+                {
+                    _uLegR.localRotation *= Quaternion.Euler(-90f * swing, 0f, 8f * swing);
+                    if (_hip) _hip.localRotation *= Quaternion.Euler(10f * swing, -28f * swing, 0f);
+                }
+                return;
+            }
+
+            if (_style == FightStyle.WingChun)
+            {
+                var chain = Mathf.Sin(u * Mathf.PI * 3f) * 22f * swing;
+                var leftLead = beat == 1;
+                if (_biped)
+                {
+                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, leftLead ? 18f - chain * 0.5f : 28f + chain, false);
+                    if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, leftLead ? 28f + chain : 22f - chain * 0.5f, true);
+                }
+                else
+                {
+                    _uArmR.localRotation *= Quaternion.Euler(-28f * swing + chain, 0f, 0f);
+                    if (_uArmL) _uArmL.localRotation *= Quaternion.Euler(-22f * swing - chain * 0.5f, 0f, 10f * swing);
+                }
+                return;
+            }
+
+            float arc = (heavy ? 110f : 88f) * swing;
+            if (beat == 1)
+            {
+                if (_biped)
+                {
+                    if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 18f + arc * 0.95f, true);
+                    if (_fArmL) _fArmL.localRotation = _lForeRest * ForeDelta(36f + 28f * swing, true);
+                    if (_uArmR) _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 12f - 18f * swing, false);
+                }
+                else
+                {
+                    if (_uArmL) _uArmL.localRotation *= Quaternion.Euler(arc, -18f * swing, 0f);
+                    _uArmR.localRotation *= Quaternion.Euler(-12f * swing, 8f * swing, 0f);
+                }
+                return;
+            }
+
+            if (beat == 2)
+            {
+                if (_biped)
+                {
+                    _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 8f + arc * 1.15f, false);
+                    if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(48f * swing, false);
+                    if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 10f * swing, true);
+                }
+                else
+                    _uArmR.localRotation *= Quaternion.Euler(-8f - arc, 8f * swing, 4f);
+                return;
+            }
+
+            if (_biped)
+            {
+                _uArmR.localRotation = BipedArm(_uArmR, _rArmRest, 18f + arc * 0.95f, false);
+                if (_fArmR) _fArmR.localRotation = _rForeRest * ForeDelta(36f + 28f * swing, false);
+                if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, 14f - 10f * swing, true);
+            }
+            else
+                _uArmR.localRotation *= Quaternion.Euler(arc, 18f * swing, 0f);
+        }
+
         void ApplyPrimitiveGait()
         {
             if (!_hip || !_uArmL || !_uArmR) return;
@@ -872,6 +1111,7 @@ namespace Concordia // FORCE_REFRESH_0023
             _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
             if (_hitT > 0f) _hitT -= dt;
             if (_landT > 0f) _landT -= dt;
+            if (_staggerT > 0f) _staggerT -= dt;
             float spd = _shown;
             float walk = Mathf.InverseLerp(0.28f, 3.8f, spd);
             float jog = Mathf.InverseLerp(3.4f, 5.6f, spd);
@@ -895,12 +1135,13 @@ namespace Concordia // FORCE_REFRESH_0023
             float chin = att == 2 ? -8f : att == 3 ? 4f : 0f;
             float idleArm = att == 2 ? -8f : att == 1 ? 6f : 0f;
             float sit = _sitShown;
-            float hit = Mathf.Clamp01(_hitT / 0.32f);
-            float land = Mathf.Clamp01(_landT / 0.22f);
+            float hit = _hitT > 0f ? CombatMotion.Pulse(1f - _hitT / 0.42f) : 0f;
+            float land = _landT > 0f ? CombatMotion.Pulse(1f - _landT / 0.28f) : 0f;
+            float stagger = _staggerT > 0f ? CombatMotion.Pulse(1f - _staggerT / 0.55f) : 0f;
 
             _hip.localRotation = Quaternion.Euler(
-                sit * 18f + run * 7f + land * 14f + hit * 10f,
-                cock * (1f - walk) + s * hipSway * walk,
+                sit * 18f + run * 7f + land * 14f + hit * 10f + stagger * 12f,
+                cock * (1f - walk) + s * hipSway * walk - 16f * hit,
                 c * 3.5f * walk);
             if (_spine) _spine.localRotation = Quaternion.Euler(-4f + breath * 22f + sit * 10f + land * 8f, s * 5f * walk, -c * 2.5f * walk);
             if (_chest) _chest.localRotation = Quaternion.Euler((att == 2 ? -6f : -2f) + breath * 10f + punch * 2f * walk, -s * 4f * walk, 0f);
@@ -1017,32 +1258,39 @@ namespace Concordia // FORCE_REFRESH_0023
             float dt = Time.deltaTime;
             _shown = Mathf.Lerp(_shown, _grounded ? _speed : 0f, 1f - Mathf.Exp(-12f * dt));
             _sitShown = Mathf.MoveTowards(_sitShown, _sit, dt * 6f);
+            if (_hitT > 0f) _hitT -= dt;
+            if (_landT > 0f) _landT -= dt;
+            if (_staggerT > 0f) _staggerT -= dt;
             float spd = _shown;
-            // Walk / jog / run. Old Lerp(6.4, 10.6) + 56° knees was a march.
-            float walk = Mathf.InverseLerp(0.28f, 3.8f, spd);
-            float jog = Mathf.InverseLerp(3.4f, 5.6f, spd);
-            float run = Mathf.InverseLerp(5.4f, 8.0f, spd);
+            // Walk 5.2 / sprint 8.1 — don't treat a walk as a run (old cutoff was 4).
+            float walk = Mathf.InverseLerp(0.28f, 4.6f, spd);
+            float jog = Mathf.InverseLerp(4.4f, 6.4f, spd);
+            float run = Mathf.InverseLerp(6.2f, 8.2f, spd);
             float cadence = spd > 0.28f
-                ? Mathf.Lerp(4.4f, 5.6f, walk) + 1.35f * jog + 1.15f * run
+                ? Mathf.Lerp(4.2f, 7.6f, Mathf.InverseLerp(0.4f, 8.2f, spd))
                 : 1.35f;
             _phase += dt * cadence;
             float s = Mathf.Sin(_phase);
+            float a = Mathf.Sin(_phase - 0.42f); // limbs overlap; they don't tick in lockstep
             float sit = _sitShown;
             float breath = Mathf.Sin(Time.time * 1.55f) * 3f;
-            float moving = Mathf.Clamp01(walk + jog * 0.35f);
+            float moving = Mathf.Clamp01(Mathf.InverseLerp(0.2f, 1.4f, spd));
             float hang = Mathf.Lerp(72f, 28f, moving);
-            float hipAmp = 22f * walk + 14f * jog + 10f * run;
-            float kneeSwing = 22f * walk + 6f * jog + 4f * run;
-            float kneeStance = 8f + 4f * jog + 6f * run;
-            float armAmp = 22f * walk + 14f * jog + 10f * run;
-            float lean = 4f * walk + 6f * jog + 8f * run;
+            float hipAmp = Mathf.Lerp(9f, 16f, run) * moving;
+            float kneeSwing = Mathf.Lerp(14f, 20f, run) * moving;
+            float kneeStance = 6f + 4f * jog + 2f * run;
+            float armAmp = Mathf.Lerp(16f, 34f, run) * moving;
+            float lean = 2f * walk + 5f * jog + 11f * run;
             float idle = 1f - moving;
             float shift = Mathf.Sin(Time.time * 1.15f + transform.position.x) * 6f * idle;
+            float hit = _hitT > 0f ? CombatMotion.Pulse(1f - _hitT / 0.42f) : 0f;
+            float land = _landT > 0f ? CombatMotion.Pulse(1f - _landT / 0.28f) : 0f;
+            float stagger = _staggerT > 0f ? CombatMotion.Pulse(1f - _staggerT / 0.55f) : 0f;
             bool talk = Talking();
             float talkLift = talk ? 16f + Mathf.Sin(Time.time * 5.2f) * 11f : 0f;
             float talkCurl = talk ? 20f + Mathf.Abs(Mathf.Sin(Time.time * 6.1f)) * 14f : 0f;
             // Opposite arm to the stepping leg — ipsilateral swing reads as a march.
-            float contra = -s * armAmp;
+            float contra = -a * armAmp;
             if (_biped)
             {
                 if (_uArmL) _uArmL.localRotation = BipedArm(_uArmL, _lArmRest, contra - breath * 0.15f + shift * 0.4f, true);
@@ -1074,10 +1322,10 @@ namespace Concordia // FORCE_REFRESH_0023
             if (_hip)
             {
                 float bob = moving > 0.05f ? -0.018f * moving - 0.012f * run + 0.022f * Mathf.Abs(s) * (0.55f + 0.45f * run) : 0f;
-                _hip.localPosition = _hipPos0 + new Vector3(0f, bob, 0f);
-                _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + lean + shift * 0.4f, 6f * s * moving + shift, 0f);
+                _hip.localPosition = _hipPos0 + new Vector3(0f, bob - 0.03f * land, 0f);
+                _hip.localRotation = _hipsRest * Quaternion.Euler(sit * 16f + lean + shift * 0.4f + 8f * land + 12f * stagger, 6f * s * moving + shift - 16f * hit, 0f);
             }
-            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f + lean * 0.35f, 4f * s * moving, 0f);
+            if (_spine) _spine.localRotation = _spineRest * Quaternion.Euler(breath + sit * 8f + lean * 0.35f + 14f * hit + 6f * land, 4f * s * moving, 10f * stagger);
             ApplyAuthoredAttitude();
             if (!_grounded)
             {
@@ -1118,18 +1366,30 @@ namespace Concordia // FORCE_REFRESH_0023
         }
 
 
-        void StripGiantAndFallback()
+void StripGiantAndFallback(bool allowFallback = true)
         {
             bool any = false;
             Bounds enc = default;
-            Renderer biggest = null;
             float maxDim = 0f;
+            if (_modelRenderer)
+            {
+                if (!_modelRenderer.gameObject.activeSelf) _modelRenderer.gameObject.SetActive(true);
+                if (!_modelRenderer.enabled) _modelRenderer.enabled = true;
+                var primaryBounds = RendererBoundsForValidation(_modelRenderer);
+                var primarySize = primaryBounds.size;
+                if (primarySize.sqrMagnitude >= 0.000001f)
+                {
+                    enc = primaryBounds;
+                    any = true;
+                    maxDim = Mathf.Max(primarySize.x, Mathf.Max(primarySize.y, primarySize.z));
+                }
+            }
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
-                if (!r) continue;
-                var s = r.bounds.size;
+                if (!r || !r.enabled || r == _modelRenderer) continue;
+                var s = RendererBoundsForValidation(r).size;
                 float d = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
-                if (d > maxDim) { maxDim = d; biggest = r; }
+                if (d > maxDim) maxDim = d;
                 string n = r.gameObject.name;
                 bool extra = n == "Crop" || n == "Short" || n == "Sweep" || n == "Bun" || n == "BunKnot"
                     || n == "Long" || n == "LongFall" || n == "Topknot" || n == "Knot"
@@ -1145,46 +1405,34 @@ namespace Concordia // FORCE_REFRESH_0023
                     r.enabled = false;
                     continue;
                 }
-                if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
-                if (!any) { enc = r.bounds; any = true; }
-                else enc.Encapsulate(r.bounds);
+                var rb = RendererBoundsForValidation(r);
+                if (!any) { enc = rb; any = true; }
+                else enc.Encapsulate(rb);
             }
+
             float hy = any ? enc.size.y : 0f;
-            bool broken = !any || hy < 0.45f || hy > 6.5f;
-            try
+            if (any && hy >= 0.45f && hy <= 6.5f) return;
+
+            var body = transform.Find("AuthoredPerson") ?? transform.Find("KenneyPerson");
+            if (body && hy > 6.5f)
             {
-                var kenneyXf = transform.Find("KenneyPerson");
-                System.IO.File.WriteAllText("/tmp/concordia-person-bind.txt",
-                    System.DateTime.Now.ToString("o")
-                    + " authored=" + _authored
-                    + " enc=" + (any ? enc.ToString() : "none")
-                    + " hy=" + hy.ToString("0.000")
-                    + " maxDim=" + maxDim.ToString("0.000")
-                    + " biggest=" + (biggest ? biggest.name : "null")
-                    + " broken=" + broken
-                    + " kenneyLossy=" + (kenneyXf ? kenneyXf.lossyScale.ToString() : "none")
-                    + " personLossy=" + transform.lossyScale
-                    + "\n");
+                body.localScale *= Mathf.Clamp(1.72f / hy, 0.1f, 1f);
+                PlantAuthoredFeet(body);
+                return;
             }
-            catch { }
-            if (!broken) return;
-            var kenney = transform.Find("KenneyPerson");
-            if (kenney)
+
+            if (body) body.gameObject.SetActive(false);
+            if (allowFallback)
             {
-                kenney.gameObject.SetActive(false);
-                Object.Destroy(kenney.gameObject);
+                var skinned = _modelRenderer as SkinnedMeshRenderer;
+                Debug.LogWarning("Concordia ModularPerson imported body invalid owner=" + name +
+                    " model=" + (_modelTransform ? _modelTransform.name : "null") +
+                    " active=" + (_modelRenderer && _modelRenderer.gameObject.activeInHierarchy) +
+                    " enabled=" + (_modelRenderer && _modelRenderer.enabled) +
+                    " localBounds=" + (skinned ? skinned.localBounds.ToString() : "n/a") +
+                    " meshBounds=" + (skinned && skinned.sharedMesh ? skinned.sharedMesh.bounds.ToString() : "n/a") +
+                    " hy=" + hy + " maxDim=" + maxDim + "; body disabled with no primitive fallback.");
             }
-            _authored = false;
-            _built = false;
-            _skinMesh = null;
-            _anim = null;
-            _hip = _spine = _chest = _neck = _head = null;
-            _uArmL = _fArmL = _handL = _uArmR = _fArmR = _handR = null;
-            _uLegL = _lLegL = _footL = _uLegR = _lLegR = _footR = null;
-            _hairRoot = _coat = _coatL = _coatR = _tunic = _sash = _pelvisMesh = _skull = _jaw = null;
-            Build();
-            Apply(look);
-            Debug.LogWarning("Concordia ModularPerson Kenney unusable (hy=" + hy + " maxDim=" + maxDim + ") — primitive visible fallback");
         }
 
         static void StripPrefabWeapons(GameObject body)
@@ -1359,42 +1607,28 @@ namespace Concordia // FORCE_REFRESH_0023
             if (r) r.sharedMaterial = HubLook.Lit(col, 0.08f, 0.28f);
         }
 
-        static GameObject MakeSword()
+static GameObject MakeSword()
         {
-            // "Oversized sword" root-caused live in Unity (2026-09-12): not a scale
-            // bug — FitMax's uniform-scale-to-1.05m target math is correct — but the
-            // Kenney weapon-sword.glb mesh it fell back to is chibi-proportioned
-            // (width is 52% of its length), so scaling its length up to a realistic
-            // sword also drags its already-fat width/thickness up with it, reading
-            // as a giant slab. "longsword" (tried first below) has never actually
-            // resolved to anything — confirmed live via FreePacks.Mesh returning
-            // null — so every hero silently fell through to the Kenney mesh. The
-            // MYFG Weapon Pack Lite (already in the project) has real,
-            // human-sword-proportioned meshes; Sword16 measured live at a 0.14
-            // width/length ratio vs Kenney's 0.52 — prefer it.
-            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
-            if (mesh)
+#if UNITY_EDITOR
+            var baked = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Concordia/Generated/Prefabs/CX_Weapon_Longsword.prefab");
+            if (baked)
             {
-                var held = Object.Instantiate(mesh);
+                var held = Object.Instantiate(baked);
                 held.name = "HeldSword";
                 foreach (var c in held.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-                FreePacks.PaintIfBlank(held);
                 return held;
             }
-            var g = new GameObject("HeldSword");
-            void Bit(PrimitiveType t, Vector3 p, Vector3 s, Color c)
-            {
-                var m = GameObject.CreatePrimitive(t);
-                m.transform.SetParent(g.transform, false);
-                m.transform.localPosition = p;
-                m.transform.localScale = s;
-                Object.Destroy(m.GetComponent<Collider>());
-                m.GetComponent<Renderer>().sharedMaterial = HubLook.Lit(c, 0.6f, 0.7f);
-            }
-            Bit(PrimitiveType.Cylinder, new Vector3(0, 0.07f, 0), new Vector3(0.04f, 0.07f, 0.04f), new Color(0.3f, 0.2f, 0.12f));
-            Bit(PrimitiveType.Cube, new Vector3(0, 0.16f, 0), new Vector3(0.22f, 0.03f, 0.04f), new Color(0.85f, 0.82f, 0.75f));
-            Bit(PrimitiveType.Cube, new Vector3(0, 0.55f, 0), new Vector3(0.035f, 0.75f, 0.09f), new Color(0.9f, 0.88f, 0.82f));
-            return g;
+#endif
+            var fromCx = CxDress.HeldWeapon("longsword");
+            if (fromCx) return fromCx;
+            var mesh = FreePacks.Mesh("longsword") ?? FreePacks.Mesh("Sword16") ?? FreePacks.Mesh("weapon-sword");
+            if (!mesh) return null;
+            var go = Object.Instantiate(mesh);
+            go.name = "HeldSword";
+            foreach (var c in go.GetComponentsInChildren<Collider>()) Object.Destroy(c);
+            FreePacks.PaintIfBlank(go);
+            return go;
         }
     }
 }

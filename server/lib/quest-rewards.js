@@ -11,6 +11,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { publish as publishRuntimeEvent } from "./runtime/event-bus.js";
 
 /**
  * Schema for quest.rewards (mirrors what the JSON authoring uses):
@@ -305,6 +306,13 @@ export function grantQuestRewards(db, userId, questId, rewards = {}) {
           detail: parts.join(" · "),
         }, { userId });
       }
+      // Concord Runtime — durable half, same gap class as the other real-time-
+      // only reward/settlement emits this wave closed. Best-effort, gated on
+      // the same "something was actually granted" check as the toast above —
+      // never fires for a quest with a defined-but-empty reward table.
+      try {
+        publishRuntimeEvent("quest.reward_granted", { userId, questId, summary: parts.join(" · ") });
+      } catch { /* event-bus publish is best-effort — never affects a real, already-granted reward */ }
     }
   } catch { /* realtime best-effort — never break a granted reward */ }
 

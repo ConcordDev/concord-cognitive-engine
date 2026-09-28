@@ -8897,6 +8897,23 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Realtime event-shape drift, in production too (2026-09-13). The
+    // validator (lib/event-shapes.js) never blocks an emit — this counter
+    // is the ONLY signal that a broadcast silently drifted from its
+    // documented shape. Previously dev/test-only ("zero runtime cost in
+    // production"), which meant production drift was invisible until a
+    // frontend/Unity/Godot consumer broke on a missing field. The
+    // validator itself is O(payload key count) — a couple of small Set
+    // ops — so the real cost of running it everywhere is negligible next
+    // to the cost of not knowing when a shape breaks in the one
+    // environment that matters.
+    METRICS.counters.eventShapeViolations = new prom.Counter({
+      name: "concord_event_shape_violations_total",
+      help: "realtimeEmit payloads that violate their registered lib/event-shapes.js contract (missing required or unknown fields) — never blocks the emit, observability only",
+      labelNames: ["event"],
+      registers: [METRICS.registry]
+    });
+
     // Per-block heartbeat timing. Every call through the heartbeat
     // registry observes its duration here so a Grafana panel + alert can
     // name the exact block that is starving the next tick. Buckets are
@@ -9866,14 +9883,15 @@ const _LLM_BUDGET = {
 let _eventSeqCounter = 0;
 
 // Lazy-initialized event-shape validator (lib/event-shapes.js). Loaded
-// once at first realtimeEmit call; failed import leaves it null and
-// silently disables shape checking. Production skips even the import.
+// once at boot in every environment, including production (2026-09-13 —
+// was dev/test-only; see the concord_event_shape_violations_total counter
+// above for why that left production drift invisible). A failed import
+// leaves this null and silently disables shape checking — the validator
+// is diagnostic-only and must never be able to affect boot or an emit.
 let _eventShapesValidator = null;
-if (process.env.NODE_ENV !== "production") {
-  import("./lib/event-shapes.js")
-    .then(m => { _eventShapesValidator = m.validateEvent; })
-    .catch(() => { /* validator is optional; never block startup */ });
-}
+import("./lib/event-shapes.js")
+  .then(m => { _eventShapesValidator = m.validateEvent; })
+  .catch(() => { /* validator is optional; never block startup */ });
 
 // ---- realtime (Socket.IO for frontend compatibility) ----
 // Thin transport only: mirrors state changes (no new logic).
@@ -10106,14 +10124,20 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
     }
   } catch { /* never block an emit on telemetry */ }
 
-  // Dev/test-mode shape validation against the EVENT_SHAPES registry
-  // (lib/event-shapes.js). Production skips this for zero runtime cost.
-  // The registry only covers the top-20 highest-traffic events; unknown
-  // event names pass through silently (registry is intentionally partial).
-  if (process.env.NODE_ENV !== "production" && _eventShapesValidator) {
+  // Shape validation against the EVENT_SHAPES registry (lib/event-shapes.js),
+  // now in every environment (2026-09-13 — was dev/test-only). Diagnostic
+  // only: never blocks or mutates the emit, in prod or anywhere else. The
+  // registry only covers the top-90 highest-traffic events; unknown event
+  // names pass through silently on purpose (registry is intentionally
+  // partial — see that file's own header on why a closed taxonomy isn't
+  // the goal here).
+  if (_eventShapesValidator) {
     try {
       const v = _eventShapesValidator(event, payload || {});
       if (v.ok === false && !v.unregistered) {
+        if (METRICS.enabled && METRICS.counters.eventShapeViolations) {
+          try { METRICS.counters.eventShapeViolations.inc({ event }); } catch { /* metrics must never block an emit */ }
+        }
         if (typeof structuredLog === "function") {
           structuredLog("warn", "ws_event_shape_violation", {
             event, missing: v.missing, unknown: v.unknown,
@@ -44896,6 +44920,29 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     }
   } catch (_e) { /* sale emit best-effort */ }
 
+  // Concord Runtime — durable half of the sale notification. The block
+  // above is a real-time SOCKET-ONLY toast: a seller who isn't connected
+  // at the exact moment of sale sees nothing, ever (no persistence, no
+  // reconnect replay). This publishes the same sale onto the cross-domain
+  // runtime bus so lib/runtime/reactions.js can create a PERSISTENT
+  // notification (emergent/social-layer.js's createNotification, the same
+  // substrate the audit named as already cross-cutting) that's still
+  // there the next time the seller opens notifications, connected or not.
+  // Complementary, not a replacement — the socket toast stays for the
+  // "you're online right now" case. Best-effort like every other post-
+  // commit side effect at this call site: a reaction-graph hiccup must
+  // never make a real, already-paid-out sale look like it failed.
+  try {
+    const sellerId = dtu.marketplace.seller || dtu.meta?.createdBy;
+    publishRuntimeEvent("marketplace.purchased", {
+      dtuId,
+      buyerId: ctx?.actor?.userId || null,
+      sellerId: sellerId || null,
+      price,
+      title: dtu.title || "(untitled)",
+    });
+  } catch { /* event-bus publish is best-effort — never affects a real, already-paid sale */ }
+
   // If seller is streaming, record the sale
   try {
     const sellerStream = cityStreaming.getActiveStream(dtu.ownerId || dtu.meta?.createdBy);
@@ -49305,6 +49352,19 @@ registerLensAction("game", "balance", (ctx, artifact, params) => {
 // Load all super-lens domain action modules
 const { default: domainModules } = await import('./domains/index.js');
 domainModules.forEach(mod => mod(registerLensAction));
+
+// Concord Runtime reaction graph (docs/CONCORD_RUNTIME_MASTER_SPEC.md §9) —
+// wires the first real cross-lens reactor (item.crafted -> a player
+// notification, see lib/runtime/reactions.js's own header for the full
+// audit finding this closes). Placed after domain modules load so every
+// domain's own event-bus subscriptions/publishes (predict.js, dila.js,
+// pentester-control.js, trading-observe.js) are registered in a
+// consistent boot order; initReactions() itself is idempotent, so calling
+// it here has no ordering hazard even if that changes later.
+try {
+  const { initReactions } = await import('./lib/runtime/reactions.js');
+  initReactions();
+} catch (e) { structuredLog("warn", "runtime_reactions_init_failed", { error: String(e?.message || e) }); }
 
 // MCP reachability self-check (was previously inside the mountMcpServer
 // try-block above, where it fired BEFORE this forEach populated LENS_ACTIONS
@@ -70817,6 +70877,8 @@ class ConcordEventBus {
   getStats() { return { ...this._stats, listenerCount: [...this._listeners.values()].reduce((a, s) => a + s.size, 0) }; }
 }
 
+import { publish as publishRuntimeEvent } from "./lib/runtime/event-bus.js";
+
 const eventBus = new ConcordEventBus();
 STATE._eventBus = eventBus;
 
@@ -70890,6 +70952,42 @@ eventBus.on("trace.completed", (evt) => {
   if (totalDuration && totalDuration > 10000) {
     structuredLog("warn", "slow_trace_detected", { traceId, durationMs: totalDuration });
   }
+});
+
+// Event Bus API routes
+
+// Concord Runtime bridge (2026-09-14) — mirrors this server.js-internal
+// ConcordEventBus's DTU lifecycle events into the cross-DOMAIN runtime bus
+// (lib/runtime/event-bus.js). These are two intentionally different
+// layers, not a duplicate: `eventBus` here is a private, server.js-scoped
+// channel (18 call sites, none reachable from domains/*.js or lib/*.js —
+// confirmed by grep before adding this bridge) used for server-internal
+// concerns (brain responses, circuit breaker, dream phases, tick
+// completion); lib/runtime/event-bus.js is the importable bus domain
+// modules (predict.js, dila.js, trading-observe.js, pentester-control.js,
+// this session's lib/crafting/craft-engine.js) already use to react to
+// each other. Without this bridge, only DTUs created through the CANONICAL
+// dtu.create/dtu.update/dtu.compost macros would ever be visible to that
+// cross-domain layer — everything created via a domain's own raw `INSERT
+// INTO dtus` (39 files do this) stays invisible to it regardless, same as
+// before this bridge existed. That's a real, known coverage gap, not
+// something this bridge claims to solve — it closes the "goes through the
+// canonical macro path" half, which is the majority of real DTU traffic
+// (crafting's own raw-insert path was wired separately, directly, via
+// item.crafted — see that file).
+//
+// One-way and best-effort in the direction that matters: a runtime-bus
+// subscriber's bug must never affect the ConcordEventBus emit it rode in
+// on (subscribe()'s own wrapper already isolates that — see event-bus.js
+// — this try/catch is defense-in-depth on the bridge call itself).
+eventBus.on("dtu.created", (evt) => {
+  try { publishRuntimeEvent("dtu.created", evt.payload || {}); } catch { /* bridge must never affect the real DTU create */ }
+});
+eventBus.on("dtu.updated", (evt) => {
+  try { publishRuntimeEvent("dtu.updated", evt.payload || {}); } catch { /* bridge must never affect the real DTU update */ }
+});
+eventBus.on("dtu.composted", (evt) => {
+  try { publishRuntimeEvent("dtu.composted", evt.payload || {}); } catch { /* bridge must never affect the real DTU compost */ }
 });
 
 // Event Bus API routes

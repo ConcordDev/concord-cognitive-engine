@@ -82,14 +82,21 @@ namespace Concordia
             Places.Clear();
             Kills.Clear();
             Held.Clear();
+            ConcordiaDialogueService.Reset();
         }
 
-        public static string Offer(WorldBook.Quest q, WorldId world)
+public static string Offer(WorldBook.Quest q, WorldId world)
         {
             if (q == null || string.IsNullOrEmpty(q.id)) return null;
             if (Done.Contains(q.id)) return q.title + " — already complete.";
             var live = Find(q.id);
             if (live != null) return ProgressLine(live);
+            var factionId = FactionStandingIntegration.FactionForNpc(world, q.giver_npc_id);
+            if (!FactionStandingIntegration.CanAcceptQuest(world, factionId, out var standingReason))
+            {
+                FactionStandingIntegration.RecordDecision("quest-block", q.title + " blocked: " + standingReason, factionId);
+                return q.title + " — locked. " + standingReason;
+            }
             if (!PrereqsMet(q))
                 return q.title + " — locked. Finish " + string.Join(", ", q.prerequisites ?? Array.Empty<string>()) + " first.";
             if (Active.Count >= MaxActive)
@@ -97,6 +104,7 @@ namespace Concordia
             var a = new ActiveQuest { quest = q, world = world };
             a.SyncFromWorld();
             Active.Add(a);
+            ConcordClient.Live?.AcceptQuest(WorldBook.Folder(world), q.id);
             if (a.AllDoableDone() && a.NoBlocked())
             {
                 Complete(a);
@@ -170,8 +178,17 @@ namespace Concordia
         static void Complete(ActiveQuest a)
         {
             if (a?.quest == null) return;
+            var world = a.world;
+            var follows = a.quest.follow_up_quest_ids;
+            ConcordClient.Live?.CheckQuestCompletion(WorldBook.Folder(world), a.quest.id);
             Done.Add(a.quest.id);
             Active.Remove(a);
+            if (follows == null) return;
+            foreach (var id in follows)
+            {
+                var next = WorldBook.QuestById(world, id);
+                if (next != null) Offer(next, world);
+            }
         }
 
         static void Refresh()
@@ -179,7 +196,21 @@ namespace Concordia
             for (int i = Active.Count - 1; i >= 0; i--)
             {
                 var a = Active[i];
+                // Snapshot: SyncFromWorld mutates `done` in place, so an alias would
+                // always equal the new state and no progress would ever be sent.
+                var before = a.done == null ? null : (bool[])a.done.Clone();
                 a.SyncFromWorld();
+                var objs = a.quest?.objectives;
+                if (objs != null && a.done != null)
+                {
+                    for (int o = 0; o < objs.Length; o++)
+                    {
+                        if (!a.done[o]) continue;
+                        if (before != null && o < before.Length && before[o]) continue;
+                        ConcordClient.Live?.RecordQuestProgress(
+                            WorldBook.Folder(a.world), a.quest.id, objs[o]?.type, objs[o]?.target);
+                    }
+                }
                 if (a.AllDoableDone() && a.NoBlocked())
                     Complete(a);
             }
@@ -231,6 +262,7 @@ namespace Concordia
                 case "talk_to":
                 case "interact":
                 case "reach_location":
+                case "observe":
                 case "defeat":
                 case "gather":
                 case "deliver":
@@ -272,8 +304,10 @@ namespace Concordia
                 switch (t)
                 {
                     case "talk_to":
-                    case "interact":
                         return Hit(Talked, target);
+                    case "interact":
+                    case "observe":
+                        return Hit(Talked, target) || Hit(Places, target);
                     case "reach_location":
                         return Hit(Places, target);
                     case "defeat":
@@ -495,11 +529,18 @@ namespace Concordia
 
         public static string HudLine()
         {
-            if (!FromKernel) return "skills.mastery unbound";
+            if (!FromKernel) return "Skills unbound";
             var row = Find(ActiveSkill);
-            if (row == null) return CatalogCount + " skills · kernel";
-            return row.skillType + "  L" + row.level + "  " + row.tier
+            if (row == null) return CatalogCount + " skills";
+            return PrettySkill(row.skillType) + "  L" + row.level
                 + (row.finisher ? "  finisher" : "");
+        }
+
+        public static string PrettySkill(string skillType)
+        {
+            if (string.IsNullOrEmpty(skillType)) return "skill";
+            var s = skillType.Replace('_', ' ').Replace('-', ' ');
+            return char.ToUpperInvariant(s[0]) + s.Substring(1);
         }
 
         public static float KickMul(string skillType)
@@ -614,6 +655,8 @@ namespace Concordia
             var s = Canon.Get(world).style;
             return Art == 1 ? s.heavy : Art == 2 ? s.special : s.light;
         }
+
+        public static string PrettyWeapon(string stem) => Pretty(stem);
 
         static string Pretty(string s)
         {

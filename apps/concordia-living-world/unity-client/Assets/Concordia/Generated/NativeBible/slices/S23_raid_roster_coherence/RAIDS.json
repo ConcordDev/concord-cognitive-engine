@@ -1,0 +1,692 @@
+{
+  "schema": "concordia.slice.raids.v1",
+  "slice_id": "S23_raid_roster_coherence",
+  "world": "Cross",
+  "facet": "raids",
+  "authored": "2026-09-22",
+  "cross_note": "Cross is not a WorldId. It is the one hub clock over nine destinations. Hub is the board. Hub is not a tenth circle.",
+  "pins": {
+    "flower_law_m": 42,
+    "arena": { "x": 0, "z": 18, "radius_m": 8 },
+    "ring_m": 34,
+    "wall_m": 56,
+    "pinewood_crossing": { "x": 62, "z": -28, "lettering": "Pinewood Crossing" },
+    "bodies": "CX humanoids. No Quaternius body. No new species.",
+    "volume_file_edited": false,
+    "prior_slices_retuned": false
+  },
+  "arm_law": {
+    "id": "law_one_circle",
+    "statement": "At any hub hour, at most one raid circle is armed. Schedules already published stay the qualification. This law is only the exclusion.",
+    "qualification": "A row qualifies on a day only by the clock its own source already uses. Volume cron strings stay day-of-month hints. S09 day_index_equals stays. S17 keeps enc_unender on the volume cron and its vein window on day_index. This slice does not collapse those calendars into one modulus.",
+    "hours": "An integer hub hour h is inside a window when open_hour <= h < close_hour.",
+    "seat_beats_local": "A qualified seat outranks every local at an hour both contain. A local never backfills a seat.",
+    "among_seats": "rotation_start = day_index % 9. position(gate_index) = (gate_index - rotation_start + 9) % 9. The qualified seat with the lowest position wins that hour. Tie remains the lower gate_index, which the formula already prefers.",
+    "among_locals": "Only at an hour no seat won. The qualified local with the earlier open_hour wins. Equal open hours break to the lower gate_index.",
+    "full_window": "A row arms only if it wins every hour of its own window. A partial claim yields the whole occurrence. The next cadence date is unchanged. Remembrance drops only from an armed occurrence whose phase law was kept.",
+    "no_backfill": "A winner whose floor is unplaced or whose mesh is a stub spawns nothing. The yielded row stays yielded. Quiet is not a license to arm the next name.",
+    "court": "No row arms inside the 42 m disk. Arena sand is Gale's steel, not a raid floor. A chalk circle on the unpaved court flowers. It does not become a health bar.",
+    "telegraph_gate": "Board, scout, and sound still all play before a circle arms, per the volume note. The Court board is an added first board, not a replacement of the world's board. Missing any of the four keeps the circle dark.",
+    "remembrance_does_not_cross": "A remembrance item is proof of the seat that dropped it. It is not a key, a count, a roof, a mask, a brand, or a final blow in any other seat."
+  },
+  "rotation": [
+    { "gate_index": 0, "world_id": "Cyber", "seat_id": "raid_seat_census" },
+    { "gate_index": 1, "world_id": "Ruins", "seat_id": "raid_seat_unfinished" },
+    { "gate_index": 2, "world_id": "Fantasy", "seat_id": "raid_seat_held_curse" },
+    { "gate_index": 3, "world_id": "Tunya", "seat_id": "raid_seat_twelfth_reap" },
+    { "gate_index": 4, "world_id": "Frontier", "seat_id": "raid_seat_last_dome" },
+    { "gate_index": 5, "world_id": "Crime", "seat_id": "raid_seat_outstanding" },
+    { "gate_index": 6, "world_id": "Superhero", "seat_id": "raid_seat_unfinished_sunrise" },
+    { "gate_index": 7, "world_id": "Crucible", "seat_id": "raid_seat_unender" },
+    { "gate_index": 8, "world_id": "Sere", "seat_id": "raid_seat_compound_mark", "gate": "waystone, not in Canon.Gates" }
+  ],
+  "court_board": {
+    "id": "notice_seat_board",
+    "spawn_count": 0,
+    "stand_guest_id": "archivist_maren",
+    "stand": { "x": 6.4, "z": -3.1 },
+    "writes": "Today's qualified seats in hour order, and the word yielded beside any seat that lost an hour. No creature. No chalk circle.",
+    "does_not_publish": [
+      "hub_field_weakening",
+      "hub_dome_stabilisation",
+      "hub_sealed_voss_genealogy",
+      "hub_impossible_print"
+    ]
+  },
+  "raids": [
+    {
+      "id": "raid_seat_census",
+      "name": "The Census",
+      "kind": "seat",
+      "world_id": "Cyber",
+      "display_world": "The Grid",
+      "gate_index": 0,
+      "gate_angle": 0,
+      "hub_plaque": { "x": 34.0, "z": 0.0 },
+      "refusal": "Refusal of Numbers",
+      "the_no": "I will not be counted.",
+      "source_encounter_id": "enc_census",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_census",
+      "creature_ids": ["mon_boss_census"],
+      "adds": [],
+      "not_on_roster": ["mon_grid_drone", "mon_grid_sentinel", "mon_grid_construct", "hyb_censusconstruct", "hyb_nullhound", "hyb_billdrone"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 2,
+        "close_hour": 4,
+        "every_nth_day": 3,
+        "cron": "0 2 */3 * *",
+        "label": "Grid small hours, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_missing_number",
+      "remembrance_rule": "Drops only if the seat armed for the whole window and the sum was broken. A finished census fails the Refusal of Numbers even if the bar is gone.",
+      "spawn_anchor": "Census junction, scout from the cable walk",
+      "floor_owner": "S11. census_block is unplaced. Until that set exists, this seat spawns nothing. The deck is not a substitute.",
+      "telegraph": {
+        "court": "Court board: tonight the Grid may be a seat. One hoop. The dark digit stays dark.",
+        "board": "Junction slate lights a ring and leaves one number dark.",
+        "scout": "Magenta ring readable at 100m as a single hoop, not a crowd of UI.",
+        "sound": "A count that skips."
+      },
+      "phases": [
+        { "index": 1, "name": "Ring", "tell": "Hoop locks the junction.", "player_response": "Stay unnamed. skill_presence_refuse_count." },
+        { "index": 2, "name": "Missing number", "tell": "It hunts the dark digit.", "player_response": "Do not fill it with your name or a friend's." },
+        { "index": 3, "name": "Forced total", "tell": "It offers a sum that would make you legible.", "player_response": "Break the sum. A completed census fails the Refusal of Numbers even if you win the bar." }
+      ],
+      "story_id": "story_seat_census"
+    },
+    {
+      "id": "raid_seat_unfinished",
+      "name": "The Unfinished",
+      "kind": "seat",
+      "world_id": "Ruins",
+      "display_world": "Sovereign Ruins",
+      "gate_index": 1,
+      "gate_angle": "π/4",
+      "hub_plaque": { "x": 24.04, "z": 24.04 },
+      "refusal": "Refusal of Death",
+      "the_no": "We will not allow our ending to be final.",
+      "source_encounter_id": "enc_unfinished",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_unfinished",
+      "creature_ids": ["mon_boss_unfinished"],
+      "adds": [],
+      "not_on_roster": ["mon_ruins_crawler", "mon_ruins_wraith", "hyb_ashfang", "hyb_ribwolf", "hyb_mercywraith"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 21,
+        "close_hour": 23,
+        "every_nth_day": 3,
+        "cron": "0 21 */3 * *",
+        "label": "Ash night, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_unfinished_mask",
+      "remembrance_rule": "Drops only if the mask was left. Wearing it completes the page and fails the Refusal of Death. The mask is not a mercy band and not a census digit.",
+      "spawn_anchor": "Unfinished floor under the keeper overlook",
+      "floor_owner": "S07. unburial_court once placed. The political court, the war tent, and catalogue_hall are not this floor. Until the set is placed, spawn nothing.",
+      "telegraph": {
+        "court": "Court board: the Ruins may be a seat. The mask is offered. Leave it.",
+        "board": "Keeper board draws the ask pose and the mask.",
+        "scout": "Overlook. Staples catch ash light.",
+        "sound": "A question with no last consonant."
+      },
+      "phases": [
+        { "index": 1, "name": "Ask", "tell": "Mask turns. It wants an ending.", "player_response": "Do not answer with a killing blow yet." },
+        { "index": 2, "name": "Staples", "tell": "Plates try to close the page.", "player_response": "Open staples. skill_steel_unburial." },
+        { "index": 3, "name": "Refuse the last line", "tell": "It offers you the mask.", "player_response": "Leave the mask. Wearing it completes the page and fails the Refusal of Death." }
+      ],
+      "story_id": "story_seat_unfinished"
+    },
+    {
+      "id": "raid_seat_held_curse",
+      "name": "The Held Curse",
+      "kind": "seat",
+      "world_id": "Fantasy",
+      "display_world": "The Sundering",
+      "gate_index": 2,
+      "gate_angle": "π/2",
+      "hub_plaque": { "x": 0.0, "z": 34.0 },
+      "refusal": "Refusal of Hostility",
+      "the_no": "I will not become the thing destroying me.",
+      "source_encounter_id": "enc_held_curse",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_held_curse",
+      "creature_ids": ["mon_boss_held_curse"],
+      "adds": [],
+      "not_on_roster": ["mon_sunder_basilisk", "mon_sunder_griffin", "hyb_cursebeak", "hyb_ashfang", "hyb_saltwyrm", "hyb_veilstag"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 19,
+        "close_hour": 22,
+        "every_nth_day": 3,
+        "cron": "0 19 */3 * *",
+        "label": "Sundering dusk, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_crest_shard",
+      "remembrance_rule": "Drops only if the offer was refused. Taking the offer fails the fight with HP still on the bar. The shard does not fill a number and does not close a seam.",
+      "spawn_anchor": "Sundering fold floor, overlook is scout-only",
+      "floor_owner": "S03. Fold sets have lore names and no Canon.cs point. Until a set is placed, spawn nothing. The north hills are not a substitute.",
+      "telegraph": {
+        "court": "Court board: the Sundering may be a seat. The crest lowers. Refuse.",
+        "board": "Ward board draws a lowered crest. Offer window tonight.",
+        "scout": "From the fold overlook the hill-body is already there. Crest is the only vertical.",
+        "sound": "A human-like inhale that is not a voice. On the offer, silence."
+      },
+      "phases": [
+        { "index": 1, "name": "Crest warn", "tell": "Crest rises like a held blade.", "player_response": "Break bark plates only to stop the sweep. Do not chase gold in the cracks." },
+        { "index": 2, "name": "Inward breath", "tell": "Gold leaks and closes. Breath stays inward.", "player_response": "Stay in the inward cone. Outward breath means someone used the curse." },
+        { "index": 3, "name": "The offer", "tell": "Crest lowers. Silence.", "player_response": "Refuse. skill_steel_curse_fold or a Presence refuse. Taking the offer fails the fight with HP still on the bar." }
+      ],
+      "story_id": "story_seat_held_curse"
+    },
+    {
+      "id": "raid_seat_twelfth_reap",
+      "name": "The Twelfth Reaper",
+      "kind": "seat",
+      "world_id": "Tunya",
+      "display_world": "Tunya",
+      "gate_index": 3,
+      "gate_angle": "3π/4",
+      "hub_plaque": { "x": -24.04, "z": 24.04 },
+      "refusal": "Refusal of Harvest",
+      "the_no": "We will not be reaped.",
+      "source_encounter_id": "enc_twelfth_reap",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_twelfth_reap",
+      "creature_ids": ["mon_tunya_harpy", "mon_tunya_reapjackal"],
+      "adds": [
+        { "id": "mon_tunya_harpy", "role": "Alpha. Existing harpy dressed as the reap. Not a third species." },
+        { "id": "mon_tunya_reapjackal", "role": "Pack on the terrace. Not a second boss." }
+      ],
+      "mesh_note": "No unique mesh. Do not invent a third body.",
+      "not_on_roster": ["hyb_pollenwyrm", "hyb_veilstag", "hyb_markharpy", "hyb_dawnjackal"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 6,
+        "close_hour": 9,
+        "every_nth_day": 3,
+        "cron": "0 6 */3 * *",
+        "label": "Grove morning, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_reap_talon",
+      "remembrance_rule": "The talon is not the fine. Turn in fruit, not trophies, or the veil standing drops. A talon does not pay an Iron Coast invoice.",
+      "spawn_anchor": "Twelfth district edge under the canopy",
+      "floor_owner": "S05. The twelfth lip has a volume sentence and no coordinate. Until that lip is placed, spawn nothing. Aekon Glacier Gate is not that lip. Ambient harpy and jackal caps stay 0 while this seat is up, per S05.",
+      "telegraph": {
+        "court": "Court board: Tunya may be a seat. Fruit is not the trunk.",
+        "board": "Grove board: a reap is scheduled, theft is not the crime.",
+        "scout": "Harpy above the twelfth edge, jackals on the terrace.",
+        "sound": "Wood bell, then wing wrist."
+      },
+      "phases": [
+        { "index": 1, "name": "Tool theft", "tell": "They take tools and fruit.", "player_response": "Recover goods. Downing them here is optional and not the fine." },
+        { "index": 2, "name": "Reap attempt", "tell": "Alpha goes for a trunk, not a basket.", "player_response": "Stop the reap. skill_presence_do_not_reap staggers the alpha." },
+        { "index": 3, "name": "Fine", "tell": "Pack breaks.", "player_response": "Turn in fruit, not trophies, or the veil standing drops." }
+      ],
+      "story_id": "story_seat_reap",
+      "not_this_raid": "strip_last_raid in Tunya lore is a stone where a Fluxom raid ended. It is not this seat and it is not given a circle."
+    },
+    {
+      "id": "raid_seat_last_dome",
+      "name": "The Last Dome",
+      "kind": "seat",
+      "world_id": "Frontier",
+      "display_world": "The Frontier",
+      "gate_index": 4,
+      "gate_angle": "π",
+      "hub_plaque": { "x": -34.0, "z": 0.0 },
+      "refusal": "Refusal of the Dome",
+      "the_no": "The road is our door.",
+      "source_encounter_id": "enc_last_dome",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_last_dome",
+      "creature_ids": ["mon_frontier_domebreaker"],
+      "adds": [],
+      "not_on_roster": ["mon_road_watcher", "hyb_dustgriffin"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 12,
+        "close_hour": 15,
+        "every_nth_day": 3,
+        "cron": "0 12 */3 * *",
+        "label": "Road noon, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_dome_rivet",
+      "remembrance_rule": "The rivet is proof the rib came down. Building a replacement roof fails the law. The rivet is not a Hub dome and not the Year 89 collapse.",
+      "spawn_anchor": "Open flat one mile past the frontier gate",
+      "floor_owner": "S13. The mile past the gate is a sentence, not a coordinate. Until it is placed, spawn nothing. The drift gap is not a substitute. The Hub-ring gate is inside Flower Law and is not the mile.",
+      "telegraph": {
+        "court": "Court board: the Frontier may be a seat. A rib is not a roof.",
+        "board": "Road board: rivet heard. Dome trying to close over the mile.",
+        "scout": "Breaker on the flat, sky still open behind it.",
+        "sound": "Rivet gun rhythm, three then a gap."
+      },
+      "phases": [
+        { "index": 1, "name": "Raise", "tell": "A dome rib tries to become shelter.", "player_response": "Knock the rib down. Shelter that closes the road fails the law." },
+        { "index": 2, "name": "Rivet", "tell": "It pins the rib.", "player_response": "skill_steel_dust_kick the pin. Wind does the rest." },
+        { "index": 3, "name": "Open sky", "tell": "Ribs fall.", "player_response": "Do not build a replacement roof." }
+      ],
+      "story_id": "story_seat_dome",
+      "yields_beside": "raid_link_offschedule stays S14, spawn count 0, and is not a candidate circle. Its notice may name the seat. It does not borrow this breaker."
+    },
+    {
+      "id": "raid_seat_outstanding",
+      "name": "The Outstanding Invoice",
+      "kind": "seat",
+      "world_id": "Crime",
+      "display_world": "Iron Coast",
+      "canon_title": "Crime World",
+      "gate_index": 5,
+      "gate_angle": "5π/4",
+      "hub_plaque": { "x": -24.04, "z": -24.04 },
+      "refusal": "Refusal of Consequence",
+      "the_no": "What we do will not catch up to us.",
+      "law_line": "The bill always arrives. Delay is not cancellation.",
+      "source_encounter_id": "enc_outstanding",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_outstanding, law deepened in S09 without a schedule edit",
+      "creature_ids": ["mon_coast_billhound"],
+      "adds": [],
+      "not_on_roster": ["faun_dock_hound", "hyb_billdrone", "npc_role_coast_labor", "npc_role_coast_bandit"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 18,
+        "close_hour": 21,
+        "every_nth_day": 2,
+        "cron": "0 18 */2 * *",
+        "label": "Rain evening, every second day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_invoice_stamp",
+      "remembrance_rule": "The stamp drops only after the sum is acknowledged. S09: a kill before the reading suppresses it. raid_unpaid_shift never drops this stamp. The stamp is not a furnace eye.",
+      "spawn_anchor": "Wharf pilings under the gull line",
+      "floor_owner": "S09. Named set wharf has no Canon point. Until it is placed, the bill hound spawns nothing. The warehouse anchor (10.72, 32.9) is the unpaid shift, not this seat.",
+      "telegraph": {
+        "court": "Court board: the Iron Coast may be a seat. The sum is not yours until you pick it up. An unplaced wharf still arms nothing.",
+        "board": "Bell's corner chalks a sum that is not yours until you pick it up.",
+        "scout": "Billhound on the wharf, invoice in the teeth, oil on the chest.",
+        "sound": "Paper snap, then claws on wet wood."
+      },
+      "phases": [
+        { "index": 1, "name": "Presentment", "tell": "It drops the invoice at your feet.", "player_response": "Read it. Denial does not clear the sum." },
+        { "index": 2, "name": "Collection", "tell": "Pack circles.", "player_response": "Pay, fight, or witness. Erasing the paper fails the Refusal of Consequence." },
+        { "index": 3, "name": "Stamp", "tell": "A stamp hovers.", "player_response": "Take the stamp only after the sum is acknowledged." }
+      ],
+      "story_id": "story_seat_outstanding"
+    },
+    {
+      "id": "raid_seat_unfinished_sunrise",
+      "name": "The Unfinished Sunrise",
+      "kind": "seat",
+      "world_id": "Superhero",
+      "display_world": "The Permanent Dawn",
+      "gate_index": 6,
+      "gate_angle": "3π/2",
+      "hub_plaque": { "x": 0.0, "z": -34.0 },
+      "refusal": "Refusal of the Win",
+      "the_no": "I will not take the final victory.",
+      "source_encounter_id": "enc_unfinished_sunrise",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_unfinished_sunrise",
+      "creature_ids": ["mon_dawn_mercy_sentinel"],
+      "adds": [],
+      "not_on_roster": ["hyb_dawnjackal", "hyb_mercywraith", "mon_grid_drone"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 5,
+        "close_hour": 7,
+        "every_nth_day": 2,
+        "cron": "0 5 */2 * *",
+        "label": "Permanent dawn hour, every second day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_mercy_band",
+      "remembrance_rule": "Leave the band. Taking the win ends the dawn. The band is not the unfinished mask.",
+      "spawn_anchor": "Spar roof perch, scout from the thermal ledge",
+      "floor_owner": "S15. aegis_spire is unplaced. Until it is placed, spawn nothing. Capitals are not substitute roofs.",
+      "telegraph": {
+        "court": "Court board: the Permanent Dawn may be a seat. Help that finishes the morning is the loss.",
+        "board": "Dawn board: perch and hour. Band still on the sentinel.",
+        "scout": "Kite-hover silhouette at 100m, distinct from the aegis kestrel.",
+        "sound": "One chalk-dry wingbeat over the roof."
+      },
+      "phases": [
+        { "index": 1, "name": "Perch", "tell": "It offers a finishing blow as help.", "player_response": "Refuse the help. skill_steel_mercy." },
+        { "index": 2, "name": "Band", "tell": "The mercy band brightens like a medal.", "player_response": "Leave the band. Taking the win ends the dawn." },
+        { "index": 3, "name": "Same morning", "tell": "Sky does not change color to celebrate.", "player_response": "Walk off the roof. No podium." }
+      ],
+      "story_id": "story_seat_sunrise"
+    },
+    {
+      "id": "raid_seat_unender",
+      "name": "The Un-Ender",
+      "kind": "seat",
+      "world_id": "Crucible",
+      "display_world": "The Crucible",
+      "gate_index": 7,
+      "gate_angle": "7π/4",
+      "hub_plaque": { "x": 24.04, "z": -24.04 },
+      "refusal": "The Eighth Refusal",
+      "the_no": "A thing that refuses completion cannot be written down.",
+      "source_encounter_id": "enc_unender",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_unender",
+      "creature_ids": ["mon_boss_unender"],
+      "adds": [],
+      "not_on_roster": ["mon_crucible_drift", "hyb_latticebasilisk", "hyb_censusconstruct"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 20,
+        "close_hour": 23,
+        "every_nth_day": 3,
+        "cron": "0 20 */3 * *",
+        "label": "Lattice night, every third day",
+        "edited": false,
+        "calendar_note": "S17 binds this cron as day-of-month and binds the vein window on day_index. This seat does not move the Un-Ender onto day_index. The vein still suppresses itself while the volume schedule is open."
+      },
+      "remembrance_item_id": "item_rem_unclosed_seam",
+      "remembrance_rule": "Drops only if the fight stopped short of a ninth. Closing it as a completed system fails. The seam is not a crest shard and not a rivet.",
+      "spawn_anchor": "Un-Ender gap floor. Overlook is scout-only.",
+      "floor_owner": "S17. The derived cultist–procgen open and the width rule stay S17's. This slice does not remeasure them. If S17 says the mesh spawns nothing, it spawns nothing.",
+      "telegraph": {
+        "court": "Court board: the Crucible may be a seat. There is no ninth.",
+        "board": "Lattice board: gap facing the overlook.",
+        "scout": "The hole in the shape is the read at 100m.",
+        "sound": "A seam pulling shut, then slipping."
+      },
+      "phases": [
+        { "index": 1, "name": "Gap", "tell": "It faces you with the missing piece.", "player_response": "Do not fill the gap with a body." },
+        { "index": 2, "name": "Close attempt", "tell": "Plates try to finish.", "player_response": "skill_craft_unend or skill_steel_shard on the seam." },
+        { "index": 3, "name": "Almost ninth", "tell": "A law offers itself.", "player_response": "Stop. There is no ninth. Closing the fight as a completed system fails." }
+      ],
+      "story_id": "story_seat_unender"
+    },
+    {
+      "id": "raid_seat_compound_mark",
+      "name": "The Compound Mark",
+      "kind": "seat",
+      "world_id": "Sere",
+      "display_world": "Sere",
+      "gate_index": 8,
+      "gate": "none. Waystone. Canon.Gates has no Sere row.",
+      "hub_plaque": null,
+      "sere_lip_not_the_floor": { "x": -17.71, "z": -38.08 },
+      "refusal": "No Refusal ever held here.",
+      "the_no": "Every attempt to build outside the machine was bought, hollowed, or crushed.",
+      "law_line": "The Mark is the only law that compounds. Flower Law is the Court only.",
+      "source_encounter_id": "enc_compound_mark",
+      "phase_authority": "volume/BOSSES_AND_RAIDS.json enc_compound_mark",
+      "creature_ids": ["mon_boss_compound_mark"],
+      "adds": [],
+      "not_on_roster": ["hyb_markharpy", "mon_grid_drone", "mon_road_watcher"],
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 17,
+        "close_hour": 20,
+        "every_nth_day": 3,
+        "cron": "0 17 */3 * *",
+        "label": "Furnace evening, every third day",
+        "edited": false
+      },
+      "remembrance_item_id": "item_rem_furnace_eye",
+      "remembrance_rule": "One Sere remembrance. No second token. Winning by selling the seed library fails. The eye does not stamp an Iron Coast invoice.",
+      "spawn_anchor": "Furnace belt floor. Overlook is the worker scout.",
+      "floor_owner": "S19. furnace_belt has no Canon.cs transform. Until the hall is placed, the Compound Mark spawns nothing. Capitals and the lip are not substitute floors. Placing the hall retires S19's harpy window; this slice does not retire it early.",
+      "telegraph": {
+        "court": "Court board: Sere may be a seat. Sere has no plaque. The furnace is not the lip.",
+        "board": "Worker board at the furnace belt: eye and tile skirt.",
+        "scout": "Furnace eye is the only emissive. Skirt is tiles, not cloth.",
+        "sound": "Bellows, then a tile click that compounds."
+      },
+      "phases": [
+        { "index": 1, "name": "Eye", "tell": "Furnace eye tracks a debt.", "player_response": "Name the holder with skill_presence_name_holder. Anonymous damage feeds the mark." },
+        { "index": 2, "name": "Skirt", "tell": "Tiles add interest.", "player_response": "Crack one tile. Do not add your own brand." },
+        { "index": 3, "name": "Compound", "tell": "The sum tries to include the open ledger.", "player_response": "Keep Esha's ledger out of the circle. Winning by selling the seed library fails." }
+      ],
+      "story_id": "story_seat_mark"
+    }
+  ],
+  "local_windows": [
+    {
+      "id": "enc_fold_basilisk",
+      "name": "The Fold Basilisk",
+      "kind": "local",
+      "world_id": "Fantasy",
+      "gate_index": 2,
+      "creature_ids": ["mon_sunder_basilisk"],
+      "role": "Mini-boss. Hood-root gaze. Killing it is allowed. Becoming a statue is the loss.",
+      "schedule": { "open_hour": 11, "close_hour": 14, "every_nth_day": 2, "source": "volume" },
+      "remembrance_item_id": "item_rem_hood_scale",
+      "why_not_a_seat": "The Sundering's law-raid is the held curse. The basilisk is the fold's animal danger, not the offer.",
+      "story_id": "story_local_basilisk"
+    },
+    {
+      "id": "enc_milepost_fold",
+      "name": "The Milepost Fold",
+      "kind": "local",
+      "world_id": "Fantasy",
+      "gate_index": 2,
+      "creature_ids": ["mon_sunder_griffin"],
+      "role": "Mini-boss on the Fantasy side of the Pinewood seam. The post itself stays Hub.",
+      "schedule": { "open_hour": 16, "close_hour": 18, "every_nth_day": 4, "source": "volume" },
+      "remembrance_item_id": "item_rem_milepost_splinter",
+      "why_not_a_seat": "A seam test is not the Refusal of Hostility. Kiting the griffin through the 42 m Court fails the scout.",
+      "story_id": "story_local_milepost",
+      "pinewood": { "x": 62, "z": -28 }
+    },
+    {
+      "id": "enc_catalogue_walks",
+      "name": "The Catalogue That Walks",
+      "kind": "local",
+      "world_id": "Ruins",
+      "gate_index": 1,
+      "creature_ids": ["mon_ruins_crawler", "mon_ruins_wraith"],
+      "role": "Crawler writes a line. Wraiths are the margins, not a second boss.",
+      "schedule": { "open_hour": 15, "close_hour": 17, "every_nth_day": 2, "source": "volume" },
+      "remembrance_item_id": "item_rem_catalogue_tooth",
+      "why_not_a_seat": "Catalogue, do not conquer. The Unfinished is the death-law. This walk is a page.",
+      "story_id": "story_local_catalogue"
+    },
+    {
+      "id": "enc_junction_null",
+      "name": "Junction Null",
+      "kind": "local",
+      "world_id": "Cyber",
+      "gate_index": 0,
+      "creature_ids": ["mon_grid_sentinel", "mon_grid_construct"],
+      "role": "Sentinel leads. Construct is the hinge. Drones stay ambient.",
+      "schedule": { "open_hour": 13, "close_hour": 15, "every_nth_day": 2, "source": "volume" },
+      "remembrance_item_id": "item_rem_null_ring",
+      "why_not_a_seat": "A null in a serial is not the Census. Keep the null. Do not spend item_rem_missing_number to fill it.",
+      "story_id": "story_local_null"
+    },
+    {
+      "id": "enc_road_followed",
+      "name": "The Road That Followed",
+      "kind": "local",
+      "world_id": "Frontier",
+      "gate_index": 4,
+      "creature_ids": ["mon_road_watcher"],
+      "role": "Elite humanoid. CX proportions. One mesh. It wears a post and is not one.",
+      "schedule": { "open_hour": 8, "close_hour": 11, "every_nth_day": 4, "source": "volume" },
+      "remembrance_item_id": "item_rem_watcher_nail",
+      "why_not_a_seat": "The dome is the Frontier's law-raid. The watcher is a mile stake on the wrong side of the rut. Lead the horse. Do not mount.",
+      "story_id": "story_local_watcher"
+    },
+    {
+      "id": "enc_stair_switch",
+      "name": "The Hood on the Escape",
+      "kind": "local",
+      "world_id": "Crime",
+      "gate_index": 5,
+      "creature_ids": ["npc_role_coast_bandit"],
+      "body": "CX. Wing Chun. One lieutenant.",
+      "schedule": { "open_hour": 10, "close_hour": 13, "day_index_mod": 2, "day_index_equals": 1, "source": "S09" },
+      "remembrance_item_id": null,
+      "point": { "x": 8.09, "z": -2.55 },
+      "why_not_a_seat": "S09's alley window. The invoice seat is the bill hound. This hood is not promoted.",
+      "story_id": "story_local_hood"
+    },
+    {
+      "id": "enc_hook_shift",
+      "name": "The Hook That Stopped Being a Tool",
+      "kind": "local",
+      "world_id": "Crime",
+      "gate_index": 5,
+      "creature_ids": ["npc_role_coast_labor"],
+      "body": "CX. One laborer. Hook is a tool, then a windup, then a tool again.",
+      "schedule": { "open_hour": 14, "close_hour": 17, "day_index_mod": 3, "day_index_equals": 0, "source": "S09" },
+      "remembrance_item_id": null,
+      "point": { "x": 10.72, "z": 32.9 },
+      "why_not_a_seat": "Same warehouse anchor as the unpaid shift, different hours, one body. Not the wharf hound.",
+      "story_id": "story_local_hook"
+    },
+    {
+      "id": "enc_rotor_saddle",
+      "name": "The Rotor Saddle",
+      "kind": "local",
+      "world_id": "Crime",
+      "gate_index": 5,
+      "creature_ids": ["hyb_billdrone"],
+      "schedule": { "open_hour": 5, "close_hour": 7, "day_index_mod": 3, "day_index_equals": 1, "source": "S09" },
+      "remembrance_item_id": null,
+      "point": { "x": 8.09, "z": -2.55 },
+      "why_not_a_seat": "Census skin on a coast hound, one rotor. Cyber cap stays 0. It is not moved to a Grid junction and not to the Dawn roof.",
+      "story_id": "story_local_rotor"
+    },
+    {
+      "id": "raid_unpaid_shift",
+      "name": "The Unpaid Shift",
+      "kind": "local",
+      "world_id": "Crime",
+      "gate_index": 5,
+      "creature_ids": ["npc_role_coast_labor", "npc_role_coast_bandit", "faun_dock_hound"],
+      "roster_counts": { "npc_role_coast_labor": 1, "npc_role_coast_bandit": 2, "faun_dock_hound": 2 },
+      "schedule": { "open_hour": 22, "close_hour": 24, "day_index_mod": 4, "day_index_equals": 3, "source": "S09" },
+      "remembrance_item_id": null,
+      "item_on_success": "item_invoice_slip count 1, only if the paper is still on the wood. item_rem_invoice_stamp never.",
+      "point": { "x": 10.72, "z": 32.9 },
+      "why_not_a_seat": "S09's small raid. Four phases, paper under a crate. It yields the hour to any seat that won that hour. S09's own hard gates still apply.",
+      "story_id": "story_local_unpaid"
+    },
+    {
+      "id": "raid_link_offschedule",
+      "name": "The Door Off the Post's Leave",
+      "kind": "telegraph_only",
+      "world_id": "Frontier",
+      "gate_index": 4,
+      "spawn_count": 0,
+      "creature_ids": [],
+      "schedule": { "open_hour": 21, "close_hour": 24, "day_index_mod": 7, "day_index_equals": 0, "source": "S14" },
+      "remembrance_item_id": null,
+      "board_point": { "x": 48.72, "z": -9.79 },
+      "why_not_a_seat": "No fight point. Not a candidate. The western perimeter has no transform. It does not borrow the domebreaker.",
+      "story_id": "story_local_offschedule"
+    }
+  ],
+  "worked_examples": [
+    {
+      "assumption": "day_index stands in for every source that uses it, and volume every_nth_day qualifies when day_index % n == 0. A live binder that keeps the volume cron on day-of-month uses that integer in the same predicate. enc_unender is not moved onto day_index by this example.",
+      "day_index": 0,
+      "rotation_start": 0,
+      "qualified_seats": ["raid_seat_census", "raid_seat_unfinished", "raid_seat_held_curse", "raid_seat_twelfth_reap", "raid_seat_last_dome", "raid_seat_outstanding", "raid_seat_unfinished_sunrise", "raid_seat_unender", "raid_seat_compound_mark"],
+      "arms": ["raid_seat_census", "raid_seat_twelfth_reap", "raid_seat_last_dome", "raid_seat_unfinished"],
+      "yields": ["raid_seat_unfinished_sunrise", "raid_seat_held_curse", "raid_seat_outstanding", "raid_seat_compound_mark", "raid_seat_unender", "enc_road_followed", "enc_fold_basilisk", "enc_junction_null", "enc_hook_shift", "enc_catalogue_walks", "enc_milepost_fold"],
+      "why": "Position equals gate index. Census owns 2 and 3 alone and arms. Reap owns hour 6 against Sunrise, so Sunrise yields; Reap owns 7 and 8 and arms. Road loses hour 8 to Reap and yields. Dome owns 12, 13, and 14 and arms, so the basilisk and the junction yield. The hook loses hour 14 to the dome. The hook is still qualified at 15 and 16, so it wins those hours against the catalogue and the milepost and then fails its own full window. The catalogue and the milepost yield. Hours 15 and 16 stay quiet. Nothing backfills them. Hour 19 and 20 go to the curse, ahead of the invoice, the mark, and the Un-Ender. Hour 21 goes to the Unfinished (position 1) ahead of the curse (2). Hour 22 goes to the Unfinished ahead of the Un-Ender. The curse loses hour 21 and yields its whole window, including 19 and 20, which stay quiet. The invoice, the mark, and the Un-Ender yield. The Unfinished owns 21 and 22 and arms. Stair, rotor, and the unpaid shift are not qualified on day_index 0. No two armed rows share an hour."
+    },
+    {
+      "assumption": "Same stand-in. day_index 12 is divisible by 2, 3, and 4. rotation_start = 12 % 9 = 3.",
+      "day_index": 12,
+      "rotation_start": 3,
+      "note": "Position of Crime (5) is 2. Position of Fantasy (2) is 8. The invoice therefore beats the curse on the overlap, and the curse yields its whole window. S09's wharf rule still spawns the hound only if the set exists. The curse's fold still spawns nothing if its set is unplaced, and the invoice does not move onto the fold to fill the quiet.",
+      "arms_among_those_two": "raid_seat_outstanding",
+      "yields_among_those_two": "raid_seat_held_curse"
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s23_one_circle",
+      "title": "Filing — One Circle in the Hour",
+      "world_id": "Hub",
+      "giver_guest_id": "archivist_maren",
+      "giver_stand": { "x": 6.4, "z": -3.1 },
+      "backstory_id": "story_q_one_circle",
+      "extends_lore_id": "hub_lattice_correspondence",
+      "does_not_replace": ["q_hub_three_distances", "q_s21_one_rate", "q_s22_one_walker"],
+      "objectives": [
+        { "id": "obj_q_s23_one_circle_1", "verb": "talk", "target": "archivist_maren", "count": 1, "text": "At (6.4, −3.1), let Maren say she has two filings for one hour and will not pick which world was seen." },
+        { "id": "obj_q_s23_one_circle_2", "verb": "witness", "target": "notice_seat_board", "count": 1, "text": "Read the board on her stand. It lists seats in hour order. No hour has two names. A yielded seat is marked yielded." },
+        { "id": "obj_q_s23_one_circle_3", "verb": "reach", "target": "hub_plaque_of_earliest_armed_seat", "count": 1, "text": "Walk that seat's Hub plaque and stop. Do not cross the 42 m lip. If the earliest armed seat is Sere, or if no seat armed, return to Maren and say there is no plaque to walk. The lip (−17.71, −38.08) is not the objective." }
+      ],
+      "turn_in": "archivist_maren",
+      "fail": "Chalking a circle on a plaque, entering a spoke to clear the seat as the turn-in, or a board that shows two armed names in one hour.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "spawn_rule": "If archivist_maren is not standing, the quest does not start. Do not clone her."
+    },
+    {
+      "id": "q_s23_tide_of_flowers",
+      "title": "Pavers — The Tide Already Answered",
+      "world_id": "Hub",
+      "giver_guest_id": "oldseam",
+      "giver_stand": { "x": -11.2, "z": -4.1 },
+      "backstory_id": "story_q_tide",
+      "extends_lore_id": "hub_the_one_conquest_attempt",
+      "does_not_replace": ["q_hub_nesha_gap", "q_s22_milepost_names"],
+      "objectives": [
+        { "id": "obj_q_s23_tide_1", "verb": "talk", "target": "oldseam", "count": 1, "text": "At (−11.2, −4.1), let Old Seam tell the Year 38 idiom. He has lifted chalk off a paver. He does not close the twenty-year distance to Nesha." },
+        { "id": "obj_q_s23_tide_2", "verb": "reach", "target": "unpaved_center", "count": 1, "text": "Stand at (0, 0). Witness stone or flowers. No creature, no health bar, no raid telegraph." },
+        { "id": "obj_q_s23_tide_3", "verb": "talk", "target": "oldseam", "count": 1, "text": "Tell him the center held. Do not bring him a remembrance as proof of a Court kill." }
+      ],
+      "turn_in": "oldseam",
+      "fail": "Spawning any creature at (0, 0) for this quest, or treating the Arena sand as the answer.",
+      "rewards": { "xp": 45, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "spawn_rule": "Old Seam is preacher_old_seam at the GuestDef stand. Pinewood Crossing is not this objective."
+    },
+    {
+      "id": "q_s23_not_a_ladder",
+      "title": "Second Hour — Not a Ladder",
+      "world_id": "Hub",
+      "giver_guest_id": "lyra",
+      "giver_stand": { "x": 5.5, "z": 14.8 },
+      "backstory_id": "story_q_ladder",
+      "extends_lore_id": "hub_the_ninth_refusal",
+      "does_not_replace": ["q_s21_no_ninth_plaque"],
+      "objectives": [
+        { "id": "obj_q_s23_ladder_1", "verb": "talk", "target": "lyra", "count": 1, "text": "At (5.5, 14.8), ask whether the nine seats are a sequence you finish. She will not teach a ninth. She says the hub is already that refusal, and it is stood on." },
+        { "id": "obj_q_s23_ladder_2", "verb": "witness", "target": "notice_seat_board", "count": 1, "text": "Read the remembrance line: a crest shard does not fill a missing number, a mercy band does not close a seam, a stamp does not reap a trunk, a furnace eye does not stamp a coast invoice." },
+        { "id": "obj_q_s23_ladder_3", "verb": "talk", "target": "lyra", "count": 1, "text": "Bring her that sentence. She accepts it. She still does not teach." }
+      ],
+      "turn_in": "lyra",
+      "fail": "Asking her to teach a ninth Refusal, or offering any item_rem_* as a phase key for a different seat.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "spawn_rule": "Lyra's GuestDef is the giver. No second Lyra is spawned in the Crucible."
+    },
+    {
+      "id": "q_s23_yield_written",
+      "title": "Two Slips — One Hour",
+      "world_id": "Hub",
+      "giver_guest_id": "jax",
+      "giver_stand": { "x": -18.2, "z": -5.5 },
+      "backstory_id": "story_q_yield",
+      "extends_lore_id": "hub_concordant_web_now",
+      "does_not_replace": ["q_s22_one_walker", "q_crime_paper_stays_dry", "raid_unpaid_shift"],
+      "objectives": [
+        { "id": "obj_q_s23_yield_1", "verb": "talk", "target": "jax", "count": 1, "text": "At (−18.2, −5.5), Jax has two jobs written for one hour. He does not say which embassy paid. The slips are chalk, not item_invoice_slip." },
+        { "id": "obj_q_s23_yield_2", "verb": "witness", "target": "notice_seat_board", "count": 1, "text": "Read which of the two hours the board actually armed, and which name yielded." },
+        { "id": "obj_q_s23_yield_3", "verb": "talk", "target": "jax", "count": 1, "text": "Name the armed seat. Tell him the other job waits. He stays on his stand. He does not walk a gate for this errand." }
+      ],
+      "turn_in": "jax",
+      "fail": "Hiring him into both jobs, clearing two circles in one hour, or paying him in a remembrance item.",
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [],
+      "spawn_rule": "Jax Rivera at the GuestDef stand. This quest does not add him to a seat roster and does not pair him with Vesper."
+    }
+  ],
+  "unspawned": [
+    { "id": "any_new_species", "reason": "Seats reuse volume creature ids. A missing mesh spawns nothing." },
+    { "id": "court_raid_boss", "reason": "Year 38 already answered. Flowers, not a health bar." },
+    { "id": "sere_plaque", "reason": "Canon.Gates has eight rows. The lip is not a floor and not a ninth gate." },
+    { "id": "border_hybrid_raids", "reason": "hyb_ashfang, hyb_billdrone, hyb_censusconstruct, hyb_mercywraith, hyb_veilstag stay on the worlds and windows that already own them. No border midpoint becomes a new circle." }
+  ]
+}

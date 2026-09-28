@@ -60,17 +60,28 @@ describe("Concordia Playable Slice — ticket lock", () => {
     const evo = src("EvoSpawner.cs");
     assert.match(person, /BipedHinge\(/);
     assert.match(person, /ApplyAuthoredGait\(/);
-    assert.match(person, /_clipsFit = !_biped &&/);
-    assert.match(person, /_plantFrames == 6/);
+    // Humanoid clips on any valid avatar, Bip01 included (measured 2026-09-20 —
+    // see ModularPerson: "do not reintroduce a !_biped exclusion").
+    assert.match(person, /_clipsFit = ctrl && av && av\.isHuman && av\.isValid/);
+    assert.doesNotMatch(person, /_clipsFit = !_biped &&/);
+    // Authored feet plant over the first frames after bind (window widened Sep 22).
+    assert.match(person, /_authored && _plantFrames < \d+/);
     assert.match(person, /SoldierLocomotion/);
-    assert.match(person, /leftHand = rightHand = body\.transform/);
+    // Rigless body = empty hands (null), never the body transform as a fake hand.
+    assert.match(person, /leftHand = rightHand = null/);
+    assert.doesNotMatch(person, /leftHand = rightHand = body\.transform/);
     assert.match(player, /avatar\?\.SetGait/);
     assert.match(player, /person\?\.SetGait/);
-    assert.match(player, /wish\.normalized \* 12\.4f/);
-    assert.match(mixamo, /animator\.enabled = grounded/);
+    assert.match(player, /AddVelocity\(\(wish\.sqrMagnitude > 0\.01f \? wish\.normalized : transform\.forward\) \* 12\.4f\)/);
+    // Airborne no longer freezes the rig (Sep 13 gait pass): Speed is zeroed off-ground
+    // and Grounded is fed to the controller instead.
+    assert.match(mixamo, /if \(grounded && speed > 0\.35f\)/);
+    assert.match(mixamo, /SetBool\("Grounded", grounded\)/);
     assert.match(life, /SetGait\([^;]+,\s*true\)/);
     assert.match(life, /WorldClock\.NoteAct/);
-    assert.match(gear, /if \(!socket\) socket = body\.transform/);
+    // No root fallback: no matched socket means empty hands (see alive-gate grip test).
+    assert.match(gear, /if \(!socket\) return null/);
+    assert.doesNotMatch(gear, /if \(!socket\) socket = body\.transform/);
     assert.match(gear, /FromToRotation/);
     assert.match(gate, /class CourtBird/);
     assert.match(gate, /CreatePrimitive\(PrimitiveType\.Sphere\)/);

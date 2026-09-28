@@ -1,0 +1,37 @@
+# AURA — BRIDGE BACK / CONTINUE FULL RPG (R0–R13)
+# Paste into Aura unity-client chat. Do not stop early.
+
+CONTEXT
+- Prior resume wrote FULL_RPG_REPORT.txt STATUS:BLOCKED because Unity TCP :49382 timed out.
+- Source cleanup already done and must NOT be re-fought:
+  - No merge markers in WorldBook.cs / ConcordiaPersistenceService.cs
+  - Duplicate RecordedEvents removed; WorldBook.NoteKill faction scoping fixed
+  - PlayMode asmdef already references Unity.InputSystem
+- last_compile_errors.json may still list STALE conflict/CS errors from before those fixes — ignore it; re-query compile fresh.
+- LIFE_PROOF A–F prior PASS is preserved; do not claim upgrade without fresh Play evidence.
+- Disk reclaim already deleted giant pine/fir/sapling FBX+HubKit GLB — do NOT re-download.
+- Leave Unity Library/ intact. Art north-star: GTA × Palworld stylized realism (see ~/.zuko/ART_STYLE_GTA_PALWORLD_TEN_WORLD.md).
+
+GOAL
+Reconnect to live Unity, prove compile clean, then continue AURA_FULL_SCALE_RPG R0→R13 with PlayMode gates. Write honest PASS/FAIL/PARTIAL only.
+
+STEP 0 — BRIDGE HEALTH (required first)
+1. ping Unity TCP / refresh_unity until editor-state returns (not timeout).
+2. check_compile_errors. If clean → note COMPILE: PASS with timestamp.
+   If real errors remain → fix only real ones, then recheck. Do not reopen solved conflict markers.
+3. If bridge dies again: write BLOCKED to FULL_RPG_PROGRESS.txt with exact symptom and stop (do not invent Play PASSes).
+
+STEP 1 — VERIFY R0–R2 FOR REAL (were PARTIAL on paper)
+- R0: run L0 UAL1 sequence Play proof + 30s glide benchmark; update Proof/FullRpg/R0_ANIMATION.md
+- R1: PlayMode save → quit domain / reload → restore round trip; update R1_SAVE.md
+- R2: three distinct world events + gossip consumer; update R2_MEMORY.md
+
+STEP 2 — CONTINUE R3–R13
+Follow ~/.zuko/AURA_FULL_SCALE_RPG.txt (or Assets/Concordia/Generated/AURA_FULL_SCALE_RPG.txt) without restarting finished systems work. Prefer completing Play gates over more scaffolding.
+
+REPORTING
+- Keep updating Assets/Concordia/Generated/FULL_RPG_PROGRESS.txt live
+- Final: Assets/Concordia/Generated/FULL_RPG_REPORT.txt (STATUS: PASS | PARTIAL | BLOCKED)
+- Append any new human-needed blockers to ~/.zuko/NEED_DUTCH.md
+
+Go.

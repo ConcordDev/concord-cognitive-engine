@@ -11,15 +11,18 @@ Audit: `../CONCORDIA_SYSTEM_AUDIT.md` (2026-09-01). Do not treat browser `src/ga
 | Doc | LIVE snapshot |
 |---|---|
 | WORLD | 10 kingdoms + refusals; CityAtlas settlements; CrossRing caravans/tariffs/plots/travelers; WorldClock hours + authored events persist across gates |
-| VISUAL | DressVocab culture kits; imported My Assets (Store or Assets/<Pack>/) first, Kenney fallback; fake-window LOD; listed != imported |
+| VISUAL | DressVocab culture kits; imported My Assets first, Kenney fallback |
+| CINEMATIC | PARTIAL — HubLook/ChaseCamera/CombatFeel live; ten Play shots are the visual gate (`VisualFidelity`) |
 | LORE | JSON under `Resources/Concordia/Canon/` + `bible.ts` |
 | CHARACTERS | Hub guests speak; faction sash on authored people; unlabeled ambient stay unlabeled; talk carries last event as rumor |
 | FACTIONS | JSON camps + weapon kits; sash color from `visual.primary_color` |
-| COMBAT | Unity hitscan; Hostile perceives / strafes; physics combat in `src/game/combat.ts` only |
+| COMBAT | Unity HitScan on ActionRunner Active (`CombatMotion.Delay`); HitResolver incoming; dummy Hurt |
 | QUESTS | Accept/track/complete for talk / reach / defeat / gather; HUD notes thin ecology |
 | SKILLS | Local attempt/connect ledger |
 | NPC_BRAIN | Unity schedules + visible activities (open/patrol/deliver/talk/inside); REAL/BULK/VIRTUAL LOD |
 | SAVE_SYSTEM | Appearance JSON + `concordia-living-v1.json` world slices |
+| PLAYER_LIFE | PARTIAL — body + Present receive + mid-ring wrecks/hostiles/delves/signs; native city lives + Ring tour still TARGET |
+| AGENT_BODY | PARTIAL — P0 characterId + affect_state bind + AgentMotor; MCP is still devtools only |
 | NETWORK | `/unity-ws` mounted; `kingdom:request` → authored snapshot; offline stays `no_gateway` |
-| ANIMATION | Hero prefers Soldier.glb + SoldierLocomotion; NPC gait still often procedural |
+| ANIMATION | Hub Rocketbox Biped authored gait; Humanoid clips only where `_clipsFit`; ExplosiveLLC overlay on Soldier |
 | AUDIO | Prefab paths; Vrellan Six missing |

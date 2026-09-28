@@ -196,6 +196,8 @@ namespace Concordia
                 : HubLook.Pbr(pbr, c, 0.03f, 0.2f, 4f);
         }
 
+        bool _litInside;
+
         public string Prompt => "E  ·  Enter";
 
         public Vector3 Inside()
@@ -205,12 +207,17 @@ namespace Concordia
 
         void LateUpdate()
         {
-            var player = FindFirstObjectByType<ConcordiaPlayer>();
+            var player = ConcordiaPlayer.Live;
             if (!player || _shell == null) return;
             var lp = transform.InverseTransformPoint(player.transform.position);
             bool inside = Mathf.Abs(lp.x) < _w * 0.5f - 0.2f
                           && lp.y > -0.15f && lp.y < _h + 0.2f
                           && lp.z > -_d * 0.5f + 0.05f && lp.z < _d * 0.5f - 0.2f;
+            if (inside != _litInside)
+            {
+                _litInside = inside;
+                HubLook.ApplyInterior(inside);
+            }
             foreach (var r in _shell)
                 if (r) r.enabled = !inside;
         }

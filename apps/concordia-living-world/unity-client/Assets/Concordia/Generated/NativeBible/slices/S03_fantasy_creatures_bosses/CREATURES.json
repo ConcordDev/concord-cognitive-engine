@@ -1,0 +1,664 @@
+{
+  "schema": "concordia.slice.creatures.v1",
+  "slice_id": "S03_fantasy_creatures_bosses",
+  "world_id": "Fantasy",
+  "display_world": "The Sundering",
+  "facet": "creatures_bosses",
+  "title": "Sundering — creatures, mini-bosses, bosses",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite native-bible catalogs, volume density weights, volume encounters, or Canon lore. Caps here are the Fantasy instance budget for this facet.",
+  "canon_pins": {
+    "world_id": "Fantasy",
+    "canon_world_def_title": "The Sundering",
+    "refusal": "Refusal of Hostility",
+    "the_no": "I will not become the thing destroying me.",
+    "law_text": "Hostility turns inward. Your own poise pays the curse. Winning with the curse is becoming the dragon.",
+    "steel_live": true,
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern Fantasy. A beast kited back through that disk meets flowers, not a legal hunt.",
+    "hub_law_radius_m": 42,
+    "wall_radius_m": 56,
+    "sundering_lane": {
+      "source": "Canon.OnSunderingLane / BlocksSunderingWalk",
+      "x": 11.2,
+      "half_width_m": 2.6,
+      "z_max": 240,
+      "rule": "The stride stays empty. Fauna colliders do not sit on it."
+    },
+    "gate_angle_rad": 1.570796,
+    "neighbor_gates": {
+      "ruins_ash": 0.785398,
+      "tunya": 2.356194,
+      "frontier_dust": 3.141593
+    },
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs"
+    },
+    "humanoid_body": "CX only. This slice spawns no humanoid mobs.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "shared_wolf_skeleton": "faun_sunder_wolf",
+    "canon_fauna_aliases": ["wolf", "griffin", "basilisk"]
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/fantasy/lore.json",
+    "creatures_seed": "Assets/Concordia/Resources/Concordia/Canon/fantasy/creatures.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/fantasy/factions.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/fantasy/npcs.json",
+    "animals": "native-bible/creatures/ANIMALS.json",
+    "monsters": "native-bible/creatures/MONSTERS.json",
+    "hybrids": "native-bible/creatures/HYBRIDS.json",
+    "taxonomy": "native-bible/01_TAXONOMY.md",
+    "density": "native-bible/volume/DENSITY_TABLES.json Fantasy block",
+    "bosses": "native-bible/volume/BOSSES_AND_RAIDS.json",
+    "existing_quests_not_redone": [
+      "fantasy_maeris_02_steps",
+      "q_fantasy_held_offer",
+      "q_fantasy_boar_off_path",
+      "q_fantasy_quench",
+      "q_fantasy_elk_calf",
+      "q_fantasy_lacquer_box",
+      "q_fantasy_basilisk_scout",
+      "q_fantasy_moonleaf"
+    ]
+  },
+  "places": [
+    {
+      "id": "approach_shoulder",
+      "kind": "placed",
+      "what": "Terrace hills whose centers sit outside the 56 m wall and whose origins do not still fail BlocksSunderingWalk after the builder's single sideways shift. The north runway itself is not a den.",
+      "holds": ["faun_grove_finch", "faun_sunder_wolf", "faun_wardwood_boar"],
+      "empty_of": ["faun_blackroot_elk", "faun_ash_wolf", "faun_dust_wolf", "mon_sunder_basilisk", "mon_sunder_griffin", "mon_boss_held_curse", "hyb_ashfang", "hyb_cursebeak"],
+      "floor_rule": "See placed_floors. A skirt that crosses x = 11.2 ± 2.6 m is not a stand."
+    },
+    {
+      "id": "ne_ash_shoulder",
+      "kind": "placed",
+      "what": "East half of CourtApproachGround_NE, center (28, 70), extents 18 m by 27.5 m. Ash stands only where x ≥ 28 and the stand is outside the 56 m wall. The pad's west edge at x = 10 lies on the lane. Its south edge at z = 42.5 is inside the wall near x = 28 (hypot 50.9 m).",
+      "holds": ["faun_ash_wolf", "hyb_ashfang"],
+      "empty_of": ["faun_sunder_wolf", "faun_dust_wolf", "mon_boss_held_curse"]
+    },
+    {
+      "id": "pinewood_seam",
+      "kind": "placed",
+      "what": "Fantasy reading of the salt-road verge at Pinewood Crossing (62, −28). The post and the lettering stay Hub.",
+      "holds": ["faun_pinewood_stag"],
+      "cap_note": "S01 owns the alive cap of 5. This slice adds 0.",
+      "empty_of": ["faun_dust_wolf", "mon_sunder_griffin"]
+    },
+    {
+      "id": "cursefold_shrine",
+      "kind": "named_set",
+      "kit": "arch_kit_fantasy_sunder",
+      "set": "cursefold_shrine",
+      "what": "Fold floor, overlook, and lip. No Canon.cs coordinate. Until the set is placed, these ids spawn nothing. Do not substitute a north hill.",
+      "holds": ["faun_cursefold_owl", "mon_sunder_basilisk", "hyb_cursebeak", "mon_boss_held_curse"]
+    },
+    {
+      "id": "blackroot_road",
+      "kind": "named_set",
+      "kit": "arch_kit_fantasy_sunder",
+      "set": "blackroot_road",
+      "what": "Thorne's meadow road. Elk wait for this set. The approach hills are not the meadow.",
+      "holds": ["faun_blackroot_elk"]
+    },
+    {
+      "id": "quiet_grove",
+      "kind": "named_lore",
+      "lore_id": "lore_quiet_grove",
+      "what": "Year 0 sanctuary. Trees live. Animals do not. Spawn cap for every fauna id is 0 inside it.",
+      "holds": []
+    },
+    {
+      "id": "wardwood",
+      "kind": "named_lore",
+      "what": "Oak pockets and the ward path. Boar quest q_fantasy_boar_off_path already herds one boar onto the path. Ambient boar stay off it.",
+      "holds": ["faun_wardwood_boar", "faun_sunder_wolf", "faun_grove_finch"]
+    },
+    {
+      "id": "thornwood_keep",
+      "kind": "named_lore",
+      "lore_id": "fantasy_thornwood_siege_year_03",
+      "what": "Seraphine's keep and audience. Halls hold no ambient beasts. q_fantasy_lacquer_box stays the box quest.",
+      "holds": []
+    },
+    {
+      "id": "bog_edge",
+      "kind": "named_lore",
+      "lore_id": "fantasy_bog_drift_event",
+      "what": "Maeris's bog. Greenmire is off the maps. This facet adds no fauna to the eight steps.",
+      "holds": []
+    }
+  ],
+  "placed_floors": {
+    "source": "CourtWalkableHorizon near and mid hill tables, angles in degrees from +X toward +Z. Sundering gate is 90°. Measured against Canon.BlocksSunderingWalk, WallRadius 56, HubLawRadius 42.",
+    "stand_rule": "An ambient body stands only if its center is outside 56 m, outside the 42 m disk, and BlocksSunderingWalk(center, body radius) is false. Spawn at the hill origin after the builder's one shift. Do not spawn on a skirt that enters the stride.",
+    "empty": [
+      {
+        "name": "CourtWalkHill_Near_0",
+        "angle_deg": 72,
+        "dist_m": 48,
+        "radius_m": 11,
+        "why": "Center is 48 m from the origin, inside the wall. The builder shifts it once by +4.2 m and the origin still blocks the stride at test radius 0.55 × 11."
+      },
+      {
+        "name": "CourtWalkHill_Near_1",
+        "angle_deg": 90,
+        "dist_m": 52,
+        "radius_m": 13,
+        "why": "Center is 52 m out, inside the wall. Origin x is 0, so the lane test does not shift it, and the 13 m skirt still covers x = 11.2."
+      },
+      {
+        "name": "CourtWalkHill_Near_2",
+        "angle_deg": 108,
+        "dist_m": 50,
+        "radius_m": 10,
+        "why": "Center is 50 m out, inside the wall."
+      },
+      {
+        "name": "CourtWalkHill_Mid_1",
+        "angle_deg": 90,
+        "dist_m": 128,
+        "radius_m": 22,
+        "why": "One +5.5 m shift moves the origin from x = 0 to x = 5.5. BlocksSunderingWalk is still true at test radius 11 m. No fauna on that origin."
+      }
+    ],
+    "legal_hill_origins": "Near hills at 58°/68 m, 90°/74 m, 122°/70 m, 78°/88 m (after its +4.2 m shift, origin x = 22.5), and 102°/86 m. Mid hills other than Mid_1. The 90°/74 m origin is off the 2.6 m stride (x = 0). Its 14 m skirt is not a stand.",
+    "s04_not_fauna_floors": [
+      "Pantheon temple (14.24, 23.34) sits on the stride inside the flower disk. S04 spawns nothing there. This facet does not either.",
+      "Wildwood gate (−29.55, 37.82) is 48.0 m out. It holds one ward inside the budget of 5. No beast.",
+      "Salt toll (62, −20) is 8 m north of Pinewood Crossing and is one CX bandit. Stags and the milepost griffin stay on the post seam.",
+      "Other S04 anchors inside 56 m stay people or empty points. This facet does not stock them and does not edit S04 quests."
+    ]
+  },
+  "volume_weights_unchanged": [
+    { "id": "faun_sunder_wolf", "weight": 4, "volume_note": "staggered chevrons" },
+    { "id": "faun_wardwood_boar", "weight": 2, "volume_note": "off the path unless the quest herds one" },
+    { "id": "faun_cursefold_owl", "weight": 2, "volume_note": "perch, tombstone read" },
+    { "id": "faun_blackroot_elk", "weight": 1, "volume_note": "adult; calf is quest-only" },
+    { "id": "faun_grove_finch", "weight": 3, "volume_note": "pine dust" },
+    { "id": "faun_pinewood_stag", "weight": 1, "volume_note": "seam only" },
+    { "id": "mon_sunder_basilisk", "weight": 0, "volume_note": "encounter enc_fold_basilisk, not ambient" },
+    { "id": "mon_sunder_griffin", "weight": 0, "volume_note": "encounter enc_milepost_fold" }
+  ],
+  "volume_encounters_not_rewritten": [
+    {
+      "id": "enc_held_curse",
+      "creature_id": "mon_boss_held_curse",
+      "schedule_label": "Sundering dusk, every third day",
+      "this_slice": "Law ties below. Phases, loot item_rem_crest_shard, and the clock stay in BOSSES_AND_RAIDS.json."
+    },
+    {
+      "id": "enc_fold_basilisk",
+      "creature_id": "mon_sunder_basilisk",
+      "schedule_label": "Fold noon, every second day",
+      "this_slice": "Deepened as mini-boss. Clock and item_rem_hood_scale stay."
+    },
+    {
+      "id": "enc_milepost_fold",
+      "creature_id": "mon_sunder_griffin",
+      "schedule_label": "Salt-road late day, every fourth day",
+      "this_slice": "Cited, not re-phased. Fantasy side of the Pinewood seam only. The post stays Hub. Do not kite it through the 42 m Court. Do not park it on the north hills. Pinion break turns the dive into a hop. That is the inward play already on the monster row."
+    }
+  ],
+  "creatures": [
+    {
+      "id": "faun_sunder_wolf",
+      "display_name": "Sundering Wolf",
+      "role": "predator",
+      "temperament": "pack_hunter",
+      "player_aggro": "only if the pack is pressed or a boar-kill is stood in",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "faun_sunder_wolf",
+      "verbs": ["verb_fauna_lope", "verb_fauna_nip", "verb_fauna_howl"],
+      "stats_hooks": { "health": "table:faun_med_predator", "loot": ["hide_wolf", "fang"], "damage_profile": "slash_light" },
+      "bible_herd": "3-6",
+      "density": {
+        "alive_cap": 6,
+        "packs": 1,
+        "where": "One pack, dusk to night, on a legal hill origin in placed_floors or in wardwood oaks, never both at once. Zero on Near_0, Near_1, Near_2, Mid_1, the lane, the Quiet Grove, the fold circles, Thornwood halls, and the ash margin.",
+        "daypart": "Day: denned, cap 0 visible. Dusk-night: the pack."
+      },
+      "law": "They hunt outward. The curse wants the hunter to hunt with it. A vine snare is the unspawned thorn_wolf seed, and it is not available. Turning the pack is q_s03_inward_howl.",
+      "missing_mesh": "Spawn nothing. Do not seat a fox, a dust wolf, or an ash wolf in this id."
+    },
+    {
+      "id": "faun_ash_wolf",
+      "display_name": "Catalogue Wolf",
+      "role": "predator",
+      "temperament": "pack_hunter",
+      "player_aggro": "only if the returned kill is disturbed",
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "faun_sunder_wolf",
+      "material": "ash coat on the pine-wolf rig. Ragged ears. Same chevron.",
+      "verbs": ["verb_fauna_lope", "verb_fauna_nip", "verb_fauna_howl"],
+      "stats_hooks": { "health": "table:faun_med_predator", "loot": ["hide_ash", "fang"] },
+      "bible_home": "Ruins",
+      "density": {
+        "alive_cap_fantasy_side": 4,
+        "where": "NE pad only, x ≥ 28 and outside the 56 m wall. Zero on the pad's west lane strip, zero inside the wall, zero in wardwood, zero in the fold.",
+        "ruins_weights": "unchanged"
+      },
+      "law": "They return to a kill and leave it. That is cataloguing, which the Ruins keepers already notice. Finishing the corpse is a conquest. Wearing a plate from it is the curse trying to be used. The plates themselves are hyb_ashfang, a separate row.",
+      "missing_mesh": "Spawn nothing. Ash is a material on the wolf rig, not a second skeleton and not a fox."
+    },
+    {
+      "id": "faun_dust_wolf",
+      "display_name": "Dome Wolf",
+      "role": "predator",
+      "temperament": "absent",
+      "player_aggro": false,
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "faun_sunder_wolf",
+      "material": "pale coat, taller ears, same chevron. Frontier row.",
+      "verbs": ["verb_fauna_lope", "verb_fauna_nip"],
+      "stats_hooks": { "health": "table:faun_med_predator", "loot": ["hide_dust"] },
+      "bible_home": "Frontier",
+      "density": {
+        "alive_cap_fantasy": 0,
+        "quest_cap": 0,
+        "where": "Frontier open range. The Frontier gate is opposite the Sundering gate. This coat does not ambient on the north shoulders or at Pinewood.",
+        "frontier_weights": "unchanged"
+      },
+      "law": "The Dome refuses shelter, so those packs use the wind. The Sundering is shelter. A pale coat on the verge is salt rime or resin on faun_sunder_wolf. q_s03_not_a_dome_wolf checks that and spawns no dome wolf.",
+      "missing_mesh": "In Fantasy, spawn nothing for this id. A mis-bind despawns. It does not get a quest leash."
+    },
+    {
+      "id": "faun_wardwood_boar",
+      "display_name": "Wardwood Boar",
+      "role": "prey",
+      "temperament": "territorial_if_cornered",
+      "player_aggro": false,
+      "topology": "quadruped",
+      "gait": "quad_charge",
+      "verbs": ["verb_fauna_root", "verb_fauna_charge", "verb_fauna_thrash"],
+      "stats_hooks": { "health": "table:faun_med_prey_tough", "loot": ["hide_boar", "tusk_short"] },
+      "bible_hostile": false,
+      "density": {
+        "alive_cap": 5,
+        "where": "Oak pockets, day, off the ward path, or a legal hill origin, never both. One may be herded onto the path only by q_fantasy_boar_off_path, which this slice does not retune. The cap of 5 includes those hill boar.",
+        "curse_tusk": "Hunters take the shoulder. A curse-marked tusk is not loot."
+      },
+      "missing_mesh": "Spawn nothing."
+    },
+    {
+      "id": "faun_cursefold_owl",
+      "display_name": "Cursefold Owl",
+      "role": "ambient_aerial",
+      "temperament": "perch",
+      "player_aggro": false,
+      "topology": "winged_biped",
+      "gait": "flyer_glide",
+      "verbs": ["verb_fauna_perch", "verb_fauna_stoop"],
+      "stats_hooks": { "health": "table:faun_small", "loot": ["feather_barred"] },
+      "density": {
+        "alive_cap": 3,
+        "where": "Night, curse-stones outside the basilisk circle and outside the Held Curse circle. Zero in the Quiet Grove. Zero on the north hills until cursefold_shrine is placed.",
+        "scream": "A scream means the fold already turned. It is not a prophecy and not a quest marker by itself."
+      },
+      "missing_mesh": "Spawn nothing. Do not use a crow or a finch."
+    },
+    {
+      "id": "faun_blackroot_elk",
+      "display_name": "Blackroot Elk",
+      "role": "prey",
+      "temperament": "herd",
+      "player_aggro": false,
+      "topology": "quadruped",
+      "gait": "quad_trot",
+      "verbs": ["verb_fauna_graze", "verb_fauna_bugle", "verb_fauna_antler_shove"],
+      "stats_hooks": { "health": "table:faun_large_prey", "loot": ["hide_elk", "antler_blackroot"] },
+      "density": {
+        "alive_cap_adults": 6,
+        "calf_cap": 0,
+        "where": "blackroot_road meadows at dawn, when that set is placed. Zero on approach hills. The calf stays inside q_fantasy_elk_calf and is not spawned by this slice.",
+        "antlers": "Shed bark like black root. The rack is a thicket, not a crown and not jewelry."
+      },
+      "missing_mesh": "Spawn nothing. Do not reuse the pinewood stag mesh."
+    },
+    {
+      "id": "faun_grove_finch",
+      "display_name": "Veil Finch",
+      "role": "ambient_aerial",
+      "temperament": "flock",
+      "player_aggro": false,
+      "topology": "winged_biped",
+      "gait": "flyer_hop",
+      "verbs": ["verb_fauna_hop", "verb_fauna_flit"],
+      "stats_hooks": { "health": "table:faun_critter", "loot": [] },
+      "material_on_fantasy": "pine dust. Pollen dust is the Tunya reading of the same id.",
+      "density": {
+        "alive_cap": 12,
+        "where": "Day, legal hill origins and the wardwood edge. Zero on Near_0, Near_1, Near_2, Mid_1, the lane, and the Quiet Grove. Tunya weights unchanged.",
+        "tunya_side": "Do not spawn sealies, goats, or herons on the NW pad to accompany them."
+      },
+      "missing_mesh": "Spawn nothing."
+    },
+    {
+      "id": "faun_pinewood_stag",
+      "display_name": "Pinewood Stag",
+      "role": "prey",
+      "temperament": "herd",
+      "player_aggro": false,
+      "topology": "quadruped",
+      "gait": "quad_trot",
+      "verbs": ["verb_fauna_graze", "verb_fauna_bolt", "verb_fauna_antler_shove"],
+      "stats_hooks": { "health": "table:faun_large_prey", "loot": ["hide_salt", "antler_pine"] },
+      "density": {
+        "alive_cap_added_by_this_slice": 0,
+        "where": "S01 cap of 5 on the salt-road verge. Fantasy reads the same animals from the grove side of the post. No second herd. No stag in the wildwood interior."
+      },
+      "missing_mesh": "Remains S01's rule."
+    }
+  ],
+  "mini_bosses": [
+    {
+      "id": "enc_fold_basilisk",
+      "name": "The Fold Basilisk",
+      "rank": "mini_boss",
+      "creature_ids": ["mon_sunder_basilisk"],
+      "count": 1,
+      "topology": "serpentine",
+      "gait": "serpent_slither",
+      "new_species": false,
+      "where": "Fold floor under the overlook, only when cursefold_shrine is placed. Overlook is scout-only, already q_fantasy_basilisk_scout.",
+      "schedule_owner": "volume",
+      "player_aggro": true,
+      "verbs": ["verb_mon_hood_flare", "verb_mon_strike", "verb_mon_constrict"],
+      "weak_point": "hood_root",
+      "stats_hooks": { "health": "table:mon_brute", "damage_profile": "pierce_poison", "loot": ["scale_basilisk", "fang_fold"], "remembrance": "item_rem_hood_scale" },
+      "law_tie": "The hood offers stillness. Stillness is the curse using the body. Move on the windup. Killing it is allowed. Becoming a statue is the loss. It does not add into enc_held_curse, and the Held Curse does not summon it. The scout quest stays a witness from the overlook and does not arm this circle.",
+      "audio_tell": "Dry rasp before the hood opens; a wet click on the strike frame.",
+      "missing_mesh": "Spawn nothing. No chicken-legged stand-in. No CX body."
+    },
+    {
+      "id": "enc_ashfang_seam",
+      "name": "The Ashfang Pair",
+      "rank": "mini_boss",
+      "creature_ids": ["hyb_ashfang"],
+      "count": 2,
+      "topology": "quadruped",
+      "gait": "quad_lope",
+      "skeleton": "faun_sunder_wolf",
+      "new_species": false,
+      "where": "Same ash stand as faun_ash_wolf: NE pad, x ≥ 28, outside the 56 m wall. Zero in wardwood and zero in the fold. Ambient cap outside the window is 0. The pair is the bible spawn of 1-2, not a third animal on top.",
+      "bible_hostile": false,
+      "player_aggro": "true only after board, scout, and sound have all fired, and only inside the seam circle",
+      "verbs": ["verb_mon_lunge", "verb_hyb_ashburst", "verb_fauna_nip"],
+      "hook": "lunge_ashburst",
+      "weak_point": "pauldron_seam",
+      "stats_hooks": { "health": "table:mon_skirmisher", "damage_profile": "slash_ash", "loot": ["ash_plate", "fang"] },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 7,
+        "close_hour": 10,
+        "every_nth_day": 2,
+        "label": "Ash seam morning, every second day"
+      },
+      "telegraph": {
+        "board": "Ward board draws two square shoulders and a returned kill. No plate is offered.",
+        "scout": "From the pad's east edge the chevrons read wolf. The pauldrons are the only extra mass.",
+        "sound": "A wolf growl with a ceramic tick before either lunge."
+      },
+      "law_tie": "The burst opens the shoulders and then leaves them bare. Catching the ash and wearing it is hostility turned into a tool. Break the seam on the tick. Leave the plates on the ground. Taking a plate fails the story of the fight with both bodies still up. This refuse does not grant the Held Curse refuse tag and does not unlock curse-fold rank 5.",
+      "audio_tell": "A wolf growl with a ceramic tick before the lunge.",
+      "missing_mesh": "Spawn nothing. Plates are two shoulder pieces on the wolf rig, not armor and not a new gait."
+    },
+    {
+      "id": "enc_cursebeak_lip",
+      "name": "The Lip Cursebeak",
+      "rank": "mini_boss",
+      "creature_ids": ["hyb_cursebeak"],
+      "count": 1,
+      "topology": "winged_quadruped",
+      "gait": "quad_bound_fly",
+      "skeleton": "mon_sunder_griffin",
+      "new_species": false,
+      "where": "Fold lip, outside the Held Curse circle and outside the basilisk floor. Only when cursefold_shrine is placed. Ambient cap outside the window is 0.",
+      "bible_hostile": false,
+      "player_aggro": "true only after board, scout, and sound, and only on the lip",
+      "verbs": ["verb_mon_dive", "verb_hyb_hood_peck"],
+      "hook": "petrify_peck",
+      "weak_point": "hood_hinge",
+      "stats_hooks": { "health": "table:mon_elite", "damage_profile": "pierce_petrify_short", "loot": ["hood_scale", "pinion"] },
+      "schedule": {
+        "kind": "hub_hour_window",
+        "open_hour": 15,
+        "close_hour": 17,
+        "every_nth_day": 3,
+        "label": "Fold lip, mid-afternoon, every third day",
+        "exclusion": "Does not arm on a day enc_held_curse is in its dusk window, and never inside 19–22."
+      },
+      "telegraph": {
+        "board": "Ward board draws a griffin with one diamond behind the beak.",
+        "scout": "From the lip the grounded read is still a big cat. The cowl is the only extra.",
+        "sound": "Hawk scream, then the basilisk rasp, then the peck if you stayed."
+      },
+      "law_tie": "Hood flare, then one peck. It is the basilisk's offer on a griffin body, and it is the same offer the crest will make larger. Answer on the flare by leaving the line or by folding inward. An outward curse-fold that executes it fails the story the way the boss fails, and it does not count as the refuse tag. Gaze cones stay off this row.",
+      "audio_tell": "Hawk scream, then the basilisk rasp, then the peck.",
+      "missing_mesh": "Spawn nothing. Do not paste wings on a horse. Do not use the milepost griffin as this body."
+    }
+  ],
+  "boss": {
+    "id": "mon_boss_held_curse",
+    "encounter_id": "enc_held_curse",
+    "display_name": "The Held Curse",
+    "rank": "boss",
+    "count": 1,
+    "unique": true,
+    "topology": "serpentine",
+    "gait": "serpent_rear",
+    "where": "Fold floor when cursefold_shrine is placed. Overlook is scout-only. The north hills are not the floor.",
+    "schedule_owner": "volume",
+    "schedule_label": "Sundering dusk, every third day, hours 19–22",
+    "verbs": ["verb_boss_crest_warn", "verb_boss_inward_breath", "verb_boss_tail_sweep", "verb_boss_offer_the_curse"],
+    "weak_points": ["crest_root", "bark_plates"],
+    "stats_hooks": {
+      "health": "table:boss_region",
+      "damage_profile": "curse_inward",
+      "loot": ["crest_shard"],
+      "remembrance": "item_rem_crest_shard"
+    },
+    "boss_rule_already_on_row": "It wants the player to win with the curse. Refusing the offer staggers it. Taking the offer ends the fight as a loss even if HP remains.",
+    "enrage_already_on_row": "If the player uses curse-fold at rank 5 without the refuse tag, the breath turns outward and the fight fails as a story.",
+    "deepened_ties": [
+      "The crest is the only vertical. The body is a hill of bark and old iron. Gold in the cracks opens and closes. That gold is the same gold q_fantasy_quench rejects in a blade. This slice does not add a second gold rule.",
+      "Breath stays inward while the offer is refused. Outward breath means the curse was used to win.",
+      "The fold basilisk practices the offer as stillness. The cursebeak practices it as one peck. The ashfang pair practices it as a plate you could wear. None of those refuses is the boss refuse tag. Rank 5 of skill_steel_curse_fold still unlocks only on boss:held_curse_refused, which q_fantasy_held_offer already witnesses. This slice does not replace that quest and does not start the raid from the lip.",
+      "The wyrm is not a mount. Ride code is absent, and this row is not a mount row.",
+      "The wyrm is not the Obsidian Crown's dragon. Lore names King Aldous Ferrowyn IV on the hollow throne. The faction sheet names Queen Morwen and an heir born without scales. Both records stand. Neither record puts this body in the drake aerie. The aerie's mana_drake seed stays unspawned.",
+      "Thorne's line is the law in a sentence: he carries a curse he could turn outward and win with, and he refuses, every day. The fight is that sentence with a crest.",
+      "Adds: none. No basilisk, no cursebeak, no wolves in the circle."
+    ],
+    "missing_mesh": "Spawn nothing. No western dragon, no wings, no Quaternius wyrm, no CX body."
+  },
+  "unspawned_seeds": [
+    {
+      "id": "thorn_wolf",
+      "canon_topology": "quadruped",
+      "why_quiet": "Vine-trap wolf with a death burst. No faun_ or mon_ id. It is not faun_sunder_wolf. q_s03_inward_howl names the snare as the temptation and does not spawn it."
+    },
+    {
+      "id": "mana_drake",
+      "canon_topology": "winged_quadruped",
+      "why_quiet": "Small spellfire dragon. No bible id. It is not mon_sunder_griffin and not mon_boss_held_curse. The drake aerie stays a district name."
+    },
+    {
+      "id": "bone_sentinel",
+      "canon_topology": "humanoid",
+      "why_quiet": "Undead warrior. No bible id. A humanoid mob would have to be CX, and this slice spawns no humanoids. The bone orchard stays a district name. The Lit Veil's hunt is not given a skeleton prop."
+    },
+    {
+      "id": "gloom_stalker",
+      "canon_topology": "amorphous",
+      "why_quiet": "Fear-body. No bible id. The Quiet Grove's silence is an absence, not this stalker."
+    },
+    {
+      "id": "crystal_elemental",
+      "canon_topology": "humanoid",
+      "why_quiet": "Living crystal listed as humanoid. No bible id. It does not become a CX person and it does not become a golem stand-in."
+    }
+  ],
+  "quests": [
+    {
+      "id": "q_s03_ash_return",
+      "title": "Ash Seam — Leave the Kill",
+      "world_id": "Fantasy",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_sunder_guard",
+      "giver_post": "NE ash shoulder, one of the existing ward budget of 5, not a sixth guard",
+      "objectives": [
+        {
+          "id": "obj_q_s03_ash_return_1",
+          "verb": "reach",
+          "target": "ne_ash_shoulder",
+          "count": 1,
+          "text": "Stand on the east margin of the NE pad, off the walk and off the lane."
+        },
+        {
+          "id": "obj_q_s03_ash_return_2",
+          "verb": "witness",
+          "target": "faun_ash_wolf",
+          "count": 1,
+          "text": "Watch the catalogue wolves return to a kill and leave it. Do not finish the corpse. Do not take a plate. Do not swing."
+        },
+        {
+          "id": "obj_q_s03_ash_return_3",
+          "verb": "talk",
+          "target": "npc_role_sunder_guard",
+          "count": 1,
+          "text": "Tell the ward what you left. A fight here fails the errand."
+        }
+      ],
+      "fail_if": ["player_damages_faun_ash_wolf", "player_loots_ash_plate", "player_enters_enc_ashfang_seam_circle_during_quest"],
+      "rewards": { "xp": 50, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "wildwood_circle", "delta": 1 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_sunder_guard", "requires_all_objectives": true },
+      "does_not_replace": ["q_ruins_crow_catalogue"],
+      "backstory_id": "story_q_s03_ash_return"
+    },
+    {
+      "id": "q_s03_not_a_dome_wolf",
+      "title": "Verge — The Pale Coat Is Salt",
+      "world_id": "Fantasy",
+      "giver_npc_id": null,
+      "giver_role_id": "npc_role_sunder_guard",
+      "giver_post": "Pine verge shoulder, a second of the same budget of 5, not a new role",
+      "objectives": [
+        {
+          "id": "obj_q_s03_not_a_dome_wolf_1",
+          "verb": "reach",
+          "target": "pinewood_seam",
+          "count": 1,
+          "text": "Go to the Fantasy side of the Pinewood post. Read the name Pinewood Crossing. Do not enter the 42 m Court."
+        },
+        {
+          "id": "obj_q_s03_not_a_dome_wolf_2",
+          "verb": "witness",
+          "target": "faun_sunder_wolf",
+          "count": 1,
+          "text": "Find the pale coat. It is resin or salt rime on a Sundering wolf: dull amber eye, pine chevron. faun_dust_wolf does not spawn for this step."
+        },
+        {
+          "id": "obj_q_s03_not_a_dome_wolf_3",
+          "verb": "talk",
+          "target": "npc_role_sunder_guard",
+          "count": 1,
+          "text": "Report a pine wolf. Do not file a Frontier sighting."
+        }
+      ],
+      "fail_if": ["spawner_emits_faun_dust_wolf", "player_kites_any_beast_inside_42m"],
+      "misbind": "If faun_dust_wolf appears in Fantasy, despawn it and fail the objective open. There is no escort back to the Frontier in this quest.",
+      "rewards": { "xp": 40, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "wildwood_circle", "delta": 1 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": null, "role_id": "npc_role_sunder_guard", "requires_all_objectives": true },
+      "does_not_replace": ["q_hub_pinewood_milepost"],
+      "backstory_id": "story_q_s03_not_a_dome_wolf"
+    },
+    {
+      "id": "q_s03_quiet_count",
+      "title": "Quiet Grove — Count the Absence",
+      "world_id": "Fantasy",
+      "giver_npc_id": "thorne",
+      "giver_canon_sheet": "thorne_blackroot",
+      "giver_role_id": null,
+      "objectives": [
+        {
+          "id": "obj_q_s03_quiet_count_1",
+          "verb": "reach",
+          "target": "quiet_grove",
+          "count": 1,
+          "text": "Enter the Quiet Grove with Thorne's leave. If the grove has no placed transform, the errand waits. Do not move it onto the north hills."
+        },
+        {
+          "id": "obj_q_s03_quiet_count_2",
+          "verb": "witness",
+          "target": "quiet_grove_absence",
+          "count": 3,
+          "text": "Record three absences: finch, cursefold owl, blackroot elk. The trees are still alive. Do not call anything back. Do not place a carcass."
+        },
+        {
+          "id": "obj_q_s03_quiet_count_3",
+          "verb": "talk",
+          "target": "thorne",
+          "count": 1,
+          "text": "Give him the count. He already walks this ground once a week."
+        }
+      ],
+      "fail_if": ["any_fauna_spawned_inside_quiet_grove", "player_uses_a_summon"],
+      "rewards": { "xp": 60, "coin": 0, "items": [], "skill_ids": [] },
+      "faction_delta": [{ "faction_id": "wildwood_circle", "delta": 2 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": "thorne", "requires_all_objectives": true },
+      "does_not_replace": ["q_fantasy_elk_calf", "q_fantasy_held_offer"],
+      "backstory_id": "story_q_s03_quiet_count"
+    },
+    {
+      "id": "q_s03_inward_howl",
+      "title": "Wardwood — Turn the Pack Inward",
+      "world_id": "Fantasy",
+      "giver_npc_id": "velora_mossheart",
+      "giver_role_id": null,
+      "objectives": [
+        {
+          "id": "obj_q_s03_inward_howl_1",
+          "verb": "reach",
+          "target": "wardwood_off_path",
+          "count": 1,
+          "text": "Find the pack off the ward path, on a boar. This is not the guard's path-clearing errand."
+        },
+        {
+          "id": "obj_q_s03_inward_howl_2",
+          "verb": "use_or_hail",
+          "target": "faun_sunder_wolf",
+          "count": 1,
+          "text": "Turn your own rush inward. A ward cut you already know, or a hail, or curse-fold paid in poise. The vine snare is not a tool you can place. The pack howls and leaves. The boar lives."
+        },
+        {
+          "id": "obj_q_s03_inward_howl_3",
+          "verb": "talk",
+          "target": "velora_mossheart",
+          "count": 1,
+          "text": "Tell Velora the pack left and you did not become the hunt."
+        }
+      ],
+      "fail_if": ["any_wolf_killed", "boar_killed", "thorn_wolf_spawned", "vine_snare_placed"],
+      "rewards": { "xp": 70, "coin": 0, "items": [], "skill_ids": [] },
+      "skill_note": "skill_steel_ward_cut may already be known from q_fantasy_boar_off_path. This quest does not grant it again. It does not grant skill_steel_curse_fold; q_fantasy_held_offer owns that grant.",
+      "faction_delta": [{ "faction_id": "wildwood_circle", "delta": 2 }],
+      "prerequisites": [],
+      "turn_in": { "npc_id": "velora_mossheart", "requires_all_objectives": true },
+      "does_not_replace": ["q_fantasy_boar_off_path"],
+      "hidden_truth_withheld": "lore_root_curse names an apprentice Thorne loved. Velora's sheet suspects that person lives. This quest does not say so.",
+      "backstory_id": "story_q_s03_inward_howl"
+    }
+  ]
+}

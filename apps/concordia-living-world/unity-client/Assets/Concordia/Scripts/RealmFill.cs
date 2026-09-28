@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Concordia.Settlement;
 
 namespace Concordia // keep-spawn-assign
 {
@@ -9,7 +10,7 @@ namespace Concordia // keep-spawn-assign
     /// </summary>
     public static class RealmFill
     {
-        public static void Populate(Transform root, WorldId id)
+        public static void Populate(Transform root, WorldId id, bool includePeople = true)
         {
             var w = Canon.Get(id);
             if (id != WorldId.Hub) DressKit(root, w);
@@ -17,12 +18,67 @@ namespace Concordia // keep-spawn-assign
             Kingdoms(root, w);
             if (id != WorldId.Hub) Roads(root, w);
             Lore(root, w);
-            People(root, w);
+            // SYNC People banned — always PeopleStaged via WorldStreamManager.
+            if (includePeople)
+            {
+                UnityEngine.Debug.LogWarning("[Concordia] RealmFill.Populate people sync blocked — enqueue PeopleStaged");
+                var mgr = WorldStreamManager.Ensure();
+                var cell = StreamCellId.ForWorld(id, StreamCellKind.Settlement);
+                var host = ContinentStream.Live;
+                System.Collections.IEnumerator Run()
+                {
+                    yield return PeopleStaged(root, id);
+                    mgr.MarkResident(cell, StreamLodBand.Full);
+                }
+                if (host) host.StartCoroutine(Run());
+                else
+                {
+                    var runner = root.gameObject.GetComponent<StreamSeedRunner>()
+                        ?? root.gameObject.AddComponent<StreamSeedRunner>();
+                    runner.StartCoroutine(Run());
+                }
+                mgr.Enqueue(cell, StreamLodBand.Full, 30, "realm-people-" + id, () => true);
+            }
+            else
+                UnityEngine.Debug.Log("[Concordia] RealmFill: people deferred for staged bind on " + id);
             Quests(root, w);
             if (id != WorldId.Hub)
             {
                 Beasts(root, w);
                 DungeonHold.Build(root, w);
+            }
+            else
+            {
+                HubBirds(root, w);
+            }
+        }
+
+        /// <summary>
+        /// Playable Alive Slice rank 3: ambient flock, Hub only (Beasts() is
+        /// deliberately skipped for Hub — no monsters in the Flower Law court).
+        /// This is the live caller CreatureCompiler.PickBird() was missing —
+        /// WorldBuilder.SpawnFauna's identical Hub branch is orphaned code, not
+        /// on the ContinentStream/RealmFill boot path. Let PickBird() resolve
+        /// the stem internally (it has the real "bird"/"Eagle" fallback); do not
+        /// gate on DressVocab.Bird() up front, or this silently no-ops again.
+        /// </summary>
+        static void HubBirds(Transform root, WorldDef w)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                var go = CreatureCompiler.Compile(root, new CreatureCard
+                {
+                    id = "hub-flock-" + i,
+                    speciesId = "",
+                    topology = "winged_biped",
+                    generation = 0,
+                    fly = true,
+                    lifestyle = "omnivore",
+                }, Vector3.zero, w);
+                if (!go) break;
+                var orbit = go.GetComponent<FlockOrbit>() ?? go.AddComponent<FlockOrbit>();
+                orbit.radius = 10f + (i % 5) * 3.2f;
+                orbit.height = 6.5f + (i % 4) * 1.4f;
             }
         }
 
@@ -115,21 +171,25 @@ namespace Concordia // keep-spawn-assign
         static void Factions(Transform root, WorldDef w)
         {
             var facs = WorldBook.Factions(w.id);
+            float rad = w.id == WorldId.Hub ? 32f : 24f;
             for (int i = 0; i < facs.Length; i++)
             {
                 var f = facs[i];
                 float a = i / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
-                var p = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
+                var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 Color.RGBToHSV(w.sun, out var hh, out var ss, out var vv);
                 var col = w.sun;
                 if (f.visual != null && !string.IsNullOrEmpty(f.visual.primary_color))
                     ColorUtility.TryParseHtmlString(f.visual.primary_color, out col);
-                var tent = w.id == WorldId.Cyber ? "corridor_end"
-                    : w.id == WorldId.Crime ? "building-type-c"
-                    : w.id == WorldId.Fantasy ? "windmill"
-                    : "tent_detailedOpen";
-                FreePacks.Spawn(tent, root, p, -a * Mathf.Rad2Deg, w.id == WorldId.Fantasy ? 6f : 3.4f);
-                var banner = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 3.2f + Vector3.right * 0.01f,
+                if (w.id != WorldId.Hub)
+                {
+                    var tent = w.id == WorldId.Cyber ? "corridor_end"
+                        : w.id == WorldId.Crime ? "building-type-c"
+                        : w.id == WorldId.Fantasy ? "windmill"
+                        : "tent_detailedOpen";
+                    FreePacks.Spawn(tent, root, p, -a * Mathf.Rad2Deg, w.id == WorldId.Fantasy ? 6f : 3.4f);
+                }
+                var banner = HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 1.7f + Vector3.right * 0.01f,
                     new Vector3(0.12f, 3.4f, 0.12f), HubLook.Lit(col, 0.2f, 0.3f), "FactionPole_" + f.id);
                 var cloth = HubLook.Prim(root, PrimitiveType.Quad, p + new Vector3(Mathf.Cos(a + 0.2f), 2.6f, Mathf.Sin(a + 0.2f)) * 0.8f,
                     new Vector3(1.6f, 2.2f, 1f), HubLook.Lit(col, 0.05f, 0.25f), "FactionBanner_" + f.id, false);
@@ -174,6 +234,9 @@ namespace Concordia // keep-spawn-assign
 
         static void Lore(Transform root, WorldDef w)
         {
+            // The Hub branches below (arena-avoidance radius/height) were always authored
+            // for this world — this early-return was the only thing keeping the Court's own
+            // 16 history beats from ever becoming LoreStones.
             var lore = WorldBook.Lore(w.id);
             if (lore.history == null) return;
             int i = 0;
@@ -202,74 +265,110 @@ namespace Concordia // keep-spawn-assign
 
         static void People(Transform root, WorldDef w)
         {
+            // Same story as Lore(): the IsHubGuest() de-dupe below and the InArena() radius
+            // guard already exist specifically to make this safe for Hub — restoring it
+            // gives the Court its authored concordia-hub/npcs.json people, skipping
+            // anyone already placed by DressGuests/DressPillars.
             var people = WorldBook.People(w.id);
             var facs = WorldBook.Factions(w.id);
             int n = 0;
+            // Authored lore NPCs are the product — place every person (cap is a safety valve only).
+            int populationCap = w.id == WorldId.Hub ? ConcordiaHost.CourtPeopleCap : ConcordiaHost.RealmPeopleCap;
+            int cap = people != null ? Mathf.Min(people.Length, populationCap) : 0;
             foreach (var person in people)
             {
+                if (n >= cap) break;
                 if (person == null || string.IsNullOrEmpty(person.name)) continue;
                 if (w.id == WorldId.Hub && IsHubGuest(person.name)) continue;
-                Vector3 p;
-                var facI = IndexOfFaction(facs, person.faction_id);
-                var city = w.id == WorldId.Hub ? null : CityAtlas.ForPerson(w.id, person);
-                if (city != null)
-                {
-                    var camp = new Vector3(city.x, 0f, city.z);
-                    var inward = camp.sqrMagnitude > 0.2f ? camp.normalized : Vector3.forward;
-                    var side = Vector3.Cross(Vector3.up, inward);
-                    p = camp + side * ((n % 5) - 2) * 1.7f + inward * 3.1f;
-                }
-                else
-                {
-                    if (facI >= 0)
-                    {
-                        float a = facI / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
-                        var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
-                        var side = Vector3.Cross(Vector3.up, camp.normalized);
-                        p = camp + side * ((n % 5) - 2) * 1.6f + camp.normalized * 2.4f;
-                    }
-                    else
-                    {
-                        float a = n * 0.48f + 0.8f;
-                        float rad = w.id == WorldId.Hub ? 21f : 7.5f;
-                        p = new Vector3(Mathf.Cos(a) * rad, 0f, (w.id == WorldId.Hub ? 0f : 4f) + Mathf.Sin(a) * rad);
-                        if (w.id == WorldId.Hub && Canon.InArena(p)) continue;
-                    }
-                }
-                var look = Appearance.Random(person.name.GetHashCode());
-                look.displayName = person.name;
-                look.outfit = n % 6;
-                var job = JobFor(person, n);
-                var wander = job == NpcLife.Job.Wander;
-                var go = ModularPerson.SpawnNpc(root, p, 180f, look, wander, 5f);
-                go.name = person.name;
-                var life = go.AddComponent<NpcLife>();
-                life.job = job;
-                var guest = go.AddComponent<GuestNpc>();
-                var line = WorldBook.LineFor(person);
-                if (person.quest_giver && person.quest_hooks != null && person.quest_hooks.Length > 0)
-                    line += "\nQuest: " + string.Join(", ", person.quest_hooks);
-                guest.def = new GuestDef
-                {
-                    id = person.id,
-                    name = person.name,
-                    title = string.IsNullOrEmpty(person.title) ? person.archetype : person.title,
-                    line = line,
-                    x = p.x,
-                    z = p.z
-                };
-                guest.personId = person.id;
-                guest.questHooks = person.quest_hooks;
-                var personGo = go.GetComponent<ModularPerson>();
-                personGo?.BindStyle(Canon.PickFight(person.faction_id, person.archetype, w.id));
-                var weap = PersonKit.WeaponStem(facI >= 0 ? facs[facI] : null, n);
-                if (!string.IsNullOrEmpty(weap)) CharacterGear.Attach(go, weap, true, 0.95f);
-                if (facI >= 0 && facs[facI].visual != null && !string.IsNullOrEmpty(facs[facI].visual.primary_color)
-                    && ColorUtility.TryParseHtmlString(facs[facI].visual.primary_color, out var sash))
-                    ModularPerson.StampSash(go, sash);
-                StampGiverBeacon(go, w.id, person);
+                if (!TryPersonSeat(w, person, facs, n, out var p, out var facI)) continue;
+                PlaceLorePerson(root, w, person, facs, facI, p, n);
                 n++;
             }
+        }
+
+        /// <summary>LeanPlay: one ModularPerson bind per frame (Hub book NPCs not already guests).</summary>
+        public static System.Collections.IEnumerator PeopleStaged(Transform root, WorldId id)
+        {
+            var w = Canon.Get(id);
+            var people = WorldBook.People(w.id);
+            var facs = WorldBook.Factions(w.id);
+            int n = 0;
+            int populationCap = w.id == WorldId.Hub ? ConcordiaHost.CourtPeopleCap : ConcordiaHost.RealmPeopleCap;
+            int cap = people != null ? Mathf.Min(people.Length, populationCap) : 0;
+            UnityEngine.Debug.Log("[Concordia] PeopleStaged begin cap=" + cap);
+            if (people == null) yield break;
+            foreach (var person in people)
+            {
+                if (n >= cap) break;
+                if (person == null || string.IsNullOrEmpty(person.name)) continue;
+                if (w.id == WorldId.Hub && IsHubGuest(person.name)) continue;
+                if (!TryPersonSeat(w, person, facs, n, out var p, out var facI)) continue;
+                PlaceLorePerson(root, w, person, facs, facI, p, n);
+                n++;
+                yield return null;
+            }
+            UnityEngine.Debug.Log("[Concordia] LeanPlay: PeopleStaged done placed=" + n);
+        }
+
+        static bool TryPersonSeat(WorldDef w, WorldBook.Person person, WorldBook.Faction[] facs, int n,
+                                  out Vector3 p, out int facI)
+        {
+            facI = IndexOfFaction(facs, person.faction_id);
+            var city = CityAtlas.ForPerson(w.id, person);
+            if (city != null)
+            {
+                var camp = new Vector3(city.x, 0f, city.z);
+                var inward = camp.sqrMagnitude > 0.2f ? camp.normalized : Vector3.forward;
+                var side = Vector3.Cross(Vector3.up, inward);
+                p = camp + side * ((n % 5) - 2) * 1.7f + inward * 3.1f;
+                return true;
+            }
+            if (facI >= 0)
+            {
+                float a = facI / Mathf.Max(1f, facs.Length) * Mathf.PI * 2f + 0.35f;
+                var camp = new Vector3(Mathf.Cos(a) * 24f, 0f, Mathf.Sin(a) * 24f);
+                var side = Vector3.Cross(Vector3.up, camp.normalized);
+                p = camp + side * ((n % 5) - 2) * 1.6f + camp.normalized * 2.4f;
+                return true;
+            }
+            float ang = n * 0.48f + 0.8f;
+            float rad = w.id == WorldId.Hub ? 21f : 7.5f;
+            p = new Vector3(Mathf.Cos(ang) * rad, 0f, (w.id == WorldId.Hub ? 0f : 4f) + Mathf.Sin(ang) * rad);
+            if (w.id == WorldId.Hub && Canon.InArena(p)) return false;
+            return true;
+        }
+
+        static void PlaceLorePerson(Transform root, WorldDef w, WorldBook.Person person,
+                                    WorldBook.Faction[] facs, int facI, Vector3 p, int n)
+        {
+            var faction = facI >= 0 ? facs[facI] : null;
+            var kit = LoreNpcBinder.Build(w.id, person, faction, n);
+            var job = JobFor(person, n);
+            var wander = job == NpcLife.Job.Wander;
+            var go = ModularPerson.SpawnNpc(root, p, 180f, kit.Look, wander, 5f);
+            go.name = person.name;
+            var life = go.AddComponent<NpcLife>();
+            life.job = job;
+            var guest = go.AddComponent<GuestNpc>();
+            var line = WorldBook.LineFor(person);
+            if (person.quest_giver && person.quest_hooks != null && person.quest_hooks.Length > 0)
+                line += "\nQuest: " + string.Join(", ", person.quest_hooks);
+            line += "\n" + kit.Sparks + " sparks · " + (kit.PrimaryWeapon ?? "unarmed");
+            guest.def = new GuestDef
+            {
+                id = person.id,
+                name = person.name,
+                title = string.IsNullOrEmpty(person.title) ? person.archetype : person.title,
+                line = line,
+                x = p.x,
+                z = p.z
+            };
+            guest.personId = person.id;
+            guest.questHooks = person.quest_hooks;
+            var personGo = go.GetComponent<ModularPerson>();
+            personGo?.BindStyle(Canon.PickFight(person.faction_id, person.archetype, w.id));
+            LoreNpcBinder.Bind(go, w.id, person, faction, n);
+            StampGiverBeacon(go, w.id, person);
         }
 
         static void Quests(Transform root, WorldDef w)
@@ -280,16 +379,18 @@ namespace Concordia // keep-spawn-assign
                 var q = quests[i];
                 if (q == null || string.IsNullOrEmpty(q.title)) continue;
                 float a = i * 0.7f - 0.4f;
-                float rad = w.id == WorldId.Hub ? 19f : 5.5f;
+                float rad = w.id == WorldId.Hub ? 32f : 5.5f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, (w.id == WorldId.Hub ? 0f : 1.5f) + Mathf.Sin(a) * rad);
                 if (w.id == WorldId.Hub && Canon.InArena(p)) continue;
                 var board = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 board.name = "Quest_" + q.id;
                 board.transform.SetParent(root, false);
-                board.transform.position = p + Vector3.up * 1.35f;
+                board.transform.position = p + Vector3.up * 0.8f;
                 board.transform.localScale = new Vector3(1.1f, 1.6f, 0.12f);
                 var r = board.GetComponent<Renderer>();
-                if (r) r.material = HubLook.Lit(new Color(0.42f, 0.28f, 0.14f), 0.05f, 0.22f);
+                if (r) r.material = w.id == WorldId.Hub
+                    ? HubLook.WetStone("cobblestone_square", 2.2f)
+                    : HubLook.Lit(new Color(0.42f, 0.28f, 0.14f), 0.05f, 0.22f);
                 var ls = board.AddComponent<LoreStone>();
                 ls.title = "Quest · " + q.title;
                 ls.text = WorldBook.QuestText(q);
@@ -316,9 +417,13 @@ namespace Concordia // keep-spawn-assign
                         var go = EvoSpawner.SpawnNamed(root, crit, p, w);
                         if (go)
                         {
-                            var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
-                            h.damage = 8f + c;
-                            h.aggro = 14f + pack * 3f;
+                            var genome = go.GetComponent<CreatureGenome>();
+                            if (genome != null && genome.predator)
+                            {
+                                var h = go.GetComponent<Hostile>() ?? go.AddComponent<Hostile>();
+                                h.damage = 8f + c;
+                                h.aggro = 14f + pack * 3f;
+                            }
                         }
                         c++;
                     }
@@ -331,7 +436,7 @@ namespace Concordia // keep-spawn-assign
                     var a = i * 2.1f;
                     var p = new Vector3(Mathf.Cos(a) * 16f, 0, 8f + Mathf.Sin(a) * 12f);
                     var go = EvoSpawner.Spawn(root, w.fauna[i], p, w);
-                    if (go) go.AddComponent<Hostile>();
+                    if (go && CreatureCompiler.IsPredatorKind(w.fauna[i])) go.AddComponent<Hostile>();
                 }
             }
         }
@@ -502,9 +607,14 @@ namespace Concordia // keep-spawn-assign
     /// </summary>
     public static class CityTown
     {
+        /// Local-space radius around a city's hold that the old fixed dressing already
+        /// occupies (PlazaPad's 22x22 pad diagonal, EdgeFlora's outer ring at 15.4,
+        /// FortRim's posts at 12.6). SettlementCompiler's district blocks are kept clear of
+        /// this disc so the real plaza and the compiled town never overlap.
+        public const float PlazaKeepOutRadius = 17f;
+
         public static void BuildAll(Transform root, WorldDef w)
         {
-            if (w.id == WorldId.Hub) return;
             var cities = CityAtlas.For(w.id);
             for (int i = 0; i < cities.Length; i++)
                 Build(root, w, cities[i], i);
@@ -531,43 +641,86 @@ namespace Concordia // keep-spawn-assign
             hold.position = p;
             hold.rotation = Quaternion.Euler(0f, yaw, 0f);
 
-            PlazaPad(hold, w);
-            CrossStreets(hold, w, yaw);
-            Sidewalks(hold);
+            var isStub = string.Equals(city.status, "stub", System.StringComparison.OrdinalIgnoreCase);
+            var def = FindSettlementDef(w.id, city.id);
 
-            var kit = DressVocab.Kit(w.id);
-            var plans = Plans(w.id);
-            Vector3[] slots =
+            // Approach sites (Pinewood / Broken Spire / Grove / Tavern): medium-ring landmark
+            // (lean shell + plaque + lantern/sign) — not full STREET→LOT streetscape.
+            if (isStub)
             {
-                new Vector3(-6.2f, 0f, 4.2f),
-                new Vector3(6.2f, 0f, 4.4f),
-                new Vector3(-7.4f, 0f, -3.0f),
-                new Vector3(7.2f, 0f, -3.2f),
-                new Vector3(0f, 0f, 8.4f),
-                new Vector3(0f, 0f, -8.8f),
-                new Vector3(-10.2f, 0f, 0.4f),
-                new Vector3(10.2f, 0f, 0.2f),
-                new Vector3(-5.4f, 0f, 9.2f),
-                new Vector3(5.6f, 0f, -9.4f)
-            };
-            int interiors = DressVocab.PlayableRooms(i);
-            bool fake = DressVocab.WantsFakeWindows(i);
-            for (int s = 0; s < slots.Length; s++)
-            {
-                var local = slots[s];
-                var world = hold.TransformPoint(local);
-                var stem = kit[s % kit.Length];
-                float h = stem.Contains("skyscraper") ? 14f : stem.Contains("tent") ? 3.4f : 6.2f;
-                var go = FreePacks.Spawn(stem, hold, world, yaw + (s % 2 == 0 ? 0f : 180f), h, required: false);
-                if (go && s < interiors) BuildingInterior.Open(go, plans[s % plans.Length], world);
-                else if (go && fake && s < 4) BuildingInterior.FakeWindows(go);
+                // Keep outside Court 40m — authored stub coords already sit past the ring.
+                StampStubMarker(hold, w, city);
+                int landmarkN = 0;
+                try
+                {
+                    landmarkN = SettlementCompiler.EmitApproachLandmark(hold, w.id, city.id);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning("Concordia CityTown: approach landmark failed for '" + city.id
+                                     + "': " + e.Message);
+                }
+                StampCountryProfile(hold, w.id, city);
+                var stubBeacon = hold.gameObject.AddComponent<QuestBeacon>();
+                stubBeacon.tokens = new[] { city.id, city.name, RealmFill.Slug(city.name) };
+                stubBeacon.radius = 12f;
+                var stubPlaque = HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 1.1f, -3.4f),
+                    new Vector3(1.0f, 1.5f, 0.14f), HubLook.Lit(w.sun, 0.25f, 0.4f), "Plaque");
+                var stubStone = stubPlaque.AddComponent<LoreStone>();
+                stubStone.title = city.name;
+                stubStone.text = city.description ?? "";
+                Debug.Log("[Concordia] CityTown approach landmark " + city.id
+                          + " mass=" + landmarkN + " (medium ring)");
+                return;
             }
+
+            // Authoritative geography cities (district lists from Canon) compile real streets —
+            // PlazaPad / CrossStreets slabs are LeanPlay leftovers, not final city geography.
+            var usesCompiledCore = def != null && def.districts != null && def.districts.Length > 0;
+            if (!usesCompiledCore)
+            {
+                PlazaPad(hold, w);
+                CrossStreets(hold, w, yaw);
+                Sidewalks(hold);
+            }
+            else
+            {
+                // Gate approach pad only — readable entrance without a greybox town core.
+                GateApproach(hold, w);
+            }
+
+            if (def != null)
+            {
+                var centre = new Vector2(p.x, p.z);
+                // Hub Court (0–~40m) must stay clear of SettlementCompiler district blocks.
+                System.Func<Vector2, bool> keepOut = null;
+                if (w.id == WorldId.Hub)
+                    keepOut = pt => Vector2.Distance(pt, Vector2.zero) < 40f || Canon.InArena(new Vector3(pt.x, 0f, pt.y));
+                else if (!usesCompiledCore)
+                    keepOut = pt => Vector2.Distance(pt, centre) < PlazaKeepOutRadius;
+                _ = CompileCitySafely(root, w.id, def, keepOut, city.id);
+                StampCountryProfile(hold, w.id, city);
+            }
+            else
+            {
+                // WorldGeography derives one SettlementDef per CityAtlas entry
+                // (legacyCityId = city.id) — a miss means the two caches drifted (a
+                // CityAtlas.Invalidate() without a matching WorldGeography rebuild), not
+                // that the city is genuinely unsettled. Leave the plaza standing rather
+                // than silently show nothing.
+                Debug.LogWarning("Concordia CityTown: no SettlementDef for '" + city.id + "' — town stays plaza-only this build.");
+            }
+
+            // Playable interiors were carved into the old fixed slot buildings by index.
+            // The compiler's generated facades don't have that hook yet — real room-carving
+            // inside a procedural shell is a follow-up, not something to fake here. The
+            // fake-window LOD glow (DressVocab.WantsFakeWindows) is in the same boat.
 
             StreetDress(hold, w, yaw);
             EdgeFlora(hold, w, yaw);
             FortRim(hold, w, yaw);
             Outskirts(hold, w, i);
-            AmbientWalkers(hold, w, i);
+            AmbientWalkers(hold, w, i, def);
             var beacon = hold.gameObject.AddComponent<QuestBeacon>();
             var tokens = new List<string> { city.id, city.name, RealmFill.Slug(city.name) };
             if (city.districts != null)
@@ -597,6 +750,165 @@ namespace Concordia // keep-spawn-assign
             box.isTrigger = true;
         }
 
+        static void StampStubMarker(Transform hold, WorldDef w, WorldBook.CityDef city)
+        {
+            var mat = HubLook.Pbr(
+                WorldVisualProfileCatalog.SurfaceStem(w.id, "settlement") ?? "packed_earth",
+                Color.Lerp(w.ground, new Color(0.32f, 0.28f, 0.24f), 0.35f), 0.04f, 0.2f, 8f);
+            HubLook.Prim(hold, PrimitiveType.Cylinder, new Vector3(0f, 0.04f, 0f),
+                new Vector3(3.2f, 0.08f, 3.2f), mat, "StubPad", false);
+            var post = DressVocab.Prop(w.id);
+            if (!string.IsNullOrEmpty(post))
+                FreePacks.Spawn(post, hold, hold.TransformPoint(new Vector3(1.1f, 0f, 0.4f)), 20f, 1.1f, false, false);
+            FreePacks.Spawn(DressVocab.Crate(), hold, hold.TransformPoint(new Vector3(-1.0f, 0f, 0.6f)), 12f, 0.85f, false, false);
+        }
+
+        /// WorldGeography builds exactly one SettlementDef per CityAtlas entry, carrying
+        /// legacyCityId = city.id (WorldGeography.cs BuildSettlements). Matching by id
+        /// rather than by array index survives the two caches (CityAtlas / WorldGeography)
+        /// being invalidated and rebuilt at different times.
+        static SettlementDef FindSettlementDef(WorldId world, string cityId)
+        {
+            if (string.IsNullOrEmpty(cityId)) return null;
+            foreach (var s in WorldGeography.Settlements(world))
+                if (s != null && s.legacyCityId == cityId) return s;
+            return null;
+        }
+
+        static void GateApproach(Transform hold, WorldDef w)
+        {
+            var mat = HubLook.Pbr(
+                WorldVisualProfileCatalog.SurfaceStem(w.id, "settlement") ?? "packed_earth",
+                Color.Lerp(w.ground, new Color(0.32f, 0.28f, 0.24f), 0.4f), 0.04f, 0.2f, 8f);
+            HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.03f, -6.4f),
+                new Vector3(6.5f, 0.06f, 4.2f), mat, "GateApproach", false);
+        }
+
+        static void StampCountryProfile(Transform hold, WorldId world, WorldBook.CityDef city)
+        {
+            if (!hold || city == null) return;
+            if (world == WorldId.Tunya)
+            {
+                WorldBook.Country match = null;
+                foreach (var c in WorldBook.Countries(world))
+                {
+                    if (c == null) continue;
+                    if (string.Equals(c.faction_id, city.factionId, System.StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(c.faction_id, city.id, System.StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(c.country_id, city.id, System.StringComparison.OrdinalIgnoreCase))
+                    { match = c; break; }
+                }
+                if (match != null)
+                {
+                    var profile = WorldVisualProfileCatalog.ForCountry(match);
+                    var marker = hold.GetComponent<WorldVisualProfileMarker>()
+                                 ?? hold.gameObject.AddComponent<WorldVisualProfileMarker>();
+                    marker.Bind(profile);
+                    return;
+                }
+            }
+            WorldVisualProfileCatalog.Stamp(hold, world);
+        }
+
+        static async System.Threading.Tasks.Task CompileCitySafely(Transform root, WorldId world,
+                                                                    SettlementDef def, System.Func<Vector2, bool> keepOut,
+                                                                    string cityId)
+        {
+            try
+            {
+                // LeanPlay Hub: STREET→LOT→BUILDING streetscape (extruded shells + DressBuilding).
+                // Full ModuleKit Compile froze 16GB Play; CompileRoadsOnly is fallback only.
+                if (world == WorldId.Hub && ConcordiaHost.LeanPlay)
+                {
+                    SettlementCompiler.StreetscapeStats street = null;
+                    try
+                    {
+                        street = await SettlementCompiler.CompileStreetscapeLean(root, world, def, keepOut);
+                    }
+                    catch (System.Exception se)
+                    {
+                        Debug.LogWarning("Concordia CityTown: streetscape lean failed for '" + cityId
+                                         + "': " + se.Message + " — falling back to roads-only");
+                    }
+                    if (street != null && street.Ok)
+                    {
+                        Debug.Log("[Concordia] CityTown LeanPlay Hub streetscape " + street
+                                  + " for " + cityId);
+                    }
+                    else
+                    {
+                        var paved = await SettlementCompiler.CompileRoadsOnly(root, world, def, keepOut);
+                        Debug.Log("[Concordia] CityTown LeanPlay Hub roads paved=" + paved
+                                  + " for " + cityId + " (streetscape fallback)");
+                    }
+                    // SLICE 4 — Crown Road spokes toward approach landmarks (after heart pave).
+                    try
+                    {
+                        var crown = await SettlementCompiler.CompileCrownRoadsLean(root, world, def);
+                        Debug.Log("[Concordia] CityTown LeanPlay Hub crown roads " + crown
+                                  + " for " + cityId);
+                    }
+                    catch (System.Exception ce)
+                    {
+                        Debug.LogWarning("Concordia CityTown: crown roads failed for '" + cityId
+                                         + "': " + ce.Message);
+                    }
+                    // SLICE 5 — Hub population as StreamNpcSim data (not ModularPerson storm).
+                    try
+                    {
+                        HubDataNpcSeed.SeedAfterStreetscape(world);
+                    }
+                    catch (System.Exception ne)
+                    {
+                        Debug.LogWarning("Concordia CityTown: DataNpcSeed failed for '" + cityId
+                                         + "': " + ne.Message);
+                    }
+                    // SLICE 7 — fill wedges between Crown Road spokes (after spokes exist).
+                    try
+                    {
+                        var mega = GameObject.Find("Megaworld");
+                        if (mega)
+                        {
+                            var wild = HubWilderness.Ensure(mega.transform);
+                            Debug.Log("[Concordia] CityTown LeanPlay Hub wilderness " + wild
+                                      + " for " + cityId);
+                        }
+                    }
+                    catch (System.Exception we)
+                    {
+                        Debug.LogWarning("Concordia CityTown: HubWilderness failed for '" + cityId
+                                         + "': " + we.Message);
+                    }
+                    CourtGroundDress.Ensure();
+                    return;
+                }
+                var stats = await SettlementCompiler.Compile(root, world, def, null, keepOut);
+                if (stats.Buildings == 0)
+                    Debug.LogWarning("Concordia CityTown: '" + cityId + "' compiled 0 buildings (" + stats + ") — check the world's kit/culture mapping.");
+                else
+                    RebindWorkersToPlaces(root, def);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("Concordia CityTown: settlement compile failed for '" + cityId + "': " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// After SettlementCompiler stamps BuildingPlace doors, re-resolve NpcLife workplaces
+        /// so walkers actually use the compiled geography.
+        /// </summary>
+        static void RebindWorkersToPlaces(Transform root, SettlementDef def)
+        {
+            if (!root || def == null) return;
+            var lives = root.GetComponentsInChildren<NpcLife>(true);
+            foreach (var life in lives)
+            {
+                if (!life) continue;
+                life.workplace = NpcLife.WorkplaceFor(life.job, life.transform.position);
+            }
+        }
+
         static string[] TitleDistricts(string[] raw)
         {
             var outp = new string[raw.Length];
@@ -606,6 +918,13 @@ namespace Concordia // keep-spawn-assign
 
         static void PlazaPad(Transform hold, WorldDef w)
         {
+            // Hub Court: wet cobble, not dry tiled proof-pad.
+            if (w.id == WorldId.Hub)
+            {
+                var wet = HubLook.WetStone("cobblestone_square", 2.2f);
+                HubLook.Prim(hold, PrimitiveType.Cube, new Vector3(0f, 0.03f, 0f), new Vector3(22f, 0.08f, 22f), wet, "PlazaPad", false);
+                return;
+            }
             var (stem, tint, tile) = w.id switch
             {
                 WorldId.Ruins => ("ash_soil", new Color(0.52f, 0.46f, 0.38f), 6f),
@@ -733,10 +1052,11 @@ namespace Concordia // keep-spawn-assign
             FreePacks.Spawn(wall, hold, hold.TransformPoint(new Vector3(0f, 0f, 12.6f)), yaw, 4.2f);
         }
 
-        static void AmbientWalkers(Transform hold, WorldDef w, int cityIndex)
+        static void AmbientWalkers(Transform hold, WorldDef w, int cityIndex, SettlementDef def)
         {
             if (cityIndex >= 4) return;
             int count = cityIndex < 2 ? 3 : 2;
+            var services = def?.services;
             for (int n = 0; n < count; n++)
             {
                 var local = new Vector3((n == 0 ? -3.4f : n == 1 ? 3.6f : 0.2f), 0f, 1.2f + n);
@@ -747,16 +1067,35 @@ namespace Concordia // keep-spawn-assign
                 var go = ModularPerson.SpawnNpc(hold, world, hold.eulerAngles.y + 180f, look, false);
                 go.name = look.displayName;
                 var life = go.AddComponent<NpcLife>();
-                life.job = n == 0 ? NpcLife.Job.Sweep : n == 1 ? NpcLife.Job.Wander : NpcLife.Job.Watch;
+                life.job = JobForService(services, n);
                 var guest = go.AddComponent<GuestNpc>();
                 guest.def = new GuestDef
                 {
                     id = "ambient-" + w.id + "-" + cityIndex + "-" + n,
                     name = look.displayName,
-                    title = "unlabeled",
-                    line = "They keep their own hours. Not an authored citizen."
+                    title = def != null ? def.name : "unlabeled",
+                    line = def != null
+                        ? "They work the streets of " + def.name + "."
+                        : "They keep their own hours. Not an authored citizen."
                 };
             }
+        }
+
+        static NpcLife.Job JobForService(string[] services, int slot)
+        {
+            if (services != null)
+            {
+                foreach (var s in services)
+                {
+                    if (string.IsNullOrEmpty(s)) continue;
+                    var key = s.ToLowerInvariant();
+                    if (slot == 0 && (key.Contains("forge") || key.Contains("market") || key.Contains("dock")))
+                        return NpcLife.Job.Stall;
+                    if (slot == 2 && (key.Contains("watch") || key.Contains("tower")))
+                        return NpcLife.Job.Watch;
+                }
+            }
+            return slot == 0 ? NpcLife.Job.Sweep : slot == 1 ? NpcLife.Job.Wander : NpcLife.Job.Watch;
         }
 
         static void Outskirts(Transform hold, WorldDef w, int cityIndex)

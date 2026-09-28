@@ -106,14 +106,21 @@ namespace Concordia
                 if (g) g.Bind(card);
                 var life = existing.GetComponent<FaunaLife>();
                 if (life && g) life.BindGenome(g);
+                CreatureVisualProfile.Apply(existing, card, world);
                 return existing;
             }
 
             var stem = StemFor(card.topology, card.speciesId);
-            if (string.IsNullOrEmpty(stem)) return null;
-
             var height = card.heightM > 0.05f ? card.heightM : HeightFor(card.topology, card.speciesId);
-            var go = FreePacks.Spawn(stem, parent, pos, Random.Range(0, 360f), ScaleHint(card.topology, height), required: false);
+            GameObject go = null;
+            var cxPath = CxCreaturePrefabPath(card);
+            if (!string.IsNullOrEmpty(cxPath))
+                go = CxDress.SpawnPrefab(cxPath, parent, pos, Random.Range(0, 360f), key);
+            if (!go)
+            {
+                if (string.IsNullOrEmpty(stem)) return null;
+                go = FreePacks.Spawn(stem, parent, pos, Random.Range(0, 360f), ScaleHint(card.topology, height), required: false);
+            }
             if (!go) return null;
             go.name = key;
 
@@ -132,6 +139,7 @@ namespace Concordia
             if (card.predator && !go.GetComponent<Hostile>()) go.AddComponent<Hostile>();
             var fauna = go.GetComponent<FaunaLife>() ?? go.AddComponent<FaunaLife>();
             fauna.BindGenome(genome);
+            CreatureVisualProfile.Apply(go, card, world);
 
             var spin = go.GetComponent<EvoDrift>();
             if (spin) spin.enabled = false;
@@ -186,6 +194,18 @@ namespace Concordia
             else
                 return null;
             return Compile(parent, card, p, world);
+        }
+
+        static string CxCreaturePrefabPath(CreatureCard card)
+        {
+            if (card == null) return null;
+            var species = (card.speciesId ?? string.Empty).ToLowerInvariant();
+            var variant = (card.variant ?? string.Empty).ToLowerInvariant();
+            if (variant.Contains("cx-watcher"))
+                return "Assets/Concordia/Generated/Prefabs/P1/Watchers/CX_Watcher_Basilisk.prefab";
+            if (species.Contains("wolf"))
+                return "Assets/Concordia/Generated/Prefabs/P1/Wildlife/CX_Fauna_Wolf.prefab";
+            return null;
         }
 
         static void Normalize(CreatureCard card)
@@ -256,7 +276,7 @@ namespace Concordia
             if (s.Contains("horse"))
                 return Pick(new[] { "Horse", "horse" });
             if (s.Contains("fox"))
-                return Pick(new[] { "Fox", "fox" });
+                return Pick(new[] { "Fox", "fox", "Red Fox" }); // Animal_Pack_Vol2_Quaternius ships "Red Fox.fbx", not "Fox"
             if (s.Contains("rabbit"))
                 return Pick(new[] { "rabbit", "Rabbit", "hare" });
             if (!string.IsNullOrEmpty(species))
@@ -281,7 +301,12 @@ namespace Concordia
         {
             var bird = DressVocab.Bird();
             if (!string.IsNullOrEmpty(bird)) return bird;
-            return Pick(new[] { "lb_sparrow", "lb_robin", "lb_cardinal" });
+            // "lb_sparrow/robin/cardinal" (Living Birds pack) is not on disk in this
+            // tree — the pack referenced in docs/CONCORDIA_PLAYABLE_SLICE.md never
+            // landed. "bird"/"Eagle" (Quaternius Animals Pack, already imported under
+            // FreePacks/Fauna/) are real flying meshes on disk today; prefer those over
+            // the honest-empty-sky fallback so Hub air isn't silent for no reason.
+            return Pick(new[] { "lb_sparrow", "lb_robin", "lb_cardinal", "bird", "Eagle" });
         }
 
         static string GaitFor(string topology)
@@ -318,7 +343,7 @@ namespace Concordia
         static bool IsFlyKind(string kind) =>
             kind is "griffin" or "harpy" or "drone" or "sentinel" or "drift" or "wraith";
 
-        static bool IsPredatorKind(string kind) =>
+        public static bool IsPredatorKind(string kind) =>
             kind is "wolf" or "hound" or "griffin" or "basilisk" or "wraith" or "drone" or "sentinel";
     }
 

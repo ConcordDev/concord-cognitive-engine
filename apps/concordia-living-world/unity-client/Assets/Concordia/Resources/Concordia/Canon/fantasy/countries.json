@@ -1,0 +1,360 @@
+{
+  "countries": [
+    {
+      "country_id": "wildwood_circle",
+      "faction_id": "wildwood_circle",
+      "name": "The Wildwood Circle",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Protect the great forests from corruption, both magical and political \u2014 and contain Thorne Blackroot before his curse becomes the realm's funeral.",
+      "capital": {
+        "name": "The Wildwood Circle",
+        "x": -29.55,
+        "z": 37.82
+      },
+      "anchors": [
+        {
+          "id": "wildwood_circle_gate",
+          "name": "The Wildwood Circle Gate",
+          "x": -29.55,
+          "z": 37.82,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "wildwood_circle_district",
+          "name": "thornwood_glade",
+          "x": -21.55,
+          "z": 31.82,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 1,
+      "climate_warning": null,
+      "disputed_border": [
+        "house_voss",
+        "fantasy_obsidian_crown"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "house_voss",
+      "faction_id": "house_voss",
+      "name": "House Voss",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Consolidate political power across the noble houses by being the indispensable broker of secrets. Long-term: rule the realm without ever wearing a crown.",
+      "capital": {
+        "name": "House Voss",
+        "x": 46.64,
+        "z": 29.15
+      },
+      "anchors": [
+        {
+          "id": "house_voss_gate",
+          "name": "House Voss Gate",
+          "x": 46.64,
+          "z": 29.15,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "house_voss_district",
+          "name": "crimson_quarter",
+          "x": 54.64,
+          "z": 23.15,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 2,
+      "climate_warning": null,
+      "disputed_border": [
+        "wildwood_circle",
+        "fantasy_paladin_order"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_obsidian_crown",
+      "faction_id": "fantasy_obsidian_crown",
+      "name": "The Obsidian Crown",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the dragon-blooded royal line as the realm's apex authority. Recover the lost sister-line that broke off three centuries ago. Keep the Voss in their place beneath the throne.",
+      "capital": {
+        "name": "The Obsidian Crown",
+        "x": -53.83,
+        "z": 15.44
+      },
+      "anchors": [
+        {
+          "id": "fantasy_obsidian_crown_gate",
+          "name": "The Obsidian Crown Gate",
+          "x": -53.83,
+          "z": 15.44,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_obsidian_crown_district",
+          "name": "obsidian_palace",
+          "x": -45.83,
+          "z": 9.44,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 3,
+      "climate_warning": null,
+      "disputed_border": [
+        "house_voss",
+        "fantasy_goblin_warband_league"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_goblin_warband_league",
+      "faction_id": "fantasy_goblin_warband_league",
+      "name": "The Goblin Warband League",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the seven goblin warbands as a loose military league. Raid noble caravans for tribute. Avoid losing all-out war with the Crown that the warbands cannot win.",
+      "capital": {
+        "name": "The Goblin Warband League",
+        "x": -58.26,
+        "z": -21.21
+      },
+      "anchors": [
+        {
+          "id": "fantasy_goblin_warband_league_gate",
+          "name": "The Goblin Warband League Gate",
+          "x": -58.26,
+          "z": -21.21,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_goblin_warband_league_district",
+          "name": "goblin_warband_camp_north",
+          "x": -50.26,
+          "z": -27.21,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 4,
+      "climate_warning": null,
+      "disputed_border": [
+        "fantasy_obsidian_crown",
+        "fantasy_paladin_order"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_paladin_order",
+      "faction_id": "fantasy_paladin_order",
+      "name": "The Paladin Order of the Lit Veil",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Hunt the undead. Investigate House Voss formally. Maintain the Order's centuries-old mandate to protect the living from the unliving.",
+      "capital": {
+        "name": "The Paladin Order of the Lit Veil",
+        "x": -16.97,
+        "z": -30.61
+      },
+      "anchors": [
+        {
+          "id": "fantasy_paladin_order_gate",
+          "name": "The Paladin Order of the Lit Veil Gate",
+          "x": -16.97,
+          "z": -30.61,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_paladin_order_district",
+          "name": "paladin_chapter_house",
+          "x": -8.97,
+          "z": -36.61,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 5,
+      "climate_warning": null,
+      "disputed_border": [
+        "house_voss",
+        "fantasy_thieves_guild"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_arcane_university",
+      "faction_id": "fantasy_arcane_university",
+      "name": "The Arcane University at Spiremount",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Train wizards in all schools (evocation / abjuration / divination / illusion / enchantment / conjuration / necromancy / transmutation). Catalog the metaphysical substrate. Resist the political demand to weaponize the curriculum.",
+      "capital": {
+        "name": "The Arcane University at Spiremount",
+        "x": -49.73,
+        "z": 5.23
+      },
+      "anchors": [
+        {
+          "id": "fantasy_arcane_university_gate",
+          "name": "The Arcane University at Spiremount Gate",
+          "x": -49.73,
+          "z": 5.23,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_arcane_university_district",
+          "name": "spiremount_university",
+          "x": -41.73,
+          "z": -0.77,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 6,
+      "climate_warning": null,
+      "disputed_border": [
+        "house_voss"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_thieves_guild",
+      "faction_id": "fantasy_thieves_guild",
+      "name": "The Underwarrens Thieves' Guild",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the under-city as a sovereign criminal economy. Negotiate the standing arrangement with House Voss and the Crown. Protect the Underwarrens from being formally claimed by either.",
+      "capital": {
+        "name": "The Underwarrens Thieves' Guild",
+        "x": -17.94,
+        "z": 32.36
+      },
+      "anchors": [
+        {
+          "id": "fantasy_thieves_guild_gate",
+          "name": "The Underwarrens Thieves' Guild Gate",
+          "x": -17.94,
+          "z": 32.36,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_thieves_guild_district",
+          "name": "underwarrens_main",
+          "x": -9.94,
+          "z": 26.36,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 7,
+      "climate_warning": null,
+      "disputed_border": [
+        "fantasy_paladin_order",
+        "fantasy_obsidian_crown"
+      ],
+      "territory_radius": 25.5
+    },
+    {
+      "country_id": "fantasy_pantheon_priesthood",
+      "faction_id": "fantasy_pantheon_priesthood",
+      "name": "The Pantheon Priesthood of the Twelve",
+      "theme": "settlement",
+      "tech_level": "varies",
+      "magic_level": "varies",
+      "description": "Maintain the worship of the Twelve Gods across the realm. Mediate between the divine and the kingdoms. Officially endorse the Paladin Order's mandate. Privately worry about the Wildwood Circle's account of Thorne's curse.",
+      "capital": {
+        "name": "The Pantheon Priesthood of the Twelve",
+        "x": 6.24,
+        "z": 29.34
+      },
+      "anchors": [
+        {
+          "id": "fantasy_pantheon_priesthood_gate",
+          "name": "The Pantheon Priesthood of the Twelve Gate",
+          "x": 6.24,
+          "z": 29.34,
+          "kind": "lore_anchor"
+        },
+        {
+          "id": "fantasy_pantheon_priesthood_district",
+          "name": "pantheon_temple_central",
+          "x": 14.24,
+          "z": 23.34,
+          "kind": "trade_zone"
+        }
+      ],
+      "climate": {
+        "temperature": 15,
+        "humidity": 50,
+        "airQuality": 0.9,
+        "wind": "low"
+      },
+      "captured_by": null,
+      "extends_world": "fantasy",
+      "preferred_visit_order": 8,
+      "climate_warning": null,
+      "disputed_border": [],
+      "territory_radius": 25.5
+    }
+  ]
+}

@@ -1,0 +1,4819 @@
+{
+  "schema": "concordia.volume.quests.v1",
+  "authored": "2026-09-22",
+  "world_ids": [
+    "Hub",
+    "Fantasy",
+    "Tunya",
+    "Crime",
+    "Cyber",
+    "Ruins",
+    "Frontier",
+    "Superhero",
+    "Crucible",
+    "Sere"
+  ],
+  "notes": [
+    "WorldId strings match Canon.cs: Hub, Ruins, Tunya, Fantasy, Crime, Cyber, Frontier, Superhero, Crucible, Sere.",
+    "Fantasy is the Sundering. Hub is the Unburned Court. Flower Law radius is 42m and the Arena exception stands.",
+    "Pinewood Crossing is the salt-road name. Humanoids stay CX. No Quaternius bodies.",
+    "Rows with canon_source keep that file authoritative for voice_lines and breadcrumbs. This file adds faction_delta, world_hooks, and a bind loop.",
+    "SkillLattice is still a lookup. skill_ids are references to skills/SKILLS.json, not live talents.",
+    "Sere has no Canon quests folder. Those eight loops are new.",
+    "Coin may be negative when the loop is a purchase. That is a cost, not a reward mint."
+  ],
+  "counts": {
+    "Hub": 9,
+    "Fantasy": 8,
+    "Tunya": 8,
+    "Crime": 8,
+    "Cyber": 8,
+    "Ruins": 8,
+    "Frontier": 8,
+    "Superhero": 8,
+    "Crucible": 8,
+    "Sere": 8
+  },
+  "quest_count": 81,
+  "quests_by_world": {
+    "Hub": [
+      {
+        "id": "first_cycle_cook",
+        "title": "The First Cycle \u2014 Cook",
+        "world_id": "Hub",
+        "giver_npc_id": "concordia_first_breath",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_first_cycle_cook_1",
+            "verb": "reach",
+            "target": "first_cycle_glade",
+            "count": 1,
+            "text": "Walk into the glade where Concordia first speaks."
+          },
+          {
+            "id": "obj_first_cycle_cook_2",
+            "verb": "gather",
+            "target": "first_cycle_ingredient",
+            "count": 2,
+            "text": "Gather two ingredients (Wildroot, Emberfruit, or Moonleaf)."
+          },
+          {
+            "id": "obj_first_cycle_cook_3",
+            "verb": "craft",
+            "target": "first_cycle_recipe",
+            "count": 1,
+            "text": "Cook a meal at the starter cooking station."
+          }
+        ],
+        "rewards": {
+          "xp": 30,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Glade stove is lit. Ingredients remember the hand.",
+          "gossip_on_complete": "Someone cooked in the glade and the roots answered.",
+          "prop_or_door": "prop_bench_forge stays cold; the lesson stove is the glade station, not the smith."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "concordia_first_breath",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "copied_from_canon_objectives",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/quests/onboarding.json"
+      },
+      {
+        "id": "first_cycle_fight",
+        "title": "The First Cycle \u2014 Fight",
+        "world_id": "Hub",
+        "giver_npc_id": "concordia_first_breath",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_first_cycle_fight_1",
+            "verb": "reach",
+            "target": "training_hollow",
+            "count": 1,
+            "text": "Reach the Training Hollow. Unarmed. Flower Law still holds inside 42m."
+          },
+          {
+            "id": "obj_first_cycle_fight_2",
+            "verb": "defeat",
+            "target": "ember_sprite",
+            "count": 3,
+            "text": "Defeat three Ember Sprites with open hands. Skill reference: skill_steel_palm."
+          },
+          {
+            "id": "obj_first_cycle_fight_3",
+            "verb": "gather",
+            "target": "ember_core",
+            "count": 1,
+            "text": "Collect the Ember Core that drops after victory."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 8,
+          "items": [
+            {
+              "id": "item_ember_core",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_steel_palm"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          },
+          {
+            "faction_id": "iron_wardens",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Training Hollow mirrors are spent.",
+          "gossip_on_complete": "Three sprites fell and nobody drew steel in the Court.",
+          "prop_or_door": "No live blade. wpn_1h_court_flower stays a flower if carried through the plaza."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "concordia_first_breath",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "copied_from_canon_objectives",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/quests/onboarding.json"
+      },
+      {
+        "id": "first_day_claim_land",
+        "title": "First Day \u2014 Claim a Patch",
+        "world_id": "Hub",
+        "giver_npc_id": "concordia_first_breath",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_first_day_claim_land_1",
+            "verb": "reach",
+            "target": "first_day_meadow",
+            "count": 1,
+            "text": "Walk to the quiet meadow east of the glade."
+          },
+          {
+            "id": "obj_first_day_claim_land_2",
+            "verb": "talk",
+            "target": "land-claims.claim",
+            "count": 1,
+            "text": "Claim a 20m-radius patch. The Wardens log the name."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 5,
+          "items": [
+            {
+              "id": "item_witness_slate",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "iron_wardens",
+            "delta": 2
+          },
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "A new resident stake is on the meadow board.",
+          "gossip_on_complete": "The ledger has a name beside a twenty-meter patch.",
+          "prop_or_door": "Stake prop at the meadow edge. Not inside the 42m Court."
+        },
+        "prerequisites": [
+          "first_cycle_commune"
+        ],
+        "turn_in": {
+          "npc_id": "concordia_first_breath",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "copied_from_canon_objectives",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concordia-hub/quests/first-day-arc.json"
+      },
+      {
+        "id": "q_hub_pinewood_milepost",
+        "title": "Salt Road \u2014 Read Pinewood Crossing",
+        "world_id": "Hub",
+        "giver_npc_id": "preacher_old_seam",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_pinewood_milepost_1",
+            "verb": "reach",
+            "target": "pinewood_crossing_milepost",
+            "count": 1,
+            "text": "Leave the plaza. Read the milepost lettered Pinewood Crossing. Do not letter it anything else."
+          },
+          {
+            "id": "obj_q_hub_pinewood_milepost_2",
+            "verb": "witness",
+            "target": "faun_pinewood_stag",
+            "count": 1,
+            "text": "Watch the stag on the salt road. Do not loose an arrow. If the mesh is missing, the post still counts and the stag stays unspawned."
+          },
+          {
+            "id": "obj_q_hub_pinewood_milepost_3",
+            "verb": "deliver",
+            "target": "milepost_reading",
+            "count": 1,
+            "text": "Tell Old Seam the words on the post, in order."
+          }
+        ],
+        "rewards": {
+          "xp": 45,
+          "coin": 2,
+          "items": [
+            {
+              "id": "item_lantern_oil",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_lantern_step"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Pinewood Crossing has been read today.",
+          "gossip_on_complete": "Old Seam says the salt road still has its right name.",
+          "prop_or_door": "prop_pine_milepost"
+        },
+        "prerequisites": [
+          "first_cycle_commune"
+        ],
+        "turn_in": {
+          "npc_id": "preacher_old_seam",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "first_cycle_commune"
+      },
+      {
+        "id": "q_hub_flower_urn",
+        "title": "Flower Law \u2014 Urn, Then Sand",
+        "world_id": "Hub",
+        "giver_npc_id": "warden",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_flower_urn_1",
+            "verb": "reach",
+            "target": "court_flower_urn",
+            "count": 1,
+            "text": "Stand at the flower urn inside the 42m Court."
+          },
+          {
+            "id": "obj_q_hub_flower_urn_2",
+            "verb": "witness",
+            "target": "wpn_1h_court_flower",
+            "count": 1,
+            "text": "Draw the court blade. It must remain a flower. If it stays steel, the lesson fails."
+          },
+          {
+            "id": "obj_q_hub_flower_urn_3",
+            "verb": "reach",
+            "target": "arena_sand",
+            "count": 1,
+            "text": "Step onto Arena sand. Confirm with Gale that steel is alive only there."
+          },
+          {
+            "id": "obj_q_hub_flower_urn_4",
+            "verb": "talk",
+            "target": "warden",
+            "count": 1,
+            "text": "Sheathe on the sand and walk the flower back through the plaza."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_flower_wreath",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_flower_law",
+            "skill_craft_quench"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "iron_wardens",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Arena rack notes a flower walked in and a blade walked out.",
+          "gossip_on_complete": "Gale let someone test the urn and did not laugh.",
+          "prop_or_door": "prop_flower_law_urn then prop_arena_rack"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "warden",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_hub_brackish_supper",
+        "title": "Plaza Urchin \u2014 Bread, Not a Chase",
+        "world_id": "Hub",
+        "giver_npc_id": "brackish",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_brackish_supper_1",
+            "verb": "gather",
+            "target": "item_court_bread",
+            "count": 1,
+            "text": "Take one loaf from Vesper's stall. Pay the stranger price."
+          },
+          {
+            "id": "obj_q_hub_brackish_supper_2",
+            "verb": "deliver",
+            "target": "brackish",
+            "count": 1,
+            "text": "Offer it in the plaza or at the bell-tower. No chase, no threat."
+          },
+          {
+            "id": "obj_q_hub_brackish_supper_3",
+            "verb": "talk",
+            "target": "brackish",
+            "count": 1,
+            "text": "Hear one plaza fact she has actually seen today."
+          },
+          {
+            "id": "obj_q_hub_brackish_supper_4",
+            "verb": "deliver",
+            "target": "archivist_maren",
+            "count": 1,
+            "text": "Repeat that fact to Maren as seen, not as an embassy claim."
+          }
+        ],
+        "rewards": {
+          "xp": 35,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_gossip"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Brackish ate. The bell-tower watch is still hers.",
+          "gossip_on_complete": "A loaf changed hands in the plaza and nobody owned the child for it.",
+          "prop_or_door": "prop_bread"
+        },
+        "prerequisites": [
+          "brackish_02_choice"
+        ],
+        "turn_in": {
+          "npc_id": "brackish",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "brackish_02_choice"
+      },
+      {
+        "id": "q_hub_three_notebooks",
+        "title": "Archive \u2014 Fact, Inference, Difference",
+        "world_id": "Hub",
+        "giver_npc_id": "asbir",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_three_notebooks_1",
+            "verb": "witness",
+            "target": "hub_plaza_hour",
+            "count": 1,
+            "text": "Write one thing you saw in the plaza this hour."
+          },
+          {
+            "id": "obj_q_hub_three_notebooks_2",
+            "verb": "talk",
+            "target": "asbir",
+            "count": 1,
+            "text": "Say what you infer from it. He writes that in the second book."
+          },
+          {
+            "id": "obj_q_hub_three_notebooks_3",
+            "verb": "deliver",
+            "target": "notebook_difference",
+            "count": 1,
+            "text": "Name the difference out loud. He will not write your inference into the fact book."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 3,
+          "items": [
+            {
+              "id": "item_notebook_asbir",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Asbir's third notebook has a new line.",
+          "gossip_on_complete": "The archive refused to promote a guess.",
+          "prop_or_door": "prop_notebook on prop_archive_lectern"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "asbir",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_hub_lamplighter_round",
+        "title": "Eastern Path \u2014 Three Lanterns",
+        "world_id": "Hub",
+        "giver_npc_id": "lamplighter",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_lamplighter_round_1",
+            "verb": "reach",
+            "target": "eastern_path_first_post",
+            "count": 1,
+            "text": "Meet the Lamplighter on the eastern path before the second hour."
+          },
+          {
+            "id": "obj_q_hub_lamplighter_round_2",
+            "verb": "craft",
+            "target": "prop_court_lantern_post",
+            "count": 3,
+            "text": "Light three posts with his oil. Do not sprint ahead of him."
+          },
+          {
+            "id": "obj_q_hub_lamplighter_round_3",
+            "verb": "talk",
+            "target": "lyra",
+            "count": 1,
+            "text": "At the last post, let Lyra say whether the second hour has started. Do not ask for a ninth Refusal."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_lantern_oil",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_lantern_step",
+            "skill_steel_lantern"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Eastern path is lit.",
+          "gossip_on_complete": "The Lamplighter had company and did not give the heart away.",
+          "prop_or_door": "prop_court_lantern_post"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "lamplighter",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_hub_nesha_gap",
+        "title": "Old Seam \u2014 Keep the Distance",
+        "world_id": "Hub",
+        "giver_npc_id": "preacher_old_seam",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_hub_nesha_gap_1",
+            "verb": "reach",
+            "target": "dome_perimeter_quartus",
+            "count": 1,
+            "text": "Walk the dome perimeter while Old Seam walks parallel to Nesha."
+          },
+          {
+            "id": "obj_q_hub_nesha_gap_2",
+            "verb": "witness",
+            "target": "nesha_seam_gap",
+            "count": 1,
+            "text": "Do not close the twenty-year gap. Do not call out."
+          },
+          {
+            "id": "obj_q_hub_nesha_gap_3",
+            "verb": "deliver",
+            "target": "archivist_maren",
+            "count": 1,
+            "text": "Tell Maren the distance, not a reunion."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_lament"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Perimeter walk logged. No reconciliation claimed.",
+          "gossip_on_complete": "They still do not speak. Someone measured the gap honestly.",
+          "prop_or_door": "Dome walk, no new door."
+        },
+        "prerequisites": [
+          "nesha_seam_01_pattern"
+        ],
+        "turn_in": {
+          "npc_id": "preacher_old_seam",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "nesha_seam_01_pattern"
+      }
+    ],
+    "Fantasy": [
+      {
+        "id": "fantasy_maeris_02_steps",
+        "title": "The Bog \u2014 Eight Steps",
+        "world_id": "Fantasy",
+        "giver_npc_id": "witch_maeris",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_fantasy_maeris_02_steps_1",
+            "verb": "reach",
+            "target": "fantasy_bog_crossing",
+            "count": 1,
+            "text": "Walk the eight steps under Maeris at moonrise. Three of them she invents."
+          },
+          {
+            "id": "obj_fantasy_maeris_02_steps_2",
+            "verb": "reach",
+            "target": "bog_lattice_edge",
+            "count": 1,
+            "text": "Emerge on the lattice side of the bog. Do not stay."
+          },
+          {
+            "id": "obj_fantasy_maeris_02_steps_3",
+            "verb": "talk",
+            "target": "witch_maeris",
+            "count": 1,
+            "text": "Name which step she invented. Wrong answer sends you back, it does not open a ninth way."
+          }
+        ],
+        "rewards": {
+          "xp": 80,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_moonleaf_cut",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 1
+          },
+          {
+            "faction_id": "sunder_guard",
+            "delta": 0
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Bog crossing was used and closed.",
+          "gossip_on_complete": "Maeris walked someone across and brought them back.",
+          "prop_or_door": "Bog reeds. No new gate prop."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "witch_maeris",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "volume_adds_turn_in_on_canon_walk",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/fantasy/quests/maeris-crossing.json"
+      },
+      {
+        "id": "q_fantasy_held_offer",
+        "title": "The Fold \u2014 Refuse the Offer",
+        "world_id": "Fantasy",
+        "giver_npc_id": "thorne",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_held_offer_1",
+            "verb": "reach",
+            "target": "sundering_fold_lip",
+            "count": 1,
+            "text": "Go to the fold lip where the Held Curse breathes inward. Do not enter the raid circle."
+          },
+          {
+            "id": "obj_q_fantasy_held_offer_2",
+            "verb": "witness",
+            "target": "mon_boss_held_curse",
+            "count": 1,
+            "text": "Hear the offer. Do not take it. Use skill_steel_curse_fold inward or leave the crest raised."
+          },
+          {
+            "id": "obj_q_fantasy_held_offer_3",
+            "verb": "talk",
+            "target": "thorne",
+            "count": 1,
+            "text": "Tell Thorne you did not win with the curse."
+          }
+        ],
+        "rewards": {
+          "xp": 90,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_curse_fold"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "sunder_guard",
+            "delta": 3
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Fold board: offer refused, crest still up.",
+          "gossip_on_complete": "Thorne's curse is still his. Someone else declined it too.",
+          "prop_or_door": "No loot. Raid enc_held_curse stays on its schedule."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "thorne",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "fantasy_seraphine_01_audience"
+      },
+      {
+        "id": "q_fantasy_boar_off_path",
+        "title": "Wardwood \u2014 Turn the Boar",
+        "world_id": "Fantasy",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_sunder_guard",
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_boar_off_path_1",
+            "verb": "reach",
+            "target": "wardwood_path",
+            "count": 1,
+            "text": "Meet the guard where the boars cut the ward path."
+          },
+          {
+            "id": "obj_q_fantasy_boar_off_path_2",
+            "verb": "defeat",
+            "target": "faun_wardwood_boar",
+            "count": 1,
+            "text": "Turn one boar aside with a ward cut. Do not harvest it."
+          },
+          {
+            "id": "obj_q_fantasy_boar_off_path_3",
+            "verb": "talk",
+            "target": "npc_role_sunder_guard",
+            "count": 1,
+            "text": "Report the path clear. The boar lives."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 4,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_ward_cut"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "sunder_guard",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Ward path open. No boar carcass on the board.",
+          "gossip_on_complete": "A guard says the tusks went back into the wood.",
+          "prop_or_door": "Broken bristle on the path, not a trophy."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_fantasy_quench",
+        "title": "Ward-Blade \u2014 Quench Without Gold",
+        "world_id": "Fantasy",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_sunder_guard",
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_quench_1",
+            "verb": "gather",
+            "target": "pine_resin",
+            "count": 1,
+            "text": "Take resin from a scarred pine, not from the stag's tree line at Pinewood."
+          },
+          {
+            "id": "obj_q_fantasy_quench_2",
+            "verb": "craft",
+            "target": "skill_craft_quench",
+            "count": 1,
+            "text": "Quench a ward-blade at the smith. Gold in the crack means the curse is trying to be useful. Reject that blade."
+          },
+          {
+            "id": "obj_q_fantasy_quench_3",
+            "verb": "deliver",
+            "target": "npc_role_sunder_guard",
+            "count": 1,
+            "text": "Hand the dull blade over. You may buy it back later at standing."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_wpn_wardblade",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_craft_quench"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "sunder_guard",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Smith board lists one quenched ward-blade.",
+          "gossip_on_complete": "The gold closed. The blade did not become a wish.",
+          "prop_or_door": "prop_bench_forge"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_fantasy_elk_calf",
+        "title": "Blackroot \u2014 The Calf Keeps Its Thicket",
+        "world_id": "Fantasy",
+        "giver_npc_id": "thorne",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_elk_calf_1",
+            "verb": "reach",
+            "target": "blackroot_rack_trail",
+            "count": 1,
+            "text": "Follow the elk trail Thorne will not hunt."
+          },
+          {
+            "id": "obj_q_fantasy_elk_calf_2",
+            "verb": "witness",
+            "target": "faun_blackroot_elk",
+            "count": 1,
+            "text": "See the calf. Its silhouette has no antler thicket. Leave it."
+          },
+          {
+            "id": "obj_q_fantasy_elk_calf_3",
+            "verb": "talk",
+            "target": "thorne",
+            "count": 1,
+            "text": "Say you did not make a trophy of a young shape."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "sunder_guard",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Blackroot trail closed to hunters today.",
+          "gossip_on_complete": "Thorne heard the calf was left.",
+          "prop_or_door": "No hide on the rack."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "thorne",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_fantasy_lacquer_box",
+        "title": "Thornwood \u2014 The Box Stays Shut",
+        "world_id": "Fantasy",
+        "giver_npc_id": "seraphine",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_lacquer_box_1",
+            "verb": "reach",
+            "target": "thornwood_audience",
+            "count": 1,
+            "text": "Take the long audience. Smile when you object."
+          },
+          {
+            "id": "obj_q_fantasy_lacquer_box_2",
+            "verb": "deliver",
+            "target": "lacquered_box",
+            "count": 1,
+            "text": "Carry the lacquered box. Do not open it."
+          },
+          {
+            "id": "obj_q_fantasy_lacquer_box_3",
+            "verb": "talk",
+            "target": "seraphine",
+            "count": 1,
+            "text": "Hear her name the choice: held, opened, or told. You only report which door she did not take."
+          }
+        ],
+        "rewards": {
+          "xp": 85,
+          "coin": 6,
+          "items": [
+            {
+              "id": "item_rose_pin",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_etiquette"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "crimson_court",
+            "delta": 2
+          },
+          {
+            "faction_id": "sunder_guard",
+            "delta": -1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Thornwood box is back on its stand.",
+          "gossip_on_complete": "Seraphine let a carrier see the choice and not the contents.",
+          "prop_or_door": "Lacquered box on the audience table."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "seraphine",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/fantasy/quests/seraphine-heir.json",
+        "extends_canon_id": "fantasy_seraphine_02_lacquer"
+      },
+      {
+        "id": "q_fantasy_basilisk_scout",
+        "title": "Fold \u2014 Scout the Basilisk",
+        "world_id": "Fantasy",
+        "giver_npc_id": "thorne",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_basilisk_scout_1",
+            "verb": "reach",
+            "target": "fold_basilisk_overlook",
+            "count": 1,
+            "text": "From the overlook, not the floor."
+          },
+          {
+            "id": "obj_q_fantasy_basilisk_scout_2",
+            "verb": "witness",
+            "target": "mon_sunder_basilisk",
+            "count": 1,
+            "text": "Mark the hood-root windup. Leave before it commits."
+          },
+          {
+            "id": "obj_q_fantasy_basilisk_scout_3",
+            "verb": "deliver",
+            "target": "basilisk_board",
+            "count": 1,
+            "text": "Post the windup on the ward board so the raid is not a surprise."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 2,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "sunder_guard",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Basilisk windup is drawn on the ward board.",
+          "gossip_on_complete": "Someone saw the hood and did not become a statue for pride.",
+          "prop_or_door": "Board at the fold gate."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "thorne",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "q_fantasy_held_offer"
+      },
+      {
+        "id": "q_fantasy_moonleaf",
+        "title": "Verge \u2014 Plant What You Cut",
+        "world_id": "Fantasy",
+        "giver_npc_id": "lyra",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_fantasy_moonleaf_1",
+            "verb": "gather",
+            "target": "item_moonleaf_cut",
+            "count": 1,
+            "text": "Cut moonleaf. One cutting, not the stool."
+          },
+          {
+            "id": "obj_q_fantasy_moonleaf_2",
+            "verb": "craft",
+            "target": "verge_planting_bed",
+            "count": 1,
+            "text": "Plant it in the verge bed before it wilts."
+          },
+          {
+            "id": "obj_q_fantasy_moonleaf_3",
+            "verb": "talk",
+            "target": "lyra",
+            "count": 1,
+            "text": "She is the second hour, not a ninth teacher. Ask what the plant owes, not what it grants."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_moonleaf_cut",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_second_hour"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          },
+          {
+            "faction_id": "sunder_guard",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Verge bed has a new moonleaf.",
+          "gossip_on_complete": "Lyra planted with a student and taught no ninth.",
+          "prop_or_door": "Verge apothecary bed."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "lyra",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/fantasy/quests/lyra-thorne-chain.json",
+        "extends_canon_id": "fantasy_lyra_02_moonleaf"
+      }
+    ],
+    "Tunya": [
+      {
+        "id": "q_tunya_fruit_not_tree",
+        "title": "Grove \u2014 Fruit, Not the Tree",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_merchant",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_fruit_not_tree_1",
+            "verb": "gather",
+            "target": "item_grove_fruit",
+            "count": 3,
+            "text": "Take fruit that has already fallen."
+          },
+          {
+            "id": "obj_q_tunya_fruit_not_tree_2",
+            "verb": "witness",
+            "target": "living_trunk",
+            "count": 1,
+            "text": "Leave the trunk. skill_presence_do_not_reap if your hands hesitate."
+          },
+          {
+            "id": "obj_q_tunya_fruit_not_tree_3",
+            "verb": "deliver",
+            "target": "npc_role_tunya_merchant",
+            "count": 1,
+            "text": "Sell the fruit at the basket. The tree is not stock."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 6,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_do_not_reap"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Basket board: fallen fruit only.",
+          "gossip_on_complete": "A merchant refused a whole tree.",
+          "prop_or_door": "prop_basket"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_tunya_sealie_not_bird",
+        "title": "Nil Shelf \u2014 Not a Flamingo",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_labor",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_sealie_not_bird_1",
+            "verb": "reach",
+            "target": "nil_shelf",
+            "count": 1,
+            "text": "Walk the silent shelf. Do not strike."
+          },
+          {
+            "id": "obj_q_tunya_sealie_not_bird_2",
+            "verb": "witness",
+            "target": "faun_nil_sealie",
+            "count": 1,
+            "text": "See the sealie. Torpedo body, dog head, rear flipper. If no native mesh, spawn nothing and say so."
+          },
+          {
+            "id": "obj_q_tunya_sealie_not_bird_3",
+            "verb": "talk",
+            "target": "npc_role_tunya_labor",
+            "count": 1,
+            "text": "Report 'sealie or nothing.' A flamingo stand-in fails the quest."
+          }
+        ],
+        "rewards": {
+          "xp": 45,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Nil board: sealie seen, or honestly absent.",
+          "gossip_on_complete": "Nobody called the shelf-beast a bird today.",
+          "prop_or_door": "Wet sand. No bird prop."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/tunya/quests/nil-protection.json",
+        "extends_canon_id": "tunya_nil_protection_1_silent_walk"
+      },
+      {
+        "id": "q_tunya_pollen_ward",
+        "title": "Veil \u2014 Pollen on the Reed",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_labor",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_pollen_ward_1",
+            "verb": "gather",
+            "target": "pollen_dust",
+            "count": 1,
+            "text": "Brush pollen off a hare's trail, not off the hare."
+          },
+          {
+            "id": "obj_q_tunya_pollen_ward_2",
+            "verb": "craft",
+            "target": "skill_craft_pollen",
+            "count": 1,
+            "text": "Dress a reed pole with an uneven pollen coat."
+          },
+          {
+            "id": "obj_q_tunya_pollen_ward_3",
+            "verb": "deliver",
+            "target": "npc_role_tunya_labor",
+            "count": 1,
+            "text": "Plant the reed at the grove edge as a ward, not a weapon."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 2,
+          "items": [
+            {
+              "id": "item_pollen_vial",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_craft_pollen",
+            "skill_steel_reed"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Grove edge has a pollen reed.",
+          "gossip_on_complete": "The ward is yellow and uneven, which is how they know it is real.",
+          "prop_or_door": "prop_basket and reed."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_tunya_reap_fine",
+        "title": "Canopy \u2014 The Reap Fine",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_merchant",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_reap_fine_1",
+            "verb": "witness",
+            "target": "mon_tunya_harpy",
+            "count": 1,
+            "text": "Watch a harpy take a tool. That is theft. A reap would be the crime."
+          },
+          {
+            "id": "obj_q_tunya_reap_fine_2",
+            "verb": "reach",
+            "target": "tool_drop",
+            "count": 1,
+            "text": "Recover the tool from where it is dropped. Do not down the harpy."
+          },
+          {
+            "id": "obj_q_tunya_reap_fine_3",
+            "verb": "deliver",
+            "target": "npc_role_tunya_merchant",
+            "count": 1,
+            "text": "Return the tool and name the fine: fruit, not blood."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_grove_knife",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_do_not_reap"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Tool returned. Harpy not on a hook.",
+          "gossip_on_complete": "The fine was fruit. The grove heard.",
+          "prop_or_door": "Dropped tool under the canopy."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_tunya_terrace_bell",
+        "title": "Terrace \u2014 Lead, Do Not Ride",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_labor",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_terrace_bell_1",
+            "verb": "reach",
+            "target": "goat_terrace",
+            "count": 1,
+            "text": "Find the terrace goat. Wood bell, clay on the knees."
+          },
+          {
+            "id": "obj_q_tunya_terrace_bell_2",
+            "verb": "escort",
+            "target": "faun_terrace_goat",
+            "count": 1,
+            "text": "Lead it one switchback. No saddle. No mounted camera."
+          },
+          {
+            "id": "obj_q_tunya_terrace_bell_3",
+            "verb": "talk",
+            "target": "npc_role_tunya_labor",
+            "count": 1,
+            "text": "Tie the lead at the upper stall and admit the ride clip does not exist."
+          }
+        ],
+        "rewards": {
+          "xp": 35,
+          "coin": 3,
+          "items": [
+            {
+              "id": "item_lead_rope",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Upper stall: goat present, unridden.",
+          "gossip_on_complete": "Someone led the bell-goat and did not pretend to sit it.",
+          "prop_or_door": "prop_hitching_rail"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_tunya_heron_hold",
+        "title": "Ark Hold \u2014 A Living Bird Is Not a Relic",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_merchant",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_heron_hold_1",
+            "verb": "reach",
+            "target": "ark_hold_of_first_arrival",
+            "count": 1,
+            "text": "Enter the hold of first arrival as a guest of the ark, not a looter."
+          },
+          {
+            "id": "obj_q_tunya_heron_hold_2",
+            "verb": "witness",
+            "target": "faun_ark_heron",
+            "count": 1,
+            "text": "Watch the heron. Folded, it is a gray stone. Do not catalogue it as ended."
+          },
+          {
+            "id": "obj_q_tunya_heron_hold_3",
+            "verb": "talk",
+            "target": "npc_role_tunya_merchant",
+            "count": 1,
+            "text": "Leave the hold without a feather."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_craft_catalogue"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Ark hold: heron unmarked.",
+          "gossip_on_complete": "A pilgrim left the bird in the hold.",
+          "prop_or_door": "Hold door."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/tunya/quests/arks-of-memory.json",
+        "extends_canon_id": "tunya_arks_of_memory_1_first_pilgrimage"
+      },
+      {
+        "id": "q_tunya_choir_one_chart",
+        "title": "Choir \u2014 Where One Chart Matches",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_labor",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_choir_one_chart_1",
+            "verb": "reach",
+            "target": "resonance_choir",
+            "count": 1,
+            "text": "Stand in the choir while they sing. Do not reap a voice to keep it."
+          },
+          {
+            "id": "obj_q_tunya_choir_one_chart_2",
+            "verb": "witness",
+            "target": "vessine_chart",
+            "count": 1,
+            "text": "Match one chart to one voice. Leave the rest unmatched."
+          },
+          {
+            "id": "obj_q_tunya_choir_one_chart_3",
+            "verb": "deliver",
+            "target": "matched_chart",
+            "count": 1,
+            "text": "Give that one chart to the keeper of the choir."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_second_hour"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Choir board shows one matched chart.",
+          "gossip_on_complete": "They matched a voice and did not archive the singer.",
+          "prop_or_door": "Chart stand."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/tunya/quests/vessine-origin.json",
+        "extends_canon_id": "tunya_vessine_origin_1_resonance_choir"
+      },
+      {
+        "id": "q_tunya_twelfth_edge",
+        "title": "Bloc \u2014 The Twelfth Edge",
+        "world_id": "Tunya",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_tunya_merchant",
+        "objectives": [
+          {
+            "id": "obj_q_tunya_twelfth_edge_1",
+            "verb": "reach",
+            "target": "twelfth_district_boundary",
+            "count": 1,
+            "text": "Walk the boundary that holds the twelve."
+          },
+          {
+            "id": "obj_q_tunya_twelfth_edge_2",
+            "verb": "witness",
+            "target": "bloc_hold_mark",
+            "count": 1,
+            "text": "Name what holds it: a mark, a root, or a debt. Pick the thing you can point at."
+          },
+          {
+            "id": "obj_q_tunya_twelfth_edge_3",
+            "verb": "talk",
+            "target": "npc_role_tunya_merchant",
+            "count": 1,
+            "text": "Do not breach. Report the hold and stop."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "verdant_veil",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Twelfth edge logged, unbreached.",
+          "gossip_on_complete": "The bloc is still twelve.",
+          "prop_or_door": "Boundary stone."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/tunya/quests/bloc-secret.json",
+        "extends_canon_id": "tunya_bloc_secret_1_twelfth_district"
+      }
+    ],
+    "Crime": [
+      {
+        "id": "q_crime_bell_tip",
+        "title": "Bell's Corner \u2014 One Tip",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_labor",
+        "objectives": [
+          {
+            "id": "obj_q_crime_bell_tip_1",
+            "verb": "reach",
+            "target": "bells_corner",
+            "count": 1,
+            "text": "Stand at Bell's corner in the rain."
+          },
+          {
+            "id": "obj_q_crime_bell_tip_2",
+            "verb": "talk",
+            "target": "bell",
+            "count": 1,
+            "text": "Buy one tip about Thorpe. Paying twice is how witnesses learn you panic."
+          },
+          {
+            "id": "obj_q_crime_bell_tip_3",
+            "verb": "deliver",
+            "target": "tip_slip",
+            "count": 1,
+            "text": "Carry the slip to the wharf edge. Do not read it aloud."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": -5,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_bargain"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Bell's slate shows one purchase.",
+          "gossip_on_complete": "A tip was bought once. The street noticed the restraint.",
+          "prop_or_door": "Wet crate, prop_dock_crate."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/crime/quests/thorpe-bust.json",
+        "extends_canon_id": "crime_thorpe_01_bell"
+      },
+      {
+        "id": "q_crime_maddox_mark",
+        "title": "Wharf \u2014 Maddox Signs",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_labor",
+        "objectives": [
+          {
+            "id": "obj_q_crime_maddox_mark_1",
+            "verb": "reach",
+            "target": "wharf_maddox",
+            "count": 1,
+            "text": "Find Maddox where the gulls sit on the pilings."
+          },
+          {
+            "id": "obj_q_crime_maddox_mark_2",
+            "verb": "talk",
+            "target": "maddox",
+            "count": 1,
+            "text": "Get the signature. Threats that erase the witness fail the law: the bill still arrives."
+          },
+          {
+            "id": "obj_q_crime_maddox_mark_3",
+            "verb": "deliver",
+            "target": "signed_slip",
+            "count": 1,
+            "text": "Hold the signed slip. Turn-in is the wharf clerk, not the judge yet."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_invoice_slip",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_steel_invoice"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Wharf board: Maddox signed.",
+          "gossip_on_complete": "The signature exists. Delay is not cancellation.",
+          "prop_or_door": "prop_dock_hook on the piling."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "extends_canon_id": "crime_thorpe_02_maddox"
+      },
+      {
+        "id": "q_crime_invoice_lands",
+        "title": "Street \u2014 Let the Invoice Land",
+        "world_id": "Crime",
+        "giver_npc_id": "jax",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_crime_invoice_lands_1",
+            "verb": "reach",
+            "target": "rain_alley",
+            "count": 1,
+            "text": "Walk the alley Jax names. Knife stays folded."
+          },
+          {
+            "id": "obj_q_crime_invoice_lands_2",
+            "verb": "deliver",
+            "target": "item_invoice_slip",
+            "count": 1,
+            "text": "Leave the invoice where the debtor will see it."
+          },
+          {
+            "id": "obj_q_crime_invoice_lands_3",
+            "verb": "witness",
+            "target": "debtor_reads",
+            "count": 1,
+            "text": "Watch them read it. Do not collect. Collection is a later law."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 4,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_invoice"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "An invoice is visible from the street.",
+          "gossip_on_complete": "Jax says the bill landed and nobody pretended it was rain.",
+          "prop_or_door": "Paper on a door."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "jax",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crime_gull_drop",
+        "title": "Pilings \u2014 What the Gulls Mark",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_bandit",
+        "objectives": [
+          {
+            "id": "obj_q_crime_gull_drop_1",
+            "verb": "witness",
+            "target": "faun_rain_gull",
+            "count": 1,
+            "text": "Follow the low ragged line of gulls, not a map pin."
+          },
+          {
+            "id": "obj_q_crime_gull_drop_2",
+            "verb": "reach",
+            "target": "gull_drop_crate",
+            "count": 1,
+            "text": "Find the crate they circle."
+          },
+          {
+            "id": "obj_q_crime_gull_drop_3",
+            "verb": "deliver",
+            "target": "crate_note",
+            "count": 1,
+            "text": "Bring the note to a witness, not to the owner of the crate."
+          }
+        ],
+        "rewards": {
+          "xp": 45,
+          "coin": 2,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Gull line broke after the note moved.",
+          "gossip_on_complete": "A witness has the note. The crate's owner does not.",
+          "prop_or_door": "prop_dock_crate"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crime_folded_knife",
+        "title": "Switch \u2014 Buy It Folded",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_labor",
+        "objectives": [
+          {
+            "id": "obj_q_crime_folded_knife_1",
+            "verb": "talk",
+            "target": "npc_role_coast_merchant",
+            "count": 1,
+            "text": "Buy the coast switchknife at stranger price if your standing is low."
+          },
+          {
+            "id": "obj_q_crime_folded_knife_2",
+            "verb": "witness",
+            "target": "wpn_1h_coast_switchknife",
+            "count": 1,
+            "text": "Leave it folded on the counter long enough for the vendor to nod."
+          },
+          {
+            "id": "obj_q_crime_folded_knife_3",
+            "verb": "reach",
+            "target": "hub_gate_from_crime",
+            "count": 1,
+            "text": "Carry it to the Hub gate and remember: inside 42m it is not a knife."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": -8,
+          "items": [
+            {
+              "id": "item_wpn_switchknife",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Vendor slate: one folded knife.",
+          "gossip_on_complete": "Someone paid and did not flick it in the shop.",
+          "prop_or_door": "Counter cloth."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crime_dahlia_cup",
+        "title": "Defence Office \u2014 The Cup Stays on the Desk",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_labor",
+        "objectives": [
+          {
+            "id": "obj_q_crime_dahlia_cup_1",
+            "verb": "reach",
+            "target": "defence_office",
+            "count": 1,
+            "text": "Meet Dahlia. The coffee is the appointment."
+          },
+          {
+            "id": "obj_q_crime_dahlia_cup_2",
+            "verb": "talk",
+            "target": "dahlia",
+            "count": 1,
+            "text": "Choose whether you are here as counsel's errand or as a witness. Say it."
+          },
+          {
+            "id": "obj_q_crime_dahlia_cup_3",
+            "verb": "deliver",
+            "target": "empty_cup",
+            "count": 1,
+            "text": "Return the cup. Do not take the privileged folder on this loop."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_etiquette"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Defence office: meeting logged, folder unopened.",
+          "gossip_on_complete": "Dahlia had coffee with someone who left the folder.",
+          "prop_or_door": "Desk cup."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/crime/quests/dahlia-ledger.json",
+        "extends_canon_id": "crime_dahlia_01_meet"
+      },
+      {
+        "id": "q_crime_morgue_cross",
+        "title": "Morgue \u2014 Cross the Cause",
+        "world_id": "Crime",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_coast_labor",
+        "objectives": [
+          {
+            "id": "obj_q_crime_morgue_cross_1",
+            "verb": "reach",
+            "target": "city_morgue",
+            "count": 1,
+            "text": "Enter with Ada's leave."
+          },
+          {
+            "id": "obj_q_crime_morgue_cross_2",
+            "verb": "witness",
+            "target": "unusual_cause",
+            "count": 1,
+            "text": "Look at the cause she flagged. Write what is on the body, not the rumor."
+          },
+          {
+            "id": "obj_q_crime_morgue_cross_3",
+            "verb": "deliver",
+            "target": "cross_note",
+            "count": 1,
+            "text": "Carry the note toward the world she names. Stop at the gate if that world will not receive it."
+          }
+        ],
+        "rewards": {
+          "xp": 75,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_witness_slate",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 1
+          },
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Morgue slate has a cross-note in transit.",
+          "gossip_on_complete": "Ada's cause left the building on paper.",
+          "prop_or_door": "Slab lamp."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/crime/quests/ada-pell-log.json",
+        "extends_canon_id": "crime_ada_02_cross"
+      },
+      {
+        "id": "q_crime_rose_errand",
+        "title": "Syndicate \u2014 A Pin, Not a Vow",
+        "world_id": "Crime",
+        "giver_npc_id": "mama",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_crime_rose_errand_1",
+            "verb": "talk",
+            "target": "mama",
+            "count": 1,
+            "text": "Accept a rose-pin errand. Mama is mercy, not softness."
+          },
+          {
+            "id": "obj_q_crime_rose_errand_2",
+            "verb": "deliver",
+            "target": "item_rose_pin",
+            "count": 1,
+            "text": "Carry the pin to the door she names. Do not wear it."
+          },
+          {
+            "id": "obj_q_crime_rose_errand_3",
+            "verb": "talk",
+            "target": "mama",
+            "count": 1,
+            "text": "Return without the pin and without a new loyalty."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 5,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_etiquette"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "delgado_syndicate",
+            "delta": 1
+          },
+          {
+            "faction_id": "ghost_contracts",
+            "delta": 0
+          }
+        ],
+        "world_hooks": {
+          "board_line": "A door has a rose pin for one hour.",
+          "gossip_on_complete": "Mama's errand came back. The runner did not join.",
+          "prop_or_door": "prop_rose_pin"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "mama",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Cyber": [
+      {
+        "id": "q_cyber_packet_tea",
+        "title": "Runners' Den \u2014 Tea, Then the Map",
+        "world_id": "Cyber",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_grid_labor",
+        "objectives": [
+          {
+            "id": "obj_q_cyber_packet_tea_1",
+            "verb": "gather",
+            "target": "hot_tea",
+            "count": 1,
+            "text": "Buy tea that is still hot at the den stair."
+          },
+          {
+            "id": "obj_q_cyber_packet_tea_2",
+            "verb": "deliver",
+            "target": "kira",
+            "count": 1,
+            "text": "Put it in Kira's hands before you ask for paper."
+          },
+          {
+            "id": "obj_q_cyber_packet_tea_3",
+            "verb": "witness",
+            "target": "packet_map",
+            "count": 1,
+            "text": "Read the packet map once. Do not copy the totals."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": -2,
+          "items": [
+            {
+              "id": "item_count_slate",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_refuse_count"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Den board: map shown, totals uncopied.",
+          "gossip_on_complete": "Kira poured nothing until the tea arrived.",
+          "prop_or_door": "Den stair thermos."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/cyber/quests/kira-packet-map.json",
+        "extends_canon_id": "cyber_kira_02_map"
+      },
+      {
+        "id": "q_cyber_silver_path",
+        "title": "Silver's Office \u2014 Pick a Door",
+        "world_id": "Cyber",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_grid_officer",
+        "objectives": [
+          {
+            "id": "obj_q_cyber_silver_path_1",
+            "verb": "reach",
+            "target": "silver_office",
+            "count": 1,
+            "text": "Enter quietly. The door is the meeting."
+          },
+          {
+            "id": "obj_q_cyber_silver_path_2",
+            "verb": "talk",
+            "target": "silver",
+            "count": 1,
+            "text": "Choose papers or knowledge. You do not get both in this loop."
+          },
+          {
+            "id": "obj_q_cyber_silver_path_3",
+            "verb": "reach",
+            "target": "office_exit",
+            "count": 1,
+            "text": "Close the door yourself on the way out."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_bargain"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Silver's door was shut by the visitor.",
+          "gossip_on_complete": "A choice was made in that office and not both choices.",
+          "prop_or_door": "Office door."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/cyber/quests/silver-identity.json",
+        "extends_canon_id": "cyber_silver_02_choose"
+      },
+      {
+        "id": "q_cyber_missing_number",
+        "title": "Junction \u2014 Do Not Be Counted",
+        "world_id": "Cyber",
+        "giver_npc_id": "nyx",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_cyber_missing_number_1",
+            "verb": "reach",
+            "target": "census_junction",
+            "count": 1,
+            "text": "Stand where the Census ring can see the street. Stay outside the raid circle."
+          },
+          {
+            "id": "obj_q_cyber_missing_number_2",
+            "verb": "witness",
+            "target": "mon_boss_census",
+            "count": 1,
+            "text": "See the magenta ring with one number dark. Do not fill it."
+          },
+          {
+            "id": "obj_q_cyber_missing_number_3",
+            "verb": "talk",
+            "target": "nyx",
+            "count": 1,
+            "text": "Give your name to the uncounted list by hand. No total on the slate."
+          }
+        ],
+        "rewards": {
+          "xp": 80,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_refuse_count"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 3
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Junction board: ring seen, number still missing.",
+          "gossip_on_complete": "Nyx added a name and subtracted nothing.",
+          "prop_or_door": "prop_count_slate"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "nyx",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_cyber_stray_ear",
+        "title": "Cable Alley \u2014 The Dog Is Not a Drone",
+        "world_id": "Cyber",
+        "giver_npc_id": "nyx",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_cyber_stray_ear_1",
+            "verb": "reach",
+            "target": "cable_alley",
+            "count": 1,
+            "text": "Find the grid stray. One ear. Shoulder scar is healed skin."
+          },
+          {
+            "id": "obj_q_cyber_stray_ear_2",
+            "verb": "deliver",
+            "target": "item_court_bread",
+            "count": 1,
+            "text": "Feed it. Do not fit a port to the scar."
+          },
+          {
+            "id": "obj_q_cyber_stray_ear_3",
+            "verb": "talk",
+            "target": "nyx",
+            "count": 1,
+            "text": "Say it is a dog. If the mesh is missing, say that, and do not spawn a drone in its place."
+          }
+        ],
+        "rewards": {
+          "xp": 35,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Alley: stray fed, unchipped.",
+          "gossip_on_complete": "Nyx heard someone refuse to upgrade a dog.",
+          "prop_or_door": "Cable coil, prop_cable_coil."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "nyx",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_cyber_sparrow_nest",
+        "title": "Junction Box \u2014 Move the Nest",
+        "world_id": "Cyber",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_grid_labor",
+        "objectives": [
+          {
+            "id": "obj_q_cyber_sparrow_nest_1",
+            "verb": "reach",
+            "target": "junction_box_nest",
+            "count": 1,
+            "text": "Find the cable sparrow nest of fiber scrap."
+          },
+          {
+            "id": "obj_q_cyber_sparrow_nest_2",
+            "verb": "deliver",
+            "target": "nest_aside",
+            "count": 1,
+            "text": "Shift the nest off the live contacts. The bird stays a bird."
+          },
+          {
+            "id": "obj_q_cyber_sparrow_nest_3",
+            "verb": "talk",
+            "target": "npc_role_grid_labor",
+            "count": 1,
+            "text": "Tell the laborer the box is clear and the sparrow was not counted."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 3,
+          "items": [
+            {
+              "id": "item_cable_coil",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Junction box closed. Nest on the ledge.",
+          "gossip_on_complete": "A sparrow kept its scrap nest.",
+          "prop_or_door": "prop_junction_box"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_cyber_lavren_door",
+        "title": "Neon Quarter \u2014 Knock Once",
+        "world_id": "Cyber",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_grid_officer",
+        "objectives": [
+          {
+            "id": "obj_q_cyber_lavren_door_1",
+            "verb": "reach",
+            "target": "lavren_door",
+            "count": 1,
+            "text": "Find the door Oren sold you. Pay was the previous quest's problem."
+          },
+          {
+            "id": "obj_q_cyber_lavren_door_2",
+            "verb": "talk",
+            "target": "lavren",
+            "count": 1,
+            "text": "Knock once. Hear what he asks. Do not agree yet."
+          },
+          {
+            "id": "obj_q_cyber_lavren_door_3",
+            "verb": "reach",
+            "target": "neon_quarter_mouth",
+            "count": 1,
+            "text": "Leave by the quarter mouth so the street sees you came out."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_refuse_count"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Lavren's door has been knocked.",
+          "gossip_on_complete": "Ghost-7's door opened and closed on a question.",
+          "prop_or_door": "Neon door."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/cyber/quests/ghost-7-trace.json",
+        "extends_canon_id": "cyber_ghost_02_lavren"
+      },
+      {
+        "id": "q_cyber_practice_rail",
+        "title": "Practice Frame \u2014 One Pulse",
+        "world_id": "Cyber",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_grid_labor",
+        "objectives": [
+          {
+            "id": "obj_q_cyber_practice_rail_1",
+            "verb": "reach",
+            "target": "parkour_practice_frame",
+            "count": 1,
+            "text": "Climb to the practice frame. Not a person, a frame."
+          },
+          {
+            "id": "obj_q_cyber_practice_rail_2",
+            "verb": "defeat",
+            "target": "practice_frame",
+            "count": 1,
+            "text": "Land one pulse cut. skill_steel_pulse. The frame records a hit and does not bleed."
+          },
+          {
+            "id": "obj_q_cyber_practice_rail_3",
+            "verb": "talk",
+            "target": "npc_role_grid_labor",
+            "count": 1,
+            "text": "Log the cut. No rifle. Gunsmithing is a vise, and this is not that bench."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_pulse"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Practice frame shows one new scorch.",
+          "gossip_on_complete": "A pulse was spent on steel, not on a name.",
+          "prop_or_door": "Practice frame."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_cyber_hand_list",
+        "title": "Uncounted \u2014 A List Without a Sum",
+        "world_id": "Cyber",
+        "giver_npc_id": "nyx",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_cyber_hand_list_1",
+            "verb": "gather",
+            "target": "item_count_slate",
+            "count": 1,
+            "text": "Take a blank slate."
+          },
+          {
+            "id": "obj_q_cyber_hand_list_2",
+            "verb": "deliver",
+            "target": "one_handwritten_name",
+            "count": 1,
+            "text": "Write one name Nyx gives you. No column of numbers."
+          },
+          {
+            "id": "obj_q_cyber_hand_list_3",
+            "verb": "talk",
+            "target": "nyx",
+            "count": 1,
+            "text": "She checks the blank total line and keeps the slate."
+          }
+        ],
+        "rewards": {
+          "xp": 45,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_refuse_count"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "uncounted",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Nyx's cupboard holds another nameless total.",
+          "gossip_on_complete": "A name was saved from a sum.",
+          "prop_or_door": "prop_count_slate"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "nyx",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Ruins": [
+      {
+        "id": "q_ruins_crow_catalogue",
+        "title": "Ash Road \u2014 Catalogue, Do Not Conquer",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_crow_catalogue_1",
+            "verb": "witness",
+            "target": "faun_catalogue_crow",
+            "count": 1,
+            "text": "Watch the crows on the rib. Commas, not a conquest."
+          },
+          {
+            "id": "obj_q_ruins_crow_catalogue_2",
+            "verb": "craft",
+            "target": "skill_craft_catalogue",
+            "count": 1,
+            "text": "Enter one line: number of birds you actually saw."
+          },
+          {
+            "id": "obj_q_ruins_crow_catalogue_3",
+            "verb": "deliver",
+            "target": "npc_role_ruins_keeper",
+            "count": 1,
+            "text": "Give the keeper the line. Do not claim the road."
+          }
+        ],
+        "rewards": {
+          "xp": 45,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_ash_page",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_craft_catalogue"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Keeper's book has a crow count.",
+          "gossip_on_complete": "The ash road was counted and not taken.",
+          "prop_or_door": "prop_ash_cairn"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_ruins_wraith_unfinished",
+        "title": "Rib Walk \u2014 Do Not Finish It",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_wraith_unfinished_1",
+            "verb": "reach",
+            "target": "rib_walk",
+            "count": 1,
+            "text": "Walk until a wraith bells."
+          },
+          {
+            "id": "obj_q_ruins_wraith_unfinished_2",
+            "verb": "witness",
+            "target": "mon_ruins_wraith",
+            "count": 1,
+            "text": "See it. Do not land a finishing blow. skill_presence_lament if you need the hands to stop."
+          },
+          {
+            "id": "obj_q_ruins_wraith_unfinished_3",
+            "verb": "talk",
+            "target": "npc_role_ruins_keeper",
+            "count": 1,
+            "text": "Say it is still unfinished, which is the law here."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_lament",
+            "skill_steel_unburial"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Rib walk: wraith left unfinished.",
+          "gossip_on_complete": "A keeper praised a withheld last hit.",
+          "prop_or_door": "prop_fossil_rib"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_ruins_fourth_plan",
+        "title": "War Tent \u2014 Hear the Fourth",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_elite",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_fourth_plan_1",
+            "verb": "reach",
+            "target": "calla_war_tent",
+            "count": 1,
+            "text": "Enter Calla's tent with the errand already earned."
+          },
+          {
+            "id": "obj_q_ruins_fourth_plan_2",
+            "verb": "talk",
+            "target": "calla",
+            "count": 1,
+            "text": "Listen to the fourth uprising's plan. Do not start it."
+          },
+          {
+            "id": "obj_q_ruins_fourth_plan_3",
+            "verb": "deliver",
+            "target": "plan_ack",
+            "count": 1,
+            "text": "Repeat the signal word back. Wrong word means you were not listening."
+          }
+        ],
+        "rewards": {
+          "xp": 80,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Tent flap closed on a plan, not a dawn.",
+          "gossip_on_complete": "Calla was heard and not launched.",
+          "prop_or_door": "War tent."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/quests/calla-rebellion.json",
+        "extends_canon_id": "ruins_calla_02_plan"
+      },
+      {
+        "id": "q_ruins_half_layer",
+        "title": "Ruined Court \u2014 Half a Layer",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_half_layer_1",
+            "verb": "reach",
+            "target": "ruined_court",
+            "count": 1,
+            "text": "Attend with the glyph you were trusted to carry."
+          },
+          {
+            "id": "obj_q_ruins_half_layer_2",
+            "verb": "deliver",
+            "target": "half_layer_glyph",
+            "count": 1,
+            "text": "Carry it one half-layer further. Do not mint the composite."
+          },
+          {
+            "id": "obj_q_ruins_half_layer_3",
+            "verb": "talk",
+            "target": "npc_role_ruins_keeper",
+            "count": 1,
+            "text": "Stop when the keeper says the layer is enough for today."
+          }
+        ],
+        "rewards": {
+          "xp": 75,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_stylus_ink",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Court shows a half-layer, unsigned.",
+          "gossip_on_complete": "The composite was not minted.",
+          "prop_or_door": "prop_stylus"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/quests/thanis-glyph.json",
+        "extends_canon_id": "ruins_thanis_02_layer"
+      },
+      {
+        "id": "q_ruins_undoing",
+        "title": "Refused Circle \u2014 Learn the Undoing",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_undoing_1",
+            "verb": "reach",
+            "target": "refused_circle",
+            "count": 1,
+            "text": "Find the Refused-Mother's circle."
+          },
+          {
+            "id": "obj_q_ruins_undoing_2",
+            "verb": "craft",
+            "target": "undoing_phrase",
+            "count": 1,
+            "text": "Compose the undoing once, on slate, not on the Hub dome."
+          },
+          {
+            "id": "obj_q_ruins_undoing_3",
+            "verb": "talk",
+            "target": "npc_role_ruins_keeper",
+            "count": 1,
+            "text": "Erase the slate after she nods. The dome quest is a different door."
+          }
+        ],
+        "rewards": {
+          "xp": 85,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_lament"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Circle slate is blank again.",
+          "gossip_on_complete": "An undoing was learned and not spent on the dome.",
+          "prop_or_door": "Circle stones."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/sovereign-ruins/quests/silv-marn-dome.json",
+        "extends_canon_id": "ruins_silv_02_teach"
+      },
+      {
+        "id": "q_ruins_lizard_rib",
+        "title": "Fossil Rib \u2014 Leave the Bone",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_lizard_rib_1",
+            "verb": "reach",
+            "target": "fossil_rib_sun",
+            "count": 1,
+            "text": "Find the rib in the sun."
+          },
+          {
+            "id": "obj_q_ruins_lizard_rib_2",
+            "verb": "witness",
+            "target": "faun_rib_lizard",
+            "count": 1,
+            "text": "Watch the lizard. Flat diamond, tail as long as the body."
+          },
+          {
+            "id": "obj_q_ruins_lizard_rib_3",
+            "verb": "talk",
+            "target": "npc_role_ruins_keeper",
+            "count": 1,
+            "text": "Do not pocket the bone. Say the lizard still uses it."
+          }
+        ],
+        "rewards": {
+          "xp": 30,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Rib still occupied.",
+          "gossip_on_complete": "A keeper was told the bone is furniture, not loot.",
+          "prop_or_door": "prop_fossil_rib"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_ruins_unstack",
+        "title": "Cairn \u2014 Stack Three, Unstack One",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_keeper",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_unstack_1",
+            "verb": "reach",
+            "target": "ash_cairn_site",
+            "count": 1,
+            "text": "Go to a cairn that is not a grave-claim."
+          },
+          {
+            "id": "obj_q_ruins_unstack_2",
+            "verb": "craft",
+            "target": "three_stones",
+            "count": 1,
+            "text": "Stack three stones."
+          },
+          {
+            "id": "obj_q_ruins_unstack_3",
+            "verb": "deliver",
+            "target": "one_stone_down",
+            "count": 1,
+            "text": "Take one back down. Death here does not get a finished monument."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_lament"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Cairn is two stones. On purpose.",
+          "gossip_on_complete": "Someone unstacked a finished thought.",
+          "prop_or_door": "prop_ash_cairn"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_ruins_mask_scout",
+        "title": "Unfinished \u2014 Scout the Ask",
+        "world_id": "Ruins",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_ruins_elite",
+        "objectives": [
+          {
+            "id": "obj_q_ruins_mask_scout_1",
+            "verb": "reach",
+            "target": "unfinished_overlook",
+            "count": 1,
+            "text": "Overlook, not the arena floor."
+          },
+          {
+            "id": "obj_q_ruins_mask_scout_2",
+            "verb": "witness",
+            "target": "mon_boss_unfinished",
+            "count": 1,
+            "text": "See the ask pose and the mask. Do not answer."
+          },
+          {
+            "id": "obj_q_ruins_mask_scout_3",
+            "verb": "deliver",
+            "target": "ask_board",
+            "count": 1,
+            "text": "Post the pose on the keeper board before the schedule window."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "glyph_keepers",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Keeper board shows the ask pose.",
+          "gossip_on_complete": "The mask was seen and not worn.",
+          "prop_or_door": "Overlook board."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Frontier": [
+      {
+        "id": "q_frontier_hand_to_mira",
+        "title": "Assembly \u2014 The Letter Reaches Mira",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_hand_to_mira_1",
+            "verb": "reach",
+            "target": "frontier_council_room",
+            "count": 1,
+            "text": "Take Mara's letter. Do not open it."
+          },
+          {
+            "id": "obj_q_frontier_hand_to_mira_2",
+            "verb": "deliver",
+            "target": "mira",
+            "count": 1,
+            "text": "Hand it to Mira at the assembly hall."
+          },
+          {
+            "id": "obj_q_frontier_hand_to_mira_3",
+            "verb": "talk",
+            "target": "mira",
+            "count": 1,
+            "text": "Wait for the reply slip. Carry that, still sealed, back to the road."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 4,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 2
+          },
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Assembly hall: letter delivered.",
+          "gossip_on_complete": "Mira has Mara's words and the road has a reply.",
+          "prop_or_door": "Sealed letter."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/quests/mara-letter.json",
+        "extends_canon_id": "frontier_mara_02_deliver"
+      },
+      {
+        "id": "q_frontier_verge_token",
+        "title": "Verge \u2014 A Token Across",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_verge_token_1",
+            "verb": "talk",
+            "target": "zara",
+            "count": 1,
+            "text": "Take Captain Zara's brief at the perimeter."
+          },
+          {
+            "id": "obj_q_frontier_verge_token_2",
+            "verb": "reach",
+            "target": "the_verge",
+            "count": 1,
+            "text": "Cross to the verge."
+          },
+          {
+            "id": "obj_q_frontier_verge_token_3",
+            "verb": "deliver",
+            "target": "verge_token",
+            "count": 1,
+            "text": "Bring the token back. Mutual watch starts when both sides have seen it."
+          }
+        ],
+        "rewards": {
+          "xp": 75,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_verge_token",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Perimeter board: token returned.",
+          "gossip_on_complete": "Zara's watch is mutual for one more day.",
+          "prop_or_door": "Perimeter post."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/quests/zara-perimeter.json",
+        "extends_canon_id": "frontier_zara_02_token"
+      },
+      {
+        "id": "q_frontier_find_kel",
+        "title": "Portal Plaza \u2014 Find Kel",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_find_kel_1",
+            "verb": "reach",
+            "target": "western_road_portal",
+            "count": 1,
+            "text": "Watch the portal long enough to describe its sound."
+          },
+          {
+            "id": "obj_q_frontier_find_kel_2",
+            "verb": "reach",
+            "target": "hub_from_frontier",
+            "count": 1,
+            "text": "Cross to the Hub without drawing steel in the Court."
+          },
+          {
+            "id": "obj_q_frontier_find_kel_3",
+            "verb": "talk",
+            "target": "kel",
+            "count": 1,
+            "text": "Find Kel and give the sound, not a theory."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 1
+          },
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Kel has the portal sound.",
+          "gossip_on_complete": "A courier was found with a fact.",
+          "prop_or_door": "Portal plaza."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/concord-link-frontier/quests/silas-quinn-portal.json",
+        "extends_canon_id": "frontier_silas_02_kel"
+      },
+      {
+        "id": "q_frontier_hitch_not_ride",
+        "title": "Wagonwright \u2014 Hitch and Walk",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_hitch_not_ride_1",
+            "verb": "craft",
+            "target": "skill_craft_tack",
+            "count": 1,
+            "text": "Fit tack on the wagon horse. Harness gall should look worn, not new-costume."
+          },
+          {
+            "id": "obj_q_frontier_hitch_not_ride_2",
+            "verb": "craft",
+            "target": "skill_craft_wagon",
+            "count": 1,
+            "text": "Pin the wagon. There is no seated driver clip. Do not fake a mounted camera."
+          },
+          {
+            "id": "obj_q_frontier_hitch_not_ride_3",
+            "verb": "escort",
+            "target": "faun_wagon_horse",
+            "count": 1,
+            "text": "Lead the hitch ten meters and stop. Riding is a later bind."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_wagon_pin",
+              "count": 1
+            },
+            {
+              "id": "item_horse_tack",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_craft_tack",
+            "skill_craft_wagon"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Hitching rail: horse in tack, wagon pinned, rider absent.",
+          "gossip_on_complete": "The wright says the horse walked and nobody sat a lie.",
+          "prop_or_door": "prop_wagon and prop_hitching_rail."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_frontier_dust_off_road",
+        "title": "Open Road \u2014 Dust, Not a Dome",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_dust_off_road_1",
+            "verb": "reach",
+            "target": "dust_wolf_mile",
+            "count": 1,
+            "text": "Stop where the dust wolves chevron across the road."
+          },
+          {
+            "id": "obj_q_frontier_dust_off_road_2",
+            "verb": "defeat",
+            "target": "faun_dust_wolf",
+            "count": 1,
+            "text": "Turn the lead wolf off the ruts with skill_steel_dust_kick. Do not raise a dome."
+          },
+          {
+            "id": "obj_q_frontier_dust_off_road_3",
+            "verb": "talk",
+            "target": "npc_role_frontier_guard",
+            "count": 1,
+            "text": "The road stays the door. Say that back."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 3,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_dust_kick"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Mile board: road clear, no dome.",
+          "gossip_on_complete": "Wolves left the ruts. The sky stayed open.",
+          "prop_or_door": "Mile stake."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_frontier_pale_flag",
+        "title": "Herd \u2014 One Pale Flag",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_pale_flag_1",
+            "verb": "reach",
+            "target": "pronghorn_flat",
+            "count": 1,
+            "text": "Find the flat where the herd feeds."
+          },
+          {
+            "id": "obj_q_frontier_pale_flag_2",
+            "verb": "witness",
+            "target": "faun_wind_pronghorn",
+            "count": 1,
+            "text": "See them turn as one pale rump-flag. Do not pen them."
+          },
+          {
+            "id": "obj_q_frontier_pale_flag_3",
+            "verb": "talk",
+            "target": "npc_role_frontier_guard",
+            "count": 1,
+            "text": "Report the direction they chose. It is not a claim."
+          }
+        ],
+        "rewards": {
+          "xp": 35,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Flat: herd moved, unpenned.",
+          "gossip_on_complete": "A guard wrote a direction, not a brand.",
+          "prop_or_door": "No fence."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_frontier_road_is_door",
+        "title": "Gate \u2014 The Road Is Our Door",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_road_is_door_1",
+            "verb": "reach",
+            "target": "frontier_gate_speech",
+            "count": 1,
+            "text": "Read the gate line: The road is our door."
+          },
+          {
+            "id": "obj_q_frontier_road_is_door_2",
+            "verb": "witness",
+            "target": "open_sky",
+            "count": 1,
+            "text": "Stand where a dome would have been. There is weather instead."
+          },
+          {
+            "id": "obj_q_frontier_road_is_door_3",
+            "verb": "talk",
+            "target": "npc_role_frontier_guard",
+            "count": 1,
+            "text": "Do not ask for shelter that closes the sky."
+          }
+        ],
+        "rewards": {
+          "xp": 30,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_canteen_salt",
+              "count": 1
+            }
+          ],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Gate line has a fresh reader.",
+          "gossip_on_complete": "Someone stood in the weather on purpose.",
+          "prop_or_door": "Gate timber."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_frontier_rivet_scout",
+        "title": "Last Dome \u2014 Hear the Rivet",
+        "world_id": "Frontier",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_frontier_guard",
+        "objectives": [
+          {
+            "id": "obj_q_frontier_rivet_scout_1",
+            "verb": "reach",
+            "target": "domebreaker_distance",
+            "count": 1,
+            "text": "Stop at scout distance from the domebreaker."
+          },
+          {
+            "id": "obj_q_frontier_rivet_scout_2",
+            "verb": "witness",
+            "target": "mon_frontier_domebreaker",
+            "count": 1,
+            "text": "Hear the rivet. Do not engage."
+          },
+          {
+            "id": "obj_q_frontier_rivet_scout_3",
+            "verb": "deliver",
+            "target": "rivet_board",
+            "count": 1,
+            "text": "Post the sound on the road board before the window."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 2,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_road",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Road board: rivet heard.",
+          "gossip_on_complete": "The last dome has a sound now, posted.",
+          "prop_or_door": "Road board."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Superhero": [
+      {
+        "id": "q_superhero_leave_standing",
+        "title": "Rooftop \u2014 Leave Them Standing",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_elite",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_leave_standing_1",
+            "verb": "reach",
+            "target": "dawn_spar_roof",
+            "count": 1,
+            "text": "Climb to the spar roof. Height is the verb."
+          },
+          {
+            "id": "obj_q_superhero_leave_standing_2",
+            "verb": "defeat",
+            "target": "spar_partner",
+            "count": 1,
+            "text": "Land skill_steel_mercy. They stand. A knockout fails the Refusal of the Win."
+          },
+          {
+            "id": "obj_q_superhero_leave_standing_3",
+            "verb": "talk",
+            "target": "npc_role_dawn_elite",
+            "count": 1,
+            "text": "Confirm the dawn did not end on your hit."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_mercy"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 3
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Spar roof: no one carried off.",
+          "gossip_on_complete": "Mercy landed. The sunrise continued.",
+          "prop_or_door": "Roof chalk."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_superhero_trade_intel",
+        "title": "News Office \u2014 Intel for a Story She Won't Run",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_trade_intel_1",
+            "verb": "reach",
+            "target": "mira_news_office",
+            "count": 1,
+            "text": "Visit Mira. She has a story she will not publish."
+          },
+          {
+            "id": "obj_q_superhero_trade_intel_2",
+            "verb": "deliver",
+            "target": "intel_slip",
+            "count": 1,
+            "text": "Trade a real observation. Rumors do not clear the desk."
+          },
+          {
+            "id": "obj_q_superhero_trade_intel_3",
+            "verb": "witness",
+            "target": "unpublished_page",
+            "count": 1,
+            "text": "See the page stay off the front. That is the success."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "News office: page held.",
+          "gossip_on_complete": "Mira took intel and printed nothing.",
+          "prop_or_door": "Desk spike."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/superhero/quests/mira-discretion.json",
+        "extends_canon_id": "superhero_mira_02_intel"
+      },
+      {
+        "id": "q_superhero_champion_terms",
+        "title": "Skyline \u2014 Champion's Conditions",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_elite",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_champion_terms_1",
+            "verb": "reach",
+            "target": "skyline_kor",
+            "count": 1,
+            "text": "Find Kor on the skyline."
+          },
+          {
+            "id": "obj_q_superhero_champion_terms_2",
+            "verb": "talk",
+            "target": "kor",
+            "count": 1,
+            "text": "Hear the conditions for the midnight meeting. Do not soften them."
+          },
+          {
+            "id": "obj_q_superhero_champion_terms_3",
+            "verb": "deliver",
+            "target": "conditions_note",
+            "count": 1,
+            "text": "Carry the conditions to the garden side so Silas can see them before midnight."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Garden has Kor's conditions.",
+          "gossip_on_complete": "The meeting has terms. Nobody has won it.",
+          "prop_or_door": "Skyline ledge."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/superhero/quests/iron-hex-redemption.json",
+        "extends_canon_id": "superhero_hex_02_kor"
+      },
+      {
+        "id": "q_superhero_sifu_road",
+        "title": "Cross \u2014 Take Him Toward the Pit",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_elite",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_sifu_road_1",
+            "verb": "talk",
+            "target": "champion",
+            "count": 1,
+            "text": "Tell Champion you will walk him toward his sifu. You are not the sifu."
+          },
+          {
+            "id": "obj_q_superhero_sifu_road_2",
+            "verb": "escort",
+            "target": "champion",
+            "count": 1,
+            "text": "Cross one gate with him. Flower Law applies if the gate is Hub."
+          },
+          {
+            "id": "obj_q_superhero_sifu_road_3",
+            "verb": "reach",
+            "target": "pit_threshold",
+            "count": 1,
+            "text": "Stop at the pit threshold. The gift lesson is his, not yours, until he asks."
+          }
+        ],
+        "rewards": {
+          "xp": 80,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_palm"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Pit threshold logged.",
+          "gossip_on_complete": "Champion was walked, not delivered as a trophy.",
+          "prop_or_door": "Pit door."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/superhero/quests/sifu-revelation.json",
+        "extends_canon_id": "superhero_sifu_02_carry"
+      },
+      {
+        "id": "q_superhero_kestrel",
+        "title": "Thermals \u2014 Do Not Claim the Stoop",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_kestrel_1",
+            "verb": "reach",
+            "target": "thermal_ledge",
+            "count": 1,
+            "text": "Stand where the aegis kestrel hunts."
+          },
+          {
+            "id": "obj_q_superhero_kestrel_2",
+            "verb": "witness",
+            "target": "faun_aegis_kestrel",
+            "count": 1,
+            "text": "See the anchor-shaped stoop. Do not loose anything."
+          },
+          {
+            "id": "obj_q_superhero_kestrel_3",
+            "verb": "talk",
+            "target": "npc_role_dawn_mystic",
+            "count": 1,
+            "text": "The sky is not a title you won."
+          }
+        ],
+        "rewards": {
+          "xp": 30,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Ledge: kestrel unclaimed.",
+          "gossip_on_complete": "A mystic heard someone decline the sky.",
+          "prop_or_door": "Ledge."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_superhero_erase_win",
+        "title": "Lane \u2014 Chalk, Then Erase the Win",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_erase_win_1",
+            "verb": "craft",
+            "target": "prop_launch_chalk",
+            "count": 1,
+            "text": "Mark a launch lane in chalk."
+          },
+          {
+            "id": "obj_q_superhero_erase_win_2",
+            "verb": "reach",
+            "target": "lane_end",
+            "count": 1,
+            "text": "Run the lane."
+          },
+          {
+            "id": "obj_q_superhero_erase_win_3",
+            "verb": "deliver",
+            "target": "erased_win_mark",
+            "count": 1,
+            "text": "Erase the mark that would have meant you finished first."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_dawn_chalk",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_unchosen"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Lane chalk is a start, not a podium.",
+          "gossip_on_complete": "The winning mark was wiped while the lane remained.",
+          "prop_or_door": "prop_launch_chalk"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_superhero_no_final",
+        "title": "Alley \u2014 The Hit That Would End Dawn",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_elite",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_no_final_1",
+            "verb": "reach",
+            "target": "dawn_alley",
+            "count": 1,
+            "text": "Answer a fight that is already ugly."
+          },
+          {
+            "id": "obj_q_superhero_no_final_2",
+            "verb": "defeat",
+            "target": "alley_aggressor",
+            "count": 1,
+            "text": "Stop them with skill_steel_mercy or a palm. Ending them fails."
+          },
+          {
+            "id": "obj_q_superhero_no_final_3",
+            "verb": "witness",
+            "target": "still_dawn",
+            "count": 1,
+            "text": "Look at the sky after. It is the same morning."
+          }
+        ],
+        "rewards": {
+          "xp": 75,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_steel_mercy"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Alley clear. Sky unended.",
+          "gossip_on_complete": "Someone refused the last punch.",
+          "prop_or_door": "Alley."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_superhero_sentinel_scout",
+        "title": "Mercy Sentinel \u2014 Band Unclaimed",
+        "world_id": "Superhero",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_dawn_elite",
+        "objectives": [
+          {
+            "id": "obj_q_superhero_sentinel_scout_1",
+            "verb": "reach",
+            "target": "sentinel_perch_distance",
+            "count": 1,
+            "text": "Scout distance."
+          },
+          {
+            "id": "obj_q_superhero_sentinel_scout_2",
+            "verb": "witness",
+            "target": "mon_dawn_mercy_sentinel",
+            "count": 1,
+            "text": "See the windup. Do not take the band."
+          },
+          {
+            "id": "obj_q_superhero_sentinel_scout_3",
+            "verb": "deliver",
+            "target": "sentinel_board",
+            "count": 1,
+            "text": "Post perch and hour on the dawn board."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "permanent_dawn",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Dawn board: sentinel perched, band still on it.",
+          "gossip_on_complete": "The mercy band was scouted, not looted.",
+          "prop_or_door": "Dawn board."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Crucible": [
+      {
+        "id": "q_crucible_hear_pact",
+        "title": "Lattice Circle \u2014 Hear the Pact",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_hear_pact_1",
+            "verb": "reach",
+            "target": "drill_yard",
+            "count": 1,
+            "text": "Earn the audience by drilling. The yard is the door."
+          },
+          {
+            "id": "obj_q_crucible_hear_pact_2",
+            "verb": "reach",
+            "target": "lattice_circle",
+            "count": 1,
+            "text": "Enter the circle."
+          },
+          {
+            "id": "obj_q_crucible_hear_pact_3",
+            "verb": "witness",
+            "target": "voss_pact",
+            "count": 1,
+            "text": "Hear the pact. Do not sign a completion clause."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_craft_unend"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Circle: pact heard, unsigned as final.",
+          "gossip_on_complete": "Voss spoke and the listener refused a last line.",
+          "prop_or_door": "Circle."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/quests/voss-pact.json",
+        "extends_canon_id": "lattice_voss_02_pact"
+      },
+      {
+        "id": "q_crucible_bog_letter",
+        "title": "Bog \u2014 Nesha's Letter, Still Sealed",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_bog_letter_1",
+            "verb": "reach",
+            "target": "sage_hut",
+            "count": 1,
+            "text": "Sit. Tea is the appointment with Ono."
+          },
+          {
+            "id": "obj_q_crucible_bog_letter_2",
+            "verb": "deliver",
+            "target": "nesha_letter",
+            "count": 1,
+            "text": "Carry the letter through the bog."
+          },
+          {
+            "id": "obj_q_crucible_bog_letter_3",
+            "verb": "talk",
+            "target": "nesha",
+            "count": 1,
+            "text": "Deliver it. Do not summarize it on the way."
+          }
+        ],
+        "rewards": {
+          "xp": 65,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 1
+          },
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Letter delivered across the bog.",
+          "gossip_on_complete": "Ono's words reached Nesha unsummarized.",
+          "prop_or_door": "Bog path."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/quests/ono-nesha-letter.json",
+        "extends_canon_id": "lattice_ono_02_carry"
+      },
+      {
+        "id": "q_crucible_print_tracks",
+        "title": "Verge \u2014 Track the Print Together",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_print_tracks_1",
+            "verb": "talk",
+            "target": "emer",
+            "count": 1,
+            "text": "Show the sketches. Do not invent a species for the print."
+          },
+          {
+            "id": "obj_q_crucible_print_tracks_2",
+            "verb": "escort",
+            "target": "emer",
+            "count": 1,
+            "text": "Track together until the print repeats."
+          },
+          {
+            "id": "obj_q_crucible_print_tracks_3",
+            "verb": "reach",
+            "target": "breach_lip",
+            "count": 1,
+            "text": "Stop at the breach. Meeting Kiren is the next canon step, not this turn-in."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_witness_slate",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Verge: print tracked to the breach lip.",
+          "gossip_on_complete": "Emer was not left to follow it alone.",
+          "prop_or_door": "Print in mud."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored",
+        "canon_source": "Assets/Concordia/Resources/Concordia/Canon/lattice-crucible/quests/emer-print.json",
+        "extends_canon_id": "lattice_emer_02_track"
+      },
+      {
+        "id": "q_crucible_unend_shard",
+        "title": "Shard Cart \u2014 Refuse the Close",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_unend_shard_1",
+            "verb": "gather",
+            "target": "item_unclosed_shard",
+            "count": 1,
+            "text": "Take a shard that wants to be a finished edge."
+          },
+          {
+            "id": "obj_q_crucible_unend_shard_2",
+            "verb": "craft",
+            "target": "skill_craft_unend",
+            "count": 1,
+            "text": "Un-end it. The seam stays open."
+          },
+          {
+            "id": "obj_q_crucible_unend_shard_3",
+            "verb": "deliver",
+            "target": "npc_role_crucible_mystic",
+            "count": 1,
+            "text": "Return it to the cart. A closed shard is a failed craft."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_unclosed_shard",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_craft_unend",
+            "skill_steel_shard"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Shard cart: one seam still open.",
+          "gossip_on_complete": "A mystic bought back an unfinished edge.",
+          "prop_or_door": "prop_unclosed_shard"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crucible_moth",
+        "title": "Drift \u2014 The Moth Is Not a Bowtie",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_moth_1",
+            "verb": "reach",
+            "target": "lattice_moth_drift",
+            "count": 1,
+            "text": "Find the moths."
+          },
+          {
+            "id": "obj_q_crucible_moth_2",
+            "verb": "witness",
+            "target": "faun_lattice_moth",
+            "count": 1,
+            "text": "The wings are asymmetric. A perfect bowtie is the wrong animal."
+          },
+          {
+            "id": "obj_q_crucible_moth_3",
+            "verb": "talk",
+            "target": "npc_role_crucible_mystic",
+            "count": 1,
+            "text": "Reject any offer to 'correct' the wings."
+          }
+        ],
+        "rewards": {
+          "xp": 35,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Moth drift uncorrected.",
+          "gossip_on_complete": "Someone refused a symmetric lie.",
+          "prop_or_door": "Drift light."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crucible_unend_fall",
+        "title": "Unstable Ground \u2014 Pull the Fall Back",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_unend_fall_1",
+            "verb": "reach",
+            "target": "unstable_span",
+            "count": 1,
+            "text": "Cross until the ground offers you an ending."
+          },
+          {
+            "id": "obj_q_crucible_unend_fall_2",
+            "verb": "craft",
+            "target": "skill_presence_unchosen",
+            "count": 1,
+            "text": "Un-end the fall. You do not get a heroic landing cinematic."
+          },
+          {
+            "id": "obj_q_crucible_unend_fall_3",
+            "verb": "talk",
+            "target": "npc_role_crucible_mystic",
+            "count": 1,
+            "text": "Report that you are still in the span."
+          }
+        ],
+        "rewards": {
+          "xp": 60,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_unchosen"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 2
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Span: walker still on it.",
+          "gossip_on_complete": "A fall was refused without a victory pose.",
+          "prop_or_door": "Broken span."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crucible_no_ninth",
+        "title": "Path \u2014 There Is No Ninth",
+        "world_id": "Crucible",
+        "giver_npc_id": "lyra",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_crucible_no_ninth_1",
+            "verb": "reach",
+            "target": "would_be_ninth_path",
+            "count": 1,
+            "text": "Walk the path that offers itself as a ninth Refusal."
+          },
+          {
+            "id": "obj_q_crucible_no_ninth_2",
+            "verb": "witness",
+            "target": "path_end_unwritten",
+            "count": 1,
+            "text": "Stop where a ninth law would have to be written. It cannot."
+          },
+          {
+            "id": "obj_q_crucible_no_ninth_3",
+            "verb": "talk",
+            "target": "lyra",
+            "count": 1,
+            "text": "Tell her you stopped. She will not teach the rest."
+          }
+        ],
+        "rewards": {
+          "xp": 80,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_second_hour"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 2
+          },
+          {
+            "faction_id": "court_witness",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Ninth path has footprints that stop.",
+          "gossip_on_complete": "Lyra heard a stop and did not add a lesson.",
+          "prop_or_door": "Unwritten post."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "lyra",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_crucible_unender_scout",
+        "title": "Gap \u2014 Scout the Un-Ender",
+        "world_id": "Crucible",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_crucible_mystic",
+        "objectives": [
+          {
+            "id": "obj_q_crucible_unender_scout_1",
+            "verb": "reach",
+            "target": "unender_gap_overlook",
+            "count": 1,
+            "text": "Overlook the gap."
+          },
+          {
+            "id": "obj_q_crucible_unender_scout_2",
+            "verb": "witness",
+            "target": "mon_boss_unender",
+            "count": 1,
+            "text": "See the gap face the camera of the overlook. Do not close it."
+          },
+          {
+            "id": "obj_q_crucible_unender_scout_3",
+            "verb": "deliver",
+            "target": "gap_board",
+            "count": 1,
+            "text": "Post the window on the lattice board."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_lattice",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Lattice board: Un-Ender window posted.",
+          "gossip_on_complete": "The gap was looked at and left open.",
+          "prop_or_door": "Overlook."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ],
+    "Sere": [
+      {
+        "id": "q_sere_half_tile",
+        "title": "Gap Inn \u2014 Half a Tile",
+        "world_id": "Sere",
+        "giver_npc_id": "the_ferryman_wend",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_half_tile_1",
+            "verb": "reach",
+            "target": "neutral_inn_gap",
+            "count": 1,
+            "text": "Find Wend at the inn between wars. He will not be in a meeting, because there are none."
+          },
+          {
+            "id": "obj_q_sere_half_tile_2",
+            "verb": "witness",
+            "target": "prop_brand_tile",
+            "count": 1,
+            "text": "See the broken tile. Do not ask which king it serves."
+          },
+          {
+            "id": "obj_q_sere_half_tile_3",
+            "verb": "talk",
+            "target": "the_ferryman_wend",
+            "count": 1,
+            "text": "If he offers recognition, accept the method, not a side."
+          }
+        ],
+        "rewards": {
+          "xp": 70,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_name_holder"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "tessera",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Inn: a tile was shown and not explained.",
+          "gossip_on_complete": "Wend let someone see how holders recognize each other.",
+          "prop_or_door": "prop_brand_tile"
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "the_ferryman_wend",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_open_table",
+        "title": "Provinces \u2014 The Dangerous Object Stays Small",
+        "world_id": "Sere",
+        "giver_npc_id": "esha_of_the_open_table",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_open_table_1",
+            "verb": "reach",
+            "target": "esha_plain_room",
+            "count": 1,
+            "text": "Reach the plain room. Night hours she does not take visitors; come while the door is open."
+          },
+          {
+            "id": "obj_q_sere_open_table_2",
+            "verb": "witness",
+            "target": "open_ledger_seed",
+            "count": 1,
+            "text": "See the open ledger and the seed library. It works. It is small."
+          },
+          {
+            "id": "obj_q_sere_open_table_3",
+            "verb": "talk",
+            "target": "esha_of_the_open_table",
+            "count": 1,
+            "text": "Leave without announcing it in either capital."
+          }
+        ],
+        "rewards": {
+          "xp": 90,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_seed_not_tree",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_name_holder"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_table",
+            "delta": 3
+          },
+          {
+            "faction_id": "tessera",
+            "delta": -1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "No capital board mentions the ledger.",
+          "gossip_on_complete": "Esha still has the small dangerous object.",
+          "prop_or_door": "Plain room table."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "esha_of_the_open_table",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_curtain_line",
+        "title": "Curtain \u2014 One Line They Would Redact",
+        "world_id": "Sere",
+        "giver_npc_id": "archivist_of_the_curtain",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_curtain_line_1",
+            "verb": "reach",
+            "target": "curtain_archive",
+            "count": 1,
+            "text": "Ask the archivist for a line that would not survive the curtain."
+          },
+          {
+            "id": "obj_q_sere_curtain_line_2",
+            "verb": "gather",
+            "target": "redact_line",
+            "count": 1,
+            "text": "Copy it once, by hand."
+          },
+          {
+            "id": "obj_q_sere_curtain_line_3",
+            "verb": "deliver",
+            "target": "archivist_maren",
+            "count": 1,
+            "text": "Carry it through the Hub to Maren. She files what you saw, not what an embassy claims."
+          }
+        ],
+        "rewards": {
+          "xp": 85,
+          "coin": 0,
+          "items": [
+            {
+              "id": "item_ash_page",
+              "count": 1
+            }
+          ],
+          "skill_ids": [
+            "skill_presence_witness"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "court_witness",
+            "delta": 2
+          },
+          {
+            "faction_id": "tessera",
+            "delta": -1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Maren's fact book has a Sere line.",
+          "gossip_on_complete": "A redaction failed because someone walked.",
+          "prop_or_door": "Curtain desk, then Hub lectern."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "archivist_of_the_curtain",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_mark_price",
+        "title": "Desk \u2014 Pay the Mark, Watch the Price",
+        "world_id": "Sere",
+        "giver_npc_id": "officer_tomas_reib",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_mark_price_1",
+            "verb": "talk",
+            "target": "officer_tomas_reib",
+            "count": 1,
+            "text": "Ask the price of a furnace-belt permit."
+          },
+          {
+            "id": "obj_q_sere_mark_price_2",
+            "verb": "deliver",
+            "target": "mark_payment",
+            "count": 1,
+            "text": "Pay it. The Mark compounds. Do not pretend the coin was a gift."
+          },
+          {
+            "id": "obj_q_sere_mark_price_3",
+            "verb": "witness",
+            "target": "vend_sere_tessera_desk",
+            "count": 1,
+            "text": "Buy nothing. Read how stranger versus known changes the next number."
+          }
+        ],
+        "rewards": {
+          "xp": 50,
+          "coin": -10,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_bargain"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "tessera",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Permit desk shows a paid mark.",
+          "gossip_on_complete": "Tomas's price moved because standing moved.",
+          "prop_or_door": "Desk."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "officer_tomas_reib",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_roach_count",
+        "title": "Furnace Lip \u2014 They Are Fauna",
+        "world_id": "Sere",
+        "giver_npc_id": "esha_of_the_open_table",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_roach_count_1",
+            "verb": "reach",
+            "target": "furnace_lip",
+            "count": 1,
+            "text": "Stand upwind of the smog."
+          },
+          {
+            "id": "obj_q_sere_roach_count_2",
+            "verb": "witness",
+            "target": "faun_smog_roach",
+            "count": 1,
+            "text": "Count the roaches you see. Oval bodies, thick legs. Not an omen, not acid."
+          },
+          {
+            "id": "obj_q_sere_roach_count_3",
+            "verb": "talk",
+            "target": "esha_of_the_open_table",
+            "count": 1,
+            "text": "Give the count. She will not let you turn it into a prophecy."
+          }
+        ],
+        "rewards": {
+          "xp": 30,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_table",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Esha's margin has a roach count.",
+          "gossip_on_complete": "The furnace lip was biology.",
+          "prop_or_door": "prop_furnace_bellows nearby."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "esha_of_the_open_table",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_one_brand",
+        "title": "Kennel \u2014 One Brand Is the Law",
+        "world_id": "Sere",
+        "giver_npc_id": null,
+        "giver_role_id": "npc_role_sere_enforcer",
+        "objectives": [
+          {
+            "id": "obj_q_sere_one_brand_1",
+            "verb": "reach",
+            "target": "mark_hound_kennel",
+            "count": 1,
+            "text": "Find the mark hound. Shared hound skeleton, smog in the coat."
+          },
+          {
+            "id": "obj_q_sere_one_brand_2",
+            "verb": "witness",
+            "target": "faun_mark_hound",
+            "count": 1,
+            "text": "The brand is one broken tile. Do not add a second mark."
+          },
+          {
+            "id": "obj_q_sere_one_brand_3",
+            "verb": "talk",
+            "target": "npc_role_sere_enforcer",
+            "count": 1,
+            "text": "Tell the enforcer the hound is already named by the tile. A second brand fails."
+          }
+        ],
+        "rewards": {
+          "xp": 40,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_name_holder"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "tessera",
+            "delta": 0
+          },
+          {
+            "faction_id": "open_table",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Kennel log: second brand refused.",
+          "gossip_on_complete": "An enforcer was told one tile is enough.",
+          "prop_or_door": "Kennel."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": null,
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_same_truth",
+        "title": "Border \u2014 The Same Truth Both Ways",
+        "world_id": "Sere",
+        "giver_npc_id": "the_ferryman_wend",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_same_truth_1",
+            "verb": "talk",
+            "target": "the_ferryman_wend",
+            "count": 1,
+            "text": "Take one sentence he will carry to both councils."
+          },
+          {
+            "id": "obj_q_sere_same_truth_2",
+            "verb": "deliver",
+            "target": "border_crossing",
+            "count": 1,
+            "text": "Speak it at the crossing exactly."
+          },
+          {
+            "id": "obj_q_sere_same_truth_3",
+            "verb": "talk",
+            "target": "the_ferryman_wend",
+            "count": 1,
+            "text": "Speak it again on the return. If you improved it, the errand fails."
+          }
+        ],
+        "rewards": {
+          "xp": 75,
+          "coin": 0,
+          "items": [],
+          "skill_ids": [
+            "skill_presence_etiquette"
+          ]
+        },
+        "faction_delta": [
+          {
+            "faction_id": "tessera",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Crossing heard one sentence twice.",
+          "gossip_on_complete": "Wend's truth was not edited in transit.",
+          "prop_or_door": "Border post."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "the_ferryman_wend",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      },
+      {
+        "id": "q_sere_furnace_scout",
+        "title": "Belt \u2014 Scout the Compound Mark",
+        "world_id": "Sere",
+        "giver_npc_id": "esha_of_the_open_table",
+        "giver_role_id": null,
+        "objectives": [
+          {
+            "id": "obj_q_sere_furnace_scout_1",
+            "verb": "reach",
+            "target": "furnace_belt_overlook",
+            "count": 1,
+            "text": "Overlook the belt. Live steel is legal here. Flower Law is the Court only."
+          },
+          {
+            "id": "obj_q_sere_furnace_scout_2",
+            "verb": "witness",
+            "target": "mon_boss_compound_mark",
+            "count": 1,
+            "text": "See the furnace eye and the tile skirt. Do not step into the circle."
+          },
+          {
+            "id": "obj_q_sere_furnace_scout_3",
+            "verb": "deliver",
+            "target": "furnace_board",
+            "count": 1,
+            "text": "Post the window where workers read it before the hour."
+          }
+        ],
+        "rewards": {
+          "xp": 55,
+          "coin": 0,
+          "items": [],
+          "skill_ids": []
+        },
+        "faction_delta": [
+          {
+            "faction_id": "open_table",
+            "delta": 1
+          }
+        ],
+        "world_hooks": {
+          "board_line": "Worker board: Compound Mark window.",
+          "gossip_on_complete": "The eye was scouted from the overlook.",
+          "prop_or_door": "Worker board."
+        },
+        "prerequisites": [],
+        "turn_in": {
+          "npc_id": "esha_of_the_open_table",
+          "requires_all_objectives": true
+        },
+        "loop": "accept on the giver or board, do the objectives in order, turn in to the same giver. Board line and gossip fire only after turn-in.",
+        "objective_fidelity": "authored"
+      }
+    ]
+  }
+}

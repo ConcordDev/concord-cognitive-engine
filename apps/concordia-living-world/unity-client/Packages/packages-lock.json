@@ -17,6 +17,16 @@
       },
       "hash": "d49ae2953580f3481beb1e084a1da2682f0b5610"
     },
+    "com.ramenvr.aura-unity": {
+      "version": "https://github.com/ramenvr/AuraForUnityPlugin.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.inputsystem": "1.1.1",
+        "com.unity.cloud.gltfast": "6.12.1"
+      },
+      "hash": "558ea3c324c2cfd2803f3486bedbe9cbb740df9d"
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 1,
@@ -71,17 +81,17 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.cloud.gltfast": {
-      "version": "6.10.1",
+      "version": "https://github.com/needle-mirror/com.unity.cloud.gltfast.git#6.20.0",
       "depth": 0,
-      "source": "registry",
+      "source": "git",
       "dependencies": {
-        "com.unity.burst": "1.8.4",
-        "com.unity.collections": "1.2.4",
-        "com.unity.mathematics": "1.2.6",
         "com.unity.modules.jsonserialize": "1.0.0",
-        "com.unity.modules.unitywebrequest": "1.0.0"
+        "com.unity.modules.unitywebrequest": "1.0.0",
+        "com.unity.mathematics": "1.3.3",
+        "com.unity.burst": "1.8.30",
+        "com.unity.collections": "2.6.8"
       },
-      "url": "https://packages.unity.com"
+      "hash": "1207e5d2b2261c1acac0c86ad58985a478e4aeef"
     },
     "com.unity.collections": {
       "version": "6.5.0",
@@ -108,9 +118,18 @@
     },
     "com.unity.ext.nunit": {
       "version": "2.1.0",
-      "depth": 2,
+      "depth": 1,
       "source": "builtin",
       "dependencies": {}
+    },
+    "com.unity.inputsystem": {
+      "version": "1.20.0",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.uielements": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
     },
     "com.unity.mathematics": {
       "version": "1.4.0",
@@ -197,7 +216,7 @@
     },
     "com.unity.test-framework": {
       "version": "1.7.0",
-      "depth": 1,
+      "depth": 0,
       "source": "builtin",
       "dependencies": {
         "com.unity.ext.nunit": "2.1.0",

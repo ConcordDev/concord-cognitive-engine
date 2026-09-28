@@ -1,0 +1,508 @@
+{
+  "batch": "B26_vehicles_urban",
+  "slice": "A18_vehicles_cyber_crime",
+  "count": 10,
+  "traffic_sim": false,
+  "entries": [
+    {
+      "id": "veh_grid_rail_dolly",
+      "display_name": "Grid Rail Dolly",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "dolly",
+        "push"
+      ],
+      "triangle_budget": 3200,
+      "aura_prompt": "One low carbon rail dolly with two flanged wheels and an empty bed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal frame, scratched acrylic bed, one cyan scuff. No coil in frame, no digits, no seat, no rotor, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low carbon rail dolly with two flanged wheels and an empty bed. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal frame, scratched acrylic bed, one cyan scuff. No coil in frame, no digits, no seat, no rotor, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low rectangle on two flanges.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc",
+        "#5c6570"
+      ],
+      "lore_blurb": "Volume veh_grid_rail_dolly. Push. prop_cable_coil and blank slates ride on it and are not in this mesh. Not a gunship. mon_grid_drone stays fauna.",
+      "scale_vs_player": "0.7 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_grid_rail_dolly/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 3200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Measured Grid sky floor from (-25.77, -58.0) to (-19.37, -62.8), inside the Zero circle. Named set sky_bridge stays unplaced. Do not author a new bridge coordinate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.18,
+        "wheel_kind": "flanged_pair",
+        "cargo_prop": "prop_cable_coil",
+        "part_item_id": "item_cable_coil",
+        "creature_excluded": "mon_grid_drone"
+      }
+    },
+    {
+      "id": "veh_cyber_skybridge_cart",
+      "display_name": "Sky-Bridge Cart",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "sky_bridge",
+        "push"
+      ],
+      "triangle_budget": 3800,
+      "aura_prompt": "One long carbon sky-bridge cart with a single push bar and two wide flanged shoes. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scratched glass bed, magenta scuff only in the glass, gunmetal shoes. The bridge is not in frame. No cabin, no seat, no rotor, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One long carbon sky-bridge cart with a single push bar and two wide flanged shoes. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scratched glass bed, magenta scuff only in the glass, gunmetal shoes. The bridge is not in frame. No cabin, no seat, no rotor, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A long bed and one high bar.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc",
+        "#5c6570"
+      ],
+      "lore_blurb": "Travel prop for env_cyber_skybridge_segment. The segment stays its own mesh. Named set sky_bridge stays unplaced. Not street traffic.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_cyber_skybridge_cart/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 3800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Measured Grid sky floor from (-25.77, -58.0) to (-19.37, -62.8), inside the Zero circle. Named set sky_bridge stays unplaced. Do not author a new bridge coordinate. Snap to env_cyber_skybridge_segment when that module is instanced. Two kit modules, 8 m, snap at both decks.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.22,
+        "wheel_kind": "flanged_shoes",
+        "parent_module": "env_cyber_skybridge_segment",
+        "named_set": "sky_bridge",
+        "named_set_state": "unplaced"
+      }
+    },
+    {
+      "id": "veh_cyber_drone_sled",
+      "display_name": "Drone Sled",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "sled",
+        "push"
+      ],
+      "triangle_budget": 2400,
+      "aura_prompt": "One flat cargo sled with two runners and one empty clamp ring. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Carbon plank, scratched acrylic ring standing empty, cyan wear on the ring only. No rotor, no lens, no drone body, no seat, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flat cargo sled with two runners and one empty clamp ring. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Carbon plank, scratched acrylic ring standing empty, cyan wear on the ring only. No rotor, no lens, no drone body, no seat, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat plank and one empty ring.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc",
+        "#5c6570"
+      ],
+      "lore_blurb": "Cargo sled. The clamp waits. mon_grid_drone and hyb_billdrone are not this mesh and are not parented to it. Runners do not spin.",
+      "scale_vs_player": "0.7 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_cyber_drone_sled/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 2400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Measured Grid sky floor from (-25.77, -58.0) to (-19.37, -62.8), inside the Zero circle. Named set sky_bridge stays unplaced. Do not author a new bridge coordinate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": null,
+        "wheel_kind": "runners",
+        "omega": "unused",
+        "creature_excluded": [
+          "mon_grid_drone",
+          "hyb_billdrone"
+        ]
+      }
+    },
+    {
+      "id": "veh_cyber_rail_shoe",
+      "display_name": "Rail Shoe",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "part",
+        "wheel"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One flanged rail shoe, a single wheel with a deep flange and an open axle hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal, one cyan scratch. No cart, no track, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flanged rail shoe, a single wheel with a deep flange and an open axle hole. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Gunmetal, one cyan scratch. No cart, no track, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One circle with a thick lip.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc",
+        "#5c6570"
+      ],
+      "lore_blurb": "Spare flange for veh_grid_rail_dolly. Axle hole is the pivot. Radius 0.18 m. Not veh_spare_iron_wheel.",
+      "scale_vs_player": "0.36 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_cyber_rail_shoe/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Measured Grid sky floor from (-25.77, -58.0) to (-19.37, -62.8), inside the Zero circle. Named set sky_bridge stays unplaced. Do not author a new bridge coordinate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.18,
+        "wheel_kind": "flange",
+        "parent_vehicle": "veh_grid_rail_dolly"
+      }
+    },
+    {
+      "id": "veh_cyber_blank_slate",
+      "display_name": "Blank Slate",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "cargo",
+        "travel_prop"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One blank acrylic slate, a flat rectangle with chipped corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scratched clear sheet, gunmetal edge. No digit, no total, no ink, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One blank acrylic slate, a flat rectangle with chipped corners. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scratched clear sheet, gunmetal edge. No digit, no total, no ink, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat rectangle.",
+      "palette": [
+        "#1a1228",
+        "#3dffa0",
+        "#c45aa8",
+        "#d8d4dc",
+        "#5c6570"
+      ],
+      "lore_blurb": "Cargo for the rail dolly. Census slates stay blank of totals. Not a UI plate and not a numeral token.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_cyber_blank_slate/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_cyber_grid",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Measured Grid sky floor from (-25.77, -58.0) to (-19.37, -62.8), inside the Zero circle. Named set sky_bridge stays unplaced. Do not author a new bridge coordinate.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "parent_vehicle": "veh_grid_rail_dolly",
+        "digits": "forbidden"
+      }
+    },
+    {
+      "id": "veh_wharf_cart",
+      "display_name": "Wharf Cart",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "handcart",
+        "push"
+      ],
+      "triangle_budget": 3600,
+      "aura_prompt": "One wet-timber wharf cart with two iron-tired wheels and two push shafts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rain-dark oak, rusted iron tires, sodium stain on one board, empty bed. No crate, no horse, no lettering, no seat. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wet-timber wharf cart with two iron-tired wheels and two push shafts. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rain-dark oak, rusted iron tires, sodium stain on one board, empty bed. No crate, no horse, no lettering, no seat. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A box, two large wheels, two shafts.",
+      "palette": [
+        "#3a342c",
+        "#8a4a28",
+        "#e0b050",
+        "#6a6258",
+        "#c4b49a"
+      ],
+      "lore_blurb": "Volume veh_wharf_cart. Push. prop_dock_crate is a separate mesh. Invoices stay on the posted bill. Not veh_hub_handcart and not veh_frontier_handcart.",
+      "scale_vs_player": "1.1 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_wharf_cart/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 3600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Iron Coast wharf, beside env_crime_wharf_bollard. Not the tenement bay. Not the warehouse door clear.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.32,
+        "wheel_kind": "iron_tire_pair",
+        "cargo_prop": "prop_dock_crate",
+        "part_item_id": "item_dock_hook",
+        "parent_landmark": "env_crime_wharf_bollard"
+      }
+    },
+    {
+      "id": "veh_crime_dock_loader",
+      "display_name": "Dock Loader",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "loader",
+        "push"
+      ],
+      "triangle_budget": 4200,
+      "aura_prompt": "One short dock loader, a low iron base, two small wheels, and one empty hook eye on a short mast. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust corrugate shield, sodium stain, asphalt grit. The hook eye is empty. No crate, no chain, no gun, no cabin. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One short dock loader, a low iron base, two small wheels, and one empty hook eye on a short mast. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust corrugate shield, sodium stain, asphalt grit. The hook eye is empty. No crate, no chain, no gun, no cabin. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short mast on a low base.",
+      "palette": [
+        "#3a342c",
+        "#8a4a28",
+        "#e0b050",
+        "#6a6258",
+        "#c4b49a"
+      ],
+      "lore_blurb": "One parked loader. Not a crane ship and not a traffic fleet. The eye can take prop_dock_hook or wpn_imp_dock_hook. Those meshes stay separate.",
+      "scale_vs_player": "1.6 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_crime_dock_loader/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 4200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Warehouse apron of arch_hero_crime_warehouse_door, outside the SoftEnter first frame and outside the 1.2 x 2.2 m door clear.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.16,
+        "wheel_kind": "small_pair",
+        "parent_landmark": "arch_hero_crime_warehouse_door",
+        "hook_mesh": "empty_eye"
+      }
+    },
+    {
+      "id": "veh_crime_pallet_jack",
+      "display_name": "Pallet Jack",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "hand_truck",
+        "push"
+      ],
+      "triangle_budget": 2200,
+      "aura_prompt": "One low pallet jack, two steel forks, two tiny rollers, and one tiller. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet iron, rust at the forks, empty of crates. No seat, no lettering, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One low pallet jack, two steel forks, two tiny rollers, and one tiller. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet iron, rust at the forks, empty of crates. No seat, no lettering, no gun. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two low prongs and one stick.",
+      "palette": [
+        "#3a342c",
+        "#8a4a28",
+        "#e0b050",
+        "#6a6258",
+        "#c4b49a"
+      ],
+      "lore_blurb": "The hand truck deferred out of B23 clutter. Not a B23 row. Not the empty pallet prop.",
+      "scale_vs_player": "0.9 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_crime_pallet_jack/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 2200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Warehouse apron of arch_hero_crime_warehouse_door, outside the SoftEnter first frame and outside the 1.2 x 2.2 m door clear.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": 0.05,
+        "wheel_kind": "rollers",
+        "parent_landmark": "arch_hero_crime_warehouse_door",
+        "not_prop": "prop_crime_wh_pallet"
+      }
+    },
+    {
+      "id": "veh_ix_wharf_skid",
+      "display_name": "Wharf Skid",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Crime",
+        "Cyber"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "travel_prop",
+        "skid",
+        "push",
+        "uncounted_wharf"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One two-runner cargo skid with a rust strap at one end and a cyan fiber strap at the other. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet timber runners, one rust iron strap, one cyan fiber strap, empty bed. No ship, no lettering, no neon sign. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One two-runner cargo skid with a rust strap at one end and a cyan fiber strap at the other. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet timber runners, one rust iron strap, one cyan fiber strap, empty bed. No ship, no lettering, no neon sign. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "Two rails and a split strap.",
+      "palette": [
+        "#3a342c",
+        "#8a4a28",
+        "#e0b050",
+        "#3dffa0",
+        "#5c6570"
+      ],
+      "lore_blurb": "Shared Uncounted Wharf travel prop on arch_ix_grid_coast. Not a ship. Not veh_hub_salt_skid. Runners do not spin.",
+      "scale_vs_player": "0.4 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_ix_wharf_skid/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_ix_grid_coast",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "push",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Wharf lip at arch_hero_ix_wharf and env_ix_wharf_joint. Wet asphalt. Not a hull.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "wheel_radius_m": null,
+        "wheel_kind": "runners",
+        "omega": "unused",
+        "parent_landmark": "arch_hero_ix_wharf"
+      }
+    },
+    {
+      "id": "veh_crime_wharf_chock",
+      "display_name": "Wharf Chock",
+      "batch": "B26_vehicles_urban",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "vehicle",
+        "part",
+        "chock"
+      ],
+      "triangle_budget": 500,
+      "aura_prompt": "One wet timber wheel chock, a low wedge with an iron lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rain-dark oak, one rust lip, grit. No cart, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One wet timber wheel chock, a low wedge with an iron lip. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rain-dark oak, one rust lip, grit. No cart, no lettering. Empty of people. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A low wedge.",
+      "palette": [
+        "#3a342c",
+        "#8a4a28",
+        "#e0b050",
+        "#6a6258",
+        "#c4b49a"
+      ],
+      "lore_blurb": "Chock for veh_wharf_cart at the bollard. Not veh_link_halt_chock.",
+      "scale_vs_player": "0.2 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/veh_crime_wharf_chock/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "lod0_tris": 500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "verb": "park",
+        "ride": "forbidden",
+        "driver_clip": "unbound",
+        "place": "Iron Coast wharf, beside env_crime_wharf_bollard, against veh_wharf_cart.",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "traffic_sim": false,
+        "parent_vehicle": "veh_wharf_cart",
+        "parent_landmark": "env_crime_wharf_bollard"
+      }
+    }
+  ]
+}

@@ -1,4 +1,7 @@
+// leanplay-forest-stamp 1789767851.141953
 using UnityEngine;
+using Concordia.GameplayCore.GoldenSlice;
+using Concordia.Settlement;
 
 namespace Concordia
 {
@@ -6,6 +9,21 @@ namespace Concordia
     {
         public Transform root;
         public ConcordiaPlayer player;
+        public bool HubStageComplete { get; private set; }
+
+        /// <summary>
+        /// The real per-world chunk root, as BuildChunk actually names it
+        /// ("Chunk_&lt;world&gt;" under Megaworld — never "World"). PresentSkillPylons,
+        /// ClearKernelLive and PlaceKernelBuilding used to call GameObject.Find("World"),
+        /// which no object in the scene has ever been named; all three silently no-oped.
+        /// </summary>
+        public static Transform ChunkRootPublic(WorldId world) => ChunkRoot(world);
+
+        public static Transform ChunkRoot(WorldId world)
+        {
+            var go = GameObject.Find("Chunk_" + world);
+            return go ? go.transform : null;
+        }
 
         static readonly string[] ForestTrees =
         {
@@ -27,12 +45,18 @@ namespace Concordia
             "building-skyscraper-a", "building-skyscraper-c"
         };
 
+        /// <summary>
+        /// Boot only. Purges Megaworld then ContinentStream.Boot.
+        /// Travel must never call this — it wiped the Hub Ring.
+        /// </summary>
         public void Build(WorldId world)
         {
+            HubStageComplete = false;
             PurgeWorldRoots();
             PurgeNamed("Megaworld");
             CityAtlas.Invalidate();
             FreePacks.Reindex();
+            WorldStreamManager.Ensure(gameObject);
             var stream = ContinentStream.Bind(this);
             stream.Boot(world);
             HubLook.UpgradeStandardMaterials();
@@ -64,29 +88,431 @@ namespace Concordia
                 DressAudio(w);
                 BuildRealm(w);
             }
+            GeographyRuntime.BuildLocalSamples(holder, world);
+            WorldVisualDirector.BuildChunk(holder, world);
             SpawnFauna(w);
             return holder;
         }
 
+public System.Collections.IEnumerator BuildChunkStaged(WorldId world, Transform continent, System.Action<Transform> onComplete)
+        {
+            ModularPerson.CastingWorld = world;
+            var holder = new GameObject("Chunk_" + world).transform;
+            holder.SetParent(continent, false);
+            holder.position = Vector3.zero;
+            root = holder;
+            var w = Canon.Get(world);
+
+            // Hub readiness is a hard streaming contract. Commit the physical Court
+            // immediately after BuildHubStaged; visual fidelity, fauna, and authored
+            // detail continue in a separate coroutine and cannot strand BuildFull.
+            if (world == WorldId.Hub)
+            {
+                yield return BuildHubStaged();
+                onComplete?.Invoke(holder);
+                StartCoroutine(FinishChunkPresentationStaged(holder, world, w));
+                yield break;
+            }
+
+            // Presentation is allowed to degrade, but it must never strand the
+            // streaming authority in Building. A single imported prop, authored
+            // NPC, or visual pass exception must not prevent the chunk commit.
+            try { BuildGround(w); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            try { DressAudio(w); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            yield return BuildRealmStaged(w);
+
+            try { GeographyRuntime.BuildLocalSamples(holder, world); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            yield return WorldVisualDirector.BuildChunkStaged(holder, world);
+            yield return null;
+            try { SpawnFauna(w); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            onComplete?.Invoke(holder);
+        }
+
+System.Collections.IEnumerator FinishChunkPresentationStaged(Transform holder, WorldId world, WorldDef w)
+        {
+            if (!holder) yield break;
+            try { GeographyRuntime.BuildLocalSamples(holder, world); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+
+            System.Collections.IEnumerator visual = null;
+            try { visual = WorldVisualDirector.BuildChunkStaged(holder, world); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            if (visual != null) yield return visual;
+            yield return null;
+
+            try { SpawnFauna(w); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+        }
+
+
+
         /// <summary>
-        /// L1 far-but-visible stand-in. Named box only — no NPCs, no town.
-        /// A missing pack stays empty behind this silhouette.
+        /// L0 far geography at MegaworldMap.Present — terrain pad + a few silhouette
+        /// masses only. No NPCs, no streetscape, no BuildChunk. LeanPlay budget:
+        /// tens of meshes max (pad + hills + ≤5 FreePacks stems).
         /// </summary>
         public Transform BuildImpostor(WorldId world, Transform continent)
         {
             var w = Canon.Get(world);
-            var holder = new GameObject("Impostor_" + world).transform;
+            var profile = WorldVisualProfileCatalog.For(world);
+            var holder = new GameObject("FarGeography_" + world).transform;
             holder.SetParent(continent, false);
             holder.position = Vector3.zero;
-            var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            box.name = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
-            box.transform.SetParent(holder, false);
-            box.transform.localPosition = Vector3.up * 4f;
-            box.transform.localScale = new Vector3(18f, 8f, 18f);
-            var mat = HubLook.Lit(w.ground * 0.55f, 0.08f, 0.2f);
-            var r = box.GetComponent<Renderer>();
-            if (r && mat) r.sharedMaterial = mat;
+            WorldVisualProfileCatalog.Stamp(holder, world);
+
+            int meshBudget = 0;
+            const int MeshCap = 14;
+
+            // Ground pad — land mass readable at RingMeters (~220).
+            meshBudget += PlaceFarPad(holder, world, profile);
+
+            // Cheap terrain hills (Lit prims — geography, not debug markers).
+            meshBudget += PlaceFarHills(holder, world, profile, MeshCap - meshBudget);
+
+            // 2–5 silhouette masses from profile L0 stems + DressVocab fallbacks.
+            meshBudget += PlaceFarSilhouettes(holder, world, profile, MeshCap - meshBudget);
+
+            // Optional tiny name — Dutch must read geography without it.
+            var label = new GameObject("Name").AddComponent<TextMesh>();
+            label.transform.SetParent(holder, false);
+            label.transform.localPosition = new Vector3(0f, FarMassHeight(world) + 8f, 0f);
+            label.text = string.IsNullOrEmpty(w.title) ? world.ToString() : w.title;
+            label.fontSize = 28;
+            label.characterSize = 0.09f;
+            label.anchor = TextAnchor.MiddleCenter;
+            label.alignment = TextAlignment.Center;
+            var ink = Color.Lerp(profile.atmosphereTint, Color.white, 0.55f);
+            ink.a = 0.55f;
+            label.color = ink;
+            HubLook.DressTextMesh(label);
+
+            holder.name = "FarGeography_" + world;
             return holder;
+        }
+
+        static float FarPadScale(WorldId world) => world switch
+        {
+            WorldId.Cyber or WorldId.Superhero => 18f,   // ~180m — readable at ring + mid-spoke
+            WorldId.Frontier or WorldId.Tunya => 20f,
+            WorldId.Crucible => 16f,
+            WorldId.Sere => 18f,
+            _ => 17f
+        };
+
+        static float FarMassHeight(WorldId world) => world switch
+        {
+            WorldId.Cyber or WorldId.Superhero => 56f,
+            WorldId.Fantasy or WorldId.Crucible => 42f,
+            WorldId.Ruins => 32f,
+            WorldId.Sere or WorldId.Crime => 36f,
+            WorldId.Frontier => 26f,
+            WorldId.Tunya => 30f,
+            _ => 28f
+        };
+
+        static int PlaceFarPad(Transform holder, WorldId world, WorldVisualProfileSpec profile)
+        {
+            var pad = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            pad.name = "FarPad";
+            pad.transform.SetParent(holder, false);
+            pad.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+            pad.transform.localScale = Vector3.one * FarPadScale(world);
+            var col = pad.GetComponent<Collider>();
+            if (col) Object.Destroy(col);
+            var stem = world switch
+            {
+                WorldId.Ruins => "ash_soil",
+                WorldId.Tunya => "grove_moss",
+                WorldId.Crime => "wet_asphalt",
+                WorldId.Cyber => "neon_grid",
+                WorldId.Frontier => "packed_earth",
+                WorldId.Superhero => "concrete_floor",
+                WorldId.Crucible => "metal_plate",
+                WorldId.Fantasy => "stone_tiles",
+                WorldId.Sere => "wet_asphalt",
+                _ => "packed_earth"
+            };
+            var mat = HubLook.Pbr(stem, profile.groundTint, 0.04f, 0.18f, 14f)
+                      ?? HubLook.Lit(profile.groundTint, 0.04f, 0.18f);
+            var rend = pad.GetComponent<Renderer>();
+            if (rend && mat) rend.sharedMaterial = mat;
+            return 1;
+        }
+
+        static int PlaceFarHills(Transform holder, WorldId world, WorldVisualProfileSpec profile, int budget)
+        {
+            if (budget <= 0) return 0;
+            // Skyline worlds lean on buildings; still place 1 low ridge for land.
+            int want = world switch
+            {
+                WorldId.Cyber or WorldId.Superhero => 1,
+                WorldId.Frontier or WorldId.Tunya or WorldId.Fantasy => 2,
+                WorldId.Crucible => 2,
+                _ => 2
+            };
+            want = Mathf.Min(want, budget);
+            var earth = HubLook.Lit(Color.Lerp(profile.groundTint, profile.atmosphereTint, 0.22f), 0.03f, 0.14f);
+            int n = 0;
+            for (int i = 0; i < want; i++)
+            {
+                float ang = (i * 2.15f) + FarSeed(world) * 0.017f;
+                float rad = 18f + (i % 2) * 14f;
+                var hill = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                hill.name = "FarHill_" + i;
+                hill.transform.SetParent(holder, false);
+                float h = world switch
+                {
+                    WorldId.Fantasy => 22f + i * 8f,
+                    WorldId.Crucible => 18f + i * 10f,
+                    WorldId.Tunya => 14f + i * 6f,
+                    WorldId.Frontier => 12f + i * 5f,
+                    WorldId.Ruins => 16f + i * 5f,
+                    _ => 10f + i * 4f
+                };
+                float w = 22f + i * 8f;
+                hill.transform.localScale = new Vector3(w, h * 0.5f, w * 0.7f);
+                hill.transform.localPosition = new Vector3(Mathf.Cos(ang) * rad, h * 0.22f, Mathf.Sin(ang) * rad - 6f);
+                var col = hill.GetComponent<Collider>();
+                if (col) Object.Destroy(col);
+                var rend = hill.GetComponent<Renderer>();
+                if (rend && earth) rend.sharedMaterial = earth;
+                n++;
+            }
+            return n;
+        }
+
+        static int PlaceFarSilhouettes(Transform holder, WorldId world, WorldVisualProfileSpec profile, int budget)
+        {
+            if (budget <= 0) return 0;
+            var stems = FarSilhouetteStems(world, profile);
+            int want = Mathf.Clamp(stems.Length, 2, Mathf.Min(5, budget));
+            float yaw0 = FarSeed(world) * 0.31f;
+            int n = 0;
+            for (int i = 0; i < want; i++)
+            {
+                var stem = stems[i % stems.Length];
+                if (string.IsNullOrEmpty(stem)) continue;
+                float ang = yaw0 + i * 1.1f;
+                float rad = 4f + (i % 3) * 9f;
+                var local = new Vector3(Mathf.Cos(ang) * rad, 0f, Mathf.Sin(ang) * rad + (i == 0 ? 2f : -2f));
+                float dim = FarSilhouetteDim(world, i);
+                // FreePacks.Sit expects WORLD position (HubPlaza uses TransformPoint).
+                // Passing local offsets parked skyline at Hub origin — still B saw empty Present.
+                var worldPos = holder.TransformPoint(local);
+                // Trees destroy themselves when canopy > 18 after FitMax — use prim for grove mass.
+                bool treeStem = !string.IsNullOrEmpty(stem) && (
+                    stem.IndexOf("tree", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf("palm", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf("pine", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf("fir", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || stem.IndexOf("crops", System.StringComparison.OrdinalIgnoreCase) >= 0);
+                GameObject go = null;
+                if (!treeStem)
+                {
+                    // Cap FitMax so store meshes stay; far readable but under tree-kill band.
+                    float packDim = Mathf.Min(dim, world is WorldId.Cyber or WorldId.Superhero ? 36f : 22f);
+                    go = FreePacks.Spawn(stem, holder, worldPos, ang * Mathf.Rad2Deg, packDim, false, false);
+                    // Some store heroes land with zero/tiny bounds at FitMax — useless at ring.
+                    if (go)
+                    {
+                        var b = new Bounds();
+                        bool any = false;
+                        foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                        {
+                            if (!r) continue;
+                            if (!any) { b = r.bounds; any = true; }
+                            else b.Encapsulate(r.bounds);
+                        }
+                        float span = any ? Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z)) : 0f;
+                        if (span < 2.5f)
+                        {
+                            Object.Destroy(go);
+                            go = null;
+                        }
+                    }
+                }
+                if (!go)
+                {
+                    // Honest fallback mass — shape family differs by world so Tunya ≠ Cyber.
+                    go = FarFallbackMass(holder, world, profile, i, local, ang, dim);
+                }
+                else
+                {
+                    go.name = "FarSilhouette_" + i + "_" + stem;
+                    FreePacks.StripColliders(go);
+                    // Retint cyan-prone FreePacks so ring vista isn't neon debug.
+                    RetintFarSilhouette(go, world, profile, i);
+                }
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>Distinct Lit prim silhouettes when FreePacks stem is missing.</summary>
+        static GameObject FarFallbackMass(Transform holder, WorldId world, WorldVisualProfileSpec profile, int i, Vector3 pos, float ang, float dim)
+        {
+            PrimitiveType prim = world switch
+            {
+                WorldId.Cyber or WorldId.Superhero => PrimitiveType.Cube,
+                WorldId.Tunya or WorldId.Frontier => (i % 2 == 0 ? PrimitiveType.Capsule : PrimitiveType.Cylinder),
+                WorldId.Fantasy => (i == 0 ? PrimitiveType.Cylinder : PrimitiveType.Cube),
+                WorldId.Crucible => PrimitiveType.Capsule,
+                WorldId.Ruins => PrimitiveType.Cylinder,
+                _ => PrimitiveType.Cube
+            };
+            var go = GameObject.CreatePrimitive(prim);
+            go.name = "FarMass_" + i;
+            go.transform.SetParent(holder, false);
+            float h, footprint;
+            if (world == WorldId.Cyber || world == WorldId.Superhero)
+            {
+                h = dim * (0.7f + (i % 4) * 0.22f);
+                footprint = dim * (0.18f + (i % 3) * 0.06f);
+            }
+            else if (world == WorldId.Tunya || world == WorldId.Frontier)
+            {
+                h = dim * (0.45f + (i % 3) * 0.12f);
+                footprint = dim * (0.28f + (i % 2) * 0.1f);
+            }
+            else if (world == WorldId.Fantasy)
+            {
+                h = dim * (0.85f + (i == 0 ? 0.35f : 0.1f));
+                footprint = dim * (i == 0 ? 0.22f : 0.32f);
+            }
+            else
+            {
+                h = dim * (0.55f + (i % 3) * 0.18f);
+                footprint = dim * 0.35f;
+            }
+            go.transform.localScale = new Vector3(footprint, h * (prim == PrimitiveType.Capsule ? 0.5f : 1f), footprint * 0.85f);
+            go.transform.localPosition = pos + Vector3.up * (h * 0.5f);
+            go.transform.localRotation = Quaternion.Euler(0f, ang * Mathf.Rad2Deg, 0f);
+            var col = go.GetComponent<Collider>();
+            if (col) Object.Destroy(col);
+            Color tint = world switch
+            {
+                WorldId.Cyber => Color.Lerp(profile.groundTint, new Color(0.22f, 0.20f, 0.38f), 0.55f),
+                WorldId.Superhero => Color.Lerp(profile.groundTint, new Color(0.36f, 0.40f, 0.52f), 0.5f),
+                WorldId.Tunya => Color.Lerp(profile.groundTint, new Color(0.18f, 0.38f, 0.16f), 0.45f),
+                WorldId.Frontier => Color.Lerp(profile.groundTint, new Color(0.62f, 0.44f, 0.22f), 0.4f),
+                WorldId.Fantasy => Color.Lerp(profile.groundTint, new Color(0.32f, 0.42f, 0.24f), 0.4f),
+                WorldId.Ruins => Color.Lerp(profile.groundTint, new Color(0.48f, 0.42f, 0.34f), 0.35f),
+                WorldId.Crime or WorldId.Sere => Color.Lerp(profile.groundTint, new Color(0.22f, 0.20f, 0.20f), 0.4f),
+                _ => Color.Lerp(profile.groundTint, profile.atmosphereTint, 0.35f + i * 0.08f)
+            };
+            var mat = HubLook.Lit(tint, world == WorldId.Cyber || world == WorldId.Superhero ? 0.14f : 0.05f,
+                world == WorldId.Cyber || world == WorldId.Superhero ? 0.32f : 0.16f);
+            var rend = go.GetComponent<Renderer>();
+            if (rend && mat) rend.sharedMaterial = mat;
+            return go;
+        }
+
+        static void RetintFarSilhouette(GameObject go, WorldId world, WorldVisualProfileSpec profile, int i)
+        {
+            if (!go) return;
+            // Urban skyline keeps cooler tint; grove/frontier stay earthy.
+            Color tint = world switch
+            {
+                // Avoid cyan (debug look) — cool slate/violet for Cyber, not neon.
+                WorldId.Cyber => Color.Lerp(profile.groundTint, new Color(0.26f, 0.18f, 0.42f), 0.5f),
+                WorldId.Superhero => Color.Lerp(profile.groundTint, new Color(0.38f, 0.44f, 0.58f), 0.42f),
+                WorldId.Crime or WorldId.Sere => Color.Lerp(profile.groundTint, new Color(0.28f, 0.24f, 0.22f), 0.35f),
+                WorldId.Tunya => Color.Lerp(profile.groundTint, new Color(0.22f, 0.40f, 0.18f), 0.3f),
+                WorldId.Fantasy => Color.Lerp(profile.groundTint, new Color(0.38f, 0.48f, 0.28f), 0.3f),
+                _ => Color.Lerp(profile.groundTint, profile.atmosphereTint, 0.2f + i * 0.05f)
+            };
+            var mat = HubLook.Lit(tint, world is WorldId.Cyber or WorldId.Superhero ? 0.12f : 0.05f,
+                world is WorldId.Cyber or WorldId.Superhero ? 0.35f : 0.18f);
+            if (!mat) return;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r) continue;
+                r.sharedMaterial = mat;
+            }
+        }
+
+        static float FarSilhouetteDim(WorldId world, int i)
+        {
+            float baseH = FarMassHeight(world);
+            return baseH * (0.55f + (i % 4) * 0.14f);
+        }
+
+        static int FarSeed(WorldId world) => unchecked((int)world) * 97 + 13;
+
+        static string[] FarSilhouetteStems(WorldId world, WorldVisualProfileSpec profile)
+        {
+            // Prefer profile L0 biome stems; DressVocab fills gaps. Distinct families:
+            // Cyber/Superhero = skyline, Tunya/Frontier = land+trees, Fantasy = tower/forest,
+            // Ruins/Crucible = stone/cliff, Crime/Sere = industrial lowrise.
+            var fromProfile = profile != null && profile.biomeStems != null
+                ? profile.biomeStems
+                : System.Array.Empty<string>();
+            var house = DressVocab.House(world);
+            var tower = DressVocab.Tower(world);
+            var tree = DressVocab.Tree(world);
+            var wall = DressVocab.Wall(world);
+            switch (world)
+            {
+                case WorldId.Cyber:
+                    return PreferStems(fromProfile, new[] { "building-skyscraper-a", "building-type-a", tower, house, "detail-overhang-wide" });
+                case WorldId.Superhero:
+                    return PreferStems(fromProfile, new[] { "building-skyscraper-a", "building-type-a", tower, house, wall });
+                case WorldId.Tunya:
+                    return PreferStems(fromProfile, new[] { tree, "tree_1", house, "bridge_wood", "crops_cornStageD" });
+                case WorldId.Frontier:
+                    return PreferStems(fromProfile, new[] { "palm-detailed-bend", "palm-straight", house, tree, wall });
+                case WorldId.Fantasy:
+                    return PreferStems(fromProfile, new[] { "tower-square-base", tower, tree, "hedge-large", house });
+                case WorldId.Ruins:
+                    return PreferStems(fromProfile, new[] { "column-large", "crypt-small", "cliff_large_stone", wall, house });
+                case WorldId.Crucible:
+                    return PreferStems(fromProfile, new[] { "detail-crystal-large", "tower-hexagon-mid", "cliff_stone", "rocks-large", tower });
+                case WorldId.Crime:
+                    return PreferStems(fromProfile, new[] { house, wall, tower, "detail-awning", "building-type-h" });
+                case WorldId.Sere:
+                    return PreferStems(fromProfile, new[] { "building-type-h", house, wall, tower, "cliff_large_rock" });
+                default:
+                    return PreferStems(fromProfile, new[] { house, tower, wall, tree });
+            }
+        }
+
+        static string[] PreferStems(string[] preferred, string[] fallback)
+        {
+            var list = new System.Collections.Generic.List<string>(6);
+            void AddIfReal(string s)
+            {
+                if (string.IsNullOrEmpty(s)) return;
+                if (list.Contains(s)) return;
+                if (FreePacks.HasStoreStem(s) || FreePacks.HasStem(s))
+                    list.Add(s);
+            }
+            void AddAny(string s)
+            {
+                if (string.IsNullOrEmpty(s)) return;
+                if (list.Contains(s)) return;
+                list.Add(s);
+            }
+            if (preferred != null)
+                for (int i = 0; i < preferred.Length; i++) AddIfReal(preferred[i]);
+            if (fallback != null)
+                for (int i = 0; i < fallback.Length; i++) AddIfReal(fallback[i]);
+            // DressVocab house/tower often resolve to real Store stems — prefer those.
+            if (list.Count < 2 && fallback != null)
+                for (int i = 0; i < fallback.Length; i++) AddAny(fallback[i]);
+            if (list.Count == 0) { AddAny("building-type-a"); AddAny("tower-square-base"); }
+            while (list.Count < 2) list.Add(list[0]);
+            if (list.Count > 5) list.RemoveRange(5, list.Count - 5);
+            return list.ToArray();
         }
 
         public void DressChunkSky(WorldId id)
@@ -117,11 +543,17 @@ namespace Concordia
 
         void BuildGround(WorldDef w)
         {
-            if (w.id == WorldId.Hub) return;
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
             g.name = "Ground";
             g.transform.SetParent(root, false);
-            g.transform.localScale = Vector3.one * 6;
+            g.transform.localScale = Vector3.one * 24;
+
+            // The Hub used to return early here and rely solely on HubPlaza's granite tiles, so
+            // any gap between tiles showed flat void — the single largest untextured area on
+            // screen. It now gets a real ground plane too, dropped just under the tiles so it
+            // reads as the courtyard floor beneath them rather than z-fighting with them.
+            if (w.id == WorldId.Hub)
+                g.transform.localPosition = new Vector3(0f, -0.04f, 0f);
             var pbrStem = w.id switch
             {
                 WorldId.Ruins => "ash_soil",
@@ -133,9 +565,12 @@ namespace Concordia
                 WorldId.Crucible => "metal_plate",
                 WorldId.Fantasy => "stone_tiles",
                 WorldId.Sere => "wet_asphalt",
+                WorldId.Hub => "cobblestone_square",
                 _ => "stone_tiles"
             };
-            var pbr = HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
+            var pbr = w.id == WorldId.Hub
+                ? HubLook.WetStone("cobblestone_square", 5.5f)
+                : HubLook.Pbr(pbrStem, w.ground, 0.04f, 0.16f, 18f);
             var gr0 = g.GetComponent<Renderer>();
             if (gr0) gr0.sharedMaterial = pbr;
         }
@@ -148,7 +583,7 @@ namespace Concordia
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogDensity = w.id switch
             {
-                WorldId.Hub => 0.0045f,
+                WorldId.Hub => ContinentStream.Live ? 0.022f : 0.032f,
                 WorldId.Crime => 0.018f,
                 WorldId.Ruins => 0.016f,
                 WorldId.Cyber => 0.014f,
@@ -158,7 +593,7 @@ namespace Concordia
             };
             RenderSettings.fogColor = w.id switch
             {
-                WorldId.Hub => new Color(0.62f, 0.68f, 0.74f),
+                WorldId.Hub => new Color(0.22f, 0.42f, 0.44f),
                 WorldId.Fantasy => new Color(0.62f, 0.28f, 0.18f),
                 WorldId.Cyber => new Color(0.18f, 0.06f, 0.28f),
                 WorldId.Crime => new Color(0.12f, 0.08f, 0.10f),
@@ -171,6 +606,7 @@ namespace Concordia
             };
             DynamicGI.UpdateEnvironment();
             WorldClock.NoteFogBase();
+            HubLook.LiveFog(RenderSettings.fogDensity);
             // Hub fireflies are identity ambience, not weather. Rain/ash/snow
             // follow WorldClock.Weather from Enter/Tick (see ApplyWeatherVisuals).
             if (w.id == WorldId.Hub)
@@ -194,6 +630,7 @@ namespace Concordia
         void BuildHub()
         {
             HubPlaza.Build(root);
+            WorldHeroCatalog.ValidateHubCourt(root);
             var wdef = Canon.Hub;
             ConcordiaHUD.Announce(wdef.title, wdef.refusal);
 
@@ -206,25 +643,162 @@ namespace Concordia
                 DressEmbassy(gate, p, yaw);
             }
 
-            DressGuests();
-            DressPillars();
-            DressCrowd();
+            if (!ConcordiaHost.LeanPlay)
+            {
+                DressGuests();
+                DressPillars();
+            }
+            // Court plaza stays empty like the reference still — polo walkers
+            // were LeanPlay density, not cinematic density.
             DressLore();
-            DressForest();
-            RealmFill.Populate(root, WorldId.Hub);
-            StoreDress.Hub(root);
+            // Hub metro streets/buildings — was authored but never invoked (Court island only).
+            // LeanPlay: still dress a thinner ring so Hub reads as a city, not empty ring.
+            DressCityRing();
+            if (!ConcordiaHost.LeanPlay)
+                DressForest();
+            if (!ConcordiaHost.LeanPlay)
+            {
+                RealmFill.Populate(root, WorldId.Hub, false); // people only via PeopleStaged
+                {
+                    var host = ContinentStream.Live;
+                    if (host) host.StartCoroutine(RealmFill.PeopleStaged(root, WorldId.Hub));
+                    else
+                    {
+                        var runner = root.gameObject.GetComponent<StreamSeedRunner>()
+                            ?? root.gameObject.AddComponent<StreamSeedRunner>();
+                        runner.StartCoroutine(RealmFill.PeopleStaged(root, WorldId.Hub));
+                    }
+                }
+                StoreDress.Hub(root);
+            }
 
-            var dummyLook = Appearance.Random(77);
-            dummyLook.outfit = 1;
-            dummyLook.displayName = "Training Dummy";
-            var dummy = ModularPerson.SpawnNpc(root, Canon.Arena + Vector3.forward * 2.2f, 180f, dummyLook, false);
-            dummy.AddComponent<TrainingDummy>();
-            FreePacks.EnsureCollider(dummy, 1.8f);
+            // The arena remains an authored combat space; never populate it with a
+            // visible training dummy or primitive stand-in.
             Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
             Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
             var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
             Beacon(root, east, 7f, "east_gate");
         }
+
+System.Collections.IEnumerator BuildHubStaged()
+        {
+            // Full Court readiness is a streaming contract. Commit the physical
+            // Court as soon as its frame-budgeted plaza exists; guest, pillar,
+            // lore, city-ring, forest, and crowd dressing continue independently
+            // so one authored character cannot hold BuildFull in Building forever.
+            MarkStage("staged hub phase=plaza");
+            yield return HubPlaza.BuildStaged(root);
+            try { WorldHeroCatalog.ValidateHubCourt(root); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+
+            HubStageComplete = true;
+            MarkStage("staged hub phase=bind_ready");
+            Debug.Log("[Concordia] Hub staged bind-ready");
+            StartCoroutine(DressHubPostReadyStaged());
+        }
+
+System.Collections.IEnumerator DressHubPostReadyStaged()
+        {
+            var wdef = Canon.Hub;
+            try { ConcordiaHUD.Announce(wdef.title, wdef.refusal); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            MarkStage("staged hub phase=arena");
+            try { DressArena(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+
+            if (Canon.Gates != null)
+            {
+                foreach (var gate in Canon.Gates)
+                {
+                    try
+                    {
+                        var gp = new Vector3(Mathf.Cos(gate.angle) * Canon.RingRadius, 0, Mathf.Sin(gate.angle) * Canon.RingRadius);
+                        var yaw = -gate.angle * Mathf.Rad2Deg;
+                        DressEmbassy(gate, gp, yaw);
+                    }
+                    catch (System.Exception ex) { Debug.LogException(ex); }
+                    yield return null;
+                }
+            }
+
+            MarkStage("staged hub phase=guests");
+            yield return DressGuestsStaged();
+            yield return DressPillarsStaged();
+            MarkStage("staged hub phase=guests_done");
+
+            MarkStage("staged hub phase=lore");
+            try { DressLore(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            MarkStage("staged hub phase=city_ring");
+            try { DressCityRing(); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            MarkStage("staged hub phase=forest");
+            yield return DressForestStaged();
+
+            MarkStage("staged hub phase=realmfill");
+            Debug.Log("[Concordia] LeanPlay: RealmFill.Populate + StoreDress.Hub staged");
+            try { RealmFill.Populate(root, WorldId.Hub, false); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            try { StoreDress.Hub(root); }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+            yield return RealmFill.PeopleStaged(root, WorldId.Hub);
+            MarkStage("staged hub phase=crowd");
+            yield return DressCrowdStaged();
+            MarkStage("staged hub phase=realmfill_done");
+
+            try
+            {
+                Beacon(root, Canon.Spawn, 8f, "first_cycle_glade", "hub_court", "the_unburned_court");
+                Beacon(root, Canon.Arena, 8f, "training_hollow", "arena");
+                var east = new Vector3(Mathf.Cos(0f) * Canon.RingRadius, 0f, Mathf.Sin(0f) * Canon.RingRadius);
+                Beacon(root, east, 7f, "east_gate");
+            }
+            catch (System.Exception ex) { Debug.LogException(ex); }
+            yield return null;
+        }
+
+
+        System.Collections.IEnumerator DressGuestsStaged()
+        {
+            if (Canon.HubGuests == null) yield break;
+            Debug.Log("[Concordia] staged Hub guests begin count=" + Canon.HubGuests.Length);
+            foreach (var n in Canon.HubGuests)
+            {
+                if (n == null) { yield return null; continue; }
+                MarkStage("staged hub phase=guest " + n.id);
+                try { SpawnGuest(n); }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning("[Concordia] guest skipped id=" + n.id + ": " + ex.Message);
+                }
+                yield return null;
+            }
+            Debug.Log("[Concordia] staged Hub guests done");
+        }
+
+        System.Collections.IEnumerator DressPillarsStaged()
+        {
+            if (Canon.Pillars == null) yield break;
+            Debug.Log("[Concordia] staged Hub pillars begin count=" + Canon.Pillars.Length);
+            foreach (var n in Canon.Pillars)
+            {
+                if (n == null) { yield return null; continue; }
+                try { SpawnPillar(n); }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning("[Concordia] pillar skipped id=" + n.id + ": " + ex.Message);
+                }
+                yield return null;
+            }
+            Debug.Log("[Concordia] staged Hub pillars done");
+        }
+
 
         static void Beacon(Transform root, Vector3 pos, float radius, params string[] tokens)
         {
@@ -236,15 +810,77 @@ namespace Concordia
             b.radius = radius;
         }
 
+        System.Collections.IEnumerator DressCrowdStaged()
+        {
+            Debug.Log("[Concordia] LeanPlay: DressCrowdStaged begin");
+            int walkers = ConcordiaHost.CrowdWalkers;
+            int stalls = ConcordiaHost.CrowdStalls;
+            int sitters = ConcordiaHost.CrowdSit;
+            for (int i = 0; i < walkers; i++)
+            {
+                var a = i / (float)Mathf.Max(1, walkers) * Mathf.PI * 2f + 0.4f;
+                var rad = 21f + (i % 5) * 2.4f;
+                var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
+                if ((p - Canon.Spawn).sqrMagnitude < 16f) { yield return null; continue; }
+                if (Canon.OnSunderingLane(p)) { yield return null; continue; }
+                if (Canon.InArena(p)) { yield return null; continue; }
+                var look = Appearance.Random(1100 + i * 17);
+                look.displayName = i % 7 == 0 ? "Petitioner" : i % 5 == 0 ? "Merchant" : "Citizen";
+                look.outfit = i % 6;
+                var go = ModularPerson.SpawnNpc(root, p, a * Mathf.Rad2Deg, look, true, 8f + (i % 4));
+                var life = go.AddComponent<NpcLife>();
+                life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
+                TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
+                yield return null;
+            }
+            for (int i = 0; i < stalls && i < Canon.Gates.Length; i++)
+            {
+                var g = Canon.Gates[i];
+                var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
+                var side = Vector3.Cross(Vector3.up, dir).normalized;
+                var p = dir * 26f + side * 5.2f;
+                if (Canon.OnSunderingLane(p)) p += side * 3.4f;
+                var look = Appearance.Random(2200 + i * 31);
+                look.outfit = i % 6;
+                var go = ModularPerson.SpawnNpc(root, p, -g.angle * Mathf.Rad2Deg + 180f, look, false);
+                go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
+                TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
+                yield return null;
+            }
+            for (int i = 0; i < sitters; i++)
+            {
+                float a = i / (float)Mathf.Max(1, sitters) * Mathf.PI * 2f + 0.55f;
+                var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
+                if (Canon.InArena(p)) { yield return null; continue; }
+                var bench = FreePacks.Spawn(DressVocab.Table(), root, p, -a * Mathf.Rad2Deg, 0.55f, required: false);
+                if (!bench)
+                    HubLook.Prim(root, PrimitiveType.Cube, p + Vector3.up * 0.28f, new Vector3(1.4f, 0.22f, 0.45f),
+                        HubLook.Lit(new Color(0.35f, 0.2f, 0.1f), 0.1f, 0.25f), "Bench" + i);
+                var look = Appearance.Random(3300 + i * 13);
+                var go = ModularPerson.SpawnNpc(root, p + new Vector3(0f, 0f, 0.1f), -a * Mathf.Rad2Deg, look, false);
+                go.AddComponent<NpcLife>().job = NpcLife.Job.Sit;
+                TagCrowd(go, "crowd-sit-" + i, look.displayName ?? "Citizen", "bench");
+                yield return null;
+            }
+            Debug.Log("[Concordia] LeanPlay: DressCrowdStaged done walkers=" + walkers + " stalls=" + stalls + " sit=" + sitters);
+        }
+
         void DressCrowd()
         {
             // Court stays open. Walkers live on the ring between court and gates.
-            for (int i = 0; i < 16; i++)
+            // LeanPlay (≤16GB Mac) thins ModularPerson storm so Editor holds Play.
+            int walkers = ConcordiaHost.CrowdWalkers;
+            int stalls = ConcordiaHost.CrowdStalls;
+            int sitters = ConcordiaHost.CrowdSit;
+            if (ConcordiaHost.LeanPlay)
+                Debug.Log("[Concordia] LeanPlay crowd walkers=" + walkers + " stalls=" + stalls + " sit=" + sitters);
+            for (int i = 0; i < walkers; i++)
             {
-                var a = i / 16f * Mathf.PI * 2f + 0.4f;
+                var a = i / (float)Mathf.Max(1, walkers) * Mathf.PI * 2f + 0.4f;
                 var rad = 21f + (i % 5) * 2.4f;
                 var p = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
                 if ((p - Canon.Spawn).sqrMagnitude < 16f) continue;
+                if (Canon.OnSunderingLane(p)) continue;
                 if (Canon.InArena(p)) continue;
                 var look = Appearance.Random(1100 + i * 17);
                 look.displayName = i % 7 == 0 ? "Petitioner" : i % 5 == 0 ? "Merchant" : "Citizen";
@@ -254,21 +890,22 @@ namespace Concordia
                 life.job = i % 9 == 0 ? NpcLife.Job.Sweep : NpcLife.Job.Wander;
                 TagCrowd(go, "crowd-walk-" + i, look.displayName, "court");
             }
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < stalls && i < Canon.Gates.Length; i++)
             {
                 var g = Canon.Gates[i];
                 var dir = new Vector3(Mathf.Cos(g.angle), 0f, Mathf.Sin(g.angle));
                 var side = Vector3.Cross(Vector3.up, dir).normalized;
                 var p = dir * 26f + side * 5.2f;
+                if (Canon.OnSunderingLane(p)) p += side * 3.4f;
                 var look = Appearance.Random(2200 + i * 31);
                 look.outfit = i % 6;
                 var go = ModularPerson.SpawnNpc(root, p, -g.angle * Mathf.Rad2Deg + 180f, look, false);
                 go.AddComponent<NpcLife>().job = NpcLife.Job.Stall;
                 TagCrowd(go, "crowd-stall-" + i, look.displayName ?? "Merchant", g.shortName);
             }
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < sitters; i++)
             {
-                float a = i / 4f * Mathf.PI * 2f + 0.55f;
+                float a = i / (float)Mathf.Max(1, sitters) * Mathf.PI * 2f + 0.55f;
                 var p = new Vector3(Mathf.Cos(a) * 19.4f, 0f, Mathf.Sin(a) * 19.4f);
                 if (Canon.InArena(p)) continue;
                 var bench = FreePacks.Spawn(DressVocab.Table(), root, p, -a * Mathf.Rad2Deg, 0.55f, required: false);
@@ -298,7 +935,6 @@ namespace Concordia
         void DressArena()
         {
             var c = Canon.Arena;
-            var wall = DressVocab.Wall(WorldId.Hub);
             var col = DressVocab.Column(WorldId.Hub);
             var sword = DressVocab.Weapon("sword");
             var tower = DressVocab.Tower(WorldId.Hub);
@@ -307,12 +943,14 @@ namespace Concordia
             for (int i = 0; i < 12; i++)
             {
                 var a = (i / 12f) * Mathf.PI * 2;
-                FreePacks.Spawn(wall, root, c + new Vector3(Mathf.Cos(a) * 8.4f, 0, Mathf.Sin(a) * 8.4f),
-                    -a * Mathf.Rad2Deg + 90, 3.2f);
-                if (i % 3 == 0)
-                    FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 7.2f, 0, Mathf.Sin(a) * 7.2f), 0, 2.6f);
                 if (i % 2 == 0)
-                    HubLook.Lantern(root, c + new Vector3(Mathf.Cos(a) * 9.2f, 0, Mathf.Sin(a) * 9.2f));
+                {
+                    var pillar = FreePacks.Spawn(col, root, c + new Vector3(Mathf.Cos(a) * 9.4f, 0, Mathf.Sin(a) * 9.4f),
+                        -a * Mathf.Rad2Deg, 4.8f, required: false);
+                    HubLook.StoneDress(pillar);
+                }
+                if (i % 2 == 0)
+                    HubLook.Lantern(root, c + new Vector3(Mathf.Cos(a) * 10.2f, 0, Mathf.Sin(a) * 10.2f));
             }
             FreePacks.Spawn(DressVocab.FirstStem(new[] { "Statue" }, "statue"), root, c + new Vector3(6, 0, 6), 40, 2.2f, required: false);
             FreePacks.Spawn(sword, root, c + new Vector3(-5.4f, 0, 5), 90, 1.2f, required: false);
@@ -334,12 +972,12 @@ namespace Concordia
         /// </summary>
         public static void PresentSkillPylons()
         {
-            var world = GameObject.Find("World");
+            var world = ChunkRoot(WorldId.Hub);
             if (!world) return;
-            var old = world.transform.Find("SkillRing");
+            var old = world.Find("SkillRing");
             if (old) Object.DestroyImmediate(old.gameObject);
             var hold = new GameObject("SkillRing").transform;
-            hold.SetParent(world.transform, false);
+            hold.SetParent(world, false);
             var c = Canon.Arena;
             var groups = SkillLattice.Groups.Count > 0
                 ? SkillLattice.Groups
@@ -361,10 +999,10 @@ namespace Concordia
                 pylon.skillType = SkillLattice.FirstInGroup(groups[i]);
                 var label = new GameObject("Name").AddComponent<TextMesh>();
                 label.transform.SetParent(go.transform, false);
-                label.transform.localPosition = new Vector3(0f, 2.6f, 0f);
-                label.text = groups[i].ToUpperInvariant();
-                label.fontSize = 42;
-                label.characterSize = 0.06f;
+                label.transform.localPosition = new Vector3(0f, 2.15f, 0f);
+                label.text = groups[i];
+                label.fontSize = 28;
+                label.characterSize = 0.018f;
                 label.anchor = TextAnchor.MiddleCenter;
                 label.alignment = TextAlignment.Center;
                 label.color = new Color(1f, 0.93f, 0.78f);
@@ -376,16 +1014,14 @@ namespace Concordia
         void DressEmbassy(GateDef gate, Vector3 p, float yaw)
         {
             var outDir = p.normalized;
-            var outPos = p + outDir * 8.5f;
+            var outPos = p + outDir * 16f;
             var side = Vector3.Cross(Vector3.up, outDir);
             GameObject shell = null;
-            string plan = "embassy";
             switch (gate.world)
             {
                 case WorldId.Ruins:
                     shell = FreePacks.Spawn(DressVocab.House(WorldId.Ruins), root, outPos, yaw, 5.5f);
                     FreePacks.Spawn(DressVocab.Column(WorldId.Ruins), root, outPos + side * 3.4f, yaw, 2.4f, required: false);
-                    plan = "archive";
                     break;
                 case WorldId.Tunya:
                     shell = FreePacks.Spawn(DressVocab.House(WorldId.Tunya), root, outPos, yaw, 4.2f);
@@ -402,7 +1038,6 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Crate(), root, outPos + side * 2.2f, yaw, 0.9f);
                     FreePacks.Spawn(DressVocab.Prop(WorldId.Crime), root, outPos - side * 1.8f, yaw, 0.8f);
                     FreePacks.Spawn(DressVocab.Crate(), root, outPos + outDir * 1.6f, 15f, 0.9f, required: false);
-                    plan = "market";
                     break;
                 case WorldId.Cyber:
                     FreePacks.Spawn(DressVocab.Column(WorldId.Cyber), root, outPos + side * 2.4f, yaw, 3.2f);
@@ -421,7 +1056,6 @@ namespace Concordia
                     return;
                 case WorldId.Superhero:
                     shell = FreePacks.Spawn(DressVocab.Tower(WorldId.Superhero), root, outPos, yaw, 8.5f);
-                    plan = "tower";
                     break;
                 case WorldId.Crucible:
                     FreePacks.Spawn(DressVocab.Rock(), root, outPos + side * 2.1f, yaw, 1.2f, required: false);
@@ -429,7 +1063,30 @@ namespace Concordia
                     FreePacks.Spawn(DressVocab.Column(WorldId.Crucible), root, outPos, yaw, 3.2f, required: false);
                     break;
             }
-            if (shell) BuildingInterior.Open(shell, plan, outPos);
+            if (shell)
+            {
+                HubLook.StoneDress(shell);
+                KeepRingClear(shell, p);
+            }
+        }
+
+        /// <summary>
+        /// Embassy FreePacks are set-dressing. HubPlaza owns the Link mouth.
+        /// Solid house/tower AABBs that reach the ring made the portal look
+        /// missing — the trigger was there, the walk was not.
+        /// </summary>
+        static void KeepRingClear(GameObject shell, Vector3 ringPos)
+        {
+            if (!shell) return;
+            foreach (var col in shell.GetComponentsInChildren<Collider>())
+            {
+                if (!col || col.isTrigger) continue;
+                // Bounds.ClosestPoint is safe for imported non-convex MeshColliders;
+                // Collider.ClosestPoint throws on those assets.
+                var hit = col.bounds.ClosestPoint(ringPos);
+                if ((hit - ringPos).sqrMagnitude < 25f)
+                    Object.Destroy(col);
+            }
         }
 
         void DressTavern(Vector3 p)
@@ -488,20 +1145,49 @@ namespace Concordia
 
         void DressCityRing()
         {
-            for (int i = 0; i < 22; i++)
+            // When Hub CityAtlas districts drive SettlementCompiler / CityTown, skip the
+            // anonymous FreePack house soup — named district bands own the metro mass.
+            var hubCities = CityAtlas.For(WorldId.Hub);
+            if (hubCities != null && hubCities.Length > 0)
             {
-                var a = (i / 22f) * Mathf.PI * 2 + 0.12f;
-                if (Mathf.Sin(a) > 0.55f && Mathf.Abs(Mathf.Cos(a)) < 0.78f) continue;
-                var rad = 56f + (i % 3) * 6f;
-                var pos = new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad);
-                var yaw = Mathf.Atan2(-Mathf.Cos(a), -Mathf.Sin(a)) * Mathf.Rad2Deg;
-                if (i % 5 == 0)
-                    FreePacks.Spawn(DressVocab.Tower(WorldId.Hub), root, pos, yaw, 9f, required: false, byHeight: true);
-                else
-                    FreePacks.Spawn(DressVocab.House(WorldId.Hub), root, pos, yaw, 6.5f, required: false, byHeight: true);
+                Debug.Log("[Concordia] DressCityRing skipped — Hub CityAtlas districts=" +
+                          string.Join(",", hubCities[0].districts ?? System.Array.Empty<string>()));
+                DressRoads();
+                return;
             }
+            // Vinewood-density Hub metro around Court — FreePack/EvoCatalog only (no Prim megablocks).
+            // Rings sit outside Court (~40–120m); HubMetroKm=40 is the soft world field, not spawn radius.
+            DressRoads();
+            for (int ring = 0; ring < 4; ring++)
+            {
+                int count = 18 + ring * 8;
+                float baseRad = 48f + ring * 22f;
+                for (int i = 0; i < count; i++)
+                {
+                    var a = (i / (float)count) * Mathf.PI * 2 + ring * 0.17f;
+                    // Keep north Court approach clear-ish
+                    if (ring == 0 && Mathf.Sin(a) > 0.55f && Mathf.Abs(Mathf.Cos(a)) < 0.78f) continue;
+                    var rad = baseRad + (i % 5) * 2.4f;
+                    var pos = new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
+                    var yaw = Mathf.Atan2(-Mathf.Cos(a), -Mathf.Sin(a)) * Mathf.Rad2Deg;
+                    // Varied heights: towers, midrise, houses — Vinewood silhouette
+                    int roll = (i + ring * 3) % 7;
+                    if (roll == 0)
+                        FreePacks.Spawn(DressVocab.Tower(WorldId.Hub), root, pos, yaw, 11f + ring, required: false, byHeight: true);
+                    else if (roll == 1 || roll == 2)
+                        FreePacks.Spawn(DressVocab.House(WorldId.Hub), root, pos, yaw, 7.5f + (i % 3), required: false, byHeight: true);
+                    else
+                        FreePacks.Spawn(DressVocab.House(WorldId.Hub), root, pos, yaw, 5.5f + (ring % 3), required: false, byHeight: true);
+                    // Street lamps / signs along curb (lived-in clutter)
+                    if (i % 3 == 0)
+                        FreePacks.Spawn("road-straight-lightposts", root, pos + new Vector3(Mathf.Cos(a) * 3.2f, 0f, Mathf.Sin(a) * 3.2f), yaw, 4.5f, required: false);
+                }
+            }
+            // Landmarks / unique mass
             EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(52, 0, 18), Quaternion.Euler(0, 70, 0), 1f);
             EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(48, 0, -12), Quaternion.Euler(0, 90, 0), 1f);
+            EvoCatalog.Spawn(EvoCatalog.SmallA, root, new Vector3(-58, 0, 24), Quaternion.Euler(0, -40, 0), 1.1f);
+            EvoCatalog.Spawn(EvoCatalog.Garage, root, new Vector3(72, 0, -36), Quaternion.Euler(0, 15, 0), 1f);
         }
 
         void DressForest()
@@ -520,6 +1206,28 @@ namespace Concordia
             }
         }
 
+        System.Collections.IEnumerator DressForestStaged()
+        {
+            Debug.Log("[Concordia] LeanPlay: DressForestStaged begin");
+            int placed = 0;
+            for (int i = 0; i < 40; i++)
+            {
+                var a = (i / 40f) * Mathf.PI * 2 + 0.51f;
+                if (Mathf.Sin(a) > 0.62f) continue;
+                var rad = 28 + (i % 4) * 3.4f;
+                var stem = ForestTrees[i % ForestTrees.Length];
+                FreePacks.SpawnStore(stem, root,
+                    new Vector3(Mathf.Cos(a) * rad, 0, Mathf.Sin(a) * rad), i * 17f, 8f, required: false, byHeight: false);
+                if (i % 3 == 0)
+                    FreePacks.SpawnStore(Flowers[0], root,
+                        new Vector3(Mathf.Cos(a + 0.08f) * (rad - 2), 0, Mathf.Sin(a + 0.08f) * (rad - 2)), 0, 1.2f, required: false);
+                placed++;
+                // One FreePack family per frame — trees are heavy Instantiates.
+                yield return null;
+            }
+            Debug.Log("[Concordia] LeanPlay: DressForestStaged done placed=" + placed + " v2");
+        }
+
         void DressCliffs()
         {
             for (int i = 0; i < 16; i++)
@@ -535,100 +1243,118 @@ namespace Concordia
         void DressGuests()
         {
             foreach (var n in Canon.HubGuests)
+                SpawnGuest(n);
+        }
+
+        void SpawnGuest(GuestDef n)
+        {
+            var look = Appearance.Random(n.id.GetHashCode());
+            look.displayName = n.name;
+            look.height = Mathf.Clamp(n.height / 1.8f, 0.88f, 1.14f);
+            string weapon = null, off = null;
+            var job = NpcLife.Job.Wander;
+            switch (n.id)
             {
-                var look = Appearance.Random(n.id.GetHashCode());
-                look.displayName = n.name;
-                look.height = Mathf.Clamp(n.height / 1.8f, 0.88f, 1.14f);
-                string weapon = null, off = null;
-                var job = NpcLife.Job.Wander;
-                switch (n.id)
-                {
-                    case "warden": weapon = "spear"; off = "shield-rectangle"; job = NpcLife.Job.Watch; look.outfit = 1; look.attitude = 2; break;
-                    case "lamplighter": weapon = "staff"; job = NpcLife.Job.Sweep; look.outfit = 0; look.attitude = 3; break;
-                    case "elias": weapon = "dagger"; look.outfit = 5; look.attitude = 1; break;
-                    case "vesper": weapon = "staff"; look.outfit = 0; look.attitude = 3; break;
-                    case "seraphine": weapon = "dagger"; look.outfit = 4; look.attitude = 2; break;
-                    case "jax": weapon = "shortsword"; look.outfit = 5; look.attitude = 1; break;
-                    case "mama": weapon = "mace"; job = NpcLife.Job.Stall; look.outfit = 4; look.attitude = 3; break;
-                    case "zero": weapon = "wand"; look.outfit = 2; look.attitude = 0; break;
-                    case "nyx": weapon = "dagger"; look.outfit = 2; look.attitude = 1; break;
-                    case "thorne": weapon = "greatsword"; look.outfit = 1; look.attitude = 2; look.height = 1.12f; break;
-                    case "lyra": weapon = "staff"; look.outfit = 0; look.attitude = 0; break;
-                    case "asbir": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
-                    case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
-                    case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
-                }
-                var wander = job == NpcLife.Job.Wander;
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), 180f, look, wander, n.id == "warden" ? 5f : 10f);
-                go.name = n.name;
-                if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, DressVocab.Weapon(weapon), true, 0.95f);
-                if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);
-                var guest = go.AddComponent<GuestNpc>();
-                guest.def = n;
-                guest.personId = n.id;
-                var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
-                life.job = job;
+                case "warden": weapon = "spear"; off = "shield-rectangle"; job = NpcLife.Job.Watch; look.outfit = 1; look.attitude = 2; break;
+                case "lamplighter": weapon = "staff"; job = NpcLife.Job.Sweep; look.outfit = 0; look.attitude = 3; break;
+                case "elias": weapon = "dagger"; look.outfit = 5; look.attitude = 1; break;
+                case "vesper": weapon = "staff"; look.outfit = 0; look.attitude = 3; break;
+                case "seraphine": weapon = "dagger"; look.outfit = 4; look.attitude = 2; break;
+                case "jax": weapon = "shortsword"; look.outfit = 5; look.attitude = 1; break;
+                case "mama": weapon = "mace"; job = NpcLife.Job.Stall; look.outfit = 4; look.attitude = 3; break;
+                case "zero": weapon = "wand"; look.outfit = 2; look.attitude = 0; break;
+                case "nyx": weapon = "dagger"; look.outfit = 2; look.attitude = 1; break;
+                case "thorne": weapon = "greatsword"; look.outfit = 1; look.attitude = 2; look.height = 1.12f; break;
+                case "lyra": weapon = "staff"; look.outfit = 0; look.attitude = 0; break;
+                case "asbir": weapon = "staff"; job = NpcLife.Job.Watch; look.outfit = 0; look.attitude = 0; break;
+                case "brackish": job = NpcLife.Job.Wander; look.outfit = 5; look.attitude = 1; look.height = 0.9f; break;
+                case "oldseam": job = NpcLife.Job.Sweep; look.outfit = 1; look.attitude = 3; break;
             }
+            var wander = false;
+            var pos = new Vector3(n.x, 0f, n.z);
+            if (pos.sqrMagnitude < 22f * 22f)
+            {
+                var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.right;
+                pos = dir * 26f;
+            }
+            var go = ModularPerson.SpawnNpc(root, pos, 180f, look, wander, n.id == "warden" ? 5f : 10f);
+            go.name = n.name;
+            if (!string.IsNullOrEmpty(weapon)) CharacterGear.Attach(go, DressVocab.Weapon(weapon), true, 0.95f);
+            if (!string.IsNullOrEmpty(off)) CharacterGear.Attach(go, off, false, 0.7f);
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = n;
+            guest.personId = n.id;
+            var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+            life.job = job;
         }
 
         void DressPillars()
         {
             foreach (var n in Canon.Pillars)
+                SpawnPillar(n);
+        }
+
+        void SpawnPillar(GuestDef n)
+        {
+            var look = new Appearance
             {
-                var look = new Appearance
-                {
-                    displayName = n.name,
-                    height = Mathf.Clamp(n.height / 1.8f, 0.95f, 1.16f),
-                    width = 1f,
-                    shoulders = n.id == "sovereign" ? 1.18f : 1f,
-                    chest = 1f,
-                    hips = 1f,
-                    head = 1f,
-                    jaw = n.id == "sovereign" ? 1.12f : 1f
-                };
-                float yaw;
-                if (n.id == "concordia")
-                {
-                    look.skin = 0.34f;
-                    look.hairHue = 0.07f;
-                    look.hairSat = 0.55f;
-                    look.hairVal = 0.12f;
-                    look.outfit = 0;
-                    look.attitude = 3;
-                    look.hairStyle = 4;
-                    yaw = 0f;
-                }
-                else if (n.id == "concord")
-                {
-                    look.skin = 0.86f;
-                    look.hairHue = 0.58f;
-                    look.hairSat = 0.08f;
-                    look.hairVal = 0.22f;
-                    look.outfit = 1;
-                    look.attitude = 0;
-                    look.hairStyle = 0;
-                    yaw = 180f;
-                }
-                else
-                {
-                    look.skin = 0.26f;
-                    look.hairHue = 0.04f;
-                    look.hairSat = 0.35f;
-                    look.hairVal = 0.08f;
-                    look.outfit = 5;
-                    look.attitude = 1;
-                    look.hairStyle = 1;
-                    yaw = 90f;
-                }
-                var go = ModularPerson.SpawnNpc(root, new Vector3(n.x, 0, n.z), yaw, look, false);
-                go.name = n.name;
-                var guest = go.AddComponent<GuestNpc>();
-                guest.def = n;
-                guest.personId = n.id;
-                var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
-                life.job = NpcLife.Job.Watch;
-                life.pinned = true;
+                displayName = n.name,
+                height = Mathf.Clamp(n.height / 1.8f, 0.95f, 1.16f),
+                width = 1f,
+                shoulders = n.id == "sovereign" ? 1.18f : 1f,
+                chest = 1f,
+                hips = 1f,
+                head = 1f,
+                jaw = n.id == "sovereign" ? 1.12f : 1f
+            };
+            float yaw;
+            if (n.id == "concordia")
+            {
+                look.skin = 0.34f;
+                look.hairHue = 0.07f;
+                look.hairSat = 0.55f;
+                look.hairVal = 0.12f;
+                look.outfit = 0;
+                look.attitude = 3;
+                look.hairStyle = 4;
+                yaw = 0f;
             }
+            else if (n.id == "concord")
+            {
+                look.skin = 0.86f;
+                look.hairHue = 0.58f;
+                look.hairSat = 0.08f;
+                look.hairVal = 0.22f;
+                look.outfit = 1;
+                look.attitude = 0;
+                look.hairStyle = 0;
+                yaw = 180f;
+            }
+            else
+            {
+                look.skin = 0.26f;
+                look.hairHue = 0.04f;
+                look.hairSat = 0.35f;
+                look.hairVal = 0.08f;
+                look.outfit = 5;
+                look.attitude = 1;
+                look.hairStyle = 1;
+                yaw = 90f;
+            }
+            var pos = new Vector3(n.x, 0f, n.z);
+            if (pos.sqrMagnitude < 22f * 22f)
+            {
+                var dir = pos.sqrMagnitude > 0.4f ? pos.normalized : Vector3.forward;
+                pos = dir * 26f;
+            }
+            var go = ModularPerson.SpawnNpc(root, pos, yaw, look, false);
+            go.name = n.name;
+            var guest = go.AddComponent<GuestNpc>();
+            guest.def = n;
+            guest.personId = n.id;
+            var life = go.GetComponent<NpcLife>() ?? go.AddComponent<NpcLife>();
+            life.job = NpcLife.Job.Watch;
+            life.pinned = true;
         }
 
         void DressGrove()
@@ -653,7 +1379,19 @@ namespace Concordia
             }
         }
 
-        void BuildRealm(WorldDef w)
+        static void MarkStage(string stage)
+        {
+            try
+            {
+                System.IO.File.WriteAllText(
+                    System.IO.Path.Combine(Application.dataPath, "Concordia/Generated/runtime-stage.txt"),
+                    System.DateTime.UtcNow.ToString("o") + " " + stage);
+            }
+            catch { }
+            Debug.Log("[Concordia] " + stage);
+        }
+
+void BuildRealm(WorldDef w)
         {
             ReturnPortal(w);
             var lore = WorldBook.Lore(w.id);
@@ -665,16 +1403,64 @@ namespace Concordia
 
             ModularPerson.CastingWorld = w.id;
             WorldKit.Build(root, w);
-            RealmFill.Populate(root, w.id);
-            StoreDress.Realm(root, w);
-            var dummy = FreePacks.Spawn(DressVocab.Dummy(), root, new Vector3(4, 0, 8), 180, 1.85f);
-            if (dummy)
+            if (w.id == WorldId.Fantasy)
+                DressSunderingArrival();
+            RealmFill.Populate(root, w.id, false); // people only via PeopleStaged
             {
-                FreePacks.EnsureCollider(dummy);
-                dummy.AddComponent<TrainingDummy>().unburied = w.id == WorldId.Ruins || w.id == WorldId.Crucible;
-                dummy.AddComponent<Hostile>().damage = 11f;
+                var host = ContinentStream.Live;
+                if (host) host.StartCoroutine(RealmFill.PeopleStaged(root, w.id));
+                else
+                {
+                    var runner = root.gameObject.GetComponent<StreamSeedRunner>()
+                        ?? root.gameObject.AddComponent<StreamSeedRunner>();
+                    runner.StartCoroutine(RealmFill.PeopleStaged(root, w.id));
+                }
             }
+            GoldenSliceRuntime.Present(w, root);
+            StoreDress.Realm(root, w);
+            // Gym dummy stays in the Hub Arena. A Present that greets you with
+            // HumanDummy_M White is not a city — 2026-09-14 kill smelled like kit.
+            RoadWorld.PlaceArrivalFight(root, w);
         }
+
+System.Collections.IEnumerator BuildRealmStaged(WorldDef w)
+        {
+            ReturnPortal(w);
+            var lore = WorldBook.Lore(w.id);
+            var stone = MakeBox("Waystone", new Vector3(2.2f, 0, 1.4f), new Vector3(0.7f, 2.1f, 0.7f), w.sun);
+            var ls = stone.AddComponent<LoreStone>();
+            ls.title = string.IsNullOrEmpty(lore.world_name) ? w.title : lore.world_name;
+            var desc = string.IsNullOrEmpty(lore.world_description) ? w.law : lore.world_description;
+            ls.text = desc + "\n\n" + w.law + " Live steel is allowed here. Flower-law is the Unburned Court only.";
+            yield return null;
+
+            MarkStage("staged realm " + w.id + " phase=worldkit");
+            ModularPerson.CastingWorld = w.id;
+            WorldKit.Build(root, w);
+            yield return null;
+            MarkStage("staged realm " + w.id + " phase=worldkit_done");
+            if (w.id == WorldId.Fantasy)
+            {
+                DressSunderingArrival();
+                yield return null;
+            }
+            MarkStage("staged realm " + w.id + " phase=realmfill");
+            RealmFill.Populate(root, w.id, false);
+            yield return null;
+            yield return RealmFill.PeopleStaged(root, w.id);
+            MarkStage("staged realm " + w.id + " phase=realmfill_done");
+            MarkStage("staged realm " + w.id + " phase=goldenslice");
+            GoldenSliceRuntime.Present(w, root);
+            yield return null;
+            MarkStage("staged realm " + w.id + " phase=goldenslice_done");
+            StoreDress.Realm(root, w);
+            yield return null;
+            MarkStage("staged realm " + w.id + " phase=storedress_done");
+            RoadWorld.PlaceArrivalFight(root, w);
+            yield return null;
+            MarkStage("staged realm " + w.id + " phase=arrivalfight_done");
+        }
+
 
         void ReturnPortal(WorldDef w)
         {
@@ -695,8 +1481,8 @@ namespace Concordia
             label.transform.SetParent(hold, false);
             label.transform.localPosition = new Vector3(0f, 11.4f, 0.2f);
             label.text = "THE HUB";
-            label.fontSize = 48;
-            label.characterSize = 0.11f;
+            label.fontSize = 28;
+            label.characterSize = 0.032f;
             label.anchor = TextAnchor.MiddleCenter;
             label.alignment = TextAlignment.Center;
             label.color = Color.white;
@@ -759,20 +1545,21 @@ namespace Concordia
 
         void PlaceStone(Vector3 pos, string title, string text)
         {
+            var mat = HubLook.WetStone("cobblestone_square", 2.2f);
             var plinth = HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.45f, new Vector3(0.85f, 0.9f, 0.22f),
-                HubLook.Lit(new Color(0.42f, 0.32f, 0.18f), 0.08f, 0.22f), "Lore_" + title.Replace(" ", ""));
-            var stone = plinth.AddComponent<LoreStone>();
-            stone.title = title;
-            stone.text = text;
+                mat, "Lore_" + title.Replace(" ", ""));
+            var lore = plinth.AddComponent<LoreStone>();
+            lore.title = title;
+            lore.text = text;
             HubLook.Prim(root, PrimitiveType.Cube, pos + Vector3.up * 0.08f, new Vector3(1.1f, 0.12f, 0.4f),
-                HubLook.Lit(new Color(0.28f, 0.18f, 0.08f), 0.05f, 0.18f), "LoreBase_" + title.Replace(" ", ""), false);
+                mat, "LoreBase_" + title.Replace(" ", ""), false);
         }
 
         void SpawnFauna(WorldDef w)
         {
             if (w.id == WorldId.Hub)
             {
-                var bird = FreePacks.Bird();
+                var bird = DressVocab.Bird();
                 if (string.IsNullOrEmpty(bird)) return;
                 for (int i = 0; i < 8; i++)
                 {
@@ -808,7 +1595,7 @@ namespace Concordia
 
         void DressGroveBirds(WorldDef w)
         {
-            var bird = FreePacks.Bird();
+            var bird = DressVocab.Bird();
             if (string.IsNullOrEmpty(bird)) return;
             for (int i = 0; i < 3; i++)
             {
@@ -870,29 +1657,160 @@ namespace Concordia
         /// Live kernel buildings from scene:data. Local Kenney dressing stays;
         /// this overlay is which buildings exist right now, not how the hub looks.
         /// </summary>
-        public static void ClearKernelLive()
+        public static void ClearKernelLive(WorldId world)
         {
-            var world = GameObject.Find("World");
-            if (!world) return;
-            var old = world.transform.Find("KernelLive");
+            var chunk = ChunkRoot(world);
+            if (!chunk) return;
+            var old = chunk.Find("KernelLive");
             if (old) Object.DestroyImmediate(old.gameObject);
         }
 
-        public static void PlaceKernelBuilding(string id, string type, Vector3 pos, float yawRad, float maxDim)
+        /// <summary>
+        /// One building from scene:data's `world_buildings` rows. Routes through the real
+        /// modular compiler (Settlement.SettlementCompiler) so a kernel-authored forge or
+        /// market gets actual facade geometry keyed to its own building_type, not one Kenney
+        /// house scaled to whatever size happened to arrive. Falls back to that same generic
+        /// house only when the kit genuinely isn't ready yet — never to nothing, since the
+        /// old behavior (a visible building, just an honest one) is still better than an
+        /// empty gap while the compiler's async import is in flight.
+        /// </summary>
+        public static void PlaceKernelBuilding(WorldId world, string id, string type, string name,
+                                               string material, Vector3 pos, float yawRad, Vector3 scale,
+                                               string state, int floors, string purpose, string districtId)
         {
-            var world = GameObject.Find("World");
-            if (!world) return;
-            var holder = world.transform.Find("KernelLive");
+            var chunk = ChunkRoot(world);
+            if (!chunk) return;
+            var holder = chunk.Find("KernelLive");
             if (!holder)
             {
                 var goHolder = new GameObject("KernelLive");
-                goHolder.transform.SetParent(world.transform, false);
+                goHolder.transform.SetParent(chunk, false);
                 holder = goHolder.transform;
             }
-            if (maxDim < 1.6f) maxDim = 3.2f;
-            var stem = DressVocab.House(WorldId.Hub);
-            var go = FreePacks.Spawn(stem, holder, pos, yawRad * Mathf.Rad2Deg, maxDim);
-            if (go) go.name = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+
+            var kb = new KernelBuilding
+            {
+                Id = id, Type = type, Name = name, Material = material,
+                Position = pos, RotationY = yawRad * Mathf.Rad2Deg,
+                Width = scale.x, Depth = scale.z, Height = scale.y,
+                Floors = floors, State = state, Purpose = purpose, DistrictId = districtId
+            };
+            var label = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+            _ = PlaceKernelBuildingAsync(holder, world, kb, label);
         }
-    }
+
+        /// <summary>LeanPlay staged path: light impostor (no SettlementCompiler — that froze Play at cap 24).</summary>
+        public static System.Threading.Tasks.Task PlaceKernelBuildingTask(WorldId world, string id, string type, string name,
+                                               string material, Vector3 pos, float yawRad, Vector3 scale,
+                                               string state, int floors, string purpose, string districtId)
+        {
+            var chunk = ChunkRoot(world);
+            if (!chunk) return System.Threading.Tasks.Task.CompletedTask;
+            var holder = chunk.Find("KernelLive");
+            if (!holder)
+            {
+                var goHolder = new GameObject("KernelLive");
+                goHolder.transform.SetParent(chunk, false);
+                holder = goHolder.transform;
+            }
+            var label = string.IsNullOrEmpty(id) ? "KernelBuilding" : "KernelBuilding_" + id;
+            // LeanPlay: real SettlementCompiler.CompileOne (staged by ApplyScene) — no cube stubs.
+            var kb = new KernelBuilding
+            {
+                Id = id, Type = type, Name = name, Material = material,
+                Position = pos, RotationY = yawRad * Mathf.Rad2Deg,
+                Width = scale.x, Depth = scale.z, Height = scale.y,
+                Floors = floors, State = state, Purpose = purpose, DistrictId = districtId
+            };
+            return PlaceKernelBuildingAsync(holder, world, kb, label);
+        }
+
+        static Material _leanStubMat;
+
+        static Material LeanStubMat()
+        {
+            if (_leanStubMat) return _leanStubMat;
+            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Diffuse");
+            _leanStubMat = sh ? new Material(sh) { color = new Color(0.42f, 0.40f, 0.38f) } : null;
+            return _leanStubMat;
+        }
+
+        static void PlaceKernelBuildingLeanStub(Transform holder, string label, Vector3 pos, float yawRad, Vector3 scale, string type)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = label;
+            go.transform.SetParent(holder, false);
+            var sx = Mathf.Max(0.8f, Mathf.Abs(scale.x) > 0.01f ? scale.x : 2.4f);
+            var sy = Mathf.Max(0.8f, Mathf.Abs(scale.y) > 0.01f ? scale.y : 2.2f);
+            var sz = Mathf.Max(0.8f, Mathf.Abs(scale.z) > 0.01f ? scale.z : 2.4f);
+            go.transform.localScale = new Vector3(sx, sy, sz);
+            go.transform.position = pos + Vector3.up * (sy * 0.5f);
+            go.transform.rotation = Quaternion.Euler(0f, yawRad * Mathf.Rad2Deg, 0f);
+            var rend = go.GetComponent<Renderer>();
+            if (rend && LeanStubMat())
+                rend.sharedMaterial = LeanStubMat();
+            // Drop collider — CreatePrimitive collider + dense Court was expensive.
+            var col = go.GetComponent<Collider>();
+            if (col) Object.Destroy(col);
+        }
+
+        static async System.Threading.Tasks.Task PlaceKernelBuildingAsync(Transform holder, WorldId world, KernelBuilding kb, string label)
+        {
+            try
+            {
+                var go = await SettlementCompiler.CompileOne(holder, world, kb);
+                if (go) { go.name = label; return; }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("Concordia WorldBuilder: kernel building compile failed for '" + label + "': " + e.Message);
+            }
+            // Honest fallback: the modular kit wasn't ready (or the row is malformed) —
+            // still show SOMETHING at the kernel's real position rather than a gap.
+            if (!holder) return;
+            var maxDim = Mathf.Max(kb.Width, Mathf.Max(kb.Height, kb.Depth));
+            if (maxDim < 1.6f) maxDim = 3.2f;
+            var stem = DressVocab.House(world == WorldId.Hub ? WorldId.Hub : world);
+            var fallback = FreePacks.Spawn(stem, holder, kb.Position, kb.RotationY, maxDim);
+            if (fallback) fallback.name = label;
+        }
+    
+
+void DressSunderingArrival()
+        {
+            var arrival = new GameObject("SunderingArrival").transform;
+            arrival.SetParent(root, false);
+
+            var pathMat = HubLook.Pbr("stone_tiles", new Color(0.20f, 0.32f, 0.20f), 0.02f, 0.22f, 8f);
+            var start = new Vector3(0f, 0.06f, -7f);
+            var end = new Vector3(4f, 0.06f, 8f);
+            var dir = end - start;
+            dir.y = 0f;
+            var count = Mathf.Max(3, Mathf.CeilToInt(dir.magnitude / 4.2f));
+            var yaw = Quaternion.LookRotation(dir.normalized).eulerAngles.y;
+
+            for (int i = 0; i < count; i++)
+            {
+                var t = (i + 0.5f) / count;
+                var p = Vector3.Lerp(start, end, t);
+                var tile = FreePacks.Spawn("road-straight", arrival, p, yaw, 4.2f, false, false)
+                           ?? FreePacks.Spawn("road-straight-half", arrival, p, yaw, 4.2f, false, false);
+                if (!tile)
+                    HubLook.Prim(arrival, PrimitiveType.Cube, p, new Vector3(2.2f, 0.08f, 2.8f), pathMat,
+                        "SunderingPath_" + i, false);
+            }
+
+            FreePacks.Spawn("tower-square-base", arrival, new Vector3(-3.4f, 0f, -5.8f), 0f, 5.2f, false);
+            FreePacks.Spawn("tower-square-base", arrival, new Vector3(3.4f, 0f, -5.8f), 180f, 5.2f, false);
+            FreePacks.Spawn("banner-red", arrival, new Vector3(-3.4f, 3.8f, -5.8f), 0f, 2.8f, false);
+            FreePacks.Spawn("banner-red", arrival, new Vector3(3.4f, 3.8f, -5.8f), 180f, 2.8f, false);
+            FreePacks.Spawn("campfire_stones", arrival, new Vector3(-5.2f, 0f, 2.2f), 0f, 1.25f, false);
+            HubLook.Point(arrival, "SunderingEntryLight", new Vector3(0f, 3.4f, -6.4f), new Color(0.82f, 1f, 0.42f), 1.5f, 12f, true);
+            HubLook.Point(arrival, "SunderingEncounterLight", new Vector3(4f, 2.6f, 8f), new Color(1f, 0.28f, 0.12f), 1.25f, 10f, false);
+
+            PlaceStone(new Vector3(1.8f, 0f, -1.6f), "The Sundering Road",
+                "Past the Court, steel is live. The road does not promise that the thing ahead will wait for you.");
+            Beacon(root, new Vector3(4f, 0f, 8f), 8f, "sundering", "first_fight", "live_steel");
+        }
+}
 }

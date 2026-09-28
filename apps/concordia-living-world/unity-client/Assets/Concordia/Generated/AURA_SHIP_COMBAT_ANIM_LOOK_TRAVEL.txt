@@ -1,0 +1,105 @@
+UNITY-CLIENT CHAT ONLY. Project-root = unity-client / ConcordiaHub.
+START NOW. Unfinished work only. Do NOT regenerate CX plates/materials (147 done). Do NOT remake the 146 Generated prefabs unless LoadAsset fails. Do NOT wipe Library, kill Concord, or symlink PolyHaven into Assets.
+
+## LIVE STATUS (parent audited 2026-09-21 ~20:30 ET)
+- Unity + Aura up; bridge re-registered (tcpPort live).
+- Prefabs 146 / mats 147. Cascade kill→fell / SoftEnter won’t clobber kill / spoils / GossipEar already on disk.
+- CxDress maps guests+bandits+pillars. ContinentStream SoftEnter + MegaworldMap ring exist.
+- AURA_LIFE_PROOF.txt STILL MISSING — Wave 0 is the gate before polish sprawl.
+- Recent Aura edits already touched: CxDress, RoadWorld, HubPlaza, WorldKit, HubLook, ModularPerson, CharacterGear, CreatureCompiler, ContinentStream, WorldBuilder — continue from there, don’t rewind.
+
+## READ ONCE (quality + Concord law — do not rewrite docs)
+1) Assets/Concordia/AuraRefs/AURA_OPENWORLD_REFERENCE_PACK.md
+2) AuraRefs/north-star/court-tree-plate.jpg + city-vinewood-density.jpg
+3) AuraRefs/hub-vistas/* + world-tours/tour-HUB.png + tour-SUNDERING.png
+4) Repo docs (read, bind, do not invent parallel systems):
+   - docs/CONCORDIA_PERSISTENT_MEGAWORLD.md (one plane; SoftEnter walk; Link gate only fast travel; consequence graph)
+   - docs/AURA_VISUAL_FIDELITY.md → bible/CINEMATIC.md
+   - ~/.zuko/OPENWORLD_RESEARCH_BRIEF.md
+5) Concord Unity bridge already in tree — BIND these, don’t duplicate:
+   - ConcordClient.cs (WebSocket; combat:kill; gossip snapshot; SkillLattice kicks → CombatFeel)
+   - WorldBook.cs (folders, NoteKill / fell, memory)
+   - HitResolver.cs + ActionRunner.cs + CombatMotion.cs + CombatFeel.cs + Hostile.cs
+   - Animation/* (AnimationVerbCatalog + AnimationVerbPlayback — only fire authored clips)
+   - MixamoAvatar.cs + ConcordiaLocomotion / SoldierLocomotion controllers
+   - ContinentStream.SoftEnter / Teleport(link_gate) + MegaworldMap + WorldGate/GatePost
+   - WorldVisualDirector + HubLook + VisualFidelity + FreePacks (mesh) + CxDress (look)
+
+## PLAYER BAR (open-world RPG research → Concordia)
+Combat: readable telegraph → commit strike → apex damage → dodge i-frames / parry / block; camera+VFX feedback; named bandit fight feels like a duel not a TrainingDummy slap.
+Animation: CX hero + bandits + guests use locomotion + strike/hit/stagger verbs; no T-pose, no missing-trigger spam; mount idle/walk if horse bound.
+Look: Hub Vinewood density + Court weenie; each SoftEnter world shifts sky/kit/civic toward its tour plate; ban PlazaPad hell / Quaternius-as-identity.
+Travel: walk Hub→Sundering with breadcrumbs every 40–80m; SoftEnter Fantasy look+wardpost; Link gate = only teleport; kill memory survives return Hub.
+Concord: kills/gossip/skills flow through ConcordClient → WorldClock/WorldBook presentation.
+
+## WAVE 0 — Living loop proof (GATE — do first, write the file)
+Play ConcordiaHub once A→F. Write BOTH:
+  ~/.zuko/AURA_LIFE_PROOF.txt
+  Assets/Concordia/Generated/AURA_LIFE_PROOF.txt
+Lines: `A PASS — …` or `A FAIL — …` + blocker + fix.
+| A Hub walk | CX hero; sky not magenta |
+| B HubGuest | Canon name + CX dress |
+| C SoftEnter Fantasy | WorldId+look shift; Sundering civic/wardpost |
+| D Kill named Sundering bandit | dead; spoils>0; LastEvent/WorldBook has "fell"; player valid |
+| E Gossip/memory | kill remembered (not journey stamp) |
+| F SoftEnter Hub | Court still knows the kill |
+Screenshot each. Fix FAIL before Wave 1 claim.
+
+## WAVE 1 — Combat systems (player-visible duel)
+Bind/prove on Fantasy roads with CX_Bandit_Sundering_* (all 5 loadable):
+1) Player light/heavy use CombatMotion windows + HitResolver (damage at apex).
+2) Hostile telegraph (thrust/sweep/grab) visible; CounterMatches drives dodge/parry/block.
+3) CombatFeel: kick + trail + spark/dust on connect; miss is quieter.
+4) CharacterGear / CX weapons (Longsword, Hatchet, Bow, PulseBaton, Switchblade) grip + strike reach sane.
+5) Spoils pouch drops on kill; WorldBook NoteKill / ConcordClient combat:kill path fires when Concord is up (if Concord down: still local fell + feed).
+6) Flower Law: no live steel wounds inside Unburned Court; steelLive outside Hub.
+Prove: 30s duel clip / screenshots + log lines for HitResolver beats. csErrors=0.
+
+## WAVE 2 — Animations (verbs live on CX cast)
+1) CX_Humanoid_* / CX_Hero_* / bandits / guests: Animator + ConcordiaLocomotion or SoldierLocomotion bound; MixamoAvatar or AnimationVerbPlayback path active.
+2) Authored verbs only via AnimationVerbPlayback.TrySetTrigger (Idle/Walk/Run + Strike/Hit/Stagger/Dodge as catalog allows). No missing-clip triggers.
+3) CombatMotion pose pulse must match visible windup (no frozen T-pose mid-swing).
+4) Horse: rideable prefab plays idle/walk or honest TEMP note in LIFE_PROOF.
+5) Run AnimationRuntimeValidator / Coverage if present; list gaps in Assets/Concordia/Generated/ANIM_GAPS.txt (verb id → missing clip). Do NOT invent Godot-only pillar dances from docs/ANIMATION_TRACKS.md unless clips exist — Unity catalog wins.
+Prove: hero walk→sprint→light→heavy→dodge→hit-react on CX mesh.
+
+## WAVE 3 — Visual upgrade (megaworld look, not new continents)
+Against north-star + CINEMATIC + tour plates:
+1) Hub: Court tree weenie readable from ring; Vinewood massing (Kaykit/Kenney/BOXOPHOBIC mesh + CX mats); kill PlazaPad identity.
+2) SoftEnter each: Hub, Fantasy(Sundering), at least one more spoke (Cyber or Tunya) — sky/fog/kit/civic shift via WorldVisualDirector / HubLook / ApplySky; no magenta.
+3) Gates dressed (GatePost / Canon.Gates) — not Prim cubes.
+4) P2 props + P4 civic wayposts/carts scatter on Hub plaza + Crown Road.
+5) FreePacks = MESH only; CX/north-star = LOOK.
+Screenshots: Hub plaza, mid-spoke road, Sundering wardpost, gate approach → Assets/Concordia/Generated/Proof/
+
+## WAVE 4 — Inter-megaworld travel
+1) SoftEnter walk Hub→Fantasy: continuous road, breadcrumbs 40–80m (waypost, crate/cart, traveler or wildlife, shrine/sign).
+2) Horizon ≥3 POI types; destination silhouette readable.
+3) WorldGate link_gate Teleport only at Canon gates; walking never menu-teleports.
+4) ContinentStream readiness: no SoftEnter into empty impostor forever — IsReady / ReceiveTraveler notices locals.
+5) Cross into a second spoke and back; WorldClock + player.world + kit stay in sync (ContinentStream SyncActor already — verify Play).
+6) Mount optional on long spoke if horse bound.
+Ban: empty Starfield commute, identical house spam, teleport SoftEnter.
+
+## WAVE 5 — Concord brain presentation (bind existing)
+Only after Waves 0–1 compile clean:
+1) With Concord running: confirm ConcordClient Open; gossip array → WorldClock feed; combat:kill → chronicle/presentation.
+2) SkillLattice kick mul reaches CombatFeel.Strike.
+3) Do NOT rebuild settlements / world_consequences / npc_memories / fauna spawner — compose (megaworld doc law).
+4) If Concord down: document FAIL in LIFE_PROOF appendix; local WorldBook path must still PASS Wave 0.
+
+## CONSTRAINTS
+- unity-client / ConcordiaHub only. Prefer bind existing systems over new frameworks.
+- Small MCP batches; refresh_unity if bridge stalls; never symlink heavy trees.
+- Leave Concord + Claude RC running.
+- Poly Haven prefer `_2k.jpg`. SoftEnter = walk. Link = gate.
+
+## DONE WHEN
+1) AURA_LIFE_PROOF.txt A–F all PASS
+2) Wave 1 duel feels telegraphed + juicy on CX bandit
+3) Wave 2 hero/bandit locomotion+strike verbs visible; ANIM_GAPS.txt listed
+4) Wave 3 Hub+Sundering(+1 spoke) look shots in Generated/Proof/
+5) Wave 4 Hub→Sundering road worth walking; gate teleport only at gates
+6) Chat report: PASS/FAIL table per wave + binds used (ConcordClient / HitResolver / SoftEnter / CxDress)
+
+START Wave 0 now. If any Wave 0 step FAIL, fix that blocker before Wave 1.

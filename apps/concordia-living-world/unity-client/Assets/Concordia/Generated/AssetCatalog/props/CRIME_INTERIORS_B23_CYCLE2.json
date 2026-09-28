@@ -1,0 +1,670 @@
+{
+  "batch": "B23_props_crime",
+  "slice": "A14_props_crime_interiors",
+  "cycle": 2,
+  "world_ids": [
+    "Crime"
+  ],
+  "kit_id": "arch_kit_crime_coast",
+  "count": 12,
+  "rule": "Second density on the same two halls. The first fifteen stay. Rise kit is SoftEnter-adjacent and off the first frame. Bay kit stays out of the door clear. No lettering. No neon. No rifle.",
+  "kits": [
+    {
+      "id": "prop_kit_crime_tenement_rise",
+      "parent_hall": "arch_hero_crime_tenement_bay",
+      "softenter_adjacent": true,
+      "first_frame": false,
+      "snap_grid_m": 1,
+      "ids": [
+        "prop_crime_se_fuse_box",
+        "prop_crime_se_mail_flap",
+        "prop_crime_se_work_boot",
+        "prop_crime_se_sash_weight",
+        "prop_crime_se_linen_cord",
+        "prop_crime_se_iron_key"
+      ]
+    },
+    {
+      "id": "prop_kit_crime_warehouse_bay",
+      "parent_hall": "arch_hero_crime_warehouse_door",
+      "softenter_adjacent": false,
+      "near_landmark": "arch_hero_crime_tenement_bay",
+      "first_frame": false,
+      "snap_grid_m": 1,
+      "ids": [
+        "prop_crime_wh_oil_can",
+        "prop_crime_wh_strap_coil",
+        "prop_crime_wh_broom",
+        "prop_crime_wh_nail_keg",
+        "prop_crime_wh_paper_brick",
+        "prop_crime_wh_crate_slat"
+      ]
+    }
+  ],
+  "entries": [
+    {
+      "id": "prop_crime_se_fuse_box",
+      "display_name": "Tenement Fuse Box",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One open steel fuse box, door swung left, dark empty interior. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hinge, rust at the corners, no wires, no labels, no glow. Not the cage bulb. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One open steel fuse box, door swung left, dark empty interior. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Hinge, rust at the corners, no wires, no labels, no glow. Not the cage bulb. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small open box. The door is a left flap.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Stair-hall power that is off. Not the cage bulb. Not the street lamp.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_fuse_box/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_se_mail_flap",
+      "display_name": "Interior Mail Flap",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One closed brass mail flap, one hinge along the top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Blank face, tarnish, no slot letters, no paper. Not the posted bill. Not the spoil bill. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One closed brass mail flap, one hinge along the top. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Blank face, tarnish, no slot letters, no paper. Not the posted bill. Not the spoil bill. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short rectangle with a top hinge.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Interior side of a slot. The street bill stays outside.",
+      "scale_vs_player": "0.18 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_mail_flap/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_se_work_boot",
+      "display_name": "Empty Work Boot",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 1600,
+      "aura_prompt": "One worn leather work boot, standing empty, tongue folded out. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed toe, one lace broken, no second boot, no foot. Not a body. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One worn leather work boot, standing empty, tongue folded out. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Scuffed toe, one lace broken, no second boot, no foot. Not a body. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One boot. The tongue is folded out.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Someone left it. The mattress roll stays its own mesh.",
+      "scale_vs_player": "0.32 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_work_boot/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 1600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_se_sash_weight",
+      "display_name": "Sash Weight",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 600,
+      "aura_prompt": "One iron sash weight, a short cylinder with a top eye. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust band, no cord, no window. Not the loose sash. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One iron sash weight, a short cylinder with a top eye. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust band, no cord, no window. Not the loose sash. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short iron cylinder and one top eye.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Came out of the pocket. The leaning sash stays its own mesh.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_sash_weight/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 600,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_se_linen_cord",
+      "display_name": "Linen Cord Hank",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 1100,
+      "aura_prompt": "One oval hank of thin linen cord, tied once at the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet fibers, no hook, no clothes. Not the chain coil. Not the alley rag. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One oval hank of thin linen cord, tied once at the middle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet fibers, no hook, no clothes. Not the chain coil. Not the alley rag. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "An oval hank with one middle tie.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Clothesline, unused. Not the warehouse chain.",
+      "scale_vs_player": "0.22 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_linen_cord/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 1100,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_se_iron_key",
+      "display_name": "Tenement Iron Key",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_tenement_rise",
+        "softenter_adjacent"
+      ],
+      "triangle_budget": 700,
+      "aura_prompt": "One large iron key, round bow, simple bit. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust, one ring hole, no keyring, no numeral. Not a Grid gadget. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One large iron key, round bow, simple bit. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Rust, one ring hole, no keyring, no numeral. Not a Grid gadget. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A round bow and a short bit.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Walk-up key. Blank. Not wpn_imp_grid_blankkey.",
+      "scale_vs_player": "0.14 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_se_iron_key/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_tenement_rise",
+        "lod0_tris": 700,
+        "softenter_landmark": false,
+        "softenter_adjacent": true,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_tenement_bay",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast tenement stair hall. Parent arch_hero_crime_tenement_bay. Off the SoftEnter first frame, behind the interior newel. Ground-floor eight stay. No neon. Flower Law does not apply.",
+        "keeps": "prop_crime_se_radiator, prop_crime_se_mattress_roll, prop_crime_se_loose_sash, prop_crime_se_pipe_elbow, prop_crime_se_cage_bulb, prop_crime_se_tin_cup, prop_crime_se_plaster_curl, prop_crime_se_newel"
+      }
+    },
+    {
+      "id": "prop_crime_wh_oil_can",
+      "display_name": "Long-Spout Oil Can",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 1400,
+      "aura_prompt": "One closed steel oil can with a long spout. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dented body, cap on, no label, no drip mesh. Not the drum. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One closed steel oil can with a long spout. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Dented body, cap on, no label, no drip mesh. Not the drum. Not a weapon. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A can and one long spout.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Beside the drum. The drum stays closed and unlettered.",
+      "scale_vs_player": "0.36 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_oil_can/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 1400,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    },
+    {
+      "id": "prop_crime_wh_strap_coil",
+      "display_name": "Webbing Strap Coil",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 1200,
+      "aura_prompt": "One flat coil of canvas webbing, buckle tucked inside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet cloth, no chain links, no lettering. Not the chain coil. Not the folded tarp. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One flat coil of canvas webbing, buckle tucked inside. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet cloth, no chain links, no lettering. Not the chain coil. Not the folded tarp. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A flat oval coil. The buckle is tucked.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Cargo strap. The chain coil stays the other mesh.",
+      "scale_vs_player": "0.28 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_strap_coil/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 1200,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    },
+    {
+      "id": "prop_crime_wh_broom",
+      "display_name": "Warehouse Broom",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 1500,
+      "aura_prompt": "One worn broom standing on splayed bristles, short wood handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bound neck, no metal head, no second tool. Not a staff. Not a pike. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One worn broom standing on splayed bristles, short wood handle. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Bound neck, no metal head, no second tool. Not a staff. Not a pike. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A thin handle over a wide bristle fan.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Floor tool. Not a weapon. The door clear stays empty.",
+      "scale_vs_player": "1.25 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_broom/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 1500,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    },
+    {
+      "id": "prop_crime_wh_nail_keg",
+      "display_name": "Open Nail Keg",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 1800,
+      "aura_prompt": "One small open wood keg, nail heads as a dark fill inside the rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two iron hoops, no loose nails, no stencil. Not the drum. Not the pallet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One small open wood keg, nail heads as a dark fill inside the rim. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Two iron hoops, no loose nails, no stencil. Not the drum. Not the pallet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A short open keg. Two hoops.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Beside the clear, not in it. The drum stays the tall cylinder.",
+      "scale_vs_player": "0.40 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_nail_keg/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 1800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    },
+    {
+      "id": "prop_crime_wh_paper_brick",
+      "display_name": "Blank Paper Brick",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 900,
+      "aura_prompt": "One thick brick of blank paper tied with a single string. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cream edges, no type, no stamp, no second stack. Not the posted bill. Not the spoil sheet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One thick brick of blank paper tied with a single string. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Cream edges, no type, no stamp, no second stack. Not the posted bill. Not the spoil sheet. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "A small rectangular brick and one string.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "Unpaid paper with no type. The street bill stays outside.",
+      "scale_vs_player": "0.12 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_paper_brick/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 900,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    },
+    {
+      "id": "prop_crime_wh_crate_slat",
+      "display_name": "Broken Crate Slat",
+      "batch": "B23_props_crime",
+      "world_ids": [
+        "Crime"
+      ],
+      "taxonomy_tags": [
+        "prop",
+        "clutter",
+        "cycle2",
+        "arch_kit_crime_coast",
+        "prop_kit_crime_warehouse_bay",
+        "warehouse_density"
+      ],
+      "triangle_budget": 800,
+      "aura_prompt": "One broken timber slat, two nail heads, one split end. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet grain, no crate body, no stencil. Not the pallet. Not the crate end. Not the dock crate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "prompt": "One broken timber slat, two nail heads, one split end. Single subject, three-quarter view, centered, entire subject in frame, plain warm-gray studio backdrop, ground contact shadow only, soft even light, no text, no watermark, 3D game asset concept render. Wet grain, no crate body, no stencil. Not the pallet. Not the crate end. Not the dock crate. Stylized realism, worn weathered surfaces, bold readable silhouette, visible bevels, Concordia native design, albedo has no baked lighting.",
+      "silhouette_notes": "One long board, split at one end.",
+      "palette": [
+        "#3a342c",
+        "#8a6a48",
+        "#c8a060",
+        "#6a6258",
+        "#e0b050"
+      ],
+      "lore_blurb": "A slat off a crate that is not here. The dock crate stays.",
+      "scale_vs_player": "0.85 m",
+      "unity_bind": {
+        "prefab_folder": "Assets/Concordia/Generated/LookFeel/Concepts/prop_crime_wh_crate_slat/",
+        "provenance_root": "Assets/Concordia/Models/Generated",
+        "world_visual_director": "WorldVisualProfileCatalog",
+        "geography_hook": "WorldGeography place or kit module",
+        "kit_id": "arch_kit_crime_coast",
+        "density_kit": "prop_kit_crime_warehouse_bay",
+        "lod0_tris": 800,
+        "softenter_landmark": false,
+        "softenter_adjacent": false,
+        "first_frame": false,
+        "parent_hall": "arch_hero_crime_warehouse_door",
+        "snap_grid_m": 1,
+        "no_lettering": true,
+        "pistol_clip": "unbound",
+        "rifle": "forbidden",
+        "flower_law": "n/a",
+        "no_neon": true,
+        "no_vinewood": true,
+        "cycle": 2,
+        "place": "Iron Coast warehouse apron. Parent arch_hero_crime_warehouse_door. Out of the first frame. Beside the 1.2 x 2.2 m door clear, not in it. Cycle-1 seven stay. No neon.",
+        "keeps": "prop_crime_wh_pallet, prop_crime_wh_drum, prop_crime_wh_chain_coil, prop_crime_wh_tarp_fold, prop_crime_wh_rebar_stub, prop_crime_wh_drain, prop_crime_wh_scrap_stool"
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Unity client fidelity = store-pack realism: Hub may wear one modern Rocketbox adult; every steel world wears that world’s imported costume (KayKit Knight / dress); architecture and foliage come from imported packs; URP lighting. Kenney / primitive / toon is a missing-prop fallback, never the look.**
 
-This is the only dress code the Unity client may follow.
+This is the only dress code the Unity client may follow. **How finished a shot must look** is `apps/concordia-living-world/bible/CINEMATIC.md` — store-pack presence is not cinematic completion.
 
 - The Three.js world lens still has `docs/ART_STYLE_GUIDE.md` (BotW / Palworld toon). That guide is **retired for Unity** — do not mix it into Hub / Fantasy / Crime frames.
 - Photoreal Rocketbox + KayKit Knight in the same *steel* world is a bug (P0-1).

@@ -1,0 +1,613 @@
+{
+  "schema": "concordia.slice.politics.v1",
+  "slice_id": "S16_superhero_culture_sidequests",
+  "world_id": "Superhero",
+  "canon_world_id": "superhero",
+  "lore_world_id": "superhero",
+  "display_world": "The Permanent Dawn",
+  "facet": "culture_quests",
+  "title": "Permanent Dawn — culture, politics, side quests",
+  "authored": "2026-09-22",
+  "authority": "Design text only. Does not rewrite Superhero lore, factions, countries, npc sheets, volume quests, density weights, S15 caps, or the enc_unfinished_sunrise, enc_yielded_stoop, enc_open_brow, enc_pauldron_medal, and enc_podium_chalk clocks.",
+  "canon_pins": {
+    "world_id": "Superhero",
+    "canon_folder": "superhero",
+    "canon_world_def_title": "The Permanent Dawn",
+    "lore_display_name": "The Superhero City",
+    "refusal": "Refusal of the Win",
+    "the_no": "I will not take the final victory.",
+    "the_no_second_line": "If I win this sunrise I become the Luminary.",
+    "law_text": "Mercy. They stand. The dawn does not end.",
+    "style_id": "dawn",
+    "style_name": "Permanent Dawn",
+    "style_verbs": ["Fist", "Shockwave", "Refuse the win", "Mercy shock"],
+    "steel_live": true,
+    "steel_on_hub_gate": "The Dawn gate stone is on the Hub ring at (0, -34). That point is 34 m from the Court origin and sits inside the 42 m disk, so steel on the gate stone is a flower. Country floors in this slice are a different book. Steel on those floors stays live.",
+    "fight_style_people": "Karate. CX body. Empty hands on the three uniques in this slice. Vale's service pistol, the Task Force shotgun and stun baton, the cartel's smart pistol, and every faction weapon archetype stay on the sheets that already name them. This facet binds none of those meshes.",
+    "flower_law": "Hub only. Canon.HubLawRadius is 42 m and does not govern a Superhero country disc. The Task Force capital sits 41.99 m from the Dawn-local origin used by countries.json. That near-42 is not the Court disk. Do not flower the municipal anchor.",
+    "hub_law_radius_m": 42,
+    "gate_angle_rad": 4.71238898,
+    "gate_short_name": "DAWN",
+    "gate_name_in_canon": "The Permanent Dawn",
+    "gate_neighbors_on_ring": ["Crime", "Crucible"],
+    "hub_ring_gate_xyz": [0, 0, -34],
+    "hub_ring_radius_m": 34,
+    "megaworld_present_m": [0, 0, -220],
+    "megaworld_note": "Present is CivilizationRadiusKm 400 times PresentMetersPerKm 0.55, on the gate angle. Country pins in this slice are countries.json local floors, the book S15 already used. They are not offsets from (0, -220).",
+    "pinewood_crossing": {
+      "city_id": "pinewood_crossing",
+      "world": "Hub",
+      "x": 62,
+      "z": -28,
+      "lettering": "Pinewood Crossing",
+      "owner_slice": "S01_hub_ecology_mobs",
+      "rule": "Hub salt road. No unique in this slice is lettered with that name. No Vale, Juno, or Devon stands on that verge."
+    },
+    "humanoid_body": "CX male or CX female. Concordia face. Plates and cloth on CX_Head, CX_Chest, CX_Shoulder_L, CX_Shoulder_R, CX_Hip, CX_Grip_L, CX_Grip_R, CX_Back. A Quaternius body is not. A child is not stood in for an adult. Robin Orange is a child and is not given a pin. Devon's son has no npc id and is not given a pin.",
+    "mesh_policy": "native_or_nothing",
+    "quaternius_bodies": false,
+    "palette": ["#d8d4dc", "#ffd0a0", "#3a78ff", "#c8a060"],
+    "canon_ground": "#4a5870",
+    "canon_sun": "#ffd0a0",
+    "gate_color": "#3a78ff",
+    "materials": ["marble composite", "chrome", "glass"],
+    "kit": "arch_kit_superhero_dawn",
+    "style_sector": "superhero",
+    "dress_vocab": "grid",
+    "kit_culture_field": "grid",
+    "layering": "Ground floor stays the culture. Upper storeys may carry a faction retrofit and must leave the dawn silhouette. Named sets roof_pad, aegis_spire, and street_kitchen stay unplaced, as in S15.",
+    "firearms": "Firearm verb coverage is zero. This slice spawns no firearm mesh.",
+    "weather": "dawn",
+    "traversal": "vertical city",
+    "combat": "impact",
+    "fantasy": "height as verb"
+  },
+  "source_rows": {
+    "lore": "Assets/Concordia/Resources/Concordia/Canon/superhero/lore.json",
+    "factions": "Assets/Concordia/Resources/Concordia/Canon/superhero/factions.json",
+    "factions_extra": "Assets/Concordia/Resources/Concordia/Canon/superhero/factions-extra.json",
+    "countries": "Assets/Concordia/Resources/Concordia/Canon/superhero/countries.json",
+    "npcs": "Assets/Concordia/Resources/Concordia/Canon/superhero/npcs.json",
+    "npcs_extra": "Assets/Concordia/Resources/Concordia/Canon/superhero/npcs-extra.json",
+    "quests": "Assets/Concordia/Resources/Concordia/Canon/superhero/quests/",
+    "canon_cs": "Canon.cs WorldId.Superhero, gate angle 3π/2, RingRadius 34, HubLawRadius 42, steel live, Karate, fauna aliases drone and sentinel, law Mercy. They stand. The dawn does not end.",
+    "megaworld": "MegaworldMap.Present(Superhero) = (0, -220)",
+    "kit": "native-bible/architecture/KITS.json arch_kit_superhero_dawn",
+    "taxonomy": "native-bible/01_TAXONOMY.md Superhero row: kestrel, mercy sentinel, arch_kit_superhero_dawn",
+    "roles": ["npc_role_dawn_elite", "npc_role_dawn_mystic"],
+    "density": "native-bible/volume/DENSITY_TABLES.json Superhero block, cited via S15",
+    "volume_quests": "native-bible/volume/QUESTS_BY_WORLD.json Superhero eight",
+    "volume_encounters": "native-bible/volume/BOSSES_AND_RAIDS.json enc_unfinished_sunrise",
+    "prior_slice": "S15_superhero_bosses_miniboosses"
+  },
+  "left_in_place": [
+    "q_superhero_leave_standing",
+    "q_superhero_trade_intel",
+    "q_superhero_champion_terms",
+    "q_superhero_sifu_road",
+    "q_superhero_kestrel",
+    "q_superhero_erase_win",
+    "q_superhero_no_final",
+    "q_superhero_sentinel_scout",
+    "q_s15_spire_gap",
+    "q_s15_eleven_stand",
+    "q_s15_no_flinch",
+    "q_s15_act_unpassed",
+    "superhero_mira_01_warn",
+    "superhero_mira_02_intel",
+    "superhero_mira_03_published",
+    "superhero_hex_01_silas",
+    "superhero_hex_02_kor",
+    "superhero_hex_03_meeting",
+    "superhero_sifu_01_tell",
+    "superhero_sifu_02_carry",
+    "superhero_sifu_03_gift",
+    "enc_unfinished_sunrise",
+    "enc_yielded_stoop",
+    "enc_open_brow",
+    "enc_pauldron_medal",
+    "enc_podium_chalk"
+  ],
+  "unresolved_on_purpose": [
+    "The 72-hour rewrite is still unfolding inside Elias. That stays lore_72_hour_awakening.hidden_truth and his sheet secret. His rooms are enforcers_movement_training and elias_apartment. Neither string is a country anchor. He is not stood.",
+    "The chemical accident was planned, and the lab personnel who knew are dead. That stays lore_founding_luminary.hidden_truth. This slice writes the public face only: orphanage funding, infrastructure, disaster relief, motto Order. Progress. Light.",
+    "Vesper authorized the swarm. The unaffiliated extremist was a cover built six months ahead. The eleven deaths were meant to justify a permanent private force. That stays lore_drone_swarm_incident.hidden_truth. q_s15_eleven_stand already counts the public eleven on the arterial. This slice does not recount them and does not name an author.",
+    "The envelope of transcript fragments, the leak, and the lieutenants who now know stay lore_kane_tower_provocation. Kane Tower is a district name, kane_tower_complex, with no x,z. The provocation is not staged.",
+    "Vale knows the off-books funding is leverage, and she has a contingency if Vesper pulls it. That stays her secret. The backstory and the wage_source string already say she accepts the funding to avoid defunding. The dinner block is luminary_industries_executive_dining, which has no pin. The contingency journal stays locked. The player does not attend.",
+    "Juno's afternoon block is location varies and names secret negotiations with Vale. Her gear includes personal_vale_negotiation_journal_locked. She has no secret field. The faction tension states the negotiation. This slice does not open the journal and does not stage the afternoon. q_s15_act_unpassed still owns the overlap walk and still forbids speaking for her.",
+    "Devon's son emerged last week. Disclose, resign, or disappear stays his secret and the faction tension. The son has no npc id. personal_son_disclosure_journal_locked stays locked. This slice does not ask the question. q_s15_act_unpassed still forbids speaking for him.",
+    "Aldis has documented doubled emergence and suspects a federation-level event in another world. That stays her secret and the college tension, including that she has not told the city. Her office string is college_main_campus_dean_office, not college_main_campus. She is not stood. The rate is not published.",
+    "Kira manifested every category in her first week. Aldis documented it. Kade noticed. Kira has not been told. That stays her secret and Kade's secret. Her rooms are the dorm and biokinetics_practicum_yard. The yard has no anchor. She is not stood. Kade's rooftop, dining, and visiting-lecture strings are not country anchors. He is not stood.",
+    "Cartel Marcus is negotiating a surrender of the seven for immunity. Kade has not decided. That stays cartel_lead_marcus_vantree's secret. The public tension is two unnamed members, a disputed district, and a sit-down waiting on a flinch. q_s15_no_flinch owns the lounge visit. This slice does not stand him and does not name the two.",
+    "Chief-of-staff Marcus Vantree, id marcus_vantree, has met a Department of Justice attorney twice and handed over nothing that would survive if Vesper knew. That is a different sheet from cartel_lead_marcus_vantree. The shared display name is not resolved by a clone. Neither sheet is stood. His rooms have no country anchor.",
+    "Bex's list of three suspected tip-sellers stays her secret. Her rooms are HQ strings and bex_apartment. None is bronx_arterials. She is not stood on the arterial S15 left empty.",
+    "Walker Devon 'Bullet' Cross, id walker_bullet, is a Link courier. His Luminary-adjacent fee, turned over to Bex, stays his secret. His room is midtown_routes, which has no anchor. He is not the Baseline lead. This slice stands baseline_lead_devon_cross once and does not merge the two sheets.",
+    "Mira's unpublished page stays the volume intel quest and the mira-discretion chain. superhero_news_office has no x,z. She is not stood. This slice's headlines are the two public press sentences already in lore.json.",
+    "Kor, Iron Hex, Silas, Helen, Ana Pell, Officer Dale Carver, and Robin Orange use skyline, warehouse, garden, kitchen, lab, precinct, and rooftop strings. None of those strings is a country anchor. Robin is a child. None of them are stood. The Iron Hex chain, the sifu chain, and Champion's conditions stay their own quests.",
+    "Elias's cross-world notes toward Nyx, Jax, and Kael stay on his sheet. This facet does not open those worlds.",
+    "skyline_champions, iron_hex_cell, and skyline_police are faction ids on extra sheets and are not country rows. They are not an eighth, ninth, or tenth polity.",
+    "gen_superhero_faction_0000, Meridian Taskforce, is a generated row with an empty district list. It names baseline_lead_devon_cross and is not a second posting for him. Trust-rating is not paid.",
+    "Generated npcs gen_superhero_0000 through the rest of npcs-extra use workshop, gate, commons, shrine, market, outskirts, and home. Those words are not district ids. None are stood.",
+    "Reputation numbers stay 58, 91, 64, 41, 60, 53, and 78. These errands write no faction delta. respect_marks, luminary_credits, civic_writ, spire_chit, movement_token, baseline_chit, and college_credit are not paid out.",
+    "Levels on the three stood sheets stay 850, 280, and 5. This facet assigns no hit points from those numbers.",
+    "The hundred million in the swarm statement is a lore sentence. It is not a coin reward and not a quest payout.",
+    "Country climate logs wind as low. WorldDef weather is dawn. This slice does not edit the climate rows."
+  ],
+  "bosses": [],
+  "mini_bosses": [],
+  "boss_rule": "enc_unfinished_sunrise, enc_yielded_stoop, enc_open_brow, enc_pauldron_medal, and enc_podium_chalk stay S15. They are the Dawn's combat. A commander, an advocate, and a normie lead have no health table. Killing any of them fails the quest they give and drops no writ, no token, no chit, no band, and no medal.",
+  "standing_ecology": {
+    "owner": "S15_superhero_bosses_miniboosses",
+    "retune": false,
+    "political_reading": [
+      {"id": "faun_aegis_kestrel", "reading": "Two by day on roof_pad once that set is placed. Night 0. The yielded-stoop window spends the pair and the ambient cap drops to 0. Politics adds no third bird. The municipal briefing does not claim a stoop."},
+      {"id": "hyb_dawnjackal", "reading": "Ambient 0. Two only inside enc_open_brow, hours 18–20 when the volume day index modulo 3 is 1, on the gap midpoint. A culture walk that reaches that midpoint while the window is up follows S15's clear and does not become the finisher."},
+      {"id": "npc_role_dawn_elite", "reading": "Budget 4, unchanged, on roof_pad once placed. One of them is the medal during that window. These three uniques do not spend the budget and do not wear the pauldron."},
+      {"id": "npc_role_dawn_mystic", "reading": "Budget 2, unchanged. Until street_kitchen is placed, one body remains at the Baseline gate for the S15 errands and the volume rows that already use the role. This facet adds no third coat."},
+      {"id": "mon_dawn_mercy_sentinel", "reading": "Cap 0 ambient. One inside enc_unfinished_sunrise after aegis_spire is placed. The evening notice in this slice is text on a municipal anchor and is not a sentinel."},
+      {"id": "mon_grid_sentinel", "reading": "S11. Superhero cap 0. Unchanged."},
+      {"id": "mon_grid_drone", "reading": "World ids are Cyber, Crime, and Sere. Unchanged. The north nest does not borrow a disc to illustrate the swarm."},
+      {"id": "hyb_mercywraith", "reading": "S07 set Superhero and Ruins to 0. Unchanged."},
+      {"id": "canon_seeds", "reading": "street_mutant, energy_wraith, mech_hound, shadow_stalker, and riot_elemental stay without bible ids. They are not aliased onto a clerk, a kestrel, a jackal, or a CX body."}
+    ]
+  },
+  "geography": {
+    "method": "Country centers and radii are countries.json, the same floors S15 published. Every district anchor in that file is the capital plus (8, -6), length 10 m, and sits inside the parent radius. A culture pin in this slice is one of those anchors or one of those capitals. Kit sets stay unplaced. The Hub gate and the megaworld Present are named so they are not confused with a country floor.",
+    "s15_floors_not_moved": {
+      "gap_baseline_spire": {"x": -4.4, "z": -37.7, "gap_m": 13.62, "note": "Only derived floor that holds a body, and only inside enc_open_brow."},
+      "nest_north": {"fauna_cap": 0, "note": "Enforcers inside Luminary, Task Force overlapping both. Centers 8.03 m apart for the first pair."},
+      "overlap_rights_baseline": {"x": -45.01, "z": -25.74, "overlap_m": 9.09, "note": "q_s15_act_unpassed walks it. This facet adds no body."},
+      "gap_campus_air": {"gap_m": 26.57, "fauna_cap": 0},
+      "gap_spire_college": {"gap_m": 14.62, "fauna_cap": 0},
+      "roof_pad": "unplaced",
+      "aegis_spire": "unplaced",
+      "street_kitchen": "unplaced",
+      "wilds_ring_m": [90, 126],
+      "farthest_capital_rim_m": 81.5
+    },
+    "staffed_anchors": [
+      {
+        "id": "task_force_HQ_municipal",
+        "country_id": "superhero_civic_super_taskforce",
+        "x": -14.87,
+        "z": 29.22,
+        "parent_capital": {"x": -22.87, "z": 35.22, "radius_m": 23.0},
+        "step_m": 10,
+        "distance_from_dawn_local_origin_m": 32.79,
+        "note": "Inside the Task Force circle. The capital itself is 41.99 m from the Dawn-local origin. Flower Law is not applied. Vale's morning block uses this exact string."
+      },
+      {
+        "id": "movement_office_storefront",
+        "country_id": "superhero_civil_rights_emerged",
+        "x": -47.95,
+        "z": -16.88,
+        "parent_capital": {"x": -55.95, "z": -10.88, "radius_m": 23.0},
+        "step_m": 10,
+        "distance_to_overlap_midpoint_m": 9.34,
+        "note": "Inside the rights circle. The overlap midpoint is 9.34 m away and stays S15's walk. Juno's morning and evening blocks use this exact string. The breakroom string does not."
+      },
+      {
+        "id": "resistance_headquarters",
+        "country_id": "superhero_normie_resistance",
+        "x": -26.07,
+        "z": -46.6,
+        "parent_capital": {"x": -34.07, "z": -40.6, "radius_m": 23.0},
+        "step_m": 10,
+        "note": "Inside the Baseline circle. The capital is where q_s15_act_unpassed stands and where the S15 mystic offers errands. Devon is 10 m from that capital during 8–12 and is a different body from that mystic."
+      }
+    ],
+    "visited_empty": [
+      {
+        "id": "upper_manhattan_grid",
+        "x": -36.76,
+        "z": 13.93,
+        "parent": "luminary_empire",
+        "parent_capital": {"x": -44.76, "z": 19.93, "radius_m": 28.0},
+        "also_inside": "The Enforcers' circle. Distance to bronx_arterials (-29.16, 11.33) is 8.03 m, the same separation as the two capitals, because both anchors share the (8, -6) step.",
+        "holds": []
+      },
+      {
+        "id": "college_main_campus",
+        "x": 59.16,
+        "z": 16.78,
+        "parent": "superhero_biokinetics_college",
+        "parent_capital": {"x": 51.16, "z": 22.78, "radius_m": 25.5},
+        "step_m": 10,
+        "note": "Far rim of the college capital is the 81.5 m S15 published. This anchor is empty because no sheet's location string is exactly college_main_campus.",
+        "holds": []
+      },
+      {
+        "id": "bronx_arterials",
+        "x": -29.16,
+        "z": 11.33,
+        "note": "S15's eleven stand. Spawn nothing. This facet does not add Bex.",
+        "holds": []
+      }
+    ],
+    "districts_with_no_anchor": [
+      "outer_boroughs",
+      "low_rent_grid",
+      "financial_arc",
+      "kane_tower_complex",
+      "private_orbital_facility",
+      "task_force_training_facility",
+      "task_force_HQ_dining",
+      "cartel_safehouses_seven",
+      "civil_rights_legal_clinic",
+      "baseline_civic_meeting_house",
+      "city_council_chambers",
+      "biokinetics_practicum_yard",
+      "research_substrate_observatory",
+      "college_main_campus_dean_office"
+    ],
+    "vertical_reading": {
+      "spire": "A spire in this facet is a country claim whose capital is the rim, plus the unplaced kit sets aegis_spire and roof_pad. The College rim at 81.5 m is the far claim. The Task Force capital at 41.99 m from the Dawn-local origin is a municipal claim, not a launch pad. Luminary's grid anchor is a public-face pin inside two circles, not Kane Tower.",
+      "street": "A street in this facet is ground the radii do not cover, or a storefront 10 m inside a circle. The only open S15 gave a body is the 13.62 m gap at (-4.4, -37.7). The rights storefront and the Baseline headquarters are street offices inside their circles. street_kitchen stays an unplaced kit set. The kit rule is the culture sentence: the ground floor is the culture, and a faction retrofit on an upper storey does not replace it."
+    }
+  },
+  "cultures": [
+    {
+      "id": "culture_municipal",
+      "name": "The briefing",
+      "where": "task_force_HQ_municipal",
+      "public_fact": "The Civic Super Task Force exists to give the city a registered, deployable team and to stay deliberately less powerful than Enforcer apex. The motto is Sanctioned. Equipped. Accountable. The sheet allies the Force with Luminary Industries and with the Baseline Resistance, and it rivals the Enforcers and the Crimson Spire. Reputation on the sheet is 64. Commander Vale was a prosecutor who emerged with kinetic-cascade powers in her thirties and built the Force as an alternative to the Movement. The backstory states that she accepts off-books Luminary funding so the Force is not defunded. The currency is a civic writ, and this slice pays none.",
+      "identity": "A municipal identity is a morning briefing on an anchor 10 m inside its capital, and a wage line the player can be told exists without being walked to a dining room that has no coordinate. The press culture of the city is heard here as two headlines that are already lore: the first film, which the press could not file as hero or as vigilante, and the morning after the forty-three-minute rooftop, which split the same way. Neither headline is Mira's unpublished page.",
+      "stops_before": "The contingency journal, the 18–22 dining block, a firearm mesh, a kinetic aura, and any edit to reputation 64."
+    },
+    {
+      "id": "culture_storefront",
+      "name": "The storefront",
+      "where": "movement_office_storefront",
+      "public_fact": "The Movement for Emerged Civil Rights says the substrate chose, and the people did not. The motto is We did not choose this. The substrate did. The goal is full civil rights, resistance to the Registration Act, alliances with sympathetic normie residents, and a record of Enforcer overreach that does not become the Enforcers. Juno emerged with mid-tier sonic powers eight years ago, left corporate law, and has been arrested four times. Her power, on the sheet, is enough to be heard and modest enough not to read as a threat. Reputation is 60. The currency is a movement token, and this slice pays none.",
+      "identity": "A storefront identity is a legal morning and an evening meeting on a pin 10 m inside the rights capital, with the clinic district named and unplaced. The overlap 9.34 m away is an argument S15 already walks. Documentation happens in the office the map has, and in a clinic the map does not.",
+      "stops_before": "The locked negotiation journal, the afternoon varies block, a fifth arrest, a passed or killed Act, and a sonic ring on the body."
+    },
+    {
+      "id": "culture_baseline_hall",
+      "name": "The headquarters",
+      "where": "resistance_headquarters",
+      "public_fact": "The Baseline Resistance says they were the city before the powers. The motto is We were the city before they were powers. The goal is to resist bio-powered dominance, to pass the Registration Act, and to protect normie citizens from collateral in super-on-super fights. Devon Cross has led for four years. He is a normie. He has pushed the Act since his sister was killed in a 2090 crossfire. A draft of the Act is in his gear. Reputation is 53. The currency is a baseline chit, and this slice pays none. The allied list on the Task Force sheet includes this faction. The rival list here includes the Enforcers, the Spire, and the rights movement.",
+      "identity": "A headquarters identity is a lobbying morning on a pin 10 m inside the Baseline capital, a draft that is paper, and a vote that has not been taken. The civic meeting house and the council chambers are district or schedule strings without anchors. The courier who shares the given name Devon is a different id and a different room.",
+      "stops_before": "The son's name, the disclosure journal, a vote, a walk of the 9.09 m overlap, and a merge with walker_bullet."
+    },
+    {
+      "id": "culture_vertical",
+      "name": "Spires and the street",
+      "where": "College capital, empty campus anchor, empty grid anchor, the 13.62 m gap as a witness, unplaced kit sets",
+      "public_fact": "WorldDef fantasy is height as verb. Traversal is a vertical city. The kit says the ground floor stays the culture and an upper retrofit must not erase the marble silhouette. Palette is marble, gold daylight, and one blue: #d8d4dc, #ffd0a0, #3a78ff, with #c8a060 on the kit. Ground in Canon is #4a5870. Sun is #ffd0a0. The College is the far rim, about 81.5 m, and its campus anchor is empty of this facet. Luminary's public motto on the grid anchor is Order. Progress. Light. Reputation there is 91. The public works are orphanage funding, infrastructure, and disaster relief. The only street S15 allowed a creature is the gap between Baseline and the Spire.",
+      "identity": "A vertical identity is three sentences a person can walk: a municipal capital 10 m from its HQ, a college capital whose office string is a different room, and a gap of 13.62 m that is street because neither circle covers it. Launch pads, the mercy spire, and the bread kitchen stay kit names until someone places them. The Hub Present at (0, -220) is the spoke, not a fourth spire.",
+      "stops_before": "Placing roof_pad, aegis_spire, or street_kitchen; publishing Aldis's rate; stating the planned accident or the swarm authorization; recounting the eleven; taking a spire chit."
+    }
+  ],
+  "presences": [
+    {
+      "id": "presence_vale_briefing",
+      "npc_id": "task_force_commander_sasha_vale",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "task_force_HQ_municipal",
+      "point": {"x": -14.87, "z": 29.22},
+      "body": "CX",
+      "wardrobe": "Civic overcoat and civic tactical cloth on CX_Chest and CX_Back, thick kinetic-dampening soles, a belt with an empty holster loop and no pistol mesh, a small civic seal pin on the chest cloth. Concordia face. She. No kinetic cascade, no full-body glow, no cape. Empty hands. Karate if struck.",
+      "gives": ["q_s16_less_than_apex", "q_s16_two_headlines", "q_s16_three_heights", "q_s16_motto_on_the_grid", "q_s16_three_purses"],
+      "yields_to": [],
+      "note": "The morning block 8–12 is task_force_HQ_municipal and interactable. Early morning 5–8 is vale_residence and not interactable. A Stratus block also marks 5–8 on the HQ. This facet uses 8–12 and leaves 5–8 unstaged. Midday 12–14 is task_force_HQ_dining, a different string, so she is absent from the anchor. Afternoon 14–18 is varies. Evening 18–22 is luminary_industries_executive_dining, no pin. Freeus, Quartus, and Penanus also name the HQ across later hours and conflict with varies and with the dining block. Those phase-family hours stay unstaged. One body. The notice uses the anchor while she is absent."
+    },
+    {
+      "id": "presence_juno_storefront",
+      "npc_id": "civil_rights_lead_juno_park",
+      "count": 1,
+      "window": "clock hours 8–12 and 18–22",
+      "anchor": "movement_office_storefront",
+      "point": {"x": -47.95, "z": -16.88},
+      "body": "CX",
+      "wardrobe": "Modest business cloth and a winter coat on CX_Chest and CX_Back, the movement pin as a small metal mark, comfortable walking shoes. Concordia face. She. No sonic ring, no megaphone mesh, no cape. Empty hands. Karate if struck.",
+      "gives": ["q_s16_four_arrests", "q_s16_clinic_unplaced"],
+      "yields_to": [],
+      "note": "Morning 8–12 and evening 18–22 are the storefront and interactable. One body, absent from the anchor between 12 and 18. Midday is movement_office_storefront_breakroom. Afternoon is varies. Early 5–8 is juno_residence and not interactable, while a Stratus block marks 5–8 on the storefront. This facet starts her at 8. Quartus 13–16 names the storefront and conflicts with varies. It stays unstaged. Penanus overlaps the evening window and does not add a second body. The rights capital 10 m away stays the S15 stand, without her."
+    },
+    {
+      "id": "presence_devon_headquarters",
+      "npc_id": "baseline_lead_devon_cross",
+      "count": 1,
+      "window": "clock hours 8–12",
+      "anchor": "resistance_headquarters",
+      "point": {"x": -26.07, "z": -46.6},
+      "body": "CX",
+      "wardrobe": "Civic attire and a winter coat on CX_Chest, the baseline pin as a small metal mark, walking shoes. Concordia face. He. No weapon mesh. Empty hands. Karate if struck. He is a normie on the sheet. No emergence VFX is added to him.",
+      "gives": ["q_s16_draft_not_vote"],
+      "yields_to": [],
+      "note": "Morning 8–12 is resistance_headquarters and interactable. Early 6–8 is cross_residence and not interactable, while a Stratus block marks 5–8 on the HQ. This facet uses 8–12. Midday is the breakroom string. Afternoon 14–18 is city_council_chambers, no anchor, so he is not stood there even though the block is interactable. Evening is the residence and not interactable. Quartus and Penanus name the HQ and conflict with chambers and with the residence. They stay unstaged. He is not walker_bullet. He is not a Meridian Taskforce posting."
+    }
+  ],
+  "public_notice": {
+    "id": "notice_two_faces",
+    "name": "The Morning After, Posted Late",
+    "world_id": "Superhero",
+    "kind": "telegraph_only",
+    "on": "task_force_HQ_municipal, as a board, while the commander is off the anchor",
+    "roster": [],
+    "spawn_count": 0,
+    "health": null,
+    "remembrance_item_id": null,
+    "extends_lore_id": "lore_first_battle_at_dawn",
+    "public_fact": "The first physical confrontation lasted forty-three minutes on the roof of an unfinished Luminary-built skyscraper. Both walked away. Two city blocks did not. The next morning Luminary Industries called it an unprovoked attack. The neighborhood called it the moment the city's two faces were in one frame. Neither side won.",
+    "schedule": {
+      "kind": "hub_hour_window",
+      "open_hour": 18,
+      "close_hour": 22,
+      "every_nth_day": 1,
+      "label": "Each evening the sheet places Vale at a dining room with no coordinate"
+    },
+    "anchor": {
+      "board_point": {"x": -14.87, "z": 29.22, "district": "task_force_HQ_municipal"},
+      "fight_point": null,
+      "why_no_fight_point": "The unfinished skyscraper of the battle has no x,z. It is not aegis_spire, not roof_pad, and not Kane Tower. A roster stood on any of those would place a set S15 left unplaced or invent a tower."
+    },
+    "telegraph": {
+      "board": "Municipal board at (-14.87, 29.22): forty-three minutes, both walked away, two blocks did not, neither side won.",
+      "scout": "No scout is paired. The battle roof has no transform.",
+      "sound": "No clip. q_superhero_trade_intel already owns an unpublished page at a news office with no coordinate."
+    },
+    "collision": {
+      "hours_18_to_22": "Same clock band as the tail of enc_open_brow (18–20) and clear of enc_unfinished_sunrise (5–7), enc_yielded_stoop (9–11), enc_pauldron_medal (12–14), and enc_podium_chalk (15–17). The jackal window is the gap midpoint, 67.73 m from this board. The notice adds no body there.",
+      "suppresses": [],
+      "suppressed_by": [],
+      "retunes_s15": false
+    }
+  },
+  "desks": [
+    {
+      "id": "desk_briefing",
+      "where": "task_force_HQ_municipal",
+      "hours": "8–12",
+      "who": "task_force_commander_sasha_vale",
+      "practice": "A morning press briefing is the satisfaction method on her civic_legitimacy need. She files the Force in public as sanctioned, equipped, and accountable, and as deliberately less powerful than Enforcer apex. The three fears on the faction sheet are speakable: the Enforcers taking the headline on a bust, a member going to the criminal supers, the city defunding the Force after the next civilian deaths. She does not itemize the wage. The sheet says 580 diurnal sparks from city_payroll_plus_off_books_luminary and lists 22 civic writs on her person. This facet pays none of them and does not split 580 into a city figure and a Luminary figure.",
+      "closed": ["personal_vesper_contingency_journal_locked", "service_pistol", "bio_power_focus_amulet_kinetic_grade", "the 18–22 dining room"]
+    },
+    {
+      "id": "desk_storefront",
+      "where": "movement_office_storefront",
+      "hours": "8–12 and 18–22",
+      "who": "civil_rights_lead_juno_park",
+      "practice": "Morning legal strategy is the satisfaction method on registration_act_defeat. The public file has two columns the country map can answer: a district name, and whether countries.json gave that name an anchor. The storefront is a yes. civil_rights_legal_clinic is a controlled district and a no. Documentation discipline is the value. Becoming the Enforcers is the failure the goal already names. Her sheet says 220 diurnal sparks from movement_pooled_donations and lists 24 movement tokens. This facet pays none.",
+      "closed": ["personal_vale_negotiation_journal_locked", "the afternoon varies block", "a fifth arrest", "the Act"]
+    },
+    {
+      "id": "desk_headquarters",
+      "where": "resistance_headquarters",
+      "hours": "8–12",
+      "who": "baseline_lead_devon_cross",
+      "practice": "Morning lobbying calls are the satisfaction method on registration_act_passage. The draft in his gear is one sheet of paper. The vote is not on the clock. He can say the sister, the year 2090, and four years of leadership. He can say the three public fears that circle the same vote: the Task Force fears voting yes and then owning the next casualty, the rights movement fears the Task Force voting yes, the Baseline fears the Task Force voting no. His sheet says 160 diurnal sparks from resistance_pooled_donations and lists 18 baseline chits. This facet pays none. He does not discuss the house.",
+      "closed": ["personal_son_disclosure_journal_locked", "a vote", "council chambers", "the civic meeting house", "a merge with walker_bullet"]
+    }
+  ],
+  "purse_rule": "Inventory counts 22, 24, and 18, wages 580, 220, and 160, and starting_sparks 14000, 3200, and 1800 are canon sheet seeds. They are not a shop, not a loot table, and not a second wallet. q_s16_three_purses has each lead name their own wage and their own currency count. No object moves.",
+  "encounters_politics": [
+    {
+      "id": "enc_s16_briefing",
+      "where": "task_force_HQ_municipal",
+      "bodies": ["task_force_commander_sasha_vale"],
+      "hours": "8–12",
+      "health": null,
+      "what": "One commander. The mandate is less than apex. Two headlines can be written. The grid motto can be fetched. The three heights can be walked. No writ is paid."
+    },
+    {
+      "id": "enc_s16_storefront_day",
+      "where": "movement_office_storefront",
+      "bodies": ["civil_rights_lead_juno_park"],
+      "hours": "8–12 and 18–22",
+      "health": null,
+      "what": "One advocate. Four arrests on the record. The clinic district has no pin. The overlap 9.34 m away stays S15's."
+    },
+    {
+      "id": "enc_s16_headquarters",
+      "where": "resistance_headquarters",
+      "bodies": ["baseline_lead_devon_cross"],
+      "hours": "8–12",
+      "health": null,
+      "what": "One normie lead. A draft is on the desk. A vote is not taken. The Baseline capital 10 m away keeps the S15 mystic and the Act errand."
+    },
+    {
+      "id": "enc_s16_grid_empty",
+      "where": "upper_manhattan_grid",
+      "bodies": [],
+      "hours": "any visit from q_s16_motto_on_the_grid",
+      "health": null,
+      "what": "The motto, the reputation number 91, and the three public works. 8.03 m from the arterial. No drone, no Vesper, no chief of staff, no recount of the eleven."
+    },
+    {
+      "id": "enc_s16_campus_empty",
+      "where": "college_main_campus",
+      "bodies": [],
+      "hours": "any visit from q_s16_three_heights",
+      "health": null,
+      "what": "The campus anchor, 10 m from the college capital. The motto Your power is a discipline. Train it. No dean, no student, no doubled rate."
+    },
+    {
+      "id": "enc_s16_two_faces",
+      "where": "task_force_HQ_municipal",
+      "bodies": [],
+      "hours": "18–22",
+      "health": null,
+      "what": "The board of notice_two_faces. Vale is off the anchor. Spawn count 0."
+    }
+  ],
+  "side_quests": [
+    {
+      "id": "q_s16_less_than_apex",
+      "title": "Municipal Anchor — Less Than Apex",
+      "world_id": "Superhero",
+      "giver_npc_id": "task_force_commander_sasha_vale",
+      "giver_spawn": "presence_vale_briefing. Clock 8–12.",
+      "backstory_id": "story_q_apex",
+      "extends_lore_id": null,
+      "extends_faction_id": "superhero_civic_super_taskforce",
+      "does_not_replace": ["q_s15_eleven_stand", "q_s15_act_unpassed"],
+      "objectives": [
+        {"id": "obj_q_s16_apex_1", "verb": "talk", "target": "task_force_commander_sasha_vale", "count": 1, "text": "At (-14.87, 29.22), ask what the Force is for. She will say a registered team, deliberately less powerful than Enforcer apex, sent after criminal supers without provoking the Enforcers' Movement. She will say the motto. She will not open the contingency journal."},
+        {"id": "obj_q_s16_apex_2", "verb": "reach", "target": "superhero_civic_super_taskforce_gate", "count": 1, "text": "Walk the 10 m to the Task Force capital at (-22.87, 35.22). It is a claim, 41.99 m from the Dawn-local origin. Leave Flower Law on the Hub. Write that the HQ sits inside the circle."},
+        {"id": "obj_q_s16_apex_3", "verb": "witness", "target": "wage_line_unfollowed", "count": 1, "text": "She may say the city payroll is not the only wage line on her sheet. Do not ask to attend the 18–22 dining block. That room has no coordinate."},
+        {"id": "obj_q_s16_apex_4", "verb": "deliver", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Bring back the mandate: sanctioned, less than apex, dinner unattended. She does not pay a civic writ."}
+      ],
+      "fail": ["Open the contingency journal", "Follow her to a dining room", "Bind a pistol or a cascade aura", "Flower the capital because the radius number matches 42", "Change reputation 64", "Spawn a drone to show the fear of a casualty event"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Registered. Less than apex. The dinner was not attended.", "gossip_on_complete": "Vale kept the briefing and kept the journal shut.", "prop_or_door": "Municipal anchor. No training-facility mesh is built."},
+      "turn_in": {"npc_id": "task_force_commander_sasha_vale", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_two_headlines",
+      "title": "Municipal Anchor — Two Headlines",
+      "world_id": "Superhero",
+      "giver_npc_id": "task_force_commander_sasha_vale",
+      "giver_spawn": "presence_vale_briefing. Clock 8–12. The evening board is a separate notice and is not required.",
+      "backstory_id": "story_q_headlines",
+      "extends_lore_id": "lore_first_sighting",
+      "also_lore_id": "lore_first_battle_at_dawn",
+      "does_not_replace": ["q_superhero_trade_intel", "superhero_mira_01_warn", "superhero_mira_02_intel", "superhero_mira_03_published"],
+      "objectives": [
+        {"id": "obj_q_s16_head_1", "verb": "talk", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Ask what the press did with the first film. The public sentence is that the city had a first hero, most people loved him, and the press could not decide hero or vigilante. Do not stand Elias. His training room has no anchor."},
+        {"id": "obj_q_s16_head_2", "verb": "witness", "target": "lore_first_battle_at_dawn", "count": 1, "text": "Write the second headline from the same briefing: forty-three minutes, both walked away, two blocks did not, Luminary called it unprovoked, the neighborhood called it two faces, neither side won."},
+        {"id": "obj_q_s16_head_3", "verb": "reach", "target": "task_force_HQ_municipal", "count": 1, "text": "Stay on the municipal anchor. The battle roof, the news office, and Kane Tower have no pins. Do not place aegis_spire to host the sentence."},
+        {"id": "obj_q_s16_head_4", "verb": "deliver", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Turn the two headlines in as public culture. Mira's page stays off any front this errand controls, because this errand never reaches her desk."}
+      ],
+      "fail": ["Stand Mira, Elias, or Vesper", "Publish a page", "State the swarm authorization or the planned accident", "Place the unfinished skyscraper", "Treat the evening notice as a second quest reward"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Hero or vigilante, unprovoked or two faces. Neither headline finished the morning.", "gossip_on_complete": "The briefing kept both sentences and added no third.", "prop_or_door": "Municipal anchor."},
+      "turn_in": {"npc_id": "task_force_commander_sasha_vale", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_three_heights",
+      "title": "Three Claims — Capital, Campus, Gap",
+      "world_id": "Superhero",
+      "giver_npc_id": "task_force_commander_sasha_vale",
+      "giver_spawn": "presence_vale_briefing. Clock 8–12. The gap may be crossed while enc_open_brow is up. S15's clear still binds.",
+      "backstory_id": "story_q_heights",
+      "extends_lore_id": null,
+      "does_not_replace": ["q_s15_spire_gap", "q_superhero_kestrel", "q_superhero_leave_standing"],
+      "objectives": [
+        {"id": "obj_q_s16_ht_1", "verb": "talk", "target": "task_force_commander_sasha_vale", "count": 1, "text": "At the HQ, ask which claim is a spire and which open is a street. She will send you to three checks and will not hand you a roof."},
+        {"id": "obj_q_s16_ht_2", "verb": "reach", "target": "superhero_civic_super_taskforce_gate", "count": 1, "text": "Stand at (-22.87, 35.22). Write: municipal spire-claim, HQ 10 m inside, Flower Law elsewhere."},
+        {"id": "obj_q_s16_ht_3", "verb": "reach", "target": "college_main_campus", "count": 1, "text": "Walk to the campus anchor at (59.16, 16.78), 10 m from the college capital. The capital-to-capital distance from the Task Force is the 75.07 m S15 published. The anchor is empty. Write the college motto. Do not enter a dean's office. Do not publish a rate."},
+        {"id": "obj_q_s16_ht_4", "verb": "reach", "target": "gap_baseline_spire", "count": 1, "text": "Reach the gap midpoint (-4.4, -37.7), 67.73 m from the HQ. Write: 13.62 m of street, uncovered by either radius. If the jackals are up, stop the nip and leave the chips. Do not continue to the Spire gate. That continuation is q_s15_spire_gap."},
+        {"id": "obj_q_s16_ht_5", "verb": "deliver", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Return the three sentences. She does not place a launch pad, a mercy spire, or a street kitchen to make the lesson prettier."}
+      ],
+      "fail": ["Place roof_pad, aegis_spire, or street_kitchen", "Stand Aldis or Kira", "Finish a yielded jackal", "Take a spire chit", "Walk on to the Spire gate and turn the errand into q_s15_spire_gap", "Add a kestrel to the campus"],
+      "rewards": {"xp": 55, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Municipal claim, empty campus, 13.62 m of street.", "gossip_on_complete": "Height stayed a verb. Nobody won a roof.", "prop_or_door": "No new kit transform."},
+      "turn_in": {"npc_id": "task_force_commander_sasha_vale", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_motto_on_the_grid",
+      "title": "Grid Anchor — The Public Face",
+      "world_id": "Superhero",
+      "giver_npc_id": "task_force_commander_sasha_vale",
+      "giver_spawn": "presence_vale_briefing. Clock 8–12.",
+      "backstory_id": "story_q_grid",
+      "extends_lore_id": "lore_founding_luminary",
+      "does_not_replace": ["q_s15_eleven_stand", "q_s16_two_headlines"],
+      "objectives": [
+        {"id": "obj_q_s16_grid_1", "verb": "talk", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Ask what Luminary says in public. She is allied to that faction on her sheet. She will say the motto and the three works, and she will not send you into a tower."},
+        {"id": "obj_q_s16_grid_2", "verb": "reach", "target": "upper_manhattan_grid", "count": 1, "text": "Stand at (-36.76, 13.93). You are inside the Luminary circle and inside the Enforcers' circle. Write Order. Progress. Light. Write reputation 91 as a sheet number, not a score you change."},
+        {"id": "obj_q_s16_grid_3", "verb": "witness", "target": "bronx_arterials_left_alone", "count": 1, "text": "The arterial is 8.03 m away. Do not walk it for this errand. The eleven already have q_s15_eleven_stand. Spawn nothing on either pin."},
+        {"id": "obj_q_s16_grid_4", "verb": "deliver", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Bring the motto back. Kane Tower, the financial arc, and the orbital facility stay unplaced. The planned accident stays unspoken."}
+      ],
+      "fail": ["Recount the eleven", "State the hidden authorization", "State that the accident was planned", "Stand Vesper or either Marcus", "Spawn a drone or a sentinel", "Pay luminary_credits"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Grid anchor: Order. Progress. Light. The tower was not entered.", "gossip_on_complete": "The public face was copied and the nest stayed empty.", "prop_or_door": "Grid anchor. No spire set is dropped on it."},
+      "turn_in": {"npc_id": "task_force_commander_sasha_vale", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_four_arrests",
+      "title": "Storefront — Four Arrests",
+      "world_id": "Superhero",
+      "giver_npc_id": "civil_rights_lead_juno_park",
+      "giver_spawn": "presence_juno_storefront. Clock 8–12 or 18–22.",
+      "backstory_id": "story_q_arrests",
+      "extends_lore_id": null,
+      "extends_faction_id": "superhero_civil_rights_emerged",
+      "does_not_replace": ["q_s15_act_unpassed"],
+      "objectives": [
+        {"id": "obj_q_s16_arr_1", "verb": "talk", "target": "civil_rights_lead_juno_park", "count": 1, "text": "At (-47.95, -16.88), ask for the public record of the lead. She will say eight years since emergence, a corporate-law career left behind, and four arrests. She will not open the negotiation journal."},
+        {"id": "obj_q_s16_arr_2", "verb": "witness", "target": "four_not_five", "count": 1, "text": "Write four. The motto stays We did not choose this. The substrate did. Do not add a charge."},
+        {"id": "obj_q_s16_arr_3", "verb": "reach", "target": "superhero_civil_rights_emerged_gate", "count": 1, "text": "Walk the 10 m to the rights capital at (-55.95, -10.88). Do not speak for her. Do not continue into the overlap. That walk is q_s15_act_unpassed."},
+        {"id": "obj_q_s16_arr_4", "verb": "deliver", "target": "civil_rights_lead_juno_park", "count": 1, "text": "Return the count to the storefront. The Act is still unpassed. No movement token is paid."}
+      ],
+      "fail": ["Open the journal", "Stage the afternoon negotiation", "Pass or strike the Act", "Speak for Juno on the overlap", "Add a sonic aura", "Invent a fifth arrest"],
+      "rewards": {"xp": 40, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Storefront record: four arrests. The Act was not finished.", "gossip_on_complete": "Juno kept the count and kept the journal locked.", "prop_or_door": "Storefront anchor."},
+      "turn_in": {"npc_id": "civil_rights_lead_juno_park", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_clinic_unplaced",
+      "title": "Storefront — The Clinic Has No Pin",
+      "world_id": "Superhero",
+      "giver_npc_id": "civil_rights_lead_juno_park",
+      "giver_spawn": "presence_juno_storefront. Clock 8–12 or 18–22.",
+      "backstory_id": "story_q_clinic",
+      "extends_lore_id": null,
+      "extends_faction_id": "superhero_civil_rights_emerged",
+      "does_not_replace": ["q_s16_four_arrests", "q_s15_act_unpassed"],
+      "objectives": [
+        {"id": "obj_q_s16_cli_1", "verb": "talk", "target": "civil_rights_lead_juno_park", "count": 1, "text": "Ask where the documentation is filed. She will name the storefront, which you are standing in, and civil_rights_legal_clinic, which is a controlled district with no anchor in countries.json."},
+        {"id": "obj_q_s16_cli_2", "verb": "witness", "target": "one_pin", "count": 1, "text": "Confirm the breakroom string is not a second map pin. Between 12 and 14 she is not on this anchor. Do not invent a lunchroom transform to keep her visible."},
+        {"id": "obj_q_s16_cli_3", "verb": "reach", "target": "movement_office_storefront", "count": 1, "text": "Stay on (-47.95, -16.88). The overlap midpoint is 9.34 m away. Leave it to the Act errand. Write that documentation of overreach, the faction goal, happens in a room the country file did not place, and that becoming the Enforcers is the failure the values already name."},
+        {"id": "obj_q_s16_cli_4", "verb": "deliver", "target": "civil_rights_lead_juno_park", "count": 1, "text": "Turn in the missing pin as a missing pin. Do not build the clinic."}
+      ],
+      "fail": ["Build a clinic mesh", "Walk the overlap and call it this quest", "Stand an Enforcer on the storefront", "Open the journal", "Pay a movement token"],
+      "rewards": {"xp": 35, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Clinic district named. No anchor. Storefront remains the pin.", "gossip_on_complete": "The record kept a hole in the map instead of filling it.", "prop_or_door": "Storefront anchor. Clinic unplaced."},
+      "turn_in": {"npc_id": "civil_rights_lead_juno_park", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_draft_not_vote",
+      "title": "Headquarters — Draft, Not a Vote",
+      "world_id": "Superhero",
+      "giver_npc_id": "baseline_lead_devon_cross",
+      "giver_spawn": "presence_devon_headquarters. Clock 8–12.",
+      "backstory_id": "story_q_draft",
+      "extends_lore_id": null,
+      "extends_faction_id": "superhero_normie_resistance",
+      "does_not_replace": ["q_s15_act_unpassed", "q_s16_four_arrests"],
+      "objectives": [
+        {"id": "obj_q_s16_dr_1", "verb": "talk", "target": "baseline_lead_devon_cross", "count": 1, "text": "At (-26.07, -46.6), ask why the Act is his morning. He will say he has led for four years, that he is a normie, and that he has pushed the Act since his sister was killed in a 2090 super-on-super crossfire. He will not discuss anyone in the house."},
+        {"id": "obj_q_s16_dr_2", "verb": "witness", "target": "registration_act_draft", "count": 1, "text": "See that a draft is in his gear. A draft is paper. Do not call a vote. Do not open the disclosure journal."},
+        {"id": "obj_q_s16_dr_3", "verb": "reach", "target": "superhero_normie_resistance_gate", "count": 1, "text": "Walk the 10 m to the Baseline capital at (-34.07, -40.6). The S15 mystic may be there. Do not take their Act errand as this turn-in. Do not speak for Devon. Return."},
+        {"id": "obj_q_s16_dr_4", "verb": "deliver", "target": "baseline_lead_devon_cross", "count": 1, "text": "Tell him the draft is still a draft. Council chambers and the civic meeting house have no anchors, so the afternoon lobbying is not a room you can finish. No baseline chit is paid."}
+      ],
+      "fail": ["Pass or strike the Act", "Ask about the son", "Open the disclosure journal", "Stand walker_bullet and merge the name", "Walk the 9.09 m overlap as this quest", "Pay a chit", "Give him powers"],
+      "rewards": {"xp": 45, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Headquarters: the Act is a draft. The vote was not taken.", "gossip_on_complete": "Devon kept the morning and kept the other journal shut.", "prop_or_door": "Headquarters anchor. Chambers unplaced."},
+      "turn_in": {"npc_id": "baseline_lead_devon_cross", "requires_all_objectives": true}
+    },
+    {
+      "id": "q_s16_three_purses",
+      "title": "Three Anchors — The Purses Stay Shut",
+      "world_id": "Superhero",
+      "giver_npc_id": "task_force_commander_sasha_vale",
+      "giver_spawn": "presence_vale_briefing. Clock 8–12, the only band when all three leads are on their anchors.",
+      "backstory_id": "story_q_purses",
+      "extends_lore_id": null,
+      "extends_faction_id": "superhero_civic_super_taskforce",
+      "does_not_replace": ["q_s16_less_than_apex", "q_s16_four_arrests", "q_s16_draft_not_vote", "q_s15_act_unpassed"],
+      "objectives": [
+        {"id": "obj_q_s16_pu_1", "verb": "talk", "target": "task_force_commander_sasha_vale", "count": 1, "text": "At (-14.87, 29.22), ask what the morning pays. She will say 580 diurnal sparks, source city_payroll_plus_off_books_luminary, and 22 civic writs on her person. She will not split 580. She will not hand over a writ. She will not open the contingency journal or the dining room."},
+        {"id": "obj_q_s16_pu_2", "verb": "talk", "target": "civil_rights_lead_juno_park", "count": 1, "text": "At (-47.95, -16.88), while her morning window holds, ask what the storefront pays. She will say 220 diurnal sparks from movement_pooled_donations and 24 movement tokens on her person. She pays none. The negotiation journal stays locked. Do not walk the overlap."},
+        {"id": "obj_q_s16_pu_3", "verb": "talk", "target": "baseline_lead_devon_cross", "count": 1, "text": "At (-26.07, -46.6), while his morning window holds, ask what the headquarters pays. He will say 160 diurnal sparks from resistance_pooled_donations and 18 baseline chits on his person. He pays none. The draft stays paper. He does not discuss the house. Do not turn this in to the mystic 10 m away."},
+        {"id": "obj_q_s16_pu_4", "verb": "deliver", "target": "task_force_commander_sasha_vale", "count": 1, "text": "Return the three sentences. Legitimacy, a legal morning, and a lobbying call were the work. Coin stays 0. The sheet seeds 14000, 3200, and 1800 starting sparks are not a purse you open."}
+      ],
+      "fail": ["Take a writ, a token, or a chit", "Split 580 into two amounts", "Open any locked journal", "Attend the dining room", "Walk the overlap or turn in to the mystic", "Loot the inventory counts", "Pay reputation"],
+      "rewards": {"xp": 50, "coin": 0, "items": [], "skill_ids": []},
+      "faction_delta": [],
+      "world_hooks": {"board_line": "Three anchors named their purses. None of them opened.", "gossip_on_complete": "The morning paid attention and kept the currencies on the sheets.", "prop_or_door": "Three staffed anchors. No treasury mesh."},
+      "turn_in": {"npc_id": "task_force_commander_sasha_vale", "requires_all_objectives": true}
+    }
+  ]
+}

@@ -1,0 +1,293 @@
+{
+  "schema": "concordia-world-forge-hub-court-pilot/1.0",
+  "slice_id": "W11_hub_court_pilot",
+  "phase": "pilot",
+  "batch": "WF_pilot_hub",
+  "title": "Hub Unburned Court / Flower Law 42 m: continental fields degrade into the existing heightmap and local water.",
+  "consumes": [
+    { "schema": "concordia-world-forge-canon-graph/1.0", "slice_id": "W00_world_forge_canon_graph" },
+    { "schema": "concordia-world-forge-field/1.0", "slice_id": "W01_world_field_schema" },
+    { "schema": "concordia-world-forge-continental/1.0", "slice_id": "W02_continental_spec" },
+    { "schema": "concordia-world-forge-hydrology/1.0", "slice_id": "W03_hydrology_spec" },
+    { "schema": "concordia-world-forge-biome-resource/1.0", "slice_id": "W04_biome_resource_spec" },
+    { "schema": "concordia-world-forge-transport/1.0", "slice_id": "W05_transport_graph_spec" },
+    { "schema": "concordia-world-forge-suitability/1.0", "slice_id": "W06_settlement_suitability" },
+    { "schema": "concordia-world-forge-territory/1.0", "slice_id": "W07_civ_territory_physical" },
+    { "schema": "concordia-world-forge-settlement-layout/1.0", "slice_id": "W08_settlement_layout" },
+    { "schema": "concordia-world-forge-pipeline/1.0", "slice_id": "W09_world_forge_pipeline" }
+  ],
+  "writes": "hub_court_degrade",
+  "writes_channels": [],
+  "grid_materialized": false,
+  "kingdoms_minted": 0,
+  "continent_physicalize": false,
+  "physicalize_scope": null,
+  "prompts_index_rows_added": 0,
+  "meshes": false,
+  "quantity_assayed": null,
+  "price_cc": null,
+  "headcount": null,
+  "parcels": null,
+  "pins": {
+    "flower_law_horizontal_m": 42,
+    "flower_law_axis": "horizontal radius, not elevation",
+    "door_ring_m": 34,
+    "wall_m": 56,
+    "arena": { "x_m": 0, "z_m": 18, "steel_radius_m": 8 },
+    "pinewood_m": { "x_m": 62, "z_m": -28, "lettering": "Pinewood Crossing" },
+    "three_refusals_m": { "x_m": -48, "z_m": -58 },
+    "fantasy_world_id": "Fantasy",
+    "fantasy_display": "Sundering",
+    "vinewood": "absent",
+    "sere_on_canon_gates": false,
+    "hub_kingdom": false,
+    "hub_territories": "empty",
+    "gates": 8,
+    "court_absolute_veil_m": null
+  },
+  "place": {
+    "layout_id": "layout_hub_court",
+    "region_id": "hub_plaza",
+    "world_id": "Hub",
+    "display_name": "The Unburned Court",
+    "faction_id": "concordant_assembly",
+    "site_id": "cap_hub_court",
+    "kingdom": false,
+    "center_km": { "x_km": 0, "z_km": 0 },
+    "court_km": 12,
+    "metro_km": 40,
+    "approaches_km": { "inner": 40, "outer": 80, "authority": "design_intent" },
+    "frame_walk": "hub_canon_metres",
+    "forbidden_uses": ["agricultural", "industrial", "water"],
+    "district_ids": [
+      "dist_hub_inner_court",
+      "dist_hub_assembly",
+      "dist_hub_market",
+      "dist_hub_doors",
+      "dist_hub_arena"
+    ],
+    "folded_region": "hub_doors",
+    "sibling_layouts_unchanged": [
+      "layout_hub_wall",
+      "layout_hub_pinewood",
+      "layout_hub_approaches"
+    ]
+  },
+  "frames": {
+    "player_mesh": {
+      "origin": "Hub walk origin, mesh centered",
+      "query": "sampleRenderedHeight(wx, wz)",
+      "nx": "(wx + terrainSize/2) / terrainSize",
+      "nz": "(wz + terrainSize/2) / terrainSize"
+    },
+    "flow_corner": {
+      "origin": "southwest corner of the 2000 m patch",
+      "query": "baseElevation(wx, wz) = renderedElevationAt(wx/2000, wz/2000)",
+      "expects_wx": "[0, 2000]"
+    },
+    "translation": {
+      "wx_corner": "wx_centered + 1000",
+      "wz_corner": "wz_centered + 1000",
+      "checked_equal_at": [
+        "origin",
+        "arena",
+        "door_east",
+        "flower_edge",
+        "wall",
+        "pinewood",
+        "three_refusals",
+        "keep_edge",
+        "west_river"
+      ]
+    },
+    "untranslated_origin": {
+      "baseElevation_centered_m": 2,
+      "sampleRenderedHeight_m": 39.9094,
+      "gap_m": 37.9094,
+      "meaning": "A court water query on player metres without the +1000 shift samples the river end of the profile."
+    },
+    "present_metres_per_km": 0.55,
+    "present_ring_m": 220,
+    "scene_metres_to_km": 0.4,
+    "present_scale_rule": "Both published scales stay. Neither resizes the 42 m disk."
+  },
+  "degrade": {
+    "authority_of_samples": "sampled_from_renderedElevationAt",
+    "seed_hex": "0xc0ffee",
+    "seed": 12648430,
+    "terrain_size_m": 2000,
+    "max_elevation_m": 80,
+    "h_origin_m": 39.9094,
+    "relief_m": 0,
+    "arena_dish_depth_m": null,
+    "r_flat_m": 42,
+    "r_raw_m": 125,
+    "r_raw_source": "ContinentStream.HubKeepM",
+    "span_m": 83,
+    "smoothstep": "u = (r - 42) / 83; s = u*u*(3 - 2*u); h = (1-s)*h_origin + s*h_mesh",
+    "inside_flat": "h_walk = h_origin",
+    "outside_keep": "h_walk = h_mesh until the patch edge at 1000 m",
+    "veil_band_approaches_m": { "min": 15, "max": 40 },
+    "veil_added_to_play_patch": false,
+    "functions_edited": [],
+    "raw_ring_max_abs_delta_m": 1.7549,
+    "raw_ring_bearing_deg": 209,
+    "raw_ring_rise_over_run": 0.0418,
+    "plaza_slope_cap": 0.03,
+    "slope_after_flatten": 0,
+    "creek_at_origin": {
+      "nx": 0.5,
+      "nz": 0.5,
+      "creek_center_nx": 0.425,
+      "distance": 0.075,
+      "cut_half_width": 0.04,
+      "enters_disk": false
+    },
+    "samples": [
+      { "id": "origin", "x_m": 0, "z_m": 0, "r_m": 0, "h_mesh_m": 39.9094, "h_walk_m": 39.9094, "zone": "flower_flat" },
+      { "id": "arena", "x_m": 0, "z_m": 18, "r_m": 18, "h_mesh_m": 40.0482, "h_walk_m": 39.9094, "zone": "flower_flat" },
+      { "id": "door_east", "x_m": 34, "z_m": 0, "r_m": 34, "h_mesh_m": 40.2327, "h_walk_m": 39.9094, "zone": "flower_flat" },
+      { "id": "flower_edge", "x_m": 42, "z_m": 0, "r_m": 42, "h_mesh_m": 40.8462, "h_walk_m": 39.9094, "zone": "flower_flat" },
+      { "id": "wall", "x_m": 56, "z_m": 0, "r_m": 56, "h_mesh_m": 40.8806, "h_walk_m": 39.9829, "zone": "annulus" },
+      { "id": "pinewood", "x_m": 62, "z_m": -28, "r_m": 68.029, "h_mesh_m": 40.6888, "h_walk_m": 40.0913, "zone": "annulus" },
+      { "id": "three_refusals", "x_m": -48, "z_m": -58, "r_m": 75.286, "h_mesh_m": 38.5499, "h_walk_m": 39.4288, "zone": "annulus" },
+      { "id": "keep_edge", "x_m": 125, "z_m": 0, "r_m": 125, "h_mesh_m": 40.4577, "h_walk_m": 40.4577, "zone": "raw_mesh" },
+      { "id": "present_ring_bearing_0", "x_m": 220, "z_m": 0, "r_m": 220, "h_mesh_m": 47.4945, "h_walk_m": 47.4945, "zone": "raw_mesh" },
+      { "id": "west_river", "x_m": -950, "z_m": 0, "r_m": 950, "h_mesh_m": 2.9342, "h_walk_m": 2.9342, "zone": "raw_mesh", "w03_body": false }
+    ]
+  },
+  "water": {
+    "channels": [
+      { "id": "hub_civic_drain", "kind": "none", "depth_m": 0, "seed": false, "outlet": "civic_buried", "allowed_regions": ["hub_plaza", "hub_doors", "hub_wall"] },
+      { "id": "hub_salt_road", "kind": "none", "depth_m": 0, "seed": false, "outlet": "dry_end", "must_not_cross_region": ["hub_plaza"] },
+      { "id": "hub_approach_ditches", "kind": "none", "depth_m": 0, "seed": false, "outlet": "dry_end", "crown_egress_count": 8, "crown_egress_carries_channel": false }
+    ],
+    "lakes": 0,
+    "setWater_calls": 0,
+    "flower_law_cells": {
+      "frame": "flow_corner",
+      "center_m": { "x": 1000, "z": 1000 },
+      "cell_size_m": 10,
+      "cx": { "min": 95, "max": 104 },
+      "cz": { "min": 95, "max": 104 },
+      "seeded": false
+    },
+    "rainfall_drives_setWater": false,
+    "west_river_is_w03_body": false
+  },
+  "suitability_check": {
+    "region_id": "hub_plaza",
+    "axes": {
+      "water": 0.55,
+      "food_effective": 0.55,
+      "trade": 0.92,
+      "resources": 0.45,
+      "terrain": 0.90,
+      "defense": 0.80,
+      "transport": 0.72,
+      "faction": 0.95
+    },
+    "sum": 0.7226,
+    "stored_raw": 0.723,
+    "tier": "city",
+    "rescored": false
+  },
+  "trace": [
+    { "order": 0, "stage": "Canon", "slice_id": "W00_world_forge_canon_graph", "pilot_write": null },
+    { "order": 1, "stage": "Elevation", "slice_id": "W02_continental_spec", "pilot_write": "read_side_blend" },
+    { "order": 2, "stage": "Hydrology", "slice_id": "W03_hydrology_spec", "pilot_write": "corner_translation_no_seed" },
+    { "order": 3, "stage": "Climate", "slice_id": "W04_biome_resource_spec", "pilot_write": null },
+    { "order": 4, "stage": "Biome", "slice_id": "W04_biome_resource_spec", "pilot_write": null, "plaza_scatter": 0 },
+    { "order": 5, "stage": "Resources", "slice_id": "W04_biome_resource_spec", "pilot_write": null, "quantity": null },
+    { "order": 6, "stage": "Mobility", "slice_id": "W05_transport_graph_spec", "pilot_write": null, "edges_added": 0 },
+    { "order": 7, "stage": "Suitability", "slice_id": "W06_settlement_suitability", "pilot_write": null },
+    { "order": 8, "stage": "Civ", "slice_id": "W07_civ_territory_physical", "pilot_write": null, "kingdom": false },
+    { "order": 9, "stage": "Pop", "slice_id": "W09_world_forge_pipeline", "pilot_write": null, "headcount": null },
+    { "order": 10, "stage": "Economy", "slice_id": "W09_world_forge_pipeline", "pilot_write": null, "price_cc": null },
+    { "order": 11, "stage": "Growth", "slice_id": "W09_world_forge_pipeline", "pilot_write": null, "parcel_count": null },
+    { "order": 12, "stage": "Infra", "slice_id": "W09_world_forge_pipeline", "pilot_write": null, "paved": false },
+    { "order": 13, "stage": "Physicalization", "slice_id": "W09_world_forge_pipeline", "pilot_write": null, "physicalize": false },
+    { "order": 14, "stage": "Unity streaming", "pilot_write": null, "enqueued": false }
+  ],
+  "bill_of_materials": [
+    { "id": "env_hub_flower_law_urn", "count_from_this_slice": 0 },
+    { "id": "env_hub_ring_door", "count_from_this_slice": 0 },
+    { "id": "env_hub_pinewood_milepost", "count_from_this_slice": 0 },
+    { "id": "arch_hero_hub_arena_gate", "count_from_this_slice": 0 }
+  ],
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["renderedElevationAt", "sampleRenderedHeight", "generatePoughkeepsieHeightmap"],
+      "role": "Centered walk sample. Flatten is a reader."
+    },
+    {
+      "id": "terrain_deformation",
+      "path": "server/lib/terrain-deformation.js",
+      "symbols": ["baseElevation", "cellOf", "getElevationAt"],
+      "cell_size_m": 10,
+      "role": "Corner frame. Court queries add half the patch before the call."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["setWater", "solveFlowStep", "waterDepthAt", "tickWaterFlow"],
+      "role": "Play-patch flow. Continental depth stays 0."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "symbols": ["spawnSettlementForRegion"],
+      "max_npcs_per_region": 5,
+      "heartbeat_frequency": 240
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "symbols": ["pickMove", "applyMove"],
+      "heartbeat_frequency": 200
+    },
+    {
+      "id": "npc_economy",
+      "path": "server/lib/npc-economy.js",
+      "symbols": ["dispatchEconomicAction"],
+      "heartbeat_frequency": 8,
+      "later_price_key": "dist_hub_market"
+    },
+    {
+      "id": "settlement_compiler",
+      "path": "Assets/Concordia/Scripts/Settlement/SettlementCompiler.cs",
+      "symbols": ["Compile", "IsHubHeartDistrict"],
+      "called": false
+    },
+    {
+      "id": "tree_layer",
+      "path": "concord-frontend/components/world-lens/TreeLayer.tsx",
+      "symbols": ["TreeLayer"],
+      "plaza_scatter": 0
+    },
+    {
+      "id": "streaming",
+      "path": "Assets/Concordia/Scripts/WorldStreamManager.cs",
+      "also": "Assets/Concordia/Scripts/ContinentStream.cs",
+      "hub_keep_m": 125,
+      "enqueued": false
+    }
+  ],
+  "do_not_build_yet": [
+    "No rewrite of renderedElevationAt, baseElevation, or setWater.",
+    "No seeded water on Flower Law cells 95–104.",
+    "No veil metres added to the 39.9094 m origin sample.",
+    "No headcount, parcel_count, coin, pavement, or physicalize true.",
+    "No SettlementCompiler.Compile and no second plaza stamp.",
+    "No 2 km raster, NavMesh, image, or PROMPTS_INDEX row."
+  ],
+  "honesty_pins": [
+    "writes is hub_court_degrade. writes_channels is empty.",
+    "Samples are the current heightmap function, seed 0xc0ffee.",
+    "Flower Law is 42 m horizontal. Fantasy is the Sundering.",
+    "The civic drain stays kind none. The west river valley is not a W03 body.",
+    "physicalize stays false so the live court is not stamped again."
+  ]
+}

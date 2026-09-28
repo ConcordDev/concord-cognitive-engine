@@ -1,11 +1,13 @@
 {
   "dependencies": {
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#v10.0.0",
+    "com.ramenvr.aura-unity": "https://github.com/ramenvr/AuraForUnityPlugin.git",
     "com.unity.ai.assistant": "2.19.0-pre.2",
     "com.unity.ai.inference": "2.6.1",
     "com.unity.cinemachine": "3.1.6",
-    "com.unity.cloud.gltfast": "6.10.1",
+    "com.unity.cloud.gltfast": "https://github.com/needle-mirror/com.unity.cloud.gltfast.git#6.20.0",
     "com.unity.render-pipelines.universal": "17.3.0",
+    "com.unity.test-framework": "1.7.0",
     "com.unity.ugui": "2.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.animation": "1.0.0",

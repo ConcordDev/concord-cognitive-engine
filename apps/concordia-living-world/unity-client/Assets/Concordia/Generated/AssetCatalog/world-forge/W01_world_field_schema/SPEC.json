@@ -1,0 +1,641 @@
+{
+  "schema": "concordia-world-forge-field/1.0",
+  "slice_id": "W01_world_field_schema",
+  "phase": "G0",
+  "batch": "WF0_field_schema",
+  "title": "World Field schema: elevation, slope, climate, drainage, soil, geology, water, biome, resource, fertility",
+  "consumes": {
+    "schema": "concordia-world-forge-canon-graph/1.0",
+    "slice_id": "W00_world_forge_canon_graph",
+    "path": "world-forge/W00_world_forge_canon_graph/SPEC.json"
+  },
+  "authority_docs": [
+    "lookfeel/MAP_MASTER.json",
+    "lookfeel/geography/GEO_Hub.md",
+    "lookfeel/geography/GEO_Fantasy.md",
+    "lookfeel/geography/GEO_Tunya.md",
+    "WORLD_FORGE_GEO_CIV_AUDIT.md"
+  ],
+  "honesty": "Region ids, frames, and affinities are copied from the W00 canon graph. Exemplar numeric bands are design_intent class ranges, not station data and not a generated raster. Resource quantity is null. Unplaced Tunya names have channels null. The play patch constants are copied from server/lib/world-terrain.js and are not retuned here.",
+  "pipeline": [
+    "elevation",
+    "hydrology",
+    "climate",
+    "biome",
+    "resources",
+    "mobility",
+    "suitability",
+    "civ",
+    "pop",
+    "economy",
+    "growth",
+    "infra",
+    "physicalization"
+  ],
+  "pipeline_note": "Hydrology places channels from elevation plus W00 water_dependency. Climate writes temperature, rainfall, and humidity afterwards as volume and season. Rainfall must not redraw a channel.",
+  "continent": {
+    "id": "concordia_megaworld",
+    "frame": "megaworld_km",
+    "origin": "Hub",
+    "axes": "+x east toward Cyber, +z north toward the Sundering",
+    "ring_km": 400.0,
+    "seas": ["inner_veil", "exodus_ocean"],
+    "discs_are": "worlds on one field, not separate continents",
+    "worlds_exemplified_this_slice": ["Hub", "Fantasy", "Tunya"],
+    "worlds_pending_same_schema": ["Cyber", "Ruins", "Frontier", "Crime", "Superhero", "Crucible", "Sere"]
+  },
+  "frames": {
+    "continental_veil_datum": {
+      "unit": "metres above the Inner Veil / Exodus water plane",
+      "horizontal": "megaworld_km",
+      "later_cell_km": 2.0,
+      "later_cell_authority": "design_intent",
+      "note": "G1 writes this grid. Exemplars are one class band per region, not cells."
+    },
+    "hub_court_walk": {
+      "unit": "metres above the Hub walk surface",
+      "horizontal": "hub_canon_metres",
+      "flower_law_radius_m": 42,
+      "flower_law_axis": "horizontal radius, not elevation",
+      "ring_of_doors_m": 34,
+      "wall_m": 56,
+      "arena_exception": "Arena sand is a steel exception inside the 42 m disk, not a continental crater."
+    },
+    "play_patch_metres": {
+      "source": "server/lib/world-terrain.js",
+      "symbols": ["renderedElevationAt", "generatePoughkeepsieHeightmap", "terrainSpec", "sampleRenderedHeight"],
+      "terrain_size_m": 2000,
+      "max_elevation_m": 80,
+      "seed": 12648430,
+      "seed_hex": "0xc0ffee",
+      "seed_is_per_world": false,
+      "sampled_grid": 64,
+      "sampled_cell_m": 31.25,
+      "sample_convention": "nx = col/width, nz = row/height, not divided by dim-1",
+      "output": "terrainSpec sampledGrid is elevation/80 in [0,1]",
+      "deformation_cell_m": 10,
+      "deformation_cell_symbol": "CELL_SIZE",
+      "deformation_cell_env": "CONCORD_TERRAIN_CELL_M",
+      "hash_seed": {
+        "symbol": "hashSeed",
+        "algorithm": "fnv1a-32",
+        "applies_to_rendered_grid": false,
+        "future_use": "Micro-relief amplitude inside the 0–80 m clamp only. Not a continental height."
+      },
+      "must_not": "Add continental_veil_datum metres to renderedElevationAt. Resample exemplars into sampledGrid. Store 42 as an elevation."
+    },
+    "local_claim_metres": {
+      "note": "countries.json circles and Fluxom Gate (62, 18) m stay here. They are not field cells."
+    }
+  },
+  "slope_classes": [
+    { "id": "near_level", "rise_over_run_max_exclusive": 0.04 },
+    { "id": "gentle", "rise_over_run_max_exclusive": 0.12 },
+    { "id": "moderate", "rise_over_run_max_exclusive": 0.25 },
+    { "id": "steep", "rise_over_run_max_exclusive": 0.5 },
+    { "id": "cliff", "rise_over_run_min_inclusive": 0.5 }
+  ],
+  "channel_contract": [
+    {
+      "id": "elevation",
+      "unit": "m",
+      "written_by": "elevation",
+      "read_by": ["hydrology", "slope"],
+      "rule": "class is one of the region terrain_affinity tags from W00"
+    },
+    {
+      "id": "slope",
+      "unit": "rise_over_run",
+      "written_by": "elevation",
+      "derived_from": "elevation",
+      "read_by": ["mobility", "suitability"],
+      "rule": "derived from neighbour elevation; never an independent authoring"
+    },
+    {
+      "id": "geology",
+      "unit": "class",
+      "written_by": "elevation",
+      "read_by": ["biome", "resources"],
+      "rule": "rock rides with the landform; not a fourteenth pipeline stage"
+    },
+    {
+      "id": "drainage",
+      "unit": "watershed_id",
+      "written_by": "hydrology",
+      "read_by": ["climate", "biome", "fertility"],
+      "rule": "obeys W00 water_dependency.forbidden"
+    },
+    {
+      "id": "water",
+      "unit": "kind",
+      "written_by": "hydrology",
+      "read_by": ["biome", "economy", "terrain-water.setWater"],
+      "rule": "kind none is filled. A forbidden kind is an error. Play-patch seeding uses terrain-water.js only."
+    },
+    {
+      "id": "temperature",
+      "unit": "celsius_mean_annual_band",
+      "written_by": "climate",
+      "read_by": ["biome"],
+      "rule": "design_intent band. A local anomaly is not the regional mean."
+    },
+    {
+      "id": "rainfall",
+      "unit": "mm_per_year_band",
+      "written_by": "climate",
+      "read_by": ["biome", "fertility"],
+      "rule": "does not redraw drainage"
+    },
+    {
+      "id": "humidity",
+      "unit": "fraction_0_1_band",
+      "written_by": "climate",
+      "read_by": ["biome"],
+      "rule": "local mist stays on the water body, not the whole disc"
+    },
+    {
+      "id": "biome",
+      "unit": "class",
+      "written_by": "biome",
+      "read_by": ["resources", "physicalization"],
+      "rule": "agrees with W00 climate_tag and flora_budget"
+    },
+    {
+      "id": "soil",
+      "unit": "class",
+      "written_by": "biome",
+      "read_by": ["fertility"],
+      "rule": "derived from geology, drainage, and climate. Paving is a class."
+    },
+    {
+      "id": "resource",
+      "unit": "id",
+      "written_by": "resources",
+      "read_by": ["economy"],
+      "rule": "subset of the W00 region resource ids; quantity null"
+    },
+    {
+      "id": "fertility",
+      "unit": "score_0_1",
+      "written_by": "resources",
+      "derived_from": ["soil", "rainfall", "drainage"],
+      "read_by": ["suitability"],
+      "rule": "civ, pop, and economy do not write it. suitability_cap can veto a high score."
+    }
+  ],
+  "integration": [
+    {
+      "id": "world_terrain",
+      "path": "server/lib/world-terrain.js",
+      "symbols": ["terrainSpec", "generatePoughkeepsieHeightmap", "renderedElevationAt", "sampleRenderedHeight", "hashSeed"],
+      "today": "Play patch only. Fixed seed 0xc0ffee. hashSeed(worldId) is not consumed by the rendered grid. The same patch is served for every worldId.",
+      "field_extends": "Continental class bands live beside the patch. A later reader refuses a play-patch sample whose class is outside the region affinity. hashSeed may drive micro-relief inside the existing 0–80 m clamp.",
+      "known_gap": "Until that reader and G1 exist, the Poughkeepsie patch is the only numeric elevation Concord serves, including on Fantasy and Tunya.",
+      "do_not": "Replace the formula, add veil-datum metres into renderedElevationAt, or encode Flower Law 42 as elevation."
+    },
+    {
+      "id": "terrain_deformation",
+      "path": "server/lib/terrain-deformation.js",
+      "symbols": ["baseElevation", "CELL_SIZE"],
+      "today": "baseElevation delegates to renderedElevationAt. Cell is 10 m unless CONCORD_TERRAIN_CELL_M is set.",
+      "field_extends": "No new deformation. Digs stay on the play patch.",
+      "do_not": "Store the continental grid in the deformation table."
+    },
+    {
+      "id": "terrain_water",
+      "path": "server/lib/terrain-water.js",
+      "symbols": ["solveFlowStep", "setWater", "tickWaterFlow", "waterDepthAt"],
+      "today": "4-neighbour flow on the play-patch cell. Volume conserved.",
+      "field_extends": "G2 may seed setWater only where exemplar water.kind is a surface body and the cell sits in the play patch. Field depth_m is a design-intent band, not a column to copy.",
+      "do_not": "A second solver, a Hub plaza seed, or a Sundering lake seed."
+    },
+    {
+      "id": "procgen_settlements",
+      "path": "server/lib/procgen-settlements.js",
+      "symbols": ["spawnSettlementForRegion"],
+      "cycle": "server/emergent/procgen-settlement-cycle.js",
+      "today": "3–5 NPCs and a Living Society settlements row.",
+      "field_extends": "Suitability may later choose an existing region_id using slope, water.kind, and fertility.",
+      "do_not": "Treat fertility as a city physicalizer or replace spawnSettlementForRegion."
+    },
+    {
+      "id": "faction_strategy",
+      "path": "server/lib/embodied/faction-strategy.js",
+      "domain": "server/domains/faction-strategy.js",
+      "cycle": "server/emergent/faction-strategy-cycle.js",
+      "today": "Stance machine on authored factions.",
+      "field_extends": "A move may name a region_id or a water.body_id already in this field.",
+      "do_not": "Mint a kingdom from a fertile cell. Hub territories stay empty."
+    },
+    {
+      "id": "unity_world_geography",
+      "path": "Assets/Concordia/Scripts/GeographyRuntime.cs",
+      "symbols": ["WorldGeography"],
+      "today": "Routes and borders. Hub territories empty.",
+      "field_extends": "Later bind so disc fields agree with the atlas.",
+      "do_not": "Promote claim circles or the 0.55 m/km present scale into field metres."
+    }
+  ],
+  "exemplars": [
+    {
+      "exemplar_id": "Hub:hub_plaza",
+      "world_id": "Hub",
+      "region_id": "hub_plaza",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "hub_court_walk",
+      "anchor": { "frame": "hub_canon_metres", "radius_m": 42, "flower_law": true },
+      "channels": {
+        "elevation": { "class": "flat_court", "m": { "min": 0, "max": 1.5 }, "also_affinity": ["arena_dish", "low_steps"] },
+        "slope": { "class": "near_level", "rise_over_run_max": 0.03, "derived_from": "elevation" },
+        "geology": { "class": "dressed_stone", "rock": "dimension_stone" },
+        "drainage": { "class": "civic_drain", "watershed_id": "hub_civic_drain", "accumulation": "local_only", "outlet": "buried_civic", "forbidden": ["river", "lake", "waterfall"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0 },
+        "temperature": { "c_mean_annual": { "min": 11, "max": 16 } },
+        "rainfall": { "mm_per_year": { "min": 700, "max": 950 }, "note": "Rain is a visitor. Not a monsoon." },
+        "humidity": { "fraction": { "min": 0.45, "max": 0.6 } },
+        "biome": { "class": "civic_hardscape", "flora_budget": "plaza hardscape" },
+        "soil": { "class": "paving_over_stone", "depth_class": "thin" },
+        "resource": [{ "id": "hub_cut_stone", "kind": "dimension_stone", "quantity": null }],
+        "fertility": { "class": "barren_paved", "score_0_1": 0.05 }
+      }
+    },
+    {
+      "exemplar_id": "Hub:hub_doors",
+      "world_id": "Hub",
+      "region_id": "hub_doors",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "hub_court_walk",
+      "anchor": { "frame": "hub_canon_metres", "radius_m": 34, "flower_law": true },
+      "channels": {
+        "elevation": { "class": "flat_court", "m": { "min": 0, "max": 1.0 } },
+        "slope": { "class": "near_level", "rise_over_run_max": 0.02, "derived_from": "elevation" },
+        "geology": { "class": "dressed_stone", "rock": "dimension_stone" },
+        "drainage": { "class": "civic_drain", "watershed_id": "hub_civic_drain", "accumulation": "local_only", "outlet": "buried_civic", "forbidden": ["river"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0 },
+        "temperature": { "c_mean_annual": { "min": 11, "max": 16 } },
+        "rainfall": { "mm_per_year": { "min": 700, "max": 950 } },
+        "humidity": { "fraction": { "min": 0.45, "max": 0.6 } },
+        "biome": { "class": "civic_hardscape", "flora_budget": "eight plaques, no grove" },
+        "soil": { "class": "paving_over_stone", "depth_class": "thin" },
+        "resource": [],
+        "fertility": { "class": "barren_paved", "score_0_1": 0.04 }
+      }
+    },
+    {
+      "exemplar_id": "Hub:hub_wall",
+      "world_id": "Hub",
+      "region_id": "hub_wall",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "hub_court_walk",
+      "anchor": { "frame": "hub_canon_metres", "radius_m": 56, "flower_law": false },
+      "channels": {
+        "elevation": { "class": "low_wall", "m": { "min": 0, "max": 2.0 }, "note": "Ground stays near the walk. The wall is built relief, not slope class cliff." },
+        "slope": { "class": "near_level", "rise_over_run_max": 0.039, "derived_from": "elevation" },
+        "built_relief_m": { "min": 2, "max": 4, "not_a_pipeline_channel": true },
+        "geology": { "class": "dressed_stone", "rock": "dimension_stone" },
+        "drainage": { "class": "civic_drain", "watershed_id": "hub_civic_drain", "accumulation": "local_only", "outlet": "buried_civic", "forbidden": ["river"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0 },
+        "temperature": { "c_mean_annual": { "min": 11, "max": 16 } },
+        "rainfall": { "mm_per_year": { "min": 700, "max": 950 } },
+        "humidity": { "fraction": { "min": 0.45, "max": 0.6 } },
+        "biome": { "class": "civic_hardscape", "flora_budget": "low band" },
+        "soil": { "class": "paving_over_stone", "depth_class": "thin" },
+        "resource": [],
+        "fertility": { "class": "barren_paved", "score_0_1": 0.06 }
+      }
+    },
+    {
+      "exemplar_id": "Hub:hub_pinewood",
+      "world_id": "Hub",
+      "region_id": "hub_pinewood",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "hub_court_walk",
+      "anchor": { "frame": "hub_canon_metres", "x_m": 62, "z_m": -28, "flower_law": false },
+      "channels": {
+        "elevation": { "class": "salt_road_drain", "m": { "min": 1, "max": 4 }, "also_affinity": ["pine_verge"] },
+        "slope": { "class": "near_level", "rise_over_run_max": 0.039, "derived_from": "elevation" },
+        "geology": { "class": "salt_crust_on_fill", "rock": "dimension_stone" },
+        "drainage": { "class": "dry_salt_line", "watershed_id": "hub_salt_road", "accumulation": "local_only", "must_not_cross_region": ["hub_plaza"], "forbidden": ["river_through_plaza"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0 },
+        "temperature": { "c_mean_annual": { "min": 10, "max": 16 } },
+        "rainfall": { "mm_per_year": { "min": 450, "max": 700 } },
+        "humidity": { "fraction": { "min": 0.35, "max": 0.5 } },
+        "biome": { "class": "pine_verge", "flora_budget": "pine and stag on the salt road, tight radius" },
+        "soil": { "class": "thin_salt_crust", "depth_class": "thin" },
+        "resource": [
+          { "id": "hub_pine", "kind": "timber_scarce", "quantity": null },
+          { "id": "hub_salt_dust", "kind": "salt_crust", "quantity": null }
+        ],
+        "fertility": { "class": "salt_poor", "score_0_1": 0.15 }
+      }
+    },
+    {
+      "exemplar_id": "Hub:hub_approaches",
+      "world_id": "Hub",
+      "region_id": "hub_approaches",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "band_km": { "inner": 40, "outer": 80 } },
+      "channels": {
+        "elevation": { "class": "road_and_verge", "m": { "min": 15, "max": 40 } },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.08, "derived_from": "elevation" },
+        "geology": { "class": "fill_and_verge", "rock": "mixed_fill" },
+        "drainage": { "class": "road_ditch", "watershed_id": "hub_approach_ditches", "accumulation": "local_only", "forbidden": ["river_capital"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0, "note": "Inner Veil begins beyond the approaches, not as a plaza river." },
+        "temperature": { "c_mean_annual": { "min": 9, "max": 16 } },
+        "rainfall": { "mm_per_year": { "min": 650, "max": 900 } },
+        "humidity": { "fraction": { "min": 0.45, "max": 0.65 } },
+        "biome": { "class": "road_verge", "flora_budget": "verge, not a forest" },
+        "soil": { "class": "compacted_verge", "depth_class": "shallow" },
+        "resource": [],
+        "fertility": { "class": "verge_poor", "score_0_1": 0.18 }
+      }
+    },
+    {
+      "exemplar_id": "Fantasy:sunder_wildwood",
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "region_id": "sunder_wildwood",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "placement": "west_of_center", "coordinates": null },
+      "channels": {
+        "elevation": { "class": "lower_forest", "m": { "min": 180, "max": 320 }, "also_affinity": ["root_architecture"] },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.1, "derived_from": "elevation" },
+        "geology": { "class": "folded_sediment", "rock": "shrine_stone_and_soil" },
+        "drainage": { "class": "short_clear_run", "watershed_id": "sunder_fold_run", "accumulation": "local_reach", "forbidden": ["lake_country"] },
+        "water": { "kind": "short_run", "body_id": "sunder_short_run", "depth_m": { "min": 0.2, "max": 0.8 }, "terminates": "infiltration" },
+        "temperature": { "c_mean_annual": { "min": 10, "max": 15 } },
+        "rainfall": { "mm_per_year": { "min": 1100, "max": 1500 } },
+        "humidity": { "fraction": { "min": 0.65, "max": 0.8 } },
+        "biome": { "class": "temperate_oak_wood", "flora_budget": "oak and shrine" },
+        "soil": { "class": "forest_loam", "depth_class": "moderate" },
+        "resource": [{ "id": "sunder_oak", "kind": "timber", "quantity": null }],
+        "fertility": { "class": "grove", "score_0_1": 0.62 }
+      }
+    },
+    {
+      "exemplar_id": "Fantasy:sunder_fold",
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "region_id": "sunder_fold",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "placement": "mid_disc", "coordinates": null },
+      "channels": {
+        "elevation": { "class": "lip_and_drop", "m": { "min": 300, "max": 520 } },
+        "slope": { "class": "steep", "rise_over_run_max": 0.45, "derived_from": "elevation", "note": "Steep at the lip. Not a flying castle." },
+        "geology": { "class": "lip_and_drop", "rock": "dimension_stone" },
+        "drainage": { "class": "shelf_waterfall", "watershed_id": "sunder_fold_run", "accumulation": "shelf", "forbidden": ["lake_country"] },
+        "water": { "kind": "waterfall_shelf", "body_id": "sunder_shelf_fall", "depth_m": { "min": 0, "max": 0.4 }, "terminates": "short_run_infiltration", "mist_is_local": true },
+        "temperature": { "c_mean_annual": { "min": 8, "max": 13 } },
+        "rainfall": { "mm_per_year": { "min": 1200, "max": 1600 } },
+        "humidity": { "fraction": { "min": 0.75, "max": 0.9 }, "extent": "at the fall, not the disc" },
+        "biome": { "class": "mist_fold", "flora_budget": "mist local to the fall" },
+        "soil": { "class": "thin_on_lip", "depth_class": "thin" },
+        "resource": [{ "id": "sunder_shrine_stone", "kind": "dimension_stone", "quantity": null }],
+        "fertility": { "class": "thin_lip", "score_0_1": 0.32 }
+      }
+    },
+    {
+      "exemplar_id": "Fantasy:sunder_alpine",
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "region_id": "sunder_alpine",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "placement": "north_edge_of_disc", "coordinates": null },
+      "landmark_not_in_field": { "id": "titan_pillar", "elevation_m": null, "note": "Landmark height, not a range. No metre is invented." },
+      "channels": {
+        "elevation": { "class": "alpine_rim", "m": { "min": 700, "max": 1100 }, "also_affinity": ["thin_soil"] },
+        "slope": { "class": "moderate", "rise_over_run_max": 0.22, "derived_from": "elevation" },
+        "geology": { "class": "alpine_rim", "rock": "thin_over_stone" },
+        "drainage": { "class": "mist_only", "watershed_id": "sunder_alpine_seep", "accumulation": "none", "forbidden": ["lake_country"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0 },
+        "temperature": { "c_mean_annual": { "min": 0, "max": 7 } },
+        "rainfall": { "mm_per_year": { "min": 700, "max": 1000 } },
+        "humidity": { "fraction": { "min": 0.5, "max": 0.7 } },
+        "biome": { "class": "rune_scar_pine", "flora_budget": "rune-scar pine, thin" },
+        "soil": { "class": "thin_alpine", "depth_class": "thin" },
+        "resource": [{ "id": "sunder_pine_scar", "kind": "timber_thin", "quantity": null }],
+        "fertility": { "class": "thin_alpine", "score_0_1": 0.12 }
+      }
+    },
+    {
+      "exemplar_id": "Fantasy:sunder_salt_toll",
+      "world_id": "Fantasy",
+      "display_name": "The Sundering",
+      "region_id": "sunder_salt_toll",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "placement": "south_side_toward_crown_road", "coordinates": null },
+      "channels": {
+        "elevation": { "class": "drier_track", "m": { "min": 160, "max": 280 } },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.08, "derived_from": "elevation" },
+        "geology": { "class": "drier_track", "rock": "salt_in_soil" },
+        "drainage": { "class": "dry_track", "watershed_id": "sunder_salt_track", "accumulation": "local_only", "forbidden": ["river_capital"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0, "note": "Inner Veil shoal is the southwest coast, saltier than the fold, and is not this road." },
+        "temperature": { "c_mean_annual": { "min": 12, "max": 17 } },
+        "rainfall": { "mm_per_year": { "min": 400, "max": 700 } },
+        "humidity": { "fraction": { "min": 0.35, "max": 0.5 } },
+        "biome": { "class": "salt_track", "flora_budget": "drier than wildwood" },
+        "soil": { "class": "salt_affected", "depth_class": "shallow" },
+        "resource": [{ "id": "sunder_salt_toll", "kind": "salt", "quantity": null }],
+        "fertility": { "class": "salt_poor", "score_0_1": 0.16 }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_masond",
+      "world_id": "Tunya",
+      "region_id": "tunya_masond",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": -40, "z_km": 50 } },
+      "channels": {
+        "elevation": { "class": "cliff_terrace", "m": { "min": 400, "max": 900 }, "also_affinity": ["vertical_path", "ark_arrival_stair"] },
+        "slope": { "class": "cliff", "rise_over_run_max": 0.8, "derived_from": "elevation", "note": "Landings on the stair are locally near_level. The face is cliff." },
+        "geology": { "class": "cliff_stone", "rock": "dimension_stone" },
+        "drainage": { "class": "one_river", "watershed_id": "tunya_masond_river", "accumulation": "single_channel", "forbidden": ["second_ocean"] },
+        "water": { "kind": "river", "body_id": "tunya_masond_river", "depth_m": { "min": 0.4, "max": 1.5 }, "count": 1 },
+        "temperature": { "c_mean_annual": { "min": 12, "max": 20 } },
+        "rainfall": { "mm_per_year": { "min": 800, "max": 1100 } },
+        "humidity": { "fraction": { "min": 0.5, "max": 0.7 } },
+        "biome": { "class": "cliff_terrace", "flora_budget": "terrace, not a clearcut" },
+        "soil": { "class": "terrace_colluvium", "depth_class": "shallow_on_landings" },
+        "resource": [{ "id": "masond_cliff_stone", "kind": "dimension_stone", "quantity": null }],
+        "fertility": { "class": "landing_moderate", "score_0_1": 0.35, "applies_to": "landings_only" }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_asbir",
+      "world_id": "Tunya",
+      "region_id": "tunya_asbir",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": 10, "z_km": -60 } },
+      "channels": {
+        "elevation": { "class": "dune", "m": { "min": 80, "max": 220 }, "also_affinity": ["dry_wadi", "buried_vault"] },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.1, "derived_from": "elevation" },
+        "geology": { "class": "dune_sand", "rock": "sand_over_vault_stone" },
+        "drainage": { "class": "dry_wadi", "watershed_id": "tunya_asbir_wadi", "accumulation": "internal", "forbidden": ["inland_ocean"] },
+        "water": { "kind": "none", "body_id": null, "depth_m": 0, "note": "Wadi is dry. Salt and shade, not a lake." },
+        "temperature": { "c_mean_annual": { "min": 22, "max": 34 } },
+        "rainfall": { "mm_per_year": { "min": 50, "max": 180 } },
+        "humidity": { "fraction": { "min": 0.15, "max": 0.35 } },
+        "biome": { "class": "hot_dune", "flora_budget": "shade court, not a sandstorm field" },
+        "soil": { "class": "dune_sand", "depth_class": "deep_sand_thin_life" },
+        "resource": [{ "id": "asbir_salt", "kind": "salt", "quantity": null }],
+        "fertility": { "class": "dune_poor", "score_0_1": 0.08 }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_sangree",
+      "world_id": "Tunya",
+      "region_id": "tunya_sangree",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": 55, "z_km": 10 } },
+      "channels": {
+        "elevation": { "class": "stack_yard", "m": { "min": 200, "max": 450 }, "also_affinity": ["blackened_stone"] },
+        "slope": { "class": "moderate", "rise_over_run_max": 0.18, "derived_from": "elevation" },
+        "geology": { "class": "blackened_stone", "rock": "ore_bearing" },
+        "drainage": { "class": "terrace_runnel", "watershed_id": "tunya_sangree_runnel", "accumulation": "local_only", "forbidden": ["forge_as_second_ocean"] },
+        "water": { "kind": "runnel", "body_id": "tunya_sangree_runnel", "depth_m": { "min": 0.05, "max": 0.3 } },
+        "temperature": { "c_mean_annual": { "min": 16, "max": 24 }, "local_anomaly_c": 8, "anomaly_extent": "one face of the stack only" },
+        "rainfall": { "mm_per_year": { "min": 500, "max": 800 } },
+        "humidity": { "fraction": { "min": 0.35, "max": 0.55 } },
+        "biome": { "class": "forge_scrub", "flora_budget": "scrub burned on one face" },
+        "soil": { "class": "ash_and_scree", "depth_class": "thin" },
+        "resource": [{ "id": "sangree_ore", "kind": "ore", "quantity": null, "note": "GoldenSlice remains the only crafting forge." }],
+        "fertility": { "class": "scrub", "score_0_1": 0.2 }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_aekon",
+      "world_id": "Tunya",
+      "region_id": "tunya_aekon",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": -10, "z_km": 70 } },
+      "channels": {
+        "elevation": { "class": "glacier", "m": { "min": 900, "max": 1600 }, "also_affinity": ["exposed_ark_rib"] },
+        "slope": { "class": "moderate", "rise_over_run_max": 0.2, "derived_from": "elevation" },
+        "geology": { "class": "ice_over_ark_rib", "rock": "ice" },
+        "drainage": { "class": "ice", "watershed_id": "tunya_aekon_ice", "accumulation": "frozen", "forbidden": ["ice_spell_gameplay"] },
+        "water": { "kind": "ice", "body_id": "tunya_aekon_glacier", "depth_m": null, "note": "Ice is the surface. No ice spell." },
+        "temperature": { "c_mean_annual": { "min": -6, "max": 2 } },
+        "rainfall": { "mm_per_year": { "min": 600, "max": 1000 }, "note": "Most of this falls as snow. Design-intent water equivalent." },
+        "humidity": { "fraction": { "min": 0.4, "max": 0.6 } },
+        "biome": { "class": "glacial_ark", "flora_budget": "none on the ice" },
+        "soil": { "class": "none", "depth_class": "ice" },
+        "resource": [{ "id": "aekon_ice", "kind": "ice", "quantity": null }],
+        "fertility": { "class": "ice", "score_0_1": 0.02, "pocket": { "id": "warm_hold", "score_0_1": 0.15, "note": "A pocket of warmth, not a city." } }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_fluxom",
+      "world_id": "Tunya",
+      "region_id": "tunya_fluxom",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": -60, "z_km": -20 } },
+      "not_this_anchor": { "name": "Fluxom Gate", "x_m": 62, "z_m": 18, "frame": "tunya_local_metres" },
+      "channels": {
+        "elevation": { "class": "sea_level_harbor", "m": { "min": 0, "max": 15 }, "also_affinity": ["canals", "lock"] },
+        "slope": { "class": "near_level", "rise_over_run_max": 0.03, "derived_from": "elevation" },
+        "geology": { "class": "coastal_sediment", "rock": "harbor_silt" },
+        "drainage": { "class": "lock_to_veil", "watershed_id": "tunya_fluxom_harbor", "accumulation": "coastal", "receives_sea": "inner_veil", "forbidden": ["confuse_with_fluxom_gate_local_metres"] },
+        "water": { "kind": "harbor_canal", "body_id": "tunya_fluxom_lock", "connects_to": "inner_veil", "depth_m": { "min": 2, "max": 6 } },
+        "temperature": { "c_mean_annual": { "min": 14, "max": 22 } },
+        "rainfall": { "mm_per_year": { "min": 900, "max": 1300 } },
+        "humidity": { "fraction": { "min": 0.7, "max": 0.85 } },
+        "biome": { "class": "dye_harbor", "flora_budget": "harbor works, not a clearcut terrace" },
+        "soil": { "class": "harbor_silt", "depth_class": "moderate" },
+        "resource": [{ "id": "fluxom_dye", "kind": "dye", "quantity": null }],
+        "fertility": { "class": "harbor_silt", "score_0_1": 0.4 }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_nil",
+      "world_id": "Tunya",
+      "region_id": "tunya_nil",
+      "sample": "region_exemplar",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor": { "frame": "megaworld_km", "offset_km_from_center": { "x_km": 35, "z_km": -45 } },
+      "channels": {
+        "elevation": { "class": "wet_canopy", "m": { "min": 40, "max": 180 }, "also_affinity": ["dark_basin"] },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.08, "derived_from": "elevation" },
+        "geology": { "class": "dark_basin", "rock": "wet_organic_over_stone" },
+        "drainage": { "class": "canopy_basin", "watershed_id": "tunya_nil_basin", "accumulation": "basin_not_a_lake", "forbidden": ["clearcut"] },
+        "water": { "kind": "canopy_basin", "body_id": "tunya_nil_basin", "depth_m": { "min": 0.1, "max": 0.6 }, "note": "Dark water under canopy. Not a lake country and not a clearcut." },
+        "temperature": { "c_mean_annual": { "min": 18, "max": 26 } },
+        "rainfall": { "mm_per_year": { "min": 1600, "max": 2400 } },
+        "humidity": { "fraction": { "min": 0.85, "max": 0.95 } },
+        "biome": { "class": "wet_canopy", "flora_budget": "listening grove" },
+        "soil": { "class": "wet_organic", "depth_class": "deep" },
+        "resource": [{ "id": "nil_lichen", "kind": "lichen", "quantity": null }],
+        "fertility": { "class": "canopy_high", "score_0_1": 0.72, "suitability_cap": "listening_grove", "veto": "no_clearcut" }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_fallback",
+      "world_id": "Tunya",
+      "region_id": "tunya_fallback",
+      "sample": "class_only",
+      "authority": "design_intent",
+      "datum": "continental_veil_datum",
+      "anchor_km": null,
+      "names": ["Dinye", "Sahm", "Bahiij", "Akeia", "Vessine", "Corre", "Dormas", "Vrellan", "Sandrun"],
+      "channels": {
+        "elevation": { "class": "stepped_terrace", "m": null, "note": "Grove is the terrace default. No kilometre, so no metre band." },
+        "slope": { "class": "gentle", "rise_over_run_max": 0.11, "derived_from": "elevation" },
+        "geology": { "class": "terrace_limestone", "rock": "dimension_stone" },
+        "drainage": { "class": "terrace_runnel", "watershed_id": null, "accumulation": "unplaced", "forbidden": ["invented_kilometre_river"] },
+        "water": { "kind": "runnel", "body_id": null, "depth_m": null },
+        "temperature": { "c_mean_annual": { "min": 14, "max": 24 }, "note": "Grove default. Not the glacier and not the dune." },
+        "rainfall": { "mm_per_year": { "min": 800, "max": 1400 } },
+        "humidity": { "fraction": { "min": 0.55, "max": 0.75 } },
+        "biome": { "class": "terrace_grove", "flora_budget": "do not clearcut a terrace" },
+        "soil": { "class": "terrace_loam", "depth_class": "moderate" },
+        "resource": [
+          { "id": "terrace_limestone", "kind": "dimension_stone", "quantity": null },
+          { "id": "terrace_timber", "kind": "timber", "quantity": null }
+        ],
+        "fertility": { "class": "terrace", "score_0_1": 0.5, "suitability_cap": "no_clearcut" }
+      }
+    },
+    {
+      "exemplar_id": "Tunya:tunya_unplaced",
+      "world_id": "Tunya",
+      "region_id": "tunya_unplaced",
+      "sample": "unfielded",
+      "authority": "w00_coordinates_null",
+      "anchor_km": null,
+      "names": ["Hold of First Arrival", "twelfth lip", "sky temple", "quiet quarter", "tide temple", "old Fluxom harbor", "ancestor caves"],
+      "channels": null,
+      "reason": "A field value would invent a place. W00 left these coordinates null."
+    }
+  ],
+  "not_this_slice": [
+    "No continental raster and no edit to generatePoughkeepsieHeightmap.",
+    "No watershed solver and no second water model beside terrain-water.js.",
+    "No settlement physicalizer and no kingdom from fertility.",
+    "No meshes, no PROMPTS_INDEX rows, no B21–B31 retune.",
+    "W00 constraint no_vinewood is inherited; this file adds no region under that name. Fantasy stays the world_id. Flower Law stays a 42 m horizontal disk."
+  ]
+}

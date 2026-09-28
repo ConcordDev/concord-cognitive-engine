@@ -8,7 +8,6 @@ namespace Concordia
     /// </summary>
     public class Hostile : MonoBehaviour
     {
-        public static string TelegraphKind;
         public float damage = 9f;
         public float range = 1.9f;
         public float aggro = 16f;
@@ -16,6 +15,7 @@ namespace Concordia
         TrainingDummy _body;
         CharacterController _cc;
         FaunaLife _fauna;
+        ModularPerson _person;
         Vector3 _home;
         float _cd;
         float _seen;
@@ -82,6 +82,7 @@ namespace Concordia
             _body = GetComponent<TrainingDummy>() ?? GetComponentInParent<TrainingDummy>();
             _cc = GetComponent<CharacterController>();
             _fauna = GetComponent<FaunaLife>();
+            _person = GetComponentInChildren<ModularPerson>() ?? GetComponent<ModularPerson>();
             _home = transform.position;
             _style = 0.85f + Mathf.Abs(name.GetHashCode() % 40) / 100f;
             speed *= _style;
@@ -92,6 +93,11 @@ namespace Concordia
         void Update()
         {
             if (_body && _body.hp <= 0) { if (_fauna) _fauna.hunting = false; return; }
+            if (_cc && !CanMove())
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             var player = ConcordiaPlayer.Live;
             if (!player) return;
             if (!Canon.SteelLive(player.world, player.transform.position))
@@ -170,7 +176,18 @@ namespace Concordia
                 TelegraphFrom = null;
             }
             ShowTell(false);
-            player.TakeHit(damage, name);
+            var av = GetComponentInChildren<MixamoAvatar>();
+            av?.Slash();
+            var person = GetComponentInChildren<ModularPerson>();
+            person?.Slash();
+            // One defense grammar: ConcordiaPlayer.TakeHit → Core.HitResolver.
+            // GameplayCore.CombatDefenseEvaluator is not on this path.
+            player.TakeHit(damage, name, 0f);
+        }
+
+        bool CanMove()
+        {
+            return isActiveAndEnabled && Grounding.CanMove(_cc);
         }
 
         void Step(Vector3 dir)
@@ -180,6 +197,11 @@ namespace Concordia
             dir.Normalize();
             if (_cc)
             {
+                if (!CanMove())
+                {
+                    _vel = Vector3.zero;
+                    return;
+                }
                 if (_cc.isGrounded && _vel.y < 0f) _vel.y = -1.5f;
                 else _vel.y += -22f * Time.deltaTime;
                 _vel.x = Mathf.Lerp(_vel.x, dir.x * speed, 1f - Mathf.Exp(-7f * Time.deltaTime));
@@ -189,16 +211,32 @@ namespace Concordia
             else
                 transform.position += dir * speed * Time.deltaTime;
             Face(dir);
+            _person?.SetGait(speed, !_cc || _cc.isGrounded);
         }
 
         void Hold()
         {
-            if (!_cc) return;
+            if (!CanMove())
+            {
+                _vel = Vector3.zero;
+                return;
+            }
+            if (!Grounding.CanMove(_cc))
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             if (_cc.isGrounded) _vel.y = -1.5f;
             else _vel.y += -22f * Time.deltaTime;
             _vel.x = 0f;
             _vel.z = 0f;
+            if (!Grounding.CanMove(_cc))
+            {
+                _vel = Vector3.zero;
+                return;
+            }
             _cc.Move(_vel * Time.deltaTime);
+            _person?.SetGait(0f, _cc.isGrounded);
         }
 
         void Face(Vector3 dir)

@@ -1,0 +1,1454 @@
+{
+  "schema": "concordia-native-bible/1.0",
+  "family": "props",
+  "count": 40,
+  "honesty": "Design authority only. Prefab paths are stubs until Aura binds a mesh. No fabricated gameplay stats are live.",
+  "entries": [
+    {
+      "id": "prop_court_lantern_post",
+      "display_name": "Court Lantern Post",
+      "lore_blurb": "Unburned Court street lantern. Warm practical. Climb anchor at the bracket.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "none"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. post 2.4m, lantern box at top",
+      "palette": [
+        "#6a5a40",
+        "#ffe6c0",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "post 2.4m, lantern box at top",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_court_lantern_post.prefab",
+        "dress_vocab_stem": "prop_court_lantern_post",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Limestone-and-brass lantern post, warm glass, soot, Court street.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {
+          "burnable": false,
+          "climb": true
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_flower_law_urn",
+      "display_name": "Flower Urn",
+      "lore_blurb": "Plaza urn. Live blades placed here become flowers. Interact swaps wpn steel to flower form and stamps WorldEventLog.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "animate"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. waist-high urn",
+      "palette": [
+        "#c4b49a",
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "prop-scale: waist-high urn",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_flower_law_urn.prefab",
+        "dress_vocab_stem": "prop_flower_law_urn",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn stone urn of cut flowers, Court plaza, no magic circle.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "flower_law": true
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_archive_lectern",
+      "display_name": "Archive Lectern",
+      "lore_blurb": "Scholars' lectern. Interact opens a lore DTU if the server has one; otherwise it is a honest empty page.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. chest-high lectern",
+      "palette": [
+        "#8aa0b4",
+        "#efe6d4",
+        "#2a241c"
+      ],
+      "scale_vs_player": "prop-scale: chest-high lectern",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_archive_lectern.prefab",
+        "dress_vocab_stem": "prop_archive_lectern",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Ink-stained wooden lectern, chained book, Archive.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "set",
+        "flags": {
+          "dtu": true
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_arena_rack",
+      "display_name": "Arena Rack",
+      "lore_blurb": "Weapon rack inside the Arena only. Steel stays steel.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. rack 1.6m",
+      "palette": [
+        "#6a6860",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "rack 1.6m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_arena_rack.prefab",
+        "dress_vocab_stem": "prop_arena_rack",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Sand-scoured weapon rack, Arena, gray.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "set",
+        "flags": {
+          "arena_only": true
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_market_crate",
+      "display_name": "Market Crate",
+      "lore_blurb": "Stall crate. Physics debris if broken.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "physics"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.6m cube",
+      "palette": [
+        "#6a5340",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "0.6m cube",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_market_crate.prefab",
+        "dress_vocab_stem": "prop_market_crate",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn market crate, stenciled fruit or salt, not a logo.",
+      "stats_hooks": {
+        "interaction": "physics",
+        "density_budget": "clutter",
+        "flags": {
+          "breakable": true
+        },
+        "kit": "kit_market"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_scale_pan",
+      "display_name": "Brass Scale",
+      "lore_blurb": "Merchant scale. Prop in the hand or on a stall.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "none"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pan 0.3m",
+      "palette": [
+        "#c8a060",
+        "#6a5a40"
+      ],
+      "scale_vs_player": "pan 0.3m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_scale_pan.prefab",
+        "dress_vocab_stem": "prop_scale_pan",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Dented brass scale pan, worn pivot.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_market"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_scale_wood",
+      "display_name": "Wood Scale",
+      "lore_blurb": "Tunya legal scale. Wood, no steel.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pan 0.3m",
+      "palette": [
+        "#c8b48a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "pan 0.3m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_scale_wood.prefab",
+        "dress_vocab_stem": "prop_scale_wood",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Wooden balance scale, pollen dust, Tunya stall.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_grove"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_notebook",
+      "display_name": "Field Notebook",
+      "lore_blurb": "Asbir's object language. Three notebooks exist as variants: facts, inferences, difference. Interact reads a short canon line, not a generated essay.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand-sized",
+      "palette": [
+        "#efe6d4",
+        "#2a241c"
+      ],
+      "scale_vs_player": "prop-scale: hand-sized",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_notebook.prefab",
+        "dress_vocab_stem": "prop_notebook",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn notebook, cloth cover, ink, no glowing runes.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "hero",
+        "flags": {
+          "variants": [
+            "facts",
+            "inferences",
+            "difference"
+          ]
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_satchel",
+      "display_name": "Courier Satchel",
+      "lore_blurb": "Shadow Network satchel. May contain a real KitBag letter later.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "loot"
+      ],
+      "world_ids": [
+        "Hub",
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hip satchel",
+      "palette": [
+        "#2a241c",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "prop-scale: hip satchel",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_satchel.prefab",
+        "dress_vocab_stem": "prop_satchel",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn leather satchel, one broken buckle.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_tool_broom",
+      "display_name": "Court Broom",
+      "lore_blurb": "Labor tool. Also verb_improvised_swing with laughable damage.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "animate"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.5m",
+      "palette": [
+        "#6a5340",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "1.5m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_tool_broom.prefab",
+        "dress_vocab_stem": "prop_tool_broom",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn straw broom, limestone dust.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "clutter",
+        "flags": {
+          "also_weapon": "wpn_imp_broom"
+        },
+        "kit": "kit_court"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_pine_milepost",
+      "display_name": "Pinewood Milepost",
+      "lore_blurb": "Salt-road post. Reads Pinewood Crossing. Never Vinewood.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_pinewood",
+        "none"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.2m post",
+      "palette": [
+        "#6a5340",
+        "#c4b49a"
+      ],
+      "scale_vs_player": "1.2m post",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_pine_milepost.prefab",
+        "dress_vocab_stem": "prop_pine_milepost",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Wooden milepost, carved text Pinewood Crossing, salt crust.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "set",
+        "flags": {
+          "label": "Pinewood Crossing"
+        },
+        "kit": "kit_pinewood"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_wagon",
+      "display_name": "Open Wagon",
+      "lore_blurb": "Frontier and Hub-ring wagon. GameplayCore vehicle hook, currently no ride controller. Prop is real even if the seat is not yet a verb.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "animate"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 3.2m long",
+      "palette": [
+        "#4a3828",
+        "#c8b070"
+      ],
+      "scale_vs_player": "3.2m long",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_wagon.prefab",
+        "dress_vocab_stem": "prop_wagon",
+        "gameplay_core": "Vehicles"
+      },
+      "aura_prompt": "Dusty open wagon, iron tires, no dome, Frontier.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "gameplay_core": "Vehicles",
+          "ride_status": "absent"
+        },
+        "kit": "kit_frontier"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_canteen",
+      "display_name": "Road Canteen",
+      "lore_blurb": "Frontier water. LivingBody thirst hook if that meter is on; otherwise a prop.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "loot"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#8a7048",
+        "#c8a060"
+      ],
+      "scale_vs_player": "prop-scale: hand",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_canteen.prefab",
+        "dress_vocab_stem": "prop_canteen",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Dented canteen, leather strap.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {
+          "living_body": "thirst"
+        },
+        "kit": "kit_frontier"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_yoke",
+      "display_name": "Broken Yoke",
+      "lore_blurb": "Dome bandit trophy and a climb-useless clutter piece.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "none"
+      ],
+      "world_ids": [
+        "Frontier"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m",
+      "palette": [
+        "#6a5340"
+      ],
+      "scale_vs_player": "1m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_yoke.prefab",
+        "dress_vocab_stem": "prop_yoke",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Broken wooden yoke, rope burn.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_frontier"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_ash_cairn",
+      "display_name": "Catalogue Cairn",
+      "lore_blurb": "Ruins. A stacked record of someone who did not finish dying. Interact may write WorldEventLog.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "animate"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m stack",
+      "palette": [
+        "#5a5044",
+        "#b89060"
+      ],
+      "scale_vs_player": "1m stack",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_ash_cairn.prefab",
+        "dress_vocab_stem": "prop_ash_cairn",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Ash-stone cairn with one iron staple, Ruins.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "event": "catalogue"
+        },
+        "kit": "kit_ash"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_stylus",
+      "display_name": "Keeper Stylus",
+      "lore_blurb": "Loose version of the focus, as clutter on a desk.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "none"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#8aa0b4"
+      ],
+      "scale_vs_player": "0.4m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_stylus.prefab",
+        "dress_vocab_stem": "prop_stylus",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Iron stylus on an ash desk.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_ash"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_fossil_rib",
+      "display_name": "Fossil Rib",
+      "lore_blurb": "Architecture-scale bone used as a clutter rib and a crawl landmark.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_ash",
+        "none"
+      ],
+      "world_ids": [
+        "Ruins"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 2\u20134m",
+      "palette": [
+        "#b89060",
+        "#5a5044"
+      ],
+      "scale_vs_player": "2\u20134m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_fossil_rib.prefab",
+        "dress_vocab_stem": "prop_fossil_rib",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Large fossil rib, pitted, used as a street bone.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {
+          "climb": true
+        },
+        "kit": "kit_ash"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_dock_crate",
+      "display_name": "Contraband Crate",
+      "lore_blurb": "Crime crate. Some are Containers in GameplayCore; unmarked ones are physics clutter. Do not randomize contraband without a loot table.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "loot"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.7m",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "0.7m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_dock_crate.prefab",
+        "dress_vocab_stem": "prop_dock_crate",
+        "gameplay_core": "Containers"
+      },
+      "aura_prompt": "Wet crate, stenciled tally marks, rain.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {
+          "gameplay_core": "Containers"
+        },
+        "kit": "kit_street"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_dock_hook",
+      "display_name": "Wall Hook",
+      "lore_blurb": "Hanging cargo hook.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "world_ids": [
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#8a6a48"
+      ],
+      "scale_vs_player": "0.4m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_dock_hook.prefab",
+        "dress_vocab_stem": "prop_dock_hook",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Rusted hook on wet brick.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_street"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_sodium_lamp",
+      "display_name": "Sodium Lamp",
+      "lore_blurb": "Crime practical light. Warm yellow, harsh. Climbable bracket.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. wall bracket",
+      "palette": [
+        "#c8a060",
+        "#2a241c"
+      ],
+      "scale_vs_player": "prop-scale: wall bracket",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_sodium_lamp.prefab",
+        "dress_vocab_stem": "prop_sodium_lamp",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Caged sodium lamp, grime, brick wall.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {
+          "climb": true,
+          "light": "sodium"
+        },
+        "kit": "kit_street"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_rose_pin",
+      "display_name": "Iron Rose Pin",
+      "lore_blurb": "Delgado Syndicate mark. Hero-sparse. Mama Iron Rose's crews wear one.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_street",
+        "none"
+      ],
+      "world_ids": [
+        "Crime",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. brooch",
+      "palette": [
+        "#5c3038",
+        "#c8a060"
+      ],
+      "scale_vs_player": "prop-scale: brooch",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_rose_pin.prefab",
+        "dress_vocab_stem": "prop_rose_pin",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Small iron rose pin, worn, not jeweled.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "hero",
+        "flags": {},
+        "kit": "kit_street"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_cable_coil",
+      "display_name": "Fiber Coil",
+      "lore_blurb": "Grid labor prop. Also salvage for wpn_imp_grid_cable.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "loot"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m coil",
+      "palette": [
+        "#1a1228",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "0.4m coil",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_cable_coil.prefab",
+        "dress_vocab_stem": "prop_cable_coil",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Coil of cut fiber, scuffed insulation.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_grid"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_junction_box",
+      "display_name": "Junction Box",
+      "lore_blurb": "Grid clutter and sparrow nest site. Interact may be a GameplayCore splice later.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "animate"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.5m box",
+      "palette": [
+        "#2a2430",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "0.5m box",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_junction_box.prefab",
+        "dress_vocab_stem": "prop_junction_box",
+        "gameplay_core": "Fabrication"
+      },
+      "aura_prompt": "Scratched junction box, one cyan LED, neon rain.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "structural",
+        "flags": {
+          "gameplay_core": "Fabrication",
+          "climb": true
+        },
+        "kit": "kit_grid"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_count_slate",
+      "display_name": "Count Slate",
+      "lore_blurb": "Census clipboard. Names on it are real NPC ids or blank. Never a fake phone UI.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grid",
+        "loot"
+      ],
+      "world_ids": [
+        "Cyber"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#14101c",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "prop-scale: hand",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_count_slate.prefab",
+        "dress_vocab_stem": "prop_count_slate",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Metal slate, etched names, one line scratched out.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "set",
+        "flags": {},
+        "kit": "kit_grid"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_solar_tile",
+      "display_name": "Solar Tile",
+      "lore_blurb": "Tunya roof tile. Material of the solarpunk kit, also a loose prop.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m tile",
+      "palette": [
+        "#6a7a3a",
+        "#8aa0b4"
+      ],
+      "scale_vs_player": "0.4m tile",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_solar_tile.prefab",
+        "dress_vocab_stem": "prop_solar_tile",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Clay-and-glass solar tile, moss at the edge, Tunya.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {},
+        "kit": "kit_grove"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_basket",
+      "display_name": "Fruit Basket",
+      "lore_blurb": "Harvest prop. Fruit, not the tree.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "loot"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 0.4m",
+      "palette": [
+        "#c8721a",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "0.4m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_basket.prefab",
+        "dress_vocab_stem": "prop_basket",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Woven basket of fruit, Tunya terrace.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {
+          "law": "do_not_reap"
+        },
+        "kit": "kit_grove"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_graft_scar",
+      "display_name": "Graft Scar Post",
+      "lore_blurb": "A living post showing a healed graft. Set dressing that teaches the law.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_grove",
+        "none"
+      ],
+      "world_ids": [
+        "Tunya"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1.5m",
+      "palette": [
+        "#3a4a28",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "1.5m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_graft_scar.prefab",
+        "dress_vocab_stem": "prop_graft_scar",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Living wood post with a healed graft scar, no blood.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "set",
+        "flags": {},
+        "kit": "kit_grove"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_bread",
+      "display_name": "Court Loaf",
+      "lore_blurb": "Luminary and market food. LivingBody hunger if enabled.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_market",
+        "loot"
+      ],
+      "world_ids": [
+        "Hub",
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#c8a070",
+        "#efe6d4"
+      ],
+      "scale_vs_player": "prop-scale: hand",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_bread.prefab",
+        "dress_vocab_stem": "prop_bread",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Honest loaf, flour dust, no buff icon baked into the mesh.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {
+          "living_body": "hunger"
+        },
+        "kit": "kit_market"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_mercy_circlet",
+      "display_name": "Brass Circlet",
+      "lore_blurb": "Dawn elite prop. Thin, physical.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_dawn",
+        "none"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. head ring",
+      "palette": [
+        "#c8a060",
+        "#d8d4dc"
+      ],
+      "scale_vs_player": "prop-scale: head ring",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_mercy_circlet.prefab",
+        "dress_vocab_stem": "prop_mercy_circlet",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Thin battered brass circlet, not a glowing halo.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "hero",
+        "flags": {},
+        "kit": "kit_dawn"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_launch_chalk",
+      "display_name": "Roof Chalk",
+      "lore_blurb": "Dawn roof mark for a launch pad edge. Traversal read.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_dawn",
+        "none"
+      ],
+      "world_ids": [
+        "Superhero"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. decal",
+      "palette": [
+        "#ffd0a0",
+        "#4a5870"
+      ],
+      "scale_vs_player": "prop-scale: decal",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_launch_chalk.prefab",
+        "dress_vocab_stem": "prop_launch_chalk",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn chalk arrow on platinum roof, Dawn.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_dawn"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_unclosed_shard",
+      "display_name": "Loose Shard",
+      "lore_blurb": "Crucible clutter. Pattern never completes.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_drift",
+        "none"
+      ],
+      "world_ids": [
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. hand",
+      "palette": [
+        "#20ffd0",
+        "#204040"
+      ],
+      "scale_vs_player": "prop-scale: hand",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_unclosed_shard.prefab",
+        "dress_vocab_stem": "prop_unclosed_shard",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Quartz shard, unfinished face, teal seam.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_drift"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_brand_tile",
+      "display_name": "Loose Brand Tile",
+      "lore_blurb": "Sere clutter and the thrown weapon's world prop.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_sere",
+        "loot"
+      ],
+      "world_ids": [
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. palm tile",
+      "palette": [
+        "#1a140e",
+        "#c8a060"
+      ],
+      "scale_vs_player": "palm tile",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_brand_tile.prefab",
+        "dress_vocab_stem": "prop_brand_tile",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Sooty iron tile, raised brand, one chip.",
+      "stats_hooks": {
+        "interaction": "loot",
+        "density_budget": "clutter",
+        "flags": {},
+        "kit": "kit_sere"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_furnace_bellows",
+      "display_name": "Bellows",
+      "lore_blurb": "Sere interactive. Pumps a forge that GameplayCore can bind.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_sere",
+        "animate"
+      ],
+      "world_ids": [
+        "Sere",
+        "Crime"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. 1m",
+      "palette": [
+        "#3a3428",
+        "#8a3030"
+      ],
+      "scale_vs_player": "1m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_furnace_bellows.prefab",
+        "dress_vocab_stem": "prop_furnace_bellows",
+        "gameplay_core": "Fabrication"
+      },
+      "aura_prompt": "Soot leather bellows, iron nose, furnace.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "gameplay_core": "Fabrication"
+        },
+        "kit": "kit_sere"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_bench_forge",
+      "display_name": "Forge Bench",
+      "lore_blurb": "Crafting station. GameplayCore fabrication. Honest empty if no recipe is granted.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "world_ids": [
+        "Hub",
+        "Fantasy",
+        "Frontier",
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. bench 2m",
+      "palette": [
+        "#2a241c",
+        "#c8a060"
+      ],
+      "scale_vs_player": "bench 2m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_bench_forge.prefab",
+        "dress_vocab_stem": "prop_bench_forge",
+        "gameplay_core": "Fabrication"
+      },
+      "aura_prompt": "Scarred forge bench, tools, no floating UI baked in.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "gameplay_core": "Fabrication"
+        },
+        "kit": "kit_craft"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_gunsmith_vise",
+      "display_name": "Gunsmith Vise",
+      "lore_blurb": "Crime/Sere station for the gunsmithing code path. No fantasy rifle mesh in this prop. The vise is the station.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "world_ids": [
+        "Crime",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. bench vise",
+      "palette": [
+        "#3a342c",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "prop-scale: bench vise",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_gunsmith_vise.prefab",
+        "dress_vocab_stem": "prop_gunsmith_vise",
+        "gameplay_core": "Gunsmithing"
+      },
+      "aura_prompt": "Heavy bench vise, oil, parts tray empty or with honest casings, no invented assault rifle.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "gameplay_core": "Gunsmithing",
+          "firearms_mesh": "not_in_this_bible_until_verb_exists"
+        },
+        "kit": "kit_craft"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_spell_basin",
+      "display_name": "Spell Basin",
+      "lore_blurb": "Spellcrafting station. A stone basin, not a pentagram decal.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_craft",
+        "animate"
+      ],
+      "world_ids": [
+        "Fantasy",
+        "Crucible",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. basin 0.8m",
+      "palette": [
+        "#3a3850",
+        "#c8b48a"
+      ],
+      "scale_vs_player": "basin 0.8m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_spell_basin.prefab",
+        "dress_vocab_stem": "prop_spell_basin",
+        "gameplay_core": "Spellcrafting"
+      },
+      "aura_prompt": "Worn stone basin, residue, Archive or Crucible room.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "gameplay_core": "Spellcrafting"
+        },
+        "kit": "kit_craft"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_hitching_rail",
+      "display_name": "Hitch Rail",
+      "lore_blurb": "Horse prop anchor beside faun_wagon_horse. Not a ride prompt.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_frontier",
+        "animate"
+      ],
+      "world_ids": [
+        "Frontier",
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. rail 1.2m",
+      "palette": [
+        "#6a5340"
+      ],
+      "scale_vs_player": "rail 1.2m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_hitching_rail.prefab",
+        "dress_vocab_stem": "prop_hitching_rail",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn hitching rail, hair caught in the wood.",
+      "stats_hooks": {
+        "interaction": "animate",
+        "density_budget": "set",
+        "flags": {
+          "mount": "faun_wagon_horse"
+        },
+        "kit": "kit_frontier"
+      },
+      "verb_ids": [
+        "verb_interact"
+      ]
+    },
+    {
+      "id": "prop_flower_wreath",
+      "display_name": "Refusal Wreath",
+      "lore_blurb": "Hub civic. Hung on gates. Cloth and real flowers.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_court",
+        "none"
+      ],
+      "world_ids": [
+        "Hub"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. wreath 0.6m",
+      "palette": [
+        "#c8721a",
+        "#efe6d4",
+        "#3a6a48"
+      ],
+      "scale_vs_player": "wreath 0.6m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_flower_wreath.prefab",
+        "dress_vocab_stem": "prop_flower_wreath",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Flower wreath, slightly wilted, Court gate.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "set",
+        "flags": {},
+        "kit": "kit_court"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_scaffold_plank",
+      "display_name": "Scaffold Plank",
+      "lore_blurb": "Shared traversal prop. 0.4m thick, grabbable ledge.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_traversal",
+        "none"
+      ],
+      "world_ids": [
+        "Hub",
+        "Crime",
+        "Cyber",
+        "Frontier",
+        "Sere"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. plank 2m",
+      "palette": [
+        "#6a5340",
+        "#8a6a48"
+      ],
+      "scale_vs_player": "plank 2m",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_scaffold_plank.prefab",
+        "dress_vocab_stem": "prop_scaffold_plank",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Worn scaffold plank, rope, visible thickness, climbable.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {
+          "climb": true
+        },
+        "kit": "kit_traversal"
+      },
+      "verb_ids": []
+    },
+    {
+      "id": "prop_pipe_run",
+      "display_name": "Pipe Run",
+      "lore_blurb": "Shared traversal. Crime steam, Grid fiber-in-pipe, Sere slag. Same silhouette, material swap.",
+      "taxonomy_tags": [
+        "prop",
+        "kit_traversal",
+        "none"
+      ],
+      "world_ids": [
+        "Crime",
+        "Cyber",
+        "Sere",
+        "Crucible"
+      ],
+      "art_style_notes": "Stylized realism PBR: GTA micro-wear (scratches, peel, stain, edge dirt) on a Palworld-readable silhouette (bold mass, saturated key light, one emissive accent). Visible bevels. Albedo has no baked lighting and is slightly more saturated than a photo. No cel-shade, no generic asset-pack costume, no thin-limb hitboxes. Kit clutter. Repeat is expected; hero props are tagged budget hero and stay sparse. GTA wear, Palworld readable shape.",
+      "silhouette_notes": "Must read as a pure-black silhouette at 100m and at chase-camera distance. Windup / strike / recover poses stay distinct. pipe 0.3m diameter",
+      "palette": [
+        "#8a6a48",
+        "#3dffa0"
+      ],
+      "scale_vs_player": "pipe 0.3m diameter",
+      "unity_bind": {
+        "prefab_stub": "Assets/Concordia/Generated/NativeBible/Prefabs/prop_pipe_run.prefab",
+        "dress_vocab_stem": "prop_pipe_run",
+        "gameplay_core": null
+      },
+      "aura_prompt": "Thick exterior pipe run with brackets, climbable, material swaps per world.",
+      "stats_hooks": {
+        "interaction": "none",
+        "density_budget": "structural",
+        "flags": {
+          "climb": true
+        },
+        "kit": "kit_traversal"
+      },
+      "verb_ids": []
+    }
+  ]
+}

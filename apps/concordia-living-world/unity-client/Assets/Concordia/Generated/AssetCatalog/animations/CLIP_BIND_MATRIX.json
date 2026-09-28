@@ -1,0 +1,292 @@
+{
+  "schema": "concordia-anim-matrix/1.0",
+  "controller": "ConcordiaLocomotion",
+  "avatars": [
+    "Assets/Concordia/Generated/Rig/CX_Humanoid_Male.fbx",
+    "Assets/Concordia/Generated/Rig/CX_Humanoid_Female.fbx"
+  ],
+  "ual1": "Assets/Concordia/FreePacks/Quaternius/Quaternius_Universal_Animation_Library_Standard/Universal Animation Library[Standard]/Unity/UAL1_Standard.fbx",
+  "pistol_policy": "unbound",
+  "humanoid": [
+    {
+      "state": "loc.idle",
+      "src": "UAL1",
+      "clip": "Idle_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.walk",
+      "src": "UAL1",
+      "clip": "Walk_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.walk_formal",
+      "src": "UAL1",
+      "clip": "Walk_Formal_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.jog",
+      "src": "UAL1",
+      "clip": "Jog_Fwd_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.sprint",
+      "src": "UAL1",
+      "clip": "Sprint_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.crouch_idle",
+      "src": "UAL1",
+      "clip": "Crouch_Idle_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.crouch_fwd",
+      "src": "UAL1",
+      "clip": "Crouch_Fwd_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "loc.strafe_l",
+      "src": "MISSING",
+      "fallback": "lean Walk_Loop"
+    },
+    {
+      "state": "loc.strafe_r",
+      "src": "MISSING",
+      "fallback": "lean Walk_Loop"
+    },
+    {
+      "state": "loc.turn",
+      "src": "ETHAN",
+      "clip": "WalkTurn",
+      "fallback": "yaw warp"
+    },
+    {
+      "state": "trav.jump_start",
+      "src": "UAL1",
+      "clip": "Jump_Start",
+      "root": "RM"
+    },
+    {
+      "state": "trav.jump_loop",
+      "src": "UAL1",
+      "clip": "Jump_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "trav.jump_land",
+      "src": "UAL1",
+      "clip": "Jump_Land",
+      "root": "RM"
+    },
+    {
+      "state": "trav.dodge_roll",
+      "src": "UAL1",
+      "clip": "Roll",
+      "root": "RM"
+    },
+    {
+      "state": "trav.swim_idle",
+      "src": "UAL1",
+      "clip": "Swim_Idle_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "trav.swim_fwd",
+      "src": "UAL1",
+      "clip": "Swim_Fwd_Loop",
+      "root": "in-place"
+    },
+    {
+      "state": "trav.climb",
+      "src": "MISSING",
+      "fallback": "no state until UAL2"
+    },
+    {
+      "state": "combat.sword_idle",
+      "src": "UAL1",
+      "clip": "Sword_Idle"
+    },
+    {
+      "state": "combat.sword_slash",
+      "src": "UAL1",
+      "clip": "Sword_Attack"
+    },
+    {
+      "state": "combat.heavy",
+      "src": "MISSING",
+      "fallback": "scaled Sword_Attack"
+    },
+    {
+      "state": "combat.jab",
+      "src": "UAL1",
+      "clip": "Punch_Jab"
+    },
+    {
+      "state": "combat.cross",
+      "src": "UAL1",
+      "clip": "Punch_Cross"
+    },
+    {
+      "state": "combat.guard",
+      "src": "MISSING",
+      "fallback": "upper Sword_Idle"
+    },
+    {
+      "state": "react.hit_chest",
+      "src": "UAL1",
+      "clip": "Hit_Chest"
+    },
+    {
+      "state": "react.hit_head",
+      "src": "UAL1",
+      "clip": "Hit_Head"
+    },
+    {
+      "state": "react.knockdown",
+      "src": "MISSING",
+      "fallback": "Hit_Chest hip sink"
+    },
+    {
+      "state": "react.death",
+      "src": "UAL1",
+      "clip": "Death01"
+    },
+    {
+      "state": "use.interact",
+      "src": "UAL1",
+      "clip": "Interact"
+    },
+    {
+      "state": "use.pickup",
+      "src": "UAL1",
+      "clip": "PickUp_Table"
+    },
+    {
+      "state": "use.push",
+      "src": "UAL1",
+      "clip": "Push_Loop"
+    },
+    {
+      "state": "use.talk",
+      "src": "UAL1",
+      "clip": "Idle_Talking_Loop"
+    },
+    {
+      "state": "use.sit_enter",
+      "src": "UAL1",
+      "clip": "Sitting_Enter"
+    },
+    {
+      "state": "use.sit_idle",
+      "src": "UAL1",
+      "clip": "Sitting_Idle_Loop"
+    },
+    {
+      "state": "use.sit_talk",
+      "src": "UAL1",
+      "clip": "Sitting_Talking_Loop"
+    },
+    {
+      "state": "use.sit_exit",
+      "src": "UAL1",
+      "clip": "Sitting_Exit"
+    },
+    {
+      "state": "use.torch",
+      "src": "UAL1",
+      "clip": "Idle_Torch_Loop"
+    },
+    {
+      "state": "use.kneel_work",
+      "src": "UAL1",
+      "clip": "Fixing_Kneeling"
+    },
+    {
+      "state": "use.dance",
+      "src": "UAL1",
+      "clip": "Dance_Loop"
+    },
+    {
+      "state": "use.spell_idle",
+      "src": "UAL1",
+      "clip": "Spell_Simple_Idle_Loop"
+    },
+    {
+      "state": "use.spell_cast",
+      "src": "UAL1",
+      "clip": "Spell_Simple_Shoot"
+    },
+    {
+      "state": "softenter.idle",
+      "src": "UAL1",
+      "clip": "Idle_Loop"
+    }
+  ],
+  "creature_families": [
+    "quadruped",
+    "small_prey",
+    "bird",
+    "insect",
+    "boss_tell"
+  ],
+  "vehicle_states": [
+    "veh.parked",
+    "veh.roll",
+    "veh.brake",
+    "veh.bump",
+    "veh.hitch_idle",
+    "veh.sail_luff",
+    "veh.door",
+    "veh.occupant_none"
+  ],
+  "organic_mesh_ids": [
+    "anim_org_flower_sprig",
+    "anim_org_hall_banner_strip",
+    "anim_org_hanging_awning_cloth"
+  ],
+  "deep_slice": "A19_anim_creature_rigs",
+  "creature_controller": "CreatureGraph",
+  "vehicle_controller": "VehicleRoll",
+  "deep_doc": "animations/CREATURE_VEHICLE_DEEP.json",
+  "spec_ids": [
+    "anim_spec_creature_graph",
+    "anim_spec_vehicle_roll",
+    "anim_spec_mobility_bind"
+  ],
+  "mobility_slice": "A01_anim_master",
+  "mobility_cycle": 2,
+  "mobility_doc": "animations/MOBILITY_BIND.md",
+  "mobility": [
+    {
+      "kind": "gate",
+      "state": "loc.walk_formal",
+      "then": "softenter.idle"
+    },
+    {
+      "kind": "road",
+      "state": "loc.walk",
+      "speed_kmh": 5
+    },
+    {
+      "kind": "walker",
+      "state": "loc.walk",
+      "stride_scale": 0.7
+    },
+    {
+      "kind": "sea",
+      "state": null,
+      "hull": false
+    },
+    {
+      "kind": "weak",
+      "state": "loc.crouch_fwd",
+      "climb": "MISSING"
+    }
+  ]
+}
