@@ -85534,8 +85534,22 @@ async function runBackup() {
       const gzipPath = `${backupDir}/concord.db.gz`;
       if (_db && typeof _db.backup === "function") {
         const snapPath = `${backupDir}/.concord.db.snapshot`;
+        // 2026-09-28: the snapshot needs a full uncompressed copy on disk. On
+        // a 16 GB DB with 1.3 GB free it filled the disk the live DB writes
+        // to; and copying 100 pages per step, SQLite restarts the backup
+        // whenever another connection writes (two backends share this DB),
+        // so it spun for hours holding a partial multi-GB file. Refuse
+        // honestly when there's no room, and copy in one step so concurrent
+        // writes can't restart it.
+        const { size: dbBytes } = await fs.promises.stat(DB_PATH).catch(() => ({ size: 0 }));
+        let freeBytes = Infinity;
+        try { const st = await fs.promises.statfs(backupDir); freeBytes = st.bavail * st.bsize; } catch { /* statfs unavailable: proceed */ }
+        const needBytes = Math.ceil(dbBytes * 1.25) + 2 * 1024 ** 3; // snapshot + gzip + headroom for the live DB
+        if (freeBytes < needBytes) {
+          throw new Error(`not enough free disk for a DB snapshot: need ~${Math.round(needBytes / 1024 ** 3)} GB, have ${Math.round(freeBytes / 1024 ** 3)} GB`);
+        }
         try {
-          await _db.backup(snapPath);
+          await _db.backup(snapPath, { progress: () => 0x7fffffff });
           await pipeline(
             fs.createReadStream(snapPath),
             zlib.createGzip({ level: 6 }),
