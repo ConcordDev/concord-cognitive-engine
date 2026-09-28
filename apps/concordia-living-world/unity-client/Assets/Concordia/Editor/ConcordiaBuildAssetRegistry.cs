@@ -79,6 +79,11 @@ namespace Concordia.Editor
             }
 
             var reg = AssetDatabase.LoadAssetAtPath<BuildAssetRegistry>(RegistryPath);
+            if (!reg && File.Exists(RegistryPath))
+            {
+                AssetDatabase.ImportAsset(RegistryPath, ImportAssetOptions.ForceSynchronousImport);
+                reg = AssetDatabase.LoadAssetAtPath<BuildAssetRegistry>(RegistryPath);
+            }
             if (!reg)
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(RegistryPath));

@@ -71,6 +71,9 @@ namespace Concordia.Editor
                 if (!sh) { Debug.LogWarning("[ShaderKeep] shader not found in project: " + k.shader); missing++; continue; }
                 var path = Folder + "/" + k.file + ".mat";
                 var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                // On disk but not yet imported (e.g. pulled into an open editor):
+                // import it — re-creating over the file threw in URP's postprocessor.
+                if (!m && File.Exists(path)) { AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport); m = AssetDatabase.LoadAssetAtPath<Material>(path); }
                 if (!m) { m = new Material(sh); AssetDatabase.CreateAsset(m, path); made++; }
                 m.shader = sh;
                 if (k.transparent)
