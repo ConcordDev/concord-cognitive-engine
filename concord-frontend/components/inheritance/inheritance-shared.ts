@@ -1,6 +1,6 @@
 'use client';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { lensRun } from '@/lib/api/client';
 import type { TimelineEvent } from '@/components/viz';
