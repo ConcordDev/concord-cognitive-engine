@@ -17656,6 +17656,8 @@ function makeInternalCtx(source = "system") {
 }
 
 // ---- DTU Archive System (Consolidation Pipeline) ----
+// Archived rows are stored gzip-compressed (lib/dtu-at-rest.js).
+import { packDtuData, unpackDtuData } from "./lib/dtu-at-rest.js";
 // Rehydration LRU cache for archived DTUs
 const _rehydrationCache = new Map();
 
@@ -17667,7 +17669,7 @@ function archiveDTUToDisk(dtu) {
       const stmt = db.prepare(
         `INSERT OR REPLACE INTO archived_dtus (id, data, tier, consolidated_into, archived_at) VALUES (?, ?, ?, ?, ?)`
       );
-      stmt.run(dtu.id, JSON.stringify(dtu), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
+      stmt.run(dtu.id, packDtuData(JSON.stringify(dtu)), dtu.tier || "regular", dtu.meta?.consolidatedInto || null, new Date().toISOString());
       
     }
   } catch (e) { structuredLog("error", "archive_dtu_to_disk_failed", { id: dtu?.id, error: String(e) }); }
@@ -17684,7 +17686,7 @@ function rehydrateDTU(dtuId) {
     if (db) {
       const row = db.prepare('SELECT data FROM archived_dtus WHERE id = ?').get(dtuId);
       if (row) {
-        const dtu = JSON.parse(row.data);
+        const dtu = JSON.parse(unpackDtuData(row.data));
         // Update rehydration counter
         db.prepare('UPDATE archived_dtus SET rehydrated_count = rehydrated_count + 1, last_rehydrated_at = ? WHERE id = ?').run(new Date().toISOString(), dtuId);
         // Cache for subsequent reads
