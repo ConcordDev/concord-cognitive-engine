@@ -28137,12 +28137,14 @@ ${_operatorV6Block}` : "";
     if (_deterministicAnswer) {
       _computeGroundTruth = { groundTruthBlock: `[GROUND TRUTH from real compute engines — these values are authoritative, never contradict them]\n- physics.beamDeflection: ${_deterministicAnswer.text}`, capabilities: [{ key: "physics.beamDeflection" }], results: [] };
     }
-    if (!_computeGroundTruth) try {
-      _computeGroundTruth = await runChatComputePreflight(prompt, {
-        domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
-        ctx,
-      });
-    } catch (_e) { /* never block chat on a compute failure */ }
+    if (!_computeGroundTruth) {
+      try {
+        _computeGroundTruth = await runChatComputePreflight(prompt, {
+          domainHandlers: (typeof ALL_LENS_DOMAINS !== 'undefined' ? ALL_LENS_DOMAINS : {}),
+          ctx,
+        });
+      } catch (_e) { /* never block chat on a compute failure */ }
+    }
 
     // RQ3 — deterministic-engine intent routing (compute-don't-guess), additive
     // only: fires ONLY when the keyword-scored preflight above found nothing,
