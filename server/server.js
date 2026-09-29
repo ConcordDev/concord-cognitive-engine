@@ -10121,7 +10121,9 @@ globalThis._concordEmitToWorld = emitToWorld;
 // Tick-rate telemetry is not history: a synchronous event_timeline_log INSERT
 // per city:positions chunk (10 Hz × chunks) was a DB write per message on the
 // event loop. These still broadcast; they just aren't persisted to the timeline.
-const _TIMELINE_SKIP_EVENTS = new Set(["ping", "pong", "city:positions", "world:clock", "world:entities", "npc:positions"]);
+// emergent:activity is already persisted by emergent/feed.js into
+// emergent_activity_feed; logging it here too stored every row twice (10M+).
+const _TIMELINE_SKIP_EVENTS = new Set(["ping", "pong", "city:positions", "world:clock", "world:entities", "npc:positions", "emergent:activity"]);
 
 function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "", requestId = "", worldId = "" } = {}) {
   // ---- Event Ordering & Correlation (Category 2+5: Concurrency + Observability) ----
@@ -30639,6 +30641,24 @@ registerHeartbeat("event-timeline-prune", {
       return _timelinePrune(ctxDb || db);
     } catch (err) {
       structuredLog("warn", "event_timeline_prune_failed", { error: err?.message });
+      return { ok: false, reason: "exception" };
+    }
+  },
+});
+
+// Same never-pruned defect on the two biggest activity logs
+// (emergent_activity_feed, inference_spans): archive to data/archive/*.jsonl.gz
+// then delete past the retention window (default 14 days). Work per run is
+// capped inside pruneRetainedLogs so the tick stays short.
+registerHeartbeat("activity-log-retention", {
+  frequency: 240,
+  scope: "global",
+  handler: async ({ db: ctxDb } = {}) => {
+    try {
+      const { pruneRetainedLogs } = await import("./lib/log-retention.js");
+      return pruneRetainedLogs(ctxDb || db, { archiveRoot: path.join(DATA_DIR, "archive") });
+    } catch (err) {
+      structuredLog("warn", "activity_log_retention_failed", { error: err?.message });
       return { ok: false, reason: "exception" };
     }
   },

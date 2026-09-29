@@ -129,6 +129,7 @@ export async function infer(req, db) {
     };
 
     if (loopResult.terminated) response.terminated = loopResult.terminated;
+    if (loopResult.error) response.error = loopResult.error;
     if (interactionId) response._interactionId = interactionId;
 
     traceEmit("finish", inferenceId, {
